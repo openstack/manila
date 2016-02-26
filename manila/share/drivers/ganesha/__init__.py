@@ -22,6 +22,7 @@ from oslo_config import cfg
 from oslo_log import log
 import six
 
+from manila.common import constants
 from manila import exception
 from manila.i18n import _LI
 from manila.share.drivers.ganesha import manager as ganesha_manager
@@ -35,6 +36,13 @@ LOG = log.getLogger(__name__)
 class NASHelperBase(object):
     """Interface to work with share."""
 
+    # drivers that use a helper derived from this class
+    # should pass the following attributes to
+    # ganesha_utils.validate_acces_rule in their
+    # update_access implementation.
+    supported_access_types = ()
+    supported_access_levels = ()
+
     def __init__(self, execute, config, **kwargs):
         self.configuration = config
         self._execute = execute
@@ -43,16 +51,16 @@ class NASHelperBase(object):
         """Initializes protocol-specific NAS drivers."""
 
     @abc.abstractmethod
-    def allow_access(self, base_path, share, access):
-        """Allow access to the host."""
-
-    @abc.abstractmethod
-    def deny_access(self, base_path, share, access):
-        """Deny access to the host."""
+    def update_access(self, base_path, share, add_rules, delete_rules,
+                      recovery=False):
+        """Update access rules of share."""
 
 
 class GaneshaNASHelper(NASHelperBase):
     """Execute commands relating to Shares."""
+
+    supported_access_types = ('ip', )
+    supported_access_levels = (constants.ACCESS_LEVEL_RW, )
 
     def __init__(self, execute, config, tag='<no name>', **kwargs):
         super(GaneshaNASHelper, self).__init__(execute, config, **kwargs)
@@ -113,7 +121,7 @@ class GaneshaNASHelper(NASHelperBase):
         """Subclass this to create FSAL block."""
         return {}
 
-    def allow_access(self, base_path, share, access):
+    def _allow_access(self, base_path, share, access):
         """Allow access to the share."""
         if access['access_type'] != 'ip':
             raise exception.InvalidShareAccess('Only IP access type allowed')
@@ -135,6 +143,19 @@ class GaneshaNASHelper(NASHelperBase):
         })
         self.ganesha.add_export(export_name, cf)
 
-    def deny_access(self, base_path, share, access):
+    def _deny_access(self, base_path, share, access):
         """Deny access to the share."""
         self.ganesha.remove_export("%s--%s" % (share['name'], access['id']))
+
+    def update_access(self, base_path, share, add_rules, delete_rules,
+                      recovery=False):
+        """Update access rules of share."""
+
+        if recovery:
+            self.ganesha.reset_exports()
+            self.ganesha.restart_service()
+
+        for rule in add_rules:
+            self._allow_access(base_path, share, rule)
+        for rule in delete_rules:
+            self._deny_access(base_path, share, rule)

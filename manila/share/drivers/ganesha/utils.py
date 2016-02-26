@@ -17,8 +17,13 @@ import os
 import pipes
 
 from oslo_concurrency import processutils
+from oslo_log import log
 
+from manila import exception
+from manila.i18n import _
 from manila import utils
+
+LOG = log.getLogger(__name__)
 
 
 def patch(base, *overlays):
@@ -80,3 +85,52 @@ class SSHExecutor(object):
 def path_from(fpath, *rpath):
     """Return the join of the dir of fpath and rpath in absolute form."""
     return os.path.join(os.path.abspath(os.path.dirname(fpath)), *rpath)
+
+
+def validate_access_rule(supported_access_types, supported_access_levels,
+                         access_rule, abort=False):
+
+    """Validate an access rule.
+
+    :param access_rule: Access rules to be validated.
+    :param supported_access_types: List of access types that are regarded
+           valid.
+    :param supported_access_levels: List of access levels that are
+           regarded valid.
+    :param abort: a boolean value that indicates if an exception should
+                  be raised whether the rule is invalid.
+    :return: Boolean.
+    """
+
+    errmsg = _("Unsupported access rule of 'type' %(access_type)s, "
+               "'level' %(access_level)s, 'to' %(access_to)s: "
+               "%(field)s should be one of %(supported)s.")
+    access_param = access_rule.to_dict()
+
+    def validate(field, supported_tokens, excinfo):
+        if access_rule['access_%s' % field] in supported_tokens:
+            return True
+
+        access_param['field'] = field
+        access_param['supported'] = ', '.join(
+            "'%s'" % x for x in supported_tokens)
+        if abort:
+            LOG.error(errmsg, access_param)
+            raise excinfo['type'](
+                **{excinfo['about']: excinfo['details'] % access_param})
+        else:
+            LOG.warning(errmsg, access_param)
+            return False
+
+    valid = True
+    valid &= validate(
+        'type', supported_access_types,
+        {'type': exception.InvalidShareAccess, 'about': "reason",
+         'details': _(
+             "%(access_type)s; only %(supported)s access type is allowed")})
+    valid &= validate(
+        'level', supported_access_levels,
+        {'type': exception.InvalidShareAccessLevel, 'about': "level",
+         'details': "%(access_level)s"})
+
+    return valid

@@ -240,6 +240,13 @@ class GlusterNFSHelper(ganesha.NASHelperBase):
         self._manage_access(path[1:], access['access_type'],
                             access['access_to'], cbk)
 
+    def update_access(self, base_path, share, add_rules, delete_rules,
+                      recovery=False):
+        """Update access rules of share."""
+
+        # Stub needed to meet parent's implementation enforcement.
+        raise NotImplementedError
+
 
 class GlusterNFSVolHelper(GlusterNFSHelper):
     """Manage shares with Gluster-NFS server, volume mapped variant."""
@@ -353,3 +360,11 @@ class GaneshaNFSHelper(ganesha.GaneshaNASHelper):
         return {"Hostname": self.gluster_manager.host,
                 "Volume": self.gluster_manager.volume,
                 "Volpath": self.gluster_manager.path}
+
+    # TODO(csaba): remove the following when the driver moves to update_access
+
+    def allow_access(self, *a, **kw):
+        self._allow_access(*a, **kw)
+
+    def deny_access(self, *a, **kw):
+        self._deny_access(*a, **kw)

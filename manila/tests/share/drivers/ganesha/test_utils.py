@@ -18,8 +18,10 @@ import os
 import ddt
 import mock
 
+from manila import exception
 from manila.share.drivers.ganesha import utils as ganesha_utils
 from manila import test
+from manila.tests import fake_share
 
 
 patch_test_dict1 = {'a': 1, 'b': {'c': 2}, 'd': 3, 'e': 4}
@@ -36,6 +38,13 @@ walk_test_dict = {'a': {'b': {'c': {'d': {'e': 'f'}}}}}
 walk_test_list = [('e', 'f')]
 
 
+def fake_access(kwargs):
+    fake_access_rule = fake_share.fake_access(**kwargs)
+    fake_access_rule.to_dict = lambda: fake_access_rule.values
+    return fake_access_rule
+
+
+@ddt.ddt
 class GaneshaUtilsTests(test.TestCase):
     """Tests Ganesha utility functions."""
 
@@ -53,6 +62,41 @@ class GaneshaUtilsTests(test.TestCase):
                          lambda path: os.path.join('/foo/bar', path))
         ret = ganesha_utils.path_from('baz.py', '../quux', 'tic/tac/toe')
         self.assertEqual('/foo/quux/tic/tac/toe', os.path.normpath(ret))
+
+    @ddt.data({'rule': {'access_type': 'ip',
+                        'access_level': 'ro',
+                        'access_to': '10.10.10.12'},
+               'kwargs': {'abort': True}},
+              {'rule': {'access_type': 'cert',
+                        'access_level': 'ro',
+                        'access_to': 'some-CN'},
+               'kwargs': {'abort': False}},
+              {'rule': {'access_type': 'ip',
+                        'access_level': 'rw',
+                        'access_to': '10.10.10.12'},
+               'kwargs': {}})
+    @ddt.unpack
+    def test_get_valid_access_rules(self, rule, kwargs):
+        supported = ['ip', 'ro']
+
+        ret = ganesha_utils.validate_access_rule(
+            *([[a] for a in supported] + [fake_access(rule)]), **kwargs)
+
+        self.assertEqual(
+            [rule['access_' + k] for k in ['type', 'level']] == supported, ret)
+
+    @ddt.data({'rule': {'access_type': 'cert',
+                        'access_level': 'ro',
+                        'access_to': 'some-CN'},
+               'trouble': exception.InvalidShareAccess},
+              {'rule': {'access_type': 'ip',
+                        'access_level': 'rw',
+                        'access_to': '10.10.10.12'},
+               'trouble': exception.InvalidShareAccessLevel})
+    @ddt.unpack
+    def test_get_valid_access_rules_fail(self, rule, trouble):
+        self.assertRaises(trouble, ganesha_utils.validate_access_rule,
+                          ['ip'], ['ro'], fake_access(rule), abort=True)
 
 
 @ddt.ddt
