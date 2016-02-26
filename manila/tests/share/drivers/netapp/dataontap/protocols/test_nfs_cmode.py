@@ -47,33 +47,17 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
         self.mock_client.get_volume_junction_path.return_value = (
             fake.NFS_SHARE_PATH)
 
-        result = self.helper.create_share(fake.NFS_SHARE,
-                                          fake.SHARE_NAME,
-                                          [fake.SHARE_ADDRESS_1])
+        result = self.helper.create_share(fake.NFS_SHARE, fake.SHARE_NAME)
 
-        expected = [':'.join([fake.SHARE_ADDRESS_1, fake.NFS_SHARE_PATH])]
-        self.assertEqual(expected, result)
+        export_addresses = [fake.SHARE_ADDRESS_1, fake.SHARE_ADDRESS_2]
+        export_paths = [result(address) for address in export_addresses]
+        expected_paths = [
+            fake.SHARE_ADDRESS_1 + ":" + fake.NFS_SHARE_PATH,
+            fake.SHARE_ADDRESS_2 + ":" + fake.NFS_SHARE_PATH,
+        ]
+        self.assertEqual(expected_paths, export_paths)
         (self.mock_client.clear_nfs_export_policy_for_volume.
             assert_called_once_with(fake.SHARE_NAME))
-        self.assertTrue(mock_ensure_export_policy.called)
-
-    def test_create_share_multiple(self):
-
-        mock_ensure_export_policy = self.mock_object(self.helper,
-                                                     '_ensure_export_policy')
-        self.mock_client.get_volume_junction_path.return_value = (
-            fake.NFS_SHARE_PATH)
-
-        result = self.helper.create_share(fake.NFS_SHARE,
-                                          fake.SHARE_NAME,
-                                          [fake.SHARE_ADDRESS_1,
-                                           fake.SHARE_ADDRESS_2])
-
-        expected = [':'.join([fake.SHARE_ADDRESS_1, fake.NFS_SHARE_PATH]),
-                    ':'.join([fake.SHARE_ADDRESS_2, fake.NFS_SHARE_PATH])]
-        self.assertEqual(expected, result)
-        self.mock_client.clear_nfs_export_policy_for_volume.\
-            assert_called_once_with(fake.SHARE_NAME)
         self.assertTrue(mock_ensure_export_policy.called)
 
     def test_delete_share(self):

@@ -33,12 +33,15 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
     """NetApp cDOT CIFS protocol helper class."""
 
     @na_utils.trace
-    def create_share(self, share, share_name, export_addresses):
+    def create_share(self, share, share_name):
         """Creates CIFS share on Data ONTAP Vserver."""
         self._client.create_cifs_share(share_name)
         self._client.remove_cifs_share_access(share_name, 'Everyone')
-        return [r'\\%s\%s' % (export_address, share_name)
-                for export_address in export_addresses]
+
+        # Return a callback that may be used for generating export paths
+        # for this share.
+        return (lambda export_address, share_name=share_name:
+                r'\\%s\%s' % (export_address, share_name))
 
     @na_utils.trace
     def delete_share(self, share, share_name):

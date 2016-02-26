@@ -380,8 +380,33 @@ LIFS = (
      },
 )
 
-NFS_EXPORTS = [':'.join([LIF_ADDRESSES[0], 'fake_export_path']),
-               ':'.join([LIF_ADDRESSES[1], 'fake_export_path'])]
+INTERFACE_ADDRESSES_WITH_METADATA = {
+    LIF_ADDRESSES[0]: {
+        'is_admin_only': False,
+        'preferred': True,
+    },
+    LIF_ADDRESSES[1]: {
+        'is_admin_only': False,
+        'preferred': False,
+    },
+}
+
+NFS_EXPORTS = [
+    {
+        'path': ':'.join([LIF_ADDRESSES[0], 'fake_export_path']),
+        'is_admin_only': False,
+        'metadata': {
+            'preferred': True,
+        },
+    },
+    {
+        'path': ':'.join([LIF_ADDRESSES[1], 'fake_export_path']),
+        'is_admin_only': False,
+        'metadata': {
+            'preferred': False,
+        },
+    },
+]
 
 SHARE_ACCESS = {
     'access_type': 'user',
