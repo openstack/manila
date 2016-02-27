@@ -203,9 +203,8 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
         ssl_allow_opt = ','.join(ssl_allow)
         gluster_mgr.set_vol_option(AUTH_SSL_ALLOW, ssl_allow_opt)
 
-        dynauth = gluster_mgr.get_vol_option(DYNAMIC_AUTH) or 'off'
-        # TODO(csaba): boolean option processing shoud be done in common
-        if dynauth.lower() not in ('on', '1', 'true', 'yes', 'enable'):
+        dynauth = gluster_mgr.get_vol_option(DYNAMIC_AUTH, boolean=True)
+        if not dynauth:
             common._restart_gluster_vol(gluster_mgr)
 
     def _update_share_stats(self):
