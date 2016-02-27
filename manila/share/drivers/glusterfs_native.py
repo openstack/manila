@@ -89,7 +89,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
             #   problems internally in GlusterFS
             # - In GlusterFS 3.7, it implies that access control is
             #   disabled, which defeats the purpose of this driver --
-            # so to avoid these possiblitiies, we throw an error in this case.
+            # so to avoid these possibilities, we throw an error in this case.
             msg = (_("Option %(option)s is not defined on gluster volume. "
                      "Volume: %(volname)s") %
                    {'volname': gluster_mgr.volume,
