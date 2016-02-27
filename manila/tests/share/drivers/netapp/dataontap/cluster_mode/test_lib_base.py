@@ -513,6 +513,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_allocate_container.assert_called_once_with(fake.SHARE,
                                                         vserver_client)
         mock_create_export.assert_called_once_with(fake.SHARE,
+                                                   fake.SHARE_SERVER,
                                                    fake.VSERVER1,
                                                    vserver_client)
         self.assertEqual('fake_export_location', result)
@@ -543,6 +544,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SNAPSHOT,
             vserver_client)
         mock_create_export.assert_called_once_with(fake.SHARE,
+                                                   fake.SHARE_SERVER,
                                                    fake.VSERVER1,
                                                    vserver_client)
         self.assertEqual('fake_export_location', result)
@@ -917,12 +919,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=fake_interface_addresses_with_metadata))
 
         result = self.library._create_export(fake.SHARE,
+                                             fake.SHARE_SERVER,
                                              fake.VSERVER1,
                                              vserver_client)
 
         self.assertEqual(fake.NFS_EXPORTS, result)
         mock_get_export_addresses_with_metadata.assert_called_once_with(
-            fake.SHARE, fake.LIFS)
+            fake.SHARE, fake.SHARE_SERVER, fake.LIFS)
         protocol_helper.create_share.assert_called_once_with(
             fake.SHARE, fake.SHARE_NAME)
 
@@ -935,6 +938,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(exception.NetAppException,
                           self.library._create_export,
                           fake.SHARE,
+                          fake.SHARE_SERVER,
                           fake.VSERVER1,
                           vserver_client)
 
@@ -943,21 +947,29 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_aggregate_node = self.mock_object(
             self.library, '_get_aggregate_node',
             mock.Mock(return_value=fake.CLUSTER_NODES[0]))
+        mock_get_admin_addresses_for_share_server = self.mock_object(
+            self.library, '_get_admin_addresses_for_share_server',
+            mock.Mock(return_value=[fake.LIF_ADDRESSES[1]]))
 
         result = self.library._get_export_addresses_with_metadata(
-            fake.SHARE, fake.LIFS)
+            fake.SHARE, fake.SHARE_SERVER, fake.LIFS)
 
         self.assertEqual(fake.INTERFACE_ADDRESSES_WITH_METADATA, result)
         mock_get_aggregate_node.assert_called_once_with(fake.POOL_NAME)
+        mock_get_admin_addresses_for_share_server.assert_called_once_with(
+            fake.SHARE_SERVER)
 
     def test_get_export_addresses_with_metadata_node_unknown(self):
 
         mock_get_aggregate_node = self.mock_object(
             self.library, '_get_aggregate_node',
             mock.Mock(return_value=None))
+        mock_get_admin_addresses_for_share_server = self.mock_object(
+            self.library, '_get_admin_addresses_for_share_server',
+            mock.Mock(return_value=[fake.LIF_ADDRESSES[1]]))
 
         result = self.library._get_export_addresses_with_metadata(
-            fake.SHARE, fake.LIFS)
+            fake.SHARE, fake.SHARE_SERVER, fake.LIFS)
 
         expected = copy.deepcopy(fake.INTERFACE_ADDRESSES_WITH_METADATA)
         for key, value in expected.items():
@@ -965,6 +977,22 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertEqual(expected, result)
         mock_get_aggregate_node.assert_called_once_with(fake.POOL_NAME)
+        mock_get_admin_addresses_for_share_server.assert_called_once_with(
+            fake.SHARE_SERVER)
+
+    def test_get_admin_addresses_for_share_server(self):
+
+        result = self.library._get_admin_addresses_for_share_server(
+            fake.SHARE_SERVER)
+
+        self.assertEqual([fake.ADMIN_NETWORK_ALLOCATIONS[0]['ip_address']],
+                         result)
+
+    def test_get_admin_addresses_for_share_server_no_share_server(self):
+
+        result = self.library._get_admin_addresses_for_share_server(None)
+
+        self.assertEqual([], result)
 
     @ddt.data(True, False)
     def test_sort_export_locations_by_preferred_paths(self, reverse):
@@ -1208,6 +1236,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_manage_container.assert_called_once_with(fake.SHARE,
                                                       vserver_client)
         mock_create_export.assert_called_once_with(fake.SHARE,
+                                                   None,
                                                    fake.VSERVER1,
                                                    vserver_client)
         self.assertDictEqual(expected, result)
@@ -1479,9 +1508,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         ])
         mock_create_export.assert_has_calls([
             mock.call(fake.COLLATED_CGSNAPSHOT_INFO[0]['share'],
+                      fake.SHARE_SERVER,
                       fake.VSERVER1,
                       vserver_client),
             mock.call(fake.COLLATED_CGSNAPSHOT_INFO[1]['share'],
+                      fake.SHARE_SERVER,
                       fake.VSERVER1,
                       vserver_client),
         ])

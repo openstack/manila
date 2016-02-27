@@ -122,3 +122,8 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
     def get_network_allocations_number(self):
         """Get number of network interfaces to be created."""
         return 0
+
+    @na_utils.trace
+    def get_admin_network_allocations_number(self):
+        """Get number of network allocations for creating admin LIFs."""
+        return 0

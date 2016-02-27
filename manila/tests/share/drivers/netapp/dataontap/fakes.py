@@ -209,18 +209,41 @@ REMAPPED_OVERLAPPING_EXTRA_SPEC = {
 EXTRA_SPEC_SHARE = copy.deepcopy(SHARE)
 EXTRA_SPEC_SHARE['share_type_id'] = SHARE_TYPE_ID
 
+USER_NETWORK_ALLOCATIONS = [
+    {
+        'id': '132dbb10-9a36-46f2-8d89-3d909830c356',
+        'ip_address': '10.10.10.10',
+        'cidr': '10.10.10.0/24',
+        'segmentation_id': '1000',
+        'network_type': 'vlan',
+        'label': 'user',
+    },
+    {
+        'id': '7eabdeed-bad2-46ea-bd0f-a33884c869e0',
+        'ip_address': '10.10.10.20',
+        'cidr': '10.10.10.0/24',
+        'segmentation_id': '1000',
+        'network_type': 'vlan',
+        'label': 'user',
+    }
+]
+
+ADMIN_NETWORK_ALLOCATIONS = [
+    {
+        'id': '132dbb10-9a36-46f2-8d89-3d909830c356',
+        'ip_address': '10.10.20.10',
+        'cidr': '10.10.20.0/24',
+        'segmentation_id': None,
+        'network_type': 'flat',
+        'label': 'admin',
+    },
+]
+
 NETWORK_INFO = {
     'server_id': '56aafd02-4d44-43d7-b784-57fc88167224',
-    'cidr': '10.0.0.0/24',
     'security_services': ['fake_ldap', 'fake_kerberos', 'fake_ad', ],
-    'segmentation_id': '1000',
-    'network_type': 'vlan',
-    'network_allocations': [
-        {'id': '132dbb10-9a36-46f2-8d89-3d909830c356',
-         'ip_address': '10.10.10.10'},
-        {'id': '7eabdeed-bad2-46ea-bd0f-a33884c869e0',
-         'ip_address': '10.10.10.20'}
-    ],
+    'network_allocations': USER_NETWORK_ALLOCATIONS,
+    'admin_network_allocations': ADMIN_NETWORK_ALLOCATIONS,
     'neutron_subnet_id': '62bf1c2c-18eb-421b-8983-48a6d39aafe0',
 }
 NETWORK_INFO_NETMASK = '255.255.255.0'
@@ -229,7 +252,9 @@ SHARE_SERVER = {
     'share_network_id': 'c5b3a865-56d0-4d88-abe5-879965e099c9',
     'backend_details': {
         'vserver_name': VSERVER1
-    }
+    },
+    'network_allocations': (USER_NETWORK_ALLOCATIONS +
+                            ADMIN_NETWORK_ALLOCATIONS),
 }
 
 SNAPSHOT = {
@@ -386,7 +411,7 @@ INTERFACE_ADDRESSES_WITH_METADATA = {
         'preferred': True,
     },
     LIF_ADDRESSES[1]: {
-        'is_admin_only': False,
+        'is_admin_only': True,
         'preferred': False,
     },
 }
@@ -401,7 +426,7 @@ NFS_EXPORTS = [
     },
     {
         'path': ':'.join([LIF_ADDRESSES[1], 'fake_export_path']),
-        'is_admin_only': False,
+        'is_admin_only': True,
         'metadata': {
             'preferred': False,
         },

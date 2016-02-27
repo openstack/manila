@@ -739,12 +739,13 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'role': 'data',
             'vserver': fake.VSERVER_NAME,
         }
-        self.client.create_network_interface(fake.IP_ADDRESS, fake.NETMASK,
+        self.client.create_network_interface(fake.IP_ADDRESS,
+                                             fake.NETMASK,
                                              fake.VLAN if use_vlans else None,
-                                             fake.NODE_NAME, fake.PORT,
+                                             fake.NODE_NAME,
+                                             fake.PORT,
                                              fake.VSERVER_NAME,
-                                             fake.NET_ALLOCATION_ID,
-                                             fake.LIF_NAME_TEMPLATE,
+                                             fake.LIF_NAME,
                                              fake.IPSPACE_NAME)
 
         if use_vlans:

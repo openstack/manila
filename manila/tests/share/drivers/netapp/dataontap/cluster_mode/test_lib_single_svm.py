@@ -179,3 +179,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_get_network_allocations_number(self):
         self.assertEqual(0, self.library.get_network_allocations_number())
+
+    def test_get_admin_network_allocations_number(self):
+
+        result = self.library.get_admin_network_allocations_number()
+
+        self.assertEqual(0, result)

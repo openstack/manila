@@ -26,7 +26,7 @@ from oslo_log import log
 from oslo_utils import excutils
 
 from manila import exception
-from manila.i18n import _, _LE, _LW
+from manila.i18n import _, _LE, _LW, _LI
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp import utils as na_utils
@@ -159,6 +159,11 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                                       network_info,
                                       ipspace_name)
 
+            self._create_vserver_admin_lif(vserver_name,
+                                           vserver_client,
+                                           network_info,
+                                           ipspace_name)
+
             vserver_client.enable_nfs()
 
             security_services = network_info.get('security_services')
@@ -183,7 +188,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         if not self._client.features.IPSPACES:
             return None
 
-        if network_info['network_type'] not in SEGMENTED_NETWORK_TYPES:
+        if (network_info['network_allocations'][0]['network_type']
+                not in SEGMENTED_NETWORK_TYPES):
             return client_cmode.DEFAULT_IPSPACE
 
         # NOTE(cknight): Neutron needs cDOT IP spaces because it can provide
@@ -200,26 +206,35 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         return ipspace_name
 
     @na_utils.trace
-    def _create_vserver_lifs(self, vserver_name, vserver_client,
-                             network_info, ipspace_name):
+    def _create_vserver_lifs(self, vserver_name, vserver_client, network_info,
+                             ipspace_name):
+        """Create Vserver data logical interfaces (LIFs)."""
 
         nodes = self._client.list_cluster_nodes()
         node_network_info = zip(nodes, network_info['network_allocations'])
-        netmask = utils.cidr_to_netmask(network_info['cidr'])
 
-        for node, net_info in node_network_info:
-            net_id = net_info['id']
-            port = self._get_node_data_port(node)
-            ip = net_info['ip_address']
-            self._create_lif_if_nonexistent(vserver_name,
-                                            net_id,
-                                            network_info['segmentation_id'],
-                                            node,
-                                            port,
-                                            ip,
-                                            netmask,
-                                            ipspace_name,
-                                            vserver_client)
+        for node_name, network_allocation in node_network_info:
+            lif_name = self._get_lif_name(node_name, network_allocation)
+            self._create_lif(vserver_client, vserver_name, ipspace_name,
+                             node_name, lif_name, network_allocation)
+
+    @na_utils.trace
+    def _create_vserver_admin_lif(self, vserver_name, vserver_client,
+                                  network_info, ipspace_name):
+        """Create Vserver admin LIF, if defined."""
+
+        network_allocations = network_info.get('admin_network_allocations')
+        if not network_allocations:
+            LOG.info(_LI('No admin network defined for Vserver %s.') %
+                     vserver_name)
+            return
+
+        node_name = self._client.list_cluster_nodes()[0]
+        network_allocation = network_allocations[0]
+        lif_name = self._get_lif_name(node_name, network_allocation)
+
+        self._create_lif(vserver_client, vserver_name, ipspace_name,
+                         node_name, lif_name, network_allocation)
 
     @na_utils.trace
     def _get_node_data_port(self, node):
@@ -233,22 +248,40 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                   'to create Vserver LIFs.') % node)
         return matched_port_names[0]
 
+    def _get_lif_name(self, node_name, network_allocation):
+        """Get LIF name based on template from manila.conf file."""
+        lif_name_args = {
+            'node': node_name,
+            'net_allocation_id': network_allocation['id'],
+        }
+        return self.configuration.netapp_lif_name_template % lif_name_args
+
     @na_utils.trace
-    def _create_lif_if_nonexistent(self, vserver_name, allocation_id, vlan,
-                                   node, port, ip, netmask, ipspace_name,
-                                   vserver_client):
+    def _create_lif(self, vserver_client, vserver_name, ipspace_name,
+                    node_name, lif_name, network_allocation):
         """Creates LIF for Vserver."""
-        if not vserver_client.network_interface_exists(vserver_name, node,
-                                                       port, ip, netmask,
-                                                       vlan):
+
+        port = self._get_node_data_port(node_name)
+        ip_address = network_allocation['ip_address']
+        netmask = utils.cidr_to_netmask(network_allocation['cidr'])
+        vlan = network_allocation['segmentation_id']
+
+        if not vserver_client.network_interface_exists(
+                vserver_name, node_name, port, ip_address, netmask, vlan):
+
             self._client.create_network_interface(
-                ip, netmask, vlan, node, port, vserver_name, allocation_id,
-                self.configuration.netapp_lif_name_template, ipspace_name)
+                ip_address, netmask, vlan, node_name, port, vserver_name,
+                lif_name, ipspace_name)
 
     @na_utils.trace
     def get_network_allocations_number(self):
         """Get number of network interfaces to be created."""
         return len(self._client.list_cluster_nodes())
+
+    @na_utils.trace
+    def get_admin_network_allocations_number(self, admin_network_api):
+        """Get number of network allocations for creating admin LIFs."""
+        return 1 if admin_network_api else 0
 
     @na_utils.trace
     def teardown_server(self, server_details, security_services=None):
