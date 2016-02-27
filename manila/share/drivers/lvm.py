@@ -67,7 +67,8 @@ CONF.register_opts(generic.share_opts)
 class LVMMixin(driver.ExecuteMixin):
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
-        out, err = self._execute('sudo', 'vgs', '--noheadings', '-o', 'name')
+        out, err = self._execute('vgs', '--noheadings', '-o', 'name',
+                                 run_as_root=True)
         volume_groups = out.split()
         if self.configuration.lvm_share_volume_group not in volume_groups:
             msg = (_("share volume group %s doesn't exist")
@@ -190,9 +191,10 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         super(LVMShareDriver, self)._update_share_stats(data)
 
     def get_share_server_pools(self, share_server=None):
-        out, err = self._execute('sudo', 'vgs',
+        out, err = self._execute('vgs',
                                  self.configuration.lvm_share_volume_group,
-                                 '--rows', '--units', 'g')
+                                 '--rows', '--units', 'g',
+                                 run_as_root=True)
         total_size = re.findall("VSize\s[0-9.]+g", out)[0][6:-1]
         free_size = re.findall("VFree\s[0-9.]+g", out)[0][6:-1]
         return [{

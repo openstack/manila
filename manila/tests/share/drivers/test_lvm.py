@@ -124,9 +124,7 @@ class LVMShareDriverTestCase(test.TestCase):
         def exec_runner(*ignore_args, **ignore_kwargs):
             return '\n   fake1\n   fakevg\n   fake2\n', ''
 
-        expected_exec = [
-            'sudo vgs --noheadings -o name',
-        ]
+        expected_exec = ['vgs --noheadings -o name']
         fake_utils.fake_execute_set_repliers([(expected_exec[0], exec_runner)])
         self._driver.check_for_setup_error()
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
@@ -135,7 +133,7 @@ class LVMShareDriverTestCase(test.TestCase):
         def exec_runner(*ignore_args, **ignore_kwargs):
             return '\n   fake0\n   fake1\n   fake2\n', ''
 
-        fake_utils.fake_execute_set_repliers([('sudo vgs --noheadings -o name',
+        fake_utils.fake_execute_set_repliers([('vgs --noheadings -o name',
                                                exec_runner)])
         self.assertRaises(exception.InvalidParameterValue,
                           self._driver.check_for_setup_error)
@@ -144,7 +142,7 @@ class LVMShareDriverTestCase(test.TestCase):
         def exec_runner(*ignore_args, **ignore_kwargs):
             return '\n   fake1\n   fakevg\n   fake2\n', ''
 
-        fake_utils.fake_execute_set_repliers([('sudo vgs --noheadings -o name',
+        fake_utils.fake_execute_set_repliers([('vgs --noheadings -o name',
                                                exec_runner)])
         CONF.set_default('lvm_share_export_ip', None)
         self.assertRaises(exception.InvalidParameterValue,
@@ -485,7 +483,7 @@ class LVMShareDriverTestCase(test.TestCase):
         self.assertEqual(expected_result,
                          self._driver.get_share_server_pools())
         self._driver._execute.assert_called_once_with(
-            'sudo', 'vgs', 'fakevg', '--rows', '--units', 'g')
+            'vgs', 'fakevg', '--rows', '--units', 'g', run_as_root=True)
 
     def test_copy_volume_error(self):
         def _fake_exec(*args, **kwargs):
