@@ -218,15 +218,23 @@ class ShareDriverTestCase(test.TestCase):
             share_driver.teardown_server,
             'fake_share_server_details')
 
+    def _assert_is_callable(self, obj, attr):
+        self.assertTrue(callable(getattr(obj, attr)))
+
     @ddt.data('manage_existing',
               'unmanage')
     def test_drivers_methods_needed_by_manage_functionality(self, method):
         share_driver = self._instantiate_share_driver(None, False)
 
-        def assert_is_callable(obj, attr):
-            self.assertTrue(callable(getattr(obj, attr)))
+        self._assert_is_callable(share_driver, method)
 
-        assert_is_callable(share_driver, method)
+    @ddt.data('manage_existing_snapshot',
+              'unmanage_snapshot')
+    def test_drivers_methods_needed_by_manage_snapshot_functionality(
+            self, method):
+        share_driver = self._instantiate_share_driver(None, False)
+
+        self._assert_is_callable(share_driver, method)
 
     @ddt.data(True, False)
     def test_get_share_server_pools(self, value):

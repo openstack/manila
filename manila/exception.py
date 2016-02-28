@@ -426,6 +426,10 @@ class ExportLocationNotFound(NotFound):
     message = _("Export location %(uuid)s could not be found.")
 
 
+class ShareNotFound(NotFound):
+    message = _("Share %(share_id)s could not be found.")
+
+
 class ShareSnapshotNotFound(NotFound):
     message = _("Snapshot %(snapshot_id)s could not be found.")
 
@@ -441,6 +445,16 @@ class ShareSnapshotIsBusy(ManilaException):
 
 class InvalidShareSnapshot(Invalid):
     message = _("Invalid share snapshot: %(reason)s.")
+
+
+class ManageInvalidShareSnapshot(InvalidShareSnapshot):
+    message = _("Manage existing share snapshot failed due to "
+                "invalid share snapshot: %(reason)s.")
+
+
+class UnmanageInvalidShareSnapshot(InvalidShareSnapshot):
+    message = _("Unmanage existing share snapshot failed due to "
+                "invalid share snapshot: %(reason)s.")
 
 
 class ShareMetadataNotFound(NotFound):

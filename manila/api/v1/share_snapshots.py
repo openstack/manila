@@ -30,15 +30,8 @@ from manila import share
 LOG = log.getLogger(__name__)
 
 
-class ShareSnapshotsController(wsgi.Controller, wsgi.AdminActionsMixin):
-    """The Share Snapshots API controller for the OpenStack API."""
-
-    resource_name = 'share_snapshot'
-    _view_builder_class = snapshot_views.ViewBuilder
-
-    def __init__(self):
-        super(ShareSnapshotsController, self).__init__()
-        self.share_api = share.API()
+class ShareSnapshotMixin(object):
+    """Mixin class for Share Snapshot Controllers."""
 
     def _update(self, *args, **kwargs):
         db.share_snapshot_update(*args, **kwargs)
@@ -48,26 +41,6 @@ class ShareSnapshotsController(wsgi.Controller, wsgi.AdminActionsMixin):
 
     def _delete(self, *args, **kwargs):
         return self.share_api.delete_snapshot(*args, **kwargs)
-
-    @wsgi.Controller.api_version('1.0', '2.6')
-    @wsgi.action('os-reset_status')
-    def snapshot_reset_status_legacy(self, req, id, body):
-        return self._reset_status(req, id, body)
-
-    @wsgi.Controller.api_version('2.7')
-    @wsgi.action('reset_status')
-    def snapshot_reset_status(self, req, id, body):
-        return self._reset_status(req, id, body)
-
-    @wsgi.Controller.api_version('1.0', '2.6')
-    @wsgi.action('os-force_delete')
-    def snapshot_force_delete_legacy(self, req, id, body):
-        return self._force_delete(req, id, body)
-
-    @wsgi.Controller.api_version('2.7')
-    @wsgi.action('force_delete')
-    def snapshot_force_delete(self, req, id, body):
-        return self._force_delete(req, id, body)
 
     def show(self, req, id):
         """Return data about the given snapshot."""
@@ -217,6 +190,26 @@ class ShareSnapshotsController(wsgi.Controller, wsgi.AdminActionsMixin):
             snapshot.get('display_description'))
         return self._view_builder.detail(
             req, dict(new_snapshot.items()))
+
+
+class ShareSnapshotsController(ShareSnapshotMixin, wsgi.Controller,
+                               wsgi.AdminActionsMixin):
+    """The Share Snapshots API controller for the OpenStack API."""
+
+    resource_name = 'share_snapshot'
+    _view_builder_class = snapshot_views.ViewBuilder
+
+    def __init__(self):
+        super(ShareSnapshotsController, self).__init__()
+        self.share_api = share.API()
+
+    @wsgi.action('os-reset_status')
+    def snapshot_reset_status_legacy(self, req, id, body):
+        return self._reset_status(req, id, body)
+
+    @wsgi.action('os-force_delete')
+    def snapshot_force_delete_legacy(self, req, id, body):
+        return self._force_delete(req, id, body)
 
 
 def create_resource():

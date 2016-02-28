@@ -20,6 +20,9 @@ class ViewBuilder(common.ViewBuilder):
     """Model a server API response as a python dictionary."""
 
     _collection_name = 'snapshots'
+    _detail_version_modifiers = [
+        "add_provider_location_field",
+    ]
 
     def summary_list(self, request, snapshots):
         """Show a list of share snapshots without many details."""
@@ -41,20 +44,30 @@ class ViewBuilder(common.ViewBuilder):
 
     def detail(self, request, snapshot):
         """Detailed view of a single share snapshot."""
-        return {
-            'snapshot': {
-                'id': snapshot.get('id'),
-                'share_id': snapshot.get('share_id'),
-                'share_size': snapshot.get('share_size'),
-                'created_at': snapshot.get('created_at'),
-                'status': snapshot.get('status'),
-                'name': snapshot.get('display_name'),
-                'description': snapshot.get('display_description'),
-                'size': snapshot.get('size'),
-                'share_proto': snapshot.get('share_proto'),
-                'links': self._get_links(request, snapshot['id'])
-            }
+        snapshot_dict = {
+            'id': snapshot.get('id'),
+            'share_id': snapshot.get('share_id'),
+            'share_size': snapshot.get('share_size'),
+            'created_at': snapshot.get('created_at'),
+            'status': snapshot.get('status'),
+            'name': snapshot.get('display_name'),
+            'description': snapshot.get('display_description'),
+            'size': snapshot.get('size'),
+            'share_proto': snapshot.get('share_proto'),
+            'links': self._get_links(request, snapshot['id']),
         }
+
+        # NOTE(xyang): Only retrieve provider_location for admin.
+        context = request.environ['manila.context']
+        if context.is_admin:
+            self.update_versioned_resource_dict(request, snapshot_dict,
+                                                snapshot)
+
+        return {'snapshot': snapshot_dict}
+
+    @common.ViewBuilder.versioned_method("2.12")
+    def add_provider_location_field(self, snapshot_dict, snapshot):
+        snapshot_dict['provider_location'] = snapshot.get('provider_location')
 
     def _list_view(self, func, request, snapshots):
         """Provide a view for a list of share snapshots."""

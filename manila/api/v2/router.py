@@ -29,7 +29,6 @@ from manila.api.v1 import share_manage
 from manila.api.v1 import share_metadata
 from manila.api.v1 import share_networks
 from manila.api.v1 import share_servers
-from manila.api.v1 import share_snapshots
 from manila.api.v1 import share_types_extra_specs
 from manila.api.v1 import share_unmanage
 from manila.api.v2 import availability_zones
@@ -42,6 +41,7 @@ from manila.api.v2 import share_export_locations
 from manila.api.v2 import share_instance_export_locations
 from manila.api.v2 import share_instances
 from manila.api.v2 import share_replicas
+from manila.api.v2 import share_snapshots
 from manila.api.v2 import share_types
 from manila.api.v2 import shares
 from manila.api import versions
@@ -198,6 +198,12 @@ class APIRouter(manila.api.openstack.APIRouter):
                         controller=self.resources["snapshots"],
                         collection={"detail": "GET"},
                         member={"action": "POST"})
+
+        mapper.connect("snapshots",
+                       "/{project_id}/snapshots/manage",
+                       controller=self.resources["snapshots"],
+                       action="manage",
+                       conditions={"method": ["POST"]})
 
         self.resources["share_metadata"] = share_metadata.create_resource()
         share_metadata_controller = self.resources["share_metadata"]

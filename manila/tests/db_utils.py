@@ -129,7 +129,8 @@ def create_snapshot(**kwargs):
         'share_id': share['id'] if with_share else None,
         'user_id': 'fake',
         'project_id': 'fake',
-        'status': 'creating'
+        'status': 'creating',
+        'provider_location': 'fake',
     }
     return _create_db_row(db.share_snapshot_create, snapshot, kwargs)
 

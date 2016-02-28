@@ -164,7 +164,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.8'
+    RPC_API_VERSION = '1.9'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -1308,6 +1308,80 @@ class ShareManager(manager.SchedulerDependentManager):
                 {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
             raise
 
+    @add_hooks
+    @utils.require_driver_initialized
+    def manage_snapshot(self, context, snapshot_id, driver_options):
+        if self.driver.driver_handles_share_servers:
+            msg = _("Manage snapshot is not supported for "
+                    "driver_handles_share_servers=True mode.")
+            # NOTE(vponomaryov): set size as 1 because design expects size
+            # to be set, it also will allow us to handle delete/unmanage
+            # operations properly with this errored snapshot according to
+            # quotas.
+            self.db.share_snapshot_update(
+                context, snapshot_id,
+                {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
+            raise exception.InvalidDriverMode(driver_mode=msg)
+
+        context = context.elevated()
+        snapshot_ref = self.db.share_snapshot_get(context, snapshot_id)
+        share_server = self._get_share_server(context,
+                                              snapshot_ref['share'])
+
+        if share_server:
+            msg = _("Manage snapshot is not supported for "
+                    "share snapshots with share servers.")
+            # NOTE(vponomaryov): set size as 1 because design expects size
+            # to be set, it also will allow us to handle delete/unmanage
+            # operations properly with this errored snapshot according to
+            # quotas.
+            self.db.share_snapshot_update(
+                context, snapshot_id,
+                {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
+            raise exception.InvalidShareSnapshot(reason=msg)
+
+        snapshot_instance = self.db.share_snapshot_instance_get(
+            context, snapshot_ref.instance['id'], with_share_data=True
+        )
+        project_id = snapshot_ref['project_id']
+
+        try:
+            snapshot_update = (
+                self.driver.manage_existing_snapshot(
+                    snapshot_instance,
+                    driver_options)
+                or {}
+            )
+
+            if not snapshot_update.get('size'):
+                snapshot_update['size'] = snapshot_ref['share']['size']
+                LOG.warning(_LI("Cannot get the size of the snapshot "
+                                "%(snapshot_id)s. Using the size of "
+                                "the share instead."),
+                            {'snapshot_id': snapshot_id})
+
+            self._update_quota_usages(context, project_id, {
+                "snapshots": 1,
+                "snapshot_gigabytes": snapshot_update['size'],
+            })
+
+            snapshot_update.update({
+                'status': constants.STATUS_AVAILABLE,
+                'progress': '100%',
+            })
+            snapshot_update.pop('id', None)
+            self.db.share_snapshot_update(context, snapshot_id,
+                                          snapshot_update)
+        except Exception:
+            # NOTE(vponomaryov): set size as 1 because design expects size
+            # to be set, it also will allow us to handle delete/unmanage
+            # operations properly with this errored snapshot according to
+            # quotas.
+            self.db.share_snapshot_update(
+                context, snapshot_id,
+                {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
+            raise
+
     def _update_quota_usages(self, context, project_id, usages):
         user_id = context.user_id
         for resource, usage in usages.items():
@@ -1385,6 +1459,60 @@ class ShareManager(manager.SchedulerDependentManager):
 
     @add_hooks
     @utils.require_driver_initialized
+    def unmanage_snapshot(self, context, snapshot_id):
+        status = {'status': constants.STATUS_UNMANAGE_ERROR}
+        if self.driver.driver_handles_share_servers:
+            msg = _("Unmanage snapshot is not supported for "
+                    "driver_handles_share_servers=True mode.")
+            self.db.share_snapshot_update(context, snapshot_id, status)
+            LOG.error(_LE("Share snapshot cannot be unmanaged: %s."),
+                      msg)
+            return
+
+        context = context.elevated()
+        snapshot_ref = self.db.share_snapshot_get(context, snapshot_id)
+        share_server = self._get_share_server(context,
+                                              snapshot_ref['share'])
+
+        snapshot_instance = self.db.share_snapshot_instance_get(
+            context, snapshot_ref.instance['id'], with_share_data=True
+        )
+
+        project_id = snapshot_ref['project_id']
+
+        if share_server:
+            msg = _("Unmanage snapshot is not supported for "
+                    "share snapshots with share servers.")
+            self.db.share_snapshot_update(context, snapshot_id, status)
+            LOG.error(_LE("Share snapshot cannot be unmanaged: %s."),
+                      msg)
+            return
+
+        try:
+            self.driver.unmanage_snapshot(snapshot_instance)
+        except exception.UnmanageInvalidShareSnapshot as e:
+            self.db.share_snapshot_update(context, snapshot_id, status)
+            LOG.error(_LE("Share snapshot cannot be unmanaged: %s."), e)
+            return
+
+        try:
+            reservations = QUOTAS.reserve(
+                context,
+                project_id=project_id,
+                snapshots=-1,
+                snapshot_gigabytes=-snapshot_ref['size'])
+            QUOTAS.commit(context, reservations, project_id=project_id)
+        except Exception as e:
+            # Note(imalinovskiy):
+            # Quota reservation errors here are not fatal, because
+            # unmanage is administrator API and he/she could update user
+            # quota usages later if it's required.
+            LOG.warning(_LW("Failed to update quota usages: %s."), e)
+
+        self.db.share_snapshot_destroy(context, snapshot_id)
+
+    @add_hooks
+    @utils.require_driver_initialized
     def delete_share_instance(self, context, share_instance_id):
         """Delete a share instance."""
         context = context.elevated()
@@ -1451,10 +1579,8 @@ class ShareManager(manager.SchedulerDependentManager):
                 context, snapshot_instance, share_server=share_server)
 
             if model_update:
-                model_dict = model_update.to_dict()
                 self.db.share_snapshot_instance_update(
-                    context, snapshot_instance_id, model_dict)
-
+                    context, snapshot_instance_id, model_update)
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.db.share_snapshot_instance_update(

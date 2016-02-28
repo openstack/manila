@@ -280,6 +280,21 @@ class ShareRpcAPITestCase(test.TestCase):
                              version='1.8',
                              share_replica=self.fake_share_replica)
 
+    def test_manage_snapshot(self):
+        self._test_share_api('manage_snapshot',
+                             rpc_method='cast',
+                             version='1.9',
+                             snapshot=self.fake_snapshot,
+                             host='fake_host',
+                             driver_options={'volume_snapshot_id': 'fake'})
+
+    def test_unmanage_snapshot(self):
+        self._test_share_api('unmanage_snapshot',
+                             rpc_method='cast',
+                             version='1.9',
+                             snapshot=self.fake_snapshot,
+                             host='fake_host')
+
     class Desthost(object):
         host = 'fake_host'
         capabilities = 1

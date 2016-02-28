@@ -439,6 +439,113 @@ class SharesV2Client(shares_client.SharesClient):
 
 ###############
 
+    def create_snapshot(self, share_id, name=None, description=None,
+                        force=False, version=LATEST_MICROVERSION):
+        if name is None:
+            name = data_utils.rand_name("tempest-created-share-snap")
+        if description is None:
+            description = data_utils.rand_name(
+                "tempest-created-share-snap-desc")
+        post_body = {
+            "snapshot": {
+                "name": name,
+                "force": force,
+                "description": description,
+                "share_id": share_id,
+            }
+        }
+        body = json.dumps(post_body)
+        resp, body = self.post("snapshots", body, version=version)
+        self.expected_success(202, resp.status)
+        return self._parse_resp(body)
+
+    def get_snapshot(self, snapshot_id, version=LATEST_MICROVERSION):
+        resp, body = self.get("snapshots/%s" % snapshot_id, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def list_snapshots(self, detailed=False, params=None,
+                       version=LATEST_MICROVERSION):
+        """Get list of share snapshots w/o filters."""
+        uri = 'snapshots/detail' if detailed else 'snapshots'
+        uri += '?%s' % urlparse.urlencode(params) if params else ''
+        resp, body = self.get(uri, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def list_snapshots_with_detail(self, params=None,
+                                   version=LATEST_MICROVERSION):
+        """Get detailed list of share snapshots w/o filters."""
+        return self.list_snapshots(detailed=True, params=params,
+                                   version=version)
+
+    def delete_snapshot(self, snap_id, version=LATEST_MICROVERSION):
+        resp, body = self.delete("snapshots/%s" % snap_id, version=version)
+        self.expected_success(202, resp.status)
+        return body
+
+    def wait_for_snapshot_status(self, snapshot_id, status,
+                                 version=LATEST_MICROVERSION):
+        """Waits for a snapshot to reach a given status."""
+        body = self.get_snapshot(snapshot_id, version=version)
+        snapshot_name = body['name']
+        snapshot_status = body['status']
+        start = int(time.time())
+
+        while snapshot_status != status:
+            time.sleep(self.build_interval)
+            body = self.get_snapshot(snapshot_id, version=version)
+            snapshot_status = body['status']
+            if 'error' in snapshot_status:
+                raise (share_exceptions.
+                       SnapshotBuildErrorException(snapshot_id=snapshot_id))
+
+            if int(time.time()) - start >= self.build_timeout:
+                message = ('Share Snapshot %s failed to reach %s status '
+                           'within the required time (%s s).' %
+                           (snapshot_name, status, self.build_timeout))
+                raise exceptions.TimeoutException(message)
+
+    def manage_snapshot(self, share_id, provider_location,
+                        name=None, description=None,
+                        version=LATEST_MICROVERSION,
+                        driver_options=None):
+        if name is None:
+            name = data_utils.rand_name("tempest-manage-snapshot")
+        if description is None:
+            description = data_utils.rand_name("tempest-manage-snapshot-desc")
+        post_body = {
+            "snapshot": {
+                "share_id": share_id,
+                "provider_location": provider_location,
+                "name": name,
+                "description": description,
+                "driver_options": driver_options if driver_options else {},
+            }
+        }
+        url = 'snapshots/manage'
+        body = json.dumps(post_body)
+        resp, body = self.post(url, body, version=version)
+        self.expected_success(202, resp.status)
+        return self._parse_resp(body)
+
+    def unmanage_snapshot(self, snapshot_id, version=LATEST_MICROVERSION,
+                          body=None):
+        url = 'snapshots'
+        action_name = 'action'
+        if body is None:
+            body = json.dumps({'unmanage': {}})
+        resp, body = self.post(
+            "%(url)s/%(snapshot_id)s/%(action_name)s" % {
+                'url': url, 'snapshot_id': snapshot_id,
+                'action_name': action_name},
+            body,
+            version=version)
+        self.expected_success(202, resp.status)
+        return body
+
+###############
+
     def _get_access_action_name(self, version, action):
         if utils.is_microversion_gt(version, "2.6"):
             return action.split('os-')[-1]

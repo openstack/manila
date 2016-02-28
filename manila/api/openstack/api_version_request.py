@@ -58,14 +58,14 @@ REST_API_VERSION_HISTORY = """
     * 2.10 - Field 'access_rules_status' was added to shares and share
             instances.
     * 2.11 - Share Replication support
-
+    * 2.12 - Manage/unmanage snapshot API.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # the minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.11"
+_MAX_API_VERSION = "2.12"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

@@ -517,6 +517,53 @@ class API(base.Base):
         # share server here, when manage/unmanage operations will be supported
         # for driver_handles_share_servers=True mode
 
+    def manage_snapshot(self, context, snapshot_data, driver_options):
+        try:
+            share = self.db.share_get(context, snapshot_data['share_id'])
+        except exception.NotFound:
+            raise exception.ShareNotFound(share_id=snapshot_data['share_id'])
+
+        existing_snapshots = self.db.share_snapshot_get_all_for_share(
+            context, snapshot_data['share_id'])
+
+        for existing_snap in existing_snapshots:
+            for inst in existing_snap.get('instances'):
+                if (snapshot_data['provider_location'] ==
+                        inst['provider_location']):
+                    msg = _("A share snapshot %(share_snapshot_id)s is "
+                            "already managed for provider location "
+                            "%(provider_location)s.") % {
+                        'share_snapshot_id': existing_snap['id'],
+                        'provider_location':
+                            snapshot_data['provider_location'],
+                    }
+                    raise exception.ManageInvalidShareSnapshot(
+                        reason=msg)
+
+        snapshot_data.update({
+            'user_id': context.user_id,
+            'project_id': context.project_id,
+            'status': constants.STATUS_MANAGING,
+            'share_size': share['size'],
+            'progress': '0%',
+            'share_proto': share['share_proto']
+        })
+
+        snapshot = self.db.share_snapshot_create(context, snapshot_data)
+
+        self.share_rpcapi.manage_snapshot(context, snapshot, share['host'],
+                                          driver_options)
+        return snapshot
+
+    def unmanage_snapshot(self, context, snapshot, host):
+        update_data = {'status': constants.STATUS_UNMANAGING,
+                       'terminated_at': timeutils.utcnow()}
+        snapshot_ref = self.db.share_snapshot_update(context,
+                                                     snapshot['id'],
+                                                     update_data)
+
+        self.share_rpcapi.unmanage_snapshot(context, snapshot_ref, host)
+
     @policy.wrap_check_policy('share')
     def delete(self, context, share, force=False):
         """Delete share."""

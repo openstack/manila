@@ -1128,7 +1128,7 @@ def extract_share_instance_values(values):
 
 
 def extract_snapshot_instance_values(values):
-    fields = ['status', 'progress']
+    fields = ['status', 'progress', 'provider_location']
     return extract_instance_values(values, fields)
 
 
