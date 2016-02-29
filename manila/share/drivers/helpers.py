@@ -177,10 +177,13 @@ class NFSHelper(NASHelperBase):
                                         ':'.join((host, local_path))])
             self._sync_nfs_temp_and_perm_files(server)
             for access in access_rules:
+                rules_options = '%s,no_subtree_check'
+                if access['access_level'] == const.ACCESS_LEVEL_RW:
+                    rules_options = ','.join((rules_options, 'no_root_squash'))
                 self._ssh_exec(
                     server,
                     ['sudo', 'exportfs', '-o',
-                     '%s,no_subtree_check' % access['access_level'],
+                     rules_options % access['access_level'],
                      ':'.join((access['access_to'], local_path))])
             self._sync_nfs_temp_and_perm_files(server)
         # Adding/Deleting specific rules
@@ -222,10 +225,14 @@ class NFSHelper(NASHelperBase):
                         'name': share_name
                     })
                 else:
+                    rules_options = '%s,no_subtree_check'
+                    if access['access_level'] == const.ACCESS_LEVEL_RW:
+                        rules_options = ','.join((rules_options,
+                                                 'no_root_squash'))
                     self._ssh_exec(
                         server,
                         ['sudo', 'exportfs', '-o',
-                         '%s,no_subtree_check' % access['access_level'],
+                         rules_options % access['access_level'],
                          ':'.join((access['access_to'], local_path))])
             if add_rules:
                 self._sync_nfs_temp_and_perm_files(server)
