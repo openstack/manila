@@ -376,12 +376,13 @@ class RestHelper(object):
             raise exception.InvalidInput(reason=message)
         return root
 
-    def _remove_access_from_share(self, access_id, access_type):
+    def _remove_access_from_share(self, access_id, share_proto):
+        access_type = self._get_share_client_type(share_proto)
         url = "/" + access_type + "/" + access_id
         result = self.call(url, None, "DELETE")
         self._assert_rest_result(result, 'delete access from share error!')
 
-    def _get_access_from_count(self, share_id, share_client_type):
+    def _get_access_count(self, share_id, share_client_type):
         url_subfix = ("/" + share_client_type + "/count?"
                       + "filter=PARENTID::" + share_id)
         url = url_subfix
@@ -393,26 +394,48 @@ class RestHelper(object):
 
         return int(result['data']['COUNT'])
 
-    def _get_access_from_share(self, share_id, access_to, share_client_type):
+    def _get_all_access_from_share(self, share_id, share_proto):
+        """Return a list of all the access IDs of the share"""
+        share_client_type = self._get_share_client_type(share_proto)
+        count = self._get_access_count(share_id, share_client_type)
+
+        access_ids = []
+        range_begin = 0
+        while count > 0:
+            access_range = self._get_access_from_share_range(share_id,
+                                                             range_begin,
+                                                             share_client_type)
+            for item in access_range:
+                access_ids.append(item['ID'])
+            range_begin += 100
+            count -= 100
+
+        return access_ids
+
+    def _get_access_from_share(self, share_id, access_to, share_proto):
         """Segments to find access for a period of 100."""
-        count = self._get_access_from_count(share_id, share_client_type)
+        share_client_type = self._get_share_client_type(share_proto)
+        count = self._get_access_count(share_id, share_client_type)
 
         access_id = None
         range_begin = 0
-        while True:
-            if count < 0 or access_id:
+        while count > 0:
+            if access_id:
                 break
-            access_id = self._get_access_from_share_range(share_id,
-                                                          access_to,
-                                                          range_begin,
-                                                          share_client_type)
+            access_range = self._get_access_from_share_range(share_id,
+                                                             range_begin,
+                                                             share_client_type)
+            for item in access_range:
+                if item['NAME'] in (access_to, '@' + access_to):
+                    access_id = item['ID']
+
             range_begin += 100
             count -= 100
 
         return access_id
 
     def _get_access_from_share_range(self, share_id,
-                                     access_to, range_begin,
+                                     range_begin,
                                      share_client_type):
         range_end = range_begin + 100
         url = ("/" + share_client_type + "?filter=PARENTID::"
@@ -420,10 +443,55 @@ class RestHelper(object):
                + "-" + six.text_type(range_end) + "]")
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, 'Get access id by share error!')
+        return result.get('data', [])
 
-        for item in result.get('data', []):
-            if item['NAME'] in (access_to, '@' + access_to):
-                return item['ID']
+    def _get_level_by_access_id(self, access_id, share_proto):
+        share_client_type = self._get_share_client_type(share_proto)
+        url = "/" + share_client_type + "/" + access_id
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, 'Get access information error!')
+        access_info = result.get('data', [])
+        access_level = access_info.get('ACCESSVAL')
+        if not access_level:
+            access_level = access_info.get('PERMISSION')
+        return access_level
+
+    def _change_access_rest(self, access_id,
+                            share_proto, access_level):
+        """Change access level of the share."""
+        if share_proto == 'NFS':
+            self._change_nfs_access_rest(access_id, access_level)
+        elif share_proto == 'CIFS':
+            self._change_cifs_access_rest(access_id, access_level)
+        else:
+            raise exception.InvalidInput(
+                reason=(_('Invalid NAS protocol supplied: %s.')
+                        % share_proto))
+
+    def _change_nfs_access_rest(self, access_id, access_level):
+        url = "/NFS_SHARE_AUTH_CLIENT/" + access_id
+        access = {
+            "ACCESSVAL": access_level,
+            "SYNC": "0",
+            "ALLSQUASH": "1",
+            "ROOTSQUASH": "0",
+        }
+        data = jsonutils.dumps(access)
+        result = self.call(url, data, "PUT")
+
+        msg = 'Change access error.'
+        self._assert_rest_result(result, msg)
+
+    def _change_cifs_access_rest(self, access_id, access_level):
+        url = "/CIFS_SHARE_AUTH_CLIENT/" + access_id
+        access = {
+            "PERMISSION": access_level,
+        }
+        data = jsonutils.dumps(access)
+        result = self.call(url, data, "PUT")
+
+        msg = 'Change access error.'
+        self._assert_rest_result(result, msg)
 
     def _allow_access_rest(self, share_id, access_to,
                            share_proto, access_level):

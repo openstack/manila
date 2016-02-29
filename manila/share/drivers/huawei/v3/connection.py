@@ -507,13 +507,12 @@ class V3StorageConnection(driver.HuaweiBase):
         """Get access id of the share."""
         access_id = None
         share_name = share['name']
-        share_url_type = self.helper._get_share_url_type(share['share_proto'])
-        share_client_type = self.helper._get_share_client_type(
-            share['share_proto'])
+        share_proto = share['share_proto']
+        share_url_type = self.helper._get_share_url_type(share_proto)
         access_to = access['access_to']
         share = self.helper._get_share_by_name(share_name, share_url_type)
         access_id = self.helper._get_access_from_share(share['ID'], access_to,
-                                                       share_client_type)
+                                                       share_proto)
         if access_id is None:
             LOG.debug('Cannot get access ID from share. '
                       'share_name: %s', share_name)
@@ -640,7 +639,6 @@ class V3StorageConnection(driver.HuaweiBase):
         share_proto = share['share_proto']
         share_name = share['name']
         share_url_type = self.helper._get_share_url_type(share_proto)
-        share_client_type = self.helper._get_share_client_type(share_proto)
         access_type = access['access_type']
         if share_proto == 'NFS' and access_type not in ('ip', 'user'):
             LOG.warning(_LW('Only IP or USER access types are allowed for '
@@ -654,17 +652,17 @@ class V3StorageConnection(driver.HuaweiBase):
         access_to = access['access_to']
         share = self.helper._get_share_by_name(share_name, share_url_type)
         if not share:
-            LOG.warning(_LW('Can not get share. share_name: %s'), share_name)
+            LOG.warning(_LW('Can not get share %s.'), share_name)
             return
 
         access_id = self.helper._get_access_from_share(share['ID'], access_to,
-                                                       share_client_type)
+                                                       share_proto)
         if not access_id:
             LOG.warning(_LW('Can not get access id from share. '
                             'share_name: %s'), share_name)
             return
 
-        self.helper._remove_access_from_share(access_id, share_client_type)
+        self.helper._remove_access_from_share(access_id, share_proto)
 
     def allow_access(self, share, access, share_server=None):
         """Allow access to the share."""
@@ -712,8 +710,52 @@ class V3StorageConnection(driver.HuaweiBase):
             raise exception.InvalidShareAccess(reason=err_msg)
 
         share_id = share['ID']
-        self.helper._allow_access_rest(share_id, access_to,
-                                       share_proto, access_level)
+
+        # Check if access already exists
+        access_id = self.helper._get_access_from_share(share_id,
+                                                       access_to,
+                                                       share_proto)
+        if access_id:
+            # Check if the access level equal
+            level_exist = self.helper._get_level_by_access_id(access_id,
+                                                              share_proto)
+            if level_exist != access_level:
+                # Change the access level
+                self.helper._change_access_rest(access_id,
+                                                share_proto, access_level)
+        else:
+            # Add this access to share
+            self.helper._allow_access_rest(share_id, access_to,
+                                           share_proto, access_level)
+
+    def clear_access(self, share, share_server=None):
+        """Remove all access rules of the share"""
+        share_proto = share['share_proto']
+        share_name = share['name']
+        share_url_type = self.helper._get_share_url_type(share_proto)
+        share_stor = self.helper._get_share_by_name(share_name, share_url_type)
+        if not share_stor:
+            LOG.warning(_LW('Cannot get share %s.'), share_name)
+            return
+        share_id = share_stor['ID']
+        all_accesses = self.helper._get_all_access_from_share(share_id,
+                                                              share_proto)
+        for access_id in all_accesses:
+            self.helper._remove_access_from_share(access_id,
+                                                  share_proto)
+
+    def update_access(self, share, access_rules, add_rules=None,
+                      delete_rules=None, share_server=None):
+        """Update access rules list."""
+        if not (add_rules or delete_rules):
+            self.clear_access(share, share_server)
+            for access in access_rules:
+                self.allow_access(share, access, share_server)
+        else:
+            for access in delete_rules:
+                self.deny_access(share, access, share_server)
+            for access in add_rules:
+                self.allow_access(share, access, share_server)
 
     def get_pool(self, share):
         pool_name = share_utils.extract_host(share['host'], level='pool')

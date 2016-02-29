@@ -56,6 +56,11 @@ class HuaweiBase(object):
         """Ensure that share is exported."""
 
     @abc.abstractmethod
+    def update_access(self, share, access_rules, add_rules,
+                      delete_rules, share_server):
+        """Update access rules list."""
+
+    @abc.abstractmethod
     def extend_share(self, share, new_size, share_server):
         """Extends size of existing share."""
 

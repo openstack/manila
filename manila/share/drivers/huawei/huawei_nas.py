@@ -158,6 +158,13 @@ class HuaweiNasDriver(driver.ShareDriver):
 
         self.plugin.deny_access(share, access, share_server)
 
+    def update_access(self, context, share, access_rules, add_rules=None,
+                      delete_rules=None, share_server=None):
+        """Update access rules list."""
+        LOG.debug("Update access.")
+        self.plugin.update_access(share, access_rules,
+                                  add_rules, delete_rules, share_server)
+
     def get_pool(self, share):
         """Return pool name where the share resides on."""
         LOG.debug("Get pool.")
