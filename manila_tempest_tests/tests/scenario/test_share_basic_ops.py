@@ -175,7 +175,15 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         instance = self.boot_instance()
         self.allow_access_ip(self.share['id'], instance=instance)
         ssh_client = self.init_ssh(instance)
-        for location in self.share['export_locations']:
+
+        if utils.is_microversion_lt(CONF.share.max_api_microversion, "2.9"):
+            locations = self.share['export_locations']
+        else:
+            exports = self.shares_v2_client.list_share_export_locations(
+                self.share['id'])
+            locations = [x['path'] for x in exports]
+
+        for location in locations:
             self.mount_share(location, ssh_client)
             self.umount_share(ssh_client)
         self.servers_client.delete_server(instance['id'])
@@ -192,10 +200,14 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         self.allow_access_ip(self.share['id'], instance=instance1)
         ssh_client_inst1 = self.init_ssh(instance1)
 
-        # TODO(vponomaryov): use separate API for getting export location for
-        # share when "v2" client is used.
-        first_location = self.share['export_locations'][0]
-        self.mount_share(first_location, ssh_client_inst1)
+        if utils.is_microversion_lt(CONF.share.max_api_microversion, "2.9"):
+            locations = self.share['export_locations']
+        else:
+            exports = self.shares_v2_client.list_share_export_locations(
+                self.share['id'])
+            locations = [x['path'] for x in exports]
+
+        self.mount_share(locations[0], ssh_client_inst1)
         self.addCleanup(self.umount_share,
                         ssh_client_inst1)
         self.write_data(test_data, ssh_client_inst1)
@@ -204,7 +216,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         instance2 = self.boot_instance()
         self.allow_access_ip(self.share['id'], instance=instance2)
         ssh_client_inst2 = self.init_ssh(instance2)
-        self.mount_share(first_location, ssh_client_inst2)
+        self.mount_share(locations[0], ssh_client_inst2)
         self.addCleanup(self.umount_share,
                         ssh_client_inst2)
         data = self.read_data(ssh_client_inst2)
@@ -244,10 +256,14 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
                              cleanup=False)
         ssh_client = self.init_ssh(instance1)
 
-        # TODO(vponomaryov): use separate API for getting export location for
-        # share when "v2" client is used.
-        first_location = self.share['export_locations'][0]
-        self.mount_share(first_location, ssh_client)
+        if utils.is_microversion_lt(CONF.share.max_api_microversion, "2.9"):
+            locations = self.share['export_locations']
+        else:
+            exports = self.shares_v2_client.list_share_export_locations(
+                self.share['id'])
+            locations = [x['path'] for x in exports]
+
+        self.mount_share(locations[0], ssh_client)
 
         ssh_client.exec_command("mkdir -p /mnt/f1")
         ssh_client.exec_command("mkdir -p /mnt/f2")
@@ -271,20 +287,20 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         self.umount_share(ssh_client)
 
         share = self.migrate_share(share['id'], dest_pool)
-        if utils.is_microversion_supported("2.9"):
-            second_location = (
-                self.shares_v2_client.list_share_export_locations(
-                    share['id'])[0]['path'])
+        if utils.is_microversion_lt(CONF.share.max_api_microversion, "2.9"):
+            new_locations = self.share['export_locations']
         else:
-            # NOTE(vponomaryov): following approach is valid for picking up
-            # export location only using microversions lower than '2.9'.
-            second_location = share['export_locations'][0]
+            new_exports = self.shares_v2_client.list_share_export_locations(
+                self.share['id'])
+            new_locations = [x['path'] for x in new_exports]
 
         self.assertEqual(dest_pool, share['host'])
-        self.assertNotEqual(first_location, second_location)
+        locations.sort()
+        new_locations.sort()
+        self.assertNotEqual(locations, new_locations)
         self.assertEqual('migration_success', share['task_state'])
 
-        self.mount_share(second_location, ssh_client)
+        self.mount_share(new_locations[0], ssh_client)
 
         output = ssh_client.exec_command("ls -lRA --ignore=lost+found /mnt")
 
@@ -301,7 +317,7 @@ class TestShareBasicOpsNFS(ShareBasicOpsBase):
     protocol = "NFS"
 
     def mount_share(self, location, ssh_client):
-        ssh_client.exec_command("sudo mount \"%s\" /mnt" % location)
+        ssh_client.exec_command("sudo mount -vt nfs \"%s\" /mnt" % location)
 
 
 class TestShareBasicOpsCIFS(ShareBasicOpsBase):

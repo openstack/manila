@@ -376,6 +376,52 @@ class IpRouteCommand(IpDeviceCommandBase):
                     self._as_root('append', subnet, 'proto', 'kernel',
                                   'dev', device)
 
+    def clear_outdated_routes(self, cidr):
+        """Removes duplicated routes for a certain network CIDR.
+
+        Removes all routes related to supplied CIDR except for the one
+        related to this interface device.
+
+        :param cidr: The network CIDR to be cleared.
+        """
+        routes = self.list()
+        items = [x for x in routes
+                 if x['Destination'] == cidr and x.get('Device') and
+                 x['Device'] != self.name]
+        for item in items:
+            self.delete_net_route(item['Destination'], item['Device'])
+
+    def list(self):
+        """List all routes
+
+        :return: A dictionary with field 'Destination' and 'Device' for each
+        route entry. 'Gateway' field is included if route has a gateway.
+        """
+        routes = []
+        output = self._as_root('list')
+        lines = output.split('\n')
+        for line in lines:
+            items = line.split()
+            if len(items) > 0:
+                item = {'Destination': items[0]}
+                if len(items) > 1:
+                    if items[1] == 'via':
+                        item['Gateway'] = items[2]
+                        if len(items) > 3 and items[3] == 'dev':
+                            item['Device'] = items[4]
+                    if items[1] == 'dev':
+                        item['Device'] = items[2]
+                routes.append(item)
+        return routes
+
+    def delete_net_route(self, cidr, device):
+        """Deletes a route according to suplied CIDR and interface device.
+
+        :param cidr: The network CIDR to be removed.
+        :param device: The network interface device to be removed.
+        """
+        self._as_root('delete', cidr, 'dev', device)
+
 
 class IpNetnsCommand(IpCommandBase):
     COMMAND = 'netns'

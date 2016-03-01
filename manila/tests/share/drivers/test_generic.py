@@ -313,29 +313,6 @@ class GenericShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.ManilaException,
                           self._driver._setup_helpers)
 
-    def test__get_access_rule_for_data_copy_dhss_true(self):
-        get_access_return = {
-            'access_level': 'rw',
-            'access_to': 'fake_ip',
-            'access_type': 'ip'
-        }
-
-        result = self._driver._get_access_rule_for_data_copy(
-            self._context, self.share, self.server)
-        self.assertEqual(get_access_return, result)
-
-    def test__get_access_rule_for_data_copy_dhss_false(self):
-        get_access_return = {
-            'access_level': 'rw',
-            'access_to': 'fake_ip',
-            'access_type': 'ip'
-        }
-        CONF.set_default('driver_handles_share_servers', False)
-        CONF.set_default('migration_data_copy_node_ip', 'fake_ip')
-        result = self._driver._get_access_rule_for_data_copy(
-            self._context, self.share, self.server)
-        self.assertEqual(get_access_return, result)
-
     def test_create_share(self):
         volume = 'fake_volume'
         volume2 = 'fake_volume2'
@@ -346,11 +323,11 @@ class GenericShareDriverTestCase(test.TestCase):
                          mock.Mock(return_value=volume2))
         self.mock_object(self._driver, '_format_device')
         self.mock_object(self._driver, '_mount_device')
-        expected_el = {
+        expected_el = [{
             'is_admin_only': False,
             'path': 'fakelocation',
             'metadata': {'export_location_metadata_example': 'example'},
-        }
+        }]
 
         result = self._driver.create_share(
             self._context, self.share, share_server=self.server)
@@ -999,6 +976,11 @@ class GenericShareDriverTestCase(test.TestCase):
         vol1 = 'fake_vol1'
         vol2 = 'fake_vol2'
         self._helper_nfs.create_export.return_value = 'fakelocation'
+        expected_el = [{
+            'is_admin_only': False,
+            'path': 'fakelocation',
+            'metadata': {'export_location_metadata_example': 'example'},
+        }]
         self.mock_object(self._driver, '_allocate_container',
                          mock.Mock(return_value=vol1))
         self.mock_object(self._driver, '_attach_volume',
@@ -1011,7 +993,7 @@ class GenericShareDriverTestCase(test.TestCase):
             self.snapshot,
             share_server=self.server)
 
-        self.assertEqual('fakelocation', result)
+        self.assertEqual(expected_el, result)
         self._driver._allocate_container.assert_called_once_with(
             self._driver.admin_context, self.share, self.snapshot)
         self._driver._attach_volume.assert_called_once_with(
