@@ -328,7 +328,7 @@ class GlusterManager(object):
                         (given as tuple of integers, example: (3, 6))
         """
         vers = self.get_gluster_version()
-        if self.numreduct(vers) < minvers:
+        if numreduct(vers) < minvers:
             raise exception.GlusterfsException(_(
                 "Unsupported GlusterFS version %(version)s on server "
                 "%(server)s, minimum requirement: %(minvers)s") % {
@@ -336,20 +336,20 @@ class GlusterManager(object):
                 'version': '.'.join(vers),
                 'minvers': '.'.join(six.text_type(c) for c in minvers)})
 
-    @staticmethod
-    def numreduct(vers):
-        """The numeric reduct of a tuple of strings.
 
-        That is, applying an integer conversion map on the longest
-        initial segment of vers which consists of numerals.
-        """
-        numvers = []
-        for c in vers:
-            try:
-                numvers.append(int(c))
-            except ValueError:
-                break
-        return tuple(numvers)
+def numreduct(vers):
+    """The numeric reduct of a tuple of strings.
+
+    That is, applying an integer conversion map on the longest
+    initial segment of vers which consists of numerals.
+    """
+    numvers = []
+    for c in vers:
+        try:
+            numvers.append(int(c))
+        except ValueError:
+            break
+    return tuple(numvers)
 
 
 def _mount_gluster_vol(execute, gluster_export, mount_path, ensure=False):
