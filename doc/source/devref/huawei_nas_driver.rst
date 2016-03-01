@@ -54,6 +54,7 @@ The following operations is supported on V3 storage:
 - Support multi-tenancy
 - Ensure share
 - Create share from snapshot
+- Support QoS
 
 
 Pre-Configurations on Huawei
@@ -169,6 +170,15 @@ commit makes the Huawei driver report the following boolean capabilities:
 
   * huawei_smartpartition:partitionname
 
+- capabilities:qos
+
+  * qos:maxIOPS
+  * qos:minIOPS
+  * qos:minbandwidth
+  * qos:maxbandwidth
+  * qos:latency
+  * qos:iotype
+
 The scheduler will choose a host that supports the needed
 capability when the CapabilityFilter is used and a share
 type uses one or more of the following extra-specs:
@@ -184,6 +194,15 @@ type uses one or more of the following extra-specs:
 
   * huawei_smartpartition:partitionname=test_partition_name
 
+- capabilities:qos='<is> True' or '<is> False'
+
+  * qos:maxIOPS=100
+  * qos:minIOPS=10
+  * qos:maxbandwidth=100
+  * qos:minbandwidth=10
+  * qos:latency=10
+  * qos:iotype=0
+
 `thin_provisioning` will be reported as [True, False] for Huawei backends.
 
 `dedupe` will be reported as [True, False] for Huawei backends.
@@ -198,6 +217,9 @@ multiple cache partitions to cache hotspot data in random and small read I/Os.
 Add share to the smartpartition named 'test_partition_name'.
 Allocates cache resources based on service characteristics,
 ensuring the quality of critical services.
+
+`qos` will be reported as True for backends that use QoS (Quality of Service)
+specification.
 
 Restrictions
 ------------
