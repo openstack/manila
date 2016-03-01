@@ -542,7 +542,7 @@ class GaneshaNFSHelperTestCase(test.TestCase):
     def test_get_export(self):
         ret = self._helper.get_export(self.share)
 
-        self.assertEqual('example.com:/fakename', ret)
+        self.assertEqual('example.com:/fakename--<access-id>', ret)
 
     def test_init_remote_ganesha_server(self):
         ssh_execute = mock.Mock(return_value=('', ''))

@@ -330,7 +330,7 @@ class GaneshaNFSHelper(ganesha.GaneshaNASHelper):
                                                **kwargs)
 
     def get_export(self, share):
-        return ':/'.join((self.ganesha_host, share['name']))
+        return ':/'.join((self.ganesha_host, share['name'] + "--<access-id>"))
 
     def init_helper(self):
         @utils.synchronized(self.tag)
