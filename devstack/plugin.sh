@@ -38,12 +38,25 @@ function _clean_manila_lvm_backing_file {
     fi
 }
 
+function _clean_zfsonlinux_data {
+    for filename in "$MANILA_ZFSONLINUX_BACKEND_FILES_CONTAINER_DIR"/*; do
+        if [[ $(sudo zpool list | grep $filename) ]]; then
+            echo "Destroying zpool named $filename"
+            sudo zpool destroy -f $filename
+            file="$MANILA_ZFSONLINUX_BACKEND_FILES_CONTAINER_DIR$filename"
+            echo "Destroying file named $file"
+            rm -f $file
+        fi
+    done
+}
+
 # cleanup_manila - Remove residual data files, anything left over from previous
 # runs that a clean run would need to clean up
 function cleanup_manila {
     # All stuff, that are created by share drivers will be cleaned up by other services.
     _clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
     _clean_manila_lvm_backing_file $SHARE_GROUP
+    _clean_zfsonlinux_data
 }
 
 # configure_default_backends - configures default Manila backends with generic driver.
@@ -426,6 +439,45 @@ function init_manila {
 
             mkdir -p $MANILA_STATE_PATH/shares
         fi
+    elif [ "$SHARE_DRIVER" == "manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver" ]; then
+        if is_service_enabled m-shr; then
+            mkdir -p $MANILA_ZFSONLINUX_BACKEND_FILES_CONTAINER_DIR
+            file_counter=0
+            for BE in ${MANILA_ENABLED_BACKENDS//,/ }; do
+                if [[ $file_counter == 0 ]]; then
+                    # NOTE(vponomaryov): create two pools for first ZFS backend
+                    # to cover different use cases that are supported by driver:
+                    # - Support of more than one zpool for share backend.
+                    # - Support of nested datasets.
+                    local first_file="$MANILA_ZFSONLINUX_BACKEND_FILES_CONTAINER_DIR"/alpha
+                    local second_file="$MANILA_ZFSONLINUX_BACKEND_FILES_CONTAINER_DIR"/betta
+                    truncate -s $MANILA_ZFSONLINUX_ZPOOL_SIZE $first_file
+                    truncate -s $MANILA_ZFSONLINUX_ZPOOL_SIZE $second_file
+                    sudo zpool create alpha $first_file
+                    sudo zpool create betta $second_file
+                    # Create subdir (nested dataset) for second pool
+                    sudo zfs create betta/subdir
+                    iniset $MANILA_CONF $BE zfs_zpool_list alpha,betta/subdir
+                elif [[ $file_counter == 1 ]]; then
+                    local file="$MANILA_ZFSONLINUX_BACKEND_FILES_CONTAINER_DIR"/gamma
+                    truncate -s $MANILA_ZFSONLINUX_ZPOOL_SIZE $file
+                    sudo zpool create gamma $file
+                    iniset $MANILA_CONF $BE zfs_zpool_list gamma
+                else
+                    local filename=file"$file_counter"
+                    local file="$MANILA_ZFSONLINUX_BACKEND_FILES_CONTAINER_DIR"/"$filename"
+                    truncate -s $MANILA_ZFSONLINUX_ZPOOL_SIZE $file
+                    sudo zpool create $filename $file
+                    iniset $MANILA_CONF $BE zfs_zpool_list $filename
+                fi
+                iniset $MANILA_CONF $BE zfs_share_export_ip $MANILA_ZFSONLINUX_SHARE_EXPORT_IP
+                iniset $MANILA_CONF $BE zfs_service_ip $MANILA_ZFSONLINUX_SERVICE_IP
+                iniset $MANILA_CONF $BE zfs_dataset_creation_options $MANILA_ZFSONLINUX_DATASET_CREATION_OPTIONS
+                iniset $MANILA_CONF $BE zfs_ssh_username $MANILA_ZFSONLINUX_SSH_USERNAME
+                iniset $MANILA_CONF $BE replication_domain $MANILA_ZFSONLINUX_REPLICATION_DOMAIN
+                let "file_counter=file_counter+1"
+            done
+        fi
     fi
 
     # Create cache dir
@@ -446,6 +498,32 @@ function install_manila {
                 sudo yum install -y nfs-utils nfs-utils-lib samba
             fi
         fi
+    elif [ "$SHARE_DRIVER" == "manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver" ]; then
+        if is_service_enabled m-shr; then
+            if is_ubuntu; then
+                sudo apt-get install -y nfs-kernel-server nfs-common samba
+                # NOTE(vponomaryov): following installation is valid for Ubuntu 'trusty'.
+                sudo apt-get install -y software-properties-common
+                sudo apt-add-repository --yes ppa:zfs-native/stable
+                sudo apt-get -y -q update && sudo apt-get -y -q upgrade
+                sudo apt-get install -y linux-headers-generic
+                sudo apt-get install -y build-essential
+                sudo apt-get install -y ubuntu-zfs
+                sudo modprobe zfs
+
+                # TODO(vponomaryov): remove following line when we have this
+                # in 'requirements.txt' file.
+                # Package 'nsenter' is expected to be installed on host with
+                # ZFS, if it is remote for manila-share service host.
+                sudo pip install nsenter
+            else
+                echo "Manila Devstack plugin does not support installation "\
+                    "of ZFS packages for non-'Ubuntu-trusty' distros. "\
+                    "Please, install it first by other means or add its support "\
+                    "for your distro."
+                exit 1
+            fi
+        fi
     fi
 
     # install manila-ui if horizon is enabled
@@ -457,6 +535,8 @@ function install_manila {
 #configure_samba - Configure node as Samba server
 function configure_samba {
     if [ "$SHARE_DRIVER" == "manila.share.drivers.lvm.LVMShareDriver" ]; then
+        # TODO(vponomaryov): add here condition for ZFSonLinux driver too
+        # when it starts to support SAMBA
         samba_daemon_name=smbd
         if is_service_enabled m-shr; then
             if is_fedora; then

@@ -136,3 +136,15 @@ dbus-removeexport: RegExpFilter, dbus-send, root, dbus-send, --print-reply, --sy
 
 # manila/share/drivers/ganesha/manager.py:
 rmconf: RegExpFilter, sh, root, sh, -c, rm -f /.*/\*\.conf$
+
+# ZFS commands
+# manila/share/drivers/zfsonlinux/driver.py
+# manila/share/drivers/zfsonlinux/utils.py
+zpool: CommandFilter, zpool, root
+
+# manila/share/drivers/zfsonlinux/driver.py
+# manila/share/drivers/zfsonlinux/utils.py
+zfs: CommandFilter, zfs, root
+
+# manila/share/drivers/zfsonlinux/driver.py
+nsenter: CommandFilter, /usr/local/bin/nsenter, root

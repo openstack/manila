@@ -237,6 +237,9 @@ class ShareDriver(object):
             unhandled share-servers that are not tracked by Manila.
             Share drivers are allowed to work only in one of two possible
             driver modes, that is why only one should be chosen.
+        :param config_opts: tuple, list or set of config option lists
+            that should be registered in driver's configuration right after
+            this attribute is created. Useful for usage with mixin classes.
         """
         super(ShareDriver, self).__init__()
         self.configuration = kwargs.get('configuration', None)
@@ -266,6 +269,9 @@ class ShareDriver(object):
                 self._admin_network_api = network.API(
                     config_group_name=admin_network_config_group,
                     label='admin')
+
+        for config_opt_set in kwargs.get('config_opts', []):
+            self.configuration.append_config_values(config_opt_set)
 
         if hasattr(self, 'init_execute_mixin'):
             # Instance with 'ExecuteMixin'

@@ -141,6 +141,19 @@ SMB_CONF=${SMB_CONF:-/etc/samba/smb.conf}
 SMB_PRIVATE_DIR=${SMB_PRIVATE_DIR:-/var/lib/samba/private}
 CONFIGURE_BACKING_FILE=${CONFIGURE_BACKING_FILE:-"True"}
 
+# Options for configuration of ZFSonLinux driver
+# 'MANILA_ZFSONLINUX_ZPOOL_SIZE' defines size of each zpool. That value
+# will be used for creation of sparse files.
+MANILA_ZFSONLINUX_ZPOOL_SIZE=${MANILA_ZFSONLINUX_ZPOOL_SIZE:-"30G"}
+MANILA_ZFSONLINUX_BACKEND_FILES_CONTAINER_DIR=${MANILA_ZFSONLINUX_BACKEND_FILES_CONTAINER_DIR:-"/opt/stack/data/manila/zfsonlinux"}
+MANILA_ZFSONLINUX_SHARE_EXPORT_IP=${MANILA_ZFSONLINUX_SHARE_EXPORT_IP:-"127.0.0.1"}
+MANILA_ZFSONLINUX_SERVICE_IP=${MANILA_ZFSONLINUX_SERVICE_IP:-"127.0.0.1"}
+MANILA_ZFSONLINUX_DATASET_CREATION_OPTIONS=${MANILA_ZFSONLINUX_DATASET_CREATION_OPTIONS:-"compression=gzip"}
+MANILA_ZFSONLINUX_SSH_USERNAME=${MANILA_ZFSONLINUX_SSH_USERNAME:-"stack"}
+# If MANILA_ZFSONLINUX_REPLICATION_DOMAIN is set to empty value then
+# Manila will consider replication feature as disabled for ZFSonLinux share driver.
+MANILA_ZFSONLINUX_REPLICATION_DOMAIN=${MANILA_ZFSONLINUX_REPLICATION_DOMAIN:-"ZFSonLinux"}
+
 # Enable manila services
 # ----------------------
 # We have to add Manila to enabled services for screen_it to work

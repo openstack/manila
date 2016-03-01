@@ -613,3 +613,45 @@ def require_driver_initialized(func):
             raise exception.DriverNotInitialized(driver=driver_name)
         return func(self, *args, **kwargs)
     return wrapper
+
+
+def translate_string_size_to_float(string, multiplier='G'):
+    """Translates human-readable storage size to float value.
+
+    Supported values for 'multiplier' are following:
+        K - kilo | 1
+        M - mega | 1024
+        G - giga | 1024 * 1024
+        T - tera | 1024 * 1024 * 1024
+        P = peta | 1024 * 1024 * 1024 * 1024
+
+    returns:
+        - float if correct input data provided
+        - None if incorrect
+    """
+    if not isinstance(string, six.string_types):
+        return None
+    multipliers = ('K', 'M', 'G', 'T', 'P')
+    mapping = {
+        k: 1024.0 ** v
+        for k, v in zip(multipliers, range(len(multipliers)))
+    }
+    if multiplier not in multipliers:
+        raise exception.ManilaException(
+            "'multiplier' arg should be one of following: "
+            "'%(multipliers)s'. But it is '%(multiplier)s'." % {
+                'multiplier': multiplier,
+                'multipliers': "', '".join(multipliers),
+            }
+        )
+    try:
+        value = float(string) / 1024.0
+        value = value / mapping[multiplier]
+        return value
+    except (ValueError, TypeError):
+        matched = re.match(
+            r"^(\d+\.*\d*)([%s])$" % ','.join(multipliers), string)
+        if matched:
+            value = float(matched.groups()[0])
+            multiplier = mapping[matched.groups()[1]] / mapping[multiplier]
+            return value * multiplier

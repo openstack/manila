@@ -99,6 +99,7 @@ Share backends
 .. toctree::
    :maxdepth: 3
 
+   zfs_on_linux_driver
    netapp_cluster_mode_driver
    emc_isilon_driver
    emc_vnx_driver
