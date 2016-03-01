@@ -27,7 +27,7 @@ from manila import context
 from manila import exception
 from manila.share import configuration as config
 from manila.share.drivers.glusterfs import common
-from manila.share.drivers import glusterfs_native
+from manila.share.drivers.glusterfs import glusterfs_native
 from manila import test
 from manila.tests import fake_utils
 
