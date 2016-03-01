@@ -72,6 +72,9 @@ class FakeZFSSA(object):
     def deny_access_nfs(self, pool, project, share, access):
         pass
 
+    def get_project_stats(self, pool, project):
+        pass
+
 
 class FakeRestClient(object):
     """Fake ZFSSA Rest Client."""

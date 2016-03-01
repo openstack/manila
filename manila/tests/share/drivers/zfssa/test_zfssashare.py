@@ -16,6 +16,7 @@ Unit tests for Oracle's ZFSSA Manila driver.
 """
 import mock
 from oslo_config import cfg
+from oslo_utils import units
 
 from manila import context
 from manila import exception
@@ -37,6 +38,15 @@ class ZFSSAShareDriverTestCase(test.TestCase):
         'size': 1,
         'share_proto': 'NFS',
         'export_location': '127.0.0.1:/mnt/nfs/volume-00002',
+    }
+
+    share2 = {
+        'id': 'fakeid2',
+        'name': 'fakename2',
+        'size': 4,
+        'share_proto': 'NFS',
+        'export_location': '127.0.0.1:/mnt/nfs/volume-00003',
+        'space_data': 3006477107
     }
 
     snapshot = {
@@ -215,3 +225,61 @@ class ZFSSAShareDriverTestCase(test.TestCase):
             lcfg.zfssa_project,
             self.share['id'],
             self.access)
+
+    def test_extend_share_negative(self):
+        self.mock_object(self._driver.zfssa, 'modify_share')
+        new_size = 3
+        # Not enough space in project, expect an exception:
+        self.mock_object(self._driver.zfssa, 'get_project_stats')
+        self._driver.zfssa.get_project_stats.return_value = 1 * units.Gi
+
+        self.assertRaises(exception.ShareExtendingError,
+                          self._driver.extend_share,
+                          self.share,
+                          new_size)
+
+    def test_extend_share(self):
+        self.mock_object(self._driver.zfssa, 'modify_share')
+        new_size = 3
+        lcfg = self.configuration
+        self.mock_object(self._driver.zfssa, 'get_project_stats')
+        self._driver.zfssa.get_project_stats.return_value = 10 * units.Gi
+
+        arg = self._driver.create_arg(new_size)
+        self._driver.extend_share(self.share, new_size)
+
+        self.assertEqual(1, self._driver.zfssa.modify_share.call_count)
+        self._driver.zfssa.modify_share.assert_called_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_project,
+            self.share['id'],
+            arg)
+
+    def test_shrink_share_negative(self):
+        self.mock_object(self._driver.zfssa, 'modify_share')
+        # Used space is larger than 2GB
+        new_size = 2
+        self.mock_object(self._driver.zfssa, 'get_share')
+        self._driver.zfssa.get_share.return_value = self.share2
+
+        self.assertRaises(exception.ShareShrinkingPossibleDataLoss,
+                          self._driver.shrink_share,
+                          self.share2,
+                          new_size)
+
+    def test_shrink_share(self):
+        self.mock_object(self._driver.zfssa, 'modify_share')
+        new_size = 3
+        lcfg = self.configuration
+        self.mock_object(self._driver.zfssa, 'get_share')
+        self._driver.zfssa.get_share.return_value = self.share2
+
+        arg = self._driver.create_arg(new_size)
+        self._driver.shrink_share(self.share2, new_size)
+
+        self.assertEqual(1, self._driver.zfssa.modify_share.call_count)
+        self._driver.zfssa.modify_share.assert_called_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_project,
+            self.share2['id'],
+            arg)

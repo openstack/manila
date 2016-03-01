@@ -76,9 +76,10 @@ class ZFSSAShareDriver(driver.ShareDriver):
     API version history:
 
         1.0 - Initial version.
+        1.0.1 - Add share shrink/extend feature.
     """
 
-    VERSION = '1.0.0'
+    VERSION = '1.0.1'
     PROTOCOL = 'NFS_CIFS'
 
     def __init__(self, *args, **kwargs):
@@ -277,6 +278,47 @@ class ZFSSAShareDriver(driver.ShareDriver):
         if not details:
             msg = (_("Share %s doesn't exists.") % share['id'])
             raise exception.ManilaException(msg)
+
+    def shrink_share(self, share, new_size, share_server=None):
+        """Shrink a share to new_size."""
+        lcfg = self.configuration
+        details = self.zfssa.get_share(lcfg.zfssa_pool,
+                                       lcfg.zfssa_project,
+                                       share['id'])
+        used_space = details['space_data']
+        new_size_byte = int(new_size) * units.Gi
+
+        if used_space > new_size_byte:
+            LOG.error(_LE('%(used).1fGB of share %(id)s is already used. '
+                          'Cannot shrink to %(newsize)dGB.'),
+                      {'used': float(used_space) / units.Gi,
+                       'id': share['id'],
+                       'newsize': new_size})
+            raise exception.ShareShrinkingPossibleDataLoss(
+                share_id=share['id'])
+
+        arg = self.create_arg(new_size)
+        self.zfssa.modify_share(lcfg.zfssa_pool, lcfg.zfssa_project,
+                                share['id'], arg)
+
+    def extend_share(self, share, new_size, share_server=None):
+        """Extend a share to new_size."""
+        lcfg = self.configuration
+        free_space = self.zfssa.get_project_stats(lcfg.zfssa_pool,
+                                                  lcfg.zfssa_project)
+
+        diff_space = int(new_size - share['size']) * units.Gi
+
+        if diff_space > free_space:
+            msg = (_('There is not enough free space in project %s')
+                   % (lcfg.zfssa_project))
+            LOG.error(msg)
+            raise exception.ShareExtendingError(share_id=share['id'],
+                                                reason=msg)
+
+        arg = self.create_arg(new_size)
+        self.zfssa.modify_share(lcfg.zfssa_pool, lcfg.zfssa_project,
+                                share['id'], arg)
 
     def allow_access(self, context, share, access, share_server=None):
         """Allows access to an NFS share for the specified IP."""
