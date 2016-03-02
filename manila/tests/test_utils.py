@@ -870,3 +870,18 @@ class RequireDriverInitializedTestCase(test.TestCase):
             expected_exception = exception.DriverNotInitialized
 
         self.assertRaises(expected_exception, FakeManager().call_me)
+
+
+class WaitUntilTrueTestCase(test.TestCase):
+
+    def test_wait_until_true_ok(self):
+        fake_predicate = mock.Mock(return_value=True)
+        exc = exception.ManilaException
+        utils.wait_until_true(fake_predicate, 1, 1, exc)
+        self.assertTrue(fake_predicate.called)
+
+    def test_wait_until_true_not_ok(self):
+        fake_predicate = mock.Mock(return_value=False)
+        exc = exception.ManilaException
+        self.assertRaises(exception.ManilaException, utils.wait_until_true,
+                          fake_predicate, 1, 1, exc)

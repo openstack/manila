@@ -69,6 +69,11 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     echo "RUN_MANILA_REPLICATION_TESTS=True" >> $localrc_path
 fi
 
+if [[ "$DRIVER" == "lxd" ]]; then
+    echo "SHARE_DRIVER=manila.share.drivers.lxd.LXDDriver" >> $localrc_path
+    echo "SHARE_BACKING_FILE_SIZE=32000M" >> $localrc_path
+fi
+
 # Enabling isolated metadata in Neutron is required because
 # Tempest creates isolated networks and created vm's in scenario tests don't
 # have access to Nova Metadata service. This leads to unavailability of

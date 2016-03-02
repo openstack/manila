@@ -30,6 +30,7 @@ import socket
 import sys
 import tempfile
 
+import eventlet
 from eventlet import pools
 import netaddr
 from oslo_concurrency import lockutils
@@ -655,3 +656,18 @@ def translate_string_size_to_float(string, multiplier='G'):
             value = float(matched.groups()[0])
             multiplier = mapping[matched.groups()[1]] / mapping[multiplier]
             return value * multiplier
+
+
+def wait_until_true(predicate, timeout=60, sleep=1, exception=None):
+    """Wait until callable predicate is evaluated as True
+
+    :param predicate: Callable deciding whether waiting should continue.
+    Best practice is to instantiate predicate with functools.partial()
+    :param timeout: Timeout in seconds how long should function wait.
+    :param sleep: Polling interval for results in seconds.
+    :param exception: Exception class for eventlet.Timeout.
+    (see doc for eventlet.Timeout for more information)
+    """
+    with eventlet.timeout.Timeout(timeout, exception):
+        while not predicate():
+            eventlet.sleep(sleep)

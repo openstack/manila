@@ -128,7 +128,7 @@ class NeutronNetworkPluginTest(test.TestCase):
                 fake_share_network['project_id'],
                 network_id=fake_share_network['neutron_net_id'],
                 subnet_id=fake_share_network['neutron_subnet_id'],
-                device_owner='manila:share')
+                device_owner='manila:share', host_id=None)
             db_api.network_allocation_create.assert_called_once_with(
                 self.fake_context,
                 fake_network_allocation)
@@ -136,6 +136,54 @@ class NeutronNetworkPluginTest(test.TestCase):
             has_provider_nw_ext.stop()
             save_nw_data.stop()
             save_subnet_data.stop()
+
+    @mock.patch.object(db_api, 'network_allocation_create',
+                       mock.Mock(return_values=fake_network_allocation))
+    @mock.patch.object(db_api, 'share_network_get',
+                       mock.Mock(return_value=fake_share_network))
+    @mock.patch.object(db_api, 'share_server_get',
+                       mock.Mock(return_value=fake_share_server))
+    def test_allocate_network_one_allocation_host_id(self):
+        has_provider_nw_ext = mock.patch.object(
+            self.plugin, '_has_provider_network_extension').start()
+        has_provider_nw_ext.return_value = True
+        save_nw_data = mock.patch.object(self.plugin,
+                                         '_save_neutron_network_data').start()
+        save_subnet_data = mock.patch.object(
+            self.plugin,
+            '_save_neutron_subnet_data').start()
+        config_data = {
+            'DEFAULT': {
+                'neutron_host_id': "fakehost",
+            }
+        }
+
+        with test_utils.create_temp_config_with_opts(config_data):
+            with mock.patch.object(self.plugin.neutron_api, 'create_port',
+                                   mock.Mock(return_value=fake_neutron_port)):
+                self.plugin.allocate_network(
+                    self.fake_context,
+                    fake_share_server,
+                    fake_share_network,
+                    allocation_info={'count': 1})
+
+                has_provider_nw_ext.assert_any_call()
+                save_nw_data.assert_called_once_with(self.fake_context,
+                                                     fake_share_network)
+                save_subnet_data.assert_called_once_with(self.fake_context,
+                                                         fake_share_network)
+                self.plugin.neutron_api.create_port.assert_called_once_with(
+                    fake_share_network['project_id'],
+                    network_id=fake_share_network['neutron_net_id'],
+                    subnet_id=fake_share_network['neutron_subnet_id'],
+                    device_owner='manila:share', host_id="fakehost")
+                db_api.network_allocation_create.assert_called_once_with(
+                    self.fake_context,
+                    fake_network_allocation)
+
+                has_provider_nw_ext.stop()
+                save_nw_data.stop()
+                save_subnet_data.stop()
 
     @mock.patch.object(db_api, 'network_allocation_create',
                        mock.Mock(return_values=fake_network_allocation))
@@ -165,11 +213,11 @@ class NeutronNetworkPluginTest(test.TestCase):
                 mock.call(fake_share_network['project_id'],
                           network_id=fake_share_network['neutron_net_id'],
                           subnet_id=fake_share_network['neutron_subnet_id'],
-                          device_owner='manila:share'),
+                          device_owner='manila:share', host_id=None),
                 mock.call(fake_share_network['project_id'],
                           network_id=fake_share_network['neutron_net_id'],
                           subnet_id=fake_share_network['neutron_subnet_id'],
-                          device_owner='manila:share'),
+                          device_owner='manila:share', host_id=None),
             ]
             db_api_calls = [
                 mock.call(self.fake_context, fake_network_allocation),
