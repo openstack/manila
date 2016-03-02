@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila.api.v1 import share_manage
 from manila.api.v1 import share_unmanage
@@ -27,7 +28,6 @@ class ShareController(shares.ShareMixin,
                       wsgi.Controller,
                       wsgi.AdminActionsMixin):
     """The Shares API v2 controller for the OpenStack API."""
-
     resource_name = 'share'
     _view_builder_class = share_views.ViewBuilder
 
@@ -86,7 +86,10 @@ class ShareController(shares.ShareMixin,
     @wsgi.action('allow_access')
     def allow_access(self, req, id, body):
         """Add share access rule."""
-        return self._allow_access(req, id, body)
+        if req.api_version_request < api_version.APIVersionRequest("2.13"):
+            return self._allow_access(req, id, body)
+        else:
+            return self._allow_access(req, id, body, enable_ceph=True)
 
     @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.action('os-deny_access')

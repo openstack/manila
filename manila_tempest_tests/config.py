@@ -36,7 +36,7 @@ ShareGroup = [
                help="The minimum api microversion is configured to be the "
                     "value of the minimum microversion supported by Manila."),
     cfg.StrOpt("max_api_microversion",
-               default="2.12",
+               default="2.13",
                help="The maximum api microversion is configured to be the "
                     "value of the latest microversion supported by Manila."),
     cfg.StrOpt("region",
@@ -73,6 +73,9 @@ ShareGroup = [
     cfg.ListOpt("enable_cert_rules_for_protocols",
                 default=["glusterfs", ],
                 help="Protocols that should be covered with cert rule tests."),
+    cfg.ListOpt("enable_cephx_rules_for_protocols",
+                default=["cephfs", ],
+                help="Protocols to be covered with cephx rule tests."),
     cfg.StrOpt("username_for_user_rules",
                default="Administrator",
                help="Username, that will be used in user tests."),

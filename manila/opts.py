@@ -50,6 +50,7 @@ import manila.scheduler.weighers.pool
 import manila.service
 import manila.share.api
 import manila.share.driver
+import manila.share.drivers.cephfs.cephfs_native
 import manila.share.drivers.emc.driver
 import manila.share.drivers.emc.plugins.isilon.isilon
 import manila.share.drivers.generic
@@ -113,6 +114,7 @@ _global_opt_lists = [
     manila.share.driver.share_opts,
     manila.share.driver.ssh_opts,
     manila.share.drivers_private_data.private_data_opts,
+    manila.share.drivers.cephfs.cephfs_native.cephfs_native_opts,
     manila.share.drivers.emc.driver.EMC_NAS_OPTS,
     manila.share.drivers.generic.share_opts,
     manila.share.drivers.glusterfs.common.glusterfs_common_opts,
