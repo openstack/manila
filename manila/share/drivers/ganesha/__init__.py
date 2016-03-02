@@ -58,7 +58,7 @@ class GaneshaNASHelper(NASHelperBase):
         super(GaneshaNASHelper, self).__init__(execute, config, **kwargs)
         self.tag = tag
 
-    confrx = re.compile('\.(conf|json)\Z')
+    _confrx = re.compile('\.(conf|json)\Z')
 
     def _load_conf_dir(self, dirpath, must_exist=True):
         """Load Ganesha config files in dirpath in alphabetic order."""
@@ -69,7 +69,7 @@ class GaneshaNASHelper(NASHelperBase):
                 raise
             dirlist = []
         LOG.info(_LI('Loading Ganesha config from %s.'), dirpath)
-        conf_files = list(filter(self.confrx.search, dirlist))
+        conf_files = list(filter(self._confrx.search, dirlist))
         conf_files.sort()
         export_template = {}
         for conf_file in conf_files:
