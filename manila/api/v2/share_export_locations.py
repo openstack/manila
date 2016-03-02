@@ -44,14 +44,9 @@ class ShareExportLocationController(wsgi.Controller):
 
         context = req.environ['manila.context']
         self._verify_share(context, share_id)
-        if context.is_admin:
-            export_locations = db_api.share_export_locations_get_by_share_id(
-                context, share_id, include_admin_only=True)
-            return self._view_builder.detail_list(export_locations)
-        else:
-            export_locations = db_api.share_export_locations_get_by_share_id(
-                context, share_id, include_admin_only=False)
-            return self._view_builder.summary_list(export_locations)
+        export_locations = db_api.share_export_locations_get_by_share_id(
+            context, share_id, include_admin_only=context.is_admin)
+        return self._view_builder.summary_list(req, export_locations)
 
     @wsgi.Controller.api_version('2.9')
     @wsgi.Controller.authorize
@@ -60,18 +55,16 @@ class ShareExportLocationController(wsgi.Controller):
         context = req.environ['manila.context']
         self._verify_share(context, share_id)
         try:
-            el = db_api.share_export_location_get_by_uuid(
+            export_location = db_api.share_export_location_get_by_uuid(
                 context, export_location_uuid)
         except exception.ExportLocationNotFound:
             msg = _("Export location '%s' not found.") % export_location_uuid
             raise exc.HTTPNotFound(explanation=msg)
 
-        if context.is_admin:
-            return self._view_builder.detail(el)
-        else:
-            if not el.is_admin_only:
-                return self._view_builder.summary(el)
+        if export_location.is_admin_only and not context.is_admin:
             raise exc.HTTPForbidden()
+
+        return self._view_builder.detail(req, export_location)
 
 
 def create_resource():

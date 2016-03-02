@@ -54,9 +54,39 @@ class ShareExportLocationsAPITest(test.TestCase):
         db.share_export_locations_update(
             self.ctxt['admin'], self.share_instance_id, paths, False)
 
+    @ddt.data({'role': 'admin', 'version': '2.9'},
+              {'role': 'user', 'version': '2.9'},
+              {'role': 'admin', 'version': '2.13'},
+              {'role': 'user', 'version': '2.13'})
+    @ddt.unpack
+    def test_list_and_show(self, role, version):
+
+        summary_keys = ['id', 'path']
+        admin_summary_keys = summary_keys + [
+            'share_instance_id', 'is_admin_only']
+        detail_keys = summary_keys + ['created_at', 'updated_at']
+        admin_detail_keys = admin_summary_keys + ['created_at', 'updated_at']
+
+        self._test_list_and_show(role, version, summary_keys, detail_keys,
+                                 admin_summary_keys, admin_detail_keys)
+
     @ddt.data('admin', 'user')
-    def test_list_and_show(self, role):
-        req = self._get_request(use_admin_context=(role == 'admin'))
+    def test_list_and_show_with_preferred_flag(self, role):
+
+        summary_keys = ['id', 'path', 'preferred']
+        admin_summary_keys = summary_keys + [
+            'share_instance_id', 'is_admin_only']
+        detail_keys = summary_keys + ['created_at', 'updated_at']
+        admin_detail_keys = admin_summary_keys + ['created_at', 'updated_at']
+
+        self._test_list_and_show(role, '2.14', summary_keys, detail_keys,
+                                 admin_summary_keys, admin_detail_keys)
+
+    def _test_list_and_show(self, role, version, summary_keys, detail_keys,
+                            admin_summary_keys, admin_detail_keys):
+
+        req = self._get_request(version=version,
+                                use_admin_context=(role == 'admin'))
         index_result = self.controller.index(req, self.share['id'])
 
         self.assertIn('export_locations', index_result)
@@ -64,24 +94,33 @@ class ShareExportLocationsAPITest(test.TestCase):
         self.assertEqual(3, len(index_result['export_locations']))
 
         for index_el in index_result['export_locations']:
-            self.assertIn('uuid', index_el)
+            self.assertIn('id', index_el)
             show_result = self.controller.show(
-                req, self.share['id'], index_el['uuid'])
+                req, self.share['id'], index_el['id'])
             self.assertIn('export_location', show_result)
             self.assertEqual(1, len(show_result))
-            expected_keys = [
-                'created_at', 'updated_at', 'uuid', 'path',
-            ]
-            if role == 'admin':
-                expected_keys.extend(['share_instance_id', 'is_admin_only'])
-            for el in (index_el, show_result['export_location']):
-                self.assertEqual(len(expected_keys), len(el))
-                for key in expected_keys:
-                    self.assertIn(key, el)
 
-            for key in expected_keys:
-                self.assertEqual(
-                    index_el[key], show_result['export_location'][key])
+            show_el = show_result['export_location']
+
+            # Check summary keys in index result & detail keys in show result
+            if role == 'admin':
+                self.assertEqual(len(admin_summary_keys), len(index_el))
+                for key in admin_summary_keys:
+                    self.assertIn(key, index_el)
+                self.assertEqual(len(admin_detail_keys), len(show_el))
+                for key in admin_detail_keys:
+                    self.assertIn(key, show_el)
+            else:
+                self.assertEqual(len(summary_keys), len(index_el))
+                for key in summary_keys:
+                    self.assertIn(key, index_el)
+                self.assertEqual(len(detail_keys), len(show_el))
+                for key in detail_keys:
+                    self.assertIn(key, show_el)
+
+            # Ensure keys common to index & show results have matching values
+            for key in summary_keys:
+                self.assertEqual(index_el[key], show_el[key])
 
     def test_list_export_locations_share_not_found(self):
         self.assertRaises(
@@ -92,11 +131,11 @@ class ShareExportLocationsAPITest(test.TestCase):
 
     def test_show_export_location_share_not_found(self):
         index_result = self.controller.index(self.req, self.share['id'])
-        el_uuid = index_result['export_locations'][0]['uuid']
+        el_id = index_result['export_locations'][0]['id']
         self.assertRaises(
             exc.HTTPNotFound,
             self.controller.show,
-            self.req, 'inexistent_share_id', el_uuid,
+            self.req, 'inexistent_share_id', el_id,
         )
 
     def test_show_export_location_not_found(self):
@@ -115,18 +154,18 @@ class ShareExportLocationsAPITest(test.TestCase):
         db.share_export_locations_update(
             self.ctxt['admin'], self.share_instance_id, el_data, True)
         index_result = self.controller.index(self.req, self.share['id'])
-        el_uuid = index_result['export_locations'][0]['uuid']
+        el_id = index_result['export_locations'][0]['id']
 
         # Not found for member
         member_req = self._get_request(use_admin_context=False)
         self.assertRaises(
             exc.HTTPForbidden,
             self.controller.show,
-            member_req, self.share['id'], el_uuid,
+            member_req, self.share['id'], el_id,
         )
 
         # Ok for admin
-        el = self.controller.show(self.req, self.share['id'], el_uuid)
+        el = self.controller.show(self.req, self.share['id'], el_id)
         for k, v in el.items():
             self.assertEqual(v, el[k])
 
@@ -148,5 +187,5 @@ class ShareExportLocationsAPITest(test.TestCase):
             self.controller.show,
             self._get_request(version),
             self.share['id'],
-            index_result['export_locations'][0]['uuid']
+            index_result['export_locations'][0]['id']
         )

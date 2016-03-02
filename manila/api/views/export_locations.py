@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_utils import strutils
+
 from manila.api import common
 
 
@@ -21,51 +23,60 @@ class ViewBuilder(common.ViewBuilder):
 
     _collection_name = "export_locations"
 
-    def _get_export_location_view(self, export_location, detail=False):
+    _detail_version_modifiers = [
+        'add_preferred_path_attribute',
+    ]
+
+    def _get_export_location_view(self, request, export_location,
+                                  detail=False):
+
+        context = request.environ['manila.context']
+
         view = {
-            'uuid': export_location['uuid'],
+            'id': export_location['uuid'],
             'path': export_location['path'],
-            'created_at': export_location['created_at'],
-            'updated_at': export_location['updated_at'],
         }
-        # TODO(vponomaryov): include metadata keys here as export location
-        # attributes when such appear.
-        #
-        # Example having export_location['el_metadata'] as following:
-        #
-        # {'speed': '1Gbps', 'access': 'rw'}
-        #
-        # or
-        #
-        # {'speed': '100Mbps', 'access': 'ro'}
-        #
-        # view['speed'] = export_location['el_metadata'].get('speed')
-        # view['access'] = export_location['el_metadata'].get('access')
-        if detail:
-            view['share_instance_id'] = export_location['share_instance_id']
+        self.update_versioned_resource_dict(request, view, export_location)
+        if context.is_admin:
+            view['share_instance_id'] = export_location[
+                'share_instance_id']
             view['is_admin_only'] = export_location['is_admin_only']
+
+        if detail:
+            view['created_at'] = export_location['created_at']
+            view['updated_at'] = export_location['updated_at']
+
         return {'export_location': view}
 
-    def summary(self, export_location):
+    def summary(self, request, export_location):
         """Summary view of a single export location."""
-        return self._get_export_location_view(export_location, detail=False)
+        return self._get_export_location_view(request, export_location,
+                                              detail=False)
 
-    def detail(self, export_location):
+    def detail(self, request, export_location):
         """Detailed view of a single export location."""
-        return self._get_export_location_view(export_location, detail=True)
+        return self._get_export_location_view(request, export_location,
+                                              detail=True)
 
-    def _list_export_locations(self, export_locations, detail=False):
+    def _list_export_locations(self, request, export_locations, detail=False):
         """View of export locations list."""
         view_method = self.detail if detail else self.summary
         return {self._collection_name: [
-            view_method(export_location)['export_location']
+            view_method(request, export_location)['export_location']
             for export_location in export_locations
         ]}
 
-    def detail_list(self, export_locations):
+    def detail_list(self, request, export_locations):
         """Detailed View of export locations list."""
-        return self._list_export_locations(export_locations, detail=True)
+        return self._list_export_locations(request, export_locations,
+                                           detail=True)
 
-    def summary_list(self, export_locations):
+    def summary_list(self, request, export_locations):
         """Summary View of export locations list."""
-        return self._list_export_locations(export_locations, detail=False)
+        return self._list_export_locations(request, export_locations,
+                                           detail=False)
+
+    @common.ViewBuilder.versioned_method('2.14')
+    def add_preferred_path_attribute(self, view_dict, export_location):
+        view_dict['preferred'] = strutils.bool_from_string(
+            export_location['el_metadata'].get('preferred'))
