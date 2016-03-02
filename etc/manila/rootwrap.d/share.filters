@@ -146,9 +146,6 @@ zpool: CommandFilter, zpool, root
 # manila/share/drivers/zfsonlinux/utils.py
 zfs: CommandFilter, zfs, root
 
-# manila/share/drivers/zfsonlinux/driver.py
-nsenter: CommandFilter, nsenter, root
-
 # LXD driver commands
 # manila/share/drivers/lxd.py
 lxc: CommandFilter, lxc, root

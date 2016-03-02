@@ -27,7 +27,7 @@ from oslo_utils import timeutils
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LW
+from manila.i18n import _, _LI, _LW
 from manila.share import driver
 from manila.share.drivers.zfsonlinux import utils as zfs_utils
 from manila.share import utils as share_utils
@@ -186,46 +186,29 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                     msg=_("Could not destroy '%s' dataset, "
                           "because it had opened files.") % name)
 
-            try:
-                self.zfs('destroy', '-f', name)
-                return
-            except exception.ProcessExecutionError as e:
-                LOG.debug("Failed to run command, got error: %s\n"
-                          "Assuming other namespace-based services hold "
-                          "ZFS mounts.", e)
-
-            # NOTE(vponomaryov): perform workaround for Neutron bug #1546723
-            # We should release ZFS mount from all namespaces. It should not be
-            # there at all.
-            get_pids_cmd = (
-                "(echo $(grep -s %s /proc/*/mounts) ) 2>&1 " % mountpoint)
-            try:
-                raw_pids, err = self.execute('bash', '-c', get_pids_cmd)
-            except exception.ProcessExecutionError as e:
-                LOG.warning(
-                    _LW("Failed to get list of PIDs that hold ZFS dataset "
-                        "mountpoint. Got following error: %s"), e)
-            else:
-                pids = [s.split('/')[0] for s in raw_pids.split('/proc/') if s]
-                LOG.debug(
-                    "List of pids that hold ZFS mount '%(mnt)s': %(list)s", {
-                        'mnt': mountpoint, 'list': ' '.join(pids)})
-                for pid in pids:
-                    try:
-                        self.execute(
-                            'sudo', 'nsenter', '--mnt', '--target=%s' % pid,
-                            '/bin/umount', mountpoint)
-                    except exception.ProcessExecutionError as e:
-                        LOG.warning(
-                            _LW("Failed to run command with release of "
-                                "ZFS dataset mount, got error: %s"), e)
-
-            # NOTE(vponomaryov): sleep some time after unmount operations.
-            time.sleep(1)
-
         # NOTE(vponomaryov): Now, when no file usages and mounts of dataset
         # exist, destroy dataset.
-        self.zfs_with_retry('destroy', '-f', name)
+        try:
+            self.zfs('destroy', '-f', name)
+            return
+        except exception.ProcessExecutionError:
+            LOG.info(_LI("Failed to destroy ZFS dataset, retrying one time"))
+
+        # NOTE(bswartz): There appears to be a bug in ZFS when creating and
+        # destroying datasets concurrently where the filesystem remains mounted
+        # even though ZFS thinks it's unmounted. The most reliable workaround
+        # I've found is to force the unmount, then retry the destroy, with
+        # short pauses around the unmount.
+        time.sleep(1)
+        try:
+            self.execute('sudo', 'umount', mountpoint)
+        except exception.ProcessExecutionError:
+            # Ignore failed umount, it's normal
+            pass
+        time.sleep(1)
+
+        # This time the destroy is expected to succeed.
+        self.zfs('destroy', '-f', name)
 
     def _setup_helpers(self):
         """Setups share helper for ZFS backend."""
@@ -267,6 +250,11 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
             raise exception.BadConfigurationException(
                 reason=_("No zpools specified for usage: "
                          "%s") % self.zpool_list)
+
+        # Make pool mounts shared so that cloned namespaces receive unmounts
+        # and don't prevent us from unmounting datasets
+        for zpool in self.configuration.zfs_zpool_list:
+            self.execute('sudo', 'mount', '--make-rshared', ('/%s' % zpool))
 
         if self.configuration.zfs_use_ssh:
             # Check workability of SSH executor

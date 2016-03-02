@@ -121,8 +121,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         self.assertTrue(hasattr(self.driver, '_helpers'))
         self.assertEqual(self.driver._helpers, {})
         for attr_name in ('execute', 'execute_with_retry', 'parse_zfs_answer',
-                          'get_zpool_option', 'get_zfs_option', 'zfs',
-                          'zfs_with_retry'):
+                          'get_zpool_option', 'get_zfs_option', 'zfs'):
             self.assertTrue(hasattr(self.driver, attr_name))
 
     def test_init_error_with_duplicated_zpools(self):
@@ -177,9 +176,9 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
 
         self.driver._setup_helpers.assert_called_once_with()
         if use_ssh:
-            self.driver.ssh_executor.assert_called_once_with('whoami')
+            self.assertEqual(4, self.driver.ssh_executor.call_count)
         else:
-            self.assertEqual(0, self.driver.ssh_executor.call_count)
+            self.assertEqual(3, self.driver.ssh_executor.call_count)
 
     @ddt.data(
         ('foo', '127.0.0.1'),
@@ -846,13 +845,13 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
 
     def test__delete_dataset_or_snapshot_with_retry_snapshot(self):
         self.mock_object(self.driver, 'get_zfs_option')
-        self.mock_object(self.driver, 'zfs_with_retry')
+        self.mock_object(self.driver, 'zfs')
 
         self.driver._delete_dataset_or_snapshot_with_retry('foo@bar')
 
         self.driver.get_zfs_option.assert_called_once_with(
             'foo@bar', 'mountpoint')
-        self.driver.zfs_with_retry.assert_called_once_with(
+        self.driver.zfs.assert_called_once_with(
             'destroy', '-f', 'foo@bar')
 
     def test__delete_dataset_or_snapshot_with_retry_of(self):
@@ -903,92 +902,29 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         zfs_driver.time.sleep.assert_called_once_with(2)
         self.driver.zfs.assert_called_once_with('destroy', '-f', dataset_name)
 
-    def test__delete_dataset_or_snapshot_with_retry_mount_holders(self):
-        mnt = 'fake_mnt'
+    def test__delete_dataset_or_snapshot_with_retry_busy(self):
+        self.mock_object(self.driver, 'get_zfs_option')
         self.mock_object(
-            self.driver, 'get_zfs_option', mock.Mock(return_value=mnt))
-        self.mock_object(self.driver, 'zfs_with_retry')
+            self.driver, 'execute', mock.Mock(
+                side_effect=exception.ProcessExecutionError(
+                    'FAKE lsof returns not found')))
         self.mock_object(
-            self.driver, 'zfs',
-            mock.Mock(side_effect=exception.ProcessExecutionError('FAKE')))
-        pids_raw = '/proc/1234/foo /proc/5678/bar'
-        self.mock_object(
-            self.driver, 'execute', mock.Mock(side_effect=[
-                ('a', 'b'),
-                exception.ProcessExecutionError('Fake lsof empty'),
-                (pids_raw, 'c'),
-                exception.ProcessExecutionError('Fake PID not found error'),
-                ('d', 'e'),
-            ]))
+            self.driver, 'zfs', mock.Mock(side_effect=[
+                exception.ProcessExecutionError(
+                    'cannot destroy FAKE: dataset is busy\n'),
+                None, None]))
         self.mock_object(zfs_driver.time, 'sleep')
-        self.mock_object(zfs_driver.LOG, 'debug')
-        self.mock_object(zfs_driver.LOG, 'warning')
-        self.mock_object(
-            zfs_driver.time, 'time', mock.Mock(side_effect=range(1, 70, 2)))
+        self.mock_object(zfs_driver.LOG, 'info')
         dataset_name = 'fake/dataset/name'
 
         self.driver._delete_dataset_or_snapshot_with_retry(dataset_name)
 
         self.driver.get_zfs_option.assert_called_once_with(
             dataset_name, 'mountpoint')
-        self.assertEqual(3, zfs_driver.time.time.call_count)
-        self.assertEqual(3, zfs_driver.LOG.debug.call_count)
-        self.assertEqual(5, self.driver.execute.call_count)
-        self.driver.execute.assert_has_calls([
-            mock.call('lsof', '-w', mnt),
-            mock.call('lsof', '-w', mnt),
-            mock.call('bash', '-c',
-                      '(echo $(grep -s %s /proc/*/mounts) ) 2>&1 ' % mnt),
-            mock.call('sudo', 'nsenter', '--mnt', '--target=1234',
-                      '/bin/umount', mnt),
-            mock.call('sudo', 'nsenter', '--mnt', '--target=5678',
-                      '/bin/umount', mnt),
-        ])
-        zfs_driver.time.sleep.assert_has_calls([mock.call(2), mock.call(1)])
-        self.driver.zfs.assert_called_once_with('destroy', '-f', dataset_name)
-        zfs_driver.LOG.warning.assert_called_once_with(mock.ANY, mock.ANY)
-        self.driver.zfs_with_retry.asssert_called_once_with(
-            'destroy', '-f', dataset_name)
-
-    def test__delete_dataset_or_snapshot_with_retry_mount_holders_error(self):
-        mnt = 'fake_mnt'
-        self.mock_object(
-            self.driver, 'get_zfs_option', mock.Mock(return_value=mnt))
-        self.mock_object(self.driver, 'zfs_with_retry')
-        self.mock_object(
-            self.driver, 'zfs',
-            mock.Mock(side_effect=exception.ProcessExecutionError('FAKE')))
-        self.mock_object(
-            self.driver, 'execute', mock.Mock(side_effect=[
-                ('a', 'b'),
-                exception.ProcessExecutionError('Fake lsof empty'),
-                exception.ProcessExecutionError('Failed to get list of PIDs'),
-            ]))
-        self.mock_object(zfs_driver.time, 'sleep')
-        self.mock_object(zfs_driver.LOG, 'debug')
-        self.mock_object(zfs_driver.LOG, 'warning')
-        self.mock_object(
-            zfs_driver.time, 'time', mock.Mock(side_effect=range(1, 70, 2)))
-        dataset_name = 'fake/dataset/name'
-
-        self.driver._delete_dataset_or_snapshot_with_retry(dataset_name)
-
-        self.driver.get_zfs_option.assert_called_once_with(
-            dataset_name, 'mountpoint')
-        self.assertEqual(3, zfs_driver.time.time.call_count)
-        self.assertEqual(2, zfs_driver.LOG.debug.call_count)
-        self.assertEqual(3, self.driver.execute.call_count)
-        self.driver.execute.assert_has_calls([
-            mock.call('lsof', '-w', mnt),
-            mock.call('lsof', '-w', mnt),
-            mock.call('bash', '-c',
-                      '(echo $(grep -s %s /proc/*/mounts) ) 2>&1 ' % mnt),
-        ])
-        zfs_driver.time.sleep.assert_has_calls([mock.call(2), mock.call(1)])
-        self.driver.zfs.assert_called_once_with('destroy', '-f', dataset_name)
-        zfs_driver.LOG.warning.assert_called_once_with(mock.ANY, mock.ANY)
-        self.driver.zfs_with_retry.asssert_called_once_with(
-            'destroy', '-f', dataset_name)
+        self.assertEqual(2, zfs_driver.time.sleep.call_count)
+        self.assertEqual(2, self.driver.execute.call_count)
+        self.assertEqual(1, zfs_driver.LOG.info.call_count)
+        self.assertEqual(2, self.driver.zfs.call_count)
 
     def test_create_replica(self):
         active_replica = {
