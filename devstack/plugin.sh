@@ -586,6 +586,7 @@ function start_manila {
     screen_it m-api "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-api --config-file $MANILA_CONF"
     screen_it m-shr "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-share --config-file $MANILA_CONF"
     screen_it m-sch "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-scheduler --config-file $MANILA_CONF"
+    screen_it m-dat "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-data --config-file $MANILA_CONF"
 
     # Start proxies if enabled
     if is_service_enabled tls-proxy; then
@@ -596,7 +597,7 @@ function start_manila {
 # stop_manila - Stop running processes
 function stop_manila {
     # Kill the manila screen windows
-    for serv in m-api m-sch m-shr; do
+    for serv in m-api m-sch m-shr m-dat; do
         screen -S $SCREEN_NAME -p $serv -X kill
     done
 }
