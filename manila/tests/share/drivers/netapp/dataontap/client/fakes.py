@@ -23,6 +23,11 @@ CONNECTION_INFO = {
     'password': 'passw0rd'
 }
 
+CLUSTER_NAME = 'fake_cluster'
+REMOTE_CLUSTER_NAME = 'fake_cluster_2'
+CLUSTER_ADDRESS_1 = 'fake_cluster_address'
+CLUSTER_ADDRESS_2 = 'fake_cluster_address_2'
+VERSION = 'NetApp Release 8.2.1 Cluster-Mode: Fri Mar 21 14:25:07 PDT 2014'
 NODE_NAME = 'fake_node'
 VSERVER_NAME = 'fake_vserver'
 VSERVER_NAME_2 = 'fake_vserver_2'
@@ -68,6 +73,11 @@ LIF_NAME = LIF_NAME_TEMPLATE % {'net_allocation_id': NET_ALLOCATION_ID}
 IPSPACE_NAME = 'fake_ipspace'
 BROADCAST_DOMAIN = 'fake_domain'
 MTU = 9000
+SM_SOURCE_VSERVER = 'fake_source_vserver'
+SM_SOURCE_VOLUME = 'fake_source_volume'
+SM_DEST_VSERVER = 'fake_destination_vserver'
+SM_DEST_VOLUME = 'fake_destination_volume'
+
 
 IPSPACES = [{
     'uuid': 'fake_uuid',
@@ -202,6 +212,21 @@ ONTAPI_VERSION_RESPONSE = etree.XML("""
     <minor-version>19</minor-version>
   </results>
 """)
+
+SYSTEM_GET_VERSION_RESPONSE = etree.XML("""
+  <results status="passed">
+    <build-timestamp>1395426307</build-timestamp>
+    <is-clustered>true</is-clustered>
+    <version>%(version)s</version>
+    <version-tuple>
+      <system-version-tuple>
+        <generation>8</generation>
+        <major>2</major>
+        <minor>1</minor>
+      </system-version-tuple>
+    </version-tuple>
+  </results>
+""" % {'version': VERSION})
 
 LICENSE_V2_LIST_INFO_RESPONSE = etree.XML("""
   <results status="passed">
@@ -1568,3 +1593,122 @@ SIS_GET_ITER_RESPONSE = etree.XML("""
     'vserver': VSERVER_NAME,
     'volume': SHARE_NAME,
 })
+
+CLUSTER_PEER_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <cluster-peer-info>
+        <active-addresses>
+          <remote-inet-address>%(addr1)s</remote-inet-address>
+          <remote-inet-address>%(addr2)s</remote-inet-address>
+        </active-addresses>
+        <availability>available</availability>
+        <cluster-name>%(cluster)s</cluster-name>
+        <cluster-uuid>fake_uuid</cluster-uuid>
+        <peer-addresses>
+          <remote-inet-address>%(addr1)s</remote-inet-address>
+        </peer-addresses>
+        <remote-cluster-name>%(remote_cluster)s</remote-cluster-name>
+        <serial-number>fake_serial_number</serial-number>
+        <timeout>60</timeout>
+      </cluster-peer-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'addr1': CLUSTER_ADDRESS_1,
+    'addr2': CLUSTER_ADDRESS_2,
+    'cluster': CLUSTER_NAME,
+    'remote_cluster': REMOTE_CLUSTER_NAME,
+})
+
+CLUSTER_PEER_POLICY_GET_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes>
+      <cluster-peer-policy>
+        <is-unauthenticated-access-permitted>false</is-unauthenticated-access-permitted>
+        <passphrase-minimum-length>8</passphrase-minimum-length>
+      </cluster-peer-policy>
+    </attributes>
+  </results>
+""")
+
+VSERVER_PEER_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <vserver-peer-info>
+        <applications>
+          <vserver-peer-application>snapmirror</vserver-peer-application>
+        </applications>
+        <peer-cluster>%(cluster)s</peer-cluster>
+        <peer-state>peered</peer-state>
+        <peer-vserver>%(vserver2)s</peer-vserver>
+        <vserver>%(vserver1)s</vserver>
+      </vserver-peer-info>
+    </attributes-list>
+    <num-records>2</num-records>
+  </results>
+""" % {
+    'cluster': CLUSTER_NAME,
+    'vserver1': VSERVER_NAME,
+    'vserver2': VSERVER_NAME_2
+})
+
+SNAPMIRROR_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <snapmirror-info>
+        <destination-volume>fake_destination_volume</destination-volume>
+        <destination-volume-node>fake_destination_node</destination-volume-node>
+        <destination-vserver>fake_destination_vserver</destination-vserver>
+        <exported-snapshot>fake_snapshot</exported-snapshot>
+        <exported-snapshot-timestamp>1442701782</exported-snapshot-timestamp>
+        <is-constituent>false</is-constituent>
+        <is-healthy>true</is-healthy>
+        <lag-time>2187</lag-time>
+        <last-transfer-duration>109</last-transfer-duration>
+        <last-transfer-end-timestamp>1442701890</last-transfer-end-timestamp>
+        <last-transfer-from>test:manila</last-transfer-from>
+        <last-transfer-size>1171456</last-transfer-size>
+        <last-transfer-type>initialize</last-transfer-type>
+        <max-transfer-rate>0</max-transfer-rate>
+        <mirror-state>snapmirrored</mirror-state>
+        <newest-snapshot>fake_snapshot</newest-snapshot>
+        <newest-snapshot-timestamp>1442701782</newest-snapshot-timestamp>
+        <policy>DPDefault</policy>
+        <relationship-control-plane>v2</relationship-control-plane>
+        <relationship-id>ea8bfcc6-5f1d-11e5-8446-123478563412</relationship-id>
+        <relationship-status>idle</relationship-status>
+        <relationship-type>data_protection</relationship-type>
+        <schedule>daily</schedule>
+        <source-volume>fake_source_volume</source-volume>
+        <source-vserver>fake_source_vserver</source-vserver>
+        <vserver>fake_destination_vserver</vserver>
+      </snapmirror-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""")
+
+SNAPMIRROR_GET_ITER_FILTERED_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <snapmirror-info>
+        <destination-vserver>fake_destination_vserver</destination-vserver>
+        <destination-volume>fake_destination_volume</destination-volume>
+        <is-healthy>true</is-healthy>
+        <mirror-state>snapmirrored</mirror-state>
+        <schedule>daily</schedule>
+        <source-vserver>fake_source_vserver</source-vserver>
+        <source-volume>fake_source_volume</source-volume>
+      </snapmirror-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""")
+
+SNAPMIRROR_INITIALIZE_RESULT = etree.XML("""
+  <results status="passed">
+    <result-status>succeeded</result-status>
+  </results>
+""")

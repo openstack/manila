@@ -15,6 +15,7 @@
 
 import copy
 
+from manila.common import constants
 import manila.tests.share.drivers.netapp.fakes as na_fakes
 
 
@@ -89,6 +90,7 @@ SHARE = {
     'network_info': {
         'network_allocations': [{'ip_address': 'ip'}]
     },
+    'replica_state': constants.REPLICA_STATE_ACTIVE,
 }
 
 FLEXVOL_TO_MANAGE = {
@@ -562,4 +564,5 @@ def get_config_cmode():
     config.netapp_root_volume = ROOT_VOLUME
     config.netapp_lif_name_template = LIF_NAME_TEMPLATE
     config.netapp_volume_snapshot_reserve_percent = 8
+    config.netapp_vserver = VSERVER1
     return config
