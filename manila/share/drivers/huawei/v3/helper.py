@@ -112,8 +112,7 @@ class RestHelper(object):
             if((result['error']['code'] != 0)
                or ("data" not in result)
                or (result['data']['deviceid'] is None)):
-                err_msg = (_("Login to %s failed, try another") % item_url)
-                LOG.error(err_msg)
+                LOG.error(_LE("Login to %s failed, try another."), item_url)
                 continue
 
             LOG.debug('Login success: %(url)s\n',
@@ -124,17 +123,17 @@ class RestHelper(object):
             break
 
         if deviceid is None:
-            err_msg = (_("All url Login fail"))
+            err_msg = _("All url login fail.")
             LOG.error(err_msg)
             raise exception.InvalidShare(reason=err_msg)
 
         return deviceid
 
-    @utils.synchronized('huawei_manila', external=True)
+    @utils.synchronized('huawei_manila')
     def call(self, url, data=None, method=None):
         """Send requests to server.
 
-        if fail, try another RestURL
+        If fail, try another RestURL.
         """
         deviceid = None
         old_url = self.url
@@ -142,8 +141,7 @@ class RestHelper(object):
         error_code = result['error']['code']
         if(error_code == constants.ERROR_CONNECT_TO_SERVER
            or error_code == constants.ERROR_UNAUTHORIZED_TO_SERVER):
-            err_msg = (_("Can't open the recent url, re-login."))
-            LOG.error(err_msg)
+            LOG.error(_LE("Can't open the recent url, re-login."))
             deviceid = self.login()
 
         if deviceid is not None:

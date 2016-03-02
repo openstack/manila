@@ -69,7 +69,8 @@ class HuaweiNasDriver(driver.ShareDriver):
             self.plugin = importutils.import_object(backend_driver,
                                                     self.configuration)
         else:
-            raise exception.InvalidShare(_("Huawei configuration missing."))
+            raise exception.InvalidShare(
+                reason=_("Huawei configuration missing."))
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -128,11 +129,11 @@ class HuaweiNasDriver(driver.ShareDriver):
     def delete_share(self, context, share, share_server=None):
         """Delete a share."""
         LOG.debug("Delete a share.")
-
         self.plugin.delete_share(share, share_server)
 
     def create_snapshot(self, context, snapshot, share_server=None):
         """Create a snapshot."""
+        LOG.debug("Create a snapshot.")
         self.plugin.create_snapshot(snapshot, share_server)
 
     def delete_snapshot(self, context, snapshot, share_server=None):
@@ -149,13 +150,11 @@ class HuaweiNasDriver(driver.ShareDriver):
     def allow_access(self, context, share, access, share_server=None):
         """Allow access to the share."""
         LOG.debug("Allow access.")
-
         self.plugin.allow_access(share, access, share_server)
 
     def deny_access(self, context, share, access, share_server=None):
         """Deny access to the share."""
         LOG.debug("Deny access.")
-
         self.plugin.deny_access(share, access, share_server)
 
     def update_access(self, context, share, access_rules, add_rules=None,
