@@ -15,9 +15,9 @@
 
 import six
 from tempest import config
+from tempest.lib.common.utils import data_utils
+from tempest.lib import exceptions as lib_exc
 from tempest import test
-from tempest_lib.common.utils import data_utils
-from tempest_lib import exceptions as lib_exc
 import testtools
 
 from manila_tempest_tests.tests.api import base

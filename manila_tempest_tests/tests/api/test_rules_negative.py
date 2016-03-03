@@ -15,8 +15,8 @@
 
 import ddt
 from tempest import config
+from tempest.lib import exceptions as lib_exc
 from tempest import test
-from tempest_lib import exceptions as lib_exc
 import testtools
 
 from manila_tempest_tests import share_exceptions

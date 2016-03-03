@@ -14,8 +14,8 @@
 #    under the License.
 
 from tempest import config
+from tempest.lib import exceptions as lib_exc
 from tempest import test
-from tempest_lib import exceptions as lib_exc
 
 from manila_tempest_tests import clients_share as clients
 from manila_tempest_tests.tests.api import base

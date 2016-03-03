@@ -15,8 +15,8 @@
 
 import copy
 
+from tempest.lib.common.utils import data_utils  # noqa
 from tempest import test  # noqa
-from tempest_lib.common.utils import data_utils  # noqa
 
 from manila_tempest_tests.tests.api import base
 

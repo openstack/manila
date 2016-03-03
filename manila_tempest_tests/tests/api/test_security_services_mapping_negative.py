@@ -16,8 +16,8 @@
 from oslo_log import log  # noqa
 import six  # noqa
 from tempest import config  # noqa
+from tempest.lib import exceptions as lib_exc  # noqa
 from tempest import test  # noqa
-from tempest_lib import exceptions as lib_exc  # noqa
 import testtools  # noqa
 
 from manila_tempest_tests.tests.api import base

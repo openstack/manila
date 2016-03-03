@@ -20,9 +20,9 @@ import six
 from six.moves.urllib import parse as urlparse
 
 from tempest import config  # noqa
-from tempest_lib.common import rest_client
-from tempest_lib.common.utils import data_utils
-from tempest_lib import exceptions
+from tempest.lib.common import rest_client
+from tempest.lib.common.utils import data_utils
+from tempest.lib import exceptions
 
 from manila_tempest_tests import share_exceptions
 

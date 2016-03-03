@@ -14,8 +14,8 @@
 #    under the License.
 
 from tempest import config
+from tempest.lib.common.utils import data_utils
 from tempest import test
-from tempest_lib.common.utils import data_utils
 import testtools
 
 from manila_tempest_tests.tests.api import base

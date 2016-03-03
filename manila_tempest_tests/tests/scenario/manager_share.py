@@ -18,8 +18,8 @@ import six
 
 from tempest.common.utils.linux import remote_client  # noqa
 from tempest import config  # noqa
+from tempest.lib.common.utils import data_utils
 from tempest.scenario import manager  # noqa
-from tempest_lib.common.utils import data_utils
 
 from manila_tempest_tests import clients_share
 

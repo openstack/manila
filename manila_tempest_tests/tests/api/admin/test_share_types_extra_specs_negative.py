@@ -13,9 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest.lib.common.utils import data_utils  # noqa
+from tempest.lib import exceptions as lib_exc  # noqa
 from tempest import test  # noqa
-from tempest_lib.common.utils import data_utils  # noqa
-from tempest_lib import exceptions as lib_exc  # noqa
 
 from manila_tempest_tests import clients_share as clients
 from manila_tempest_tests.tests.api import base

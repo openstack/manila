@@ -23,9 +23,9 @@ import six
 from tempest.common import credentials_factory as common_creds
 from tempest.common import dynamic_creds
 from tempest import config
+from tempest.lib.common.utils import data_utils
+from tempest.lib import exceptions
 from tempest import test
-from tempest_lib.common.utils import data_utils
-from tempest_lib import exceptions
 
 from manila_tempest_tests import clients_share as clients
 from manila_tempest_tests import share_exceptions

@@ -18,8 +18,8 @@ import time
 
 from six.moves.urllib import parse as urlparse
 from tempest import config
-from tempest_lib.common.utils import data_utils
-from tempest_lib import exceptions
+from tempest.lib.common.utils import data_utils
+from tempest.lib import exceptions
 
 from manila_tempest_tests.services.share.json import shares_client
 from manila_tempest_tests import share_exceptions

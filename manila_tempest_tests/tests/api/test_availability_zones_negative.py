@@ -13,8 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest.lib import exceptions as lib_exc
 from tempest import test
-from tempest_lib import exceptions as lib_exc
 
 from manila_tempest_tests.tests.api import base
 

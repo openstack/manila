@@ -15,9 +15,9 @@
 
 import ddt
 from tempest import config  # noqa
+from tempest.lib.common.utils import data_utils  # noqa
+from tempest.lib import exceptions as lib_exc  # noqa
 from tempest import test  # noqa
-from tempest_lib.common.utils import data_utils  # noqa
-from tempest_lib import exceptions as lib_exc  # noqa
 
 from manila_tempest_tests.tests.api import base
 from manila_tempest_tests import utils
