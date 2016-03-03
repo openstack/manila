@@ -1215,7 +1215,7 @@ class V3StorageConnection(driver.HuaweiBase):
         }
 
     def _check_network_type_validate(self, network_type):
-        if network_type not in ('flat', 'vlan'):
+        if network_type not in ('flat', 'vlan', None):
             err_msg = (_(
                 'Invalid network type. Network type must be flat or vlan.'))
             raise exception.NetworkBadConfigurationException(reason=err_msg)
@@ -1335,7 +1335,7 @@ class V3StorageConnection(driver.HuaweiBase):
         self.helper.add_LDAP_config(server, domain)
 
     def _create_vlan_and_logical_port(self, vlan_tag, ip, subnet):
-        optimal_port, port_type = self._get_optimal_port()
+        optimal_port, port_type = self._get_optimal_port(vlan_tag)
         port_id = self.helper.get_port_id(optimal_port, port_type)
         home_port_id = port_id
         home_port_type = port_type
@@ -1372,7 +1372,7 @@ class V3StorageConnection(driver.HuaweiBase):
 
         return vlan_id, logical_port_id
 
-    def _get_optimal_port(self):
+    def _get_optimal_port(self, vlan_tag):
         """Get an optimal physical port or bond port."""
         root = self.helper._read_xml()
         port_info = []
@@ -1385,8 +1385,14 @@ class V3StorageConnection(driver.HuaweiBase):
                     port_info.append(port)
 
         eth_port, bond_port = self._get_online_port(port_info)
-        optimal_port, port_type = (
-            self._get_least_vlan_port(eth_port, bond_port))
+        if vlan_tag:
+            optimal_port, port_type = (
+                self._get_least_port(eth_port, bond_port,
+                                     sort_type=constants.SORT_BY_VLAN))
+        else:
+            optimal_port, port_type = (
+                self._get_least_port(eth_port, bond_port,
+                                     sort_type=constants.SORT_BY_LOGICAL))
 
         if not optimal_port:
             err_msg = (_("Cannot find optimal port. port_info: %s.")
@@ -1438,28 +1444,33 @@ class V3StorageConnection(driver.HuaweiBase):
 
         return filtered_eth_port, filtered_bond_port
 
-    def _get_least_vlan_port(self, eth_port, bond_port):
+    def _get_least_port(self, eth_port, bond_port, sort_type):
         sorted_eth = []
         sorted_bond = []
 
+        if sort_type == constants.SORT_BY_VLAN:
+            _get_sorted_least_port = self._get_sorted_least_port_by_vlan
+        else:
+            _get_sorted_least_port = self._get_sorted_least_port_by_logical
+
         if eth_port:
-            sorted_eth = self._get_sorted_least_port(eth_port)
+            sorted_eth = _get_sorted_least_port(eth_port)
         if bond_port:
-            sorted_bond = self._get_sorted_least_port(bond_port)
+            sorted_bond = _get_sorted_least_port(bond_port)
 
         if sorted_eth and sorted_bond:
             if sorted_eth[1] >= sorted_bond[1]:
                 return sorted_bond[0], constants.PORT_TYPE_BOND
             else:
                 return sorted_eth[0], constants.PORT_TYPE_ETH
-        elif sorted_eth and not sorted_bond:
+        elif sorted_eth:
             return sorted_eth[0], constants.PORT_TYPE_ETH
-        elif not sorted_eth and sorted_bond:
+        elif sorted_bond:
             return sorted_bond[0], constants.PORT_TYPE_BOND
         else:
             return None, None
 
-    def _get_sorted_least_port(self, port_list):
+    def _get_sorted_least_port_by_vlan(self, port_list):
         if not port_list:
             return None
 
@@ -1473,6 +1484,27 @@ class V3StorageConnection(driver.HuaweiBase):
                 pos = vlan['NAME'].rfind('.')
                 if vlan['NAME'][:pos] == item:
                     count[item] += 1
+
+        sort_port = sorted(count.items(), key=lambda count: count[1])
+
+        return sort_port[0]
+
+    def _get_sorted_least_port_by_logical(self, port_list):
+        if not port_list:
+            return None
+
+        logical_list = self.helper.get_all_logical_port()
+        count = {}
+        for item in port_list:
+            count[item] = 0
+            for logical in logical_list:
+                if logical['HOMEPORTTYPE'] == constants.PORT_TYPE_VLAN:
+                    pos = logical['HOMEPORTNAME'].rfind('.')
+                    if logical['HOMEPORTNAME'][:pos] == item:
+                        count[item] += 1
+                else:
+                    if logical['HOMEPORTNAME'] == item:
+                        count[item] += 1
 
         sort_port = sorted(count.items(), key=lambda count: count[1])
 
