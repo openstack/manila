@@ -1849,18 +1849,23 @@ class ShareManager(manager.SchedulerDependentManager):
     @utils.require_driver_initialized
     def allow_access(self, context, share_instance_id, access_rules):
         """Allow access to some share instance."""
-        add_rules = [self.db.share_access_get(context, rule_id)
-                     for rule_id in access_rules]
-
         share_instance = self._get_share_instance(context, share_instance_id)
-        share_server = self._get_share_server(context, share_instance)
+        status = share_instance['access_rules_status']
 
-        return self.access_helper.update_access_rules(
-            context,
-            share_instance_id,
-            add_rules=add_rules,
-            share_server=share_server
-        )
+        if status not in (constants.STATUS_UPDATING,
+                          constants.STATUS_UPDATING_MULTIPLE,
+                          constants.STATUS_ACTIVE):
+            add_rules = [self.db.share_access_get(context, rule_id)
+                         for rule_id in access_rules]
+
+            share_server = self._get_share_server(context, share_instance)
+
+            return self.access_helper.update_access_rules(
+                context,
+                share_instance_id,
+                add_rules=add_rules,
+                share_server=share_server
+            )
 
     @add_hooks
     @utils.require_driver_initialized
