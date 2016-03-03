@@ -37,7 +37,7 @@ from oslo_log import log
 from manila import i18n
 i18n.enable_lazy()
 
-from manila.common import config  # Need to register global_opts  # noqa
+from manila.common import config  # Need to register global_opts
 from manila.i18n import _LE
 from manila import service
 from manila import utils
@@ -48,6 +48,7 @@ CONF = cfg.CONF
 
 def main():
     log.register_options(CONF)
+    config.set_middleware_defaults()
     CONF(sys.argv[1:], project='manila',
          version=version.version_string())
     log.setup(CONF, "manila")

@@ -38,6 +38,7 @@ import routes.middleware
 import webob.dec
 import webob.exc
 
+from manila.common import config
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
@@ -198,6 +199,7 @@ class Server(service.ServiceBase):
         # give bad file descriptor error. So duplicating the socket object,
         # to keep file descriptor usable.
 
+        config.set_middleware_defaults()
         dup_socket = self._socket.dup()
         if self._use_ssl:
             try:
