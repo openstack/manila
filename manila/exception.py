@@ -768,3 +768,9 @@ class ReplicationException(ManilaException):
 
 class ShareReplicaNotFound(NotFound):
     message = _("Share Replica %(replica_id)s could not be found.")
+
+
+# Tegile Storage drivers
+class TegileAPIException(ShareBackendException):
+    message = _("Unexpected response from Tegile IntelliFlash API: "
+                "%(response)s")

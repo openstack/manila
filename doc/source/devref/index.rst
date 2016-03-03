@@ -112,6 +112,7 @@ Share backends
    hdfs_native_driver
    hds_hnas_driver
    hpe_3par_driver
+   tegile_driver
 
 Indices and tables
 ------------------
