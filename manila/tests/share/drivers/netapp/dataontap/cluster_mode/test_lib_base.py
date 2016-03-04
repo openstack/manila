@@ -1170,7 +1170,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                  vserver_client)))
         mock_delete_snapshot = self.mock_object(
             self.library, '_delete_snapshot',
-            mock.Mock(side_effect=exception.SnapshotNotFound(
+            mock.Mock(side_effect=exception.SnapshotResourceNotFound(
                 name=fake.SNAPSHOT_NAME)))
 
         self.library.delete_snapshot(self.context,
@@ -1757,7 +1757,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
         mock_delete_snapshot = self.mock_object(
             self.library, '_delete_snapshot',
-            mock.Mock(side_effect=exception.SnapshotNotFound(name='fake')))
+            mock.Mock(side_effect=exception.SnapshotResourceNotFound(
+                name='fake')))
 
         result = self.library.delete_cgsnapshot(
             self.context,

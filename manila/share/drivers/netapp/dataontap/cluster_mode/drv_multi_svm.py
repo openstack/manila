@@ -122,10 +122,11 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
         self.library.teardown_server(server_details, **kwargs)
 
     def create_replica(self, context, replica_list, replica, access_rules,
-                       **kwargs):
+                       replica_snapshots, **kwargs):
         raise NotImplementedError()
 
-    def delete_replica(self, context, replica_list, replica, **kwargs):
+    def delete_replica(self, context, replica_list, replica_snapshots,
+                       replica, **kwargs):
         raise NotImplementedError()
 
     def promote_replica(self, context, replica_list, replica, access_rules,
@@ -133,5 +134,6 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
         raise NotImplementedError()
 
     def update_replica_state(self, context, replica_list, replica,
-                             access_rules, share_server=None):
+                             access_rules, replica_snapshots,
+                             share_server=None):
         raise NotImplementedError()

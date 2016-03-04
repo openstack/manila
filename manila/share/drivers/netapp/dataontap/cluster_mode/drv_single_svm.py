@@ -121,11 +121,12 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
         self.library.teardown_server(server_details, **kwargs)
 
     def create_replica(self, context, replica_list, replica, access_rules,
-                       **kwargs):
+                       replica_snapshots, **kwargs):
         return self.library.create_replica(context, replica_list, replica,
                                            access_rules, **kwargs)
 
-    def delete_replica(self, context, replica_list, replica, **kwargs):
+    def delete_replica(self, context, replica_list, replica_snapshots, replica,
+                       **kwargs):
         self.library.delete_replica(context, replica_list, replica, **kwargs)
 
     def promote_replica(self, context, replica_list, replica, access_rules,
@@ -135,7 +136,8 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
                                             share_server=share_server)
 
     def update_replica_state(self, context, replica_list, replica,
-                             access_rules, share_server=None):
+                             access_rules, replica_snapshots,
+                             share_server=None):
         return self.library.update_replica_state(context,
                                                  replica_list,
                                                  replica,

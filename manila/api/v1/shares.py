@@ -320,7 +320,7 @@ class ShareMixin(object):
         else:
             snapshot = None
 
-        kwargs['snapshot'] = snapshot
+        kwargs['snapshot_id'] = snapshot_id
 
         share_network_id = share.get('share_network_id')
 

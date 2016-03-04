@@ -539,14 +539,14 @@ class ShareDriverTestCase(test.TestCase):
         self.assertRaises(NotImplementedError,
                           share_driver.create_replica,
                           'fake_context', ['r1', 'r2'],
-                          'fake_new_replica', [])
+                          'fake_new_replica', [], [])
 
     def test_delete_replica(self):
         share_driver = self._instantiate_share_driver(None, True)
         self.assertRaises(NotImplementedError,
                           share_driver.delete_replica,
                           'fake_context', ['r1', 'r2'],
-                          'fake_replica')
+                          'fake_replica', [])
 
     def test_promote_replica(self):
         share_driver = self._instantiate_share_driver(None, True)
@@ -558,4 +558,23 @@ class ShareDriverTestCase(test.TestCase):
         share_driver = self._instantiate_share_driver(None, True)
         self.assertRaises(NotImplementedError,
                           share_driver.update_replica_state,
-                          'fake_context', ['r1', 'r2'], 'fake_replica', [])
+                          'fake_context', ['r1', 'r2'], 'fake_replica', [], [])
+
+    def test_create_replicated_snapshot(self):
+        share_driver = self._instantiate_share_driver(None, False)
+        self.assertRaises(NotImplementedError,
+                          share_driver.create_replicated_snapshot,
+                          'fake_context', ['r1', 'r2'], ['s1', 's2'])
+
+    def test_delete_replicated_snapshot(self):
+        share_driver = self._instantiate_share_driver(None, False)
+        self.assertRaises(NotImplementedError,
+                          share_driver.delete_replicated_snapshot,
+                          'fake_context', ['r1', 'r2'], ['s1', 's2'])
+
+    def test_update_replicated_snapshot(self):
+        share_driver = self._instantiate_share_driver(None, False)
+        self.assertRaises(NotImplementedError,
+                          share_driver.update_replicated_snapshot,
+                          'fake_context', ['r1', 'r2'], 'r1',
+                          ['s1', 's2'], 's1')

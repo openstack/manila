@@ -1817,7 +1817,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         snapshot_info_list = attributes_list.get_children()
 
         if not self._has_records(result):
-            raise exception.SnapshotNotFound(name=snapshot_name)
+            raise exception.SnapshotResourceNotFound(name=snapshot_name)
         elif len(snapshot_info_list) > 1:
             msg = _('Could not find unique snapshot %(snap)s on '
                     'volume %(vol)s.')

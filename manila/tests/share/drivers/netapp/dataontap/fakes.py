@@ -297,7 +297,7 @@ SHARE_FOR_CG1 = {
     'id': SHARE_ID,
     'host': '%(host)s@%(backend)s#%(pool)s' % {
         'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME},
-    'name': 'share1',
+    'name': 'share_1',
     'share_proto': 'NFS',
     'source_cgsnapshot_member_id': None,
 }
@@ -306,7 +306,7 @@ SHARE_FOR_CG2 = {
     'id': SHARE_ID2,
     'host': '%(host)s@%(backend)s#%(pool)s' % {
         'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME},
-    'name': 'share2',
+    'name': 'share_2',
     'share_proto': 'NFS',
     'source_cgsnapshot_member_id': None,
 }

@@ -190,7 +190,7 @@ class ShareAPITestCase(test.TestCase):
         share = db_utils.create_share(
             user_id=self.context.user_id,
             project_id=self.context.project_id,
-            share_type_id='fake',
+            share_type_id=kwargs.pop('share_type_id', 'fake'),
             **kwargs
         )
         share_data = {
@@ -234,12 +234,15 @@ class ShareAPITestCase(test.TestCase):
         CONF.set_default("use_scheduler_creating_share_from_snapshot",
                          use_scheduler)
 
+        share_type = fakes.fake_share_type()
+
         original_share = db_utils.create_share(
             user_id=self.context.user_id,
             project_id=self.context.project_id,
             status=constants.STATUS_AVAILABLE,
             host=host if host else 'fake',
-            size=1
+            size=1,
+            share_type_id=share_type['id'],
         )
         snapshot = db_utils.create_snapshot(
             share_id=original_share['id'],
@@ -248,7 +251,7 @@ class ShareAPITestCase(test.TestCase):
         )
 
         share, share_data = self._setup_create_mocks(
-            snapshot_id=snapshot['id'])
+            snapshot_id=snapshot['id'], share_type_id=share_type['id'])
 
         request_spec = {
             'share_properties': share.to_dict(),
@@ -261,7 +264,8 @@ class ShareAPITestCase(test.TestCase):
         self.mock_object(quota.QUOTAS, 'reserve',
                          mock.Mock(return_value='reservation'))
         self.mock_object(quota.QUOTAS, 'commit')
-        self.mock_object(share_types, 'get_share_type')
+        self.mock_object(
+            share_types, 'get_share_type', mock.Mock(return_value=share_type))
 
         return snapshot, share, share_data, request_spec
 
@@ -879,6 +883,48 @@ class ShareAPITestCase(test.TestCase):
             db_api.share_snapshot_create.assert_called_once_with(
                 self.context, options)
 
+    def test_create_snapshot_for_replicated_share(self):
+        share = fakes.fake_share(
+            has_replicas=True, status=constants.STATUS_AVAILABLE)
+        snapshot = fakes.fake_snapshot(
+            create_instance=True, share_instance_id='id2')
+        replicas = [
+            fakes.fake_replica(
+                id='id1', replica_state=constants.REPLICA_STATE_ACTIVE),
+            fakes.fake_replica(
+                id='id2', replica_state=constants.REPLICA_STATE_IN_SYNC)
+        ]
+        self.mock_object(share_api.policy, 'check_policy')
+        self.mock_object(quota.QUOTAS, 'reserve',
+                         mock.Mock(return_value='reservation'))
+        self.mock_object(
+            db_api, 'share_snapshot_create', mock.Mock(return_value=snapshot))
+        self.mock_object(db_api, 'share_replicas_get_all_by_share',
+                         mock.Mock(return_value=replicas))
+        self.mock_object(
+            db_api, 'share_snapshot_get', mock.Mock(return_value=snapshot))
+        self.mock_object(quota.QUOTAS, 'commit')
+        mock_instance_create_call = self.mock_object(
+            db_api, 'share_snapshot_instance_create')
+        mock_snapshot_rpc_call = self.mock_object(
+            self.share_rpcapi, 'create_snapshot')
+        mock_replicated_snapshot_rpc_call = self.mock_object(
+            self.share_rpcapi, 'create_replicated_snapshot')
+        snapshot_instance_args = {
+            'status': constants.STATUS_CREATING,
+            'progress': '0%',
+            'share_instance_id': 'id1',
+        }
+
+        retval = self.api.create_snapshot(
+            self.context, share, 'fake_name', 'fake_description')
+
+        self.assertEqual(snapshot['id'], retval['id'])
+        mock_instance_create_call.assert_called_once_with(
+            self.context, snapshot['id'], snapshot_instance_args)
+        self.assertFalse(mock_snapshot_rpc_call.called)
+        self.assertTrue(mock_replicated_snapshot_rpc_call.called)
+
     @mock.patch.object(db_api, 'share_instances_get_all_by_share_server',
                        mock.Mock(return_value=[]))
     @mock.patch.object(db_api, 'consistency_group_get_all_by_share_server',
@@ -927,7 +973,7 @@ class ShareAPITestCase(test.TestCase):
         db_api.consistency_group_get_all_by_share_server.\
             assert_called_once_with(self.context, server['id'])
 
-    @mock.patch.object(db_api, 'share_snapshot_update', mock.Mock())
+    @mock.patch.object(db_api, 'share_snapshot_instance_update', mock.Mock())
     def test_delete_snapshot(self):
         snapshot = db_utils.create_snapshot(
             with_share=True, status=constants.STATUS_AVAILABLE)
@@ -940,9 +986,9 @@ class ShareAPITestCase(test.TestCase):
                 self.context, snapshot, share['host'])
             share_api.policy.check_policy.assert_called_once_with(
                 self.context, 'share', 'delete_snapshot', snapshot)
-            db_api.share_snapshot_update.assert_called_once_with(
+            db_api.share_snapshot_instance_update.assert_called_once_with(
                 self.context,
-                snapshot['id'],
+                snapshot['instance']['id'],
                 {'status': constants.STATUS_DELETING})
             db_api.share_get.assert_called_once_with(
                 self.context, snapshot['share_id'])
@@ -957,6 +1003,39 @@ class ShareAPITestCase(test.TestCase):
                           snapshot)
         share_api.policy.check_policy.assert_called_once_with(
             self.context, 'share', 'delete_snapshot', snapshot)
+
+    @ddt.data(True, False)
+    def test_delete_snapshot_replicated_snapshot(self, force):
+        share = fakes.fake_share(has_replicas=True)
+        snapshot = fakes.fake_snapshot(
+            create_instance=True, share_id=share['id'],
+            status=constants.STATUS_ERROR)
+        snapshot_instance = fakes.fake_snapshot_instance(
+            base_snapshot=snapshot)
+        expected_update_calls = [
+            mock.call(self.context, x, {'status': constants.STATUS_DELETING})
+            for x in (snapshot['instance']['id'], snapshot_instance['id'])
+        ]
+        self.mock_object(db_api, 'share_get', mock.Mock(return_value=share))
+        self.mock_object(
+            db_api, 'share_snapshot_instance_get_all_with_filters',
+            mock.Mock(return_value=[snapshot['instance'], snapshot_instance]))
+        mock_db_update_call = self.mock_object(
+            db_api, 'share_snapshot_instance_update')
+        mock_snapshot_rpc_call = self.mock_object(
+            self.share_rpcapi, 'delete_snapshot')
+        mock_replicated_snapshot_rpc_call = self.mock_object(
+            self.share_rpcapi, 'delete_replicated_snapshot')
+
+        retval = self.api.delete_snapshot(self.context, snapshot, force=force)
+
+        self.assertIsNone(retval)
+        self.assertEqual(2, mock_db_update_call.call_count)
+        mock_db_update_call.assert_has_calls(expected_update_calls)
+        mock_replicated_snapshot_rpc_call.assert_called_once_with(
+            self.context, snapshot, share['instance']['host'],
+            share_id=share['id'], force=force)
+        self.assertFalse(mock_snapshot_rpc_call.called)
 
     def test_create_snapshot_if_share_not_available(self):
         share = db_utils.create_share(status=constants.STATUS_ERROR)
@@ -990,6 +1069,10 @@ class ShareAPITestCase(test.TestCase):
             self._setup_create_from_snapshot_mocks(
                 use_scheduler=use_scheduler, host=valid_host)
         )
+        share_type = fakes.fake_share_type()
+
+        mock_get_share_type_call = self.mock_object(
+            share_types, 'get_share_type', mock.Mock(return_value=share_type))
         az = share_data.pop('availability_zone')
 
         self.api.create(
@@ -998,11 +1081,12 @@ class ShareAPITestCase(test.TestCase):
             None,  # NOTE(u_glide): Get share size from snapshot
             share_data['display_name'],
             share_data['display_description'],
-            snapshot=snapshot,
+            snapshot_id=snapshot['id'],
             availability_zone=az
         )
 
-        self.assertEqual(0, share_types.get_share_type.call_count)
+        mock_get_share_type_call.assert_called_once_with(
+            self.context, share['share_type_id'])
         self.assertSubDictMatch(share_data,
                                 db_api.share_create.call_args[0][1])
         self.api.create_instance.assert_called_once_with(
@@ -1010,8 +1094,9 @@ class ShareAPITestCase(test.TestCase):
             host=valid_host,
             availability_zone=snapshot['share']['availability_zone'],
             consistency_group=None, cgsnapshot_member=None)
-        share_api.policy.check_policy.assert_called_once_with(
-            self.context, 'share', 'create')
+        share_api.policy.check_policy.assert_has_calls([
+            mock.call(self.context, 'share', 'create'),
+            mock.call(self.context, 'share_snapshot', 'get_snapshot')])
         quota.QUOTAS.reserve.assert_called_once_with(
             self.context, gigabytes=1, shares=1)
         quota.QUOTAS.commit.assert_called_once_with(
@@ -1029,7 +1114,7 @@ class ShareAPITestCase(test.TestCase):
                           share_data['size'],
                           share_data['display_name'],
                           share_data['display_description'],
-                          snapshot=snapshot,
+                          snapshot_id=snapshot['id'],
                           availability_zone=share_data['availability_zone'],
                           share_type=share_type)
 
@@ -1049,7 +1134,7 @@ class ShareAPITestCase(test.TestCase):
             with_share=True, status=constants.STATUS_ERROR)
         self.assertRaises(exception.InvalidShareSnapshot, self.api.create,
                           self.context, 'nfs', '1', 'fakename',
-                          'fakedesc', snapshot=snapshot,
+                          'fakedesc', snapshot_id=snapshot['id'],
                           availability_zone='fakeaz')
 
     def test_create_from_snapshot_larger_size(self):
@@ -1057,7 +1142,8 @@ class ShareAPITestCase(test.TestCase):
             size=100, status=constants.STATUS_AVAILABLE, with_share=True)
         self.assertRaises(exception.InvalidInput, self.api.create,
                           self.context, 'nfs', 1, 'fakename', 'fakedesc',
-                          availability_zone='fakeaz', snapshot=snapshot)
+                          availability_zone='fakeaz',
+                          snapshot_id=snapshot['id'])
 
     def test_create_share_wrong_size_0(self):
         self.assertRaises(exception.InvalidInput, self.api.create,
@@ -1876,12 +1962,17 @@ class ShareAPITestCase(test.TestCase):
         self.assertFalse(mock_db_update_call.called)
         self.assertFalse(mock_scheduler_rpcapi_call.called)
 
-    def test_create_share_replica(self):
+    @ddt.data(True, False)
+    def test_create_share_replica(self, has_snapshots):
         request_spec = fakes.fake_replica_request_spec()
         replica = request_spec['share_instance_properties']
         share = fakes.fake_share(
             id=replica['share_id'], replication_type='dr')
-        fake_replica = fakes.fake_replica(replica['id'])
+        snapshots = (
+            [fakes.fake_snapshot(), fakes.fake_snapshot()]
+            if has_snapshots else []
+        )
+        fake_replica = fakes.fake_replica(id=replica['id'])
         fake_request_spec = fakes.fake_replica_request_spec()
         self.mock_object(db_api, 'share_replicas_get_available_active_replica',
                          mock.Mock(return_value={'host': 'fake_ar_host'}))
@@ -1891,12 +1982,22 @@ class ShareAPITestCase(test.TestCase):
         self.mock_object(db_api, 'share_replica_update')
         mock_sched_rpcapi_call = self.mock_object(
             self.api.scheduler_rpcapi, 'create_share_replica')
+        mock_snapshot_get_all_call = self.mock_object(
+            db_api, 'share_snapshot_get_all_for_share',
+            mock.Mock(return_value=snapshots))
+        mock_snapshot_instance_create_call = self.mock_object(
+            db_api, 'share_snapshot_instance_create')
+        expected_snap_instance_create_call_count = 2 if has_snapshots else 0
 
         result = self.api.create_share_replica(
             self.context, share, availability_zone='FAKE_AZ')
 
         self.assertTrue(mock_sched_rpcapi_call.called)
         self.assertEqual(replica, result)
+        mock_snapshot_get_all_call.assert_called_once_with(
+            self.context, fake_replica['share_id'])
+        self.assertEqual(expected_snap_instance_create_call_count,
+                         mock_snapshot_instance_create_call.call_count)
 
     def test_delete_last_active_replica(self):
         fake_replica = fakes.fake_replica(
@@ -1911,13 +2012,21 @@ class ShareAPITestCase(test.TestCase):
             self.context, fake_replica)
         self.assertFalse(mock_log.called)
 
-    def test_delete_share_replica_no_host(self):
+    @ddt.data(True, False)
+    def test_delete_share_replica_no_host(self, has_snapshots):
+        snapshots = [{'id': 'xyz'}, {'id': 'abc'}, {'id': 'pqr'}]
+        snapshots = snapshots if has_snapshots else []
         replica = fakes.fake_replica('FAKE_ID', host='')
         mock_sched_rpcapi_call = self.mock_object(
             self.share_rpcapi, 'delete_share_replica')
         mock_db_replica_delete_call = self.mock_object(
             db_api, 'share_replica_delete')
         mock_db_update_call = self.mock_object(db_api, 'share_replica_update')
+        mock_snapshot_get_call = self.mock_object(
+            db_api, 'share_snapshot_instance_get_all_with_filters',
+            mock.Mock(return_value=snapshots))
+        mock_snapshot_instance_delete_call = self.mock_object(
+            db_api, 'share_snapshot_instance_delete')
 
         self.api.delete_share_replica(self.context, replica)
 
@@ -1926,7 +2035,11 @@ class ShareAPITestCase(test.TestCase):
             self.context, replica['id'])
         mock_db_update_call.assert_called_once_with(
             self.context, replica['id'],
-            {'terminated_at': mock.ANY})
+            {'status': constants.STATUS_DELETING, 'terminated_at': mock.ANY})
+        mock_snapshot_get_call.assert_called_once_with(
+            self.context,  {'share_instance_ids': replica['id']})
+        self.assertEqual(
+            len(snapshots), mock_snapshot_instance_delete_call.call_count)
 
     @ddt.data(True, False)
     def test_delete_share_replica(self, force):

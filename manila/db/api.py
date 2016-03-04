@@ -478,17 +478,35 @@ def share_instance_update_access_status(context, share_instance_id, status):
 
 
 def share_snapshot_instance_update(context, instance_id, values):
-    """Set the given properties on an snapshot instance and update it.
+    """Set the given properties on a share snapshot instance and update it.
 
     Raises NotFound if snapshot instance does not exist.
     """
     return IMPL.share_snapshot_instance_update(context, instance_id, values)
 
 
+def share_snapshot_instance_create(context, snapshot_id, values):
+    """Create a share snapshot instance for an existing snapshot."""
+    return IMPL.share_snapshot_instance_create(
+        context, snapshot_id, values)
+
+
 def share_snapshot_instance_get(context, instance_id, with_share_data=False):
-    """Get a snapshot or raise if it does not exist."""
+    """Get a snapshot instance or raise a NotFound exception."""
     return IMPL.share_snapshot_instance_get(
         context, instance_id, with_share_data=with_share_data)
+
+
+def share_snapshot_instance_get_all_with_filters(context, filters,
+                                                 with_share_data=False):
+    """Get all snapshot instances satisfying provided filters."""
+    return IMPL.share_snapshot_instance_get_all_with_filters(
+        context, filters, with_share_data=with_share_data)
+
+
+def share_snapshot_instance_delete(context, snapshot_instance_id):
+    """Delete a share snapshot instance."""
+    return IMPL.share_snapshot_instance_delete(context, snapshot_instance_id)
 
 
 ####################

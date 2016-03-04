@@ -483,12 +483,19 @@ class ManilaExceptionResponseCode404(test.TestCase):
         self.assertEqual(404, e.code)
         self.assertIn(name, e.msg)
 
-    def test_snapshot_not_found(self):
-        # verify response code for exception.SnapshotNotFound
+    def test_snapshot_resource_not_found(self):
+        # verify response code for exception.SnapshotResourceNotFound
         name = "fake_name"
-        e = exception.SnapshotNotFound(name=name)
+        e = exception.SnapshotResourceNotFound(name=name)
         self.assertEqual(404, e.code)
         self.assertIn(name, e.msg)
+
+    def test_snapshot_instance_not_found(self):
+        # verify response code for exception.ShareSnapshotInstanceNotFound
+        instance_id = 'fake_instance_id'
+        e = exception.ShareSnapshotInstanceNotFound(instance_id=instance_id)
+        self.assertEqual(404, e.code)
+        self.assertIn(instance_id, e.msg)
 
     def test_export_location_not_found(self):
         # verify response code for exception.ExportLocationNotFound

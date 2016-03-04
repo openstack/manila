@@ -148,3 +148,62 @@ class ShareTestCase(test.TestCase):
         share = db_utils.create_share(instances=instances)
 
         self.assertEqual(access_status, share.access_rules_status)
+
+
+@ddt.ddt
+class ShareSnapshotTestCase(test.TestCase):
+    """Testing of SQLAlchemy ShareSnapshot model class."""
+
+    def test_instance_and_proxified_properties(self):
+
+        in_sync_replica_instance = db_utils.create_share_instance(
+            status=constants.STATUS_AVAILABLE, share_id='fake_id',
+            replica_state=constants.REPLICA_STATE_IN_SYNC)
+        active_replica_instance = db_utils.create_share_instance(
+            status=constants.STATUS_AVAILABLE, share_id='fake_id',
+            replica_state=constants.REPLICA_STATE_ACTIVE)
+        out_of_sync_replica_instance = db_utils.create_share_instance(
+            status=constants.STATUS_ERROR, share_id='fake_id',
+            replica_state=constants.REPLICA_STATE_OUT_OF_SYNC)
+        non_replica_instance = db_utils.create_share_instance(
+            status=constants.STATUS_CREATING, share_id='fake_id')
+        share_instances = [
+            in_sync_replica_instance, active_replica_instance,
+            out_of_sync_replica_instance, non_replica_instance,
+        ]
+        share = db_utils.create_share(instances=share_instances)
+        snapshot_instance_list = [
+            db_utils.create_snapshot_instance(
+                'fake_snapshot_id',
+                status=constants.STATUS_CREATING,
+                share_instance_id=out_of_sync_replica_instance['id']),
+            db_utils.create_snapshot_instance(
+                'fake_snapshot_id',
+                status=constants.STATUS_ERROR,
+                share_instance_id=in_sync_replica_instance['id']),
+            db_utils.create_snapshot_instance(
+                'fake_snapshot_id',
+                status=constants.STATUS_AVAILABLE,
+                provider_location='hogsmeade:snapshot1',
+                progress='87%',
+                share_instance_id=active_replica_instance['id']),
+            db_utils.create_snapshot_instance(
+                'fake_snapshot_id',
+                status=constants.STATUS_MANAGING,
+                share_instance_id=non_replica_instance['id']),
+        ]
+        snapshot = db_utils.create_snapshot(
+            id='fake_snapshot_id', share_id=share['id'],
+            instances=snapshot_instance_list)
+
+        # Proxified properties
+        self.assertEqual(constants.STATUS_AVAILABLE, snapshot['status'])
+        self.assertEqual(constants.STATUS_ERROR, snapshot['aggregate_status'])
+        self.assertEqual('hogsmeade:snapshot1', snapshot['provider_location'])
+        self.assertEqual('87%', snapshot['progress'])
+
+        # Snapshot properties
+        expected_share_name = '-'.join(['share', share['id']])
+        self.assertEqual(expected_share_name, snapshot['share_name'])
+        self.assertEqual(active_replica_instance['id'],
+                         snapshot['instance']['share_instance_id'])

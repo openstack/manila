@@ -246,6 +246,9 @@ class SchedulerManagerTestCase(test.TestCase):
     def test_create_share_replica_exception_path(self):
         """Test 'raisable' exceptions for create_share_replica."""
         db_update = self.mock_object(db, 'share_replica_update')
+        self.mock_object(db, 'share_snapshot_instance_get_all_with_filters',
+                         mock.Mock(return_value=[{'id': '123'}]))
+        snap_update = self.mock_object(db, 'share_snapshot_instance_update')
         request_spec = fakes.fake_replica_request_spec()
         replica_id = request_spec.get('share_instance_properties').get('id')
         expected_updates = {
@@ -262,6 +265,8 @@ class SchedulerManagerTestCase(test.TestCase):
                               filter_properties={})
             db_update.assert_called_once_with(
                 self.context, replica_id, expected_updates)
+            snap_update.assert_called_once_with(
+                self.context, '123', {'status': constants.STATUS_ERROR})
 
     def test_create_share_replica_no_valid_host(self):
         """Test the NoValidHost exception for create_share_replica."""

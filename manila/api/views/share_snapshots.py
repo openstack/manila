@@ -49,7 +49,7 @@ class ViewBuilder(common.ViewBuilder):
             'share_id': snapshot.get('share_id'),
             'share_size': snapshot.get('share_size'),
             'created_at': snapshot.get('created_at'),
-            'status': snapshot.get('status'),
+            'status': snapshot.get('aggregate_status'),
             'name': snapshot.get('display_name'),
             'description': snapshot.get('display_description'),
             'size': snapshot.get('size'),
