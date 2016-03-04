@@ -100,8 +100,8 @@ MANILA_PATH_TO_PRIVATE_KEY=${MANILA_PATH_TO_PRIVATE_KEY:-"$USER_HOME/.ssh/id_rsa
 MANILA_SERVICE_KEYPAIR_NAME=${MANILA_SERVICE_KEYPAIR_NAME:-"manila-service"}
 
 MANILA_SERVICE_INSTANCE_USER=${MANILA_SERVICE_INSTANCE_USER:-"manila"}
-MANILA_SERVICE_IMAGE_URL=${MANILA_SERVICE_IMAGE_URL:-"https://github.com/uglide/manila-image-elements/releases/download/0.1.0/manila-service-image.qcow2"}
-MANILA_SERVICE_IMAGE_NAME=${MANILA_SERVICE_IMAGE_NAME:-"manila-service-image"}
+MANILA_SERVICE_IMAGE_URL=${MANILA_SERVICE_IMAGE_URL:-"http://tarballs.openstack.org/manila-image-elements/images/manila-service-image-master.qcow2"}
+MANILA_SERVICE_IMAGE_NAME=${MANILA_SERVICE_IMAGE_NAME:-"manila-service-image-master"}
 
 # Third party CI Vendors should set this to false to skip the service image download
 MANILA_SERVICE_IMAGE_ENABLED=$(trueorfalse True MANILA_SERVICE_IMAGE_ENABLED)
