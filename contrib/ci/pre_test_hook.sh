@@ -61,18 +61,25 @@ else
     echo "MANILA_MULTI_BACKEND=False" >> $localrc_path
 fi
 
-if [[ "$DRIVER" == "lvm" ]]; then
+MANILA_SERVICE_IMAGE_ENABLED=False
+if [[ "$DRIVER" == "generic" ]]; then
+    MANILA_SERVICE_IMAGE_ENABLED=True
+    echo "SHARE_DRIVER=manila.share.drivers.generic.GenericShareDriver" >> $localrc_path
+elif [[ "$DRIVER" == "windows" ]]; then
+    MANILA_SERVICE_IMAGE_ENABLED=True
+    echo "SHARE_DRIVER=manila.share.drivers.windows.windows_smb_driver.WindowsSMBDriver" >> $localrc_path
+elif [[ "$DRIVER" == "lvm" ]]; then
     echo "SHARE_DRIVER=manila.share.drivers.lvm.LVMShareDriver" >> $localrc_path
     echo "SHARE_BACKING_FILE_SIZE=32000M" >> $localrc_path
 elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     echo "SHARE_DRIVER=manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver" >> $localrc_path
     echo "RUN_MANILA_REPLICATION_TESTS=True" >> $localrc_path
-fi
-
-if [[ "$DRIVER" == "lxd" ]]; then
+elif [[ "$DRIVER" == "lxd" ]]; then
     echo "SHARE_DRIVER=manila.share.drivers.lxd.LXDDriver" >> $localrc_path
     echo "SHARE_BACKING_FILE_SIZE=32000M" >> $localrc_path
 fi
+
+echo "MANILA_SERVICE_IMAGE_ENABLED=$MANILA_SERVICE_IMAGE_ENABLED" >> $localrc_path
 
 # Enabling isolated metadata in Neutron is required because
 # Tempest creates isolated networks and created vm's in scenario tests don't
