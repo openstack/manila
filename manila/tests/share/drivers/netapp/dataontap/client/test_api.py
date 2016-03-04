@@ -18,9 +18,14 @@
 """
 Tests for NetApp API layer
 """
+import ddt
+import mock
+from six.moves import urllib
 
+from manila import exception
 from manila.share.drivers.netapp.dataontap.client import api
 from manila import test
+from manila.tests.share.drivers.netapp.dataontap.client import fakes as fake
 
 
 class NetAppApiElementTransTests(test.TestCase):
@@ -154,3 +159,82 @@ class NetAppApiElementTransTests(test.TestCase):
                           api.NaElement('root').__setitem__,
                           None,
                           'value')
+
+
+@ddt.ddt
+class NetAppApiServerTests(test.TestCase):
+    """Test case for NetApp API server methods"""
+    def setUp(self):
+        self.root = api.NaServer('127.0.0.1')
+        super(NetAppApiServerTests, self).setUp()
+
+    @ddt.data(None, fake.FAKE_XML_STR)
+    def test_invoke_elem_value_error(self, na_element):
+        """Tests whether invalid NaElement parameter causes error"""
+
+        self.assertRaises(ValueError, self.root.invoke_elem, na_element)
+
+    def test_invoke_elem_http_error(self):
+        """Tests handling of HTTPError"""
+        na_element = fake.FAKE_NA_ELEMENT
+        self.mock_object(self.root, '_create_request', mock.Mock(
+            return_value=('abc', fake.FAKE_NA_ELEMENT)))
+        self.mock_object(api, 'LOG')
+        self.root._opener = fake.FAKE_HTTP_OPENER
+        self.mock_object(self.root, '_build_opener')
+        self.mock_object(self.root._opener, 'open', mock.Mock(
+            side_effect=urllib.error.HTTPError(url='', hdrs='',
+                                               fp=None, code='401',
+                                               msg='httperror')))
+
+        self.assertRaises(api.NaApiError, self.root.invoke_elem,
+                          na_element)
+
+    def test_invoke_elem_urlerror(self):
+        """Tests handling of URLError"""
+        na_element = fake.FAKE_NA_ELEMENT
+        self.mock_object(self.root, '_create_request', mock.Mock(
+            return_value=('abc', fake.FAKE_NA_ELEMENT)))
+        self.mock_object(api, 'LOG')
+        self.root._opener = fake.FAKE_HTTP_OPENER
+        self.mock_object(self.root, '_build_opener')
+        self.mock_object(self.root._opener, 'open', mock.Mock(
+            side_effect=urllib.error.URLError(reason='urlerror')))
+
+        self.assertRaises(exception.StorageCommunicationException,
+                          self.root.invoke_elem,
+                          na_element)
+
+    def test_invoke_elem_unknown_exception(self):
+        """Tests handling of Unknown Exception"""
+        na_element = fake.FAKE_NA_ELEMENT
+        self.mock_object(self.root, '_create_request', mock.Mock(
+            return_value=('abc', fake.FAKE_NA_ELEMENT)))
+        self.mock_object(api, 'LOG')
+        self.root._opener = fake.FAKE_HTTP_OPENER
+        self.mock_object(self.root, '_build_opener')
+        self.mock_object(self.root._opener, 'open', mock.Mock(
+            side_effect=Exception))
+
+        exception = self.assertRaises(api.NaApiError, self.root.invoke_elem,
+                                      na_element)
+        self.assertEqual('unknown', exception.code)
+
+    def test_invoke_elem_valid(self):
+        """Tests the method invoke_elem with valid parameters"""
+        na_element = fake.FAKE_NA_ELEMENT
+        self.root._trace = True
+        self.mock_object(self.root, '_create_request', mock.Mock(
+            return_value=('abc', fake.FAKE_NA_ELEMENT)))
+        self.mock_object(api, 'LOG')
+        self.root._opener = fake.FAKE_HTTP_OPENER
+        self.mock_object(self.root, '_build_opener')
+        self.mock_object(self.root, '_get_result', mock.Mock(
+            return_value=fake.FAKE_NA_ELEMENT))
+        opener_mock = self.mock_object(
+            self.root._opener, 'open', mock.Mock())
+        opener_mock.read.side_effect = ['resp1', 'resp2']
+
+        self.root.invoke_elem(na_element)
+
+        self.assertEqual(2, api.LOG.debug.call_count)

@@ -774,3 +774,7 @@ class ShareReplicaNotFound(NotFound):
 class TegileAPIException(ShareBackendException):
     message = _("Unexpected response from Tegile IntelliFlash API: "
                 "%(response)s")
+
+
+class StorageCommunicationException(ShareBackendException):
+    message = _("Could not communicate with storage array.")
