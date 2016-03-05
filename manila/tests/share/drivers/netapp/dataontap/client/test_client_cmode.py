@@ -106,6 +106,128 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertFalse(self.client._has_records(
             netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)))
 
+    @ddt.data((fake.VSERVER_GET_ITER_RESPONSE, 1),
+              (fake.NO_RECORDS_RESPONSE, 0))
+    @ddt.unpack
+    def test_get_record_count(self, response, expected):
+
+        api_response = netapp_api.NaElement(response)
+
+        result = self.client._get_record_count(api_response)
+
+        self.assertEqual(expected, result)
+
+    def test_get_records_count_invalid(self):
+
+        api_response = netapp_api.NaElement(
+            fake.INVALID_GET_ITER_RESPONSE_NO_RECORDS)
+
+        self.assertRaises(exception.NetAppException,
+                          self.client._get_record_count,
+                          api_response)
+
+    def test_send_iter_request(self):
+
+        api_responses = [
+            netapp_api.NaElement(fake.STORAGE_DISK_GET_ITER_RESPONSE_PAGE_1),
+            netapp_api.NaElement(fake.STORAGE_DISK_GET_ITER_RESPONSE_PAGE_2),
+            netapp_api.NaElement(fake.STORAGE_DISK_GET_ITER_RESPONSE_PAGE_3),
+        ]
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(side_effect=api_responses))
+
+        storage_disk_get_iter_args = {
+            'desired-attributes': {
+                'storage-disk-info': {
+                    'disk-name': None,
+                }
+            }
+        }
+        result = self.client.send_iter_request(
+            'storage-disk-get-iter', api_args=storage_disk_get_iter_args,
+            max_page_length=10)
+
+        num_records = result.get_child_content('num-records')
+        self.assertEqual('28', num_records)
+        next_tag = result.get_child_content('next-tag')
+        self.assertEqual('', next_tag)
+
+        args1 = copy.deepcopy(storage_disk_get_iter_args)
+        args1['max-records'] = 10
+        args2 = copy.deepcopy(storage_disk_get_iter_args)
+        args2['max-records'] = 10
+        args2['tag'] = 'next_tag_1'
+        args3 = copy.deepcopy(storage_disk_get_iter_args)
+        args3['max-records'] = 10
+        args3['tag'] = 'next_tag_2'
+
+        mock_send_request.assert_has_calls([
+            mock.call('storage-disk-get-iter', args1),
+            mock.call('storage-disk-get-iter', args2),
+            mock.call('storage-disk-get-iter', args3),
+        ])
+
+    def test_send_iter_request_single_page(self):
+
+        api_response = netapp_api.NaElement(
+            fake.STORAGE_DISK_GET_ITER_RESPONSE)
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(return_value=api_response))
+
+        storage_disk_get_iter_args = {
+            'desired-attributes': {
+                'storage-disk-info': {
+                    'disk-name': None,
+                }
+            }
+        }
+        result = self.client.send_iter_request(
+            'storage-disk-get-iter', api_args=storage_disk_get_iter_args,
+            max_page_length=10)
+
+        num_records = result.get_child_content('num-records')
+        self.assertEqual('1', num_records)
+
+        args = copy.deepcopy(storage_disk_get_iter_args)
+        args['max-records'] = 10
+
+        mock_send_request.assert_has_calls([
+            mock.call('storage-disk-get-iter', args),
+        ])
+
+    def test_send_iter_request_not_found(self):
+
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(return_value=api_response))
+
+        result = self.client.send_iter_request('storage-disk-get-iter')
+
+        num_records = result.get_child_content('num-records')
+        self.assertEqual('0', num_records)
+
+        args = {'max-records': client_cmode.DEFAULT_MAX_PAGE_LENGTH}
+
+        mock_send_request.assert_has_calls([
+            mock.call('storage-disk-get-iter', args),
+        ])
+
+    @ddt.data(fake.INVALID_GET_ITER_RESPONSE_NO_ATTRIBUTES,
+              fake.INVALID_GET_ITER_RESPONSE_NO_RECORDS)
+    def test_send_iter_request_invalid(self, fake_response):
+
+        api_response = netapp_api.NaElement(fake_response)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.send_iter_request,
+                          'storage-disk-get-iter')
+
     def test_set_vserver(self):
         self.client.set_vserver(fake.VSERVER_NAME)
         self.client.connection.set_vserver.assert_has_calls(
@@ -115,7 +237,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.VSERVER_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         vserver_get_args = {
@@ -125,7 +247,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         result = self.client.vserver_exists(fake.VSERVER_NAME)
 
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('vserver-get-iter', vserver_get_args)])
         self.assertTrue(result)
 
@@ -211,7 +333,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.VSERVER_GET_ROOT_VOLUME_NAME_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         vserver_get_args = {
@@ -221,7 +343,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         result = self.client.get_vserver_root_volume_name(fake.VSERVER_NAME)
 
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('vserver-get-iter', vserver_get_args)])
         self.assertEqual(fake.ROOT_VOLUME_NAME, result)
 
@@ -229,7 +351,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         self.assertRaises(exception.NetAppException,
@@ -242,7 +364,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.VSERVER_GET_IPSPACE_NAME_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_vserver_ipspace(fake.VSERVER_NAME)
@@ -259,7 +381,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 },
             },
         }
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('vserver-get-iter', vserver_get_iter_args)])
         self.assertEqual(fake.IPSPACE_NAME, result)
 
@@ -274,7 +396,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.features.add_feature('IPSPACES')
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         self.assertRaises(exception.NetAppException,
@@ -286,7 +408,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.features.add_feature('IPSPACES')
         api_response = netapp_api.NaElement(fake.VSERVER_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.ipspace_has_data_vservers(fake.IPSPACE_NAME)
@@ -304,7 +426,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 },
             },
         }
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('vserver-get-iter', vserver_get_iter_args)])
         self.assertTrue(result)
 
@@ -331,7 +453,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.VSERVER_DATA_LIST_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.list_vservers()
@@ -348,7 +470,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 }
             }
         }
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('vserver-get-iter', vserver_get_iter_args)])
         self.assertListEqual([fake.VSERVER_NAME], result)
 
@@ -357,7 +479,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.VSERVER_DATA_LIST_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.list_vservers(vserver_type='node')
@@ -374,7 +496,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 }
             }
         }
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('vserver-get-iter', vserver_get_iter_args)])
         self.assertListEqual([fake.VSERVER_NAME], result)
 
@@ -394,7 +516,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.VOLUME_COUNT_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_vserver_volume_count()
@@ -409,7 +531,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.mock_object(self.client,
                          'get_vserver_root_volume_name',
                          mock.Mock(return_value=fake.ROOT_VOLUME_NAME))
-        self.mock_object(self.client,
+        self.mock_object(self.vserver_client,
                          'get_vserver_volume_count',
                          mock.Mock(return_value=0))
         self.mock_object(self.client, '_terminate_vserver_services')
@@ -627,7 +749,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.NET_PORT_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_node_data_ports(fake.NODE_NAME)
@@ -652,14 +774,14 @@ class NetAppClientCmodeTestCase(test.TestCase):
         }
 
         self.assertSequenceEqual(fake.SPEED_SORTED_PORTS, result)
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('net-port-get-iter', net_port_get_iter_args)])
 
     def test_get_node_data_ports_not_found(self):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_node_data_ports(fake.NODE_NAME)
@@ -903,7 +1025,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.NET_PORT_GET_ITER_BROADCAST_DOMAIN_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         net_port_get_iter_args = {
@@ -927,7 +1049,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'broadcast-domain': fake.BROADCAST_DOMAIN,
             'ipspace': fake.IPSPACE_NAME,
         }
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('net-port-get-iter', net_port_get_iter_args)])
         self.assertEqual(expected, result)
 
@@ -936,7 +1058,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         self.assertRaises(exception.NetAppException,
@@ -949,7 +1071,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.NET_PORT_GET_ITER_BROADCAST_DOMAIN_MISSING_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client._get_broadcast_domain_for_port(fake.NODE_NAME,
@@ -966,7 +1088,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.NET_PORT_BROADCAST_DOMAIN_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client._broadcast_domain_exists(fake.BROADCAST_DOMAIN,
@@ -983,7 +1105,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 'net-port-broadcast-domain-info': None,
             },
         }
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('net-port-broadcast-domain-get-iter',
                       net_port_broadcast_domain_get_iter_args)])
         self.assertTrue(result)
@@ -1132,7 +1254,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.NET_INTERFACE_GET_ONE_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         net_interface_get_args = {
@@ -1154,7 +1276,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             fake.VSERVER_NAME, fake.NODE_NAME, fake.PORT, fake.IP_ADDRESS,
             fake.NETMASK, fake.VLAN)
 
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('net-interface-get-iter', net_interface_get_args)])
         self.assertTrue(result)
 
@@ -1162,7 +1284,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         net_interface_get_args = {
@@ -1183,7 +1305,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         result = self.client.network_interface_exists(
             fake.VSERVER_NAME, fake.NODE_NAME, fake.PORT, fake.IP_ADDRESS,
             fake.NETMASK, None)
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('net-interface-get-iter', net_interface_get_args)])
         self.assertFalse(result)
 
@@ -1192,7 +1314,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.NET_INTERFACE_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         net_interface_get_args = {
@@ -1205,7 +1327,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         result = self.client.list_network_interfaces()
 
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('net-interface-get-iter', net_interface_get_args)])
         self.assertSequenceEqual(fake.LIF_NAMES, result)
 
@@ -1225,12 +1347,12 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.NET_INTERFACE_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_network_interfaces()
 
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('net-interface-get-iter', None)])
         self.assertSequenceEqual(fake.LIFS, result)
 
@@ -1239,7 +1361,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.NET_INTERFACE_GET_ITER_RESPONSE_NFS)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_network_interfaces(protocols=['NFS'])
@@ -1254,7 +1376,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             }
         }
 
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('net-interface-get-iter', net_interface_get_args)])
         self.assertListEqual(fake.NFS_LIFS, result)
 
@@ -1262,12 +1384,12 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_network_interfaces()
 
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('net-interface-get-iter', None)])
         self.assertListEqual([], result)
 
@@ -1291,21 +1413,19 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.NET_IPSPACES_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
-        result = self.client.get_ipspaces(ipspace_name=fake.IPSPACE_NAME,
-                                          max_records=500)
+        result = self.client.get_ipspaces(ipspace_name=fake.IPSPACE_NAME)
 
         net_ipspaces_get_iter_args = {
-            'max-records': 500,
             'query': {
                 'net-ipspaces-info': {
                     'ipspace': fake.IPSPACE_NAME,
                 },
             },
         }
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('net-ipspaces-get-iter', net_ipspaces_get_iter_args)])
         self.assertEqual(fake.IPSPACES, result)
 
@@ -1314,23 +1434,23 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.features.add_feature('IPSPACES')
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_ipspaces()
 
-        net_ipspaces_get_iter_args = {'max-records': 1000}
-        self.client.send_request.assert_has_calls([
+        net_ipspaces_get_iter_args = {}
+        self.client.send_iter_request.assert_has_calls([
             mock.call('net-ipspaces-get-iter', net_ipspaces_get_iter_args)])
         self.assertEqual([], result)
 
     def test_get_ipspaces_not_supported(self):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'send_iter_request')
 
         result = self.client.get_ipspaces()
 
-        self.assertFalse(self.client.send_request.called)
+        self.assertFalse(self.client.send_iter_request.called)
         self.assertEqual([], result)
 
     @ddt.data((fake.NET_IPSPACES_GET_ITER_RESPONSE, True),
@@ -1341,7 +1461,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.features.add_feature('IPSPACES')
         api_response = netapp_api.NaElement(api_response)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.ipspace_exists(fake.IPSPACE_NAME)
@@ -1358,7 +1478,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 },
             },
         }
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('net-ipspaces-get-iter', net_ipspaces_get_iter_args)])
         self.assertEqual(expected, result)
 
@@ -1443,7 +1563,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_get_node_for_aggregate_api_not_found(self):
 
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(side_effect=self._mock_api_error(
                              netapp_api.EAPINOTFOUND)))
 
@@ -1453,7 +1573,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
     def test_get_node_for_aggregate_api_error(self):
 
-        self.mock_object(self.client, 'send_request', self._mock_api_error())
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         self._mock_api_error())
 
         self.assertRaises(netapp_api.NaApiError,
                           self.client.get_node_for_aggregate,
@@ -1463,7 +1585,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_node_for_aggregate(fake.SHARE_AGGREGATE_NAME)
@@ -1604,12 +1726,12 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.AGGR_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client._get_aggregates()
 
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('aggr-get-iter', {})])
         self.assertListEqual(
             [aggr.to_string() for aggr in api_response.get_child_by_name(
@@ -1620,7 +1742,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.AGGR_GET_SPACE_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         desired_attributes = {
@@ -1646,7 +1768,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'desired-attributes': desired_attributes
         }
 
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('aggr-get-iter', aggr_get_iter_args)])
         self.assertListEqual(
             [aggr.to_string() for aggr in api_response.get_child_by_name(
@@ -1657,12 +1779,12 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client._get_aggregates()
 
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('aggr-get-iter', {})])
         self.assertListEqual([], result)
 
@@ -2132,7 +2254,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.SIS_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_volume_efficiency_status(fake.SHARE_NAME)
@@ -2150,7 +2272,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 },
             },
         }
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('sis-get-iter', sis_get_iter_args)])
 
         expected = {'dedupe': True, 'compression': True}
@@ -2160,7 +2282,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_volume_efficiency_status(fake.SHARE_NAME)
@@ -2388,7 +2510,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.VOLUME_GET_NAME_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.volume_exists(fake.SHARE_NAME)
@@ -2410,7 +2532,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             }
         }
 
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('volume-get-iter', volume_get_iter_args)])
         self.assertTrue(result)
 
@@ -2428,7 +2550,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.GET_AGGREGATE_FOR_VOLUME_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_aggregate_for_volume(fake.SHARE_NAME)
@@ -2451,7 +2573,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             }
         }
 
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('volume-get-iter', volume_get_iter_args)])
         self.assertEqual(fake.SHARE_AGGREGATE_NAME, result)
 
@@ -2459,7 +2581,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         self.assertRaises(exception.NetAppException,
@@ -2470,7 +2592,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.LUN_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.volume_has_luns(fake.SHARE_NAME)
@@ -2488,7 +2610,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             },
         }
 
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('lun-get-iter', lun_get_iter_args)])
         self.assertTrue(result)
 
@@ -2508,7 +2630,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.VOLUME_GET_ITER_JUNCTIONED_VOLUMES_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         fake_junction_path = '/%s' % fake.SHARE_NAME
@@ -2534,7 +2656,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 },
             },
         }
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('volume-get-iter', volume_get_iter_args)])
         self.assertTrue(result)
 
@@ -2569,7 +2691,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.VOLUME_GET_ITER_VOLUME_TO_MANAGE_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
         fake_junction_path = '/%s' % fake.SHARE_NAME
 
@@ -2606,7 +2728,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'style': 'flex',
             'size': fake.SHARE_SIZE,
         }
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('volume-get-iter', volume_get_iter_args)])
         self.assertDictEqual(expected, result)
 
@@ -2620,7 +2742,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
         fake_junction_path = '/%s' % fake.SHARE_NAME
 
@@ -2633,7 +2755,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.VOLUME_GET_ITER_VOLUME_TO_MANAGE_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_volume_to_manage(fake.SHARE_AGGREGATE_NAME,
@@ -2671,7 +2793,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'style': 'flex',
             'size': fake.SHARE_SIZE,
         }
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('volume-get-iter', volume_get_iter_args)])
         self.assertDictEqual(expected, result)
 
@@ -2679,7 +2801,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_volume_to_manage(fake.SHARE_AGGREGATE_NAME,
@@ -3121,13 +3243,12 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.CIFS_SHARE_ACCESS_CONTROL_GET_ITER)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_cifs_share_access(fake.SHARE_NAME)
 
         cifs_share_access_control_get_iter_args = {
-            'max-records': 1000,
             'query': {
                 'cifs-share-access-control': {
                     'share': fake.SHARE_NAME,
@@ -3140,7 +3261,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 },
             },
         }
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('cifs-share-access-control-get-iter',
                       cifs_share_access_control_get_iter_args)])
 
@@ -3156,7 +3277,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_cifs_share_access(fake.SHARE_NAME)
@@ -3358,7 +3479,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.EXPORT_RULE_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client._get_nfs_export_rule_indices(
@@ -3381,7 +3502,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             },
         }
         self.assertListEqual(['1', '3'], result)
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('export-rule-get-iter', export_rule_get_iter_args)])
 
     def test_remove_nfs_export_rule(self):
@@ -3480,7 +3601,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.VOLUME_GET_EXPORT_POLICY_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_nfs_export_policy_for_volume(fake.SHARE_NAME)
@@ -3502,14 +3623,14 @@ class NetAppClientCmodeTestCase(test.TestCase):
             },
         }
         self.assertEqual(fake.EXPORT_POLICY_NAME, result)
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('volume-get-iter', volume_get_iter_args)])
 
     def test_get_nfs_export_policy_for_volume_not_found(self):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         self.assertRaises(exception.NetAppException,
@@ -3654,7 +3775,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.DELETED_EXPORT_POLICY_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client._get_deleted_nfs_export_policies()
@@ -3673,7 +3794,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             },
         }
         self.assertSequenceEqual(fake.DELETED_EXPORT_POLICIES, result)
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('export-policy-get-iter', export_policy_get_iter_args)])
 
     def test_get_ems_log_destination_vserver(self):
@@ -3794,7 +3915,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.AGGR_GET_RAID_TYPE_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_aggregate_raid_types(
@@ -3823,7 +3944,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             fake.SHARE_AGGREGATE_RAID_TYPES[1]
         }
 
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('aggr-get-iter', aggr_get_iter_args)])
         self.assertDictEqual(expected, result)
 
@@ -3831,7 +3952,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_aggregate_raid_types(
@@ -3879,7 +4000,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.SYSTEM_NODE_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.check_for_cluster_credentials()
@@ -3889,7 +4010,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_check_for_cluster_credentials_not_cluster(self):
 
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(side_effect=self._mock_api_error(
                              netapp_api.EAPINOTFOUND)))
 
@@ -3899,7 +4020,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
     def test_check_for_cluster_credentials_api_error(self):
 
-        self.mock_object(self.client, 'send_request', self._mock_api_error())
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         self._mock_api_error())
 
         self.assertRaises(netapp_api.NaApiError,
                           self.client.check_for_cluster_credentials)
@@ -3929,13 +4052,13 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.CLUSTER_PEER_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_cluster_peers()
 
-        cluster_peer_get_iter_args = {'max-records': 1000}
-        self.client.send_request.assert_has_calls([
+        cluster_peer_get_iter_args = {}
+        self.client.send_iter_request.assert_has_calls([
             mock.call('cluster-peer-get-iter', cluster_peer_get_iter_args)])
 
         expected = [{
@@ -3959,7 +4082,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.CLUSTER_PEER_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         self.client.get_cluster_peers(remote_cluster_name=fake.CLUSTER_NAME)
@@ -3970,23 +4093,22 @@ class NetAppClientCmodeTestCase(test.TestCase):
                     'remote-cluster-name': fake.CLUSTER_NAME,
                 }
             },
-            'max-records': 1000,
         }
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('cluster-peer-get-iter', cluster_peer_get_iter_args)])
 
     def test_get_cluster_peers_not_found(self):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_cluster_peers(
             remote_cluster_name=fake.CLUSTER_NAME)
 
         self.assertEqual([], result)
-        self.assertTrue(self.client.send_request.called)
+        self.assertTrue(self.client.send_iter_request.called)
 
     def test_delete_cluster_peer(self):
 
@@ -4104,7 +4226,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.VSERVER_PEER_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_vserver_peers(
@@ -4118,9 +4240,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
                     'peer-vserver': fake.VSERVER_NAME_2,
                 }
             },
-            'max-records': 1000,
         }
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('vserver-peer-get-iter', vserver_peer_get_iter_args)])
 
         expected = [{
@@ -4135,7 +4256,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_vserver_peers(
@@ -4143,7 +4264,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             peer_vserver_name=fake.VSERVER_NAME_2)
 
         self.assertEqual([], result)
-        self.assertTrue(self.client.send_request.called)
+        self.assertTrue(self.client.send_iter_request.called)
 
     def test_ensure_snapmirror_v2(self):
 
@@ -4491,7 +4612,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.SNAPMIRROR_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         desired_attributes = {
@@ -4528,7 +4649,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 },
             },
         }
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('snapmirror-get-iter', snapmirror_get_iter_args)])
         self.assertEqual(1, len(result))
 
@@ -4536,12 +4657,12 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client._get_snapmirrors()
 
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('snapmirror-get-iter', {})])
 
         self.assertEqual([], result)
@@ -4551,7 +4672,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake.SNAPMIRROR_GET_ITER_FILTERED_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
         desired_attributes = ['source-vserver', 'source-volume',
@@ -4595,7 +4716,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'schedule': 'daily',
         }]
 
-        self.client.send_request.assert_has_calls([
+        self.client.send_iter_request.assert_has_calls([
             mock.call('snapmirror-get-iter', snapmirror_get_iter_args)])
         self.assertEqual(expected, result)
 
