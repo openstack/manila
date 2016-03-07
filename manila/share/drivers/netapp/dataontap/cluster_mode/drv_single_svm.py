@@ -53,7 +53,7 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
                                                        snapshot, **kwargs)
 
     def create_snapshot(self, context, snapshot, **kwargs):
-        self.library.create_snapshot(context, snapshot, **kwargs)
+        return self.library.create_snapshot(context, snapshot, **kwargs)
 
     def delete_share(self, context, share, **kwargs):
         self.library.delete_share(context, share, **kwargs)
@@ -123,11 +123,13 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
     def create_replica(self, context, replica_list, replica, access_rules,
                        replica_snapshots, **kwargs):
         return self.library.create_replica(context, replica_list, replica,
-                                           access_rules, **kwargs)
+                                           access_rules, replica_snapshots,
+                                           **kwargs)
 
     def delete_replica(self, context, replica_list, replica_snapshots, replica,
                        **kwargs):
-        self.library.delete_replica(context, replica_list, replica, **kwargs)
+        self.library.delete_replica(context, replica_list, replica,
+                                    replica_snapshots, **kwargs)
 
     def promote_replica(self, context, replica_list, replica, access_rules,
                         share_server=None):
@@ -142,4 +144,24 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
                                                  replica_list,
                                                  replica,
                                                  access_rules,
+                                                 replica_snapshots,
                                                  share_server=share_server)
+
+    def create_replicated_snapshot(self, context, replica_list,
+                                   replica_snapshots, share_server=None):
+        return self.library.create_replicated_snapshot(
+            context, replica_list, replica_snapshots,
+            share_server=share_server)
+
+    def delete_replicated_snapshot(self, context, replica_list,
+                                   replica_snapshots, share_server=None):
+        return self.library.delete_replicated_snapshot(
+            context, replica_list, replica_snapshots,
+            share_server=share_server)
+
+    def update_replicated_snapshot(self, context, replica_list,
+                                   share_replica, replica_snapshots,
+                                   replica_snapshot, share_server=None):
+        return self.library.update_replicated_snapshot(
+            replica_list, share_replica, replica_snapshots, replica_snapshot,
+            share_server=share_server)

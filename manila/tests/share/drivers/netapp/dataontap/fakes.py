@@ -262,7 +262,9 @@ SHARE_SERVER = {
 SNAPSHOT = {
     'id': SNAPSHOT_ID,
     'project_id': TENANT_ID,
-    'share_id': PARENT_SHARE_ID
+    'share_id': PARENT_SHARE_ID,
+    'status': constants.STATUS_CREATING,
+    'provider_location': None,
 }
 
 CDOT_SNAPSHOT = {

@@ -1770,6 +1770,56 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('snapshot-create', api_args)
 
     @na_utils.trace
+    def snapshot_exists(self, snapshot_name, volume_name):
+        """Checks if Snapshot exists for a specified volume."""
+        LOG.debug('Checking if snapshot %(snapshot)s exists for '
+                  'volume %(volume)s',
+                  {'snapshot': snapshot_name, 'volume': volume_name})
+
+        """Gets a single snapshot."""
+        api_args = {
+            'query': {
+                'snapshot-info': {
+                    'name': snapshot_name,
+                    'volume': volume_name,
+                },
+            },
+            'desired-attributes': {
+                'snapshot-info': {
+                    'name': None,
+                    'volume': None,
+                    'busy': None,
+                    'snapshot-owners-list': {
+                        'snapshot-owner': None,
+                    }
+                },
+            },
+        }
+        result = self.send_request('snapshot-get-iter', api_args)
+
+        error_record_list = result.get_child_by_name(
+            'volume-errors') or netapp_api.NaElement('none')
+        errors = error_record_list.get_children()
+
+        if errors:
+            error = errors[0]
+            error_code = error.get_child_content('errno')
+            error_reason = error.get_child_content('reason')
+            msg = _('Could not read information for snapshot %(name)s. '
+                    'Code: %(code)s. Reason: %(reason)s')
+            msg_args = {
+                'name': snapshot_name,
+                'code': error_code,
+                'reason': error_reason
+            }
+            if error_code == netapp_api.ESNAPSHOTNOTALLOWED:
+                raise exception.SnapshotUnavailable(msg % msg_args)
+            else:
+                raise exception.NetAppException(msg % msg_args)
+
+        return self._has_records(result)
+
+    @na_utils.trace
     def get_snapshot(self, volume_name, snapshot_name):
         """Gets a single snapshot."""
         api_args = {

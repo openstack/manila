@@ -137,3 +137,16 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
                              access_rules, replica_snapshots,
                              share_server=None):
         raise NotImplementedError()
+
+    def create_replicated_snapshot(self, context, replica_list,
+                                   replica_snapshots, share_server=None):
+        raise NotImplementedError()
+
+    def delete_replicated_snapshot(self, context, replica_list,
+                                   replica_snapshots, share_server=None):
+        raise NotImplementedError()
+
+    def update_replicated_snapshot(self, context, replica_list,
+                                   share_replica, replica_snapshots,
+                                   replica_snapshot, share_server=None):
+        raise NotImplementedError()
