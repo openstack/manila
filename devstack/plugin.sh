@@ -757,7 +757,7 @@ elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
     fi
 
     # Cinder config update
-    if [[ -n "$CINDER_OVERSUBSCRIPTION_RATIO" ]]; then
+    if is_service_enabled cinder && [[ -n "$CINDER_OVERSUBSCRIPTION_RATIO" ]]; then
         CINDER_CONF=${CINDER_CONF:-/etc/cinder/cinder.conf}
         CINDER_ENABLED_BACKENDS=$(iniget $CINDER_CONF DEFAULT enabled_backends)
         for BN in ${CINDER_ENABLED_BACKENDS//,/ }; do
