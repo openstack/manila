@@ -1528,6 +1528,41 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager._setup_server.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), fake_server)
 
+    def test_create_share_instance_update_replica_state(self):
+        share_net = db_utils.create_share_network()
+        share = db_utils.create_share(share_network_id=share_net['id'],
+                                      replication_type='dr')
+        db_utils.create_share_server(
+            share_network_id=share_net['id'], host=self.share_manager.host,
+            status=constants.STATUS_ERROR)
+        share_id = share['id']
+        fake_server = {
+            'id': 'fake_srv_id',
+            'status': constants.STATUS_CREATING,
+        }
+        self.mock_object(db, 'share_server_create',
+                         mock.Mock(return_value=fake_server))
+        self.mock_object(self.share_manager, '_setup_server',
+                         mock.Mock(return_value=fake_server))
+
+        self.share_manager.create_share_instance(self.context,
+                                                 share.instance['id'])
+
+        self.assertEqual(share_id, db.share_get(context.get_admin_context(),
+                         share_id).id)
+        shr = db.share_get(self.context, share_id)
+        shr_instances = db.share_instances_get_all_by_share(
+            self.context, shr['id'])
+        self.assertEqual(1, len(shr_instances))
+        self.assertEqual(constants.STATUS_AVAILABLE, shr['status'])
+        self.assertEqual(
+            constants.REPLICA_STATE_ACTIVE, shr_instances[0]['replica_state'])
+        self.assertEqual('fake_srv_id', shr['share_server_id'])
+        db.share_server_create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), mock.ANY)
+        self.share_manager._setup_server.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_server)
+
     def test_create_delete_share_instance_error(self):
         """Test share can be created and deleted with error."""
 

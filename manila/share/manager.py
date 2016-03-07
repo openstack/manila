@@ -1015,17 +1015,15 @@ class ShareManager(manager.SchedulerDependentManager):
         else:
             LOG.info(_LI("Share instance %s created successfully."),
                      share_instance_id)
-            self.db.share_instance_update(
-                context, share_instance_id,
-                {'status': constants.STATUS_AVAILABLE,
-                 'launched_at': timeutils.utcnow()})
-
             share = self.db.share_get(context, share_instance['share_id'])
-
+            updates = {
+                'status': constants.STATUS_AVAILABLE,
+                'launched_at': timeutils.utcnow(),
+            }
             if share.get('replication_type'):
-                self.db.share_replica_update(
-                    context, share_instance_id,
-                    {'replica_state': constants.REPLICA_STATE_ACTIVE})
+                updates['replica_state'] = constants.REPLICA_STATE_ACTIVE
+
+            self.db.share_instance_update(context, share_instance_id, updates)
 
     def _update_share_replica_access_rules_state(self, context,
                                                  share_replica_id, state):
