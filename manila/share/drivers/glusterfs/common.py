@@ -118,8 +118,29 @@ class GlusterManager(object):
                          given component in the uri will be enforced.
         """
 
-        self.components = (address if isinstance(address, dict) else
-                           self.parse(address))
+        if isinstance(address, dict):
+            tmp_addr = ""
+            if address.get('user') is not None:
+                tmp_addr = address.get('user') + '@'
+            if address.get('host') is not None:
+                tmp_addr += address.get('host')
+            if address.get('volume') is not None:
+                tmp_addr += ':/' + address.get('volume')
+            if address.get('path') is not None:
+                tmp_addr += address.get('path')
+            self.components = self.parse(tmp_addr)
+            # Verify that the original dictionary matches the parsed
+            # dictionary. This will flag typos such as {'volume': 'vol/err'}
+            # in the original dictionary as errors.  Additionally,
+            # extra keys will need to be flagged as an error.
+            sanitized_address = {key: None for key in self.scheme.groupindex}
+            sanitized_address.update(address)
+            if sanitized_address != self.components:
+                raise exception.GlusterfsException(
+                    _('Invalid gluster address %s.') % address)
+        else:
+            self.components = self.parse(address)
+
         for k, v in requires.items():
             if v is None:
                 continue
