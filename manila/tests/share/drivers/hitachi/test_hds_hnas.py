@@ -159,7 +159,7 @@ class HDSHNASTestCase(test.TestCase):
 
         ssh.HNASSSHBackend.update_access_rule.assert_called_once_with(
             share['id'], [access1['access_to'] + '('
-                          + access1['access_level'] + ')',
+                          + access1['access_level'] + ',norootsquash)',
                           access2['access_to'] + '('
                           + access2['access_level'] + ')'])
         self.assertTrue(self.mock_log.debug.called)
