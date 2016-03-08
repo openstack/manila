@@ -1394,19 +1394,18 @@ class ShareManager(manager.SchedulerDependentManager):
         share_replica = self._get_share_replica_dict(context, share_replica)
 
         try:
-
             replica_state = self.driver.update_replica_state(
                 context, replica_list, share_replica, access_rules,
                 share_server=share_server)
-
         except Exception:
-            # If the replica_state was previously in 'error', it is
-            # possible that the driver throws an exception during its
-            # update. This exception can be ignored.
-            with excutils.save_and_reraise_exception() as exc_context:
-                if (share_replica.get('replica_state') ==
-                        constants.STATUS_ERROR):
-                    exc_context.reraise = False
+            msg = _LE("Driver error when updating replica "
+                      "state for replica %s.")
+            LOG.exception(msg, share_replica['id'])
+            self.db.share_replica_update(
+                context, share_replica['id'],
+                {'replica_state': constants.STATUS_ERROR,
+                 'status': constants.STATUS_ERROR})
+            return
 
         if replica_state in (constants.REPLICA_STATE_IN_SYNC,
                              constants.REPLICA_STATE_OUT_OF_SYNC,

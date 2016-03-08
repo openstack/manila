@@ -1114,10 +1114,14 @@ class ShareManagerTestCase(test.TestCase):
         mock_db_update_call = self.mock_object(
             self.share_manager.db, 'share_replica_update')
 
-        self.assertRaises(exception.ManilaException,
-                          self.share_manager._share_replica_update,
-                          self.context, replica, share_id=replica['share_id'])
-        self.assertFalse(mock_db_update_call.called)
+        self.share_manager._share_replica_update(
+            self.context,  replica, share_id=replica['share_id'])
+
+        mock_db_update_call.assert_called_once_with(
+            self.context, replica['id'],
+            {'replica_state': constants.STATUS_ERROR,
+             'status': constants.STATUS_ERROR}
+        )
         self.assertEqual(1, mock_debug_log.call_count)
 
     def test__share_replica_update_driver_exception_ignored(self):
@@ -1138,7 +1142,11 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager._share_replica_update(
             self.context, replica, share_id=replica['share_id'])
 
-        self.assertFalse(mock_db_update_call.called)
+        mock_db_update_call.assert_called_once_with(
+            self.context, replica['id'],
+            {'replica_state': constants.STATUS_ERROR,
+             'status': constants.STATUS_ERROR}
+        )
         self.assertEqual(1, mock_debug_log.call_count)
 
     @ddt.data({'status': constants.STATUS_AVAILABLE,
