@@ -1808,13 +1808,15 @@ class ShareManager(manager.SchedulerDependentManager):
             try:
                 reservations = QUOTAS.reserve(
                     context, project_id=project_id, snapshots=-1,
-                    snapshot_gigabytes=-snapshot_ref['size'])
+                    snapshot_gigabytes=-snapshot_ref['size'],
+                    user_id=snapshot_ref['user_id'])
             except Exception:
                 reservations = None
                 LOG.exception(_LE("Failed to update usages deleting snapshot"))
 
             if reservations:
-                QUOTAS.commit(context, reservations, project_id=project_id)
+                QUOTAS.commit(context, reservations, project_id=project_id,
+                              user_id=snapshot_ref['user_id'])
 
     @add_hooks
     @utils.require_driver_initialized

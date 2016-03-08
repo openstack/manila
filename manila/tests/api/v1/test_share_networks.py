@@ -238,6 +238,8 @@ class ShareNetworkAPITest(test.TestCase):
     def test_quota_delete_reservation_failed(self):
         share_nw = fake_share_network.copy()
         share_nw['share_servers'] = ['foo', 'bar']
+        share_nw['user_id'] = 'fake_user_id'
+
         self.mock_object(db_api, 'share_network_get',
                          mock.Mock(return_value=share_nw))
         self.mock_object(db_api, 'share_instances_get_all_by_share_network',
@@ -262,7 +264,12 @@ class ShareNetworkAPITest(test.TestCase):
             mock.call(self.req.environ['manila.context'], 'bar')])
         db_api.share_network_delete.assert_called_once_with(
             self.req.environ['manila.context'], share_nw['id'])
-        self.assertTrue(share_networks.QUOTAS.reserve.called)
+        share_networks.QUOTAS.reserve.assert_called_once_with(
+            self.req.environ['manila.context'],
+            project_id=share_nw['project_id'],
+            share_networks=-1,
+            user_id=share_nw['user_id']
+        )
         self.assertFalse(share_networks.QUOTAS.commit.called)
 
     def test_delete_in_use_by_share(self):

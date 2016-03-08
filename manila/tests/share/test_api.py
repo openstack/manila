@@ -1082,6 +1082,30 @@ class ShareAPITestCase(test.TestCase):
         db_api.share_snapshot_get_all_for_share.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), share['id'])
 
+    def test_delete_quota_with_different_user(self):
+        share = self._setup_delete_mocks(constants.STATUS_AVAILABLE)
+        diff_user_context = context.RequestContext(
+            user_id='fake2',
+            project_id='fake',
+            is_admin=False
+        )
+
+        self.api.delete(diff_user_context, share)
+
+        quota.QUOTAS.reserve.assert_called_once_with(
+            diff_user_context,
+            project_id=share['project_id'],
+            shares=-1,
+            gigabytes=-share['size'],
+            user_id=share['user_id']
+        )
+        quota.QUOTAS.commit.assert_called_once_with(
+            diff_user_context,
+            mock.ANY,
+            project_id=share['project_id'],
+            user_id=share['user_id']
+        )
+
     def test_delete_wrong_status(self):
         share = fake_share('fakeid')
         self.mock_object(db_api, 'share_get', mock.Mock(return_value=share))
@@ -1148,7 +1172,8 @@ class ShareAPITestCase(test.TestCase):
             self.context,
             project_id=share['project_id'],
             shares=-1,
-            gigabytes=-share['size']
+            gigabytes=-share['size'],
+            user_id=share['user_id']
         )
         self.assertFalse(quota.QUOTAS.commit.called)
 

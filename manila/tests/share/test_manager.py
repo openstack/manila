@@ -1308,6 +1308,29 @@ class ShareManagerTestCase(test.TestCase):
             utils.IsAMatcher(models.ShareSnapshotInstance),
             share_server=None)
 
+    def test_delete_snapshot_quota_error(self):
+        share = db_utils.create_share()
+        share_id = share['id']
+        snapshot = db_utils.create_snapshot(share_id=share_id)
+        snapshot_id = snapshot['id']
+        snapshot = db_utils.create_snapshot(
+            with_share=True, status=constants.STATUS_AVAILABLE)
+
+        self.mock_object(quota.QUOTAS, 'reserve',
+                         mock.Mock(side_effect=exception.QuotaError('fake')))
+        self.mock_object(quota.QUOTAS, 'commit')
+
+        self.share_manager.delete_snapshot(self.context, snapshot_id)
+
+        quota.QUOTAS.reserve.assert_called_once_with(
+            mock.ANY,
+            project_id=six.text_type(snapshot['project_id']),
+            snapshots=-1,
+            snapshot_gigabytes=-snapshot['size'],
+            user_id=six.text_type(snapshot['user_id'])
+        )
+        self.assertFalse(quota.QUOTAS.commit.called)
+
     def test_delete_share_instance_if_busy(self):
         """Test snapshot could not be deleted if busy."""
 

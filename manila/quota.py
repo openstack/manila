@@ -301,7 +301,8 @@ class DbQuotaDriver(object):
                            common user's tenant.
         :param user_id: Specify the user_id if current context
                         is admin and admin wants to impact on
-                        common user.
+                        common user. (Special case: user operates on
+                        resource, owned/created by different user)
         """
 
         # Filter resources
@@ -358,7 +359,8 @@ class DbQuotaDriver(object):
                            common user's tenant.
         :param user_id: Specify the user_id if current context
                         is admin and admin wants to impact on
-                        common user.
+                        common user. (Special case: user operates on
+                        resource, owned/created by different user)
         """
 
         # Ensure no value is less than zero
@@ -425,7 +427,8 @@ class DbQuotaDriver(object):
                            common user's tenant.
         :param user_id: Specify the user_id if current context
                         is admin and admin wants to impact on
-                        common user.
+                        common user. (Special case: user operates on
+                        resource, owned/created by different user)
         """
 
         # Set up the reservation expiration
@@ -441,7 +444,7 @@ class DbQuotaDriver(object):
         # If project_id is None, then we use the project_id in context
         if project_id is None:
             project_id = context.project_id
-        # If user_id is None, then we use the project_id in context
+        # If user_id is None, then we use the user_id in context
         if user_id is None:
             user_id = context.user_id
 
@@ -476,7 +479,8 @@ class DbQuotaDriver(object):
                            common user's tenant.
         :param user_id: Specify the user_id if current context
                         is admin and admin wants to impact on
-                        common user.
+                        common user. (Special case: user operates on
+                        resource, owned/created by different user)
         """
         # If project_id is None, then we use the project_id in context
         if project_id is None:
@@ -499,7 +503,8 @@ class DbQuotaDriver(object):
                            common user's tenant.
         :param user_id: Specify the user_id if current context
                         is admin and admin wants to impact on
-                        common user.
+                        common user. (Special case: user operates on
+                        resource, owned/created by different user)
         """
         # If project_id is None, then we use the project_id in context
         if project_id is None:
@@ -912,7 +917,8 @@ class QuotaEngine(object):
                            common user's tenant.
         :param user_id: Specify the user_id if current context
                         is admin and admin wants to impact on
-                        common user.
+                        common user. (Special case: user operates on
+                        resource, owned/created by different user)
         """
 
         return self._driver.limit_check(context, self._resources, values,
