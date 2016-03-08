@@ -389,7 +389,12 @@ class API(base.Base):
                 context, share, availability_zone=availability_zone,
                 share_network_id=share_network_id))
 
+        all_replicas = self.db.share_replicas_get_all_by_share(
+            context, share['id'])
+        all_hosts = [r['host'] for r in all_replicas]
+
         request_spec['active_replica_host'] = active_replica['host']
+        request_spec['all_replica_hosts'] = ','.join(all_hosts)
 
         self.db.share_replica_update(
             context, share_replica['id'],

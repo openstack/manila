@@ -21,6 +21,7 @@ import ddt
 import mock
 from oslo_config import cfg
 
+from manila.common import constants
 from manila import context
 from manila import db
 from manila import exception
@@ -30,6 +31,7 @@ from manila.scheduler import manager
 from manila.share import rpcapi as share_rpcapi
 from manila import test
 from manila.tests import db_utils
+from manila.tests import fake_share as fakes
 
 CONF = cfg.CONF
 
@@ -50,6 +52,9 @@ class SchedulerManagerTestCase(test.TestCase):
         self.topic = 'fake_topic'
         self.fake_args = (1, 2, 3)
         self.fake_kwargs = {'cat': 'meow', 'dog': 'woof'}
+
+    def raise_no_valid_host(*args, **kwargs):
+            raise exception.NoValidHost(reason="")
 
     def test_1_correct_init(self):
         # Correct scheduler driver
@@ -116,15 +121,12 @@ class SchedulerManagerTestCase(test.TestCase):
 
         Puts the share in 'error' state and eats the exception.
         """
-        def raise_no_valid_host(*args, **kwargs):
-            raise exception.NoValidHost(reason="")
-
         fake_share_id = 1
 
         request_spec = {'share_id': fake_share_id}
-        with mock.patch.object(self.manager.driver,
-                               'schedule_create_share',
-                               mock.Mock(side_effect=raise_no_valid_host)):
+        with mock.patch.object(
+                self.manager.driver, 'schedule_create_share',
+                mock.Mock(side_effect=self.raise_no_valid_host)):
             self.mock_object(manager.LOG, 'error')
 
             self.manager.create_share_instance(
@@ -179,15 +181,13 @@ class SchedulerManagerTestCase(test.TestCase):
 
         Puts the share in 'error' state and eats the exception.
         """
-        def raise_no_valid_host(*args, **kwargs):
-            raise exception.NoValidHost(reason="")
 
         fake_cg_id = 1
         cg_id = fake_cg_id
         request_spec = {"consistency_group_id": cg_id}
-        with mock.patch.object(self.manager.driver,
-                               'schedule_create_consistency_group',
-                               mock.Mock(side_effect=raise_no_valid_host)):
+        with mock.patch.object(
+                self.manager.driver, 'schedule_create_consistency_group',
+                mock.Mock(side_effect=self.raise_no_valid_host)):
             self.manager.create_consistency_group(self.context,
                                                   fake_cg_id,
                                                   request_spec=request_spec,
@@ -242,3 +242,58 @@ class SchedulerManagerTestCase(test.TestCase):
         self.assertRaises(
             exception.NoValidHost, self.manager.migrate_share_to_host,
             self.context, share['id'], host, False, True, {}, None)
+
+    def test_create_share_replica_exception_path(self):
+        """Test 'raisable' exceptions for create_share_replica."""
+        db_update = self.mock_object(db, 'share_replica_update')
+        request_spec = fakes.fake_replica_request_spec()
+        replica_id = request_spec.get('share_instance_properties').get('id')
+        expected_updates = {
+            'status': constants.STATUS_ERROR,
+            'replica_state': constants.STATUS_ERROR,
+        }
+        with mock.patch.object(self.manager.driver, 'schedule_create_replica',
+                               mock.Mock(side_effect=exception.NotFound)):
+
+            self.assertRaises(exception.NotFound,
+                              self.manager.create_share_replica,
+                              self.context,
+                              request_spec=request_spec,
+                              filter_properties={})
+            db_update.assert_called_once_with(
+                self.context, replica_id, expected_updates)
+
+    def test_create_share_replica_no_valid_host(self):
+        """Test the NoValidHost exception for create_share_replica."""
+        db_update = self.mock_object(db, 'share_replica_update')
+        request_spec = fakes.fake_replica_request_spec()
+        replica_id = request_spec.get('share_instance_properties').get('id')
+        expected_updates = {
+            'status': constants.STATUS_ERROR,
+            'replica_state': constants.STATUS_ERROR,
+        }
+        with mock.patch.object(
+                self.manager.driver, 'schedule_create_replica',
+                mock.Mock(side_effect=self.raise_no_valid_host)):
+
+            retval = self.manager.create_share_replica(
+                self.context, request_spec=request_spec, filter_properties={})
+
+            self.assertIsNone(retval)
+            db_update.assert_called_once_with(
+                self.context, replica_id, expected_updates)
+
+    def test_create_share_replica(self):
+        """Test happy path for create_share_replica."""
+        db_update = self.mock_object(db, 'share_replica_update')
+        mock_scheduler_driver_call = self.mock_object(
+            self.manager.driver, 'schedule_create_replica')
+        request_spec = fakes.fake_replica_request_spec()
+
+        retval = self.manager.create_share_replica(
+            self.context, request_spec=request_spec, filter_properties={})
+
+        mock_scheduler_driver_call.assert_called_once_with(
+            self.context, request_spec, {})
+        self.assertFalse(db_update.called)
+        self.assertIsNone(retval)

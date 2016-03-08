@@ -37,12 +37,14 @@ class ShareReplicationFilterTestCase(test.TestCase):
     def _create_replica_request(replication_domain='kashyyyk',
                                 replication_type='dr',
                                 active_replica_host=fakes.FAKE_HOST_STRING_1,
+                                all_replica_hosts=fakes.FAKE_HOST_STRING_1,
                                 is_admin=False):
         ctxt = context.RequestContext('fake', 'fake', is_admin=is_admin)
         return {
             'context': ctxt,
             'request_spec': {
                 'active_replica_host': active_replica_host,
+                'all_replica_hosts': all_replica_hosts,
             },
             'resource_type': {
                 'extra_specs': {
@@ -75,6 +77,18 @@ class ShareReplicationFilterTestCase(test.TestCase):
         self.assertFalse(self.filter.host_passes(host, request))
         self.assertTrue(self.debug_log.called)
 
+    def test_share_replication_filter_fails_host_has_replicas(self):
+        all_replica_hosts = ','.join(['host1', fakes.FAKE_HOST_STRING_1])
+        request = self._create_replica_request(
+            all_replica_hosts=all_replica_hosts)
+
+        host = fakes.FakeHostState('host1',
+                                   {
+                                       'replication_domain': 'kashyyyk',
+                                   })
+        self.assertFalse(self.filter.host_passes(host, request))
+        self.assertTrue(self.debug_log.called)
+
     def test_share_replication_filter_passes_no_replication_type(self):
         request = self._create_replica_request(replication_type=None)
 
@@ -96,9 +110,11 @@ class ShareReplicationFilterTestCase(test.TestCase):
         self.assertTrue(self.filter.host_passes(host, request))
 
     def test_share_replication_filter_passes_happy_day(self):
-        request = self._create_replica_request()
+        all_replica_hosts = ','.join(['host1', fakes.FAKE_HOST_STRING_1])
+        request = self._create_replica_request(
+            all_replica_hosts=all_replica_hosts)
 
-        host = fakes.FakeHostState('host1',
+        host = fakes.FakeHostState('host2',
                                    {
                                        'replication_domain': 'kashyyyk',
                                    })
