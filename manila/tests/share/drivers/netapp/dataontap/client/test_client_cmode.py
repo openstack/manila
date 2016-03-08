@@ -2827,9 +2827,14 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('volume-clone-create', volume_clone_create_args)])
 
-    def test_split_volume_clone(self):
+    @ddt.data(None,
+              mock.Mock(side_effect=netapp_api.NaApiError(
+                  code=netapp_api.EVOL_CLONE_BEING_SPLIT)))
+    def test_split_volume_clone(self, side_effect):
 
-        self.mock_object(self.client, 'send_request')
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(side_effect=side_effect))
 
         self.client.split_volume_clone(fake.SHARE_NAME)
 
@@ -2837,6 +2842,67 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.send_request.assert_has_calls([
             mock.call('volume-clone-split-start', volume_clone_split_args)])
+
+    def test_split_volume_clone_api_error(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=self._mock_api_error()))
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.split_volume_clone,
+                          fake.SHARE_NAME)
+
+    def test_get_clone_children_for_snapshot(self):
+
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_GET_ITER_CLONE_CHILDREN_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_clone_children_for_snapshot(
+            fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+
+        volume_get_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-clone-attributes': {
+                        'volume-clone-parent-attributes': {
+                            'name': fake.SHARE_NAME,
+                            'snapshot-name': fake.SNAPSHOT_NAME,
+                        },
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': None,
+                    },
+                },
+            },
+        }
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('volume-get-iter', volume_get_iter_args)])
+
+        expected = [
+            {'name': fake.CLONE_CHILD_1},
+            {'name': fake.CLONE_CHILD_2},
+        ]
+        self.assertEqual(expected, result)
+
+    def test_get_clone_children_for_snapshot_not_found(self):
+
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_clone_children_for_snapshot(
+            fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+
+        self.assertEqual([], result)
 
     def test_get_volume_junction_path(self):
 
@@ -3149,6 +3215,22 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           fake.SHARE_NAME,
                           fake.SNAPSHOT_NAME)
 
+    def test_rename_snapshot(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.rename_snapshot(fake.SHARE_NAME,
+                                    fake.SNAPSHOT_NAME,
+                                    'new_snapshot_name')
+
+        snapshot_rename_args = {
+            'volume': fake.SHARE_NAME,
+            'current-name': fake.SNAPSHOT_NAME,
+            'new-name': 'new_snapshot_name'
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('snapshot-rename', snapshot_rename_args)])
+
     def test_delete_snapshot(self):
 
         self.mock_object(self.client, 'send_request')
@@ -3162,6 +3244,99 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.send_request.assert_has_calls([
             mock.call('snapshot-delete', snapshot_delete_args)])
+
+    def test_soft_delete_snapshot(self):
+
+        mock_delete_snapshot = self.mock_object(self.client, 'delete_snapshot')
+        mock_rename_snapshot = self.mock_object(self.client, 'rename_snapshot')
+
+        self.client.soft_delete_snapshot(fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+
+        mock_delete_snapshot.assert_called_once_with(
+            fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+        self.assertFalse(mock_rename_snapshot.called)
+
+    def test_soft_delete_snapshot_api_error(self):
+
+        mock_delete_snapshot = self.mock_object(
+            self.client, 'delete_snapshot', self._mock_api_error())
+        mock_rename_snapshot = self.mock_object(self.client, 'rename_snapshot')
+
+        self.client.soft_delete_snapshot(fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+
+        mock_delete_snapshot.assert_called_once_with(
+            fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+        mock_rename_snapshot.assert_called_once_with(
+            fake.SHARE_NAME, fake.SNAPSHOT_NAME,
+            'deleted_manila_' + fake.SNAPSHOT_NAME)
+
+    def test_prune_deleted_snapshots(self):
+
+        deleted_snapshots_map = {
+            'vserver1': [{
+                'name': 'deleted_snap_1',
+                'volume': 'fake_volume_1',
+                'vserver': 'vserver1',
+            }],
+            'vserver2': [{
+                'name': 'deleted_snap_2',
+                'volume': 'fake_volume_2',
+                'vserver': 'vserver2',
+            }],
+        }
+        mock_get_deleted_snapshots = self.mock_object(
+            self.client, '_get_deleted_snapshots',
+            mock.Mock(return_value=deleted_snapshots_map))
+        mock_delete_snapshot = self.mock_object(
+            self.client, 'delete_snapshot',
+            mock.Mock(side_effect=[None, netapp_api.NaApiError]))
+        self.mock_object(
+            copy, 'deepcopy', mock.Mock(return_value=self.client))
+
+        self.client.prune_deleted_snapshots()
+
+        mock_get_deleted_snapshots.assert_called_once_with()
+        mock_delete_snapshot.assert_has_calls([
+            mock.call('fake_volume_1', 'deleted_snap_1'),
+            mock.call('fake_volume_2', 'deleted_snap_2'),
+        ], any_order=True)
+
+    def test_get_deleted_snapshots(self):
+
+        api_response = netapp_api.NaElement(
+            fake.SNAPSHOT_GET_ITER_DELETED_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client._get_deleted_snapshots()
+
+        snapshot_get_iter_args = {
+            'query': {
+                'snapshot-info': {
+                    'name': 'deleted_manila_*',
+                    'busy': 'false',
+                },
+            },
+            'desired-attributes': {
+                'snapshot-info': {
+                    'name': None,
+                    'vserver': None,
+                    'volume': None,
+                },
+            },
+        }
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('snapshot-get-iter', snapshot_get_iter_args)])
+
+        expected = {
+            fake.VSERVER_NAME: [{
+                'name': 'deleted_manila_' + fake.SNAPSHOT_NAME,
+                'volume': fake.SHARE_NAME,
+                'vserver': fake.VSERVER_NAME,
+            }],
+        }
+        self.assertDictEqual(expected, result)
 
     def test_create_cg_snapshot(self):
 

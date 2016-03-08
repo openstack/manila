@@ -22,7 +22,6 @@ single-SVM or multi-SVM functionality needed by the cDOT Manila drivers.
 import copy
 import math
 import socket
-import time
 
 from oslo_config import cfg
 from oslo_log import log
@@ -568,7 +567,6 @@ class NetAppCmodeFileStorageLibrary(object):
         LOG.debug('Creating share from snapshot %s', snapshot['id'])
         vserver_client.create_volume_clone(share_name, parent_share_name,
                                            parent_snapshot_name)
-        vserver_client.split_volume_clone(share_name)
 
     @na_utils.trace
     def _share_exists(self, share_name, vserver_client):
@@ -735,47 +733,35 @@ class NetAppCmodeFileStorageLibrary(object):
         snapshot_name = self._get_backend_snapshot_name(snapshot['id'])
 
         try:
-            self._handle_busy_snapshot(vserver_client, share_name,
-                                       snapshot_name)
+            self._delete_snapshot(vserver_client, share_name, snapshot_name)
         except exception.SnapshotNotFound:
-            LOG.info(_LI("Snapshot %s does not exist."), snapshot_name)
-            return
+            msg = _LI("Snapshot %(snap)s does not exist on share %(share)s.")
+            msg_args = {'snap': snapshot_name, 'share': share_name}
+            LOG.info(msg, msg_args)
+
+    def _delete_snapshot(self, vserver_client, share_name, snapshot_name):
+        """Deletes a backend snapshot, handling busy snapshots as needed."""
+
+        backend_snapshot = vserver_client.get_snapshot(share_name,
+                                                       snapshot_name)
 
         LOG.debug('Deleting snapshot %(snap)s for share %(share)s.',
                   {'snap': snapshot_name, 'share': share_name})
-        vserver_client.delete_snapshot(share_name, snapshot_name)
 
-    @na_utils.trace
-    def _handle_busy_snapshot(self, vserver_client, share_name, snapshot_name,
-                              wait_seconds=60):
-        """Checks for and handles a busy snapshot.
+        if not backend_snapshot['busy']:
+            vserver_client.delete_snapshot(share_name, snapshot_name)
 
-        If a snapshot is not busy, take no action.  If a snapshot is busy for
-        reasons other than a clone dependency, raise immediately.  Otherwise,
-        since we always start a clone split operation after cloning a share,
-        wait up to a minute for a clone dependency to clear before giving up.
-        """
-        snapshot = vserver_client.get_snapshot(share_name, snapshot_name)
-        if not snapshot['busy']:
-            return
+        elif backend_snapshot['owners'] == {'volume clone'}:
+            # Snapshots are locked by clone(s), so split clone and soft delete
+            snapshot_children = vserver_client.get_clone_children_for_snapshot(
+                share_name, snapshot_name)
+            for snapshot_child in snapshot_children:
+                vserver_client.split_volume_clone(snapshot_child['name'])
 
-        # Fail fast if snapshot is not busy due to a clone dependency
-        if snapshot['owners'] != {'volume clone'}:
+            vserver_client.soft_delete_snapshot(share_name, snapshot_name)
+
+        else:
             raise exception.ShareSnapshotIsBusy(snapshot_name=snapshot_name)
-
-        # Wait for clone dependency to clear.
-        retry_interval = 3  # seconds
-        for retry in range(int(wait_seconds / retry_interval)):
-            LOG.debug('Snapshot %(snap)s for share %(share)s is busy, waiting '
-                      'for volume clone dependency to clear.',
-                      {'snap': snapshot_name, 'share': share_name})
-
-            time.sleep(retry_interval)
-            snapshot = vserver_client.get_snapshot(share_name, snapshot_name)
-            if not snapshot['busy']:
-                return
-
-        raise exception.ShareSnapshotIsBusy(snapshot_name=snapshot_name)
 
     @na_utils.trace
     def manage_existing(self, share, driver_options):
@@ -1004,17 +990,14 @@ class NetAppCmodeFileStorageLibrary(object):
 
         for share_name in share_names:
             try:
-                self._handle_busy_snapshot(vserver_client, share_name,
-                                           snapshot_name)
+                self._delete_snapshot(
+                    vserver_client, share_name, snapshot_name)
             except exception.SnapshotNotFound:
-                LOG.info(_LI("Snapshot %(snap)s does not exist for share "
-                             "%(share)s."),
-                         {'snap': snapshot_name, 'share': share_name})
+                msg = _LI("Snapshot %(snap)s does not exist on share "
+                          "%(share)s.")
+                msg_args = {'snap': snapshot_name, 'share': share_name}
+                LOG.info(msg, msg_args)
                 continue
-
-            LOG.debug("Deleting snapshot %(snap)s for share %(share)s.",
-                      {'snap': snapshot_name, 'share': share_name})
-            vserver_client.delete_snapshot(share_name, snapshot_name)
 
         return None, None
 

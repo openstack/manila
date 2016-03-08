@@ -173,12 +173,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_handle_housekeeping_tasks(self):
 
         self.mock_object(self.client, 'prune_deleted_nfs_export_policies')
+        self.mock_object(self.client, 'prune_deleted_snapshots')
         mock_super = self.mock_object(lib_base.NetAppCmodeFileStorageLibrary,
                                       '_handle_housekeeping_tasks')
 
         self.library._handle_housekeeping_tasks()
 
         self.assertTrue(self.client.prune_deleted_nfs_export_policies.called)
+        self.assertTrue(self.client.prune_deleted_snapshots.called)
         self.assertTrue(mock_super.called)
 
     def test_find_matching_aggregates(self):

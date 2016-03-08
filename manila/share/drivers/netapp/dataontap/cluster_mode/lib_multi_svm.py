@@ -91,6 +91,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
     def _handle_housekeeping_tasks(self):
         """Handle various cleanup activities."""
         self._client.prune_deleted_nfs_export_policies()
+        self._client.prune_deleted_snapshots()
 
         super(NetAppCmodeMultiSVMFileStorageLibrary, self).\
             _handle_housekeeping_tasks()

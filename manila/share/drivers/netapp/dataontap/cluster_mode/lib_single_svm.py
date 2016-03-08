@@ -105,6 +105,7 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
         """Handle various cleanup activities."""
         vserver_client = self._get_api_client(vserver=self._vserver)
         vserver_client.prune_deleted_nfs_export_policies()
+        vserver_client.prune_deleted_snapshots()
 
         super(NetAppCmodeSingleSVMFileStorageLibrary, self).\
             _handle_housekeeping_tasks()

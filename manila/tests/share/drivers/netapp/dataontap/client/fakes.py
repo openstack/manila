@@ -1303,6 +1303,23 @@ SNAPSHOT_MULTIDELETE_ERROR_RESPONSE = etree.XML("""
   </results>
 """ % {'volume': SHARE_NAME})
 
+SNAPSHOT_GET_ITER_DELETED_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <snapshot-info>
+        <name>deleted_manila_%(snap)s</name>
+        <volume>%(volume)s</volume>
+        <vserver>%(vserver)s</vserver>
+      </snapshot-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'snap': SNAPSHOT_NAME,
+    'volume': SHARE_NAME,
+    'vserver': VSERVER_NAME,
+})
+
 CIFS_SHARE_ACCESS_CONTROL_GET_ITER = etree.XML("""
   <results status="passed">
     <attributes-list>
@@ -1700,6 +1717,32 @@ VOLUME_GET_ITER_VOLUME_TO_MANAGE_RESPONSE = etree.XML("""
     'vserver': VSERVER_NAME,
     'volume': SHARE_NAME,
     'size': SHARE_SIZE,
+})
+
+CLONE_CHILD_1 = 'fake_child_1'
+CLONE_CHILD_2 = 'fake_child_2'
+VOLUME_GET_ITER_CLONE_CHILDREN_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-id-attributes>
+          <name>%(clone1)s</name>
+          <owning-vserver-name>%(vserver)s</owning-vserver-name>
+        </volume-id-attributes>
+      </volume-attributes>
+      <volume-attributes>
+        <volume-id-attributes>
+          <name>%(clone2)s</name>
+          <owning-vserver-name>%(vserver)s</owning-vserver-name>
+        </volume-id-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>2</num-records>
+  </results>
+""" % {
+    'vserver': VSERVER_NAME,
+    'clone1': CLONE_CHILD_1,
+    'clone2': CLONE_CHILD_2,
 })
 
 SIS_GET_ITER_RESPONSE = etree.XML("""
