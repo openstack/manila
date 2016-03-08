@@ -56,6 +56,11 @@ EXPECTED_HPE_DEBUG = True
 EXPECTED_COMMENT = "OpenStack Manila - foo-comment"
 EXPECTED_EXTRA_SPECS = {}
 EXPECTED_LOCATION = ':'.join((EXPECTED_IP_1234, EXPECTED_SHARE_PATH))
+EXPECTED_SUPER_SHARE = 'OPENSTACK_SUPER_SHARE'
+EXPECTED_SUPER_SHARE_COMMENT = ('OpenStack super share used to delete nested '
+                                'shares.')
+EXPECTED_CIFS_DOMAIN = 'LOCAL_CLUSTER'
+EXPECTED_MOUNT_PATH = '/mnt/'
 
 GET_FSQUOTA = {'message': None,
                'total': 1,

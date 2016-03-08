@@ -23,6 +23,7 @@ from manila import exception
 from manila.share.drivers.hpe import hpe_3par_mediator as hpe3parmediator
 from manila import test
 from manila.tests.share.drivers.hpe import test_hpe_3par_constants as constants
+from manila import utils
 
 from oslo_utils import units
 import six
@@ -62,6 +63,11 @@ class HPE3ParMediatorTestCase(test.TestCase):
             hpe3par_san_login=constants.SAN_LOGIN,
             hpe3par_san_password=constants.SAN_PASSWORD,
             hpe3par_san_ssh_port=constants.PORT,
+            hpe3par_share_ip_address=constants.EXPECTED_IP_10203040,
+            hpe3par_cifs_admin_access_username=constants.USERNAME,
+            hpe3par_cifs_admin_access_password=constants.PASSWORD,
+            hpe3par_cifs_admin_access_domain=constants.EXPECTED_CIFS_DOMAIN,
+            hpe3par_share_mount_path=constants.EXPECTED_MOUNT_PATH,
             ssh_conn_timeout=constants.TIMEOUT)
 
     def test_mediator_no_client(self):
@@ -586,6 +592,18 @@ class HPE3ParMediatorTestCase(test.TestCase):
         self.mock_object(self.mediator,
                          '_find_fstore',
                          mock.Mock(return_value=fstore))
+        self.mock_object(self.mediator,
+                         '_create_mount_directory',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.mediator,
+                         '_mount_super_share',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.mediator,
+                         '_delete_share_directory',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.mediator,
+                         '_unmount_super_share',
+                         mock.Mock(return_value={}))
 
         self.mediator.delete_share(constants.EXPECTED_PROJECT_ID,
                                    share_id,
@@ -604,12 +622,32 @@ class HPE3ParMediatorTestCase(test.TestCase):
                                    osf_ro_share_id,
                                    fpg=constants.EXPECTED_FPG,
                                    fstore=fstore),
+            mock.call.createfshare(constants.NFS_LOWER,
+                                   constants.EXPECTED_VFS,
+                                   constants.EXPECTED_SUPER_SHARE,
+                                   clientip=None,
+                                   comment=(
+                                       constants.EXPECTED_SUPER_SHARE_COMMENT),
+                                   fpg=constants.EXPECTED_FPG,
+                                   fstore=fstore,
+                                   options='rw,no_root_squash,insecure',
+                                   sharedir=''),
             mock.call.removefstore(constants.EXPECTED_VFS,
                                    fstore,
                                    fpg=constants.EXPECTED_FPG),
         ]
-
         self.mock_client.assert_has_calls(expected_calls)
+
+        expected_mount_path = constants.EXPECTED_MOUNT_PATH + osf_share_id
+        self.mediator._create_mount_directory.assert_called_with(
+            expected_mount_path)
+        self.mediator._mount_super_share.assert_called_with(
+            constants.NFS_LOWER, expected_mount_path, constants.EXPECTED_FPG,
+            constants.EXPECTED_VFS, fstore)
+        self.mediator._delete_share_directory.assert_called_with(
+            expected_mount_path)
+        self.mediator._unmount_super_share.assert_called_with(
+            expected_mount_path)
 
     def test_mediator_delete_share_not_found(self):
         self.init_mediator()
@@ -617,6 +655,18 @@ class HPE3ParMediatorTestCase(test.TestCase):
         self.mock_object(self.mediator,
                          '_find_fstore',
                          mock.Mock(return_value=None))
+        self.mock_object(self.mediator,
+                         '_create_mount_directory',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.mediator,
+                         '_mount_super_share',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.mediator,
+                         '_delete_share_directory',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.mediator,
+                         '_unmount_super_share',
+                         mock.Mock(return_value={}))
 
         self.mediator.delete_share(constants.EXPECTED_PROJECT_ID,
                                    constants.EXPECTED_SHARE_ID,
@@ -626,6 +676,18 @@ class HPE3ParMediatorTestCase(test.TestCase):
 
         self.assertFalse(self.mock_client.removefshare.called)
 
+        expected_mount_path = constants.EXPECTED_MOUNT_PATH + (
+            constants.EXPECTED_SHARE_ID)
+        self.mediator._create_mount_directory.assert_called_with(
+            expected_mount_path)
+        self.mediator._mount_super_share.assert_called_with(
+            constants.SMB_LOWER, expected_mount_path, constants.EXPECTED_FPG,
+            constants.EXPECTED_VFS, None)
+        self.mediator._delete_share_directory.assert_called_with(
+            expected_mount_path)
+        self.mediator._unmount_super_share.assert_called_with(
+            expected_mount_path)
+
     def test_mediator_delete_nfs_share_only_readonly(self):
         self.init_mediator()
 
@@ -633,6 +695,18 @@ class HPE3ParMediatorTestCase(test.TestCase):
         self.mock_object(self.mediator,
                          '_find_fstore',
                          mock.Mock(side_effect=fstores))
+        self.mock_object(self.mediator,
+                         '_create_mount_directory',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.mediator,
+                         '_mount_super_share',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.mediator,
+                         '_delete_share_directory',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.mediator,
+                         '_unmount_super_share',
+                         mock.Mock(return_value={}))
 
         self.mediator.delete_share(constants.EXPECTED_PROJECT_ID,
                                    constants.EXPECTED_SHARE_ID,
@@ -647,6 +721,18 @@ class HPE3ParMediatorTestCase(test.TestCase):
             fpg=constants.EXPECTED_FPG,
             fstore=constants.EXPECTED_FSTORE
         )
+
+        expected_mount_path = constants.EXPECTED_MOUNT_PATH + (
+            constants.EXPECTED_SHARE_ID)
+        self.mediator._create_mount_directory.assert_called_with(
+            expected_mount_path)
+        self.mediator._mount_super_share.assert_called_with(
+            constants.NFS_LOWER, expected_mount_path, constants.EXPECTED_FPG,
+            constants.EXPECTED_VFS, constants.EXPECTED_PROJECT_ID)
+        self.mediator._delete_share_directory.assert_called_with(
+            expected_mount_path)
+        self.mediator._unmount_super_share.assert_called_with(
+            expected_mount_path)
 
     def test_mediator_delete_share_exception(self):
         self.init_mediator()
@@ -676,6 +762,18 @@ class HPE3ParMediatorTestCase(test.TestCase):
         self.mock_object(self.mediator,
                          '_find_fstore',
                          mock.Mock(return_value=constants.EXPECTED_SHARE_ID))
+        self.mock_object(self.mediator,
+                         '_create_mount_directory',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.mediator,
+                         '_mount_super_share',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.mediator,
+                         '_delete_share_directory',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.mediator,
+                         '_unmount_super_share',
+                         mock.Mock(return_value={}))
         self.mock_client.removefstore.side_effect = Exception(
             'removefstore fail.')
 
@@ -693,12 +791,41 @@ class HPE3ParMediatorTestCase(test.TestCase):
                                    constants.EXPECTED_SHARE_ID,
                                    fpg=constants.EXPECTED_FPG,
                                    fstore=constants.EXPECTED_SHARE_ID),
+            mock.call.createfshare(constants.SMB_LOWER,
+                                   constants.EXPECTED_VFS,
+                                   constants.EXPECTED_SUPER_SHARE,
+                                   allowip=None,
+                                   comment=(
+                                       constants.EXPECTED_SUPER_SHARE_COMMENT),
+                                   fpg=constants.EXPECTED_FPG,
+                                   fstore=constants.EXPECTED_SHARE_ID,
+                                   sharedir=''),
+            mock.call.setfshare(constants.SMB_LOWER,
+                                constants.EXPECTED_VFS,
+                                constants.EXPECTED_SUPER_SHARE,
+                                comment=(
+                                    constants.EXPECTED_SUPER_SHARE_COMMENT),
+                                allowperm=(
+                                    '+' + constants.USERNAME + ':fullcontrol'),
+                                fpg=constants.EXPECTED_FPG,
+                                fstore=constants.EXPECTED_SHARE_ID),
             mock.call.removefstore(constants.EXPECTED_VFS,
                                    constants.EXPECTED_SHARE_ID,
                                    fpg=constants.EXPECTED_FPG),
         ]
-
         self.mock_client.assert_has_calls(expected_calls)
+
+        expected_mount_path = constants.EXPECTED_MOUNT_PATH + (
+            constants.EXPECTED_SHARE_ID)
+        self.mediator._create_mount_directory.assert_called_with(
+            expected_mount_path)
+        self.mediator._mount_super_share.assert_called_with(
+            constants.SMB_LOWER, expected_mount_path, constants.EXPECTED_FPG,
+            constants.EXPECTED_VFS, constants.EXPECTED_SHARE_ID)
+        self.mediator._delete_share_directory.assert_called_with(
+            expected_mount_path)
+        self.mediator._unmount_super_share.assert_called_with(
+            expected_mount_path)
 
     def test_mediator_delete_cifs_share(self):
         self.init_mediator()
@@ -706,6 +833,18 @@ class HPE3ParMediatorTestCase(test.TestCase):
         self.mock_object(self.mediator,
                          '_find_fstore',
                          mock.Mock(return_value=constants.EXPECTED_SHARE_ID))
+        self.mock_object(self.mediator,
+                         '_create_mount_directory',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.mediator,
+                         '_mount_super_share',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.mediator,
+                         '_delete_share_directory',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.mediator,
+                         '_unmount_super_share',
+                         mock.Mock(return_value={}))
 
         self.mediator.delete_share(constants.EXPECTED_PROJECT_ID,
                                    constants.EXPECTED_SHARE_ID,
@@ -719,12 +858,41 @@ class HPE3ParMediatorTestCase(test.TestCase):
                                    constants.EXPECTED_SHARE_ID,
                                    fpg=constants.EXPECTED_FPG,
                                    fstore=constants.EXPECTED_SHARE_ID),
+            mock.call.createfshare(constants.SMB_LOWER,
+                                   constants.EXPECTED_VFS,
+                                   constants.EXPECTED_SUPER_SHARE,
+                                   allowip=None,
+                                   comment=(
+                                       constants.EXPECTED_SUPER_SHARE_COMMENT),
+                                   fpg=constants.EXPECTED_FPG,
+                                   fstore=constants.EXPECTED_SHARE_ID,
+                                   sharedir=''),
+            mock.call.setfshare(constants.SMB_LOWER,
+                                constants.EXPECTED_VFS,
+                                constants.EXPECTED_SUPER_SHARE,
+                                comment=(
+                                    constants.EXPECTED_SUPER_SHARE_COMMENT),
+                                allowperm=(
+                                    '+' + constants.USERNAME + ':fullcontrol'),
+                                fpg=constants.EXPECTED_FPG,
+                                fstore=constants.EXPECTED_SHARE_ID),
             mock.call.removefstore(constants.EXPECTED_VFS,
                                    constants.EXPECTED_SHARE_ID,
                                    fpg=constants.EXPECTED_FPG),
         ]
-
         self.mock_client.assert_has_calls(expected_calls)
+
+        expected_mount_path = constants.EXPECTED_MOUNT_PATH + (
+            constants.EXPECTED_SHARE_ID)
+        self.mediator._create_mount_directory.assert_called_with(
+            expected_mount_path)
+        self.mediator._mount_super_share.assert_called_with(
+            constants.SMB_LOWER, expected_mount_path, constants.EXPECTED_FPG,
+            constants.EXPECTED_VFS, constants.EXPECTED_SHARE_ID)
+        self.mediator._delete_share_directory.assert_called_with(
+            expected_mount_path)
+        self.mediator._unmount_super_share.assert_called_with(
+            expected_mount_path)
 
     def test_mediator_create_snapshot(self):
         self.init_mediator()
@@ -2261,6 +2429,175 @@ class HPE3ParMediatorTestCase(test.TestCase):
             constants.EXPECTED_VFS,
             constants.EXPECTED_IP_1234,
             fpg=constants.EXPECTED_FPG)
+
+    def test__create_mount_directory(self):
+        self.init_mediator()
+
+        self.mock_object(utils, 'execute', mock.Mock(return_value={}))
+
+        mount_location = '/mnt/foo'
+        self.mediator._create_mount_directory(mount_location)
+
+        utils.execute.assert_called_with('mkdir', mount_location,
+                                         run_as_root=True)
+
+    def test__create_mount_directory_error(self):
+        self.init_mediator()
+
+        self.mock_object(utils, 'execute',
+                         mock.Mock(side_effect=Exception('mkdir error.')))
+        mock_log = self.mock_object(hpe3parmediator, 'LOG')
+
+        mount_location = '/mnt/foo'
+        self.mediator._create_mount_directory(mount_location)
+        utils.execute.assert_called_with('mkdir', mount_location,
+                                         run_as_root=True)
+
+        # Warning is logged (no exception thrown).
+        self.assertTrue(mock_log.warning.called)
+
+    def test__mount_super_share(self):
+        self.init_mediator()
+
+        self.mock_object(utils, 'execute', mock.Mock(return_value={}))
+
+        # Test mounting NFS share.
+        protocol = 'nfs'
+        mount_location = '/mnt/foo'
+        fpg = 'foo-fpg'
+        vfs = 'bar-vfs'
+        fstore = 'fstore'
+        mount_path = '%s:/%s/%s/%s/' % (constants.EXPECTED_IP_10203040, fpg,
+                                        vfs, fstore)
+        self.mediator._mount_super_share(protocol, mount_location, fpg, vfs,
+                                         fstore)
+
+        utils.execute.assert_called_with('mount', '-t', protocol, mount_path,
+                                         mount_location, run_as_root=True)
+
+        # Test mounting CIFS share.
+        protocol = 'smb'
+        mount_path = '//%s/%s/' % (constants.EXPECTED_IP_10203040,
+                                   constants.EXPECTED_SUPER_SHARE)
+        user = 'username=%s,password=%s,domain=%s' % (
+            constants.USERNAME, constants.PASSWORD,
+            constants.EXPECTED_CIFS_DOMAIN)
+        self.mediator._mount_super_share(protocol, mount_location, fpg, vfs,
+                                         fstore)
+
+        utils.execute.assert_called_with('mount', '-t', 'cifs', mount_path,
+                                         mount_location, '-o', user,
+                                         run_as_root=True)
+
+    def test__mount_super_share_error(self):
+        self.init_mediator()
+
+        self.mock_object(utils, 'execute',
+                         mock.Mock(side_effect=Exception('mount error.')))
+        mock_log = self.mock_object(hpe3parmediator, 'LOG')
+
+        protocol = 'nfs'
+        mount_location = '/mnt/foo'
+        fpg = 'foo-fpg'
+        vfs = 'bar-vfs'
+        fstore = 'fstore'
+        self.mediator._mount_super_share(protocol, mount_location, fpg, vfs,
+                                         fstore)
+
+        # Warning is logged (no exception thrown).
+        self.assertTrue(mock_log.warning.called)
+
+    def test__delete_share_directory(self):
+        self.init_mediator()
+
+        self.mock_object(utils, 'execute', mock.Mock(return_value={}))
+
+        mount_location = '/mnt/foo'
+        self.mediator._delete_share_directory(mount_location)
+
+        utils.execute.assert_called_with('rm', '-rf', mount_location,
+                                         run_as_root=True)
+
+    def test__delete_share_directory_error(self):
+        self.init_mediator()
+
+        self.mock_object(utils, 'execute',
+                         mock.Mock(side_effect=Exception('rm error.')))
+        mock_log = self.mock_object(hpe3parmediator, 'LOG')
+
+        mount_location = '/mnt/foo'
+        self.mediator._delete_share_directory(mount_location)
+
+        # Warning is logged (no exception thrown).
+        self.assertTrue(mock_log.warning.called)
+
+    def test__unmount_super_share(self):
+        self.init_mediator()
+
+        self.mock_object(utils, 'execute', mock.Mock(return_value={}))
+
+        mount_location = '/mnt/foo'
+        self.mediator._unmount_super_share(mount_location)
+
+        utils.execute.assert_called_with('umount', mount_location,
+                                         run_as_root=True)
+
+    def test__unmount_super_share_error(self):
+        self.init_mediator()
+
+        self.mock_object(utils, 'execute',
+                         mock.Mock(side_effect=Exception('umount error.')))
+        mock_log = self.mock_object(hpe3parmediator, 'LOG')
+
+        mount_location = '/mnt/foo'
+        self.mediator._unmount_super_share(mount_location)
+
+        # Warning is logged (no exception thrown).
+        self.assertTrue(mock_log.warning.called)
+
+    def test__delete_file_tree_no_config_options(self):
+        self.init_mediator()
+
+        mock_log = self.mock_object(hpe3parmediator, 'LOG')
+
+        self.mediator.hpe3par_cifs_admin_access_username = None
+        self.mediator._delete_file_tree(
+            constants.EXPECTED_SHARE_ID,
+            constants.SMB_LOWER,
+            constants.EXPECTED_FPG,
+            constants.EXPECTED_VFS,
+            constants.EXPECTED_FSTORE)
+
+        # Warning is logged (no exception thrown).
+        self.assertTrue(mock_log.warning.called)
+
+    def test__create_super_share_createfshare_exception(self):
+        self.init_mediator()
+
+        self.mock_client.createfshare.side_effect = (
+            Exception("createfshare error."))
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.mediator._create_super_share,
+            constants.NFS_LOWER,
+            constants.EXPECTED_FPG,
+            constants.EXPECTED_VFS,
+            constants.EXPECTED_FSTORE)
+
+    def test__create_super_share_setfshare_exception(self):
+        self.init_mediator()
+
+        self.mock_client.setfshare.side_effect = (
+            Exception("setfshare error."))
+
+        self.assertRaises(
+            exception.ShareMountException,
+            self.mediator._create_super_share,
+            constants.SMB_LOWER,
+            constants.EXPECTED_FPG,
+            constants.EXPECTED_VFS,
+            constants.EXPECTED_FSTORE)
 
 
 class OptionMatcher(object):

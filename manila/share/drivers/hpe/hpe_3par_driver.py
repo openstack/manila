@@ -25,6 +25,7 @@ from oslo_config import cfg
 from oslo_log import log
 import six
 
+from manila.common import config
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LI
@@ -84,6 +85,24 @@ HPE3PAR_OPTS = [
                 default=False,
                 help="Enable HTTP debugging to 3PAR",
                 deprecated_name='hp3par_debug'),
+    cfg.StrOpt('hpe3par_cifs_admin_access_username',
+               default='',
+               help="File system admin user name for CIFS.",
+               deprecated_name='hp3par_cifs_admin_access_username'),
+    cfg.StrOpt('hpe3par_cifs_admin_access_password',
+               default='',
+               help="File system admin password for CIFS.",
+               secret=True,
+               deprecated_name='hp3par_cifs_admin_access_password'),
+    cfg.StrOpt('hpe3par_cifs_admin_access_domain',
+               default='LOCAL_CLUSTER',
+               help="File system domain for the CIFS admin user.",
+               deprecated_name='hp3par_cifs_admin_access_domain'),
+    cfg.StrOpt('hpe3par_share_mount_path',
+               default='/mnt/',
+               help="The path where shares will be mounted when deleting "
+                    "nested file trees.",
+               deprecated_name='hpe3par_share_mount_path'),
 ]
 
 CONF = cfg.CONF
@@ -104,10 +123,11 @@ class HPE3ParShareDriver(driver.ShareDriver):
         2.0.0 - Rebranded HP to HPE
         2.0.1 - Add access_level (e.g. read-only support)
         2.0.2 - Add extend/shrink
+        2.0.3 - Remove file tree on delete when using nested shares #1538800
 
     """
 
-    VERSION = "2.0.2"
+    VERSION = "2.0.3"
 
     def __init__(self, *args, **kwargs):
         super(HPE3ParShareDriver, self).__init__((True, False),
@@ -117,6 +137,7 @@ class HPE3ParShareDriver(driver.ShareDriver):
         self.configuration = kwargs.get('configuration', None)
         self.configuration.append_config_values(HPE3PAR_OPTS)
         self.configuration.append_config_values(driver.ssh_opts)
+        self.configuration.append_config_values(config.global_opts)
         self.fpg = None
         self.vfs = None
         self.share_ip_address = None
@@ -149,6 +170,17 @@ class HPE3ParShareDriver(driver.ShareDriver):
             hpe3par_fstore_per_share=(self.configuration
                                       .hpe3par_fstore_per_share),
             hpe3par_require_cifs_ip=self.configuration.hpe3par_require_cifs_ip,
+            hpe3par_share_ip_address=(
+                self.configuration.hpe3par_share_ip_address),
+            hpe3par_cifs_admin_access_username=(
+                self.configuration.hpe3par_cifs_admin_access_username),
+            hpe3par_cifs_admin_access_password=(
+                self.configuration.hpe3par_cifs_admin_access_password),
+            hpe3par_cifs_admin_access_domain=(
+                self.configuration.hpe3par_cifs_admin_access_domain),
+            hpe3par_share_mount_path=(
+                self.configuration.hpe3par_share_mount_path),
+            my_ip=self.configuration.my_ip,
             ssh_conn_timeout=self.configuration.ssh_conn_timeout,
         )
 

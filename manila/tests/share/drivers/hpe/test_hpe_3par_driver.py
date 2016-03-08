@@ -48,6 +48,13 @@ class HPE3ParDriverTestCase(test.TestCase):
         self.conf.hpe3par_share_ip_address = None
         self.conf.hpe3par_fstore_per_share = False
         self.conf.hpe3par_require_cifs_ip = False
+        self.conf.hpe3par_share_ip_address = constants.EXPECTED_IP_10203040
+        self.conf.hpe3par_cifs_admin_access_username = constants.USERNAME,
+        self.conf.hpe3par_cifs_admin_access_password = constants.PASSWORD,
+        self.conf.hpe3par_cifs_admin_access_domain = (
+            constants.EXPECTED_CIFS_DOMAIN),
+        self.conf.hpe3par_share_mount_path = constants.EXPECTED_MOUNT_PATH,
+        self.conf.my_ip = constants.EXPECTED_IP_1234
         self.conf.network_config_group = 'test_network_config_group'
         self.conf.admin_network_config_group = (
             'test_admin_network_config_group')
@@ -85,6 +92,16 @@ class HPE3ParDriverTestCase(test.TestCase):
                       hpe3par_san_ip=conf.hpe3par_san_ip,
                       hpe3par_fstore_per_share=conf.hpe3par_fstore_per_share,
                       hpe3par_require_cifs_ip=conf.hpe3par_require_cifs_ip,
+                      hpe3par_share_ip_address=(
+                          self.conf.hpe3par_share_ip_address),
+                      hpe3par_cifs_admin_access_username=(
+                          conf.hpe3par_cifs_admin_access_username),
+                      hpe3par_cifs_admin_access_password=(
+                          conf.hpe3par_cifs_admin_access_password),
+                      hpe3par_cifs_admin_access_domain=(
+                          conf.hpe3par_cifs_admin_access_domain),
+                      hpe3par_share_mount_path=conf.hpe3par_share_mount_path,
+                      my_ip=self.conf.my_ip,
                       ssh_conn_timeout=conf.ssh_conn_timeout)])
 
         self.mock_mediator.assert_has_calls([
@@ -105,6 +122,7 @@ class HPE3ParDriverTestCase(test.TestCase):
         """Configured IP address is required for dhss=False."""
 
         self.conf.driver_handles_share_servers = False
+        self.conf.hpe3par_share_ip_address = None
         self.assertRaises(exception.HPE3ParInvalid,
                           self.driver.do_setup, None)
 
@@ -129,6 +147,16 @@ class HPE3ParDriverTestCase(test.TestCase):
                       hpe3par_san_ip=conf.hpe3par_san_ip,
                       hpe3par_fstore_per_share=conf.hpe3par_fstore_per_share,
                       hpe3par_require_cifs_ip=conf.hpe3par_require_cifs_ip,
+                      hpe3par_share_ip_address=(
+                          self.conf.hpe3par_share_ip_address),
+                      hpe3par_cifs_admin_access_username=(
+                          conf.hpe3par_cifs_admin_access_username),
+                      hpe3par_cifs_admin_access_password=(
+                          conf.hpe3par_cifs_admin_access_password),
+                      hpe3par_cifs_admin_access_domain=(
+                          conf.hpe3par_cifs_admin_access_domain),
+                      hpe3par_share_mount_path=conf.hpe3par_share_mount_path,
+                      my_ip=self.conf.my_ip,
                       ssh_conn_timeout=conf.ssh_conn_timeout)])
 
         self.mock_mediator.assert_has_calls([mock.call.do_setup()])
@@ -154,6 +182,16 @@ class HPE3ParDriverTestCase(test.TestCase):
                       hpe3par_san_ip=conf.hpe3par_san_ip,
                       hpe3par_fstore_per_share=conf.hpe3par_fstore_per_share,
                       hpe3par_require_cifs_ip=conf.hpe3par_require_cifs_ip,
+                      hpe3par_share_ip_address=(
+                          self.conf.hpe3par_share_ip_address),
+                      hpe3par_cifs_admin_access_username=(
+                          conf.hpe3par_cifs_admin_access_username),
+                      hpe3par_cifs_admin_access_password=(
+                          conf.hpe3par_cifs_admin_access_password),
+                      hpe3par_cifs_admin_access_domain=(
+                          conf.hpe3par_cifs_admin_access_domain),
+                      hpe3par_share_mount_path=conf.hpe3par_share_mount_path,
+                      my_ip=self.conf.my_ip,
                       ssh_conn_timeout=conf.ssh_conn_timeout)])
 
         self.mock_mediator.assert_has_calls([
