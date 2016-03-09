@@ -179,10 +179,6 @@ function configure_manila {
     iniset $MANILA_CONF DEFAULT state_path $MANILA_STATE_PATH
     iniset $MANILA_CONF DEFAULT default_share_type $MANILA_DEFAULT_SHARE_TYPE
 
-    iniset $MANILA_CONF DEFAULT nova_admin_password $SERVICE_PASSWORD
-    iniset $MANILA_CONF DEFAULT cinder_admin_password $SERVICE_PASSWORD
-    iniset $MANILA_CONF DEFAULT neutron_admin_password $SERVICE_PASSWORD
-
     iniset $MANILA_CONF DEFAULT enabled_share_protocols $MANILA_ENABLED_SHARE_PROTOCOLS
 
     iniset $MANILA_CONF oslo_concurrency lock_path $MANILA_LOCK_PATH
@@ -190,6 +186,16 @@ function configure_manila {
     iniset $MANILA_CONF DEFAULT wsgi_keep_alive False
 
     iniset $MANILA_CONF DEFAULT lvm_share_volume_group $SHARE_GROUP
+
+    if is_service_enabled neutron; then
+        configure_auth_token_middleware $MANILA_CONF neutron $MANILA_AUTH_CACHE_DIR neutron
+    fi
+    if is_service_enabled nova; then
+        configure_auth_token_middleware $MANILA_CONF nova $MANILA_AUTH_CACHE_DIR nova
+    fi
+    if is_service_enabled cinder; then
+        configure_auth_token_middleware $MANILA_CONF cinder $MANILA_AUTH_CACHE_DIR cinder
+    fi
 
     # Note: set up config group does not mean that this backend will be enabled.
     # To enable it, specify its name explicitly using "enabled_share_backends" opt.

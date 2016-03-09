@@ -96,7 +96,6 @@ class NeutronApiTest(test.TestCase):
         neutron_api_instance = neutron_api.API()
 
         # Verify results
-        self.assertTrue(clientv20.Client.called)
         self.assertTrue(hasattr(neutron_api_instance, 'client'))
         self.assertTrue(hasattr(neutron_api_instance, 'configuration'))
         self.assertEqual('DEFAULT', neutron_api_instance.config_group_name)
@@ -107,6 +106,7 @@ class NeutronApiTest(test.TestCase):
 
         # instantiate Neutron API object
         obj = neutron_api.API(fake_config_group_name)
+        obj.get_client(mock.Mock())
 
         # Verify results
         self.assertTrue(clientv20.Client.called)
@@ -572,8 +572,8 @@ class NeutronApiTest(test.TestCase):
         fake_admin_project_id = 'fake_admin_project_id_value'
         self.neutron_api.client.httpclient = mock.Mock()
         self.neutron_api.client.httpclient.auth_token = mock.Mock()
-        self.neutron_api.client.httpclient.auth_tenant_id = (
-            fake_admin_project_id)
+        self.neutron_api.client.httpclient.get_project_id = mock.Mock(
+            return_value=fake_admin_project_id)
 
         admin_project_id = self.neutron_api.admin_project_id
 
@@ -586,8 +586,8 @@ class NeutronApiTest(test.TestCase):
         self.neutron_api.client.httpclient.auth_token = mock.Mock(
             return_value=None)
         self.neutron_api.client.httpclient.authenticate = mock.Mock()
-        self.neutron_api.client.httpclient.auth_tenant_id = (
-            fake_admin_project_id)
+        self.neutron_api.client.httpclient.get_project_id = mock.Mock(
+            return_value=fake_admin_project_id)
 
         admin_project_id = self.neutron_api.admin_project_id
 
