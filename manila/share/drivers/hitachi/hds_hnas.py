@@ -322,6 +322,8 @@ class HDSHNASDriver(driver.ShareDriver):
         """Updates the Capability of Backend."""
         LOG.debug("Updating Backend Capability Information - HDS HNAS.")
 
+        self._check_fs_mounted()
+
         total_space, free_space = self.hnas.get_stats()
 
         reserved = self.configuration.safe_get('reserved_share_percentage')

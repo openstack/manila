@@ -497,6 +497,8 @@ class HDSHNASTestCase(test.TestCase):
 
         self.mock_object(ssh.HNASSSHBackend, 'get_stats', mock.Mock(
             return_value=(1000, 200)))
+        self.mock_object(hds_hnas.HDSHNASDriver, "_check_fs_mounted",
+                         mock.Mock())
         self.mock_object(manila.share.driver.ShareDriver,
                          '_update_share_stats', mock.Mock())
 
