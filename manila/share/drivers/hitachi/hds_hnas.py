@@ -360,6 +360,7 @@ class HDSHNASDriver(driver.ShareDriver):
             'free_capacity_gb': free_space,
             'reserved_percentage': reserved,
             'QoS_support': False,
+            'thin_provisioning': True,
         }
 
         LOG.info(_LI("HNAS Capabilities: %(data)s."),
