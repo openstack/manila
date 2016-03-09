@@ -665,6 +665,7 @@ function update_tempest {
         if [ $(trueorfalse False MANILA_USE_SERVICE_INSTANCE_PASSWORD) == True ]; then
             iniset $TEMPEST_DIR/etc/tempest.conf share image_password $MANILA_SERVICE_INSTANCE_PASSWORD
         fi
+        iniset $TEMPEST_DIR/etc/tempest.conf share image_with_share_tools $MANILA_SERVICE_IMAGE_NAME
     fi
 }
 
