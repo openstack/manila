@@ -643,26 +643,40 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             self.driver, 'parse_zfs_answer',
             mock.Mock(side_effect=[[{'NAME': 'fake1'},
                                     {'NAME': dataset_name},
-                                    {'NAME': 'fake2'}]]))
+                                    {'NAME': 'fake2'}]] * 2))
 
-        result = self.driver.ensure_share('fake_context', share)
+        for s in ('1', '2'):
+            self.driver.zfs.reset_mock()
+            self.driver.get_zfs_option.reset_mock()
+            mock_helper.reset_mock()
+            self.driver.parse_zfs_answer.reset_mock()
+            self.driver._get_dataset_name.reset_mock()
 
-        self.driver.get_zfs_option.assert_called_once_with(
-            dataset_name, 'sharenfs')
-        mock_helper.assert_called_once_with(
-            share['share_proto'])
-        mock_helper.return_value.get_exports.assert_called_once_with(
-            dataset_name)
-        expected_calls = [mock.call('list', '-r', 'bar')]
-        if get_zfs_option_answer != 'off':
-            expected_calls.append(mock.call('share', dataset_name))
-        self.driver.zfs.assert_has_calls(expected_calls)
-        self.driver.parse_zfs_answer.assert_called_once_with('a')
-        self.driver._get_dataset_name.assert_called_once_with(share)
-        self.assertEqual(
-            mock_helper.return_value.get_exports.return_value,
-            result,
-        )
+            self.driver.share_export_ip = '1.1.1.%s' % s
+            self.driver.service_ip = '2.2.2.%s' % s
+            self.configuration.zfs_ssh_username = 'user%s' % s
+
+            result = self.driver.ensure_share('fake_context', share)
+
+            self.assertEqual(
+                'user%(s)s@2.2.2.%(s)s' % {'s': s},
+                self.driver.private_storage.get(share['id'], 'ssh_cmd'))
+            self.driver.get_zfs_option.assert_called_once_with(
+                dataset_name, 'sharenfs')
+            mock_helper.assert_called_once_with(
+                share['share_proto'])
+            mock_helper.return_value.get_exports.assert_called_once_with(
+                dataset_name)
+            expected_calls = [mock.call('list', '-r', 'bar')]
+            if get_zfs_option_answer != 'off':
+                expected_calls.append(mock.call('share', dataset_name))
+            self.driver.zfs.assert_has_calls(expected_calls)
+            self.driver.parse_zfs_answer.assert_called_once_with('a')
+            self.driver._get_dataset_name.assert_called_once_with(share)
+            self.assertEqual(
+                mock_helper.return_value.get_exports.return_value,
+                result,
+            )
 
     def test_ensure_share_absent(self):
         share = {'id': 'fake_share_id', 'host': 'hostname@backend_name#bar'}

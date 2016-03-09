@@ -504,6 +504,12 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
         data = self.parse_zfs_answer(out)
         for datum in data:
             if datum['NAME'] == dataset_name:
+                ssh_cmd = '%(username)s@%(host)s' % {
+                    'username': self.configuration.zfs_ssh_username,
+                    'host': self.service_ip,
+                }
+                self.private_storage.update(
+                    share['id'], {'ssh_cmd': ssh_cmd})
                 sharenfs = self.get_zfs_option(dataset_name, 'sharenfs')
                 if sharenfs != 'off':
                     self.zfs('share', dataset_name)
