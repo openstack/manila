@@ -543,10 +543,22 @@ function init_manila {
                 iniset $MANILA_CONF $BE zfs_share_export_ip $MANILA_ZFSONLINUX_SHARE_EXPORT_IP
                 iniset $MANILA_CONF $BE zfs_service_ip $MANILA_ZFSONLINUX_SERVICE_IP
                 iniset $MANILA_CONF $BE zfs_dataset_creation_options $MANILA_ZFSONLINUX_DATASET_CREATION_OPTIONS
+                iniset $MANILA_CONF $BE zfs_use_ssh $MANILA_ZFSONLINUX_USE_SSH
                 iniset $MANILA_CONF $BE zfs_ssh_username $MANILA_ZFSONLINUX_SSH_USERNAME
                 iniset $MANILA_CONF $BE replication_domain $MANILA_ZFSONLINUX_REPLICATION_DOMAIN
                 let "file_counter=file_counter+1"
             done
+            # Install the server's SSH key in our known_hosts file
+            eval STACK_HOME=~$STACK_USER
+            ssh-keyscan ${MANILA_ZFSONLINUX_SERVICE_IP} >> $STACK_HOME/.ssh/known_hosts
+            # If the server is this machine, setup trust for ourselves (otherwise you're on your own)
+            if [ "$MANILA_ZFSONLINUX_SERVICE_IP" = "127.0.0.1" ] || [ "$MANILA_ZFSONLINUX_SERVICE_IP" = "localhost" ] ; then
+                # Trust our own SSH keys
+                eval SSH_USER_HOME=~$MANILA_ZFSONLINUX_SSH_USERNAME
+                cat $STACK_HOME/.ssh/*.pub >> $SSH_USER_HOME/.ssh/authorized_keys
+                # Give ssh user sudo access
+                echo "$MANILA_ZFSONLINUX_SSH_USERNAME ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers > /dev/null
+            fi
         fi
     fi
 
