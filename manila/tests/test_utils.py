@@ -887,7 +887,7 @@ class WaitUntilTrueTestCase(test.TestCase):
         fake_predicate = mock.Mock(return_value=False)
         exc = exception.ManilaException
         self.assertRaises(exception.ManilaException, utils.wait_until_true,
-                          fake_predicate, 1, 1, exc)
+                          fake_predicate, 0, 0, exc)
 
 
 @ddt.ddt
