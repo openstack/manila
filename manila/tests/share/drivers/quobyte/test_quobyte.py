@@ -500,7 +500,8 @@ class QuobyteShareDriverTestCase(test.TestCase):
 
     @mock.patch.object(quobyte.LOG, "warning")
     def test_update_access_no_rules(self, qb_log_mock):
-        self._driver.update_access(context=None, share=None, access_rules=[])
+        self._driver.update_access(context=None, share=None, access_rules=[],
+                                   add_rules=[], delete_rules=[])
 
         qb_log_mock.assert_has_calls([mock.ANY])
 
@@ -524,7 +525,8 @@ class QuobyteShareDriverTestCase(test.TestCase):
         qb_subtr_mock.side_effect = [[new_access_1, new_access_2], []]
 
         self._driver.update_access(self._context, self.share,
-                                   access_rules=add_access_rules)
+                                   access_rules=add_access_rules, add_rules=[],
+                                   delete_rules=[])
 
         assert_calls = [mock.call(self._context, self.share, new_access_1),
                         mock.call(self._context, self.share, new_access_2)]
@@ -550,7 +552,8 @@ class QuobyteShareDriverTestCase(test.TestCase):
         old_access_rules = [old_access_1, old_access_2]
 
         self._driver.update_access(self._context, self.share,
-                                   access_rules=old_access_rules)
+                                   access_rules=old_access_rules, add_rules=[],
+                                   delete_rules=[])
 
         qb_deny_mock.assert_called_once_with(self._context,
                                              self.share,
@@ -587,7 +590,8 @@ class QuobyteShareDriverTestCase(test.TestCase):
                                      [miss_access_1, old_access_2]]
 
         self._driver.update_access(self._context, self.share,
-                                   new_access_rules)
+                                   new_access_rules, add_rules=[],
+                                   delete_rules=[])
 
         a_calls = [mock.call(self._context, self.share, new_access_1),
                    mock.call(self._context, self.share, new_access_2)]

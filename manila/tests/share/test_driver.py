@@ -529,7 +529,9 @@ class ShareDriverTestCase(test.TestCase):
             share_driver.update_access,
             'ctx',
             'fake_share',
-            'fake_access_rules'
+            'fake_access_rules',
+            'fake_add_rules',
+            'fake_delete_rules'
         )
 
     def test_create_replica(self):

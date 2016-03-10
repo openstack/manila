@@ -743,8 +743,8 @@ class V3StorageConnection(driver.HuaweiBase):
             self.helper._remove_access_from_share(access_id,
                                                   share_proto)
 
-    def update_access(self, share, access_rules, add_rules=None,
-                      delete_rules=None, share_server=None):
+    def update_access(self, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
         """Update access rules list."""
         if not (add_rules or delete_rules):
             self.clear_access(share, share_server)

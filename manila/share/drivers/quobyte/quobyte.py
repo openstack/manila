@@ -328,13 +328,13 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         """
         self._resize_share(share=shrink_share, new_size=shrink_size)
 
-    def update_access(self, context, share, access_rules, add_rules=None,
-                      delete_rules=None, share_server=None):
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
         """Update access rules for given share.
 
         Two different cases are supported in here:
         1. Recovery after error - 'access_rules' contains all access_rules,
-        'add_rules' and 'delete_rules' are None. Driver should apply all
+        'add_rules' and 'delete_rules' are empty. Driver should apply all
         access rules for given share.
 
         2. Adding/Deleting of several access rules - 'access_rules' contains
@@ -345,9 +345,9 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         :param context: Current context
         :param share: Share model with share data.
         :param access_rules: All access rules for given share
-        :param add_rules: None or List of access rules which should be added
-               access_rules already contains these rules.
-        :param delete_rules: None or List of access rules which should be
+        :param add_rules: Empty List or List of access rules which should be
+               added. access_rules already contains these rules.
+        :param delete_rules: Empty List or List of access rules which should be
                removed. access_rules doesn't contain these rules.
         :param share_server: None or Share server model
         :raises If all of the *_rules params are None the method raises an

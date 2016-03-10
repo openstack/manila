@@ -529,8 +529,8 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
         self.zfs('set', 'quota=%sG' % new_size, dataset_name)
 
     @ensure_share_server_not_provided
-    def update_access(self, context, share, access_rules, add_rules=None,
-                      delete_rules=None, share_server=None):
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
         """Updates access rules for given share."""
         dataset_name = self._get_dataset_name(share)
         return self._get_share_helper(share['share_proto']).update_access(

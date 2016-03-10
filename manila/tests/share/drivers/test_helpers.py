@@ -131,7 +131,9 @@ class NFSHelperTestCase(test.TestCase):
             self._helper.update_access,
             self.server,
             self.share_name,
-            access_rules)
+            access_rules,
+            [],
+            [])
 
     def test_update_access_invalid_level(self):
         access_rules = [test_generic.get_fake_access_rule(
@@ -141,7 +143,9 @@ class NFSHelperTestCase(test.TestCase):
             self._helper.update_access,
             self.server,
             self.share_name,
-            access_rules)
+            access_rules,
+            [],
+            [])
 
     def test_get_host_list(self):
         fake_exportfs = ('/shares/share-1\n\t\t20.0.0.3\n'
@@ -165,7 +169,8 @@ class NFSHelperTestCase(test.TestCase):
         self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
         self.mock_object(self._helper, '_get_host_list',
                          mock.Mock(return_value=['1.1.1.1']))
-        self._helper.update_access(self.server, self.share_name, access_rules)
+        self._helper.update_access(self.server, self.share_name, access_rules,
+                                   [], [])
         local_path = os.path.join(CONF.share_mount_path, self.share_name)
         self._ssh_exec.assert_has_calls([
             mock.call(self.server, ['sudo', 'exportfs']),
@@ -410,7 +415,9 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
             self._helper.update_access,
             self.server_details,
             self.share_name,
-            access_rules)
+            access_rules,
+            [],
+            [])
 
     def test_update_access_wrong_access_type(self):
         access_rules = [test_generic.get_fake_access_rule(
@@ -420,14 +427,16 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
             self._helper.update_access,
             self.server_details,
             self.share_name,
-            access_rules)
+            access_rules,
+            [],
+            [])
 
     def test_update_access(self):
         access_rules = [test_generic.get_fake_access_rule(
             '1.1.1.1', const.ACCESS_LEVEL_RW), ]
 
         self._helper.update_access(self.server_details, self.share_name,
-                                   access_rules)
+                                   access_rules, [], [])
         self._helper._ssh_exec.assert_called_once_with(
             self.server_details, ['sudo', 'net', 'conf', 'setparm',
                                   self.share_name, '"hosts allow"',
@@ -570,7 +579,7 @@ class CIFSHelperUserAccessTestCase(test.TestCase):
             'user1', const.ACCESS_LEVEL_RW, access_type='ip')]
         self.assertRaises(exception.InvalidShareAccess,
                           self._helper.update_access, self.server_details,
-                          self.share_name, access_rules, None, None)
+                          self.share_name, access_rules, [], [])
 
     def test_update_access(self):
         access_list = [test_generic.get_fake_access_rule(
@@ -578,7 +587,7 @@ class CIFSHelperUserAccessTestCase(test.TestCase):
             test_generic.get_fake_access_rule(
                 'user2', const.ACCESS_LEVEL_RO, access_type='user')]
         self._helper.update_access(self.server_details, self.share_name,
-                                   access_list, None, None)
+                                   access_list, [], [])
 
         self._helper._ssh_exec.assert_has_calls([
             mock.call(self.server_details,
@@ -597,7 +606,9 @@ class CIFSHelperUserAccessTestCase(test.TestCase):
             self._helper.update_access,
             self.server_details,
             self.share_name,
-            access_rules)
+            access_rules,
+            [],
+            [])
 
 
 @ddt.ddt

@@ -155,7 +155,7 @@ class HDSHNASTestCase(test.TestCase):
 
         self.mock_object(ssh.HNASSSHBackend, "update_access_rule",
                          mock.Mock())
-        self._driver.update_access('context', share, access_list)
+        self._driver.update_access('context', share, access_list, [], [])
 
         ssh.HNASSSHBackend.update_access_rule.assert_called_once_with(
             share['id'], [access1['access_to'] + '('
@@ -179,7 +179,7 @@ class HDSHNASTestCase(test.TestCase):
 
         self.assertRaises(exception.InvalidShareAccess,
                           self._driver.update_access, 'context', share,
-                          access_list)
+                          access_list, [], [])
 
     def test_create_share(self):
         self.mock_object(hds_hnas.HDSHNASDriver, "_check_fs_mounted",
