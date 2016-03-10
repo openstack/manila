@@ -213,16 +213,6 @@ foo_res  opt_3           some_value       local"""
         self.driver.execute.asssert_called_once_with(
             'sudo', 'zfs', 'foo', 'bar')
 
-    def test_zfs_with_retrying(self):
-        self.mock_object(self.driver, 'execute')
-        self.mock_object(self.driver, 'execute_with_retry')
-
-        self.driver.zfs_with_retry('foo', 'bar')
-
-        self.assertEqual(0, self.driver.execute.call_count)
-        self.driver.execute_with_retry.asssert_called_once_with(
-            'sudo', 'zfs', 'foo', 'bar')
-
 
 @ddt.ddt
 class NFSviaZFSHelperTestCase(test.TestCase):

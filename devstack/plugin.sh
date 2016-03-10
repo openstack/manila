@@ -592,12 +592,6 @@ function install_manila {
                 sudo apt-get install -y build-essential
                 sudo apt-get install -y ubuntu-zfs
                 sudo modprobe zfs
-
-                # TODO(vponomaryov): remove following line when we have this
-                # in 'requirements.txt' file.
-                # Package 'nsenter' is expected to be installed on host with
-                # ZFS, if it is remote for manila-share service host.
-                sudo pip install nsenter
             else
                 echo "Manila Devstack plugin does not support installation "\
                     "of ZFS packages for non-'Ubuntu-trusty' distros. "\
