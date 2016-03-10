@@ -104,7 +104,7 @@ class DataManager(manager.Manager):
                 context, share_ref, share_instance_id, dest_share_instance_id)
             raise exception.ShareDataCopyFailed(reason=msg)
         finally:
-            self.busy_tasks_shares.pop(share_id)
+            self.busy_tasks_shares.pop(share_id, None)
 
         LOG.info(_LI(
             "Completed copy operation of migrating share content from share "

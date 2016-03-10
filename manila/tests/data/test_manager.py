@@ -86,7 +86,8 @@ class DataManagerTestCase(test.TestCase):
         self.mock_object(data_utils, 'Copy',
                          mock.Mock(return_value='fake_copy'))
 
-        self.manager.busy_tasks_shares[self.share['id']] = 'fake_copy'
+        if exc is None:
+            self.manager.busy_tasks_shares[self.share['id']] = 'fake_copy'
 
         self.mock_object(self.manager, '_copy_share_data',
                          mock.Mock(side_effect=exc))
