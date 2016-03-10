@@ -14,9 +14,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import fixtures
 import os
 
 from oslo_config import cfg
+import six
 
 from manila import context
 from manila import utils
@@ -33,6 +35,26 @@ def is_manila_installed():
         return True
     else:
         return False
+
+
+def set_timeout(timeout):
+    """Timeout decorator for unit test methods.
+
+    Use this decorator for tests that are expected to pass in very specific
+    amount of time, not common for all other tests.
+    It can have either big or small value.
+    """
+
+    def _decorator(f):
+
+        @six.wraps(f)
+        def _wrapper(self, *args, **kwargs):
+            self.useFixture(fixtures.Timeout(timeout, gentle=True))
+            return f(self, *args, **kwargs)
+
+        return _wrapper
+
+    return _decorator
 
 
 class create_temp_config_with_opts(object):

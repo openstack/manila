@@ -26,6 +26,7 @@ from sqlalchemy.sql import text
 
 from manila.db.migrations.alembic import migration
 from manila.tests.db.migrations.alembic import migrations_data_checks
+from manila.tests import utils as test_utils
 
 LOG = log.getLogger('manila.tests.test_migrations')
 
@@ -138,6 +139,13 @@ class ManilaMigrationsCheckers(test_migrations.WalkVersionsMixin,
                                         'exception': e})
             raise
 
+    # NOTE(vponomaryov): set 5 minutes timeout for case of running it on
+    # very slow nodes/VMs. Note, that this test becomes slower with each
+    # addition of new DB migration. On fast nodes it can take about 5-10 secs
+    # having Mitaka set of migrations.
+    # 'pymysql' works much slower on slow nodes than 'psycopg2'. And such
+    # timeout mostly required for testing of 'mysql' backend.
+    @test_utils.set_timeout(300)
     def test_walk_versions(self):
         """Walks all version scripts for each tested database.
 
@@ -163,6 +171,7 @@ class TestManilaMigrationsMySQL(ManilaMigrationsCheckers,
                                 test_base.MySQLOpportunisticTestCase):
     """Run migration tests on MySQL backend."""
 
+    @test_utils.set_timeout(300)
     def test_mysql_innodb(self):
         """Test that table creation on mysql only builds InnoDB tables."""
         with mock.patch('manila.db.sqlalchemy.api.get_engine',
