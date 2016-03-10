@@ -493,6 +493,7 @@ class HDSHNASTestCase(test.TestCase):
             'free_capacity_gb': 200,
             'reserved_percentage': hds_hnas.CONF.reserved_share_percentage,
             'qos': False,
+            'thin_provisioning': True,
         }
 
         self.mock_object(ssh.HNASSSHBackend, 'get_stats', mock.Mock(
