@@ -307,8 +307,6 @@ class ShareMigrationHelperTestCase(test.TestCase):
 
     def test_apply_new_access_rules(self):
 
-        share_instance = db_utils.create_share_instance(
-            share_id=self.share['id'], status=constants.STATUS_AVAILABLE)
         new_share_instance = db_utils.create_share_instance(
             share_id=self.share['id'], status=constants.STATUS_AVAILABLE,
             access_rules_status='active')
@@ -318,18 +316,25 @@ class ShareMigrationHelperTestCase(test.TestCase):
                                         access_level='rw')
 
         # mocks
+        self.mock_object(db, 'share_instance_access_copy')
         self.mock_object(db, 'share_access_get_all_for_instance',
                          mock.Mock(return_value=[access]))
-        self.mock_object(self.helper, '_add_rules_and_wait')
+        self.mock_object(share_api.API, 'allow_access_to_instance')
+        self.mock_object(utils, 'wait_for_access_update')
 
         # run
-        self.helper.apply_new_access_rules(share_instance, new_share_instance)
+        self.helper.apply_new_access_rules(new_share_instance)
 
         # asserts
+        db.share_instance_access_copy(self.context, self.share['id'],
+                                      new_share_instance['id'])
         db.share_access_get_all_for_instance.assert_called_once_with(
-            self.context, share_instance['id'])
-        self.helper._add_rules_and_wait.assert_called_once_with(
-            new_share_instance, [access])
+            self.context, new_share_instance['id'])
+        share_api.API.allow_access_to_instance.assert_called_with(
+            self.context, new_share_instance, [access])
+        utils.wait_for_access_update.assert_called_with(
+            self.context, db, new_share_instance,
+            self.helper.migration_wait_access_rules_timeout)
 
     @ddt.data(None, Exception('fake'))
     def test_cleanup_new_instance(self, exc):
@@ -371,35 +376,3 @@ class ShareMigrationHelperTestCase(test.TestCase):
 
         if exc:
             migration.LOG.warning.called
-
-    def test__add_rules_and_wait(self):
-
-        access = db_utils.create_access(share_id=self.share['id'])
-
-        values = {
-            'share_id': self.share['id'],
-            'access_type': access['access_type'],
-            'access_level': access['access_level'],
-            'access_to': access['access_to']
-        }
-
-        self.helper.migration_wait_access_rules_timeout = 60
-
-        # mocks
-        self.mock_object(db, 'share_access_create')
-
-        self.mock_object(share_api.API, 'allow_access_to_instance')
-
-        self.mock_object(utils, 'wait_for_access_update')
-
-        # run
-        self.helper._add_rules_and_wait(self.share_instance, [access])
-
-        # asserts
-        db.share_access_create.assert_called_once_with(self.context, values)
-
-        share_api.API.allow_access_to_instance.assert_called_once_with(
-            self.context, self.share_instance, [access])
-
-        utils.wait_for_access_update.assert_called_once_with(
-            self.context, db, self.share_instance, 60)

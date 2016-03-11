@@ -120,27 +120,6 @@ class ShareMigrationHelper(object):
 
         return new_share_instance
 
-    def _add_rules_and_wait(self, share_instance, access_rules):
-
-        for access in access_rules:
-            values = {
-                'share_id': self.share['id'],
-                'access_type': access['access_type'],
-                'access_level': access['access_level'],
-                'access_to': access['access_to']
-            }
-
-            # NOTE(ganso): Instance Access Mapping is created only on
-            # db.share_access_create.
-
-            self.db.share_access_create(self.context, values)
-
-        self.api.allow_access_to_instance(self.context, share_instance,
-                                          access_rules)
-        utils.wait_for_access_update(
-            self.context, self.db, share_instance,
-            self.migration_wait_access_rules_timeout)
-
     # NOTE(ganso): Cleanup methods do not throw exceptions, since the
     # exceptions that should be thrown are the ones that call the cleanup
 
@@ -203,13 +182,20 @@ class ShareMigrationHelper(object):
                                  add_rules=[], delete_rules=[],
                                  share_server=share_server)
 
-    def apply_new_access_rules(self, share_instance, new_share_instance):
+    def apply_new_access_rules(self, new_share_instance):
+
+        self.db.share_instance_access_copy(self.context, self.share['id'],
+                                           new_share_instance['id'])
 
         rules = self.db.share_access_get_all_for_instance(
-            self.context, share_instance['id'])
+            self.context, new_share_instance['id'])
 
         if len(rules) > 0:
             LOG.debug("Restoring all of share %s access rules according to "
                       "DB.", self.share['id'])
 
-            self._add_rules_and_wait(new_share_instance, rules)
+            self.api.allow_access_to_instance(self.context, new_share_instance,
+                                              rules)
+            utils.wait_for_access_update(
+                self.context, self.db, new_share_instance,
+                self.migration_wait_access_rules_timeout)

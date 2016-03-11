@@ -3605,7 +3605,7 @@ class ShareManagerTestCase(test.TestCase):
                 {'task_state': constants.TASK_STATE_MIGRATION_CANCELLED})
         if status == constants.TASK_STATE_DATA_COPYING_COMPLETED:
             migration_api.ShareMigrationHelper.apply_new_access_rules.\
-                assert_called_once_with(instance, new_instance)
+                assert_called_once_with(new_instance)
             self.assertTrue(manager.LOG.exception.called)
 
     def test__migration_complete(self):
@@ -3658,7 +3658,7 @@ class ShareManagerTestCase(test.TestCase):
                 {'task_state': constants.TASK_STATE_MIGRATION_SUCCESS}),
         ])
         migration_api.ShareMigrationHelper.apply_new_access_rules.\
-            assert_called_once_with(instance, new_instance)
+            assert_called_once_with(new_instance)
         migration_api.ShareMigrationHelper.delete_instance_and_wait.\
             assert_called_once_with(instance)
 
