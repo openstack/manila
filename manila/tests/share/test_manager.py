@@ -2385,6 +2385,8 @@ class ShareManagerTestCase(test.TestCase):
                          'share_server_backend_details_set', details_mock)
         self.mock_object(self.share_manager.db, 'share_server_update')
         self.mock_object(self.share_manager.driver, 'deallocate_network')
+        self.mock_object(manager.LOG, 'debug')
+        self.mock_object(manager.LOG, 'warning')
 
         self.assertRaises(
             exception.ManilaException,
@@ -2406,6 +2408,9 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.driver.deallocate_network.assert_called_once_with(
             self.context, share_server['id']
         )
+        self.assertFalse(manager.LOG.warning.called)
+        if get_server_details_from_data(data):
+            self.assertTrue(manager.LOG.debug.called)
 
     def test_ensure_share_instance_has_pool_with_only_host(self):
         fake_share = {
