@@ -417,6 +417,9 @@ class HNASSSHBackend(object):
                 if 'DirectoryNotEmpty' in e.stderr:
                     LOG.debug("Share %(path)s has more snapshots.",
                               {'path': path})
+                elif 'NotFound' in e.stderr:
+                    LOG.warning(_LW("Attempted to delete path %s but it does "
+                                    "not exist."), path)
                 else:
                     msg = six.text_type(e)
                     LOG.exception(msg)

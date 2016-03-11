@@ -239,6 +239,7 @@ class HDSHNASTestCase(test.TestCase):
         ssh.HNASSSHBackend.vvol_delete.assert_called_once_with(share['id'])
 
     def test_create_snapshot(self):
+        self.mock_object(hds_hnas.HDSHNASDriver, "_ensure_share")
         self.mock_object(hds_hnas.HDSHNASDriver, "_get_hnas_share_id",
                          mock.Mock(return_value=share['id']))
         self.mock_object(ssh.HNASSSHBackend, "get_host_list", mock.Mock(
@@ -258,6 +259,7 @@ class HDSHNASTestCase(test.TestCase):
                                       snapshot['id'])
 
     def test_create_snapshot_first_snapshot(self):
+        self.mock_object(hds_hnas.HDSHNASDriver, "_ensure_share")
         self.mock_object(hds_hnas.HDSHNASDriver, "_get_hnas_share_id",
                          mock.Mock(return_value=share['id']))
         self.mock_object(ssh.HNASSSHBackend, "get_host_list", mock.Mock(

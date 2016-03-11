@@ -934,7 +934,7 @@ class HNASSSHTestCase(test.TestCase):
         self.assertTrue(self.mock_log.debug.called)
 
     def test__locked_selectfs_delete_exception(self):
-        msg = 'rmdir: cannot remove \'/path\': NotFound'
+        msg = 'rmdir: cannot remove \'/path\''
 
         self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
             side_effect=[putils.ProcessExecutionError(stderr=msg)]))
