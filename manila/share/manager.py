@@ -2108,6 +2108,7 @@ class ShareManager(manager.SchedulerDependentManager):
         share_instance = self._get_share_instance(context, share)
         share_server = self._get_share_server(context, share_instance)
         project_id = share['project_id']
+        user_id = share['user_id']
 
         try:
             self.driver.extend_share(
@@ -2123,9 +2124,14 @@ class ShareManager(manager.SchedulerDependentManager):
                 raise exception.ShareExtendingError(
                     reason=six.text_type(e), share_id=share_id)
             finally:
-                QUOTAS.rollback(context, reservations, project_id=project_id)
+                QUOTAS.rollback(context, reservations, project_id=project_id,
+                                user_id=user_id)
 
-        QUOTAS.commit(context, reservations, project_id=project_id)
+        # we give the user_id of the share, to update the quota usage
+        # for the user, who created the share, because on share delete
+        # only this quota will be decreased
+        QUOTAS.commit(context, reservations, project_id=project_id,
+                      user_id=user_id)
 
         share_update = {
             'size': int(new_size),
@@ -2145,6 +2151,7 @@ class ShareManager(manager.SchedulerDependentManager):
         share_instance = self._get_share_instance(context, share)
         share_server = self._get_share_server(context, share_instance)
         project_id = share['project_id']
+        user_id = share['user_id']
         new_size = int(new_size)
 
         def error_occurred(exc, msg, status=constants.STATUS_SHRINKING_ERROR):
@@ -2158,8 +2165,12 @@ class ShareManager(manager.SchedulerDependentManager):
 
         try:
             size_decrease = int(share['size']) - new_size
+            # we give the user_id of the share, to update the quota usage
+            # for the user, who created the share, because on share delete
+            # only this quota will be decreased
             reservations = QUOTAS.reserve(context,
-                                          project_id=share['project_id'],
+                                          project_id=project_id,
+                                          user_id=user_id,
                                           gigabytes=-size_decrease)
         except Exception as e:
             error_occurred(
@@ -2182,9 +2193,11 @@ class ShareManager(manager.SchedulerDependentManager):
             try:
                 error_occurred(e, **error_params)
             finally:
-                QUOTAS.rollback(context, reservations, project_id=project_id)
+                QUOTAS.rollback(context, reservations, project_id=project_id,
+                                user_id=user_id)
 
-        QUOTAS.commit(context, reservations, project_id=project_id)
+        QUOTAS.commit(context, reservations, project_id=project_id,
+                      user_id=user_id)
 
         share_update = {
             'size': new_size,

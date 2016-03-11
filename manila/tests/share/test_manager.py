@@ -2568,6 +2568,7 @@ class ShareManagerTestCase(test.TestCase):
     def test_extend_share_invalid(self):
         share = db_utils.create_share()
         share_id = share['id']
+        reservations = {}
 
         self.mock_object(self.share_manager, 'driver')
         self.mock_object(self.share_manager.db, 'share_update')
@@ -2578,6 +2579,13 @@ class ShareManagerTestCase(test.TestCase):
         self.assertRaises(
             exception.ShareExtendingError,
             self.share_manager.extend_share, self.context, share_id, 123, {})
+
+        quota.QUOTAS.rollback.assert_called_once_with(
+            mock.ANY,
+            reservations,
+            project_id=six.text_type(share['project_id']),
+            user_id=six.text_type(share['user_id'])
+        )
 
     def test_extend_share(self):
         share = db_utils.create_share()
@@ -2610,7 +2618,8 @@ class ShareManagerTestCase(test.TestCase):
             new_size, share_server=fake_share_server
         )
         quota.QUOTAS.commit.assert_called_once_with(
-            mock.ANY, reservations, project_id=share['project_id'])
+            mock.ANY, reservations, project_id=share['project_id'],
+            user_id=share['user_id'])
         manager.db.share_update.assert_called_once_with(
             mock.ANY, share_id, shr_update
         )
@@ -2632,6 +2641,7 @@ class ShareManagerTestCase(test.TestCase):
         quota.QUOTAS.reserve.assert_called_with(
             mock.ANY,
             project_id=six.text_type(share['project_id']),
+            user_id=six.text_type(share['user_id']),
             gigabytes=new_size - size
         )
         self.assertTrue(self.share_manager.db.share_update.called)
@@ -2645,6 +2655,7 @@ class ShareManagerTestCase(test.TestCase):
         share = db_utils.create_share()
         new_size = 1
         share_id = share['id']
+        size_decrease = int(share['size']) - new_size
 
         self.mock_object(self.share_manager, 'driver')
         self.mock_object(self.share_manager.db, 'share_update')
@@ -2666,8 +2677,14 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.share_update.assert_called_once_with(
             mock.ANY, share_id, {'status': status}
         )
-        self.assertTrue(quota.QUOTAS.reserve.called)
-        self.assertTrue(quota.QUOTAS.rollback.called)
+        quota.QUOTAS.reserve.assert_called_once_with(
+            mock.ANY, gigabytes=-size_decrease, project_id=share['project_id'],
+            user_id=share['user_id']
+        )
+        quota.QUOTAS.rollback.assert_called_once_with(
+            mock.ANY, mock.ANY, project_id=share['project_id'],
+            user_id=share['user_id']
+        )
         self.assertTrue(self.share_manager.db.share_get.called)
 
     def test_shrink_share(self):
@@ -2679,6 +2696,7 @@ class ShareManagerTestCase(test.TestCase):
             'status': constants.STATUS_AVAILABLE
         }
         fake_share_server = 'fake'
+        size_decrease = int(share['size']) - new_size
 
         manager = self.share_manager
         self.mock_object(manager, 'driver')
@@ -2687,6 +2705,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(manager.db, 'share_update',
                          mock.Mock(return_value=share))
         self.mock_object(quota.QUOTAS, 'commit')
+        self.mock_object(quota.QUOTAS, 'reserve')
         self.mock_object(manager.driver, 'shrink_share')
         self.mock_object(manager, '_get_share_server',
                          mock.Mock(return_value=fake_share_server))
@@ -2698,8 +2717,15 @@ class ShareManagerTestCase(test.TestCase):
             utils.IsAMatcher(models.ShareInstance),
             new_size, share_server=fake_share_server
         )
+
+        quota.QUOTAS.reserve.assert_called_once_with(
+            mock.ANY, gigabytes=-size_decrease, project_id=share['project_id'],
+            user_id=share['user_id']
+        )
         quota.QUOTAS.commit.assert_called_once_with(
-            mock.ANY, mock.ANY, project_id=share['project_id'])
+            mock.ANY, mock.ANY, project_id=share['project_id'],
+            user_id=share['user_id']
+        )
         manager.db.share_update.assert_called_once_with(
             mock.ANY, share_id, shr_update
         )

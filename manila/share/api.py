@@ -1274,9 +1274,13 @@ class API(base.Base):
             raise exception.InvalidInput(reason=msg)
 
         try:
+            # we give the user_id of the share, to update the quota usage
+            # for the user, who created the share, because on share delete
+            # only this quota will be decreased
             reservations = QUOTAS.reserve(context,
                                           project_id=share['project_id'],
-                                          gigabytes=size_increase)
+                                          gigabytes=size_increase,
+                                          user_id=share['user_id'])
         except exception.OverQuota as exc:
             usages = exc.kwargs['usages']
             quotas = exc.kwargs['quotas']
