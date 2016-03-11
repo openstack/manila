@@ -35,6 +35,7 @@ LOG = log.getLogger(__name__)
 DELETED_PREFIX = 'deleted_manila_'
 DEFAULT_IPSPACE = 'Default'
 DEFAULT_BROADCAST_DOMAIN = 'OpenStack'
+DEFAULT_MAX_PAGE_LENGTH = 50
 
 
 class NetAppCmodeClient(client_base.NetAppBaseClient):
@@ -78,9 +79,60 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         else:
             return True
 
+    def _get_record_count(self, api_result_element):
+        try:
+            return int(api_result_element.get_child_content('num-records'))
+        except TypeError:
+            msg = _('Missing record count for NetApp iterator API invocation.')
+            raise exception.NetAppException(msg)
+
     def set_vserver(self, vserver):
         self.vserver = vserver
         self.connection.set_vserver(vserver)
+
+    def send_iter_request(self, api_name, api_args=None,
+                          max_page_length=DEFAULT_MAX_PAGE_LENGTH):
+        """Invoke an iterator-style getter API."""
+
+        if not api_args:
+            api_args = {}
+
+        api_args['max-records'] = max_page_length
+
+        # Get first page
+        result = self.send_request(api_name, api_args)
+
+        # Most commonly, we can just return here if there is no more data
+        next_tag = result.get_child_content('next-tag')
+        if not next_tag:
+            return result
+
+        # Ensure pagination data is valid and prepare to store remaining pages
+        num_records = self._get_record_count(result)
+        attributes_list = result.get_child_by_name('attributes-list')
+        if not attributes_list:
+            msg = _('Missing attributes list for API %s.') % api_name
+            raise exception.NetAppException(msg)
+
+        # Get remaining pages, saving data into first page
+        while next_tag is not None:
+            next_api_args = copy.deepcopy(api_args)
+            next_api_args['tag'] = next_tag
+            next_result = self.send_request(api_name, next_api_args)
+
+            next_attributes_list = next_result.get_child_by_name(
+                'attributes-list') or netapp_api.NaElement('none')
+
+            for record in next_attributes_list.get_children():
+                attributes_list.add_child_elem(record)
+
+            num_records += self._get_record_count(next_result)
+            next_tag = next_result.get_child_content('next-tag')
+
+        result.get_child_by_name('num-records').set_content(
+            six.text_type(num_records))
+        result.get_child_by_name('next-tag').set_content('')
+        return result
 
     @na_utils.trace
     def create_vserver(self, vserver_name, root_volume_aggregate_name,
@@ -129,7 +181,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('vserver-get-iter', api_args)
+        result = self.send_iter_request('vserver-get-iter', api_args)
         return self._has_records(result)
 
     @na_utils.trace
@@ -147,7 +199,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        vserver_info = self.send_request('vserver-get-iter', api_args)
+        vserver_info = self.send_iter_request('vserver-get-iter', api_args)
 
         try:
             root_volume_name = vserver_info.get_child_by_name(
@@ -177,7 +229,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        vserver_info = self.send_request('vserver-get-iter', api_args)
+        vserver_info = self.send_iter_request('vserver-get-iter', api_args)
 
         try:
             ipspace = vserver_info.get_child_by_name(
@@ -207,7 +259,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('vserver-get-iter', api_args)
+        result = self.send_iter_request('vserver-get-iter', api_args)
         return self._has_records(result)
 
     @na_utils.trace
@@ -229,21 +281,20 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         if query:
             api_args['query'] = query
 
-        result = self.send_request('vserver-get-iter', api_args)
+        result = self.send_iter_request('vserver-get-iter', api_args)
         vserver_info_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
         return [vserver_info.get_child_content('vserver-name')
                 for vserver_info in vserver_info_list.get_children()]
 
     @na_utils.trace
-    def get_vserver_volume_count(self, max_records=20):
+    def get_vserver_volume_count(self):
         """Get the number of volumes present on a cluster or vserver.
 
         Call this on a vserver client to see how many volumes exist
         on that vserver.
         """
         api_args = {
-            'max-records': max_records,
             'desired-attributes': {
                 'volume-attributes': {
                     'volume-id-attributes': {
@@ -252,8 +303,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        volumes_data = self.send_request('volume-get-iter', api_args)
-        return int(volumes_data.get_child_content('num-records'))
+        volumes_data = self.send_iter_request('volume-get-iter', api_args)
+        return self._get_record_count(volumes_data)
 
     @na_utils.trace
     def delete_vserver(self, vserver_name, vserver_client,
@@ -268,7 +319,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             return
 
         root_volume_name = self.get_vserver_root_volume_name(vserver_name)
-        volumes_count = vserver_client.get_vserver_volume_count(max_records=2)
+        volumes_count = vserver_client.get_vserver_volume_count()
 
         if volumes_count == 1:
             try:
@@ -319,7 +370,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('system-node-get-iter', api_args)
+        result = self.send_iter_request('system-node-get-iter', api_args)
         nodes_info_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
         return [node_info.get_child_content('node') for node_info
@@ -351,7 +402,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('net-port-get-iter', api_args)
+        result = self.send_iter_request('net-port-get-iter', api_args)
         net_port_info_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
 
@@ -400,7 +451,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                     },
                 },
             }
-            result = self.send_request('aggr-get-iter', api_args)
+            result = self.send_iter_request('aggr-get-iter', api_args)
             aggr_list = result.get_child_by_name(
                 'attributes-list').get_children()
         except AttributeError:
@@ -522,7 +573,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('net-port-get-iter', api_args)
+        result = self.send_iter_request('net-port-get-iter', api_args)
 
         net_port_info_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
@@ -553,8 +604,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 'net-port-broadcast-domain-info': None,
             },
         }
-        result = self.send_request('net-port-broadcast-domain-get-iter',
-                                   api_args)
+        result = self.send_iter_request('net-port-broadcast-domain-get-iter',
+                                        api_args)
         return self._has_records(result)
 
     @na_utils.trace
@@ -651,7 +702,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('net-interface-get-iter', api_args)
+        result = self.send_iter_request('net-interface-get-iter', api_args)
         return self._has_records(result)
 
     @na_utils.trace
@@ -664,7 +715,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('net-interface-get-iter', api_args)
+        result = self.send_iter_request('net-interface-get-iter', api_args)
         lif_info_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
         return [lif_info.get_child_content('interface-name') for lif_info
@@ -686,7 +737,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             }
         } if protocols else None
 
-        result = self.send_request('net-interface-get-iter', api_args)
+        result = self.send_iter_request('net-interface-get-iter', api_args)
         lif_info_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
 
@@ -712,13 +763,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('net-interface-delete', api_args)
 
     @na_utils.trace
-    def get_ipspaces(self, ipspace_name=None, max_records=1000):
+    def get_ipspaces(self, ipspace_name=None):
         """Gets one or more IPSpaces."""
 
         if not self.features.IPSPACES:
             return []
 
-        api_args = {'max-records': max_records}
+        api_args = {}
         if ipspace_name:
             api_args['query'] = {
                 'net-ipspaces-info': {
@@ -726,7 +777,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 }
             }
 
-        result = self.send_request('net-ipspaces-get-iter', api_args)
+        result = self.send_iter_request('net-ipspaces-get-iter', api_args)
         if not self._has_records(result):
             return []
 
@@ -784,7 +835,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('net-ipspaces-get-iter', api_args)
+        result = self.send_iter_request('net-ipspaces-get-iter', api_args)
         return self._has_records(result)
 
     @na_utils.trace
@@ -952,7 +1003,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         if desired_attributes:
             api_args['desired-attributes'] = desired_attributes
 
-        result = self.send_request('aggr-get-iter', api_args)
+        result = self.send_iter_request('aggr-get-iter', api_args)
         if not self._has_records(result):
             return []
         else:
@@ -1207,7 +1258,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('sis-get-iter', api_args)
+        result = self.send_iter_request('sis-get-iter', api_args)
 
         attributes_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
@@ -1365,7 +1416,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('volume-get-iter', api_args)
+        result = self.send_iter_request('volume-get-iter', api_args)
         return self._has_records(result)
 
     @na_utils.trace
@@ -1389,7 +1440,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('volume-get-iter', api_args)
+        result = self.send_iter_request('volume-get-iter', api_args)
 
         attributes_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
@@ -1424,7 +1475,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('lun-get-iter', api_args)
+        result = self.send_iter_request('lun-get-iter', api_args)
         return self._has_records(result)
 
     @na_utils.trace
@@ -1450,7 +1501,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('volume-get-iter', api_args)
+        result = self.send_iter_request('volume-get-iter', api_args)
         return self._has_records(result)
 
     @na_utils.trace
@@ -1482,7 +1533,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('volume-get-iter', api_args)
+        result = self.send_iter_request('volume-get-iter', api_args)
         if not self._has_records(result):
             return None
 
@@ -1535,7 +1586,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('volume-get-iter', api_args)
+        result = self.send_iter_request('volume-get-iter', api_args)
         if not self._has_records(result):
             return None
 
@@ -1784,7 +1835,6 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def get_cifs_share_access(self, share_name):
         api_args = {
-            'max-records': 1000,
             'query': {
                 'cifs-share-access-control': {
                     'share': share_name,
@@ -1797,8 +1847,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('cifs-share-access-control-get-iter',
-                                   api_args)
+        result = self.send_iter_request('cifs-share-access-control-get-iter',
+                                        api_args)
 
         attributes_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
@@ -1905,7 +1955,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('export-rule-get-iter', api_args)
+        result = self.send_iter_request('export-rule-get-iter', api_args)
 
         attributes_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
@@ -1979,7 +2029,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('volume-get-iter', api_args)
+        result = self.send_iter_request('volume-get-iter', api_args)
 
         attributes_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
@@ -2060,7 +2110,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('export-policy-get-iter', api_args)
+        result = self.send_iter_request('export-policy-get-iter', api_args)
 
         attributes_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
@@ -2219,7 +2269,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def get_cluster_peers(self, remote_cluster_name=None):
         """Gets one or more cluster peer relationships."""
 
-        api_args = {'max-records': 1000}
+        api_args = {}
         if remote_cluster_name:
             api_args['query'] = {
                 'cluster-peer-info': {
@@ -2227,7 +2277,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 }
             }
 
-        result = self.send_request('cluster-peer-get-iter', api_args)
+        result = self.send_iter_request('cluster-peer-get-iter', api_args)
         if not self._has_records(result):
             return []
 
@@ -2370,9 +2420,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             if peer_vserver_name:
                 api_args['query']['vserver-peer-info']['peer-vserver'] = (
                     peer_vserver_name)
-        api_args['max-records'] = 1000
 
-        result = self.send_request('vserver-peer-get-iter', api_args)
+        result = self.send_iter_request('vserver-peer-get-iter', api_args)
         if not self._has_records(result):
             return []
 
@@ -2647,7 +2696,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         if desired_attributes:
             api_args['desired-attributes'] = desired_attributes
 
-        result = self.send_request('snapmirror-get-iter', api_args)
+        result = self.send_iter_request('snapmirror-get-iter', api_args)
         if not self._has_records(result):
             return []
         else:
