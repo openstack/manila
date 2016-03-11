@@ -25,14 +25,30 @@ import re
 
 from oslo_config import cfg
 from oslo_log import log
-from pylxd import api as lxd_api
-from pylxd import exceptions as pylxd_exc
+# NOTE(tbarron): pylxd module is unavailable in some distribtutions so
+# handle this circumstance gracefully.  Also handle failure to import
+# pylxd_exc directly in versions >= pylxd 2.
+try:
+    from pylxd import api as lxd_api
+    try:
+        from pylxd import exceptions as pylxd_exc
+        NO_LXD = False
+    except ImportError:
+        try:
+            # pylint: disable=E0611
+            from pylxd.deprecated import exceptions as pylxd_exc
+            NO_LXD = False
+        except ImportError:
+            NO_LXD = True
+except ImportError:
+    NO_LXD = True
 import six
 
 from manila.common import constants as const
 from manila import context
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LI
 from manila.i18n import _LW
 from manila.share import driver
 from manila import utils
@@ -92,6 +108,10 @@ CONF.register_opts(lv_opts)
 class LXDHelper(object):
 
     def __init__(self, lxd_api, config):
+        if NO_LXD:
+            LOG.info(_LI('pylxd modules are not present on this system: LXD '
+                         'driver will not function.'))
+            return
         super(LXDHelper, self).__init__()
         self.api = lxd_api
         self.conf = config

@@ -17,6 +17,7 @@
 import functools
 import mock
 from oslo_config import cfg
+import testtools
 
 from manila.common import constants as const
 from manila import context
@@ -27,7 +28,6 @@ from manila import test
 from manila.tests.db import fakes as db_fakes
 from manila.tests import fake_utils
 from manila import utils
-
 
 CONF = cfg.CONF
 
@@ -71,6 +71,7 @@ def fake_network(**kwargs):
     return db_fakes.FakeModel(network)
 
 
+@testtools.skipIf(lxd.NO_LXD, "pylxd is unavailable")
 class LXDHelperTestCase(test.TestCase):
     """Tests LXDUnfs3Helper"""
 
@@ -219,6 +220,7 @@ class LXDHelperTestCase(test.TestCase):
         fake_stream.close.assert_called_once_with()
 
 
+@testtools.skipIf(lxd.NO_LXD, "pylxd is unavailable")
 class LXDUnfs3HelperTestCase(test.TestCase):
     """Tests LXDUnfs3Helper"""
 
@@ -432,6 +434,7 @@ class LXDUnfs3HelperTestCase(test.TestCase):
         self.assertFalse(self.UNFS3Helper._deny_access.called)
 
 
+@testtools.skipIf(lxd.NO_LXD, "pylxd is unavailable")
 class LXDCIFSHelperTestCase(test.TestCase):
     """Tests LXDCIFSHelper"""
 
@@ -671,6 +674,7 @@ class LXDCIFSHelperTestCase(test.TestCase):
         self.assertFalse(self.CIFSHelper._deny_access.called)
 
 
+@testtools.skipIf(lxd.NO_LXD, "pylxd is unavailable")
 class LXDDriverTestCase(test.TestCase):
     """Tests LXDDriver."""
 
