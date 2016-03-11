@@ -207,20 +207,31 @@ class SchedulerManager(manager.Manager):
                 self._set_cg_error_state('create_consistency_group',
                                          context, ex, request_spec)
 
+    def _set_share_replica_error_state(self, context, method, exc,
+                                       request_spec):
+
+        LOG.warning(_LW("Failed to schedule_%(method)s: %(exc)s"),
+                    {'method': method, 'exc': exc})
+        status_updates = {
+            'status': constants.STATUS_ERROR,
+            'replica_state': constants.STATUS_ERROR,
+        }
+        share_replica_id = request_spec.get(
+            'share_instance_properties').get('id')
+
+        db.share_replica_update(context, share_replica_id, status_updates)
+
     def create_share_replica(self, context, request_spec=None,
                              filter_properties=None):
         try:
             self.driver.schedule_create_replica(context, request_spec,
                                                 filter_properties)
-        except Exception as ex:
+
+        except exception.NoValidHost as exc:
+            self._set_share_replica_error_state(
+                context, 'create_share_replica', exc, request_spec)
+
+        except Exception as exc:
             with excutils.save_and_reraise_exception():
-
-                msg = _LW("Failed to schedule the new share replica: %s")
-
-                LOG.warning(msg % ex)
-
-                db.share_replica_update(
-                    context,
-                    request_spec.get('share_instance_properties').get('id'),
-                    {'status': constants.STATUS_ERROR,
-                     'replica_state': constants.STATUS_ERROR})
+                self._set_share_replica_error_state(
+                    context, 'create_share_replica', exc, request_spec)

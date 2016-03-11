@@ -37,6 +37,8 @@ class ShareReplicationFilter(base_host.BaseHostFilter):
         """
         active_replica_host = filter_properties.get('request_spec', {}).get(
             'active_replica_host')
+        existing_replica_hosts = filter_properties.get('request_spec', {}).get(
+            'all_replica_hosts', '').split(',')
         replication_type = filter_properties.get('resource_type', {}).get(
             'extra_specs', {}).get('replication_type')
         active_replica_replication_domain = filter_properties.get(
@@ -45,8 +47,7 @@ class ShareReplicationFilter(base_host.BaseHostFilter):
 
         if replication_type is None:
             # NOTE(gouthamr): You're probably not creating a replicated
-            # share or a replica, then this host obviously passes. Also,
-            # avoid creating a replica on the same host.
+            # share or a replica, then this host obviously passes.
             return True
         elif host_replication_domain is None:
             msg = "Replication is not enabled on host %s."
@@ -70,6 +71,13 @@ class ShareReplicationFilter(base_host.BaseHostFilter):
                 "arh_domain": active_replica_replication_domain,
             }
             LOG.debug(msg, kwargs)
+            return False
+
+        # Check host string for already created replicas
+        if host_state.host in existing_replica_hosts:
+            msg = ("Skipping host %s since it already hosts a replica for "
+                   "this share.")
+            LOG.debug(msg, host_state.host)
             return False
 
         return True
