@@ -157,10 +157,9 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
             tenant_id = client.tenant_id
         if not router_id:
             router_id = self._get_router()['id']
-        client.add_router_interface_with_subnet_id(router_id,
-                                                   subnet_id)
-        self.addCleanup(client.remove_router_interface_with_subnet_id,
-                        router_id, subnet_id)
+        client.add_router_interface(router_id, subnet_id=subnet_id)
+        self.addCleanup(
+            client.remove_router_interface, router_id, subnet_id=subnet_id)
 
     def get_remote_client(self, *args, **kwargs):
         if not CONF.share.image_with_share_tools:
