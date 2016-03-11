@@ -149,6 +149,12 @@ class HDSHNASDriver(driver.ShareDriver):
         :param share_server: Data structure with share server information.
         Not used by this driver.
         """
+
+        try:
+            self._ensure_share(share['id'])
+        except exception.HNASItemNotFoundException:
+            raise exception.ShareResourceNotFound(share_id=share['id'])
+
         host_list = []
         share_id = self._get_hnas_share_id(share['id'])
 
