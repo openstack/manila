@@ -209,7 +209,7 @@ class GlusterManager(object):
                     _("GlusterFS management command '%(cmd)s' failed "
                       "with details as follows:\n%(details)s.") % {
                         'cmd': ' '.join(args),
-                        'details': exc.args[0]})
+                        'details': exc})
 
         return _gluster_call
 
