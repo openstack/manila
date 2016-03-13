@@ -346,6 +346,16 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         self._layout._glustermanager.assert_called_once_with('host1:/gv1')
         self.assertEqual(self.gmgr1, ret)
 
+    def test_share_manager_no_privdata(self):
+        self.mock_object(self._layout.private_storage,
+                         'get', mock.Mock(return_value=None))
+
+        ret = self._layout._share_manager(self.share1)
+
+        self._layout.private_storage.get.assert_called_once_with(
+            self.share1['id'], 'volume')
+        self.assertEqual(None, ret)
+
     def test_ensure_share(self):
         share = self.share1
         gmgr1 = common.GlusterManager(self.glusterfs_target1, self._execute,
@@ -634,6 +644,14 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
 
         self._layout._wipe_gluster_vol.assert_called_once_with(gmgr1)
         self.assertFalse(self._layout._push_gluster_vol.called)
+
+    def test_delete_share_missing_record(self):
+        self.mock_object(self._layout, '_share_manager',
+                         mock.Mock(return_value=None))
+
+        self._layout.delete_share(self._context, self.share1)
+
+        self._layout._share_manager.assert_called_once_with(self.share1)
 
     def test_create_snapshot(self):
         self._layout.gluster_nosnap_vols_dict = {}
