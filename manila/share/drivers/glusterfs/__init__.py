@@ -246,11 +246,6 @@ class GlusterNFSHelper(ganesha.NASHelperBase):
 class GlusterNFSVolHelper(GlusterNFSHelper):
     """Manage shares with Gluster-NFS server, volume mapped variant."""
 
-    def __init__(self, execute, config_object, **kwargs):
-        self.gluster_manager = kwargs.pop('gluster_manager')
-        super(GlusterNFSHelper, self).__init__(execute, config_object,
-                                               **kwargs)
-
     def _get_vol_exports(self):
         export_vol = self.gluster_manager.get_vol_option(
             NFS_RPC_AUTH_ALLOW)
