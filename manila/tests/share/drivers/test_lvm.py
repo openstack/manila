@@ -105,6 +105,7 @@ class LVMShareDriverTestCase(test.TestCase):
         self.server = {
             'public_address': self.fake_conf.lvm_share_export_ip,
             'instance_id': 'LVM',
+            'lock_name': 'manila_lvm',
         }
 
         # Used only to test compatibility with share manager
