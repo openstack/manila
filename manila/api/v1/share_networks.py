@@ -97,13 +97,14 @@ class ShareNetworkController(wsgi.Controller):
         try:
             reservations = QUOTAS.reserve(
                 context, project_id=share_network['project_id'],
-                share_networks=-1)
+                share_networks=-1, user_id=share_network['user_id'])
         except Exception:
             LOG.exception(_LE("Failed to update usages deleting "
                               "share-network."))
         else:
             QUOTAS.commit(context, reservations,
-                          project_id=share_network['project_id'])
+                          project_id=share_network['project_id'],
+                          user_id=share_network['user_id'])
         return webob.Response(status_int=202)
 
     def _get_share_networks(self, req, is_detail=True):
@@ -247,6 +248,7 @@ class ShareNetworkController(wsgi.Controller):
 
         values = body[RESOURCE_NAME]
         values['project_id'] = context.project_id
+        values['user_id'] = context.user_id
         self._verify_no_mutually_exclusive_data(values)
 
         try:

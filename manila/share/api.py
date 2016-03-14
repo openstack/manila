@@ -610,10 +610,13 @@ class API(base.Base):
         self._check_is_share_busy(share)
 
         try:
+            # we give the user_id of the share, to update the quota usage
+            # for the user, who created the share
             reservations = QUOTAS.reserve(context,
                                           project_id=project_id,
                                           shares=-1,
-                                          gigabytes=-share['size'])
+                                          gigabytes=-share['size'],
+                                          user_id=share['user_id'])
         except Exception as e:
             reservations = None
             LOG.exception(
@@ -628,7 +631,10 @@ class API(base.Base):
                 self.db.share_instance_delete(context, share_instance['id'])
 
         if reservations:
-            QUOTAS.commit(context, reservations, project_id=project_id)
+            # we give the user_id of the share, to update the quota usage
+            # for the user, who created the share
+            QUOTAS.commit(context, reservations, project_id=project_id,
+                          user_id=share['user_id'])
 
     def delete_instance(self, context, share_instance, force=False):
         policy.check_policy(context, 'share', 'delete')
