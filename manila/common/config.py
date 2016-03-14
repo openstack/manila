@@ -46,7 +46,10 @@ core_opts = [
                help='File name for the paste.deploy config for manila-api.'),
     cfg.StrOpt('state_path',
                default='/var/lib/manila',
-               help="Top-level directory for maintaining manila's state."), ]
+               help="Top-level directory for maintaining manila's state."),
+    cfg.StrOpt('os_region_name',
+               help='Region name of this node.'),
+]
 
 debug_opts = [
 ]

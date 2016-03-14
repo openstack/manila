@@ -26,6 +26,7 @@ from oslo_config import cfg
 from oslo_log import log
 import six
 
+from manila.common.config import core_opts
 import manila.context as ctxt
 from manila.db import base
 from manila import exception
@@ -38,8 +39,6 @@ cinder_opts = [
                help='Info to match when looking for cinder in the service '
                     'catalog. Format is separated values of the form: '
                     '<service_type>:<service_name>:<endpoint_type>'),
-    cfg.StrOpt('os_region_name',
-               help='Region name of this node.'),
     cfg.StrOpt('cinder_ca_certificates_file',
                help='Location of CA certificates file to use for cinder '
                     'client requests.'),
@@ -68,6 +67,7 @@ cinder_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(cinder_opts)
+CONF.register_opts(core_opts)
 
 LOG = log.getLogger(__name__)
 

@@ -24,6 +24,7 @@ from oslo_config import cfg
 from oslo_log import log
 import six
 
+from manila.common.config import core_opts
 from manila.db import base
 from manila import exception
 from manila.i18n import _
@@ -37,8 +38,6 @@ nova_opts = [
     cfg.StrOpt('nova_catalog_admin_info',
                default='compute:nova:adminURL',
                help='Same as nova_catalog_info, but for admin endpoint.'),
-    cfg.StrOpt('os_region_name',
-               help='Region name of this node.'),
     cfg.StrOpt('nova_ca_certificates_file',
                help='Location of CA certificates file to use for nova client '
                     'requests.'),
@@ -63,6 +62,7 @@ nova_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(nova_opts)
+CONF.register_opts(core_opts)
 
 LOG = log.getLogger(__name__)
 
