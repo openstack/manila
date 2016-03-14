@@ -23,6 +23,7 @@ import time
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
+from oslo_utils import strutils
 from oslo_utils import timeutils
 
 from manila.common import constants
@@ -30,6 +31,7 @@ from manila import exception
 from manila.i18n import _, _LI, _LW
 from manila.share import driver
 from manila.share.drivers.zfsonlinux import utils as zfs_utils
+from manila.share import share_types
 from manila.share import utils as share_utils
 from manila import utils
 
@@ -144,6 +146,35 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
         self.service_ip = self.configuration.zfs_service_ip
         self.private_storage = kwargs.get('private_storage')
         self._helpers = {}
+
+        # Set config based capabilities
+        self._init_common_capabilities()
+
+    def _init_common_capabilities(self):
+        self.common_capabilities = {}
+        if 'dedup=on' in self.dataset_creation_options:
+            self.common_capabilities['dedupe'] = [True]
+        elif 'dedup=off' in self.dataset_creation_options:
+            self.common_capabilities['dedupe'] = [False]
+        else:
+            self.common_capabilities['dedupe'] = [True, False]
+
+        if 'compression=off' in self.dataset_creation_options:
+            self.common_capabilities['compression'] = [False]
+        elif any('compression=' in option
+                 for option in self.dataset_creation_options):
+            self.common_capabilities['compression'] = [True]
+        else:
+            self.common_capabilities['compression'] = [True, False]
+
+        # NOTE(vponomaryov): Driver uses 'quota' approach for
+        # ZFS dataset. So, we can consider it as
+        # 'always thin provisioned' because this driver never reserves
+        # space for dataset.
+        self.common_capabilities['thin_provisioning'] = [True]
+        self.common_capabilities['max_over_subscription_ratio'] = (
+            self.configuration.max_over_subscription_ratio)
+        self.common_capabilities['qos'] = [False]
 
     def _get_zpool_list(self):
         zpools = []
@@ -275,6 +306,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                 'reserved_percentage':
                     self.configuration.reserved_share_percentage,
             }
+            pool.update(self.common_capabilities)
             if self.configuration.replication_domain:
                 pool['replication_type'] = 'readable'
             pools.append(pool)
@@ -308,18 +340,57 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
 
     def _get_dataset_creation_options(self, share, is_readonly=False):
         """Returns list of options to be used for dataset creation."""
-        if not self.dataset_creation_options:
-            return []
-        options = []
-        for option in self.dataset_creation_options:
-            if any(v in option for v in ('readonly', 'sharenfs', 'sharesmb')):
+        options = ['quota=%sG' % share['size']]
+        extra_specs = share_types.get_extra_specs_from_share(share)
+
+        dedupe_set = False
+        dedupe = extra_specs.get('dedupe')
+        if dedupe:
+            dedupe = strutils.bool_from_string(
+                dedupe.lower().split(' ')[-1], default=dedupe)
+            if (dedupe in self.common_capabilities['dedupe']):
+                options.append('dedup=%s' % ('on' if dedupe else 'off'))
+                dedupe_set = True
+            else:
+                raise exception.ZFSonLinuxException(msg=_(
+                    "Cannot use requested '%(requested)s' value of 'dedupe' "
+                    "extra spec. It does not fit allowed value '%(allowed)s' "
+                    "that is configured for backend.") % {
+                        'requested': dedupe,
+                        'allowed': self.common_capabilities['dedupe']})
+
+        compression_set = False
+        compression_type = extra_specs.get('zfsonlinux:compression')
+        if compression_type:
+            if (compression_type == 'off' and
+                    False in self.common_capabilities['compression']):
+                options.append('compression=off')
+                compression_set = True
+            elif (compression_type != 'off' and
+                    True in self.common_capabilities['compression']):
+                options.append('compression=%s' % compression_type)
+                compression_set = True
+            else:
+                raise exception.ZFSonLinuxException(msg=_(
+                    "Cannot use value '%s' of extra spec "
+                    "'zfsonlinux:compression' because compression is disabled "
+                    "for this backend. Set extra spec 'compression=True' to "
+                    "make scheduler pick up appropriate backend."
+                ) % compression_type)
+
+        for option in self.dataset_creation_options or []:
+            if any(v in option for v in (
+                    'readonly', 'sharenfs', 'sharesmb', 'quota')):
+                continue
+            if 'dedup' in option and dedupe_set is True:
+                continue
+            if 'compression' in option and compression_set is True:
                 continue
             options.append(option)
         if is_readonly:
             options.append('readonly=on')
         else:
             options.append('readonly=off')
-        options.append('quota=%sG' % share['size'])
         return options
 
     def _get_dataset_name(self, share):
@@ -362,7 +433,6 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                 'dataset_name': dataset_name,
                 'ssh_cmd': ssh_cmd,  # used in replication
                 'pool_name': pool_name,  # used in replication
-                'provided_options': ' '.join(self.dataset_creation_options),
                 'used_options': ' '.join(options),
             }
         )
@@ -451,23 +521,23 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
             'host': self.service_ip,
         }
         pool_name = share_utils.extract_host(share['host'], level='pool')
+        options = self._get_dataset_creation_options(share, is_readonly=False)
         self.private_storage.update(
             share['id'], {
                 'entity_type': 'share',
                 'dataset_name': dataset_name,
                 'ssh_cmd': ssh_cmd,  # used in replication
                 'pool_name': pool_name,  # used in replication
-                'provided_options': 'Cloned from source',
-                'used_options': 'Cloned from source',
+                'used_options': options,
             }
         )
         snapshot_name = self.private_storage.get(
             snapshot['id'], 'snapshot_name')
 
-        self.zfs(
-            'clone', snapshot_name, dataset_name,
-            '-o', 'quota=%sG' % share['size'],
-        )
+        cmd = ['clone', snapshot_name, dataset_name]
+        for option in options:
+            cmd.extend(['-o', option])
+        self.zfs(*cmd)
 
         return self._get_share_helper(
             share['share_proto']).create_exports(dataset_name)
