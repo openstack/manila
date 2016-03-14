@@ -9,7 +9,6 @@ alembic>=0.8.0 # MIT
 Babel>=1.3 # BSD
 eventlet!=0.18.3,>=0.18.2 # MIT
 greenlet>=0.3.2 # MIT
-iso8601>=0.1.9 # MIT
 lxml>=2.3 # BSD
 netaddr!=0.7.16,>=0.7.12 # BSD
 oslo.config>=3.7.0 # Apache-2.0
