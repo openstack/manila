@@ -28,6 +28,7 @@ from tempest.lib import exceptions
 from tempest import test
 
 from manila_tempest_tests import clients_share as clients
+from manila_tempest_tests.common import constants
 from manila_tempest_tests import share_exceptions
 from manila_tempest_tests import utils
 
@@ -508,6 +509,56 @@ class BaseSharesTest(test.BaseTestCase):
         return cgsnapshot
 
     @classmethod
+    def get_availability_zones(cls, client=None):
+        """List the availability zones for "manila-share" services
+
+         that are currently in "up" state.
+         """
+        client = client or cls.shares_v2_client
+        cls.services = client.list_services()
+        zones = [service['zone'] for service in cls.services if
+                 service['binary'] == "manila-share" and
+                 service['state'] == 'up']
+        return zones
+
+    @classmethod
+    def create_share_replica(cls, share_id, availability_zone, client=None,
+                             cleanup_in_class=False, cleanup=True):
+        client = client or cls.shares_v2_client
+        replica = client.create_share_replica(share_id, availability_zone)
+        resource = {
+            "type": "share_replica",
+            "id": replica["id"],
+            "client": client,
+            "share_id": share_id,
+        }
+        # NOTE(Yogi1): Cleanup needs to be disabled during promotion tests.
+        if cleanup:
+            if cleanup_in_class:
+                cls.class_resources.insert(0, resource)
+            else:
+                cls.method_resources.insert(0, resource)
+        client.wait_for_share_replica_status(
+            replica["id"], constants.STATUS_AVAILABLE)
+        return replica
+
+    @classmethod
+    def delete_share_replica(cls, replica_id, client=None):
+        client = client or cls.shares_v2_client
+        client.delete_share_replica(replica_id)
+        client.wait_for_resource_deletion(replica_id=replica_id)
+
+    @classmethod
+    def promote_share_replica(cls, replica_id, client=None):
+        client = client or cls.shares_v2_client
+        replica = client.promote_share_replica(replica_id)
+        client.wait_for_share_replica_status(
+            replica["id"],
+            constants.REPLICATION_STATE_ACTIVE,
+            status_attr="replica_state")
+        return replica
+
+    @classmethod
     def create_share_network(cls, client=None,
                              cleanup_in_class=False, **kwargs):
         if client is None:
@@ -632,6 +683,9 @@ class BaseSharesTest(test.BaseTestCase):
                     elif res["type"] is "cgsnapshot":
                         client.delete_cgsnapshot(res_id)
                         client.wait_for_resource_deletion(cgsnapshot_id=res_id)
+                    elif res["type"] is "share_replica":
+                        client.delete_share_replica(res_id)
+                        client.wait_for_resource_deletion(replica_id=res_id)
                     else:
                         LOG.warning("Provided unsupported resource type for "
                                     "cleanup '%s'. Skipping." % res["type"])

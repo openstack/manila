@@ -21,6 +21,7 @@ from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions
 
+from manila_tempest_tests.common import constants
 from manila_tempest_tests.services.share.json import shares_client
 from manila_tempest_tests import share_exceptions
 from manila_tempest_tests import utils
@@ -177,6 +178,9 @@ class SharesV2Client(shares_client.SharesClient):
         elif "cgsnapshot_id" in kwargs:
             return self._is_resource_deleted(
                 self.get_cgsnapshot, kwargs.get("cgsnapshot_id"))
+        elif "replica_id" in kwargs:
+            return self._is_resource_deleted(
+                self.get_share_replica, kwargs.get("replica_id"))
         else:
             return super(SharesV2Client, self).is_resource_deleted(
                 *args, **kwargs)
@@ -1034,3 +1038,173 @@ class SharesV2Client(shares_client.SharesClient):
                                'status': status,
                            })
                 raise exceptions.TimeoutException(message)
+
+################
+
+    def create_share_replica(self, share_id, availability_zone=None,
+                             version=LATEST_MICROVERSION):
+        """Add a share replica of an existing share."""
+        uri = "share-replicas"
+        post_body = {
+            'share_id': share_id,
+            'availability_zone': availability_zone,
+        }
+
+        body = json.dumps({'share_replica': post_body})
+        resp, body = self.post(uri, body,
+                               headers=EXPERIMENTAL,
+                               extra_headers=True,
+                               version=version)
+        self.expected_success(202, resp.status)
+        return self._parse_resp(body)
+
+    def get_share_replica(self, replica_id, version=LATEST_MICROVERSION):
+        """Get the details of share_replica."""
+        resp, body = self.get("share-replicas/%s" % replica_id,
+                              headers=EXPERIMENTAL,
+                              extra_headers=True,
+                              version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def list_share_replicas(self, share_id=None, version=LATEST_MICROVERSION):
+        """Get list of replicas."""
+        uri = "share-replicas/detail"
+        uri += ("?share_id=%s" % share_id) if share_id is not None else ''
+        resp, body = self.get(uri, headers=EXPERIMENTAL,
+                              extra_headers=True, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def list_share_replicas_summary(self, share_id=None,
+                                    version=LATEST_MICROVERSION):
+        """Get summary list of replicas."""
+        uri = "share-replicas"
+        uri += ("?share_id=%s" % share_id) if share_id is not None else ''
+        resp, body = self.get(uri, headers=EXPERIMENTAL,
+                              extra_headers=True, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def delete_share_replica(self, replica_id, version=LATEST_MICROVERSION):
+        """Delete share_replica."""
+        uri = "share-replicas/%s" % replica_id
+        resp, body = self.delete(uri,
+                                 headers=EXPERIMENTAL,
+                                 extra_headers=True,
+                                 version=version)
+        self.expected_success(202, resp.status)
+        return body
+
+    def promote_share_replica(self, replica_id, expected_status=202,
+                              version=LATEST_MICROVERSION):
+        """Promote a share replica to active state."""
+        uri = "share-replicas/%s/action" % replica_id
+        post_body = {
+            'promote': None,
+        }
+        body = json.dumps(post_body)
+        resp, body = self.post(uri, body,
+                               headers=EXPERIMENTAL,
+                               extra_headers=True,
+                               version=version)
+        self.expected_success(expected_status, resp.status)
+        return self._parse_resp(body)
+
+    def wait_for_share_replica_status(self, replica_id, expected_status,
+                                      status_attr='status'):
+        """Waits for a replica's status_attr to reach a given status."""
+        body = self.get_share_replica(replica_id)
+        replica_status = body[status_attr]
+        start = int(time.time())
+
+        while replica_status != expected_status:
+            time.sleep(self.build_interval)
+            body = self.get_share_replica(replica_id)
+            replica_status = body[status_attr]
+            if replica_status == expected_status:
+                return
+            if ('error' in replica_status
+                    and expected_status != constants.STATUS_ERROR):
+                raise share_exceptions.ShareInstanceBuildErrorException(
+                    id=replica_id)
+
+            if int(time.time()) - start >= self.build_timeout:
+                message = ('The %(status_attr)s of Replica %(id)s failed to '
+                           'reach %(expected_status)s status within the '
+                           'required time (%(time)ss). Current '
+                           '%(status_attr)s: %(current_status)s.' %
+                           {
+                               'status_attr': status_attr,
+                               'expected_status': expected_status,
+                               'time': self.build_timeout,
+                               'id': replica_id,
+                               'current_status': replica_status,
+                           })
+                raise exceptions.TimeoutException(message)
+
+    def reset_share_replica_status(self, replica_id,
+                                   status=constants.STATUS_AVAILABLE,
+                                   version=LATEST_MICROVERSION):
+        """Reset the status."""
+        uri = 'share-replicas/%s/action' % replica_id
+        post_body = {
+            'reset_status': {
+                'status': status
+            }
+        }
+        body = json.dumps(post_body)
+        resp, body = self.post(uri, body,
+                               headers=EXPERIMENTAL,
+                               extra_headers=True,
+                               version=version)
+        self.expected_success(202, resp.status)
+        return self._parse_resp(body)
+
+    def reset_share_replica_state(self, replica_id,
+                                  state=constants.REPLICATION_STATE_ACTIVE,
+                                  version=LATEST_MICROVERSION):
+        """Reset the replication state of a replica."""
+        uri = 'share-replicas/%s/action' % replica_id
+        post_body = {
+            'reset_replica_state': {
+                'replica_state': state
+            }
+        }
+        body = json.dumps(post_body)
+        resp, body = self.post(uri, body,
+                               headers=EXPERIMENTAL,
+                               extra_headers=True,
+                               version=version)
+        self.expected_success(202, resp.status)
+        return self._parse_resp(body)
+
+    def resync_share_replica(self, replica_id, expected_result=202,
+                             version=LATEST_MICROVERSION):
+        """Force an immediate resync of the replica."""
+        uri = 'share-replicas/%s/action' % replica_id
+        post_body = {
+            'resync': None
+        }
+        body = json.dumps(post_body)
+        resp, body = self.post(uri, body,
+                               headers=EXPERIMENTAL,
+                               extra_headers=True,
+                               version=version)
+        self.expected_success(expected_result, resp.status)
+        return self._parse_resp(body)
+
+    def force_delete_share_replica(self, replica_id,
+                                   version=LATEST_MICROVERSION):
+        """Force delete a replica."""
+        uri = 'share-replicas/%s/action' % replica_id
+        post_body = {
+            'force_delete': None
+        }
+        body = json.dumps(post_body)
+        resp, body = self.post(uri, body,
+                               headers=EXPERIMENTAL,
+                               extra_headers=True,
+                               version=version)
+        self.expected_success(202, resp.status)
+        return self._parse_resp(body)

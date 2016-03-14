@@ -85,6 +85,10 @@ RUN_MANILA_MANAGE_SNAPSHOT_TESTS=${RUN_MANILA_MANAGE_SNAPSHOT_TESTS:-False}
 
 MANILA_CONF=${MANILA_CONF:-/etc/manila/manila.conf}
 
+# Enable replication tests
+RUN_MANILA_REPLICATION_TESTS=${RUN_MANILA_REPLICATION_TESTS:-False}
+iniset $TEMPEST_CONFIG share run_replication_tests $RUN_MANILA_REPLICATION_TESTS
+
 if [[ -z "$MULTITENANCY_ENABLED" ]]; then
     # Define whether share drivers handle share servers or not.
     # Requires defined config option 'driver_handles_share_servers'.
