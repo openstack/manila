@@ -1963,46 +1963,43 @@ class ShareManager(manager.SchedulerDependentManager):
                 {'status': constants.STATUS_ACTIVE})
         except Exception as e:
             with excutils.save_and_reraise_exception():
-                try:
-                    details = getattr(e, 'detail_data', {})
-                    if not isinstance(details, dict):
-                        msg = (_("Invalid detail_data '%s'")
-                               % six.text_type(details))
-                        raise exception.Invalid(msg)
+                details = getattr(e, "detail_data", {})
 
-                    server_details = details.get('server_details')
-
+                if isinstance(details, dict):
+                    server_details = details.get("server_details", {})
                     if not isinstance(server_details, dict):
-                        msg = (_("Invalid server_details '%s'")
-                               % six.text_type(server_details))
-                        raise exception.Invalid(msg)
+                        LOG.debug(
+                            ("Cannot save non-dict data (%(data)s) "
+                             "provided as 'server details' of "
+                             "failed share server '%(server)s'."),
+                            {"server": share_server["id"],
+                             "data": server_details})
+                    else:
+                        invalid_details = []
+                        for key, value in server_details.items():
+                            try:
+                                self.db.share_server_backend_details_set(
+                                    context, share_server['id'], {key: value})
+                            except Exception:
+                                invalid_details.append("%(key)s: %(value)s" % {
+                                    'key': six.text_type(key),
+                                    'value': six.text_type(value)
+                                })
+                        if invalid_details:
+                            LOG.debug(
+                                ("Following server details "
+                                 "cannot be written to db : %s"),
+                                six.text_type("\n".join(invalid_details)))
+                else:
+                    LOG.debug(
+                        ("Cannot save non-dict data (%(data)s) provided as "
+                         "'detail data' of failed share server '%(server)s'."),
+                        {"server": share_server["id"], "data": details})
 
-                    invalid_details = []
-
-                    for key, value in server_details.items():
-                        try:
-                            self.db.share_server_backend_details_set(
-                                context, share_server['id'], {key: value})
-                        except Exception:
-                            invalid_details.append("%(key)s: %(value)s" % {
-                                'key': six.text_type(key),
-                                'value': six.text_type(value)
-                            })
-
-                    if invalid_details:
-                        msg = (_("Following server details are not valid:\n%s")
-                               % six.text_type('\n'.join(invalid_details)))
-                        raise exception.Invalid(msg)
-
-                except Exception as e:
-                    LOG.warning(_LW('Server Information in '
-                                    'exception can not be written to db : %s '
-                                    ), six.text_type(e))
-                finally:
-                    self.db.share_server_update(
-                        context, share_server['id'],
-                        {'status': constants.STATUS_ERROR})
-                    self.driver.deallocate_network(context, share_server['id'])
+                self.db.share_server_update(
+                    context, share_server['id'],
+                    {'status': constants.STATUS_ERROR})
+                self.driver.deallocate_network(context, share_server['id'])
 
     def _validate_segmentation_id(self, network_info):
         """Raises exception if the segmentation type is incorrect."""

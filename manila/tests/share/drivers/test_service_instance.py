@@ -540,11 +540,14 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.mock_object(self._manager, '_check_server_availability',
                          mock.Mock(return_value=False))
 
-        self.assertRaises(
+        result = self.assertRaises(
             exception.ServiceInstanceException,
             self._manager.set_up_service_instance,
             self._manager.admin_context, fake_network_info)
 
+        self.assertTrue(hasattr(result, 'detail_data'))
+        self.assertEqual(
+            {'server_details': expected_details}, result.detail_data)
         self._manager._create_service_instance.assert_called_once_with(
             self._manager.admin_context,
             fake_network_info['server_id'], fake_network_info)

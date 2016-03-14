@@ -422,12 +422,14 @@ class ServiceInstanceManager(object):
         instance_details = self._get_new_instance_details(server)
 
         if not self._check_server_availability(instance_details):
-            raise exception.ServiceInstanceException(
+            e = exception.ServiceInstanceException(
                 _('%(conn_proto)s connection has not been '
                   'established to %(server)s in %(time)ss. Giving up.') % {
                       'conn_proto': self._INSTANCE_CONNECTION_PROTO,
                       'server': server['ip'],
                       'time': self.max_time_to_build_instance})
+            e.detail_data = {'server_details': instance_details}
+            raise e
 
         return instance_details
 
