@@ -824,7 +824,7 @@ class ShareManager(manager.SchedulerDependentManager):
             raise exception.ShareMigrationFailed(reason=msg)
 
         try:
-            helper.apply_new_access_rules(share_instance, new_share_instance)
+            helper.apply_new_access_rules(new_share_instance)
         except Exception:
             msg = _("Failed to apply new access rules during migration "
                     "of share %s.") % share_ref['id']
