@@ -173,7 +173,8 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         self.security_group = self._create_security_group()
         self.create_share()
         instance = self.boot_instance()
-        self.allow_access_ip(self.share['id'], instance=instance)
+        self.allow_access_ip(self.share['id'], instance=instance,
+                             cleanup=False)
         ssh_client = self.init_ssh(instance)
 
         if utils.is_microversion_lt(CONF.share.max_api_microversion, "2.9"):
@@ -197,7 +198,8 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
         # boot first VM and write data
         instance1 = self.boot_instance()
-        self.allow_access_ip(self.share['id'], instance=instance1)
+        self.allow_access_ip(self.share['id'], instance=instance1,
+                             cleanup=False)
         ssh_client_inst1 = self.init_ssh(instance1)
 
         if utils.is_microversion_lt(CONF.share.max_api_microversion, "2.9"):
