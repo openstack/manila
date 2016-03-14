@@ -60,7 +60,7 @@ def response(func):
 
 
 class FakeData(object):
-    # Share informaiton
+    # Share information
     share_id = '7cf7c200_d3af_4e05_b87e_9167c95df4f9'
     host = 'HostA@BackendB#fake_pool_name'
     share_name = share_id

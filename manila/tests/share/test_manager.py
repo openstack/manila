@@ -272,7 +272,7 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_init_host_with_shares_and_rules(self):
 
-        # initialisation of test data
+        # initialization of test data
         def raise_share_access_exists(*args, **kwargs):
             raise exception.ShareAccessExists(
                 access_type='fake_access_type', access='fake_access')
