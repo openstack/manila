@@ -143,6 +143,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         self.share_server = {
             'public_address': self.configuration.lvm_share_export_ip,
             'instance_id': self.backend_name,
+            'lock_name': 'manila_lvm',
         }
 
     def _ssh_exec_as_root(self, server, command, check_exit_code=True):

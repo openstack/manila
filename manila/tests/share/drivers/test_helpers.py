@@ -598,3 +598,28 @@ class CIFSHelperUserAccessTestCase(test.TestCase):
             self.server_details,
             self.share_name,
             access_rules)
+
+
+@ddt.ddt
+class NFSSynchronizedTestCase(test.TestCase):
+
+    @helpers.nfs_synchronized
+    def wrapped_method(self, server, share_name):
+        return server['instance_id'] + share_name
+
+    @ddt.data(
+        ({'lock_name': 'FOO', 'instance_id': 'QUUZ'}, 'nfs-FOO'),
+        ({'instance_id': 'QUUZ'}, 'nfs-QUUZ'),
+    )
+    @ddt.unpack
+    def test_with_lock_name(self, server, expected_lock_name):
+        share_name = 'fake_share_name'
+        self.mock_object(
+            helpers.utils, 'synchronized',
+            mock.Mock(side_effect=helpers.utils.synchronized))
+
+        result = self.wrapped_method(server, share_name)
+
+        self.assertEqual(server['instance_id'] + share_name, result)
+        helpers.utils.synchronized.assert_called_once_with(
+            expected_lock_name, external=True)

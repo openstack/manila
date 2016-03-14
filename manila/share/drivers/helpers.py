@@ -121,9 +121,12 @@ class NASHelperBase(object):
 def nfs_synchronized(f):
 
     def wrapped_func(self, *args, **kwargs):
-        key = "nfs-%s" % args[0]["public_address"]
+        key = "nfs-%s" % args[0].get("lock_name", args[0]["instance_id"])
 
-        @utils.synchronized(key)
+        # NOTE(vponomaryov): 'external' lock is required for DHSS=False
+        # mode of LVM and Generic drivers, that may have lots of
+        # driver instances on single host.
+        @utils.synchronized(key, external=True)
         def source_func(self, *args, **kwargs):
             return f(self, *args, **kwargs)
 
