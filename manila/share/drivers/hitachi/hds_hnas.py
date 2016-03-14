@@ -19,6 +19,7 @@ from oslo_utils import excutils
 from oslo_utils import importutils
 import six
 
+from manila.common import constants
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LI
@@ -156,8 +157,14 @@ class HDSHNASDriver(driver.ShareDriver):
             if rule['access_type'].lower() != 'ip':
                 msg = _("Only IP access type currently supported.")
                 raise exception.InvalidShareAccess(reason=msg)
-            host_list.append(rule['access_to'] + '(' +
-                             rule['access_level'] + ')')
+
+            if rule['access_level'] == constants.ACCESS_LEVEL_RW:
+                host_list.append(rule['access_to'] + '(' +
+                                 rule['access_level'] +
+                                 ',norootsquash)')
+            else:
+                host_list.append(rule['access_to'] + '(' +
+                                 rule['access_level'] + ')')
 
         self.hnas.update_access_rule(share_id, host_list)
 
