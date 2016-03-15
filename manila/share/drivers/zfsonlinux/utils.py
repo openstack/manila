@@ -156,8 +156,8 @@ class NASHelperBase(object):
         """Removes share exports."""
 
     @abc.abstractmethod
-    def update_access(self, dataset_name, access_rules, add_rules=None,
-                      delete_rules=None):
+    def update_access(self, dataset_name, access_rules, add_rules,
+                      delete_rules):
         """Update access rules for specified ZFS dataset."""
 
 
@@ -228,8 +228,8 @@ class NFSviaZFSHelper(ExecuteMixin, NASHelperBase):
         return access_to.split('/')[0] + '/' + netmask
 
     @zfs_dataset_synchronized
-    def update_access(self, dataset_name, access_rules, add_rules=None,
-                      delete_rules=None, make_all_ro=False):
+    def update_access(self, dataset_name, access_rules, add_rules,
+                      delete_rules, make_all_ro=False):
         """Update access rules for given ZFS dataset exported as NFS share."""
         rw_rules = []
         ro_rules = []

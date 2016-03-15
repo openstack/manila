@@ -50,13 +50,13 @@ class NASHelperBase(object):
         """Configure server before allowing access."""
         pass
 
-    def update_access(self, server, share_name, access_rules, add_rules=None,
-                      delete_rules=None):
+    def update_access(self, server, share_name, access_rules, add_rules,
+                      delete_rules):
         """Update access rules for given share.
 
         This driver has two different behaviors according to parameters:
         1. Recovery after error - 'access_rules' contains all access_rules,
-        'add_rules' and 'delete_rules' shall be None. Previously existing
+        'add_rules' and 'delete_rules' shall be empty. Previously existing
         access rules are cleared and then added back according
         to 'access_rules'.
 
@@ -68,9 +68,9 @@ class NASHelperBase(object):
         :param server: None or Share server's backend details
         :param share_name: Share's path according to id.
         :param access_rules: All access rules for given share
-        :param add_rules: None or List of access rules which should be added
-               access_rules already contains these rules.
-        :param delete_rules: None or List of access rules which should be
+        :param add_rules: Empty List or List of access rules which should be
+               added. access_rules already contains these rules.
+        :param delete_rules: Empty List or List of access rules which should be
                removed. access_rules doesn't contain these rules.
         """
         raise NotImplementedError()
@@ -158,8 +158,8 @@ class NFSHelper(NASHelperBase):
         """Remove export."""
 
     @nfs_synchronized
-    def update_access(self, server, share_name, access_rules, add_rules=None,
-                      delete_rules=None):
+    def update_access(self, server, share_name, access_rules, add_rules,
+                      delete_rules):
         """Update access rules for given share.
 
         Please refer to base class for a more in-depth description.
@@ -196,7 +196,7 @@ class NFSHelper(NASHelperBase):
                 add_rules, ('ip',),
                 (const.ACCESS_LEVEL_RO, const.ACCESS_LEVEL_RW))
 
-            for access in (delete_rules or []):
+            for access in delete_rules:
                 try:
                     self.validate_access_rules(
                         [access], ('ip',),
@@ -214,7 +214,7 @@ class NFSHelper(NASHelperBase):
                                ':'.join((access['access_to'], local_path))])
             if delete_rules:
                 self._sync_nfs_temp_and_perm_files(server)
-            for access in (add_rules or []):
+            for access in add_rules:
                 access_to, access_type = (access['access_to'],
                                           access['access_type'])
                 found_item = re.search(
@@ -379,8 +379,8 @@ class CIFSHelperIPAccess(NASHelperBase):
             self._ssh_exec(server, ['sudo', 'smbcontrol', 'all', 'close-share',
                                     share_name])
 
-    def update_access(self, server, share_name, access_rules, add_rules=None,
-                      delete_rules=None):
+    def update_access(self, server, share_name, access_rules, add_rules,
+                      delete_rules):
         """Update access rules for given share.
 
         Please refer to base class for a more in-depth description. For this
@@ -472,8 +472,8 @@ class CIFSHelperUserAccess(CIFSHelperIPAccess):
             'read only': 'no',
         }
 
-    def update_access(self, server, share_name, access_rules, add_rules=None,
-                      delete_rules=None):
+    def update_access(self, server, share_name, access_rules, add_rules,
+                      delete_rules):
         """Update access rules for given share.
 
         Please refer to base class for a more in-depth description. For this

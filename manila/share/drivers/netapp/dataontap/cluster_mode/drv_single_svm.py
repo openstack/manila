@@ -95,8 +95,10 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
     def unmanage(self, share):
         self.library.unmanage(share)
 
-    def update_access(self, context, share, access_rules, **kwargs):
-        self.library.update_access(context, share, access_rules, **kwargs)
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, **kwargs):
+        self.library.update_access(context, share, access_rules, add_rules,
+                                   delete_rules, **kwargs)
 
     def _update_share_stats(self, data=None):
         data = self.library.get_share_stats()

@@ -502,14 +502,14 @@ class LXDCIFSHelper(object):
         )
 
     def update_access(self, share_name, server_id, access_rules,
-                      add_rules=None, delete_rules=None):
+                      add_rules, delete_rules):
         if not (add_rules or delete_rules):
             # clean all hosts from allowed hosts list first.
             self.lxd.execute_sync(
                 server_id,
                 ["net", "conf", "setparm", share_name, "hosts allow", ""]
             )
-            for rule in (access_rules or []):
+            for rule in access_rules:
                 host_to_allow = rule['access_to']
                 access_level = rule['access_level']
                 access_type = rule['access_type']

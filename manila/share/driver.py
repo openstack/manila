@@ -486,13 +486,13 @@ class ShareDriver(object):
         """Deny access to the share."""
         raise NotImplementedError()
 
-    def update_access(self, context, share, access_rules, add_rules=None,
-                      delete_rules=None, share_server=None):
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
         """Update access rules for given share.
 
         Drivers should support 2 different cases in this method:
         1. Recovery after error - 'access_rules' contains all access_rules,
-        'add_rules' and 'delete_rules' shall be None. Driver should clear any
+        'add_rules' and 'delete_rules' shall be empty. Driver should clear any
         existent access rules and apply all access rules for given share.
         This recovery is made at driver start up.
 
@@ -518,9 +518,9 @@ class ShareDriver(object):
         :param context: Current context
         :param share: Share model with share data.
         :param access_rules: All access rules for given share
-        :param add_rules: None or List of access rules which should be added
-               access_rules already contains these rules.
-        :param delete_rules: None or List of access rules which should be
+        :param add_rules: Empty List or List of access rules which should be
+               added. access_rules already contains these rules.
+        :param delete_rules: Empty List or List of access rules which should be
                removed. access_rules doesn't contain these rules.
         :param share_server: None or Share server model
         """

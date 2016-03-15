@@ -229,8 +229,8 @@ class CephFSNativeDriver(driver.ShareDriver,):
                                        access['access_to'])
         self.volume_client.evict(access['access_to'])
 
-    def update_access(self, context, share, access_rules, add_rules=None,
-                      delete_rules=None, share_server=None):
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
         # The interface to Ceph just provides add/remove methods, since it
         # was created at start of mitaka cycle when there was no requirement
         # to be able to list access rules or set them en masse.  Therefore

@@ -1020,8 +1020,8 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver_client.set_volume_size(share_name, new_size)
 
     @na_utils.trace
-    def update_access(self, context, share, access_rules, add_rules=None,
-                      delete_rules=None, share_server=None):
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
         """Updates access rules for a share."""
         # NOTE(ameade): We do not need to add export rules to a non-active
         # replica as it will fail.

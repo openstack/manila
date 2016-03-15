@@ -266,13 +266,13 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         except exception.InvalidShare as exc:
             LOG.warning(exc.message)
 
-    def update_access(self, context, share, access_rules, add_rules=None,
-                      delete_rules=None, share_server=None):
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
         """Update access rules for given share.
 
         This driver has two different behaviors according to parameters:
         1. Recovery after error - 'access_rules' contains all access_rules,
-        'add_rules' and 'delete_rules' shall be None. Previously existing
+        'add_rules' and 'delete_rules' shall be empty. Previously existing
         access rules are cleared and then added back according
         to 'access_rules'.
 
@@ -284,9 +284,9 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         :param context: Current context
         :param share: Share model with share data.
         :param access_rules: All access rules for given share
-        :param add_rules: None or List of access rules which should be added
-               access_rules already contains these rules.
-        :param delete_rules: None or List of access rules which should be
+        :param add_rules: Empty List or List of access rules which should be
+               added. access_rules already contains these rules.
+        :param delete_rules: Empty List or List of access rules which should be
                removed. access_rules doesn't contain these rules.
         :param share_server: None or Share server model
         """
