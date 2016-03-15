@@ -161,6 +161,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertTrue(
             mock_vserver_client.prune_deleted_nfs_export_policies.called)
+        self.assertTrue(mock_vserver_client.prune_deleted_snapshots.called)
         self.assertTrue(mock_super.called)
 
     def test_find_matching_aggregates(self):

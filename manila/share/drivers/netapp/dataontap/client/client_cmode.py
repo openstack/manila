@@ -1626,8 +1626,55 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def split_volume_clone(self, volume_name):
         """Begins splitting a clone from its parent."""
-        api_args = {'volume': volume_name}
-        self.send_request('volume-clone-split-start', api_args)
+        try:
+            api_args = {'volume': volume_name}
+            self.send_request('volume-clone-split-start', api_args)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EVOL_CLONE_BEING_SPLIT:
+                return
+            raise
+
+    @na_utils.trace
+    def get_clone_children_for_snapshot(self, volume_name, snapshot_name):
+        """Returns volumes that are keeping a snapshot locked."""
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-clone-attributes': {
+                        'volume-clone-parent-attributes': {
+                            'name': volume_name,
+                            'snapshot-name': snapshot_name,
+                        },
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': None,
+                    },
+                },
+            },
+        }
+        result = self.send_iter_request('volume-get-iter', api_args)
+        if not self._has_records(result):
+            return []
+
+        volume_list = []
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        for volume_attributes in attributes_list.get_children():
+
+            volume_id_attributes = volume_attributes.get_child_by_name(
+                'volume-id-attributes') or netapp_api.NaElement('none')
+
+            volume_list.append({
+                'name': volume_id_attributes.get_child_content('name'),
+            })
+
+        return volume_list
 
     @na_utils.trace
     def get_volume_junction_path(self, volume_name, is_style_cifs=False):
@@ -1795,10 +1842,92 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return snapshot
 
     @na_utils.trace
+    def rename_snapshot(self, volume_name, snapshot_name, new_snapshot_name):
+        api_args = {
+            'volume': volume_name,
+            'current-name': snapshot_name,
+            'new-name': new_snapshot_name
+        }
+        self.send_request('snapshot-rename', api_args)
+
+    @na_utils.trace
     def delete_snapshot(self, volume_name, snapshot_name):
         """Deletes a volume snapshot."""
         api_args = {'volume': volume_name, 'snapshot': snapshot_name}
         self.send_request('snapshot-delete', api_args)
+
+    @na_utils.trace
+    def soft_delete_snapshot(self, volume_name, snapshot_name):
+        """Deletes a volume snapshot, or renames it if delete fails."""
+        try:
+            self.delete_snapshot(volume_name, snapshot_name)
+        except netapp_api.NaApiError:
+            self.rename_snapshot(volume_name,
+                                 snapshot_name,
+                                 DELETED_PREFIX + snapshot_name)
+            msg = _('Soft-deleted snapshot %(snapshot)s on volume %(volume)s.')
+            msg_args = {'snapshot': snapshot_name, 'volume': volume_name}
+            LOG.info(msg, msg_args)
+
+    @na_utils.trace
+    def prune_deleted_snapshots(self):
+        """Deletes non-busy snapshots that were previously soft-deleted."""
+
+        deleted_snapshots_map = self._get_deleted_snapshots()
+
+        for vserver in deleted_snapshots_map:
+            client = copy.deepcopy(self)
+            client.set_vserver(vserver)
+
+            for snapshot in deleted_snapshots_map[vserver]:
+                try:
+                    client.delete_snapshot(snapshot['volume'],
+                                           snapshot['name'])
+                except netapp_api.NaApiError:
+                    msg = _('Could not delete snapshot %(snap)s on '
+                            'volume %(volume)s.')
+                    msg_args = {
+                        'snap': snapshot['name'],
+                        'volume': snapshot['volume'],
+                    }
+                    LOG.exception(msg, msg_args)
+
+    @na_utils.trace
+    def _get_deleted_snapshots(self):
+        """Returns non-busy, soft-deleted snapshots suitable for reaping."""
+        api_args = {
+            'query': {
+                'snapshot-info': {
+                    'name': DELETED_PREFIX + '*',
+                    'busy': 'false',
+                },
+            },
+            'desired-attributes': {
+                'snapshot-info': {
+                    'name': None,
+                    'vserver': None,
+                    'volume': None,
+                },
+            },
+        }
+        result = self.send_iter_request('snapshot-get-iter', api_args)
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        # Build a map of snapshots, one list of snapshots per vserver
+        snapshot_map = {}
+        for snapshot_info in attributes_list.get_children():
+            vserver = snapshot_info.get_child_content('vserver')
+            snapshot_list = snapshot_map.get(vserver, [])
+            snapshot_list.append({
+                'name': snapshot_info.get_child_content('name'),
+                'volume': snapshot_info.get_child_content('volume'),
+                'vserver': vserver,
+            })
+            snapshot_map[vserver] = snapshot_list
+
+        return snapshot_map
 
     @na_utils.trace
     def create_cg_snapshot(self, volume_names, snapshot_name):

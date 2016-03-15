@@ -865,7 +865,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             share_name,
             parent_share_name,
             parent_snapshot_name)
-        vserver_client.split_volume_clone.assert_called_once_with(share_name)
 
     def test_share_exists(self):
 
@@ -1131,8 +1130,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  vserver_client)))
-        mock_handle_busy_snapshot = self.mock_object(self.library,
-                                                     '_handle_busy_snapshot')
+        mock_delete_snapshot = self.mock_object(self.library,
+                                                '_delete_snapshot')
 
         self.library.delete_snapshot(self.context,
                                      fake.SNAPSHOT,
@@ -1142,9 +1141,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SNAPSHOT['share_id'])
         snapshot_name = self.library._get_backend_snapshot_name(
             fake.SNAPSHOT['id'])
-        self.assertTrue(mock_handle_busy_snapshot.called)
-        vserver_client.delete_snapshot.assert_called_once_with(share_name,
-                                                               snapshot_name)
+        mock_delete_snapshot.assert_called_once_with(
+            vserver_client, share_name, snapshot_name)
 
     @ddt.data(exception.InvalidInput(reason='fake_reason'),
               exception.VserverNotSpecified(),
@@ -1154,15 +1152,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_get_vserver',
                          mock.Mock(side_effect=get_vserver_exception))
-        mock_handle_busy_snapshot = self.mock_object(self.library,
-                                                     '_handle_busy_snapshot')
+        mock_delete_snapshot = self.mock_object(self.library,
+                                                '_delete_snapshot')
 
         self.library.delete_snapshot(self.context,
                                      fake.SNAPSHOT,
                                      share_server=fake.SHARE_SERVER)
 
-        self.assertFalse(mock_handle_busy_snapshot.called)
-        self.assertEqual(1, lib_base.LOG.warning.call_count)
+        self.assertFalse(mock_delete_snapshot.called)
 
     def test_delete_snapshot_not_found(self):
 
@@ -1171,8 +1168,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  vserver_client)))
-        mock_handle_busy_snapshot = self.mock_object(
-            self.library, '_handle_busy_snapshot',
+        mock_delete_snapshot = self.mock_object(
+            self.library, '_delete_snapshot',
             mock.Mock(side_effect=exception.SnapshotNotFound(
                 name=fake.SNAPSHOT_NAME)))
 
@@ -1180,104 +1177,90 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                      fake.SNAPSHOT,
                                      share_server=fake.SHARE_SERVER)
 
-        self.assertTrue(mock_handle_busy_snapshot.called)
-        self.assertFalse(vserver_client.delete_snapshot.called)
+        share_name = self.library._get_backend_share_name(
+            fake.SNAPSHOT['share_id'])
+        snapshot_name = self.library._get_backend_snapshot_name(
+            fake.SNAPSHOT['id'])
+        mock_delete_snapshot.assert_called_once_with(
+            vserver_client, share_name, snapshot_name)
 
-    def test_delete_snapshot_busy(self):
+    def test_delete_snapshot_not_unique(self):
 
         vserver_client = mock.Mock()
         self.mock_object(self.library,
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  vserver_client)))
-        mock_handle_busy_snapshot = self.mock_object(
-            self.library, '_handle_busy_snapshot',
-            mock.Mock(side_effect=exception.ShareSnapshotIsBusy(
-                snapshot_name=fake.SNAPSHOT_NAME)))
+        mock_delete_snapshot = self.mock_object(
+            self.library, '_delete_snapshot',
+            mock.Mock(side_effect=exception.NetAppException()))
 
-        self.assertRaises(exception.ShareSnapshotIsBusy,
+        self.assertRaises(exception.NetAppException,
                           self.library.delete_snapshot,
                           self.context,
                           fake.SNAPSHOT,
                           share_server=fake.SHARE_SERVER)
 
-        self.assertTrue(mock_handle_busy_snapshot.called)
-        self.assertFalse(vserver_client.delete_snapshot.called)
+        share_name = self.library._get_backend_share_name(
+            fake.SNAPSHOT['share_id'])
+        snapshot_name = self.library._get_backend_snapshot_name(
+            fake.SNAPSHOT['id'])
+        mock_delete_snapshot.assert_called_once_with(
+            vserver_client, share_name, snapshot_name)
 
-    def test_handle_busy_snapshot_not_busy(self):
+    def test__delete_snapshot(self):
 
         vserver_client = mock.Mock()
         vserver_client.get_snapshot.return_value = fake.CDOT_SNAPSHOT
 
-        result = self.library._handle_busy_snapshot(vserver_client,
-                                                    fake.SHARE_NAME,
-                                                    fake.SNAPSHOT_NAME)
+        self.library._delete_snapshot(vserver_client,
+                                      fake.SHARE_NAME,
+                                      fake.SNAPSHOT_NAME)
 
-        self.assertIsNone(result)
-        self.assertEqual(1, vserver_client.get_snapshot.call_count)
-        self.assertEqual(0, lib_base.LOG.debug.call_count)
+        vserver_client.delete_snapshot.assert_called_once_with(
+            fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+        self.assertFalse(vserver_client.get_clone_children_for_snapshot.called)
+        self.assertFalse(vserver_client.split_volume_clone.called)
+        self.assertFalse(vserver_client.soft_delete_snapshot.called)
 
-    def test_handle_busy_snapshot_not_found(self):
-
-        vserver_client = mock.Mock()
-        vserver_client.get_snapshot.side_effect = exception.SnapshotNotFound(
-            name=fake.SNAPSHOT_NAME)
-
-        self.assertRaises(exception.SnapshotNotFound,
-                          self.library._handle_busy_snapshot,
-                          vserver_client,
-                          fake.SHARE_NAME,
-                          fake.SNAPSHOT_NAME)
-
-    def test_handle_busy_snapshot_not_clone_dependency(self):
-
-        snapshot = copy.deepcopy(fake.CDOT_SNAPSHOT_BUSY_VOLUME_CLONE)
-        snapshot['owners'] = {'fake reason'}
+    def test__delete_snapshot_busy_volume_clone(self):
 
         vserver_client = mock.Mock()
-        vserver_client.get_snapshot.return_value = snapshot
+        vserver_client.get_snapshot.return_value = (
+            fake.CDOT_SNAPSHOT_BUSY_VOLUME_CLONE)
+        vserver_client.get_clone_children_for_snapshot.return_value = (
+            fake.CDOT_CLONE_CHILDREN)
+
+        self.library._delete_snapshot(vserver_client,
+                                      fake.SHARE_NAME,
+                                      fake.SNAPSHOT_NAME)
+
+        self.assertFalse(vserver_client.delete_snapshot.called)
+        vserver_client.get_clone_children_for_snapshot.assert_called_once_with(
+            fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+        vserver_client.split_volume_clone.assert_has_calls([
+            mock.call(fake.CDOT_CLONE_CHILD_1),
+            mock.call(fake.CDOT_CLONE_CHILD_2),
+        ])
+        vserver_client.soft_delete_snapshot.assert_called_once_with(
+            fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+
+    def test__delete_snapshot_busy_snapmirror(self):
+
+        vserver_client = mock.Mock()
+        vserver_client.get_snapshot.return_value = (
+            fake.CDOT_SNAPSHOT_BUSY_SNAPMIRROR)
 
         self.assertRaises(exception.ShareSnapshotIsBusy,
-                          self.library._handle_busy_snapshot,
+                          self.library._delete_snapshot,
                           vserver_client,
                           fake.SHARE_NAME,
                           fake.SNAPSHOT_NAME)
-        self.assertEqual(1, vserver_client.get_snapshot.call_count)
-        self.assertEqual(0, lib_base.LOG.debug.call_count)
 
-    def test_handle_busy_snapshot_clone_finishes(self):
-
-        get_snapshot_side_effect = [fake.CDOT_SNAPSHOT_BUSY_VOLUME_CLONE] * 10
-        get_snapshot_side_effect.append(fake.CDOT_SNAPSHOT)
-
-        vserver_client = mock.Mock()
-        vserver_client.get_snapshot.side_effect = get_snapshot_side_effect
-        mock_sleep = self.mock_object(time, 'sleep')
-
-        result = self.library._handle_busy_snapshot(vserver_client,
-                                                    fake.SHARE_NAME,
-                                                    fake.SNAPSHOT_NAME)
-
-        self.assertIsNone(result)
-        self.assertEqual(11, vserver_client.get_snapshot.call_count)
-        mock_sleep.assert_has_calls([mock.call(3)] * 10)
-        self.assertEqual(10, lib_base.LOG.debug.call_count)
-
-    def test_handle_busy_snapshot_clone_continues(self):
-
-        vserver_client = mock.Mock()
-        vserver_client.get_snapshot.side_effect = [
-            fake.CDOT_SNAPSHOT_BUSY_VOLUME_CLONE] * 30
-        mock_sleep = self.mock_object(time, 'sleep')
-
-        self.assertRaises(exception.ShareSnapshotIsBusy,
-                          self.library._handle_busy_snapshot,
-                          vserver_client,
-                          fake.SHARE_NAME,
-                          fake.SNAPSHOT_NAME)
-        self.assertEqual(21, vserver_client.get_snapshot.call_count)
-        mock_sleep.assert_has_calls([mock.call(3)] * 20)
-        self.assertEqual(20, lib_base.LOG.debug.call_count)
+        self.assertFalse(vserver_client.delete_snapshot.called)
+        self.assertFalse(vserver_client.get_clone_children_for_snapshot.called)
+        self.assertFalse(vserver_client.split_volume_clone.called)
+        self.assertFalse(vserver_client.soft_delete_snapshot.called)
 
     def test_manage_existing(self):
 
@@ -1719,8 +1702,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_vserver = self.mock_object(
             self.library, '_get_vserver',
             mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
-        mock_handle_busy_snapshot = self.mock_object(self.library,
-                                                     '_handle_busy_snapshot')
+        mock_delete_snapshot = self.mock_object(self.library,
+                                                '_delete_snapshot')
 
         result = self.library.delete_cgsnapshot(
             self.context,
@@ -1736,13 +1719,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         snapshot_name = self.library._get_backend_cg_snapshot_name(
             fake.CG_SNAPSHOT['id'])
 
-        mock_handle_busy_snapshot.assert_has_calls([
+        mock_delete_snapshot.assert_has_calls([
             mock.call(vserver_client, share_names[0], snapshot_name),
             mock.call(vserver_client, share_names[1], snapshot_name)
-        ])
-        vserver_client.delete_snapshot.assert_has_calls([
-            mock.call(share_names[0], snapshot_name),
-            mock.call(share_names[1], snapshot_name)
         ])
         self.assertEqual((None, None), result)
         mock_get_vserver.assert_called_once_with(
@@ -1754,8 +1733,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_vserver = self.mock_object(
             self.library, '_get_vserver',
             mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
-        mock_handle_busy_snapshot = self.mock_object(self.library,
-                                                     '_handle_busy_snapshot')
+        mock_delete_snapshot = self.mock_object(self.library,
+                                                '_delete_snapshot')
 
         fake_cg_snapshot = copy.deepcopy(fake.CG_SNAPSHOT)
         fake_cg_snapshot['cgsnapshot_members'] = []
@@ -1765,8 +1744,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake_cg_snapshot,
             share_server=fake.SHARE_SERVER)
 
-        self.assertFalse(mock_handle_busy_snapshot.called)
-        self.assertFalse(vserver_client.delete_snapshot.called)
+        self.assertFalse(mock_delete_snapshot.called)
         self.assertEqual((None, None), result)
         mock_get_vserver.assert_called_once_with(
             share_server=fake.SHARE_SERVER)
@@ -1777,9 +1755,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_vserver = self.mock_object(
             self.library, '_get_vserver',
             mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
-        mock_handle_busy_snapshot = self.mock_object(
-            self.library,
-            '_handle_busy_snapshot',
+        mock_delete_snapshot = self.mock_object(
+            self.library, '_delete_snapshot',
             mock.Mock(side_effect=exception.SnapshotNotFound(name='fake')))
 
         result = self.library.delete_cgsnapshot(
@@ -1796,11 +1773,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         snapshot_name = self.library._get_backend_cg_snapshot_name(
             fake.CG_SNAPSHOT['id'])
 
-        mock_handle_busy_snapshot.assert_has_calls([
+        mock_delete_snapshot.assert_has_calls([
             mock.call(vserver_client, share_names[0], snapshot_name),
             mock.call(vserver_client, share_names[1], snapshot_name)
         ])
-        self.assertFalse(vserver_client.delete_snapshot.called)
         self.assertEqual((None, None), result)
         mock_get_vserver.assert_called_once_with(
             share_server=fake.SHARE_SERVER)

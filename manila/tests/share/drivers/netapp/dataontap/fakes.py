@@ -279,6 +279,20 @@ CDOT_SNAPSHOT_BUSY_VOLUME_CLONE = {
     'owners': {'volume clone'},
 }
 
+CDOT_SNAPSHOT_BUSY_SNAPMIRROR = {
+    'name': SNAPSHOT_NAME,
+    'volume': SHARE_NAME,
+    'busy': True,
+    'owners': {'snapmirror'},
+}
+
+CDOT_CLONE_CHILD_1 = 'fake_child_1'
+CDOT_CLONE_CHILD_2 = 'fake_child_2'
+CDOT_CLONE_CHILDREN = [
+    {'name': CDOT_CLONE_CHILD_1},
+    {'name': CDOT_CLONE_CHILD_2},
+]
+
 SHARE_FOR_CG1 = {
     'id': SHARE_ID,
     'host': '%(host)s@%(backend)s#%(pool)s' % {
