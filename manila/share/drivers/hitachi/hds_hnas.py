@@ -68,8 +68,8 @@ CONF.register_opts(hds_hnas_opts)
 class HDSHNASDriver(driver.ShareDriver):
     """Manila HNAS Driver implementation.
 
-    1.0.0 - Initial Version
-    1.1.0 - Refactoring and bugfixes
+    1.0.0 - Initial Version.
+    2.0.0 - Refactoring, bugfixes, implemented Share Shrink and Update Access.
     """
 
     def __init__(self, *args, **kwargs):
@@ -339,7 +339,7 @@ class HDSHNASDriver(driver.ShareDriver):
             'share_backend_name': self.backend_name,
             'driver_handles_share_servers': self.driver_handles_share_servers,
             'vendor_name': 'HDS',
-            'driver_version': '1.0',
+            'driver_version': '2.0.0',
             'storage_protocol': 'NFS',
             'total_capacity_gb': total_space,
             'free_capacity_gb': free_space,
