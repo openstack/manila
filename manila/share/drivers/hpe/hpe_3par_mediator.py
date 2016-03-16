@@ -100,14 +100,17 @@ class HPE3ParMediator(object):
 
         if self.no_client():
             msg = _('You must install hpe3parclient before using the 3PAR '
-                    'driver.')
+                    'driver. Run "pip install --upgrade python-3parclient" '
+                    'to upgrade the hpe3parclient.')
             LOG.error(msg)
             raise exception.HPE3ParInvalidClient(message=msg)
 
         self.client_version = hpe3parclient.version_tuple
         if self.client_version < MIN_CLIENT_VERSION:
             msg = (_('Invalid hpe3parclient version found (%(found)s). '
-                     'Version %(minimum)s or greater required.') %
+                     'Version %(minimum)s or greater required. Run "pip'
+                     ' install --upgrade python-3parclient" to upgrade'
+                     ' the hpe3parclient.') %
                    {'found': '.'.join(map(six.text_type, self.client_version)),
                     'minimum': '.'.join(map(six.text_type,
                                             MIN_CLIENT_VERSION))})
