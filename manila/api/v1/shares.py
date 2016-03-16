@@ -356,14 +356,14 @@ class ShareMixin(object):
             raise exc.HTTPBadRequest(explanation=msg)
         req_share_type = share.get('share_type', share.get('volume_type'))
 
+        share_type = None
         if req_share_type:
             try:
                 if not uuidutils.is_uuid_like(req_share_type):
-                    kwargs['share_type'] = \
-                        share_types.get_share_type_by_name(
-                            context, req_share_type)
+                    share_type = share_types.get_share_type_by_name(
+                        context, req_share_type)
                 else:
-                    kwargs['share_type'] = share_types.get_share_type(
+                    share_type = share_types.get_share_type(
                         context, req_share_type)
             except exception.ShareTypeNotFound:
                 msg = _("Share type not found.")
@@ -371,8 +371,22 @@ class ShareMixin(object):
         elif not snapshot:
             def_share_type = share_types.get_default_share_type()
             if def_share_type:
-                kwargs['share_type'] = def_share_type
+                share_type = def_share_type
 
+        # Only use in create share feature. Create share from snapshot
+        # and create share with consistency group features not
+        # need this check.
+        if (not share_network_id and not snapshot
+                and not share.get('consistency_group_id')
+                and share_type and share_type.get('extra_specs')
+                and (strutils.bool_from_string(share_type.get('extra_specs').
+                     get('driver_handles_share_servers')))):
+            msg = _('Share network must be set when the '
+                    'driver_handles_share_servers is true.')
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        if share_type:
+            kwargs['share_type'] = share_type
         new_share = self.share_api.create(context,
                                           share_proto,
                                           size,
