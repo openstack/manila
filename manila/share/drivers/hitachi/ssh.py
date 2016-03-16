@@ -315,23 +315,25 @@ class HNASSSHBackend(object):
     def _get_share_export(self, share_id):
         share_id = '/shares/' + share_id
         command = ['nfs-export', 'list ', share_id]
-        output, err = self._execute(command)
         export_list = []
+        try:
+            output, err = self._execute(command)
+        except processutils.ProcessExecutionError as e:
+            if 'does not exist' in e.stderr:
+                msg = _("Export %(share)s was not found in EVS "
+                        "%(evs_id)s") % {'share': share_id,
+                                         'evs_id': self.evs_id}
+                raise exception.HNASItemNotFoundException(msg=msg)
+            else:
+                raise
+        items = output.split('Export name')
 
-        if 'No exports are currently configured' in output:
-            msg = _("Export %(share)s was not found in EVS "
-                    "%(evs_id)s") % {'share': share_id,
-                                     'evs_id': self.evs_id}
-            raise exception.HNASItemNotFoundException(msg=msg)
-        else:
-            items = output.split('Export name')
+        if items[0][0] == '\n':
+            items.pop(0)
 
-            if items[0][0] == '\n':
-                items.pop(0)
-
-            for i in range(0, len(items)):
-                export_list.append(Export(items[i]))
-            return export_list
+        for i in range(0, len(items)):
+            export_list.append(Export(items[i]))
+        return export_list
 
     def _get_filesystem_list(self):
         command = ['filesystem-list', self.fs_name]

@@ -834,13 +834,23 @@ class HNASSSHTestCase(test.TestCase):
         self.assertEqual('fake_fs', export_list[0].file_system_label)
         self.assertEqual('Yes', export_list[0].mounted)
 
-    def test__get_share_export_exception(self):
-        output_msg = 'No exports are currently configured'
+    def test__get_share_export_exception_not_found(self):
 
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(return_value=[output_msg, '']))
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            side_effect=putils.ProcessExecutionError(
+                stderr="NFS Export List: Export 'id' does not exist.")
+        ))
 
         self.assertRaises(exception.HNASItemNotFoundException,
+                          self._driver_ssh._get_share_export, 'fake_id')
+
+    def test__get_share_export_exception_error(self):
+
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            side_effect=putils.ProcessExecutionError(stderr="Some error.")
+        ))
+
+        self.assertRaises(putils.ProcessExecutionError,
                           self._driver_ssh._get_share_export, 'fake_id')
 
     def test__get_filesystem_list(self):
