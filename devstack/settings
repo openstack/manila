@@ -155,16 +155,6 @@ MANILA_ZFSONLINUX_SSH_USERNAME=${MANILA_ZFSONLINUX_SSH_USERNAME:-$STACK_USER}
 # Manila will consider replication feature as disabled for ZFSonLinux share driver.
 MANILA_ZFSONLINUX_REPLICATION_DOMAIN=${MANILA_ZFSONLINUX_REPLICATION_DOMAIN:-"ZFSonLinux"}
 
-# LXD Driver
-MANILA_LXD_DRIVER=${MANILA_LXD_DRIVER:-"manila.share.drivers.lxd.LXDDriver"}
-MANILA_LXD_IMAGE_ALIAS=${MANILA_LXD_IMAGE_ALIAS:-"manila-lxd-image"}
-# (aovchinnikov): This location is temporary and will be changed to a
-# permanent one as soon as possible.
-MANILA_LXD_META_URL=${MANILA_LXD_META_URL:-"https://github.com/a-ovchinnikov/manila-image-elements-lxd-images/releases/download/0.1.0/manila-lxd-meta.tar"}
-# (aovchinnikov): This location is temporary and will be changed to a
-# permanent one as soon as possible.
-MANILA_LXD_ROOTFS_URL=${MANILA_LXD_ROOTFS_URL:-"https://github.com/a-ovchinnikov/manila-image-elements-lxd-images/releases/download/0.1.0/manila-service-image.tar.xz"}
-
 # Enable manila services
 # ----------------------
 # We have to add Manila to enabled services for screen_it to work

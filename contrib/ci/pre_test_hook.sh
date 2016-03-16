@@ -75,9 +75,6 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     echo "SHARE_DRIVER=manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver" >> $localrc_path
     echo "RUN_MANILA_REPLICATION_TESTS=True" >> $localrc_path
     echo "MANILA_ZFSONLINUX_USE_SSH=True" >> $localrc_path
-elif [[ "$DRIVER" == "lxd" ]]; then
-    echo "SHARE_DRIVER=manila.share.drivers.lxd.LXDDriver" >> $localrc_path
-    echo "SHARE_BACKING_FILE_SIZE=32000M" >> $localrc_path
 fi
 
 echo "MANILA_SERVICE_IMAGE_ENABLED=$MANILA_SERVICE_IMAGE_ENABLED" >> $localrc_path
