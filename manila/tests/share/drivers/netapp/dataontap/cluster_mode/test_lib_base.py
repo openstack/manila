@@ -1904,12 +1904,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                              '_share_exists',
                                              mock.Mock(return_value=False))
 
-        self.library.update_access(self.context,
-                                   fake.SHARE,
-                                   [fake.SHARE_ACCESS],
-                                   [],
-                                   [],
-                                   share_server=fake.SHARE_SERVER)
+        self.assertRaises(exception.ShareResourceNotFound,
+                          self.library.update_access,
+                          self.context,
+                          fake.SHARE,
+                          [fake.SHARE_ACCESS],
+                          [],
+                          [],
+                          share_server=fake.SHARE_SERVER)
 
         mock_get_vserver.assert_called_once_with(
             share_server=fake.SHARE_SERVER)
