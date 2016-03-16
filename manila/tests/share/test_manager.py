@@ -1594,27 +1594,32 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager._setup_server.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), fake_server)
 
-    def test_create_delete_share_instance_error(self):
+    @ddt.data(True, False)
+    def test_create_delete_share_instance_error(self, exception_update_access):
         """Test share can be created and deleted with error."""
 
-        def _raise_not_found(self, *args, **kwargs):
-            raise exception.NotFound()
+        def _raise_exception(self, *args, **kwargs):
+            raise exception.ManilaException('fake')
 
         self.mock_object(self.share_manager.driver, "create_share",
-                         mock.Mock(side_effect=_raise_not_found))
+                         mock.Mock(side_effect=_raise_exception))
         self.mock_object(self.share_manager.driver, "delete_share",
-                         mock.Mock(side_effect=_raise_not_found))
+                         mock.Mock(side_effect=_raise_exception))
+        if exception_update_access:
+            self.mock_object(
+                self.share_manager.access_helper, "update_access_rules",
+                mock.Mock(side_effect=_raise_exception))
 
         share = db_utils.create_share()
         share_id = share['id']
-        self.assertRaises(exception.NotFound,
+        self.assertRaises(exception.ManilaException,
                           self.share_manager.create_share_instance,
                           self.context,
                           share.instance['id'])
 
         shr = db.share_get(self.context, share_id)
         self.assertEqual(constants.STATUS_ERROR, shr['status'])
-        self.assertRaises(exception.NotFound,
+        self.assertRaises(exception.ManilaException,
                           self.share_manager.delete_share_instance,
                           self.context,
                           share.instance['id'])
@@ -1625,10 +1630,11 @@ class ShareManagerTestCase(test.TestCase):
             utils.IsAMatcher(context.RequestContext),
             utils.IsAMatcher(models.ShareInstance),
             share_server=None)
-        self.share_manager.driver.delete_share.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext),
-            utils.IsAMatcher(models.ShareInstance),
-            share_server=None)
+        if not exception_update_access:
+            self.share_manager.driver.delete_share.assert_called_once_with(
+                utils.IsAMatcher(context.RequestContext),
+                utils.IsAMatcher(models.ShareInstance),
+                share_server=None)
 
     def test_create_share_instance_update_availability_zone(self):
         share = db_utils.create_share(availability_zone=None)
@@ -2095,7 +2101,11 @@ class ShareManagerTestCase(test.TestCase):
             security_services=[jsonutils.loads(
                 backend_details['security_service_ldap'])])
 
-    def test_delete_share_instance_last_on_server(self):
+    @ddt.data({'force': True, 'side_effect': 'update_access'},
+              {'force': True, 'side_effect': 'delete_share'},
+              {'force': False, 'side_effect': None})
+    @ddt.unpack
+    def test_delete_share_instance_last_on_server(self, force, side_effect):
         share_net = db_utils.create_share_network()
         share_srv = db_utils.create_share_server(
             share_network_id=share_net['id'],
@@ -2105,12 +2115,21 @@ class ShareManagerTestCase(test.TestCase):
                                       share_server_id=share_srv['id'])
 
         self.share_manager.driver = mock.Mock()
+        if side_effect == 'update_access':
+            self.mock_object(
+                self.share_manager.access_helper, 'update_access_rules',
+                mock.Mock(side_effect=Exception('fake')))
+        if side_effect == 'delete_share':
+            self.mock_object(self.share_manager.driver, 'delete_share',
+                             mock.Mock(side_effect=Exception('fake')))
+        self.mock_object(manager.LOG, 'error')
         manager.CONF.delete_share_server_with_last_share = True
-        self.share_manager.delete_share_instance(self.context,
-                                                 share.instance['id'])
+        self.share_manager.delete_share_instance(
+            self.context, share.instance['id'], force=force)
         self.share_manager.driver.teardown_server.assert_called_once_with(
             server_details=share_srv.get('backend_details'),
             security_services=[])
+        self.assertEqual(force, manager.LOG.error.called)
 
     def test_delete_share_instance_last_on_server_deletion_disabled(self):
         share_net = db_utils.create_share_network()
@@ -2143,6 +2162,52 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.delete_share_instance(self.context,
                                                  share.instance['id'])
         self.assertFalse(self.share_manager.driver.teardown_network.called)
+
+    @ddt.data('update_access', 'delete_share')
+    def test_delete_share_instance_not_found(self, side_effect):
+        share_net = db_utils.create_share_network()
+        share_srv = db_utils.create_share_server(
+            share_network_id=share_net['id'],
+            host=self.share_manager.host)
+        share = db_utils.create_share(share_network_id=share_net['id'],
+                                      share_server_id=share_srv['id'])
+        access = db_utils.create_access(share_id=share['id'])
+        db_utils.create_share(share_network_id=share_net['id'],
+                              share_server_id=share_srv['id'])
+
+        manager.CONF.delete_share_server_with_last_share = False
+
+        self.mock_object(db, 'share_server_get',
+                         mock.Mock(return_value=share_srv))
+        self.mock_object(db, 'share_instance_get',
+                         mock.Mock(return_value=share.instance))
+        self.mock_object(db, 'share_access_get_all_for_instance',
+                         mock.Mock(return_value=[access]))
+        self.share_manager.driver = mock.Mock()
+        self.share_manager.access_helper.driver = mock.Mock()
+        if side_effect == 'update_access':
+            self.mock_object(
+                self.share_manager.access_helper.driver, 'update_access',
+                mock.Mock(side_effect=exception.ShareResourceNotFound(
+                    share_id=share['id'])))
+        if side_effect == 'delete_share':
+            self.mock_object(
+                self.share_manager.driver, 'delete_share',
+                mock.Mock(side_effect=exception.ShareResourceNotFound(
+                    share_id=share['id'])))
+
+        self.mock_object(manager.LOG, 'warning')
+
+        self.share_manager.delete_share_instance(self.context,
+                                                 share.instance['id'])
+        self.assertFalse(self.share_manager.driver.teardown_network.called)
+
+        (self.share_manager.access_helper.driver.update_access.
+            assert_called_once_with(utils.IsAMatcher(
+                context.RequestContext), share.instance, [], add_rules=[],
+                delete_rules=[access], share_server=share_srv))
+
+        self.assertTrue(manager.LOG.warning.called)
 
     def test_allow_deny_access(self):
         """Test access rules to share can be created and deleted."""

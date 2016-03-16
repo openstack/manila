@@ -163,7 +163,8 @@ class ShareRpcAPITestCase(test.TestCase):
         self._test_share_api('delete_share_instance',
                              rpc_method='cast',
                              version='1.4',
-                             share_instance=self.fake_share)
+                             share_instance=self.fake_share,
+                             force=False)
 
     def test_allow_access(self):
         self._test_share_api('allow_access',

@@ -1193,7 +1193,7 @@ class ShareAPITestCase(test.TestCase):
              'terminated_at': self.dt_utc}
         )
         self.api.share_rpcapi.delete_share_instance.assert_called_once_with(
-            self.context, instance
+            self.context, instance, force=force
         )
         db_api.share_server_update(
             self.context,
