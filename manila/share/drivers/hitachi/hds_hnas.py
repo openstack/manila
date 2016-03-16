@@ -575,6 +575,7 @@ class HDSHNASDriver(driver.ShareDriver):
         :param share_id: ID of share for snapshot.
         :param snapshot_id: ID of new snapshot.
         """
+        self._ensure_share(share_id)
 
         saved_list = self.hnas.get_host_list(share_id)
         new_list = []
