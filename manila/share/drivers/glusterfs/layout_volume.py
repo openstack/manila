@@ -186,8 +186,10 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
 
     def _share_manager(self, share):
         """Return GlusterManager object representing share's backend."""
-        return self._glustermanager(self.private_storage.get(
-            share['id'], 'volume'))
+        gluster_address = self.private_storage.get(share['id'], 'volume')
+        if gluster_address is None:
+            return
+        return self._glustermanager(gluster_address)
 
     def _fetch_gluster_volumes(self, filter_used=True):
         """Do a 'gluster volume list | grep <volume pattern>'.
@@ -394,9 +396,9 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         gmgr = self._glustermanager(vol)
         export = self.driver._setup_via_manager(
             {'share': share, 'manager': gmgr})
-        self.private_storage.update(share['id'], {'volume': vol})
 
         gmgr.set_vol_option(USER_MANILA_SHARE, share['id'])
+        self.private_storage.update(share['id'], {'volume': vol})
 
         # TODO(deepakcs): Enable quota and set it to the share size.
 
@@ -413,6 +415,15 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         volume back in the available list.
         """
         gmgr = self._share_manager(share)
+        if not gmgr:
+            # Share does not have a record in private storage.
+            # It means create_share{,_from_snapshot} did not
+            # succeed(*). In that case we should not obstruct
+            # share deletion, so we just return doing nothing.
+            #
+            # (*) or we have a database corruption but then
+            # basically does not matter what we do here
+            return
         clone_of = gmgr.get_vol_option(USER_CLONED_FROM) or ''
         try:
             if UUID_RE.search(clone_of):
