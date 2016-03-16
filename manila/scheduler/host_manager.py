@@ -502,15 +502,13 @@ class HostManager(object):
         topic = CONF.share_topic
         share_services = db.service_get_all_by_topic(context, topic)
 
+        active_hosts = set()
         for service in share_services:
             host = service['host']
 
             # Warn about down services and remove them from host_state_map
             if not utils.service_is_up(service) or service['disabled']:
                 LOG.warning(_LW("Share service is down. (host: %s).") % host)
-                if self.host_state_map.pop(host, None):
-                    LOG.info(_LI("Removing non-active host: %s from "
-                                 "scheduler cache.") % host)
                 continue
 
             # Create and register host_state if not in host_state_map
@@ -526,6 +524,14 @@ class HostManager(object):
             # Update capabilities and attributes in host_state
             host_state.update_from_share_capability(
                 capabilities, service=dict(service.items()))
+            active_hosts.add(host)
+
+        # remove non-active hosts from host_state_map
+        nonactive_hosts = set(self.host_state_map.keys()) - active_hosts
+        for host in nonactive_hosts:
+            LOG.info(_LI("Removing non-active host: %(host)s from"
+                         "scheduler cache."), {'host': host})
+            self.host_state_map.pop(host, None)
 
     def get_all_host_states_share(self, context):
         """Returns a dict of all the hosts the HostManager knows about.

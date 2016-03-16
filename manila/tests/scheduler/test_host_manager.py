@@ -18,6 +18,7 @@
 Tests For HostManager
 """
 
+import copy
 import ddt
 import mock
 from oslo_config import cfg
@@ -144,20 +145,31 @@ class HostManagerTestCase(test.TestCase):
     def test_get_all_host_states_share(self):
         context = 'fake_context'
         topic = CONF.share_topic
+        tmp_pools = copy.deepcopy(fakes.SHARE_SERVICES_WITH_POOLS)
+        tmp_enable_pools = tmp_pools[:-2]
         self.mock_object(
             db, 'service_get_all_by_topic',
-            mock.Mock(return_value=fakes.SHARE_SERVICES_WITH_POOLS))
+            mock.Mock(return_value=tmp_enable_pools))
         self.mock_object(utils, 'service_is_up', mock.Mock(return_value=True))
 
         with mock.patch.dict(self.host_manager.service_states,
                              fakes.SHARE_SERVICE_STATES_WITH_POOLS):
-            # Disabled service
+            # Get service
+            self.host_manager.get_all_host_states_share(context)
+
+            # Disabled one service
+            tmp_enable_pools.pop()
+            self.mock_object(
+                db, 'service_get_all_by_topic',
+                mock.Mock(return_value=tmp_enable_pools))
+
+            # Get service again
             self.host_manager.get_all_host_states_share(context)
             host_state_map = self.host_manager.host_state_map
 
-            self.assertEqual(4, len(host_state_map))
+            self.assertEqual(3, len(host_state_map))
             # Check that service is up
-            for i in moves.range(4):
+            for i in moves.range(3):
                 share_node = fakes.SHARE_SERVICES_WITH_POOLS[i]
                 host = share_node['host']
                 self.assertEqual(share_node, host_state_map[host].service)
