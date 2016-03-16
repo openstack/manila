@@ -1615,6 +1615,27 @@ class ShareAPITestCase(test.TestCase):
         self.assertRaises(exception.ShareSizeExceedsAvailableQuota,
                           self.api.extend, self.context, share, new_size)
 
+    def test_extend_quota_user(self):
+        share = db_utils.create_share(status=constants.STATUS_AVAILABLE,
+                                      size=100)
+        diff_user_context = context.RequestContext(
+            user_id='fake2',
+            project_id='fake',
+            is_admin=False
+        )
+        new_size = 123
+        size_increase = int(new_size) - share['size']
+        self.mock_object(quota.QUOTAS, 'reserve')
+
+        self.api.extend(diff_user_context, share, new_size)
+
+        quota.QUOTAS.reserve.assert_called_once_with(
+            diff_user_context,
+            project_id=share['project_id'],
+            gigabytes=size_increase,
+            user_id=share['user_id']
+        )
+
     def test_extend_valid(self):
         share = db_utils.create_share(status=constants.STATUS_AVAILABLE,
                                       size=100)
