@@ -984,7 +984,8 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         mock_helper.assert_has_calls([
             mock.call('NFS'),
             mock.call().update_access(
-                dst_dataset_name, access_rules, make_all_ro=True),
+                dst_dataset_name, access_rules, add_rules=[],
+                delete_rules=[], make_all_ro=True),
             mock.call('NFS'),
             mock.call().create_exports(dst_dataset_name),
         ])
@@ -1156,7 +1157,8 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         self.assertEqual(zfs_driver.constants.REPLICA_STATE_IN_SYNC, result)
         mock_helper.assert_called_once_with('NFS')
         mock_helper.return_value.update_access.assert_called_once_with(
-            dst_dataset_name, access_rules, make_all_ro=True)
+            dst_dataset_name, access_rules, add_rules=[], delete_rules=[],
+            make_all_ro=True)
         self.driver.execute_with_retry.assert_called_once_with(
             'ssh', 'fake_src_ssh_cmd', 'sudo', 'zfs', 'destroy', '-f',
             src_dataset_name + '@' + snap_tag_prefix + 'quuz')
@@ -1260,7 +1262,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         self.assertEqual(3, len(result))
         mock_helper.assert_called_once_with('NFS')
         mock_helper.return_value.update_access.assert_called_once_with(
-            dst_dataset_name, access_rules)
+            dst_dataset_name, access_rules, add_rules=[], delete_rules=[])
         self.driver.zfs.assert_called_once_with(
             'set', 'readonly=off', dst_dataset_name)
         self.assertEqual(0, mock_delete_snapshot.call_count)
@@ -1362,7 +1364,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         self.assertEqual(4, len(result))
         mock_helper.assert_called_once_with('NFS')
         mock_helper.return_value.update_access.assert_called_once_with(
-            dst_dataset_name, access_rules)
+            dst_dataset_name, access_rules, add_rules=[], delete_rules=[])
         self.driver.zfs.assert_has_calls([
             mock.call('snapshot', dst_dataset_name + '@' + snap_tag_prefix),
             mock.call('set', 'readonly=off', dst_dataset_name),

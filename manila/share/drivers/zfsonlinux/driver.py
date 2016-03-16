@@ -623,7 +623,8 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
 
         # Apply access rules from original share
         self._get_share_helper(new_replica['share_proto']).update_access(
-            dst_dataset_name, access_rules, make_all_ro=True)
+            dst_dataset_name, access_rules, add_rules=[], delete_rules=[],
+            make_all_ro=True)
 
         return {
             'export_locations': self._get_share_helper(
@@ -748,7 +749,8 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
         # For the moment there will be difference and it can be considered
         # as a bug.
         self._get_share_helper(replica['share_proto']).update_access(
-            dst_dataset_name, access_rules, make_all_ro=True)
+            dst_dataset_name, access_rules, add_rules=[], delete_rules=[],
+            make_all_ro=True)
 
         # Return results
         return constants.REPLICA_STATE_IN_SYNC
@@ -885,7 +887,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
             constants.REPLICA_STATE_ACTIVE)
 
         self._get_share_helper(replica['share_proto']).update_access(
-            dst_dataset_name, access_rules)
+            dst_dataset_name, access_rules, add_rules=[], delete_rules=[])
 
         replica_dict[replica['id']]['access_rules_status'] = (
             constants.STATUS_ACTIVE)
