@@ -57,6 +57,8 @@ class FakeConfig(object):
         self.config_group = kwargs.get("config_group", "fake_config_group")
         self.reserved_share_percentage = kwargs.get(
             "reserved_share_percentage", 0)
+        self.max_over_subscription_ratio = kwargs.get(
+            "max_over_subscription_ratio", 15.0)
 
     def safe_get(self, key):
         return getattr(self, key)
@@ -220,9 +222,21 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         self.driver.zpool_list = ['foo', 'bar']
         expected = [
             {'pool_name': 'foo', 'total_capacity_gb': 3.0,
-             'free_capacity_gb': 2.0, 'reserved_percentage': 0},
+             'free_capacity_gb': 2.0, 'reserved_percentage': 0,
+             'compression': [True, False],
+             'dedupe': [True, False],
+             'thin_provisioning': [True],
+             'max_over_subscription_ratio': (
+                 self.driver.configuration.max_over_subscription_ratio),
+             'qos': [False]},
             {'pool_name': 'bar', 'total_capacity_gb': 4.0,
-             'free_capacity_gb': 5.0, 'reserved_percentage': 0},
+             'free_capacity_gb': 5.0, 'reserved_percentage': 0,
+             'compression': [True, False],
+             'dedupe': [True, False],
+             'thin_provisioning': [True],
+             'max_over_subscription_ratio': (
+                 self.driver.configuration.max_over_subscription_ratio),
+             'qos': [False]},
         ]
         if replication_domain:
             for pool in expected:
@@ -237,6 +251,37 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             mock.call('bar', 'free'),
             mock.call('bar', 'size'),
         ])
+
+    @ddt.data(
+        ([], {'compression': [True, False], 'dedupe': [True, False]}),
+        (['dedup=off'], {'compression': [True, False], 'dedupe': [False]}),
+        (['dedup=on'], {'compression': [True, False], 'dedupe': [True]}),
+        (['compression=on'], {'compression': [True], 'dedupe': [True, False]}),
+        (['compression=off'],
+         {'compression': [False], 'dedupe': [True, False]}),
+        (['compression=fake'],
+         {'compression': [True], 'dedupe': [True, False]}),
+        (['compression=fake', 'dedup=off'],
+         {'compression': [True], 'dedupe': [False]}),
+        (['compression=off', 'dedup=on'],
+         {'compression': [False], 'dedupe': [True]}),
+    )
+    @ddt.unpack
+    def test__init_common_capabilities(
+            self, dataset_creation_options, expected_part):
+        self.driver.dataset_creation_options = (
+            dataset_creation_options)
+        expected = {
+            'thin_provisioning': [True],
+            'qos': [False],
+            'max_over_subscription_ratio': (
+                self.driver.configuration.max_over_subscription_ratio),
+        }
+        expected.update(expected_part)
+
+        self.driver._init_common_capabilities()
+
+        self.assertEqual(expected, self.driver.common_capabilities)
 
     @ddt.data(None, '', 'foo_replication_domain')
     def test__update_share_stats(self, replication_domain):
@@ -291,13 +336,26 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
 
     def test__get_dataset_creation_options_not_set(self):
         self.driver.dataset_creation_options = []
+        mock_get_extra_specs_from_share = self.mock_object(
+            zfs_driver.share_types,
+            'get_extra_specs_from_share',
+            mock.Mock(return_value={}))
+        share = {'size': '5'}
 
-        result = self.driver._get_dataset_creation_options(share={})
+        result = self.driver._get_dataset_creation_options(share=share)
 
-        self.assertEqual([], result)
+        self.assertIsInstance(result, list)
+        self.assertEqual(2, len(result))
+        for v in ('quota=5G', 'readonly=off'):
+            self.assertIn(v, result)
+        mock_get_extra_specs_from_share.assert_called_once_with(share)
 
     @ddt.data(True, False)
     def test__get_dataset_creation_options(self, is_readonly):
+        mock_get_extra_specs_from_share = self.mock_object(
+            zfs_driver.share_types,
+            'get_extra_specs_from_share',
+            mock.Mock(return_value={}))
         self.driver.dataset_creation_options = [
             'readonly=quuz', 'sharenfs=foo', 'sharesmb=bar', 'k=v', 'q=w',
         ]
@@ -309,6 +367,92 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             share=share, is_readonly=is_readonly)
 
         self.assertEqual(sorted(expected), sorted(result))
+        mock_get_extra_specs_from_share.assert_called_once_with(share)
+
+    @ddt.data(
+        ('<is> True', [True, False], ['dedup=off'], 'dedup=on'),
+        ('True', [True, False], ['dedup=off'], 'dedup=on'),
+        ('on', [True, False], ['dedup=off'], 'dedup=on'),
+        ('yes', [True, False], ['dedup=off'], 'dedup=on'),
+        ('1', [True, False], ['dedup=off'], 'dedup=on'),
+        ('True', [True], [], 'dedup=on'),
+        ('<is> False', [True, False], [], 'dedup=off'),
+        ('False', [True, False], [], 'dedup=off'),
+        ('False', [False], ['dedup=on'], 'dedup=off'),
+        ('off', [False], ['dedup=on'], 'dedup=off'),
+        ('no', [False], ['dedup=on'], 'dedup=off'),
+        ('0', [False], ['dedup=on'], 'dedup=off'),
+    )
+    @ddt.unpack
+    def test__get_dataset_creation_options_with_updated_dedupe(
+            self, dedupe_extra_spec, dedupe_capability, driver_options,
+            expected):
+        mock_get_extra_specs_from_share = self.mock_object(
+            zfs_driver.share_types,
+            'get_extra_specs_from_share',
+            mock.Mock(return_value={'dedupe': dedupe_extra_spec}))
+        self.driver.dataset_creation_options = driver_options
+        self.driver.common_capabilities['dedupe'] = dedupe_capability
+        share = {'size': 5}
+        expected_options = ['quota=5G', 'readonly=off']
+        expected_options.append(expected)
+
+        result = self.driver._get_dataset_creation_options(share=share)
+
+        self.assertEqual(sorted(expected_options), sorted(result))
+        mock_get_extra_specs_from_share.assert_called_once_with(share)
+
+    @ddt.data(
+        ('on', [True, False], ['compression=off'], 'compression=on'),
+        ('on', [True], [], 'compression=on'),
+        ('off', [False], ['compression=on'], 'compression=off'),
+        ('off', [True, False], [], 'compression=off'),
+        ('foo', [True, False], [], 'compression=foo'),
+        ('bar', [True], [], 'compression=bar'),
+    )
+    @ddt.unpack
+    def test__get_dataset_creation_options_with_updated_compression(
+            self, extra_spec, capability, driver_options, expected_option):
+        mock_get_extra_specs_from_share = self.mock_object(
+            zfs_driver.share_types,
+            'get_extra_specs_from_share',
+            mock.Mock(return_value={'zfsonlinux:compression': extra_spec}))
+        self.driver.dataset_creation_options = driver_options
+        self.driver.common_capabilities['compression'] = capability
+        share = {'size': 5}
+        expected_options = ['quota=5G', 'readonly=off']
+        expected_options.append(expected_option)
+
+        result = self.driver._get_dataset_creation_options(share=share)
+
+        self.assertEqual(sorted(expected_options), sorted(result))
+        mock_get_extra_specs_from_share.assert_called_once_with(share)
+
+    @ddt.data(
+        ({'dedupe': 'fake'}, {'dedupe': [True, False]}),
+        ({'dedupe': 'on'}, {'dedupe': [False]}),
+        ({'dedupe': 'off'}, {'dedupe': [True]}),
+        ({'zfsonlinux:compression': 'fake'}, {'compression': [False]}),
+        ({'zfsonlinux:compression': 'on'}, {'compression': [False]}),
+        ({'zfsonlinux:compression': 'off'}, {'compression': [True]}),
+    )
+    @ddt.unpack
+    def test__get_dataset_creation_options_error(
+            self, extra_specs, common_capabilities):
+        mock_get_extra_specs_from_share = self.mock_object(
+            zfs_driver.share_types,
+            'get_extra_specs_from_share',
+            mock.Mock(return_value=extra_specs))
+        share = {'size': 5}
+        self.driver.common_capabilities.update(common_capabilities)
+
+        self.assertRaises(
+            exception.ZFSonLinuxException,
+            self.driver._get_dataset_creation_options,
+            share=share
+        )
+
+        mock_get_extra_specs_from_share.assert_called_once_with(share)
 
     @ddt.data('bar/quuz', 'bar/quuz/', 'bar')
     def test__get_dataset_name(self, second_zpool):
@@ -327,6 +471,10 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
     def test_create_share(self):
         mock_get_helper = self.mock_object(self.driver, '_get_share_helper')
         self.mock_object(self.driver, 'zfs')
+        mock_get_extra_specs_from_share = self.mock_object(
+            zfs_driver.share_types,
+            'get_extra_specs_from_share',
+            mock.Mock(return_value={}))
         context = 'fake_context'
         share = {
             'id': 'fake_share_id',
@@ -359,12 +507,12 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             'bar',
             self.driver.private_storage.get(share['id'], 'pool_name'))
         self.driver.zfs.assert_called_once_with(
-            'create', '-o', 'fook=foov', '-o', 'bark=barv',
-            '-o', 'readonly=off', '-o', 'quota=4G',
-            'bar/subbar/some_prefix_fake_share_id')
+            'create', '-o', 'quota=4G', '-o', 'fook=foov', '-o', 'bark=barv',
+            '-o', 'readonly=off', 'bar/subbar/some_prefix_fake_share_id')
         mock_get_helper.assert_has_calls([
             mock.call('NFS'), mock.call().create_exports(dataset_name)
         ])
+        mock_get_extra_specs_from_share.assert_called_once_with(share)
 
     def test_create_share_with_share_server(self):
         self.assertRaises(
@@ -558,6 +706,10 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
     def test_create_share_from_snapshot(self):
         mock_get_helper = self.mock_object(self.driver, '_get_share_helper')
         self.mock_object(self.driver, 'zfs')
+        mock_get_extra_specs_from_share = self.mock_object(
+            zfs_driver.share_types,
+            'get_extra_specs_from_share',
+            mock.Mock(return_value={}))
         context = 'fake_context'
         share = {
             'id': 'fake_share_id',
@@ -601,10 +753,12 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             self.driver.private_storage.get(share['id'], 'pool_name'))
         self.driver.zfs.assert_called_once_with(
             'clone', snap_name, 'bar/subbar/some_prefix_fake_share_id',
-            '-o', 'quota=4G')
+            '-o', 'quota=4G', '-o', 'fook=foov', '-o', 'bark=barv',
+            '-o', 'readonly=off')
         mock_get_helper.assert_has_calls([
             mock.call('NFS'), mock.call().create_exports(dataset_name)
         ])
+        mock_get_extra_specs_from_share.assert_called_once_with(share)
 
     def test_create_share_from_snapshot_with_share_server(self):
         self.assertRaises(
