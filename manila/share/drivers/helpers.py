@@ -157,6 +157,12 @@ class NFSHelper(NASHelperBase):
     def remove_export(self, server, share_name):
         """Remove export."""
 
+    def _get_parsed_access_to(self, access_to):
+        netmask = utils.cidr_to_netmask(access_to)
+        if netmask == '255.255.255.255':
+            return access_to.split('/')[0]
+        return access_to.split('/')[0] + '/' + netmask
+
     @nfs_synchronized
     def update_access(self, server, share_name, access_rules, add_rules,
                       delete_rules):
@@ -187,7 +193,8 @@ class NFSHelper(NASHelperBase):
                     server,
                     ['sudo', 'exportfs', '-o',
                      rules_options % access['access_level'],
-                     ':'.join((access['access_to'], local_path))])
+                     ':'.join((self._get_parsed_access_to(access['access_to']),
+                               local_path))])
             self._sync_nfs_temp_and_perm_files(server)
         # Adding/Deleting specific rules
         else:
@@ -197,6 +204,8 @@ class NFSHelper(NASHelperBase):
                 (const.ACCESS_LEVEL_RO, const.ACCESS_LEVEL_RW))
 
             for access in delete_rules:
+                access['access_to'] = self._get_parsed_access_to(
+                    access['access_to'])
                 try:
                     self.validate_access_rules(
                         [access], ('ip',),
@@ -215,16 +224,16 @@ class NFSHelper(NASHelperBase):
             if delete_rules:
                 self._sync_nfs_temp_and_perm_files(server)
             for access in add_rules:
-                access_to, access_type = (access['access_to'],
-                                          access['access_type'])
+                access['access_to'] = self._get_parsed_access_to(
+                    access['access_to'])
                 found_item = re.search(
-                    re.escape(local_path) + '[\s\n]*' + re.escape(access_to),
-                    out)
+                    re.escape(local_path) + '[\s\n]*' + re.escape(
+                        access['access_to']), out)
                 if found_item is not None:
                     LOG.warning(_LW("Access rule %(type)s:%(to)s already "
                                     "exists for share %(name)s") % {
-                        'to': access_to,
-                        'type': access_type,
+                        'to': access['access_to'],
+                        'type': access['access_type'],
                         'name': share_name
                     })
                 else:
