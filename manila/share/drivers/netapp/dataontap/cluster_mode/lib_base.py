@@ -1047,8 +1047,7 @@ class NetAppCmodeFileStorageLibrary(object):
             helper.set_client(vserver_client)
             helper.update_access(share, share_name, access_rules)
         else:
-            LOG.warning(_LW("Could not update access rules, share %s does "
-                            "not exist."), share['id'])
+            raise exception.ShareResourceNotFound(share_id=share['id'])
 
     def setup_server(self, network_info, metadata=None):
         raise NotImplementedError()
