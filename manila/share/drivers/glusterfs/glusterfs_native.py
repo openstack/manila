@@ -85,7 +85,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
         if not ssl_allow_opt:
             # Not having AUTH_SSL_ALLOW set is a problematic edge case.
             # - In GlusterFS 3.6, it implies that access is allowed to
-            #   noone, including intra-service access, which causes
+            #   none, including intra-service access, which causes
             #   problems internally in GlusterFS
             # - In GlusterFS 3.7, it implies that access control is
             #   disabled, which defeats the purpose of this driver --
