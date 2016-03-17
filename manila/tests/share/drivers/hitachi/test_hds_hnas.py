@@ -489,7 +489,7 @@ class HDSHNASTestCase(test.TestCase):
             'driver_handles_share_servers':
                 self._driver.driver_handles_share_servers,
             'vendor_name': 'HDS',
-            'driver_version': '1.0',
+            'driver_version': '2.0.0',
             'storage_protocol': 'NFS',
             'total_capacity_gb': 1000,
             'free_capacity_gb': 200,
