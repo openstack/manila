@@ -243,6 +243,29 @@ class SchedulerManagerTestCase(test.TestCase):
             exception.NoValidHost, self.manager.migrate_share_to_host,
             self.context, share['id'], host, False, True, {}, None)
 
+    def test_manage_share(self):
+
+        share = db_utils.create_share()
+
+        self.mock_object(db, 'share_get', mock.Mock(return_value=share))
+        self.mock_object(share_rpcapi.ShareAPI, 'manage_share')
+        self.mock_object(base.Scheduler, 'host_passes_filters')
+
+        self.manager.manage_share(self.context, share['id'], 'driver_options',
+                                  {}, None)
+
+    def test_manage_share_exception(self):
+
+        share = db_utils.create_share()
+
+        self.mock_object(
+            base.Scheduler, 'host_passes_filters',
+            mock.Mock(side_effect=exception.NoValidHost('fake')))
+
+        self.assertRaises(
+            exception.NoValidHost, self.manager.manage_share,
+            self.context, share['id'], 'driver_options', {}, None)
+
     def test_create_share_replica_exception_path(self):
         """Test 'raisable' exceptions for create_share_replica."""
         db_update = self.mock_object(db, 'share_replica_update')
