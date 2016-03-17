@@ -104,10 +104,12 @@ class NFSHelperTestCase(test.TestCase):
             test_generic.get_fake_access_rule('2.2.2.3', access_level)]
         add_rules = [
             test_generic.get_fake_access_rule('2.2.2.2', access_level),
-            test_generic.get_fake_access_rule('2.2.2.3', access_level)]
+            test_generic.get_fake_access_rule('2.2.2.3', access_level),
+            test_generic.get_fake_access_rule('5.5.5.5/24', access_level)]
         delete_rules = [
             test_generic.get_fake_access_rule('3.3.3.3', access_level),
-            test_generic.get_fake_access_rule('4.4.4.4', access_level, 'user')]
+            test_generic.get_fake_access_rule('4.4.4.4', access_level, 'user'),
+            test_generic.get_fake_access_rule('6.6.6.6/0', access_level)]
         self._helper.update_access(self.server, self.share_name, access_rules,
                                    add_rules=add_rules,
                                    delete_rules=delete_rules)
@@ -116,9 +118,16 @@ class NFSHelperTestCase(test.TestCase):
             mock.call(self.server, ['sudo', 'exportfs']),
             mock.call(self.server, ['sudo', 'exportfs', '-u',
                                     ':'.join(['3.3.3.3', local_path])]),
+            mock.call(self.server, ['sudo', 'exportfs', '-u',
+                                    ':'.join(['6.6.6.6/0.0.0.0',
+                                              local_path])]),
             mock.call(self.server, ['sudo', 'exportfs', '-o',
                                     expected_mount_options % access_level,
                                     ':'.join(['2.2.2.2', local_path])]),
+            mock.call(self.server, ['sudo', 'exportfs', '-o',
+                                    expected_mount_options % access_level,
+                                    ':'.join(['5.5.5.5/255.255.255.0',
+                                              local_path])]),
         ])
         self._helper._sync_nfs_temp_and_perm_files.assert_has_calls([
             mock.call(self.server), mock.call(self.server)])
