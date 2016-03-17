@@ -55,6 +55,7 @@ USER_ALREADY_EXISTS = '"allow" permission already exists for "%s"'
 DOES_NOT_EXIST = 'does not exist, cannot'
 LOCAL_IP = '127.0.0.1'
 LOCAL_IP_RO = '127.0.0.2'
+SUPER_SHARE = 'OPENSTACK_SUPER_SHARE'
 
 
 class HPE3ParMediator(object):
@@ -69,10 +70,11 @@ class HPE3ParMediator(object):
         2.0.1 - Add access_level (e.g. read-only support)
         2.0.2 - Add extend/shrink
         2.0.3 - Fix SMB read-only access (added in 2.0.1)
+        2.0.4 - Remove file tree on delete when using nested shares #1538800
 
     """
 
-    VERSION = "2.0.3"
+    VERSION = "2.0.4"
 
     def __init__(self, **kwargs):
 
@@ -87,6 +89,15 @@ class HPE3ParMediator(object):
         self.hpe3par_san_private_key = kwargs.get('hpe3par_san_private_key')
         self.hpe3par_fstore_per_share = kwargs.get('hpe3par_fstore_per_share')
         self.hpe3par_require_cifs_ip = kwargs.get('hpe3par_require_cifs_ip')
+        self.hpe3par_share_ip_address = kwargs.get('hpe3par_share_ip_address')
+        self.hpe3par_cifs_admin_access_username = (
+            kwargs.get('hpe3par_cifs_admin_access_username'))
+        self.hpe3par_cifs_admin_access_password = (
+            kwargs.get('hpe3par_cifs_admin_access_password'))
+        self.hpe3par_cifs_admin_access_domain = (
+            kwargs.get('hpe3par_cifs_admin_access_domain'))
+        self.hpe3par_share_mount_path = kwargs.get('hpe3par_share_mount_path')
+        self.my_ip = kwargs.get('my_ip')
 
         self.ssh_conn_timeout = kwargs.get('ssh_conn_timeout')
         self._client = None
@@ -645,6 +656,13 @@ class HPE3ParMediator(object):
         if fstore:
             self._delete_share(share_name_ro, protocol, fpg, vfs, fstore)
 
+        if not self.hpe3par_fstore_per_share:
+            # Attempt to remove file tree on delete when using nested shares.
+            # If the file tree cannot be removed for whatever reason, we will
+            # not treat this as an error_deleting issue. We will allow the
+            # delete to continue as requested.
+            self._delete_file_tree(share_name, protocol, fpg, vfs, fstore)
+
         if fstore == share_name:
             try:
                 self._client.removefstore(vfs, fstore, fpg=fpg)
@@ -653,6 +671,149 @@ class HPE3ParMediator(object):
                        {'fstore': fstore, 'e': six.text_type(e)})
                 LOG.exception(msg)
                 raise exception.ShareBackendException(msg=msg)
+
+    def _delete_file_tree(self, share_name, protocol, fpg, vfs, fstore):
+        # If the share protocol is CIFS, we need to make sure the admin
+        # provided the proper config values. If they have not, we can simply
+        # return out and log a warning.
+        if protocol == "smb" and (not self.hpe3par_cifs_admin_access_username
+           or not self.hpe3par_cifs_admin_access_password):
+            LOG.warning(_LW("hpe3par_cifs_admin_access_username and "
+                            "hpe3par_cifs_admin_access_password must be "
+                            "provided in order for the file tree to be "
+                            "properly deleted."))
+            return
+
+        mount_location = "%s%s" % (self.hpe3par_share_mount_path, share_name)
+        share_dir = mount_location + "/%s" % share_name
+
+        # Create the super share.
+        self._create_super_share(protocol, fpg, vfs, fstore)
+
+        # Create the mount directory.
+        self._create_mount_directory(mount_location)
+
+        # Mount the super share.
+        self._mount_super_share(protocol, mount_location, fpg, vfs, fstore)
+
+        # Delete the share from the super share.
+        self._delete_share_directory(share_dir)
+
+        # Unmount the super share.
+        self._unmount_super_share(mount_location)
+
+        # Delete the mount directory.
+        self._delete_share_directory(mount_location)
+
+    def _create_super_share(self, protocol, fpg, vfs, fstore, readonly=False):
+        sharedir = ''
+        extra_specs = {}
+        comment = 'OpenStack super share used to delete nested shares.'
+        createfshare_kwargs = self._build_createfshare_kwargs(protocol,
+                                                              fpg,
+                                                              fstore,
+                                                              readonly,
+                                                              sharedir,
+                                                              extra_specs,
+                                                              comment)
+
+        # If the share is NFS, we need to give the host access to the share in
+        # order to properly mount it.
+        if protocol == 'nfs':
+            createfshare_kwargs['clientip'] = self.my_ip
+        else:
+            createfshare_kwargs['allowip'] = self.my_ip
+
+        try:
+            result = self._client.createfshare(protocol,
+                                               vfs,
+                                               SUPER_SHARE,
+                                               **createfshare_kwargs)
+            LOG.debug("createfshare for %(name)s, result=%(result)s",
+                      {'name': SUPER_SHARE, 'result': result})
+        except Exception as e:
+            msg = (_('Failed to create share %(share_name)s: %(e)s'),
+                   {'share_name': SUPER_SHARE, 'e': six.text_type(e)})
+            LOG.exception(msg)
+            raise exception.ShareBackendException(msg=msg)
+
+        # If the share is CIFS, we need to grant access to the specified admin.
+        if protocol == 'smb':
+            user = '+%s:fullcontrol' % self.hpe3par_cifs_admin_access_username
+            setfshare_kwargs = {
+                'fpg': fpg,
+                'fstore': fstore,
+                'comment': comment,
+                'allowperm': user,
+            }
+            try:
+                result = self._client.setfshare(
+                    protocol, vfs, SUPER_SHARE, **setfshare_kwargs)
+            except Exception as err:
+                message = (_("There was an error adding permissions: "
+                             "%s.") % six.text_type(err))
+                raise exception.ShareMountException(reason=message)
+
+    def _create_mount_directory(self, mount_location):
+        try:
+            utils.execute('mkdir', mount_location, run_as_root=True)
+        except Exception as err:
+            message = (_LW("There was an error creating mount directory: "
+                           "%s. The nested file tree will not be deleted."),
+                       six.text_type(err))
+            LOG.warning(message)
+
+    def _mount_super_share(self, protocol, mount_location, fpg, vfs, fstore):
+        try:
+            mount_path = self._generate_mount_path(protocol, fpg, vfs, fstore)
+            if protocol == 'nfs':
+                utils.execute('mount', '-t', 'nfs', mount_path, mount_location,
+                              run_as_root=True)
+                LOG.debug("Execute mount. mount_location: %s", mount_location)
+            else:
+                user = ('username=' + self.hpe3par_cifs_admin_access_username +
+                        ',password=' +
+                        self.hpe3par_cifs_admin_access_password +
+                        ',domain=' + self.hpe3par_cifs_admin_access_domain)
+                utils.execute('mount', '-t', 'cifs', mount_path,
+                              mount_location, '-o', user, run_as_root=True)
+        except Exception as err:
+            message = (_LW("There was an error mounting the super share: "
+                           "%s. The nested file tree will not be deleted."),
+                       six.text_type(err))
+            LOG.warning(message)
+
+    def _unmount_super_share(self, mount_location):
+        try:
+            utils.execute('umount', mount_location, run_as_root=True)
+        except Exception as err:
+            message = (_LW("There was an error unmounting the super share: "
+                           "%s. The nested file tree will not be deleted."),
+                       six.text_type(err))
+            LOG.warning(message)
+
+    def _delete_share_directory(self, directory):
+        try:
+            utils.execute('rm', '-rf', directory, run_as_root=True)
+        except Exception as err:
+            message = (_LW("There was an error removing the share: "
+                           "%s. The nested file tree will not be deleted."),
+                       six.text_type(err))
+            LOG.warning(message)
+
+    def _generate_mount_path(self, protocol, fpg, vfs, fstore):
+        path = None
+        if protocol == 'nfs':
+            path = (("%(share_ip)s:/%(fpg)s/%(vfs)s/%(fstore)s/") %
+                    {'share_ip': self.hpe3par_share_ip_address,
+                     'fpg': fpg,
+                     'vfs': vfs,
+                     'fstore': fstore})
+        else:
+            path = (("//%(share_ip)s/%(share_name)s/") %
+                    {'share_ip': self.hpe3par_share_ip_address,
+                     'share_name': SUPER_SHARE})
+        return path
 
     def get_vfs_name(self, fpg):
         return self.get_vfs(fpg)['vfsname']
