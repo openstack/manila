@@ -73,10 +73,13 @@ class HPE3ParMediatorTestCase(test.TestCase):
     def test_mediator_no_client(self):
         """Test missing hpe3parclient error."""
 
+        mock_log = self.mock_object(hpe3parmediator, 'LOG')
         self.mock_object(hpe3parmediator.HPE3ParMediator, 'no_client', None)
 
         self.assertRaises(exception.HPE3ParInvalidClient,
                           self.mediator.do_setup)
+
+        mock_log.error.assert_called_once_with(mock.ANY)
 
     def test_mediator_setup_client_init_error(self):
         """Any client init exceptions should result in a ManilaException."""
@@ -205,8 +208,12 @@ class HPE3ParMediatorTestCase(test.TestCase):
         self.hpe3parclient.version_tuple = (CLIENT_VERSION_MIN_OK[0],
                                             CLIENT_VERSION_MIN_OK[1],
                                             CLIENT_VERSION_MIN_OK[2] - 1)
+        mock_log = self.mock_object(hpe3parmediator, 'LOG')
+
         self.assertRaises(exception.HPE3ParInvalidClient,
                           self.init_mediator)
+
+        mock_log.error.assert_called_once_with(mock.ANY)
 
     def test_mediator_client_version_supported(self):
         """Try a client with a version greater than the minimum."""
