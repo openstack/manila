@@ -153,6 +153,7 @@ class HDSHNASTestCase(test.TestCase):
         }
         access_list = [access1, access2]
 
+        self.mock_object(self._driver, '_ensure_share')
         self.mock_object(ssh.HNASSSHBackend, "update_access_rule",
                          mock.Mock())
         self._driver.update_access('context', share, access_list, [], [])
@@ -177,9 +178,31 @@ class HDSHNASTestCase(test.TestCase):
         }
         access_list = [access1, access2]
 
+        self.mock_object(self._driver, '_ensure_share')
+
         self.assertRaises(exception.InvalidShareAccess,
                           self._driver.update_access, 'context', share,
                           access_list, [], [])
+
+    def test_update_access_not_found_exception(self):
+        access1 = {
+            'access_type': 'ip',
+            'access_to': '188.100.20.10',
+            'access_level': 'ro'
+        }
+        access2 = {
+            'access_type': 'something',
+            'access_to': '172.24.10.10',
+            'access_level': 'rw'
+        }
+        access_list = [access1, access2]
+
+        self.mock_object(self._driver, '_ensure_share', mock.Mock(
+            side_effect=exception.HNASItemNotFoundException(msg='fake')))
+
+        self.assertRaises(exception.ShareResourceNotFound,
+                          self._driver.update_access, 'context', share,
+                          access_list, add_rules=[], delete_rules=[])
 
     def test_create_share(self):
         self.mock_object(hds_hnas.HDSHNASDriver, "_check_fs_mounted",
