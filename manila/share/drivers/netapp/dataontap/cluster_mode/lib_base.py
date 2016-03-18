@@ -1159,7 +1159,8 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver_client = data_motion.get_client_for_backend(
             dest_backend, vserver_name=vserver)
         share_name = self._get_backend_share_name(replica['id'])
-        self._deallocate_container(share_name, vserver_client)
+        if self._share_exists(share_name, vserver_client):
+            self._deallocate_container(share_name, vserver_client)
 
     def update_replica_state(self, context, replica_list, replica,
                              access_rules, share_server=None):
@@ -1168,6 +1169,13 @@ class NetAppCmodeFileStorageLibrary(object):
 
         share_name = self._get_backend_share_name(replica['id'])
         vserver, vserver_client = self._get_vserver(share_server=share_server)
+
+        if not vserver_client.volume_exists(share_name):
+            msg = _("Volume %(share_name)s does not exist on vserver "
+                    "%(vserver)s.")
+            msg_args = {'share_name': share_name, 'vserver': vserver}
+            raise exception.ShareResourceNotFound(msg % msg_args)
+
         dm_session = data_motion.DataMotionSession()
         try:
             snapmirrors = dm_session.get_snapmirrors(active_replica, replica)
@@ -1242,10 +1250,21 @@ class NetAppCmodeFileStorageLibrary(object):
         new_replica_list = []
 
         # Setup the new active replica
-        new_active_replica = (
-            self._convert_destination_replica_to_independent(
-                context, dm_session, orig_active_replica, replica,
-                access_rules, share_server=share_server))
+        try:
+            new_active_replica = (
+                self._convert_destination_replica_to_independent(
+                    context, dm_session, orig_active_replica, replica,
+                    access_rules, share_server=share_server))
+        except exception.StorageCommunicationException:
+            LOG.exception(_LE("Could not communicate with the backend "
+                              "for replica %s during promotion."),
+                          replica['id'])
+            new_active_replica = copy.deepcopy(replica)
+            new_active_replica['replica_state'] = (
+                constants.STATUS_ERROR)
+            new_active_replica['status'] = constants.STATUS_ERROR
+            return [new_active_replica]
+
         new_replica_list.append(new_active_replica)
 
         # Change the source replica for all destinations to the new
@@ -1283,7 +1302,7 @@ class NetAppCmodeFileStorageLibrary(object):
             # 1. Start an update to try to get a last minute transfer before we
             # quiesce and break
             dm_session.update_snapmirror(orig_active_replica, replica)
-        except netapp_api.NaApiError:
+        except exception.StorageCommunicationException:
             # Ignore any errors since the current source replica may be
             # unreachable
             pass
@@ -1324,12 +1343,21 @@ class NetAppCmodeFileStorageLibrary(object):
                                                 orig_source_replica,
                                                 new_source_replica,
                                                 replica_list)
-        except Exception:
+        except exception.StorageCommunicationException:
+            replica['status'] = constants.STATUS_ERROR
             replica['replica_state'] = constants.STATUS_ERROR
             replica['export_locations'] = []
             msg = _LE("Failed to change replica (%s) to a SnapMirror "
-                      "destination."), replica['id']
-            LOG.exception(msg)
+                      "destination. Replica backend is unreachable.")
+
+            LOG.exception(msg, replica['id'])
+            return replica
+        except netapp_api.NaApiError:
+            replica['replica_state'] = constants.STATUS_ERROR
+            replica['export_locations'] = []
+            msg = _LE("Failed to change replica (%s) to a SnapMirror "
+                      "destination.")
+            LOG.exception(msg, replica['id'])
             return replica
 
         replica['replica_state'] = constants.REPLICA_STATE_OUT_OF_SYNC
