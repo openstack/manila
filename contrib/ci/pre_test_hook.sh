@@ -27,6 +27,9 @@ echo "TEMPEST_SERVICES+=,manila" >> $localrc_path
 echo "VOLUME_BACKING_FILE_SIZE=22G" >> $localrc_path
 echo "CINDER_LVM_TYPE=thin" >> $localrc_path
 
+# NOTE(mkoderer): switch to keystone v3 by default
+echo "IDENTITY_API_VERSION=3" >> $localrc_path
+
 # NOTE(vponomaryov): Set oversubscription ratio for Cinder LVM driver
 # bigger than 1.0, because in CI we do not need such small value.
 # It will allow us to avoid exceeding real capacity in CI test runs.

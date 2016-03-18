@@ -140,6 +140,8 @@ class TestCase(base_test.BaseTestCase):
         self.useFixture(self.messaging_conf)
         rpc.init(CONF)
 
+        mock.patch('keystoneauth1.loading.load_auth_from_conf_options').start()
+
         fake_notifier.stub_notifier(self)
 
     def tearDown(self):

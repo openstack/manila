@@ -14,67 +14,96 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from keystoneauth1 import loading as ks_loading
 from neutronclient.common import exceptions as neutron_client_exc
 from neutronclient.v2_0 import client as clientv20
 from oslo_config import cfg
 from oslo_log import log
 
+from manila.common import client_auth
 from manila import context
 from manila import exception
 from manila.i18n import _LE
 from manila.network.neutron import constants as neutron_constants
 
-neutron_opts = [
-    cfg.StrOpt(
-        'neutron_url',
-        default='http://127.0.0.1:9696',
-        deprecated_group='DEFAULT',
-        help='URL for connecting to neutron.'),
-    cfg.IntOpt(
-        'neutron_url_timeout',
-        default=30,
-        deprecated_group='DEFAULT',
-        help='Timeout value for connecting to neutron in seconds.'),
+NEUTRON_GROUP = 'neutron'
+
+neutron_deprecated_opts = [
     cfg.StrOpt(
         'neutron_admin_username',
         default='neutron',
         deprecated_group='DEFAULT',
+        deprecated_for_removal=True,
+        deprecated_reason="This option isn't used any longer. Please use "
+                          "[neutron] username instead.",
         help='Username for connecting to neutron in admin context.'),
     cfg.StrOpt(
         'neutron_admin_password',
         help='Password for connecting to neutron in admin context.',
         deprecated_group='DEFAULT',
+        deprecated_for_removal=True,
+        deprecated_reason="This option isn't used any longer. Please use "
+                          "[neutron] password instead.",
         secret=True),
     cfg.StrOpt(
         'neutron_admin_project_name',
         default='service',
         deprecated_group='DEFAULT',
         deprecated_name='neutron_admin_tenant_name',
+        deprecated_for_removal=True,
+        deprecated_reason="This option isn't used any longer. Please use "
+                          "[neutron] project instead.",
         help='Project name for connecting to Neutron in admin context.'),
     cfg.StrOpt(
         'neutron_admin_auth_url',
         default='http://localhost:5000/v2.0',
         deprecated_group='DEFAULT',
+        deprecated_for_removal=True,
+        deprecated_reason="This option isn't used any longer. Please use "
+                          "[neutron] auth_url instead.",
         help='Auth URL for connecting to neutron in admin context.'),
+]
+
+neutron_opts = [
+    cfg.StrOpt(
+        'url',
+        default='http://127.0.0.1:9696',
+        deprecated_group="DEFAULT",
+        deprecated_name="neutron_url",
+        help='URL for connecting to neutron.'),
+    cfg.IntOpt(
+        'url_timeout',
+        default=30,
+        deprecated_group="DEFAULT",
+        deprecated_name="neutron_url_timeout",
+        help='Timeout value for connecting to neutron in seconds.'),
     cfg.BoolOpt(
-        'neutron_api_insecure',
+        'api_insecure',
         default=False,
-        deprecated_group='DEFAULT',
+        deprecated_group="DEFAULT",
         help='If set, ignore any SSL validation issues.'),
     cfg.StrOpt(
-        'neutron_auth_strategy',
+        'auth_strategy',
         default='keystone',
-        deprecated_group='DEFAULT',
+        deprecated_group="DEFAULT",
         help='Auth strategy for connecting to neutron in admin context.'),
     cfg.StrOpt(
-        'neutron_ca_certificates_file',
-        deprecated_group='DEFAULT',
+        'ca_certificates_file',
+        deprecated_for_removal=True,
+        deprecated_group="DEFAULT",
         help='Location of CA certificates file to use for '
              'neutron client requests.'),
+    cfg.StrOpt(
+        'region_name',
+        help='Region name for connecting to neutron in admin context')
 ]
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
+
+
+def list_opts():
+    return client_auth.AuthClientLoader.list_opts(NEUTRON_GROUP)
 
 
 class API(object):
@@ -85,39 +114,38 @@ class API(object):
 
     def __init__(self, config_group_name=None):
         self.config_group_name = config_group_name or 'DEFAULT'
-        CONF.register_opts(neutron_opts, group=self.config_group_name)
+
+        ks_loading.register_session_conf_options(CONF, NEUTRON_GROUP)
+        ks_loading.register_auth_conf_options(CONF, NEUTRON_GROUP)
+        CONF.register_opts(neutron_opts, NEUTRON_GROUP)
+        CONF.register_opts(neutron_deprecated_opts,
+                           group=self.config_group_name)
+
         self.configuration = getattr(CONF, self.config_group_name, CONF)
         self.last_neutron_extension_sync = None
         self.extensions = {}
-        self.client = self.get_client(context.get_admin_context())
+        self.auth_obj = None
 
-    def _get_client(self, token=None):
-        params = {
-            'endpoint_url': self.configuration.neutron_url,
-            'timeout': self.configuration.neutron_url_timeout,
-            'insecure': self.configuration.neutron_api_insecure,
-            'ca_cert': self.configuration.neutron_ca_certificates_file,
-        }
-        if token:
-            params['token'] = token
-            params['auth_strategy'] = None
-        else:
-            params['username'] = self.configuration.neutron_admin_username
-            params['tenant_name'] = (
-                self.configuration.neutron_admin_project_name)
-            params['password'] = self.configuration.neutron_admin_password
-            params['auth_url'] = self.configuration.neutron_admin_auth_url
-            params['auth_strategy'] = self.configuration.neutron_auth_strategy
-        return clientv20.Client(**params)
+    @property
+    def client(self):
+        return self.get_client(context.get_admin_context())
 
     def get_client(self, context):
-        if context.is_admin:
-            token = None
-        elif not context.auth_token:
-            raise neutron_client_exc.Unauthorized()
-        else:
-            token = context.auth_token
-        return self._get_client(token=token)
+        if not self.auth_obj:
+            config = CONF[self.config_group_name]
+            v2_deprecated_opts = {
+                'username': config.neutron_admin_username,
+                'password': config.neutron_admin_password,
+                'tenant_name': config.neutron_admin_project_name,
+                'auth_url': config.neutron_admin_auth_url,
+            }
+            self.auth_obj = client_auth.AuthClientLoader(
+                client_class=clientv20.Client,
+                exception_module=neutron_client_exc,
+                cfg_group=NEUTRON_GROUP,
+                deprecated_opts_for_v2=v2_deprecated_opts)
+
+        return self.auth_obj.get_client(self, context)
 
     @property
     def admin_project_id(self):
@@ -127,7 +155,7 @@ class API(object):
             except neutron_client_exc.NeutronClientException as e:
                 raise exception.NetworkException(code=e.status_code,
                                                  message=e.message)
-        return self.client.httpclient.auth_tenant_id
+        return self.client.httpclient.get_project_id()
 
     def get_all_admin_project_networks(self):
         search_opts = {'tenant_id': self.admin_project_id, 'shared': False}

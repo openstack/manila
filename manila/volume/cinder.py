@@ -20,103 +20,120 @@ Handles all requests relating to volumes + cinder.
 import copy
 
 from cinderclient import exceptions as cinder_exception
-from cinderclient import service_catalog
 from cinderclient.v2 import client as cinder_client
+from keystoneauth1 import loading as ks_loading
 from oslo_config import cfg
 from oslo_log import log
 import six
 
+from manila.common import client_auth
 from manila.common.config import core_opts
 import manila.context as ctxt
 from manila.db import base
 from manila import exception
 from manila.i18n import _
 
+CINDER_GROUP = 'cinder'
 
-cinder_opts = [
+cinder_deprecated_opts = [
     cfg.StrOpt('cinder_catalog_info',
                default='volume:cinder:publicURL',
                help='Info to match when looking for cinder in the service '
                     'catalog. Format is separated values of the form: '
-                    '<service_type>:<service_name>:<endpoint_type>'),
-    cfg.StrOpt('cinder_ca_certificates_file',
-               help='Location of CA certificates file to use for cinder '
-                    'client requests.'),
-    cfg.IntOpt('cinder_http_retries',
-               default=3,
-               help='Number of cinderclient retries on failed HTTP calls.'),
-    cfg.BoolOpt('cinder_api_insecure',
-                default=False,
-                help='Allow to perform insecure SSL requests to cinder.'),
-    cfg.BoolOpt('cinder_cross_az_attach',
-                default=True,
-                help='Allow attaching between instances and volumes in '
-                     'different availability zones.'),
+                    '<service_type>:<service_name>:<endpoint_type>',
+               deprecated_group='DEFAULT',
+               deprecated_for_removal=True,
+               deprecated_reason="This option isn't used any longer."),
     cfg.StrOpt('cinder_admin_username',
                default='cinder',
-               help='Cinder admin username.'),
+               help='Cinder admin username.',
+               deprecated_group='DEFAULT',
+               deprecated_for_removal=True,
+               deprecated_reason="This option isn't used any longer. Please "
+                                 "use [cinder] username instead."),
+
     cfg.StrOpt('cinder_admin_password',
-               help='Cinder admin password.'),
+               help='Cinder admin password.',
+               deprecated_group='DEFAULT',
+               deprecated_for_removal=True,
+               deprecated_reason="This option isn't used any longer. Please "
+                                 "use [cinder] password instead."),
     cfg.StrOpt('cinder_admin_tenant_name',
                default='service',
-               help='Cinder admin tenant name.'),
+               help='Cinder admin tenant name.',
+               deprecated_group='DEFAULT',
+               deprecated_for_removal=True,
+               deprecated_reason="This option isn't used any longer. Please "
+                                 "use [cinder] tenant_name instead."),
     cfg.StrOpt('cinder_admin_auth_url',
                default='http://localhost:5000/v2.0',
-               help='Identity service URL.')
+               help='Identity service URL.',
+               deprecated_group='DEFAULT',
+               deprecated_for_removal=True,
+               deprecated_reason="This option isn't used any longer. Please "
+                                 "use [cinder] auth_url instead.")
 ]
 
+cinder_opts = [
+    cfg.BoolOpt('cross_az_attach',
+                default=True,
+                deprecated_group="DEFAULT",
+                deprecated_name="cinder_cross_az_attach",
+                help='Allow attaching between instances and volumes in '
+                     'different availability zones.'),
+    cfg.StrOpt('ca_certificates_file',
+               help='Location of CA certificates file to use for cinder '
+                    'client requests.',
+               deprecated_group='DEFAULT',
+               deprecated_name="cinder_ca_certificates_file"),
+    cfg.IntOpt('http_retries',
+               default=3,
+               help='Number of cinderclient retries on failed HTTP calls.',
+               deprecated_group='DEFAULT',
+               deprecated_name="cinder_http_retries"),
+    cfg.BoolOpt('api_insecure',
+                default=False,
+                help='Allow to perform insecure SSL requests to cinder.',
+                deprecated_group='DEFAULT',
+                deprecated_name="cinder_api_insecure"),
+    ]
+
 CONF = cfg.CONF
-CONF.register_opts(cinder_opts)
+CONF.register_opts(cinder_deprecated_opts)
 CONF.register_opts(core_opts)
+CONF.register_opts(cinder_opts, CINDER_GROUP)
+ks_loading.register_session_conf_options(CONF, CINDER_GROUP)
+ks_loading.register_auth_conf_options(CONF, CINDER_GROUP)
+
 
 LOG = log.getLogger(__name__)
 
 
+def list_opts():
+    return client_auth.AuthClientLoader.list_opts(CINDER_GROUP)
+
+
+auth_obj = None
+
+
 def cinderclient(context):
-    if context.is_admin and context.project_id is None:
-        c = cinder_client.Client(CONF.cinder_admin_username,
-                                 CONF.cinder_admin_password,
-                                 CONF.cinder_admin_tenant_name,
-                                 CONF.cinder_admin_auth_url,
-                                 insecure=CONF.cinder_api_insecure,
-                                 retries=CONF.cinder_http_retries,
-                                 cacert=CONF.cinder_ca_certificates_file)
-        c.authenticate()
-        return c
-
-    compat_catalog = {
-        'access': {'serviceCatalog': context.service_catalog or []}
-    }
-    sc = service_catalog.ServiceCatalog(compat_catalog)
-    info = CONF.cinder_catalog_info
-    service_type, service_name, endpoint_type = info.split(':')
-    # extract the region if set in configuration
-    if CONF.os_region_name:
-        attr = 'region'
-        filter_value = CONF.os_region_name
-    else:
-        attr = None
-        filter_value = None
-    url = sc.url_for(attr=attr,
-                     filter_value=filter_value,
-                     service_type=service_type,
-                     service_name=service_name,
-                     endpoint_type=endpoint_type)
-
-    LOG.debug('Cinderclient connection created using URL: %s', url)
-
-    c = cinder_client.Client(context.user_id,
-                             context.auth_token,
-                             project_id=context.project_id,
-                             auth_url=url,
-                             insecure=CONF.cinder_api_insecure,
-                             retries=CONF.cinder_http_retries,
-                             cacert=CONF.cinder_ca_certificates_file)
-    # noauth extracts user_id:project_id from auth_token
-    c.client.auth_token = context.auth_token or '%s:%s' % (context.user_id,
-                                                           context.project_id)
-    c.client.management_url = url
-    return c
+    global auth_obj
+    if not auth_obj:
+        deprecated_opts_for_v2 = {
+            'username': CONF.nova_admin_username,
+            'password': CONF.nova_admin_password,
+            'tenant_name': CONF.nova_admin_tenant_name,
+            'auth_url': CONF.nova_admin_auth_url,
+        }
+        auth_obj = client_auth.AuthClientLoader(
+            client_class=cinder_client.Client,
+            exception_module=cinder_exception,
+            cfg_group=CINDER_GROUP,
+            deprecated_opts_for_v2=deprecated_opts_for_v2)
+    return auth_obj.get_client(context,
+                               insecure=CONF[CINDER_GROUP].api_insecure,
+                               cacert=CONF[CINDER_GROUP].ca_certificates_file,
+                               retries=CONF[CINDER_GROUP].http_retries)
 
 
 def _untranslate_volume_summary_view(context, vol):
@@ -232,7 +249,7 @@ class API(base.Base):
         if volume['attach_status'] == "attached":
             msg = _("already attached")
             raise exception.InvalidVolume(reason=msg)
-        if instance and not CONF.cinder_cross_az_attach:
+        if instance and not CONF[CINDER_GROUP].cross_az_attach:
             if instance['availability_zone'] != volume['availability_zone']:
                 msg = _("Instance and volume not in same availability_zone")
                 raise exception.InvalidVolume(reason=msg)

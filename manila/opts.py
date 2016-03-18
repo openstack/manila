@@ -160,6 +160,9 @@ _opts.extend(oslo_concurrency.opts.list_opts())
 _opts.extend(oslo_log._options.list_opts())
 _opts.extend(oslo_middleware.opts.list_opts())
 _opts.extend(oslo_policy.opts.list_opts())
+_opts.extend(manila.network.neutron.api.list_opts())
+_opts.extend(manila.compute.nova.list_opts())
+_opts.extend(manila.volume.cinder.list_opts())
 
 
 def list_opts():
