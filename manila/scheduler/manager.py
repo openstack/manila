@@ -59,7 +59,7 @@ MAPPING = {
 class SchedulerManager(manager.Manager):
     """Chooses a host to create shares."""
 
-    RPC_API_VERSION = '1.5'
+    RPC_API_VERSION = '1.6'
 
     def __init__(self, scheduler_driver=None, service_name=None,
                  *args, **kwargs):
@@ -120,6 +120,28 @@ class SchedulerManager(manager.Manager):
     def get_pools(self, context, filters=None):
         """Get active pools from the scheduler's cache."""
         return self.driver.get_pools(context, filters)
+
+    def manage_share(self, context, share_id, driver_options, request_spec,
+                     filter_properties=None):
+        """Ensure that the host exists and can accept the share."""
+
+        def _manage_share_set_error(self, context, ex, request_spec):
+            self._set_share_state_and_notify(
+                'manage_share',
+                {'status': constants.STATUS_MANAGE_ERROR},
+                context, ex, request_spec)
+
+        share_ref = db.share_get(context, share_id)
+
+        try:
+            self.driver.host_passes_filters(
+                context, share_ref['host'], request_spec, filter_properties)
+        except Exception as ex:
+            with excutils.save_and_reraise_exception():
+                _manage_share_set_error(self, context, ex, request_spec)
+        else:
+            share_rpcapi.ShareAPI().manage_share(context, share_ref,
+                                                 driver_options)
 
     def migrate_share_to_host(self, context, share_id, host,
                               force_host_copy, notify, request_spec,

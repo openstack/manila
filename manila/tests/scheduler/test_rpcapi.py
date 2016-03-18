@@ -118,3 +118,12 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
                                  version='1.5')
+
+    def test_manage_share(self):
+        self._test_scheduler_api('manage_share',
+                                 rpc_method='call',
+                                 share_id='share_id',
+                                 driver_options='fake_driver_options',
+                                 request_spec='fake_request_spec',
+                                 filter_properties='filter_properties',
+                                 version='1.6')
