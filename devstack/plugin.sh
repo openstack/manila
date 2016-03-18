@@ -57,12 +57,6 @@ function cleanup_manila {
     _clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
     _clean_manila_lvm_backing_file $SHARE_GROUP
     _clean_zfsonlinux_data
-
-    if is_driver_enabled $MANILA_LXD_DRIVER; then
-        # Remove all containers created by manila
-        lxc delete `lxc list | grep -E 'manila-.*' | awk '{print $2}'`
-        remove_lxd_service_image
-    fi
 }
 
 # configure_default_backends - configures default Manila backends with generic driver.
@@ -265,18 +259,6 @@ function create_manila_service_keypair {
     nova keypair-add $MANILA_SERVICE_KEYPAIR_NAME --pub-key $MANILA_PATH_TO_PUBLIC_KEY
 }
 
-function is_driver_enabled {
-    driver_name=$1
-
-    for BE in ${MANILA_ENABLED_BACKENDS//,/ }; do
-        share_driver=$(iniget $MANILA_CONF $BE share_driver)
-
-        if [ "$share_driver" == "$driver_name" ]; then
-            return 0
-        fi
-    done
-    return 1
-}
 
 # create_service_share_servers - creates service Nova VMs, one per generic
 # driver, and only if it is configured to mode without handling of share servers.
@@ -351,11 +333,6 @@ function create_manila_service_image {
     # Download Manila's image
     if is_service_enabled g-reg; then
         upload_image $MANILA_SERVICE_IMAGE_URL $TOKEN
-    fi
-
-    # Download LXD image
-    if is_driver_enabled $MANILA_LXD_DRIVER; then
-        import_lxd_service_image
     fi
 }
 
@@ -433,37 +410,10 @@ function create_default_share_type {
     enabled_backends=(${MANILA_ENABLED_BACKENDS//,/ })
     driver_handles_share_servers=$(iniget $MANILA_CONF ${enabled_backends[0]} driver_handles_share_servers)
 
-    local command_args="$MANILA_DEFAULT_SHARE_TYPE $driver_handles_share_servers"
-
-    if is_driver_enabled $MANILA_LXD_DRIVER; then
-        # TODO(u_glide): Remove this condition when LXD driver supports
-        # snapshots
-        command_args="$command_args --snapshot_support false"
-    fi
-
-    manila type-create $command_args
+    manila type-create $MANILA_DEFAULT_SHARE_TYPE $driver_handles_share_servers
     if [[ $MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS ]]; then
         manila type-key $MANILA_DEFAULT_SHARE_TYPE set $MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS
     fi
-}
-
-
-# configure_backing_file - Set up backing file for LVM
-function configure_backing_file {
-    if ! sudo vgs $SHARE_GROUP; then
-        if [ "$CONFIGURE_BACKING_FILE" = "True" ]; then
-            SHARE_BACKING_FILE=${SHARE_BACKING_FILE:-$DATA_DIR/${SHARE_GROUP}-backing-file}
-            # Only create if the file doesn't already exists
-            [[ -f $SHARE_BACKING_FILE ]] || truncate -s $SHARE_BACKING_FILE_SIZE $SHARE_BACKING_FILE
-            DEV=`sudo losetup -f --show $SHARE_BACKING_FILE`
-        else
-            DEV=$SHARE_BACKING_FILE
-        fi
-        # Only create if the loopback device doesn't contain $SHARE_GROUP
-        if ! sudo vgs $SHARE_GROUP; then sudo vgcreate $SHARE_GROUP $DEV; fi
-    fi
-
-    mkdir -p $MANILA_STATE_PATH/shares
 }
 
 
@@ -496,14 +446,20 @@ function init_manila {
             #
             # By default, the backing file is 8G in size, and is stored in ``/opt/stack/data``.
 
-            configure_backing_file
-        fi
-    fi
+            if ! sudo vgs $SHARE_GROUP; then
+                if [ "$CONFIGURE_BACKING_FILE" = "True" ]; then
+                    SHARE_BACKING_FILE=${SHARE_BACKING_FILE:-$DATA_DIR/${SHARE_GROUP}-backing-file}
+                    # Only create if the file doesn't already exists
+                    [[ -f $SHARE_BACKING_FILE ]] || truncate -s $SHARE_BACKING_FILE_SIZE $SHARE_BACKING_FILE
+                    DEV=`sudo losetup -f --show $SHARE_BACKING_FILE`
+                else
+                    DEV=$SHARE_BACKING_FILE
+                fi
+                # Only create if the loopback device doesn't contain $SHARE_GROUP
+                if ! sudo vgs $SHARE_GROUP; then sudo vgcreate $SHARE_GROUP $DEV; fi
+            fi
 
-    if [ "$SHARE_DRIVER" == "manila.share.drivers.lxd.LXDDriver" ]; then
-        if is_service_enabled m-shr; then
-            SHARE_GROUP="manila_lxd_volumes"
-            configure_backing_file
+            mkdir -p $MANILA_STATE_PATH/shares
         fi
     elif [ "$SHARE_DRIVER" == "manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver" ]; then
         if is_service_enabled m-shr; then
@@ -671,60 +627,6 @@ function update_tempest {
     fi
 }
 
-function install_lxd {
-    sudo apt-get -y install software-properties-common
-    sudo apt-add-repository -y ppa:ubuntu-lxc/lxd-stable
-    sudo apt-get update
-    install_package lxd
-    install_package lxd-client
-
-    # Wait for LXD service
-    sleep 15
-
-    sudo chmod a+rw /var/lib/lxd/unix.socket
-}
-
-function download_image {
-    local image_url=$1
-
-    local image image_fname
-
-    image_fname=`basename "$image_url"`
-    if [[ $image_url != file* ]]; then
-        # Downloads the image (uec ami+akistyle), then extracts it.
-        if [[ ! -f $FILES/$image_fname || "$(stat -c "%s" $FILES/$image_fname)" = "0" ]]; then
-            wget --progress=dot:giga -c $image_url -O $FILES/$image_fname
-            if [[ $? -ne 0 ]]; then
-                echo "Not found: $image_url"
-                return
-            fi
-        fi
-        image="$FILES/${image_fname}"
-    else
-        # File based URL (RFC 1738): ``file://host/path``
-        # Remote files are not considered here.
-        # unix: ``file:///home/user/path/file``
-        # windows: ``file:///C:/Documents%20and%20Settings/user/path/file``
-        image=$(echo $image_url | sed "s/^file:\/\///g")
-        if [[ ! -f $image || "$(stat -c "%s" $image)" == "0" ]]; then
-            echo "Not found: $image_url"
-            return
-        fi
-    fi
-}
-
-function import_lxd_service_image {
-    download_image $MANILA_LXD_META_URL
-    download_image $MANILA_LXD_ROOTFS_URL
-
-    # Import image in LXD
-    lxc image import $FILES/`basename "$MANILA_LXD_META_URL"` $FILES/`basename "$MANILA_LXD_ROOTFS_URL"` --alias manila-lxd-image
-}
-
-function remove_lxd_service_image {
-    lxc image delete $MANILA_LXD_IMAGE_ALIAS || echo "LXD image $MANILA_LXD_IMAGE_ALIAS not found"
-}
-
 function install_libraries {
     if [ $(trueorfalse False MANILA_MULTI_BACKEND) == True ]; then
         if [ $(trueorfalse True RUN_MANILA_MIGRATION_TESTS) == True ]; then
@@ -734,10 +636,6 @@ function install_libraries {
                 install_package nfs-utils
             fi
         fi
-    fi
-
-    if is_driver_enabled $MANILA_LXD_DRIVER; then
-        install_lxd
     fi
 }
 

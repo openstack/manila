@@ -146,12 +146,6 @@ zpool: CommandFilter, zpool, root
 # manila/share/drivers/zfsonlinux/utils.py
 zfs: CommandFilter, zfs, root
 
-# LXD driver commands
-# manila/share/drivers/lxd.py
-lxc: CommandFilter, lxc, root
-# manila/share/drivers/lxd.py
-brctl: CommandFilter, brctl, root
-
 # manila/data/utils.py: 'ls', '-pA1', '--group-directories-first', '%s'
 ls: CommandFilter, ls, root
 

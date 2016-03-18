@@ -25,21 +25,6 @@ source $BASE/new/devstack/functions
 
 export TEMPEST_CONFIG=$BASE/new/tempest/etc/tempest.conf
 
-# provide_user_rules - Sets up Samba for drivers which rely on LVM.
-function provide_user_rules {
-    if ! grep $USERNAME_FOR_USER_RULES "/etc/passwd"; then
-        sudo useradd $USERNAME_FOR_USER_RULES
-    fi
-    (echo $PASSWORD_FOR_SAMBA_USER; echo $PASSWORD_FOR_SAMBA_USER) | sudo smbpasswd -s -a $USERNAME_FOR_USER_RULES
-    sudo smbpasswd -e $USERNAME_FOR_USER_RULES
-    samba_daemon_name=smbd
-    if is_fedora; then
-        samba_daemon_name=smb
-    fi
-    sudo service $samba_daemon_name restart
-}
-
-
 # === Handle script arguments ===
 
 # First argument is expected to contain value equal either to 'singlebackend'
@@ -167,7 +152,16 @@ if [[ "$DRIVER" == "lvm" ]]; then
     iniset $TEMPEST_CONFIG share run_shrink_tests False
     iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
     iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
-    provide_user_rules
+    if ! grep $USERNAME_FOR_USER_RULES "/etc/passwd"; then
+        sudo useradd $USERNAME_FOR_USER_RULES
+    fi
+    (echo $PASSWORD_FOR_SAMBA_USER; echo $PASSWORD_FOR_SAMBA_USER) | sudo smbpasswd -s -a $USERNAME_FOR_USER_RULES
+    sudo smbpasswd -e $USERNAME_FOR_USER_RULES
+    samba_daemon_name=smbd
+    if is_fedora; then
+        samba_daemon_name=smb
+    fi
+    sudo service $samba_daemon_name restart
 elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     MANILA_TEMPEST_CONCURRENCY=8
     RUN_MANILA_CG_TESTS=False
@@ -188,17 +182,6 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     iniset $TEMPEST_CONFIG share multitenancy_enabled False
     iniset $TEMPEST_CONFIG share multi_backend True
     iniset $TEMPEST_CONFIG share backend_replication_type 'readable'
-elif [[ "$DRIVER" == "lxd"  ]]; then
-    MANILA_TEMPEST_CONCURRENCY=1
-    RUN_MANILA_CG_TESTS=False
-    RUN_MANILA_MANAGE_TESTS=False
-    iniset $TEMPEST_CONFIG share run_shrink_tests False
-    iniset $TEMPEST_CONFIG share run_consistency_group_tests False
-    iniset $TEMPEST_CONFIG share run_snapshot_tests False
-    iniset $TEMPEST_CONFIG share run_migration_tests False
-    iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
-    iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
-    provide_user_rules
 fi
 
 # Enable consistency group tests
