@@ -41,6 +41,12 @@ class ShareInstanceAccess(object):
         be deleted.
         :param share_server: Share server model or None
         """
+        self.db.share_instance_update_access_status(
+            context,
+            share_instance_id,
+            constants.STATUS_UPDATING
+        )
+
         share_instance = self.db.share_instance_get(
             context, share_instance_id, with_share_data=True)
 
@@ -56,8 +62,8 @@ class ShareInstanceAccess(object):
                 context, share_instance['id'])
             rules = []
         else:
-            rules = self.db.share_access_get_all_for_share(
-                context, share_instance['share_id'])
+            rules = self.db.share_access_get_all_for_instance(
+                context, share_instance['id'])
             if delete_rules:
                 delete_ids = [rule['id'] for rule in delete_rules]
                 rules = list(filter(lambda r: r['id'] not in delete_ids,
@@ -98,15 +104,33 @@ class ShareInstanceAccess(object):
 
         self._remove_access_rules(context, delete_rules, share_instance['id'])
 
-        self.db.share_instance_update_access_status(
-            context,
-            share_instance['id'],
-            constants.STATUS_ACTIVE
-        )
+        share_instance = self.db.share_instance_get(context, share_instance_id,
+                                                    with_share_data=True)
 
-        LOG.info(_LI("Access rules were successfully applied for "
-                     "share instance: %s"),
-                 share_instance['id'])
+        if self._check_needs_refresh(context, rules, share_instance):
+            self.update_access_rules(context, share_instance_id,
+                                     share_server=share_server)
+        else:
+            self.db.share_instance_update_access_status(
+                context,
+                share_instance['id'],
+                constants.STATUS_ACTIVE
+            )
+
+            LOG.info(_LI("Access rules were successfully applied for "
+                         "share instance: %s"),
+                     share_instance['id'])
+
+    def _check_needs_refresh(self, context, rules, share_instance):
+        rule_ids = set([rule['id'] for rule in rules])
+        queried_rules = self.db.share_access_get_all_for_instance(
+            context, share_instance['id'])
+        queried_ids = set([rule['id'] for rule in queried_rules])
+
+        access_rules_status = share_instance['access_rules_status']
+
+        return (access_rules_status == constants.STATUS_UPDATING_MULTIPLE or
+                rule_ids != queried_ids)
 
     def _update_access_fallback(self, add_rules, context, delete_rules,
                                 remove_rules, share_instance, share_server):

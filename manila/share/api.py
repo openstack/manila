@@ -1161,23 +1161,32 @@ class API(base.Base):
             msg = _("Invalid share instance host: %s") % share_instance['host']
             raise exception.InvalidShareInstance(reason=msg)
 
-        if share_instance['access_rules_status'] != constants.STATUS_ACTIVE:
-            status = share_instance['access_rules_status']
-            msg = _("Share instance should have '%(valid_status)s' "
-                    "access rules status, but current status is: "
-                    "%(status)s.") % {
-                'valid_status': constants.STATUS_ACTIVE,
+        status = share_instance['access_rules_status']
+
+        if status == constants.STATUS_ERROR:
+            values = {
+                'instance_id': share_instance['id'],
                 'status': status,
+                'valid_status': constants.STATUS_ACTIVE
             }
+            msg = _("Share instance %(instance_id)s access rules status is: "
+                    "%(status)s. Please remove any incorrect rules to get it "
+                    "back to %(valid_status)s.") % values
 
             raise exception.InvalidShareInstance(reason=msg)
+        else:
+            if status == constants.STATUS_ACTIVE:
+                self.db.share_instance_update_access_status(
+                    context, share_instance['id'],
+                    constants.STATUS_OUT_OF_SYNC
+                )
+            elif status == constants.STATUS_UPDATING:
+                self.db.share_instance_update_access_status(
+                    context, share_instance['id'],
+                    constants.STATUS_UPDATING_MULTIPLE
+                )
 
-        self.db.share_instance_update_access_status(
-            context, share_instance['id'],
-            constants.STATUS_OUT_OF_SYNC
-        )
-
-        self.share_rpcapi.allow_access(context, share_instance, access)
+            self.share_rpcapi.allow_access(context, share_instance, access)
 
     def deny_access(self, ctx, share, access):
         """Deny access to share."""
@@ -1207,10 +1216,17 @@ class API(base.Base):
             msg = _("Invalid share instance host: %s") % share_instance['host']
             raise exception.InvalidShareInstance(reason=msg)
 
-        if share_instance['access_rules_status'] != constants.STATUS_ERROR:
+        status = share_instance['access_rules_status']
+
+        if status != constants.STATUS_ERROR:
+            new_status = constants.STATUS_OUT_OF_SYNC
+
+            if status in constants.UPDATING_RULES_STATUSES:
+                new_status = constants.STATUS_UPDATING_MULTIPLE
+
             self.db.share_instance_update_access_status(
                 context, share_instance['id'],
-                constants.STATUS_OUT_OF_SYNC)
+                new_status)
 
         self.share_rpcapi.deny_access(context, share_instance, access)
 

@@ -65,6 +65,8 @@ class ShareInstanceAccessTestCase(test.TestCase):
             return_value=self.share_instance))
         self.mock_object(db, "share_access_get_all_for_share",
                          mock.Mock(return_value=original_rules))
+        self.mock_object(db, "share_access_get_all_for_instance",
+                         mock.Mock(return_value=original_rules))
         self.mock_object(db, "share_instance_update_access_status",
                          mock.Mock())
         self.mock_object(self.driver, "update_access",
@@ -117,3 +119,30 @@ class ShareInstanceAccessTestCase(test.TestCase):
 
         db.share_instance_update_access_status.assert_called_with(
             self.context, self.share_instance['id'], constants.STATUS_ERROR)
+
+    def test_update_access_rules_recursive_call(self):
+        share_instance = db_utils.create_share_instance(
+            access_rules_status=constants.STATUS_ACTIVE,
+            share_id=self.share['id'])
+        add_rules = [db_utils.create_access(
+            share_id=self.share['id'])]
+        original_rules = []
+
+        self.mock_object(db, "share_instance_get", mock.Mock(
+            return_value=share_instance))
+        self.mock_object(db, "share_access_get_all_for_instance",
+                         mock.Mock(return_value=original_rules))
+        mock_update_access = self.mock_object(self.driver, "update_access")
+        self.mock_object(self.share_access_helper, '_check_needs_refresh',
+                         mock.Mock(side_effect=[True, False]))
+
+        self.share_access_helper.update_access_rules(self.context,
+                                                     share_instance['id'],
+                                                     add_rules=add_rules)
+
+        mock_update_access.assert_has_calls([
+            mock.call(self.context, share_instance, original_rules,
+                      add_rules=add_rules, delete_rules=[], share_server=None),
+            mock.call(self.context, share_instance, original_rules,
+                      add_rules=[], delete_rules=[], share_server=None)
+        ])

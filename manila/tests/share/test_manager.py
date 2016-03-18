@@ -2195,6 +2195,10 @@ class ShareManagerTestCase(test.TestCase):
                 self.share_manager.driver, 'delete_share',
                 mock.Mock(side_effect=exception.ShareResourceNotFound(
                     share_id=share['id'])))
+            self.mock_object(
+                self.share_manager.access_helper, '_check_needs_refresh',
+                mock.Mock(return_value=False)
+            )
 
         self.mock_object(manager.LOG, 'warning')
 
@@ -2215,22 +2219,28 @@ class ShareManagerTestCase(test.TestCase):
 
         share = db_utils.create_share()
         share_id = share['id']
-        access = db_utils.create_access(share_id=share_id)
+        share_instance = db_utils.create_share_instance(
+            share_id=share_id,
+            access_rules_status=constants.STATUS_OUT_OF_SYNC)
+        share_instance_id = share_instance['id']
+        access = db_utils.create_access(share_id=share_id,
+                                        share_instance_id=share_instance_id)
         access_id = access['id']
-        self.share_manager.allow_access(self.context, share.instance['id'],
+
+        self.share_manager.allow_access(self.context, share_instance_id,
                                         [access_id])
         self.assertEqual('active', db.share_instance_get(
-            self.context, share.instance['id']).access_rules_status)
+            self.context, share_instance_id).access_rules_status)
 
         share_access.LOG.info.assert_called_with(mock.ANY,
-                                                 share.instance['id'])
+                                                 share_instance_id)
         share_access.LOG.info.reset_mock()
 
-        self.share_manager.deny_access(self.context, share.instance['id'],
+        self.share_manager.deny_access(self.context, share_instance_id,
                                        [access_id])
 
         share_access.LOG.info.assert_called_with(mock.ANY,
-                                                 share.instance['id'])
+                                                 share_instance_id)
         share_access.LOG.info.reset_mock()
 
     def test_allow_deny_access_error(self):
@@ -2249,14 +2259,19 @@ class ShareManagerTestCase(test.TestCase):
 
         share = db_utils.create_share()
         share_id = share['id']
-        access = db_utils.create_access(share_id=share_id)
+        share_instance = db_utils.create_share_instance(
+            share_id=share_id,
+            access_rules_status=constants.STATUS_OUT_OF_SYNC)
+        share_instance_id = share_instance['id']
+        access = db_utils.create_access(share_id=share_id,
+                                        share_instance_id=share_instance_id)
         access_id = access['id']
 
         def validate(method):
             self.assertRaises(exception.ManilaException, method, self.context,
-                              share.instance['id'], [access_id])
+                              share_instance_id, [access_id])
 
-            inst = db.share_instance_get(self.context, share.instance['id'])
+            inst = db.share_instance_get(self.context, share_instance_id)
             self.assertEqual(constants.STATUS_ERROR,
                              inst['access_rules_status'])
 

@@ -370,11 +370,15 @@ class ShareInstance(BASE, ManilaBase):
     ACCESS_STATUS_PRIORITIES = {
         constants.STATUS_ACTIVE: 0,
         constants.STATUS_OUT_OF_SYNC: 1,
-        constants.STATUS_ERROR: 2,
+        constants.STATUS_UPDATING: 2,
+        constants.STATUS_UPDATING_MULTIPLE: 3,
+        constants.STATUS_ERROR: 4,
     }
 
     access_rules_status = Column(Enum(constants.STATUS_ACTIVE,
                                       constants.STATUS_OUT_OF_SYNC,
+                                      constants.STATUS_UPDATING,
+                                      constants.STATUS_UPDATING_MULTIPLE,
                                       constants.STATUS_ERROR),
                                  default=constants.STATUS_ACTIVE)
 
@@ -554,7 +558,10 @@ class ShareAccessMapping(BASE, ManilaBase):
         instances = [im.instance for im in self.instance_mappings]
         access_rules_status = get_access_rules_status(instances)
 
-        if access_rules_status == constants.STATUS_OUT_OF_SYNC:
+        if access_rules_status in (
+                constants.STATUS_OUT_OF_SYNC,
+                constants.STATUS_UPDATING,
+                constants.STATUS_UPDATING_MULTIPLE):
             return constants.STATUS_NEW
         else:
             return access_rules_status
