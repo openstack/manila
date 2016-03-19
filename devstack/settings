@@ -141,6 +141,9 @@ SMB_CONF=${SMB_CONF:-/etc/samba/smb.conf}
 SMB_PRIVATE_DIR=${SMB_PRIVATE_DIR:-/var/lib/samba/private}
 CONFIGURE_BACKING_FILE=${CONFIGURE_BACKING_FILE:-"True"}
 
+# Options for replication
+MANILA_REPLICA_STATE_UPDATE_INTERVAL=${MANILA_REPLICA_STATE_UPDATE_INTERVAL:-300}
+
 # Options for configuration of ZFSonLinux driver
 # 'MANILA_ZFSONLINUX_ZPOOL_SIZE' defines size of each zpool. That value
 # will be used for creation of sparse files.

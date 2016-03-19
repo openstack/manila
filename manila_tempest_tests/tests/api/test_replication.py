@@ -108,16 +108,6 @@ class ReplicationTest(base.BaseSharesTest):
         return [replica for replica in replica_list
                 if replica['replica_state'] == r_state]
 
-    def _get_pools_for_replication_domain(self):
-        # Get the list of pools for the replication domain
-        pools = self.admin_client.list_pools(detail=True)['pools']
-        instance_host = self.shares[0]['host']
-        host_pool = [p for p in pools if p['name'] == instance_host][0]
-        rep_domain = host_pool['capabilities']['replication_domain']
-        pools_in_rep_domain = [p for p in pools if p['capabilities'][
-            'replication_domain'] == rep_domain]
-        return rep_domain, pools_in_rep_domain
-
     def _verify_config_and_set_access_rule_data(self):
         """Verify the access rule configuration is enabled for NFS.
 
@@ -157,9 +147,10 @@ class ReplicationTest(base.BaseSharesTest):
         # Create the replica
         self._verify_create_replica()
 
-        # Verify access rule transitions to 'active' state.
-        self.shares_v2_client.wait_for_access_rule_status(
-            self.shares[0]["id"], rule["id"], constants.RULE_STATE_ACTIVE)
+        # Verify access_rules_status transitions to 'active' state.
+        self.shares_v2_client.wait_for_share_status(
+            self.shares[0]["id"], constants.RULE_STATE_ACTIVE,
+            status_attr='access_rules_status')
 
         # Delete rule and wait for deletion
         self.shares_v2_client.delete_access_rule(self.shares[0]["id"],
@@ -174,17 +165,19 @@ class ReplicationTest(base.BaseSharesTest):
         share_replica = self._verify_create_replica()
 
         # Add access rule
-        rule = self.shares_v2_client.create_access_rule(
+        self.shares_v2_client.create_access_rule(
             self.shares[0]["id"], access_type, access_to, 'ro')
-        self.shares_v2_client.wait_for_access_rule_status(
-            self.shares[0]["id"], rule["id"], constants.RULE_STATE_ACTIVE)
+
+        self.shares_v2_client.wait_for_share_status(
+            self.shares[0]["id"], constants.RULE_STATE_ACTIVE,
+            status_attr='access_rules_status')
 
         # Delete the replica
         self.delete_share_replica(share_replica["id"])
 
     @test.attr(type=["gate", ])
     def test_add_multiple_share_replicas(self):
-        rep_domain, pools = self._get_pools_for_replication_domain()
+        rep_domain, pools = self.get_pools_for_replication_domain()
         if len(pools) < 3:
             msg = ("Replication domain %(domain)s has only %(count)s pools. "
                    "Need at least 3 pools to run this test." %
