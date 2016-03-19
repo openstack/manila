@@ -74,7 +74,7 @@ class LVMMixin(driver.ExecuteMixin):
                    % self.configuration.lvm_share_volume_group)
             raise exception.InvalidParameterValue(err=msg)
         if not self.configuration.lvm_share_export_ip:
-            msg = (_("share_export_ip isn't specified"))
+            msg = (_("lvm_share_export_ip isn't specified"))
             raise exception.InvalidParameterValue(err=msg)
 
     def _allocate_container(self, share):
