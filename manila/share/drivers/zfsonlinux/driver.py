@@ -480,13 +480,13 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
     def create_snapshot(self, context, snapshot, share_server=None):
         """Is called to create a snapshot."""
         dataset_name = self.private_storage.get(
-            snapshot['share_id'], 'dataset_name')
-        snapshot_name = self._get_snapshot_name(snapshot['id'])
-        snapshot_name = dataset_name + '@' + snapshot_name
+            snapshot['share_instance_id'], 'dataset_name')
+        snapshot_tag = self._get_snapshot_name(snapshot['id'])
+        snapshot_name = dataset_name + '@' + snapshot_tag
         self.private_storage.update(
-            snapshot['id'], {
+            snapshot['snapshot_id'], {
                 'entity_type': 'snapshot',
-                'snapshot_name': snapshot_name,
+                'snapshot_tag': snapshot_tag,
             }
         )
         self.zfs('snapshot', snapshot_name)
@@ -494,11 +494,19 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
     @ensure_share_server_not_provided
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Is called to remove a snapshot."""
-        snapshot_name = self.private_storage.get(
-            snapshot['id'], 'snapshot_name')
-        pool_name = snapshot_name.split('/')[0]
+        return self._delete_snapshot(context, snapshot)
 
-        out, err = self.zfs('list', '-r', '-t', 'snapshot', pool_name)
+    def _get_saved_snapshot_name(self, snapshot_instance):
+        snapshot_tag = self.private_storage.get(
+            snapshot_instance['snapshot_id'], 'snapshot_tag')
+        dataset_name = self.private_storage.get(
+            snapshot_instance['share_instance_id'], 'dataset_name')
+        snapshot_name = dataset_name + '@' + snapshot_tag
+        return snapshot_name
+
+    def _delete_snapshot(self, context, snapshot):
+        snapshot_name = self._get_saved_snapshot_name(snapshot)
+        out, err = self.zfs('list', '-r', '-t', 'snapshot', snapshot_name)
         data = self.parse_zfs_answer(out)
         for datum in data:
             if datum['NAME'] == snapshot_name:
@@ -531,13 +539,24 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                 'used_options': options,
             }
         )
-        snapshot_name = self.private_storage.get(
-            snapshot['id'], 'snapshot_name')
+        snapshot_name = self._get_saved_snapshot_name(snapshot)
 
-        cmd = ['clone', snapshot_name, dataset_name]
+        self.execute(
+            # NOTE(vponomaryov): SSH is used as workaround for 'execute'
+            # implementation restriction that does not support usage of '|'.
+            'ssh', ssh_cmd,
+            'sudo', 'zfs', 'send', '-vDp', snapshot_name, '|',
+            'sudo', 'zfs', 'receive', '-v', dataset_name,
+        )
+        # Apply options based on used share type that may differ from
+        # one used for original share.
         for option in options:
-            cmd.extend(['-o', option])
-        self.zfs(*cmd)
+            self.zfs('set', option, dataset_name)
+
+        # Delete with retry as right after creation it may be temporary busy.
+        self.execute_with_retry(
+            'sudo', 'zfs', 'destroy',
+            dataset_name + '@' + snapshot_name.split('@')[-1])
 
         return self._get_share_helper(
             share['share_proto']).create_exports(dataset_name)
@@ -740,6 +759,11 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                              access_rules, replica_snapshots,
                              share_server=None):
         """Syncs replica and updates its 'replica_state'."""
+        return self._update_replica_state(
+            context, replica_list, replica, replica_snapshots, access_rules)
+
+    def _update_replica_state(self, context, replica_list, replica,
+                              replica_snapshots=None, access_rules=None):
         active_replica = self._get_active_replica(replica_list)
         src_dataset_name = self.private_storage.get(
             active_replica['id'], 'dataset_name')
@@ -793,6 +817,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
         data = self.parse_zfs_answer(out)
         for datum in data:
             if (dst_dataset_name in datum['NAME'] and
+                    '@' + self.replica_snapshot_prefix in datum['NAME'] and
                     datum['NAME'].split('@')[-1] not in snap_references):
                 self._delete_dataset_or_snapshot_with_retry(datum['NAME'])
 
@@ -814,14 +839,15 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                     'sudo', 'zfs', 'destroy', '-f', datum['NAME'],
                 )
 
-        # Apply access rules from original share
-        # TODO(vponomaryov): we should remove somehow rules that were
-        # deleted on active replica after creation of secondary replica.
-        # For the moment there will be difference and it can be considered
-        # as a bug.
-        self._get_share_helper(replica['share_proto']).update_access(
-            dst_dataset_name, access_rules, add_rules=[], delete_rules=[],
-            make_all_ro=True)
+        if access_rules:
+            # Apply access rules from original share
+            # TODO(vponomaryov): we should remove somehow rules that were
+            # deleted on active replica after creation of secondary replica.
+            # For the moment there will be difference and it can be considered
+            # as a bug.
+            self._get_share_helper(replica['share_proto']).update_access(
+                dst_dataset_name, access_rules, add_rules=[], delete_rules=[],
+                make_all_ro=True)
 
         # Return results
         return constants.REPLICA_STATE_IN_SYNC
@@ -966,3 +992,145 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
         self.zfs('set', 'readonly=off', dst_dataset_name)
 
         return list(replica_dict.values())
+
+    @ensure_share_server_not_provided
+    def create_replicated_snapshot(self, context, replica_list,
+                                   replica_snapshots, share_server=None):
+        """Create a snapshot and update across the replicas."""
+        active_replica = self._get_active_replica(replica_list)
+        src_dataset_name = self.private_storage.get(
+            active_replica['id'], 'dataset_name')
+        ssh_to_src_cmd = self.private_storage.get(
+            active_replica['id'], 'ssh_cmd')
+        replica_snapshots_dict = {
+            si['id']: {'id': si['id']} for si in replica_snapshots}
+
+        active_snapshot_instance_id = [
+            si['id'] for si in replica_snapshots
+            if si['share_instance_id'] == active_replica['id']][0]
+        snapshot_tag = self._get_snapshot_name(active_snapshot_instance_id)
+        # Replication should not be dependent on manually created snapshots
+        # so, create additional one, newer, that will be used for replication
+        # synchronizations.
+        repl_snapshot_tag = self._get_replication_snapshot_tag(active_replica)
+        src_snapshot_name = src_dataset_name + '@' + repl_snapshot_tag
+
+        self.private_storage.update(
+            replica_snapshots[0]['snapshot_id'], {
+                'entity_type': 'snapshot',
+                'snapshot_tag': snapshot_tag,
+            }
+        )
+        for tag in (snapshot_tag, repl_snapshot_tag):
+            self.execute(
+                'ssh', ssh_to_src_cmd,
+                'sudo', 'zfs', 'snapshot', src_dataset_name + '@' + tag,
+            )
+
+        # Populate snapshot to all replicas
+        for replica_snapshot in replica_snapshots:
+            replica_id = replica_snapshot['share_instance_id']
+            if replica_id == active_replica['id']:
+                replica_snapshots_dict[replica_snapshot['id']]['status'] = (
+                    constants.STATUS_AVAILABLE)
+                continue
+            previous_snapshot_tag = self.private_storage.get(
+                replica_id, 'repl_snapshot_tag')
+            dst_dataset_name = self.private_storage.get(
+                replica_id, 'dataset_name')
+            ssh_to_dst_cmd = self.private_storage.get(replica_id, 'ssh_cmd')
+
+            try:
+                # Send/receive diff between previous snapshot and last one
+                out, err = self.execute(
+                    'ssh', ssh_to_src_cmd,
+                    'sudo', 'zfs', 'send', '-vDRI',
+                    previous_snapshot_tag, src_snapshot_name, '|',
+                    'ssh', ssh_to_dst_cmd,
+                    'sudo', 'zfs', 'receive', '-vF', dst_dataset_name,
+                )
+            except exception.ProcessExecutionError as e:
+                LOG.warning(
+                    _LW("Failed to sync snapshot instance %(id)s. %(e)s"),
+                    {'id': replica_snapshot['id'], 'e': e})
+                replica_snapshots_dict[replica_snapshot['id']]['status'] = (
+                    constants.STATUS_ERROR)
+                continue
+
+            replica_snapshots_dict[replica_snapshot['id']]['status'] = (
+                constants.STATUS_AVAILABLE)
+
+            msg = ("Info about last replica '%(replica_id)s' "
+                   "sync is following: \n%(out)s")
+            LOG.debug(msg, {'replica_id': replica_id, 'out': out})
+
+            # Update latest replication snapshot for replica
+            self.private_storage.update(
+                replica_id, {'repl_snapshot_tag': repl_snapshot_tag})
+
+        # Update latest replication snapshot for currently active replica
+        self.private_storage.update(
+            active_replica['id'], {'repl_snapshot_tag': repl_snapshot_tag})
+
+        return list(replica_snapshots_dict.values())
+
+    @ensure_share_server_not_provided
+    def delete_replicated_snapshot(self, context, replica_list,
+                                   replica_snapshots, share_server=None):
+        """Delete a snapshot by deleting its instances across the replicas."""
+        active_replica = self._get_active_replica(replica_list)
+        replica_snapshots_dict = {
+            si['id']: {'id': si['id']} for si in replica_snapshots}
+
+        for replica_snapshot in replica_snapshots:
+            replica_id = replica_snapshot['share_instance_id']
+            snapshot_name = self._get_saved_snapshot_name(replica_snapshot)
+            if active_replica['id'] == replica_id:
+                self._delete_snapshot(context, replica_snapshot)
+                replica_snapshots_dict[replica_snapshot['id']]['status'] = (
+                    constants.STATUS_DELETED)
+                continue
+            ssh_cmd = self.private_storage.get(replica_id, 'ssh_cmd')
+            out, err = self.execute(
+                'ssh', ssh_cmd,
+                'sudo', 'zfs', 'list', '-r', '-t', 'snapshot', snapshot_name,
+            )
+            data = self.parse_zfs_answer(out)
+            for datum in data:
+                if datum['NAME'] != snapshot_name:
+                    continue
+                self.execute_with_retry(
+                    'ssh', ssh_cmd,
+                    'sudo', 'zfs', 'destroy', '-f', datum['NAME'],
+                )
+
+            self.private_storage.delete(replica_snapshot['id'])
+            replica_snapshots_dict[replica_snapshot['id']]['status'] = (
+                constants.STATUS_DELETED)
+
+        return list(replica_snapshots_dict.values())
+
+    @ensure_share_server_not_provided
+    def update_replicated_snapshot(self, context, replica_list,
+                                   share_replica, replica_snapshots,
+                                   replica_snapshot, share_server=None):
+        """Update the status of a snapshot instance that lives on a replica."""
+
+        self._update_replica_state(context, replica_list, share_replica)
+
+        snapshot_name = self._get_saved_snapshot_name(replica_snapshot)
+
+        out, err = self.zfs('list', '-r', '-t', 'snapshot', snapshot_name)
+        data = self.parse_zfs_answer(out)
+        snapshot_found = False
+        for datum in data:
+            if datum['NAME'] == snapshot_name:
+                snapshot_found = True
+                break
+        return_dict = {'id': replica_snapshot['id']}
+        if snapshot_found:
+            return_dict.update({'status': constants.STATUS_AVAILABLE})
+        else:
+            return_dict.update({'status': constants.STATUS_ERROR})
+
+        return return_dict

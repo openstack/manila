@@ -617,26 +617,38 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         self.configuration.zfs_dataset_snapshot_name_prefix = 'prefx_'
         self.mock_object(self.driver, 'zfs')
         snapshot = {
-            'id': 'fake_snapshot_id',
+            'id': 'fake_snapshot_instance_id',
+            'snapshot_id': 'fake_snapshot_id',
             'host': 'hostname@backend_name#bar',
             'size': 4,
-            'share_id': 'fake_share_id'
+            'share_instance_id': 'fake_share_id'
         }
-        snapshot_name = 'foo_data_set_name@prefx_fake_snapshot_id'
+        snapshot_name = 'foo_data_set_name@prefx_%s' % snapshot['id']
         self.driver.private_storage.update(
-            snapshot['share_id'], {'dataset_name': 'foo_data_set_name'})
+            snapshot['share_instance_id'],
+            {'dataset_name': 'foo_data_set_name'})
 
         self.driver.create_snapshot('fake_context', snapshot)
 
         self.driver.zfs.assert_called_once_with(
             'snapshot', snapshot_name)
         self.assertEqual(
-            snapshot_name,
+            snapshot_name.split('@')[-1],
             self.driver.private_storage.get(
-                snapshot['id'], 'snapshot_name'))
+                snapshot['snapshot_id'], 'snapshot_tag'))
 
     def test_delete_snapshot(self):
-        snap_name = 'foo_zpool/bar_dataset_name@prefix_fake_snapshot_id'
+        snapshot = {
+            'id': 'fake_snapshot_instance_id',
+            'snapshot_id': 'fake_snapshot_id',
+            'host': 'hostname@backend_name#bar',
+            'size': 4,
+            'share_instance_id': 'fake_share_id',
+        }
+        dataset_name = 'foo_zpool/bar_dataset_name'
+        snap_tag = 'prefix_%s' % snapshot['id']
+        snap_name = '%(dataset)s@%(tag)s' % {
+            'dataset': dataset_name, 'tag': snap_tag}
         mock_delete = self.mock_object(
             self.driver, '_delete_dataset_or_snapshot_with_retry')
         self.mock_object(zfs_driver.LOG, 'warning')
@@ -649,25 +661,33 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
                  {'NAME': snap_name}],
                 []]))
         context = 'fake_context'
-        snapshot = {
-            'id': 'fake_snapshot_id',
-            'host': 'hostname@backend_name#bar',
-            'size': 4,
-            'share_id': 'fake_share_id',
-        }
         self.driver.private_storage.update(
             snapshot['id'], {'snapshot_name': snap_name})
+        self.driver.private_storage.update(
+            snapshot['snapshot_id'], {'snapshot_tag': snap_tag})
+        self.driver.private_storage.update(
+            snapshot['share_instance_id'], {'dataset_name': dataset_name})
 
         self.driver.delete_snapshot(context, snapshot, share_server=None)
 
         self.assertEqual(0, zfs_driver.LOG.warning.call_count)
         self.driver.zfs.assert_called_once_with(
-            'list', '-r', '-t', 'snapshot', 'foo_zpool')
+            'list', '-r', '-t', 'snapshot', snap_name)
         self.driver.parse_zfs_answer.assert_called_once_with('a')
         mock_delete.assert_called_once_with(snap_name)
 
     def test_delete_snapshot_absent(self):
-        snap_name = 'foo_zpool/bar_dataset_name@prefix_fake_snapshot_id'
+        snapshot = {
+            'id': 'fake_snapshot_instance_id',
+            'snapshot_id': 'fake_snapshot_id',
+            'host': 'hostname@backend_name#bar',
+            'size': 4,
+            'share_instance_id': 'fake_share_id',
+        }
+        dataset_name = 'foo_zpool/bar_dataset_name'
+        snap_tag = 'prefix_%s' % snapshot['id']
+        snap_name = '%(dataset)s@%(tag)s' % {
+            'dataset': dataset_name, 'tag': snap_tag}
         mock_delete = self.mock_object(
             self.driver, '_delete_dataset_or_snapshot_with_retry')
         self.mock_object(zfs_driver.LOG, 'warning')
@@ -677,20 +697,18 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             self.driver, 'parse_zfs_answer',
             mock.Mock(side_effect=[[], [{'NAME': snap_name}]]))
         context = 'fake_context'
-        snapshot = {
-            'id': 'fake_snapshot_id',
-            'host': 'hostname@backend_name#bar',
-            'size': 4,
-            'share_id': 'fake_share_id',
-        }
         self.driver.private_storage.update(
             snapshot['id'], {'snapshot_name': snap_name})
+        self.driver.private_storage.update(
+            snapshot['snapshot_id'], {'snapshot_tag': snap_tag})
+        self.driver.private_storage.update(
+            snapshot['share_instance_id'], {'dataset_name': dataset_name})
 
         self.driver.delete_snapshot(context, snapshot, share_server=None)
 
         self.assertEqual(0, mock_delete.call_count)
         self.driver.zfs.assert_called_once_with(
-            'list', '-r', '-t', 'snapshot', 'foo_zpool')
+            'list', '-r', '-t', 'snapshot', snap_name)
         self.driver.parse_zfs_answer.assert_called_once_with('a')
         zfs_driver.LOG.warning.assert_called_once_with(
             mock.ANY, {'id': snapshot['id'], 'name': snap_name})
@@ -706,6 +724,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
     def test_create_share_from_snapshot(self):
         mock_get_helper = self.mock_object(self.driver, '_get_share_helper')
         self.mock_object(self.driver, 'zfs')
+        self.mock_object(self.driver, 'execute')
         mock_get_extra_specs_from_share = self.mock_object(
             zfs_driver.share_types,
             'get_extra_specs_from_share',
@@ -718,19 +737,26 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             'size': 4,
         }
         snapshot = {
-            'id': 'fake_snapshot_id',
+            'id': 'fake_snapshot_instance_id',
+            'snapshot_id': 'fake_snapshot_id',
             'host': 'hostname@backend_name#bar',
             'size': 4,
-            'share_id': share['id'],
+            'share_instance_id': share['id'],
         }
-        snap_name = 'foo_zpool/bar_dataset_name@prefix_fake_snapshot_id'
+        dataset_name = 'bar/subbar/some_prefix_%s' % share['id']
+        snap_tag = 'prefix_%s' % snapshot['id']
+        snap_name = '%(dataset)s@%(tag)s' % {
+            'dataset': dataset_name, 'tag': snap_tag}
         self.configuration.zfs_dataset_name_prefix = 'some_prefix_'
         self.configuration.zfs_ssh_username = 'someuser'
         self.driver.share_export_ip = '1.1.1.1'
         self.driver.service_ip = '2.2.2.2'
-        dataset_name = 'bar/subbar/some_prefix_fake_share_id'
         self.driver.private_storage.update(
             snapshot['id'], {'snapshot_name': snap_name})
+        self.driver.private_storage.update(
+            snapshot['snapshot_id'], {'snapshot_tag': snap_tag})
+        self.driver.private_storage.update(
+            snapshot['share_instance_id'], {'dataset_name': dataset_name})
 
         result = self.driver.create_share_from_snapshot(
             context, share, snapshot, share_server=None)
@@ -751,10 +777,20 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         self.assertEqual(
             'bar',
             self.driver.private_storage.get(share['id'], 'pool_name'))
-        self.driver.zfs.assert_called_once_with(
-            'clone', snap_name, 'bar/subbar/some_prefix_fake_share_id',
-            '-o', 'quota=4G', '-o', 'fook=foov', '-o', 'bark=barv',
-            '-o', 'readonly=off')
+        self.driver.execute.assert_has_calls([
+            mock.call(
+                'ssh', 'someuser@2.2.2.2',
+                'sudo', 'zfs', 'send', '-vDp', snap_name, '|',
+                'sudo', 'zfs', 'receive', '-v',
+                'bar/subbar/some_prefix_fake_share_id'),
+            mock.call(
+                'sudo', 'zfs', 'destroy',
+                'bar/subbar/some_prefix_fake_share_id@%s' % snap_tag),
+        ])
+        self.driver.zfs.assert_has_calls([
+            mock.call('set', opt, 'bar/subbar/some_prefix_fake_share_id')
+            for opt in ('quota=4G', 'bark=barv', 'readonly=off', 'fook=foov')
+        ], any_order=True)
         mock_get_helper.assert_has_calls([
             mock.call('NFS'), mock.call().create_exports(dataset_name)
         ])
@@ -1538,3 +1574,224 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
                 old_repl_snapshot_tag,
                 self.driver.private_storage.get(
                     repl['id'], 'repl_snapshot_tag'))
+
+    def test_create_replicated_snapshot(self):
+        active_replica = {
+            'id': 'fake_active_replica_id',
+            'replica_state': zfs_driver.constants.REPLICA_STATE_ACTIVE,
+        }
+        replica = {
+            'id': 'fake_first_replica_id',
+            'replica_state': zfs_driver.constants.REPLICA_STATE_IN_SYNC,
+        }
+        second_replica = {
+            'id': 'fake_second_replica_id',
+            'replica_state': zfs_driver.constants.REPLICA_STATE_IN_SYNC,
+        }
+        replica_list = [replica, active_replica, second_replica]
+        snapshot_instances = [
+            {'id': 'si_%s' % r['id'], 'share_instance_id': r['id'],
+             'snapshot_id': 'some_snapshot_id'}
+            for r in replica_list
+        ]
+        src_dataset_name = (
+            'bar/subbar/fake_dataset_name_prefix%s' % active_replica['id'])
+        old_repl_snapshot_tag = (
+            self.driver._get_replication_snapshot_prefix(
+                active_replica) + 'foo')
+        self.driver.private_storage.update(
+            active_replica['id'],
+            {'dataset_name': src_dataset_name,
+             'ssh_cmd': 'fake_src_ssh_cmd',
+             'repl_snapshot_tag': old_repl_snapshot_tag}
+        )
+        for repl in (replica, second_replica):
+            self.driver.private_storage.update(
+                repl['id'],
+                {'dataset_name': (
+                    'bar/subbar/fake_dataset_name_prefix%s' % repl['id']),
+                 'ssh_cmd': 'fake_dst_ssh_cmd',
+                 'repl_snapshot_tag': old_repl_snapshot_tag}
+            )
+        self.mock_object(
+            self.driver, 'execute', mock.Mock(side_effect=[
+                ('a', 'b'),
+                ('c', 'd'),
+                ('e', 'f'),
+                exception.ProcessExecutionError('Second replica sync failure'),
+            ]))
+        self.configuration.zfs_dataset_name_prefix = 'fake_dataset_name_prefix'
+        self.configuration.zfs_dataset_snapshot_name_prefix = (
+            'fake_dataset_snapshot_name_prefix')
+        snap_tag_prefix = (
+            self.configuration.zfs_dataset_snapshot_name_prefix +
+            'si_%s' % active_replica['id'])
+        repl_snap_tag = 'fake_repl_tag'
+        self.mock_object(
+            self.driver, '_get_replication_snapshot_tag',
+            mock.Mock(return_value=repl_snap_tag))
+
+        result = self.driver.create_replicated_snapshot(
+            'fake_context', replica_list, snapshot_instances)
+
+        expected = [
+            {'id': 'si_fake_active_replica_id',
+             'status': zfs_driver.constants.STATUS_AVAILABLE},
+            {'id': 'si_fake_first_replica_id',
+             'status': zfs_driver.constants.STATUS_AVAILABLE},
+            {'id': 'si_fake_second_replica_id',
+             'status': zfs_driver.constants.STATUS_ERROR},
+        ]
+        for repl in expected:
+            self.assertIn(repl, result)
+        self.assertEqual(3, len(result))
+        for repl in (active_replica, replica):
+            self.assertEqual(
+                repl_snap_tag,
+                self.driver.private_storage.get(
+                    repl['id'], 'repl_snapshot_tag'))
+        self.assertEqual(
+            old_repl_snapshot_tag,
+            self.driver.private_storage.get(
+                second_replica['id'], 'repl_snapshot_tag'))
+        self.assertEqual(
+            snap_tag_prefix,
+            self.driver.private_storage.get(
+                snapshot_instances[0]['snapshot_id'], 'snapshot_tag'))
+        self.driver._get_replication_snapshot_tag.assert_called_once_with(
+            active_replica)
+
+    def test_delete_replicated_snapshot(self):
+        active_replica = {
+            'id': 'fake_active_replica_id',
+            'replica_state': zfs_driver.constants.REPLICA_STATE_ACTIVE,
+        }
+        replica = {
+            'id': 'fake_first_replica_id',
+            'replica_state': zfs_driver.constants.REPLICA_STATE_IN_SYNC,
+        }
+        second_replica = {
+            'id': 'fake_second_replica_id',
+            'replica_state': zfs_driver.constants.REPLICA_STATE_IN_SYNC,
+        }
+        replica_list = [replica, active_replica, second_replica]
+        active_snapshot_instance = {
+            'id': 'si_%s' % active_replica['id'],
+            'share_instance_id': active_replica['id'],
+            'snapshot_id': 'some_snapshot_id',
+            'share_id': 'some_share_id',
+        }
+        snapshot_instances = [
+            {'id': 'si_%s' % r['id'], 'share_instance_id': r['id'],
+             'snapshot_id': active_snapshot_instance['snapshot_id'],
+             'share_id': active_snapshot_instance['share_id']}
+            for r in (replica, second_replica)
+        ]
+        snapshot_instances.append(active_snapshot_instance)
+        for si in snapshot_instances:
+            self.driver.private_storage.update(
+                si['id'], {'snapshot_name': 'fake_snap_name_%s' % si['id']})
+        src_dataset_name = (
+            'bar/subbar/fake_dataset_name_prefix%s' % active_replica['id'])
+        old_repl_snapshot_tag = (
+            self.driver._get_replication_snapshot_prefix(
+                active_replica) + 'foo')
+        self.driver.private_storage.update(
+            active_replica['id'],
+            {'dataset_name': src_dataset_name,
+             'ssh_cmd': 'fake_src_ssh_cmd',
+             'repl_snapshot_tag': old_repl_snapshot_tag}
+        )
+        for replica in (replica, second_replica):
+            self.driver.private_storage.update(
+                replica['id'],
+                {'dataset_name': 'some_dataset_name',
+                 'ssh_cmd': 'fake_ssh_cmd'}
+            )
+        self.driver.private_storage.update(
+            snapshot_instances[0]['snapshot_id'],
+            {'snapshot_tag': 'foo_snapshot_tag'}
+        )
+
+        snap_name = 'fake_snap_name'
+        self.mock_object(self.driver, '_delete_snapshot')
+        self.mock_object(
+            self.driver, '_get_saved_snapshot_name',
+            mock.Mock(return_value=snap_name))
+        self.mock_object(self.driver, 'execute_with_retry')
+        self.mock_object(
+            self.driver, 'execute', mock.Mock(side_effect=[
+                ('a', 'b'),
+                ('c', 'd'),
+                exception.ProcessExecutionError('Second replica sync failure'),
+            ]))
+        self.mock_object(
+            self.driver, 'parse_zfs_answer', mock.Mock(side_effect=[
+                ({'NAME': 'foo'}, {'NAME': snap_name}),
+                ({'NAME': 'bar'}, {'NAME': snap_name}),
+            ]))
+        expected = sorted([
+            {'id': si['id'], 'status': 'deleted'} for si in snapshot_instances
+        ], key=lambda item: item['id'])
+
+        result = self.driver.delete_replicated_snapshot(
+            'fake_context', replica_list, snapshot_instances)
+
+        self.driver._get_saved_snapshot_name.assert_has_calls([
+            mock.call(si) for si in snapshot_instances
+        ])
+        self.driver._delete_snapshot.assert_called_once_with(
+            'fake_context', active_snapshot_instance)
+        self.driver.execute.assert_has_calls([
+            mock.call('ssh', 'fake_ssh_cmd', 'sudo', 'zfs', 'list', '-r', '-t',
+                      'snapshot', snap_name) for i in (0, 1)
+        ])
+        self.driver.execute_with_retry.assert_has_calls([
+            mock.call('ssh', 'fake_ssh_cmd', 'sudo', 'zfs', 'destroy',
+                      '-f', snap_name) for i in (0, 1)
+        ])
+
+        self.assertIsInstance(result, list)
+        self.assertEqual(3, len(result))
+        self.assertEqual(expected, sorted(result, key=lambda item: item['id']))
+
+    @ddt.data(
+        ({'NAME': 'fake'}, zfs_driver.constants.STATUS_ERROR),
+        ({'NAME': 'fake_snap_name'}, zfs_driver.constants.STATUS_AVAILABLE),
+    )
+    @ddt.unpack
+    def test_update_replicated_snapshot(self, parse_answer, expected_status):
+        snap_name = 'fake_snap_name'
+        self.mock_object(self.driver, '_update_replica_state')
+        self.mock_object(
+            self.driver, '_get_saved_snapshot_name',
+            mock.Mock(return_value=snap_name))
+        self.mock_object(
+            self.driver, 'zfs', mock.Mock(side_effect=[('a', 'b')]))
+        self.mock_object(
+            self.driver, 'parse_zfs_answer', mock.Mock(side_effect=[
+                [parse_answer]
+            ]))
+        fake_context = 'fake_context'
+        replica_list = ['foo', 'bar']
+        share_replica = 'quuz'
+        snapshot_instance = {'id': 'fake_snapshot_instance_id'}
+        snapshot_instances = ['q', 'w', 'e', 'r', 't', 'y']
+
+        result = self.driver.update_replicated_snapshot(
+            fake_context, replica_list, share_replica, snapshot_instances,
+            snapshot_instance)
+
+        self.driver._update_replica_state.assert_called_once_with(
+            fake_context, replica_list, share_replica)
+        self.driver._get_saved_snapshot_name.assert_called_once_with(
+            snapshot_instance)
+        self.driver.zfs.assert_called_once_with(
+            'list', '-r', '-t', 'snapshot', snap_name)
+        self.driver.parse_zfs_answer.assert_called_once_with('a')
+        self.assertIsInstance(result, dict)
+        self.assertEqual(2, len(result))
+        self.assertIn('status', result)
+        self.assertIn('id', result)
+        self.assertEqual(expected_status, result['status'])
+        self.assertEqual(snapshot_instance['id'], result['id'])
