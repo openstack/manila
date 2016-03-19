@@ -193,11 +193,6 @@ iniset $TEMPEST_CONFIG share run_manage_unmanage_tests $RUN_MANILA_MANAGE_TESTS
 # Enable manage/unmanage snapshot tests
 iniset $TEMPEST_CONFIG share run_manage_unmanage_snapshot_tests $RUN_MANILA_MANAGE_SNAPSHOT_TESTS
 
-# Also, we should wait until service VM is available
-# before running Tempest tests using Generic driver in DHSS=False mode.
-source $BASE/new/manila/contrib/ci/common.sh
-manila_wait_for_drivers_init $MANILA_CONF
-
 # check if tempest plugin was installed correctly
 echo 'import pkg_resources; print list(pkg_resources.iter_entry_points("tempest.test_plugins"))' | python
 
@@ -207,11 +202,12 @@ echo 'import pkg_resources; print list(pkg_resources.iter_entry_points("tempest.
 # 2) https://bugs.launchpad.net/tempest/+bug/1524717
 TEMPEST_CONFIG=$BASE/new/tempest/etc/tempest.conf
 ADMIN_TENANT_NAME=${ADMIN_TENANT_NAME:-"admin"}
+ADMIN_DOMAIN_NAME=${ADMIN_DOMAIN_NAME:-"Default"}
 ADMIN_PASSWORD=${ADMIN_PASSWORD:-"secretadmin"}
 iniset $TEMPEST_CONFIG auth admin_username ${ADMIN_USERNAME:-"admin"}
 iniset $TEMPEST_CONFIG auth admin_password $ADMIN_PASSWORD
 iniset $TEMPEST_CONFIG auth admin_tenant_name $ADMIN_TENANT_NAME
-iniset $TEMPEST_CONFIG auth admin_domain_name ${ADMIN_DOMAIN_NAME:-"Default"}
+iniset $TEMPEST_CONFIG auth admin_domain_name $ADMIN_DOMAIN_NAME
 iniset $TEMPEST_CONFIG identity username ${TEMPEST_USERNAME:-"demo"}
 iniset $TEMPEST_CONFIG identity password $ADMIN_PASSWORD
 iniset $TEMPEST_CONFIG identity tenant_name ${TEMPEST_TENANT_NAME:-"demo"}
@@ -220,6 +216,14 @@ iniset $TEMPEST_CONFIG identity alt_password $ADMIN_PASSWORD
 iniset $TEMPEST_CONFIG identity alt_tenant_name ${ALT_TENANT_NAME:-"alt_demo"}
 iniset $TEMPEST_CONFIG validation ip_version_for_ssh 4
 iniset $TEMPEST_CONFIG validation network_for_ssh ${PRIVATE_NETWORK_NAME:-"private"}
+
+export OS_PROJECT_DOMAIN_NAME=$ADMIN_DOMAIN_NAME
+export OS_USER_DOMAIN_NAME=$ADMIN_DOMAIN_NAME
+
+# Also, we should wait until service VM is available
+# before running Tempest tests using Generic driver in DHSS=False mode.
+source $BASE/new/manila/contrib/ci/common.sh
+manila_wait_for_drivers_init $MANILA_CONF
 
 echo "Running tempest manila test suites"
 sudo -H -u jenkins tox -eall-plugin $MANILA_TESTS -- --concurrency=$MANILA_TEMPEST_CONCURRENCY
