@@ -592,7 +592,15 @@ class ShareSnapshot(BASE, ManilaBase):
     """Represents a snapshot of a share."""
     __tablename__ = 'share_snapshots'
     _extra_keys = ['name', 'share_name', 'status', 'progress',
-                   'provider_location']
+                   'provider_location', 'aggregate_status']
+
+    def __getattr__(self, item):
+        proxified_properties = ('status', 'progress', 'provider_location')
+
+        if item in proxified_properties:
+            return getattr(self.instance, item, None)
+
+        raise AttributeError(item)
 
     @property
     def name(self):
@@ -603,24 +611,51 @@ class ShareSnapshot(BASE, ManilaBase):
         return CONF.share_name_template % self.share_id
 
     @property
-    def status(self):
-        if self.instance:
-            return self.instance.status
-
-    @property
-    def progress(self):
-        if self.instance:
-            return self.instance.progress
-
-    @property
-    def provider_location(self):
-        if self.instance:
-            return self.instance.provider_location
-
-    @property
     def instance(self):
+        result = None
         if len(self.instances) > 0:
-            return self.instances[0]
+            def qualified_replica(x):
+                preferred_statuses = (constants.REPLICA_STATE_ACTIVE,)
+                return x['replica_state'] in preferred_statuses
+
+            replica_snapshots = list(filter(
+                lambda x: qualified_replica(x.share_instance), self.instances))
+
+            snapshot_instances = replica_snapshots or self.instances
+            result = snapshot_instances[0]
+
+        return result
+
+    @property
+    def aggregate_status(self):
+        """Get the aggregated 'status' of all instances.
+
+        A snapshot is supposed to be truly 'available' when it is available
+        across all of the share instances of the parent share object. In
+        case of replication, we only consider replicas (share instances)
+        that are in 'in_sync' replica_state.
+        """
+
+        def qualified_replica(x):
+            preferred_statuses = (constants.REPLICA_STATE_ACTIVE,
+                                  constants.REPLICA_STATE_IN_SYNC)
+            return x['replica_state'] in preferred_statuses
+
+        replica_snapshots = list(filter(
+            lambda x: qualified_replica(x['share_instance']), self.instances))
+
+        if not replica_snapshots:
+            return self.status
+
+        order = (constants.STATUS_DELETING, constants.STATUS_CREATING,
+                 constants.STATUS_ERROR, constants.STATUS_AVAILABLE)
+        other_statuses = [x['status'] for x in self.instances if
+                          x['status'] not in order]
+        order = (order + tuple(other_statuses))
+
+        sorted_instances = sorted(
+            replica_snapshots, key=lambda x: order.index(x['status']))
+        return sorted_instances[0].status
 
     id = Column(String(36), primary_key=True)
     deleted = Column(String(36), default='False')
@@ -681,6 +716,7 @@ class ShareSnapshotInstance(BASE, ManilaBase):
     provider_location = Column(String(255))
     share_instance = orm.relationship(
         ShareInstance, backref="snapshot_instances",
+        lazy='immediate',
         primaryjoin=(
             'and_('
             'ShareSnapshotInstance.share_instance_id == ShareInstance.id,'

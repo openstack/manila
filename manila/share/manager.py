@@ -129,12 +129,13 @@ def locked_share_replica_operation(operation):
     promote ReplicaA while deleting ReplicaB, both belonging to the same share.
     """
 
-    def wrapped(instance, context, share_replica_id, share_id=None, **kwargs):
+    def wrapped(*args, **kwargs):
+        share_id = kwargs.get('share_id')
+
         @utils.synchronized("%s" % share_id, external=True)
         def locked_operation(*_args, **_kwargs):
             return operation(*_args, **_kwargs)
-        return locked_operation(instance, context, share_replica_id,
-                                share_id=share_id, **kwargs)
+        return locked_operation(*args, **kwargs)
     return wrapped
 
 
@@ -168,7 +169,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.10'
+    RPC_API_VERSION = '1.11'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -1032,6 +1033,39 @@ class ShareManager(manager.SchedulerDependentManager):
         self.db.share_instance_update_access_status(
             context, share_replica_id, state)
 
+    def _get_replica_snapshots_for_snapshot(self, context, snapshot_id,
+                                            active_replica_id,
+                                            share_replica_id,
+                                            with_share_data=True):
+        """Return dict of snapshot instances of active and replica instances.
+
+        This method returns a dict of snapshot instances for snapshot
+        referred to by snapshot_id. The dict contains the snapshot instance
+        pertaining to the 'active' replica and the snapshot instance
+        pertaining to the replica referred to by share_replica_id.
+        """
+        filters = {
+            'snapshot_ids': snapshot_id,
+            'share_instance_ids': (share_replica_id, active_replica_id),
+        }
+        instance_list = self.db.share_snapshot_instance_get_all_with_filters(
+            context, filters, with_share_data=with_share_data)
+
+        snapshots = {
+            'active_replica_snapshot': self._get_snapshot_instance_dict(
+                context,
+                list(filter(lambda x:
+                            x['share_instance_id'] == active_replica_id,
+                            instance_list))[0]),
+            'share_replica_snapshot': self._get_snapshot_instance_dict(
+                context,
+                list(filter(lambda x:
+                            x['share_instance_id'] == share_replica_id,
+                            instance_list))[0]),
+        }
+
+        return snapshots
+
     @add_hooks
     @utils.require_driver_initialized
     @locked_share_replica_operation
@@ -1102,6 +1136,17 @@ class ShareManager(manager.SchedulerDependentManager):
         share_access_rules = self.db.share_instance_access_copy(
             context, share_replica['share_id'], share_replica['id'])
 
+        # Get snapshots for the share.
+        share_snapshots = self.db.share_snapshot_get_all_for_share(
+            context, share_id)
+        # Get the required data for snapshots that have 'aggregate_status'
+        # set to 'available'.
+        available_share_snapshots = [
+            self._get_replica_snapshots_for_snapshot(
+                context, x['id'], _active_replica['id'], share_replica_id)
+            for x in share_snapshots
+            if x['aggregate_status'] == constants.STATUS_AVAILABLE]
+
         replica_list = (
             self.db.share_replicas_get_all_by_share(
                 context, share_replica['share_id'],
@@ -1115,7 +1160,8 @@ class ShareManager(manager.SchedulerDependentManager):
         try:
             replica_ref = self.driver.create_replica(
                 context, replica_list, share_replica,
-                share_access_rules, share_server=share_server)
+                share_access_rules, available_share_snapshots,
+                share_server=share_server) or {}
 
         except Exception:
             with excutils.save_and_reraise_exception():
@@ -1166,6 +1212,13 @@ class ShareManager(manager.SchedulerDependentManager):
             context, share_replica_id, with_share_data=True,
             with_share_server=True)
 
+        # Grab all the snapshot instances that belong to this replica.
+        replica_snapshots = (
+            self.db.share_snapshot_instance_get_all_with_filters(
+                context, {'share_instance_ids': share_replica_id},
+                with_share_data=True)
+        )
+
         replica_list = (
             self.db.share_replicas_get_all_by_share(
                 context, share_replica['share_id'],
@@ -1174,6 +1227,8 @@ class ShareManager(manager.SchedulerDependentManager):
 
         replica_list = [self._get_share_replica_dict(context, r)
                         for r in replica_list]
+        replica_snapshots = [self._get_snapshot_instance_dict(context, s)
+                             for s in replica_snapshots]
         share_server = self._get_share_server(context, share_replica)
         share_replica = self._get_share_replica_dict(context, share_replica)
 
@@ -1193,30 +1248,34 @@ class ShareManager(manager.SchedulerDependentManager):
                     {'status': constants.STATUS_ERROR})
                 if force:
                     msg = _("The driver was unable to delete access rules "
-                            "for the replica: %s. Will attempt to delete the "
-                            "replica anyway.")
-                    LOG.error(msg % share_replica['id'])
+                            "for the replica: %s. Will attempt to delete "
+                            "the replica anyway.")
+                    LOG.exception(msg % share_replica['id'])
                     exc_context.reraise = False
 
         try:
             self.driver.delete_replica(
-                context, replica_list, share_replica,
+                context, replica_list, replica_snapshots, share_replica,
                 share_server=share_server)
         except Exception:
             with excutils.save_and_reraise_exception() as exc_context:
                 if force:
                     msg = _("The driver was unable to delete the share "
-                            "replica: %s on the backend. Since this "
-                            "operation is forced, the replica will be "
+                            "replica: %s on the backend. Since "
+                            "this operation is forced, the replica will be "
                             "deleted from Manila's database. A cleanup on "
                             "the backend may be necessary.")
-                    LOG.error(msg % share_replica['id'])
+                    LOG.exception(msg, share_replica['id'])
                     exc_context.reraise = False
                 else:
                     self.db.share_replica_update(
                         context, share_replica['id'],
                         {'status': constants.STATUS_ERROR_DELETING,
                          'replica_state': constants.STATUS_ERROR})
+
+        for replica_snapshot in replica_snapshots:
+            self.db.share_snapshot_instance_delete(
+                context, replica_snapshot['id'])
 
         self.db.share_replica_delete(context, share_replica['id'])
         LOG.info(_LI("Share replica %s deleted successfully."),
@@ -1285,6 +1344,30 @@ class ShareManager(manager.SchedulerDependentManager):
                 for replica_ref in replica_list:
                     self.db.share_replica_update(
                         context, replica_ref['id'], updates)
+
+        # Set any 'creating' snapshots on the currently active replica to
+        # 'error' since we cannot guarantee they will finish 'creating'.
+        active_replica_snapshot_instances = (
+            self.db.share_snapshot_instance_get_all_with_filters(
+                context, {'share_instance_ids': share_replica['id']})
+        )
+        for instance in active_replica_snapshot_instances:
+            if instance['status'] in (constants.STATUS_CREATING,
+                                      constants.STATUS_DELETING):
+                msg = _LI("The replica snapshot instance %(instance)s was "
+                          "in %(state)s. Since it was not in %(available)s "
+                          "state when the replica was promoted, it will be "
+                          "set to %(error)s.")
+                payload = {
+                    'instance': instance['id'],
+                    'state': instance['status'],
+                    'available': constants.STATUS_AVAILABLE,
+                    'error': constants.STATUS_ERROR,
+                }
+                LOG.info(msg, payload)
+                self.db.share_snapshot_instance_update(
+                    context, instance['id'],
+                    {'status': constants.STATUS_ERROR})
 
         if not updated_replica_list:
             self.db.share_replica_update(
@@ -1356,7 +1439,6 @@ class ShareManager(manager.SchedulerDependentManager):
     @locked_share_replica_operation
     def _share_replica_update(self, context, share_replica, share_id=None):
         share_server = self._get_share_server(context, share_replica)
-        replica_state = None
 
         # Re-grab the replica:
         try:
@@ -1386,6 +1468,22 @@ class ShareManager(manager.SchedulerDependentManager):
                 with_share_data=True, with_share_server=True)
         )
 
+        _active_replica = [x for x in replica_list
+                           if x['replica_state'] ==
+                           constants.REPLICA_STATE_ACTIVE][0]
+
+        # Get snapshots for the share.
+        share_snapshots = self.db.share_snapshot_get_all_for_share(
+            context, share_id)
+
+        # Get the required data for snapshots that have 'aggregate_status'
+        # set to 'available'.
+        available_share_snapshots = [
+            self._get_replica_snapshots_for_snapshot(
+                context, x['id'], _active_replica['id'], share_replica['id'])
+            for x in share_snapshots
+            if x['aggregate_status'] == constants.STATUS_AVAILABLE]
+
         replica_list = [self._get_share_replica_dict(context, r)
                         for r in replica_list]
 
@@ -1394,7 +1492,7 @@ class ShareManager(manager.SchedulerDependentManager):
         try:
             replica_state = self.driver.update_replica_state(
                 context, replica_list, share_replica, access_rules,
-                share_server=share_server)
+                available_share_snapshots, share_server=share_server)
         except Exception:
             msg = _LE("Driver error when updating replica "
                       "state for replica %s.")
@@ -1680,7 +1778,8 @@ class ShareManager(manager.SchedulerDependentManager):
             # quota usages later if it's required.
             LOG.warning(_LW("Failed to update quota usages: %s."), e)
 
-        self.db.share_snapshot_destroy(context, snapshot_id)
+        self.db.share_snapshot_instance_delete(
+            context, snapshot_instance['id'])
 
     @add_hooks
     @utils.require_driver_initialized
@@ -1831,7 +1930,8 @@ class ShareManager(manager.SchedulerDependentManager):
                     snapshot_instance_id,
                     {'status': constants.STATUS_ERROR_DELETING})
         else:
-            self.db.share_snapshot_destroy(context, snapshot_id)
+            self.db.share_snapshot_instance_delete(
+                context, snapshot_instance_id)
             try:
                 reservations = QUOTAS.reserve(
                     context, project_id=project_id, snapshots=-1,
@@ -1844,6 +1944,246 @@ class ShareManager(manager.SchedulerDependentManager):
             if reservations:
                 QUOTAS.commit(context, reservations, project_id=project_id,
                               user_id=snapshot_ref['user_id'])
+
+    @add_hooks
+    @utils.require_driver_initialized
+    @locked_share_replica_operation
+    def create_replicated_snapshot(self, context, snapshot_id, share_id=None):
+        """Create a snapshot for a replicated share."""
+        # Grab the snapshot and replica information from the DB.
+        snapshot = self.db.share_snapshot_get(context, snapshot_id)
+        share_server = self._get_share_server(context, snapshot['share'])
+        replica_snapshots = (
+            self.db.share_snapshot_instance_get_all_with_filters(
+                context, {'snapshot_ids': snapshot['id']},
+                with_share_data=True)
+        )
+        replica_list = (
+            self.db.share_replicas_get_all_by_share(
+                context, share_id, with_share_data=True,
+                with_share_server=True)
+        )
+
+        # Make primitives to pass the information to the driver.
+
+        replica_list = [self._get_share_replica_dict(context, r)
+                        for r in replica_list]
+        replica_snapshots = [self._get_snapshot_instance_dict(context, s)
+                             for s in replica_snapshots]
+        updated_instances = []
+
+        try:
+            updated_instances = self.driver.create_replicated_snapshot(
+                context, replica_list, replica_snapshots,
+                share_server=share_server) or []
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                for instance in replica_snapshots:
+                    self.db.share_snapshot_instance_update(
+                        context, instance['id'],
+                        {'status': constants.STATUS_ERROR})
+
+        for instance in updated_instances:
+            if instance['status'] == constants.STATUS_AVAILABLE:
+                instance.update({'progress': '100%'})
+            self.db.share_snapshot_instance_update(
+                context, instance['id'], instance)
+
+    @add_hooks
+    @utils.require_driver_initialized
+    @locked_share_replica_operation
+    def delete_replicated_snapshot(self, context, snapshot_id,
+                                   share_id=None, force=False):
+        """Delete a snapshot from a replicated share."""
+        # Grab the replica and snapshot information from the DB.
+        snapshot = self.db.share_snapshot_get(context, snapshot_id)
+        share_server = self._get_share_server(context, snapshot['share'])
+        replica_snapshots = (
+            self.db.share_snapshot_instance_get_all_with_filters(
+                context, {'snapshot_ids': snapshot['id']},
+                with_share_data=True)
+        )
+        replica_list = (
+            self.db.share_replicas_get_all_by_share(
+                context, share_id, with_share_data=True,
+                with_share_server=True)
+        )
+
+        replica_list = [self._get_share_replica_dict(context, r)
+                        for r in replica_list]
+        replica_snapshots = [self._get_snapshot_instance_dict(context, s)
+                             for s in replica_snapshots]
+        deleted_instances = []
+        updated_instances = []
+        db_force_delete_msg = _('The driver was unable to delete some or all '
+                                'of the share replica snapshots on the '
+                                'backend/s. Since this operation is forced, '
+                                'the replica snapshots will be deleted from '
+                                'Manila.')
+
+        try:
+
+            updated_instances = self.driver.delete_replicated_snapshot(
+                context, replica_list, replica_snapshots,
+                share_server=share_server) or []
+
+        except Exception:
+            with excutils.save_and_reraise_exception() as e:
+                if force:
+                    # Can delete all instances if forced.
+                    deleted_instances = replica_snapshots
+                    LOG.exception(db_force_delete_msg)
+                    e.reraise = False
+                else:
+                    for instance in replica_snapshots:
+                        self.db.share_snapshot_instance_update(
+                            context, instance['id'],
+                            {'status': constants.STATUS_ERROR_DELETING})
+
+        if not deleted_instances:
+            if force:
+                # Ignore model updates on 'force' delete.
+                LOG.warning(db_force_delete_msg)
+                deleted_instances = replica_snapshots
+            else:
+                deleted_instances = list(filter(
+                    lambda x: x['status'] == constants.STATUS_DELETED,
+                    updated_instances))
+                updated_instances = list(filter(
+                    lambda x: x['status'] != constants.STATUS_DELETED,
+                    updated_instances))
+
+        for instance in deleted_instances:
+            self.db.share_snapshot_instance_delete(context, instance['id'])
+
+        for instance in updated_instances:
+            self.db.share_snapshot_instance_update(
+                context, instance['id'], instance)
+
+    @periodic_task.periodic_task(spacing=CONF.replica_state_update_interval)
+    @utils.require_driver_initialized
+    def periodic_share_replica_snapshot_update(self, context):
+        LOG.debug("Updating status of share replica snapshots.")
+        transitional_statuses = (constants.STATUS_CREATING,
+                                 constants.STATUS_DELETING)
+        replicas = self.db.share_replicas_get_all(context,
+                                                  with_share_data=True)
+
+        def qualified_replica(r):
+            # Filter non-active replicas belonging to this backend
+            return (share_utils.extract_host(r['host']) ==
+                    share_utils.extract_host(self.host) and
+                    r['replica_state'] != constants.REPLICA_STATE_ACTIVE)
+
+        host_replicas = list(filter(
+            lambda x: qualified_replica(x), replicas))
+        transitional_replica_snapshots = []
+
+        # Get snapshot instances for each replica that are in 'creating' or
+        # 'deleting' states.
+        for replica in host_replicas:
+            filters = {
+                'share_instance_ids': replica['id'],
+                'statuses': transitional_statuses,
+            }
+            replica_snapshots = (
+                self.db.share_snapshot_instance_get_all_with_filters(
+                    context, filters, with_share_data=True)
+            )
+            transitional_replica_snapshots.extend(replica_snapshots)
+
+        for replica_snapshot in transitional_replica_snapshots:
+            replica_snapshots = (
+                self.db.share_snapshot_instance_get_all_with_filters(
+                    context,
+                    {'snapshot_ids': replica_snapshot['snapshot_id']})
+            )
+            share_id = replica_snapshot['share']['share_id']
+            self._update_replica_snapshot(
+                context, replica_snapshot,
+                replica_snapshots=replica_snapshots, share_id=share_id)
+
+    @locked_share_replica_operation
+    def _update_replica_snapshot(self, context, replica_snapshot,
+                                 replica_snapshots=None, share_id=None):
+        # Re-grab the replica:
+        try:
+            share_replica = self.db.share_replica_get(
+                context, replica_snapshot['share_instance_id'],
+                with_share_data=True, with_share_server=True)
+            replica_snapshot = self.db.share_snapshot_instance_get(
+                context, replica_snapshot['id'], with_share_data=True)
+        except exception.NotFound:
+            # Replica may have been deleted, try to cleanup the snapshot
+            # instance
+            try:
+                self.db.share_snapshot_instance_delete(
+                    context, replica_snapshot['id'])
+            except exception.ShareSnapshotInstanceNotFound:
+                # snapshot instance has been deleted, nothing to do here
+                pass
+            return
+
+        msg_payload = {
+            'snapshot_instance': replica_snapshot['id'],
+            'replica': share_replica['id'],
+        }
+
+        LOG.debug("Updating status of replica snapshot %(snapshot_instance)s: "
+                  "on replica: %(replica)s", msg_payload)
+
+        # Grab all the replica and snapshot information.
+        replica_list = (
+            self.db.share_replicas_get_all_by_share(
+                context, share_replica['share_id'],
+                with_share_data=True, with_share_server=True)
+        )
+
+        replica_list = [self._get_share_replica_dict(context, r)
+                        for r in replica_list]
+        replica_snapshots = replica_snapshots or []
+
+        # Convert data to primitives to send to the driver.
+
+        replica_snapshots = [self._get_snapshot_instance_dict(context, s)
+                             for s in replica_snapshots]
+        replica_snapshot = self._get_snapshot_instance_dict(
+            context, replica_snapshot)
+        share_replica = self._get_share_replica_dict(context, share_replica)
+        share_server = share_replica['share_server']
+        snapshot_update = None
+
+        try:
+
+            snapshot_update = self.driver.update_replicated_snapshot(
+                context, replica_list, share_replica, replica_snapshots,
+                replica_snapshot, share_server=share_server) or {}
+
+        except exception.SnapshotResourceNotFound:
+            if replica_snapshot['status'] == constants.STATUS_DELETING:
+                LOG.info(_LI('Snapshot %(snapshot_instance)s on replica '
+                             '%(replica)s has been deleted.'), msg_payload)
+                self.db.share_snapshot_instance_delete(
+                    context, replica_snapshot['id'])
+            else:
+                LOG.exception(_LE("Replica snapshot %s was not found on "
+                                  "the backend."), replica_snapshot['id'])
+                self.db.share_snapshot_instance_update(
+                    context, replica_snapshot['id'],
+                    {'status': constants.STATUS_ERROR})
+        except Exception:
+            LOG.exception(_LE("Driver error while updating replica snapshot: "
+                              "%s"), replica_snapshot['id'])
+            self.db.share_snapshot_instance_update(
+                context, replica_snapshot['id'],
+                {'status': constants.STATUS_ERROR})
+
+        if snapshot_update:
+            snapshot_status = snapshot_update.get('status')
+            if snapshot_status == constants.STATUS_AVAILABLE:
+                snapshot_update['progress'] = '100%'
+            self.db.share_snapshot_instance_update(
+                context, replica_snapshot['id'], snapshot_update)
 
     @add_hooks
     @utils.require_driver_initialized
@@ -2529,3 +2869,24 @@ class ShareManager(manager.SchedulerDependentManager):
         }
 
         return share_replica_ref
+
+    def _get_snapshot_instance_dict(self, context, snapshot_instance):
+        # TODO(gouthamr): remove method when the db layer returns primitives
+        snapshot_instance_ref = {
+            'name': snapshot_instance.get('name'),
+            'share_id': snapshot_instance.get('share_id'),
+            'share_name': snapshot_instance.get('share_name'),
+            'status': snapshot_instance.get('status'),
+            'id': snapshot_instance.get('id'),
+            'deleted': snapshot_instance.get('deleted') or False,
+            'created_at': snapshot_instance.get('created_at'),
+            'share': snapshot_instance.get('share'),
+            'updated_at': snapshot_instance.get('updated_at'),
+            'share_instance_id': snapshot_instance.get('share_instance_id'),
+            'snapshot_id': snapshot_instance.get('snapshot_id'),
+            'progress': snapshot_instance.get('progress'),
+            'deleted_at': snapshot_instance.get('deleted_at'),
+            'provider_location': snapshot_instance.get('provider_location'),
+        }
+
+        return snapshot_instance_ref

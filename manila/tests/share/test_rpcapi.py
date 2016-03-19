@@ -106,6 +106,10 @@ class ShareRpcAPITestCase(test.TestCase):
             share_replica = expected_msg.pop('share_replica', None)
             expected_msg['share_replica_id'] = share_replica['id']
             expected_msg['share_id'] = share_replica['share_id']
+        if 'replicated_snapshot' in expected_msg:
+            snapshot = expected_msg.pop('replicated_snapshot', None)
+            expected_msg['snapshot_id'] = snapshot['id']
+            expected_msg['share_id'] = snapshot['share_id']
 
         if 'host' in kwargs:
             host = kwargs['host']
@@ -117,6 +121,8 @@ class ShareRpcAPITestCase(test.TestCase):
             host = kwargs['share_server']['host']
         elif 'share_replica' in kwargs:
             host = kwargs['share_replica']['host']
+        elif 'replicated_snapshot' in kwargs:
+            host = kwargs['share']['instance']['host']
         else:
             host = kwargs['share']['host']
         target['server'] = host
@@ -313,6 +319,22 @@ class ShareRpcAPITestCase(test.TestCase):
                              rpc_method='cast',
                              version='1.9',
                              snapshot=self.fake_snapshot,
+                             host='fake_host')
+
+    def test_create_replicated_snapshot(self):
+        self._test_share_api('create_replicated_snapshot',
+                             rpc_method='cast',
+                             version='1.11',
+                             replicated_snapshot=self.fake_snapshot,
+                             share=self.fake_share)
+
+    def test_delete_replicated_snapshot(self):
+        self._test_share_api('delete_replicated_snapshot',
+                             rpc_method='cast',
+                             version='1.11',
+                             replicated_snapshot=self.fake_snapshot,
+                             share_id=self.fake_snapshot['share_id'],
+                             force=False,
                              host='fake_host')
 
     class Desthost(object):

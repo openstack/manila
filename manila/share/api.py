@@ -69,7 +69,7 @@ class API(base.Base):
         super(API, self).__init__(db_driver)
 
     def create(self, context, share_proto, size, name, description,
-               snapshot=None, availability_zone=None, metadata=None,
+               snapshot_id=None, availability_zone=None, metadata=None,
                share_network_id=None, share_type=None, is_public=False,
                consistency_group_id=None, cgsnapshot_member=None):
         """Create new share."""
@@ -77,16 +77,15 @@ class API(base.Base):
 
         self._check_metadata_properties(context, metadata)
 
-        if snapshot is not None:
-            if snapshot['status'] != constants.STATUS_AVAILABLE:
+        if snapshot_id is not None:
+            snapshot = self.get_snapshot(context, snapshot_id)
+            if snapshot['aggregate_status'] != constants.STATUS_AVAILABLE:
                 msg = _("status must be '%s'") % constants.STATUS_AVAILABLE
                 raise exception.InvalidShareSnapshot(reason=msg)
             if not size:
                 size = snapshot['size']
-
-            snapshot_id = snapshot['id']
         else:
-            snapshot_id = None
+            snapshot = None
 
         def as_int(s):
             try:
@@ -113,7 +112,10 @@ class API(base.Base):
             source_share = self.db.share_get(context, snapshot['share_id'])
             availability_zone = source_share['instance']['availability_zone']
             if share_type is None:
+                # Grab the source share's share_type if no new share type
+                # has been provided.
                 share_type_id = source_share['share_type_id']
+                share_type = share_types.get_share_type(context, share_type_id)
             else:
                 share_type_id = share_type['id']
                 if share_type_id != source_share['share_type_id']:
@@ -400,6 +402,19 @@ class API(base.Base):
             context, share_replica['id'],
             {'replica_state': constants.REPLICA_STATE_OUT_OF_SYNC})
 
+        existing_snapshots = (
+            self.db.share_snapshot_get_all_for_share(
+                context, share_replica['share_id'])
+        )
+        snapshot_instance = {
+            'status': constants.STATUS_CREATING,
+            'progress': '0%',
+            'share_instance_id': share_replica['id'],
+        }
+        for snapshot in existing_snapshots:
+            self.db.share_snapshot_instance_create(
+                context, snapshot['id'], snapshot_instance)
+
         self.scheduler_rpcapi.create_share_replica(
             context, request_spec=request_spec, filter_properties={})
 
@@ -420,16 +435,26 @@ class API(base.Base):
 
         LOG.info(_LI("Deleting replica %s."), id)
 
+        self.db.share_replica_update(
+            context, share_replica['id'],
+            {
+                'status': constants.STATUS_DELETING,
+                'terminated_at': timeutils.utcnow(),
+            }
+        )
+
         if not share_replica['host']:
-            self.db.share_replica_update(context, share_replica['id'],
-                                         {'terminated_at': timeutils.utcnow()})
+            # Delete any snapshot instances created on the database
+            replica_snapshots = (
+                self.db.share_snapshot_instance_get_all_with_filters(
+                    context, {'share_instance_ids': share_replica['id']})
+            )
+            for snapshot in replica_snapshots:
+                self.db.share_snapshot_instance_delete(context, snapshot['id'])
+
+            # Delete the replica from the database
             self.db.share_replica_delete(context, share_replica['id'])
         else:
-            self.db.share_replica_update(
-                context, share_replica['id'],
-                {'status': constants.STATUS_DELETING,
-                 'terminated_at': timeutils.utcnow()}
-            )
 
             self.share_rpcapi.delete_share_replica(context,
                                                    share_replica,
@@ -816,7 +841,27 @@ class API(base.Base):
                 finally:
                     QUOTAS.rollback(context, reservations)
 
-        self.share_rpcapi.create_snapshot(context, share, snapshot)
+        # If replicated share, create snapshot instances for each replica
+        if share.get('has_replicas'):
+            snapshot = self.db.share_snapshot_get(context, snapshot['id'])
+            share_instance_id = snapshot['instance']['share_instance_id']
+            replicas = self.db.share_replicas_get_all_by_share(
+                context, share['id'])
+            replicas = [r for r in replicas if r['id'] != share_instance_id]
+            snapshot_instance = {
+                'status': constants.STATUS_CREATING,
+                'progress': '0%',
+            }
+            for replica in replicas:
+                snapshot_instance.update({'share_instance_id': replica['id']})
+                self.db.share_snapshot_instance_create(
+                    context, snapshot['id'], snapshot_instance)
+            self.share_rpcapi.create_replicated_snapshot(
+                context, share, snapshot)
+
+        else:
+            self.share_rpcapi.create_snapshot(context, share, snapshot)
+
         return snapshot
 
     def migration_start(self, context, share, host, force_host_copy,
@@ -969,16 +1014,30 @@ class API(base.Base):
     @policy.wrap_check_policy('share')
     def delete_snapshot(self, context, snapshot, force=False):
         statuses = (constants.STATUS_AVAILABLE, constants.STATUS_ERROR)
-        if not (force or snapshot['status'] in statuses):
+        if not (force or snapshot['aggregate_status'] in statuses):
             msg = _("Share Snapshot status must be one of %(statuses)s.") % {
                 "statuses": statuses}
             raise exception.InvalidShareSnapshot(reason=msg)
 
-        self.db.share_snapshot_update(context, snapshot['id'],
-                                      {'status': constants.STATUS_DELETING})
         share = self.db.share_get(context, snapshot['share_id'])
-        self.share_rpcapi.delete_snapshot(context, snapshot,
-                                          share['instance']['host'])
+
+        snapshot_instances = (
+            self.db.share_snapshot_instance_get_all_with_filters(
+                context, {'snapshot_ids': snapshot['id']})
+        )
+
+        for snapshot_instance in snapshot_instances:
+            self.db.share_snapshot_instance_update(
+                context, snapshot_instance['id'],
+                {'status': constants.STATUS_DELETING})
+
+        if share['has_replicas']:
+            self.share_rpcapi.delete_replicated_snapshot(
+                context, snapshot, share['instance']['host'],
+                share_id=share['id'], force=force)
+        else:
+            self.share_rpcapi.delete_snapshot(context, snapshot,
+                                              share['instance']['host'])
 
     @policy.wrap_check_policy('share')
     def update(self, context, share, fields):
@@ -1067,8 +1126,7 @@ class API(base.Base):
 
     def get_snapshot(self, context, snapshot_id):
         policy.check_policy(context, 'share_snapshot', 'get_snapshot')
-        rv = self.db.share_snapshot_get(context, snapshot_id)
-        return dict(rv.items())
+        return self.db.share_snapshot_get(context, snapshot_id)
 
     def get_all_snapshots(self, context, search_opts=None,
                           sort_key='share_id', sort_dir='desc'):

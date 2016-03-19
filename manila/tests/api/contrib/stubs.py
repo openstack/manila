@@ -105,6 +105,7 @@ def stub_snapshot(id, **kwargs):
         'share_size': 1,
         'size': 1,
         'status': 'fakesnapstatus',
+        'aggregate_status': 'fakesnapstatus',
         'share_name': 'fakesharename',
         'display_name': 'displaysnapname',
         'display_description': 'displaysnapdesc',

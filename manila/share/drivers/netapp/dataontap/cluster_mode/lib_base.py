@@ -734,7 +734,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
         try:
             self._delete_snapshot(vserver_client, share_name, snapshot_name)
-        except exception.SnapshotNotFound:
+        except exception.SnapshotResourceNotFound:
             msg = _LI("Snapshot %(snap)s does not exist on share %(share)s.")
             msg_args = {'snap': snapshot_name, 'share': share_name}
             LOG.info(msg, msg_args)
@@ -992,7 +992,7 @@ class NetAppCmodeFileStorageLibrary(object):
             try:
                 self._delete_snapshot(
                     vserver_client, share_name, snapshot_name)
-            except exception.SnapshotNotFound:
+            except exception.SnapshotResourceNotFound:
                 msg = _LI("Snapshot %(snap)s does not exist on share "
                           "%(share)s.")
                 msg_args = {'snap': snapshot_name, 'share': share_name}

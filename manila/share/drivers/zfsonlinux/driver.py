@@ -632,7 +632,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
 
     @ensure_share_server_not_provided
     def create_replica(self, context, replica_list, new_replica,
-                       access_rules, share_server=None):
+                       access_rules, replica_snapshots, share_server=None):
         """Replicates the active replica to a new replica on this backend."""
         active_replica = self._get_active_replica(replica_list)
         src_dataset_name = self.private_storage.get(
@@ -704,7 +704,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
         }
 
     @ensure_share_server_not_provided
-    def delete_replica(self, context, replica_list, replica,
+    def delete_replica(self, context, replica_list, replica_snapshots, replica,
                        share_server=None):
         """Deletes a replica. This is called on the destination backend."""
         pool_name = self.private_storage.get(replica['id'], 'pool_name')
@@ -737,7 +737,8 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
 
     @ensure_share_server_not_provided
     def update_replica_state(self, context, replica_list, replica,
-                             access_rules, share_server=None):
+                             access_rules, replica_snapshots,
+                             share_server=None):
         """Syncs replica and updates its 'replica_state'."""
         active_replica = self._get_active_replica(replica_list)
         src_dataset_name = self.private_storage.get(

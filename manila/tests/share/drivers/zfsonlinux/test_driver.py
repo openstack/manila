@@ -1126,7 +1126,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         mock_utcnow.return_value.isoformat.return_value = 'some_time'
 
         result = self.driver.create_replica(
-            'fake_context', replica_list, new_replica, access_rules)
+            'fake_context', replica_list, new_replica, access_rules, [])
 
         expected = {
             'export_locations': (
@@ -1169,6 +1169,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         pool_name = 'foo_pool'
         replica = {'id': 'fake_replica_id'}
         replica_list = [replica]
+        replica_snapshots = []
         self.mock_object(
             self.driver, '_get_dataset_name',
             mock.Mock(return_value=dataset_name))
@@ -1183,7 +1184,8 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         self.driver.private_storage.update(
             replica['id'], {'pool_name': pool_name})
 
-        self.driver.delete_replica('fake_context', replica_list, replica)
+        self.driver.delete_replica('fake_context', replica_list,
+                                   replica_snapshots, replica)
 
         zfs_driver.LOG.warning.assert_called_once_with(
             mock.ANY, {'id': replica['id'], 'name': dataset_name})
@@ -1224,7 +1226,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             replica['id'],
             {'pool_name': pool_name, 'dataset_name': dataset_name})
 
-        self.driver.delete_replica('fake_context', replica_list, replica)
+        self.driver.delete_replica('fake_context', replica_list, [], replica)
 
         self.assertEqual(0, zfs_driver.LOG.warning.call_count)
         self.assertEqual(0, self.driver._get_dataset_name.call_count)
@@ -1257,6 +1259,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             'replica_state': None,
         }
         replica_list = [replica, active_replica]
+        replica_snapshots = []
         dst_dataset_name = (
             'bar/subbar/fake_dataset_name_prefix%s' % replica['id'])
         src_dataset_name = (
@@ -1306,7 +1309,8 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             self.driver, '_delete_dataset_or_snapshot_with_retry')
 
         result = self.driver.update_replica_state(
-            'fake_context', replica_list, replica, access_rules)
+            'fake_context', replica_list, replica, access_rules,
+            replica_snapshots)
 
         self.assertEqual(zfs_driver.constants.REPLICA_STATE_IN_SYNC, result)
         mock_helper.assert_called_once_with('NFS')

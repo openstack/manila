@@ -1883,7 +1883,10 @@ def share_instance_update_access_status(context, share_instance_id, status):
 
 
 @require_context
-def share_snapshot_instance_create(context, snapshot_id, values, session):
+def share_snapshot_instance_create(context, snapshot_id, values, session=None):
+    session = session or get_session()
+    values = copy.deepcopy(values)
+
     if not values.get('id'):
         values['id'] = uuidutils.generate_uuid()
     values.update({'snapshot_id': snapshot_id})
@@ -1913,28 +1916,107 @@ def share_snapshot_instance_update(context, instance_id, values):
 
 
 @require_context
-def share_snapshot_instance_get(context, instance_id, session=None,
+def share_snapshot_instance_delete(context, snapshot_instance_id,
+                                   session=None):
+    session = session or get_session()
+
+    with session.begin():
+        snapshot_instance_ref = share_snapshot_instance_get(
+            context, snapshot_instance_id, session=session)
+        snapshot_instance_ref.soft_delete(
+            session=session, update_status=True)
+        snapshot = share_snapshot_get(
+            context, snapshot_instance_ref['snapshot_id'], session=session)
+        if len(snapshot.instances) == 0:
+            snapshot.soft_delete(session=session)
+
+
+@require_context
+def share_snapshot_instance_get(context, snapshot_instance_id, session=None,
                                 with_share_data=False):
-    if session is None:
-        session = get_session()
-    result = (
-        model_query(
-            context,
-            models.ShareSnapshotInstance,
-            session=session
-        ).filter_by(id=instance_id).first()
-    )
+
+    session = session or get_session()
+
+    result = _share_snapshot_instance_get_with_filters(
+        context, instance_ids=[snapshot_instance_id], session=session).first()
+
     if result is None:
-        raise exception.NotFound()
+        raise exception.ShareSnapshotInstanceNotFound(
+            instance_id=snapshot_instance_id)
 
     if with_share_data:
-        share_instance = share_instance_get(
-            context, result['share_instance_id'],
-            session=session, with_share_data=True
-        )
-        result['share'] = share_instance
+        result = _set_share_snapshot_instance_data(context, result, session)[0]
 
     return result
+
+
+@require_context
+def share_snapshot_instance_get_all_with_filters(context, search_filters,
+                                                 with_share_data=False,
+                                                 session=None):
+    """Get snapshot instances filtered by known attrs, ignore unknown attrs.
+
+    All filters accept list/tuples to filter on, along with simple values.
+    """
+    def listify(values):
+        if values:
+            if not isinstance(values, (list, tuple, set)):
+                return values,
+            else:
+                return values
+
+    session = session or get_session()
+    _known_filters = ('instance_ids', 'snapshot_ids', 'share_instance_ids',
+                      'statuses')
+
+    filters = {k: listify(search_filters.get(k)) for k in _known_filters}
+
+    result = _share_snapshot_instance_get_with_filters(
+        context, session=session, **filters).all()
+
+    if with_share_data:
+        result = _set_share_snapshot_instance_data(context, result, session)
+
+    return result
+
+
+def _share_snapshot_instance_get_with_filters(context, instance_ids=None,
+                                              snapshot_ids=None, statuses=None,
+                                              share_instance_ids=None,
+                                              session=None):
+
+    query = model_query(context, models.ShareSnapshotInstance, session=session,
+                        read_deleted="no")
+
+    if instance_ids is not None:
+        query = query.filter(
+            models.ShareSnapshotInstance.id.in_(instance_ids))
+
+    if snapshot_ids is not None:
+        query = query.filter(
+            models.ShareSnapshotInstance.snapshot_id.in_(snapshot_ids))
+
+    if share_instance_ids is not None:
+        query = query.filter(models.ShareSnapshotInstance.share_instance_id
+                             .in_(share_instance_ids))
+
+    if statuses is not None:
+        query = query.filter(models.ShareSnapshotInstance.status.in_(statuses))
+
+    return query
+
+
+def _set_share_snapshot_instance_data(context, snapshot_instances, session):
+    if snapshot_instances and not isinstance(snapshot_instances, list):
+        snapshot_instances = [snapshot_instances]
+
+    for snapshot_instance in snapshot_instances:
+        share_instance = share_instance_get(
+            context, snapshot_instance['share_instance_id'], session=session,
+            with_share_data=True)
+        snapshot_instance['share'] = share_instance
+
+    return snapshot_instances
 
 
 ###################
@@ -1989,7 +2071,12 @@ def share_snapshot_destroy(context, snapshot_id):
     with session.begin():
         snapshot_ref = share_snapshot_get(context, snapshot_id,
                                           session=session)
-        snapshot_ref.instance.soft_delete(session=session, update_status=True)
+
+        if len(snapshot_ref.instances) > 0:
+            msg = _("Snapshot %(id)s has %(count)s snapshot instances.") % {
+                'id': snapshot_id, 'count': len(snapshot_ref.instances)}
+            raise exception.InvalidShareSnapshot(msg)
+
         snapshot_ref.soft_delete(session=session)
 
 

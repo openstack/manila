@@ -855,12 +855,59 @@ class ConsistencyGroupDatabaseAPITestCase(test.TestCase):
         self.assertEqual(constants.STATUS_AVAILABLE, member['status'])
 
 
+@ddt.ddt
 class ShareSnapshotDatabaseAPITestCase(test.TestCase):
 
     def setUp(self):
         """Run before each test."""
         super(ShareSnapshotDatabaseAPITestCase, self).setUp()
         self.ctxt = context.get_admin_context()
+
+        self.share_instances = [
+            db_utils.create_share_instance(
+                status=constants.STATUS_REPLICATION_CHANGE,
+                share_id='fake_share_id_1'),
+            db_utils.create_share_instance(
+                status=constants.STATUS_AVAILABLE,
+                share_id='fake_share_id_1'),
+            db_utils.create_share_instance(
+                status=constants.STATUS_ERROR_DELETING,
+                share_id='fake_share_id_2'),
+            db_utils.create_share_instance(
+                status=constants.STATUS_MANAGING,
+                share_id='fake_share_id_2'),
+        ]
+        self.share_1 = db_utils.create_share(
+            id='fake_share_id_1', instances=self.share_instances[0:2])
+        self.share_2 = db_utils.create_share(
+            id='fake_share_id_2', instances=self.share_instances[2:-1])
+        self.snapshot_instances = [
+            db_utils.create_snapshot_instance(
+                'fake_snapshot_id_1',
+                status=constants.STATUS_CREATING,
+                share_instance_id=self.share_instances[0]['id']),
+            db_utils.create_snapshot_instance(
+                'fake_snapshot_id_1',
+                status=constants.STATUS_ERROR,
+                share_instance_id=self.share_instances[1]['id']),
+            db_utils.create_snapshot_instance(
+                'fake_snapshot_id_1',
+                status=constants.STATUS_DELETING,
+                share_instance_id=self.share_instances[2]['id']),
+            db_utils.create_snapshot_instance(
+                'fake_snapshot_id_2',
+                status=constants.STATUS_AVAILABLE,
+                id='fake_snapshot_instance_id',
+                provider_location='hogsmeade:snapshot1',
+                progress='87%',
+                share_instance_id=self.share_instances[3]['id']),
+        ]
+        self.snapshot_1 = db_utils.create_snapshot(
+            id='fake_snapshot_id_1', share_id=self.share_1['id'],
+            instances=self.snapshot_instances[0:3])
+        self.snapshot_2 = db_utils.create_snapshot(
+            id='fake_snapshot_id_2', share_id=self.share_2['id'],
+            instances=self.snapshot_instances[3:4])
 
     def test_create(self):
         share = db_utils.create_share(size=1)
@@ -896,6 +943,114 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
         self.assertIn('name', instance_dict)
         self.assertIn('share_name', instance_dict)
         self.assertIn('share_id', instance_dict)
+
+    @ddt.data(None, constants.STATUS_ERROR)
+    def test_share_snapshot_instance_get_all_with_filters_some(self, status):
+        expected_status = status or (constants.STATUS_CREATING,
+                                     constants.STATUS_DELETING)
+        expected_number = 1 if status else 3
+        filters = {
+            'snapshot_ids': 'fake_snapshot_id_1',
+            'statuses':  expected_status
+        }
+        instances = db_api.share_snapshot_instance_get_all_with_filters(
+            self.ctxt, filters)
+
+        for instance in instances:
+            self.assertEqual('fake_snapshot_id_1', instance['snapshot_id'])
+            self.assertTrue(instance['status'] in filters['statuses'])
+
+        self.assertEqual(expected_number, len(instances))
+
+    def test_share_snapshot_instance_get_all_with_filters_all_filters(self):
+        filters = {
+            'snapshot_ids': 'fake_snapshot_id_2',
+            'instance_ids': 'fake_snapshot_instance_id',
+            'statuses': constants.STATUS_AVAILABLE,
+            'share_instance_ids': self.share_instances[3]['id'],
+        }
+        instances = db_api.share_snapshot_instance_get_all_with_filters(
+            self.ctxt, filters, with_share_data=True)
+        self.assertEqual(1, len(instances))
+        self.assertEqual('fake_snapshot_instance_id', instances[0]['id'])
+        self.assertEqual(
+            self.share_2['id'], instances[0]['share_instance']['share_id'])
+
+    def test_share_snapshot_instance_get_all_with_filters_wrong_filters(self):
+        filters = {
+            'some_key': 'some_value',
+            'some_other_key': 'some_other_value',
+        }
+        instances = db_api.share_snapshot_instance_get_all_with_filters(
+            self.ctxt, filters)
+        self.assertEqual(6, len(instances))
+
+    def test_share_snapshot_instance_create(self):
+        snapshot = db_utils.create_snapshot(with_share=True)
+        share = snapshot['share']
+        share_instance = db_utils.create_share_instance(share_id=share['id'])
+        values = {
+            'snapshot_id': snapshot['id'],
+            'share_instance_id': share_instance['id'],
+            'status': constants.STATUS_MANAGING,
+            'progress': '88%',
+            'provider_location': 'whomping_willow',
+        }
+
+        actual_result = db_api.share_snapshot_instance_create(
+            self.ctxt, snapshot['id'], values)
+
+        snapshot = db_api.share_snapshot_get(self.ctxt, snapshot['id'])
+
+        self.assertSubDictMatch(values, actual_result.to_dict())
+        self.assertEqual(2, len(snapshot['instances']))
+
+    def test_share_snapshot_instance_update(self):
+        snapshot = db_utils.create_snapshot(with_share=True)
+
+        values = {
+            'snapshot_id': snapshot['id'],
+            'status': constants.STATUS_ERROR,
+            'progress': '18%',
+            'provider_location': 'godrics_hollow',
+        }
+
+        actual_result = db_api.share_snapshot_instance_update(
+            self.ctxt, snapshot['instance']['id'], values)
+
+        self.assertSubDictMatch(values, actual_result.to_dict())
+
+    @ddt.data(2, 1)
+    def test_share_snapshot_instance_delete(self, instances):
+        snapshot = db_utils.create_snapshot(with_share=True)
+        first_instance_id = snapshot['instance']['id']
+        if instances > 1:
+            instance = db_utils.create_snapshot_instance(
+                snapshot['id'],
+                share_instance_id=snapshot['share']['instance']['id'])
+        else:
+            instance = snapshot['instance']
+
+        retval = db_api.share_snapshot_instance_delete(
+            self.ctxt, instance['id'])
+
+        self.assertIsNone(retval)
+        if instances == 1:
+            self.assertRaises(exception.ShareSnapshotNotFound,
+                              db_api.share_snapshot_get,
+                              self.ctxt, snapshot['id'])
+        else:
+            snapshot = db_api.share_snapshot_get(self.ctxt, snapshot['id'])
+            self.assertEqual(1, len(snapshot['instances']))
+            self.assertEqual(first_instance_id, snapshot['instance']['id'])
+
+    def test_share_snapshot_destroy_has_instances(self):
+        snapshot = db_utils.create_snapshot(with_share=True)
+
+        self.assertRaises(exception.InvalidShareSnapshot,
+                          db_api.share_snapshot_destroy,
+                          context.get_admin_context(),
+                          snapshot['id'])
 
 
 class ShareExportLocationsDatabaseAPITestCase(test.TestCase):

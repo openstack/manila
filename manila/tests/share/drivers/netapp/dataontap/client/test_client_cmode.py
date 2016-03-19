@@ -3191,7 +3191,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
     @ddt.data({
         'api_response_xml': fake.NO_RECORDS_RESPONSE,
-        'raised_exception': exception.SnapshotNotFound,
+        'raised_exception': exception.SnapshotResourceNotFound,
     }, {
         'api_response_xml': fake.SNAPSHOT_GET_ITER_NOT_UNIQUE_RESPONSE,
         'raised_exception': exception.NetAppException,

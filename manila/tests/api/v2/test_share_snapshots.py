@@ -226,14 +226,25 @@ class ShareSnapshotAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank(url, use_admin_context=use_admin_context)
 
         snapshots = [
-            {'id': 'id1', 'display_name': 'n1', 'status': 'fake_status', },
+            {
+                'id': 'id1',
+                'display_name': 'n1',
+                'status': 'fake_status',
+                'aggregate_status': 'fake_status',
+            },
             {
                 'id': 'id2',
                 'display_name': 'n2',
-                'status': 'fake_status',
+                'status': 'someotherstatus',
+                'aggregate_status': 'fake_status',
                 'share_id': 'fake_share_id',
             },
-            {'id': 'id3', 'display_name': 'n3', 'status': 'fake_status', },
+            {
+                'id': 'id3',
+                'display_name': 'n3',
+                'status': 'fake_status',
+                'aggregate_status': 'fake_status',
+            },
         ]
 
         self.mock_object(share_api.API, 'get_all_snapshots',
@@ -259,14 +270,14 @@ class ShareSnapshotAPITest(test.TestCase):
         self.assertEqual(
             snapshots[1]['display_name'], result['snapshots'][0]['name'])
         self.assertEqual(
-            snapshots[1]['status'], result['snapshots'][0]['status'])
+            snapshots[1]['aggregate_status'], result['snapshots'][0]['status'])
         self.assertEqual(
             snapshots[1]['share_id'], result['snapshots'][0]['share_id'])
 
-    def test_share_list_detail_with_search_opts_by_non_admin(self):
+    def test_snapshot_list_detail_with_search_opts_by_non_admin(self):
         self._snapshot_list_detail_with_search_opts(use_admin_context=False)
 
-    def test_share_list_detail_with_search_opts_by_admin(self):
+    def test_snapshot_list_detail_with_search_opts_by_admin(self):
         self._snapshot_list_detail_with_search_opts(use_admin_context=True)
 
     def test_snapshot_list_detail(self):

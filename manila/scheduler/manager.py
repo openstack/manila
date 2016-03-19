@@ -241,6 +241,14 @@ class SchedulerManager(manager.Manager):
         share_replica_id = request_spec.get(
             'share_instance_properties').get('id')
 
+        # Set any snapshot instances to 'error'.
+        replica_snapshots = db.share_snapshot_instance_get_all_with_filters(
+            context, {'share_instance_ids': share_replica_id})
+        for snapshot_instance in replica_snapshots:
+            db.share_snapshot_instance_update(
+                context, snapshot_instance['id'],
+                {'status': constants.STATUS_ERROR})
+
         db.share_replica_update(context, share_replica_id, status_updates)
 
     def create_share_replica(self, context, request_spec=None,
