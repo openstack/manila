@@ -2545,6 +2545,68 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.assertFalse(self.client.volume_exists(fake.SHARE_NAME))
 
+    def test_snapshot_exists(self):
+
+        api_response = netapp_api.NaElement(fake.VOLUME_GET_NAME_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.snapshot_exists(fake.SNAPSHOT_NAME,
+                                             fake.SHARE_NAME)
+
+        snapshot_get_iter_args = {
+            'query': {
+                'snapshot-info': {
+                    'name': fake.SNAPSHOT_NAME,
+                    'volume': fake.SHARE_NAME,
+                }
+            },
+            'desired-attributes': {
+                'snapshot-info': {
+                    'name': None,
+                    'volume': None,
+                    'busy': None,
+                    'snapshot-owners-list': {
+                        'snapshot-owner': None,
+                    }
+                }
+            }
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('snapshot-get-iter', snapshot_get_iter_args)])
+        self.assertTrue(result)
+
+    def test_snapshot_exists_not_found(self):
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertFalse(self.client.snapshot_exists(fake.SNAPSHOT_NAME,
+                                                     fake.SHARE_NAME))
+
+    @ddt.data({
+        'api_response_xml': fake.SNAPSHOT_GET_ITER_UNAVAILABLE_RESPONSE,
+        'raised_exception': exception.SnapshotUnavailable,
+    }, {
+        'api_response_xml': fake.SNAPSHOT_GET_ITER_OTHER_ERROR_RESPONSE,
+        'raised_exception': exception.NetAppException,
+    })
+    @ddt.unpack
+    def test_snapshot_exists_error(self, api_response_xml, raised_exception):
+
+        api_response = netapp_api.NaElement(api_response_xml)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(raised_exception,
+                          self.client.snapshot_exists,
+                          fake.SNAPSHOT_NAME,
+                          fake.SHARE_NAME)
+
     def test_get_aggregate_for_volume(self):
 
         api_response = netapp_api.NaElement(
