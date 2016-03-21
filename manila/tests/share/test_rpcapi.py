@@ -196,7 +196,8 @@ class ShareRpcAPITestCase(test.TestCase):
         self._test_share_api('delete_snapshot',
                              rpc_method='cast',
                              snapshot=self.fake_snapshot,
-                             host='fake_host')
+                             host='fake_host',
+                             force=False)
 
     def test_delete_share_server(self):
         self._test_share_api('delete_share_server',

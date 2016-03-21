@@ -1882,13 +1882,14 @@ class ShareManager(manager.SchedulerDependentManager):
         )
         snapshot_instance_id = snapshot_instance['id']
 
-        try:
-            model_update = self.driver.create_snapshot(
-                context, snapshot_instance, share_server=share_server)
+        snapshot_instance = self._get_snapshot_instance_dict(
+            context, snapshot_instance)
 
-            if model_update:
-                self.db.share_snapshot_instance_update(
-                    context, snapshot_instance_id, model_update)
+        try:
+
+            model_update = self.driver.create_snapshot(
+                context, snapshot_instance, share_server=share_server) or {}
+
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.db.share_snapshot_instance_update(
@@ -1896,17 +1897,16 @@ class ShareManager(manager.SchedulerDependentManager):
                     snapshot_instance_id,
                     {'status': constants.STATUS_ERROR})
 
+        if model_update.get('status') in (None, constants.STATUS_AVAILABLE):
+            model_update['status'] = constants.STATUS_AVAILABLE
+            model_update['progress'] = '100%'
+
         self.db.share_snapshot_instance_update(
-            context,
-            snapshot_instance_id,
-            {'status': constants.STATUS_AVAILABLE,
-             'progress': '100%'}
-        )
-        return snapshot_id
+            context, snapshot_instance_id, model_update)
 
     @add_hooks
     @utils.require_driver_initialized
-    def delete_snapshot(self, context, snapshot_id):
+    def delete_snapshot(self, context, snapshot_id, force=False):
         """Delete share snapshot."""
         context = context.elevated()
         snapshot_ref = self.db.share_snapshot_get(context, snapshot_id)
@@ -1914,8 +1914,7 @@ class ShareManager(manager.SchedulerDependentManager):
         share_server = self._get_share_server(
             context, snapshot_ref['share']['instance'])
         snapshot_instance = self.db.share_snapshot_instance_get(
-            context, snapshot_ref.instance['id'], with_share_data=True
-        )
+            context, snapshot_ref.instance['id'], with_share_data=True)
         snapshot_instance_id = snapshot_instance['id']
 
         if context.project_id != snapshot_ref['project_id']:
@@ -1923,35 +1922,59 @@ class ShareManager(manager.SchedulerDependentManager):
         else:
             project_id = context.project_id
 
+        snapshot_instance = self._get_snapshot_instance_dict(
+            context, snapshot_instance)
+
         try:
             self.driver.delete_snapshot(context, snapshot_instance,
                                         share_server=share_server)
         except exception.ShareSnapshotIsBusy:
-            self.db.share_snapshot_instance_update(
-                context,
-                snapshot_instance_id,
-                {'status': constants.STATUS_AVAILABLE})
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                self.db.share_snapshot_instance_update(
-                    context,
-                    snapshot_instance_id,
-                    {'status': constants.STATUS_ERROR_DELETING})
-        else:
-            self.db.share_snapshot_instance_delete(
-                context, snapshot_instance_id)
-            try:
-                reservations = QUOTAS.reserve(
-                    context, project_id=project_id, snapshots=-1,
-                    snapshot_gigabytes=-snapshot_ref['size'],
-                    user_id=snapshot_ref['user_id'])
-            except Exception:
-                reservations = None
-                LOG.exception(_LE("Failed to update usages deleting snapshot"))
+            with excutils.save_and_reraise_exception() as exc:
+                if force:
+                    msg = _("The driver reported that the snapshot %s "
+                            "was busy on the backend. Since this "
+                            "operation was forced, the snapshot will "
+                            "be deleted from Manila's database. A "
+                            "cleanup on the backend may be necessary.")
+                    LOG.exception(msg, snapshot_id)
+                    exc.reraise = False
+                else:
+                    self.db.share_snapshot_instance_update(
+                        context,
+                        snapshot_instance_id,
+                        {'status': constants.STATUS_AVAILABLE})
 
-            if reservations:
-                QUOTAS.commit(context, reservations, project_id=project_id,
-                              user_id=snapshot_ref['user_id'])
+        except Exception:
+            with excutils.save_and_reraise_exception() as exc:
+                if force:
+                    msg = _("The driver was unable to delete the "
+                            "snapshot %s on the backend. Since this "
+                            "operation is forced, the snapshot will "
+                            "be deleted from Manila's database. A cleanup on "
+                            "the backend may be necessary.")
+                    LOG.exception(msg, snapshot_id)
+                    exc.reraise = False
+                else:
+                    self.db.share_snapshot_instance_update(
+                        context,
+                        snapshot_instance_id,
+                        {'status': constants.STATUS_ERROR_DELETING})
+
+        self.db.share_snapshot_instance_delete(context, snapshot_instance_id)
+
+        try:
+            reservations = QUOTAS.reserve(
+                context, project_id=project_id, snapshots=-1,
+                snapshot_gigabytes=-snapshot_ref['size'],
+                user_id=snapshot_ref['user_id'])
+        except Exception:
+            reservations = None
+            LOG.exception(_LE("Failed to update quota usages while deleting "
+                              "snapshot %s."), snapshot_id)
+
+        if reservations:
+            QUOTAS.commit(context, reservations, project_id=project_id,
+                          user_id=snapshot_ref['user_id'])
 
     @add_hooks
     @utils.require_driver_initialized

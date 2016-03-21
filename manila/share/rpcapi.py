@@ -161,12 +161,13 @@ class ShareAPI(object):
                           share_id=share['id'],
                           snapshot_id=snapshot['id'])
 
-    def delete_snapshot(self, context, snapshot, host):
+    def delete_snapshot(self, context, snapshot, host, force=False):
         new_host = utils.extract_host(host)
         call_context = self.client.prepare(server=new_host)
         call_context.cast(context,
                           'delete_snapshot',
-                          snapshot_id=snapshot['id'])
+                          snapshot_id=snapshot['id'],
+                          force=force)
 
     def create_replicated_snapshot(self, context, share, replicated_snapshot):
         host = utils.extract_host(share['instance']['host'])
