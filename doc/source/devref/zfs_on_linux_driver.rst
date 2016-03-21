@@ -31,8 +31,7 @@ Requirements
   installed.
 * For ZFS hosts that support replication:
    * SSH access for each other should be passwordless.
-   * IP used for share exports should be available by ZFS hosts for each other.
-   * Username should be the same for accessing each of ZFS hosts.
+   * Service IP addresses should be available by ZFS hosts for each other.
 
 Supported Operations
 --------------------
@@ -65,6 +64,10 @@ Possibilities
   So, status 'in_sync' means latest sync was successful.
   Time range between syncs equals to value of
   config global opt 'replica_state_update_interval'.
+* Driver is able to use qualified extra spec 'zfsonlinux:compression'.
+  It can contain any value that is supported by used ZFS app.
+  But if it is disabled via config option with value 'compression=off',
+  then it will not be used.
 
 Restrictions
 ------------
@@ -78,14 +81,11 @@ The ZFSonLinux share driver has the following restrictions:
   one active replica available.
 * 'Manage share' operation is not yet implemented.
 * 'SaMBa' based sharing is not yet implemented.
+* 'Thick provisioning' is not yet implemented.
 
 Known problems
 --------------
 
-* Better to avoid usage of Neutron on the same node where ZFS is installed.
-  It leads to bug - https://bugs.launchpad.net/neutron/+bug/1546723
-  The ZFSonLinux share driver has workaround for it and requires 'nsenter' be
-  installed on the system where ZFS is installed.
 * 'Promote share replica' operation will make ZFS filesystem that became
   secondary as RO only on NFS level. On ZFS level system will
   stay mounted as was - RW.
