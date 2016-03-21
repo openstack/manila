@@ -1363,116 +1363,268 @@ class ShareManagerTestCase(test.TestCase):
         self.assertIsNone(retval)
         self.assertTrue(replica_update_call.called)
 
-    def test_create_delete_share_snapshot(self):
-        """Test share's snapshot can be created and deleted."""
+    def _get_snapshot_instance_dict(self, snapshot_instance, share):
+        expected_snapshot_instance_dict = {
+            'status': constants.STATUS_CREATING,
+            'share_id': share['id'],
+            'share_name': snapshot_instance['share_name'],
+            'deleted': snapshot_instance['deleted'],
+            'share': share,
+            'updated_at': snapshot_instance['updated_at'],
+            'snapshot_id': snapshot_instance['snapshot_id'],
+            'id': snapshot_instance['id'],
+            'name': snapshot_instance['name'],
+            'created_at': snapshot_instance['created_at'],
+            'share_instance_id': snapshot_instance['share_instance_id'],
+            'progress': snapshot_instance['progress'],
+            'deleted_at': snapshot_instance['deleted_at'],
+            'provider_location': snapshot_instance['provider_location'],
+        }
+        return expected_snapshot_instance_dict
 
-        def _fake_create_snapshot(self, snapshot, **kwargs):
-            snapshot['progress'] = '99%'
-            return snapshot.to_dict()
-
-        self.mock_object(self.share_manager.driver, "create_snapshot",
-                         _fake_create_snapshot)
-
-        share = db_utils.create_share()
-        share_id = share['id']
-        snapshot = db_utils.create_snapshot(share_id=share_id)
-        snapshot_id = snapshot['id']
-        self.share_manager.create_snapshot(self.context, share_id,
-                                           snapshot_id)
-        self.assertEqual(share_id,
-                         db.share_snapshot_get(context.get_admin_context(),
-                                               snapshot_id).share_id)
-
-        snap = db.share_snapshot_get(self.context, snapshot_id)
-        self.assertEqual(constants.STATUS_AVAILABLE, snap['status'])
-
-        self.share_manager.delete_snapshot(self.context, snapshot_id)
-        self.assertRaises(exception.NotFound,
-                          db.share_snapshot_get,
-                          self.context,
-                          snapshot_id)
-
-    def test_create_delete_share_snapshot_error(self):
-        """Test snapshot can be created and deleted with error."""
+    def test_create_snapshot_driver_exception(self):
 
         def _raise_not_found(self, *args, **kwargs):
             raise exception.NotFound()
 
+        share_id = 'FAKE_SHARE_ID'
+        share = fakes.fake_share(id=share_id, instance={'id': 'fake_id'})
+        snapshot_instance = fakes.fake_snapshot_instance(
+            share_id=share_id, share=share, name='fake_snapshot')
+        snapshot = fakes.fake_snapshot(
+            share_id=share_id, share=share, instance=snapshot_instance,
+            project_id=self.context.project_id)
+        snapshot_id = snapshot['id']
         self.mock_object(self.share_manager.driver, "create_snapshot",
                          mock.Mock(side_effect=_raise_not_found))
-        self.mock_object(self.share_manager.driver, "delete_snapshot",
-                         mock.Mock(side_effect=_raise_not_found))
-
-        share = db_utils.create_share()
-        share_id = share['id']
-        snapshot = db_utils.create_snapshot(share_id=share_id)
-        snapshot_id = snapshot['id']
+        self.mock_object(self.share_manager, '_get_share_server',
+                         mock.Mock(return_value=None))
+        self.mock_object(self.share_manager.db, 'share_snapshot_instance_get',
+                         mock.Mock(return_value=snapshot_instance))
+        self.mock_object(self.share_manager.db, 'share_snapshot_get',
+                         mock.Mock(return_value=snapshot))
+        db_update = self.mock_object(
+            self.share_manager.db, 'share_snapshot_instance_update')
+        expected_snapshot_instance_dict = self._get_snapshot_instance_dict(
+            snapshot_instance, share)
 
         self.assertRaises(exception.NotFound,
                           self.share_manager.create_snapshot,
                           self.context, share_id, snapshot_id)
+        db_update.assert_called_once_with(self.context,
+                                          snapshot_instance['id'],
+                                          {'status': constants.STATUS_ERROR})
 
-        snap = db.share_snapshot_get(self.context, snapshot_id)
-        self.assertEqual(constants.STATUS_ERROR, snap['status'])
+        self.share_manager.driver.create_snapshot.assert_called_once_with(
+            self.context, expected_snapshot_instance_dict, share_server=None)
+
+    def test_create_snapshot(self):
+        share_id = 'FAKE_SHARE_ID'
+        share = fakes.fake_share(id=share_id, instance={'id': 'fake_id'})
+        snapshot_instance = fakes.fake_snapshot_instance(
+            share_id=share_id, share=share, name='fake_snapshot')
+        snapshot = fakes.fake_snapshot(
+            share_id=share_id, share=share, instance=snapshot_instance)
+        snapshot_id = snapshot['id']
+        self.mock_object(self.share_manager.db, 'share_snapshot_get',
+                         mock.Mock(return_value=snapshot))
+        self.mock_object(self.share_manager.db, 'share_snapshot_instance_get',
+                         mock.Mock(return_value=snapshot_instance))
+        self.mock_object(self.share_manager, '_get_share_server',
+                         mock.Mock(return_value=None))
+        expected_update_calls = [
+            mock.call(self.context, snapshot_instance['id'],
+                      {'status': constants.STATUS_AVAILABLE,
+                       'progress': '100%'})
+        ]
+
+        expected_snapshot_instance_dict = self._get_snapshot_instance_dict(
+            snapshot_instance, share)
+        self.mock_object(self.share_manager.driver, 'create_snapshot',
+                         mock.Mock(return_value=None))
+        db_update = self.mock_object(
+            self.share_manager.db, 'share_snapshot_instance_update')
+
+        return_value = self.share_manager.create_snapshot(
+            self.context, share_id, snapshot_id)
+
+        self.assertEqual(None, return_value)
+        self.share_manager.driver.create_snapshot.assert_called_once_with(
+            self.context, expected_snapshot_instance_dict, share_server=None)
+        db_update.assert_has_calls(expected_update_calls, any_order=True)
+
+    def test_delete_snapshot_driver_other_exception(self):
+
+        def _raise_not_found(self, *args, **kwargs):
+            raise exception.NotFound()
+
+        share_id = 'FAKE_SHARE_ID'
+        share = fakes.fake_share(id=share_id, instance={'id': 'fake_id'})
+        snapshot_instance = fakes.fake_snapshot_instance(
+            share_id=share_id, share=share, name='fake_snapshot')
+        snapshot = fakes.fake_snapshot(
+            share_id=share_id, share=share, instance=snapshot_instance,
+            project_id=self.context.project_id)
+        snapshot_id = snapshot['id']
+        self.mock_object(self.share_manager.driver, "delete_snapshot",
+                         mock.Mock(side_effect=_raise_not_found))
+        self.mock_object(self.share_manager, '_get_share_server',
+                         mock.Mock(return_value=None))
+        self.mock_object(self.share_manager.db, 'share_snapshot_instance_get',
+                         mock.Mock(return_value=snapshot_instance))
+        self.mock_object(self.share_manager.db, 'share_snapshot_get',
+                         mock.Mock(return_value=snapshot))
+        self.mock_object(
+            self.share_manager.db, 'share_get', mock.Mock(return_value=share))
+        db_update = self.mock_object(
+            self.share_manager.db, 'share_snapshot_instance_update')
+        db_destroy_call = self.mock_object(
+            self.share_manager.db, 'share_snapshot_instance_delete')
+        expected_snapshot_instance_dict = self._get_snapshot_instance_dict(
+            snapshot_instance, share)
+        mock_exception_log = self.mock_object(manager.LOG, 'exception')
 
         self.assertRaises(exception.NotFound,
                           self.share_manager.delete_snapshot,
                           self.context, snapshot_id)
-
-        self.assertEqual(
-            constants.STATUS_ERROR_DELETING,
-            db.share_snapshot_get(self.context, snapshot_id).status)
-        self.share_manager.driver.create_snapshot.assert_called_once_with(
-            self.context, utils.IsAMatcher(models.ShareSnapshotInstance),
-            share_server=None)
+        db_update.assert_called_once_with(
+            mock.ANY, snapshot_instance['id'],
+            {'status': constants.STATUS_ERROR_DELETING})
         self.share_manager.driver.delete_snapshot.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext),
-            utils.IsAMatcher(models.ShareSnapshotInstance),
+            mock.ANY, expected_snapshot_instance_dict,
             share_server=None)
+        self.assertFalse(db_destroy_call.called)
+        self.assertFalse(mock_exception_log.called)
 
-    def test_delete_snapshot_quota_error(self):
-        share = db_utils.create_share()
-        share_id = share['id']
-        snapshot = db_utils.create_snapshot(share_id=share_id)
-        snapshot_id = snapshot['id']
-        snapshot = db_utils.create_snapshot(
-            with_share=True, status=constants.STATUS_AVAILABLE)
-
-        self.mock_object(quota.QUOTAS, 'reserve',
-                         mock.Mock(side_effect=exception.QuotaError('fake')))
-        self.mock_object(quota.QUOTAS, 'commit')
-
-        self.share_manager.delete_snapshot(self.context, snapshot_id)
-
-        quota.QUOTAS.reserve.assert_called_once_with(
-            mock.ANY,
-            project_id=six.text_type(snapshot['project_id']),
-            snapshots=-1,
-            snapshot_gigabytes=-snapshot['size'],
-            user_id=six.text_type(snapshot['user_id'])
-        )
-        self.assertFalse(quota.QUOTAS.commit.called)
-
-    def test_delete_share_instance_if_busy(self):
-        """Test snapshot could not be deleted if busy."""
+    def test_delete_snapshot_exception_snapshot_is_busy(self):
+        """Test snapshot should not be deleted if busy."""
 
         def _raise_share_snapshot_is_busy(self, *args, **kwargs):
             raise exception.ShareSnapshotIsBusy(snapshot_name='fakename')
 
+        share_id = 'FAKE_SHARE_ID'
+        share = fakes.fake_share(
+            id=share_id, has_replicas=True, instance={'id': 'fake_id'})
+        snapshot_instance = fakes.fake_snapshot_instance(
+            share_id=share_id, share=share, name='fake_snapshot')
+        snapshot = fakes.fake_snapshot(
+            share_id=share_id, share=share, instance=snapshot_instance,
+            project_id=self.context.project_id)
+        snapshot_id = snapshot['id']
+        self.mock_object(self.share_manager, '_get_share_server',
+                         mock.Mock(return_value=None))
+        self.mock_object(self.share_manager.db, 'share_snapshot_instance_get',
+                         mock.Mock(return_value=snapshot_instance))
+        self.mock_object(self.share_manager.db, 'share_snapshot_get',
+                         mock.Mock(return_value=snapshot))
         self.mock_object(self.share_manager.driver, "delete_snapshot",
                          mock.Mock(side_effect=_raise_share_snapshot_is_busy))
-        share = db_utils.create_share(status=constants.STATUS_ACTIVE)
-        snapshot = db_utils.create_snapshot(share_id=share['id'])
+        snapshot_update_call = self.mock_object(
+            self.share_manager.db, 'share_snapshot_instance_update')
+        self.mock_object(
+            self.share_manager.db, 'share_get', mock.Mock(return_value=share))
+
+        self.assertRaises(exception.ShareSnapshotIsBusy,
+                          self.share_manager.delete_snapshot,
+                          self.context, snapshot_id)
+
+        snapshot_update_call.assert_called_once_with(
+            mock.ANY, snapshot_instance['id'],
+            {'status': constants.STATUS_AVAILABLE})
+
+    @ddt.data(True, False)
+    def test_delete_snapshot_with_quota_error(self, quota_error):
+
+        share_id = 'FAKE_SHARE_ID'
+        share = fakes.fake_share(id=share_id, instance={'id': 'fake_id'})
+        snapshot_instance = fakes.fake_snapshot_instance(
+            share_id=share_id, share=share, name='fake_snapshot')
+        snapshot = fakes.fake_snapshot(
+            share_id=share_id, share=share, instance=snapshot_instance,
+            project_id=self.context.project_id, size=1)
         snapshot_id = snapshot['id']
+        self.mock_object(self.share_manager.db, 'share_snapshot_get',
+                         mock.Mock(return_value=snapshot))
+        self.mock_object(self.share_manager.db, 'share_snapshot_instance_get',
+                         mock.Mock(return_value=snapshot_instance))
+        self.mock_object(self.share_manager.db, 'share_get',
+                         mock.Mock(return_value=share))
+        self.mock_object(self.share_manager, '_get_share_server',
+                         mock.Mock(return_value=None))
+        mock_exception_log = self.mock_object(manager.LOG, 'exception')
+        expected_exc_count = 1 if quota_error else 0
 
-        self.share_manager.delete_snapshot(self.context, snapshot_id)
+        expected_snapshot_instance_dict = self._get_snapshot_instance_dict(
+            snapshot_instance, share)
 
-        snap = db.share_snapshot_get(self.context, snapshot_id)
-        self.assertEqual(constants.STATUS_AVAILABLE, snap['status'])
+        self.mock_object(self.share_manager.driver, 'delete_snapshot')
+        db_update_call = self.mock_object(
+            self.share_manager.db, 'share_snapshot_instance_update')
+        snapshot_destroy_call = self.mock_object(
+            self.share_manager.db, 'share_snapshot_instance_delete')
+        side_effect = exception.QuotaError(code=500) if quota_error else None
+        self.mock_object(quota.QUOTAS, 'reserve',
+                         mock.Mock(side_effect=side_effect))
+        quota_commit_call = self.mock_object(quota.QUOTAS, 'commit')
+
+        retval = self.share_manager.delete_snapshot(
+            self.context, snapshot_id)
+
+        self.assertIsNone(retval)
         self.share_manager.driver.delete_snapshot.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext),
-            utils.IsAMatcher(models.ShareSnapshotInstance),
-            share_server=None)
+            mock.ANY, expected_snapshot_instance_dict, share_server=None)
+        self.assertFalse(db_update_call.called)
+        self.assertTrue(snapshot_destroy_call.called)
+        self.assertTrue(manager.QUOTAS.reserve.called)
+        quota.QUOTAS.reserve.assert_called_once_with(
+            mock.ANY, project_id=self.context.project_id, snapshots=-1,
+            snapshot_gigabytes=-snapshot['size'], user_id=snapshot['user_id'])
+        self.assertEqual(not quota_error, quota_commit_call.called)
+        self.assertEqual(quota_error, mock_exception_log.called)
+        self.assertEqual(expected_exc_count, mock_exception_log.call_count)
+
+    @ddt.data(exception.ShareSnapshotIsBusy, exception.ManilaException)
+    def test_delete_snapshot_ignore_exceptions_with_the_force(self, exc):
+
+        def _raise_quota_error():
+            raise exception.QuotaError(code='500')
+
+        share_id = 'FAKE_SHARE_ID'
+        share = fakes.fake_share(id=share_id, instance={'id': 'fake_id'})
+        snapshot_instance = fakes.fake_snapshot_instance(
+            share_id=share_id, share=share, name='fake_snapshot')
+        snapshot = fakes.fake_snapshot(
+            share_id=share_id, share=share, instance=snapshot_instance,
+            project_id=self.context.project_id, size=1)
+        snapshot_id = snapshot['id']
+        self.mock_object(self.share_manager.db, 'share_snapshot_get',
+                         mock.Mock(return_value=snapshot))
+        self.mock_object(self.share_manager.db, 'share_snapshot_instance_get',
+                         mock.Mock(return_value=snapshot_instance))
+        self.mock_object(self.share_manager.db, 'share_get',
+                         mock.Mock(return_value=share))
+        self.mock_object(self.share_manager, '_get_share_server',
+                         mock.Mock(return_value=None))
+        mock_exception_log = self.mock_object(manager.LOG, 'exception')
+        self.mock_object(self.share_manager.driver, 'delete_snapshot',
+                         mock.Mock(side_effect=exc))
+        db_update_call = self.mock_object(
+            self.share_manager.db, 'share_snapshot_instance_update')
+        snapshot_destroy_call = self.mock_object(
+            self.share_manager.db, 'share_snapshot_instance_delete')
+        self.mock_object(quota.QUOTAS, 'reserve',
+                         mock.Mock(side_effect=_raise_quota_error))
+        quota_commit_call = self.mock_object(quota.QUOTAS, 'commit')
+
+        retval = self.share_manager.delete_snapshot(
+            self.context, snapshot_id, force=True)
+
+        self.assertIsNone(retval)
+        self.assertEqual(2, mock_exception_log.call_count)
+        snapshot_destroy_call.assert_called_once_with(
+            mock.ANY, snapshot_instance['id'])
+        self.assertFalse(quota_commit_call.called)
+        self.assertFalse(db_update_call.called)
 
     def test_create_share_instance_with_share_network_dhss_false(self):
         manager.CONF.set_default('driver_handles_share_servers', False)

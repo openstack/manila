@@ -94,7 +94,8 @@ def fake_snapshot(create_instance=False, **kwargs):
     instance_keys = ('instance_id', 'snapshot_id', 'share_instance_id',
                      'status', 'progress', 'provider_location')
     snapshot_keys = ('id', 'share_name', 'share_id', 'name', 'share_size',
-                     'share_proto', 'instance', 'aggregate_status')
+                     'share_proto', 'instance', 'aggregate_status', 'share',
+                     'project_id', 'size')
 
     instance_kwargs = {k: kwargs.get(k) for k in instance_keys if k in kwargs}
     snapshot_kwargs = {k: kwargs.get(k) for k in snapshot_keys if k in kwargs}
@@ -113,6 +114,9 @@ def fake_snapshot(create_instance=False, **kwargs):
         'instance': None,
         'share': 'fake_share',
         'aggregate_status': aggregate_status,
+        'project_id': 'fakeprojectid',
+        'size': 1,
+        'user_id': 'xyzzy',
     }
     snapshot.update(snapshot_kwargs)
     if create_instance:
@@ -146,6 +150,11 @@ def fake_snapshot_instance(base_snapshot=None, **kwargs):
         'share_name': 'fakename',
         'share_id': 'fakeshareinstanceid',
         'share_instance_id': 'fakeshareinstanceid',
+        'deleted': False,
+        'updated_at': datetime.datetime(2016, 3, 21, 0, 5, 58),
+        'created_at': datetime.datetime(2016, 3, 21, 0, 5, 58),
+        'deleted_at': None,
+        'share': fake_share(),
     }
     snapshot_instance.update(kwargs)
     return db_fakes.FakeModel(snapshot_instance)
