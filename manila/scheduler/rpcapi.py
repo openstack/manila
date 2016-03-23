@@ -108,7 +108,7 @@ class SchedulerAPI(object):
                      request_spec=None, filter_properties=None):
 
         call_context = self.client.prepare(version='1.6')
-        return call_context.call(context, 'manage_share',
+        return call_context.cast(context, 'manage_share',
                                  share_id=share_id,
                                  driver_options=driver_options,
                                  request_spec=request_spec,
