@@ -34,6 +34,7 @@ from manila import exception
 from manila.i18n import _
 
 CINDER_GROUP = 'cinder'
+AUTH_OBJ = None
 
 cinder_deprecated_opts = [
     cfg.StrOpt('cinder_catalog_info',
@@ -113,24 +114,21 @@ def list_opts():
     return client_auth.AuthClientLoader.list_opts(CINDER_GROUP)
 
 
-auth_obj = None
-
-
 def cinderclient(context):
-    global auth_obj
-    if not auth_obj:
+    global AUTH_OBJ
+    if not AUTH_OBJ:
         deprecated_opts_for_v2 = {
             'username': CONF.nova_admin_username,
             'password': CONF.nova_admin_password,
             'tenant_name': CONF.nova_admin_tenant_name,
             'auth_url': CONF.nova_admin_auth_url,
         }
-        auth_obj = client_auth.AuthClientLoader(
+        AUTH_OBJ = client_auth.AuthClientLoader(
             client_class=cinder_client.Client,
             exception_module=cinder_exception,
             cfg_group=CINDER_GROUP,
             deprecated_opts_for_v2=deprecated_opts_for_v2)
-    return auth_obj.get_client(context,
+    return AUTH_OBJ.get_client(context,
                                insecure=CONF[CINDER_GROUP].api_insecure,
                                cacert=CONF[CINDER_GROUP].ca_certificates_file,
                                retries=CONF[CINDER_GROUP].http_retries)

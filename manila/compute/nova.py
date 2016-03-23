@@ -31,6 +31,7 @@ from manila import exception
 from manila.i18n import _
 
 NOVA_GROUP = 'nova'
+AUTH_OBJ = None
 
 nova_deprecated_opts = [
     cfg.StrOpt('nova_admin_username',
@@ -107,24 +108,22 @@ LOG = log.getLogger(__name__)
 def list_opts():
     return client_auth.AuthClientLoader.list_opts(NOVA_GROUP)
 
-auth_obj = None
-
 
 def novaclient(context):
-    global auth_obj
-    if not auth_obj:
+    global AUTH_OBJ
+    if not AUTH_OBJ:
         deprecated_opts_for_v2 = {
             'username': CONF.nova_admin_username,
             'password': CONF.nova_admin_password,
             'tenant_name': CONF.nova_admin_tenant_name,
             'auth_url': CONF.nova_admin_auth_url,
         }
-        auth_obj = client_auth.AuthClientLoader(
+        AUTH_OBJ = client_auth.AuthClientLoader(
             client_class=nova_client.Client,
             exception_module=nova_exception,
             cfg_group=NOVA_GROUP,
             deprecated_opts_for_v2=deprecated_opts_for_v2)
-    return auth_obj.get_client(context,
+    return AUTH_OBJ.get_client(context,
                                version=CONF[NOVA_GROUP].api_microversion,
                                insecure=CONF[NOVA_GROUP].api_insecure,
                                cacert=CONF[NOVA_GROUP].ca_certificates_file)
