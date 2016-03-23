@@ -156,17 +156,30 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
 
         self._test_manage(share=self.shares[0])
 
-    @test.attr(type=["gate", "smoke"])
-    def test_manage_retry(self):
-        # Manage share with invalid parameters
+    @test.attr(type=["gate", "smoke", "negative", ])
+    def test_manage_with_type_invalid(self):
+        # Manage share with invalid type
 
-        self.assertRaises(
-            lib_exc.Conflict,
-            self.shares_v2_client.manage_share,
+        share = self.shares_v2_client.manage_share(
             service_host=self.shares[1]['host'],
             export_path=self.shares[1]['export_locations'][0],
             protocol=self.shares[1]['share_proto'],
             share_type_id=self.st_invalid['share_type']['id'])
+
+        # Wait for failure
+        self.shares_v2_client.wait_for_share_status(share['id'],
+                                                    'manage_error')
+
+        # Delete share
+        self.shares_v2_client.reset_state(share['id'])
+        self.shares_v2_client.delete_share(share['id'])
+        self.shares_v2_client.wait_for_resource_deletion(share_id=share['id'])
+        self.assertRaises(lib_exc.NotFound, self.shares_v2_client.get_share,
+                          share['id'])
+
+    @test.attr(type=["gate", "smoke", ])
+    def test_manage_with_type(self):
+        # Manage share with type
 
         share = self.shares_v2_client.manage_share(
             service_host=self.shares[1]['host'],
@@ -174,13 +187,13 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
             protocol=self.shares[1]['share_proto'],
             share_type_id=self.st['share_type']['id'])
 
+        # Wait for success
         self.shares_v2_client.wait_for_share_status(share['id'], 'available')
 
         # Delete share
         self.shares_v2_client.delete_share(share['id'])
         self.shares_v2_client.wait_for_resource_deletion(share_id=share['id'])
-        self.assertRaises(lib_exc.NotFound,
-                          self.shares_v2_client.get_share,
+        self.assertRaises(lib_exc.NotFound, self.shares_v2_client.get_share,
                           share['id'])
 
 

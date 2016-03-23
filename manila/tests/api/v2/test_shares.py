@@ -1815,9 +1815,9 @@ class ShareManageTest(test.TestCase):
 
     def test_share_manage_duplicate_share(self):
         body = get_fake_manage_body()
+        exc = exception.InvalidShare(reason="fake")
         self._setup_manage_mocks()
-        self.mock_object(share_api.API, 'manage',
-                         mock.Mock(side_effect=exception.ManilaException()))
+        self.mock_object(share_api.API, 'manage', mock.Mock(side_effect=exc))
 
         self.assertRaises(webob.exc.HTTPConflict,
                           self.controller.manage,
