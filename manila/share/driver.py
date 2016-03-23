@@ -980,7 +980,7 @@ class ShareDriver(object):
 
             member_update_list -  a list of dictionaries containing for every
             member of the cgsnapshot. Each dict should contains values to be
-            updated for teh CGSnapshotMember in the database. This list may be
+            updated for the CGSnapshotMember in the database. This list may be
             empty or None.
         """
         raise NotImplementedError()

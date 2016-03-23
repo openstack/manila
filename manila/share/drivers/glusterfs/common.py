@@ -377,7 +377,7 @@ def numreduct(vers):
 def _mount_gluster_vol(execute, gluster_export, mount_path, ensure=False):
     """Mount a GlusterFS volume at the specified mount path.
 
-    :param execute: command exectution function
+    :param execute: command execution function
     :param gluster_export: GlusterFS export to mount
     :param mount_path: path to mount at
     :param ensure: boolean to allow remounting a volume with a warning
@@ -398,7 +398,7 @@ def _mount_gluster_vol(execute, gluster_export, mount_path, ensure=False):
 def _umount_gluster_vol(execute, mount_path):
     """Unmount a GlusterFS volume at the specified mount path.
 
-    :param execute: command exectution function
+    :param execute: command execution function
     :param mount_path: path where volume is mounted
     """
 

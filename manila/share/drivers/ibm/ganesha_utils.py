@@ -15,7 +15,7 @@
 Ganesha Admin Utilities
 
 Ganesha NFS does not provide many tools for automating the process of creating
-and managing export defintions.  This module provides utilities to help parse
+and managing export definitions.  This module provides utilities to help parse
 a specified ganesha config file and return a map containing the export
 definitions and attributes.  A method republishing updated export definitions
 is also provided.  And there are methods for requesting the ganesha server

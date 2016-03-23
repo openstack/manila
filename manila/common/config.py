@@ -170,7 +170,7 @@ CONF.register_opts(global_opts)
 
 
 def verify_share_protocols():
-    """Perfom verification of 'enabled_share_protocols'."""
+    """Perform verification of 'enabled_share_protocols'."""
     msg = None
     supported_protocols = constants.SUPPORTED_SHARE_PROTOCOLS
     data = dict(supported=', '.join(supported_protocols))

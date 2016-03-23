@@ -16,7 +16,7 @@ http://docs.ceph.com/docs/master/cephfs/).  If you choose to use the kernel
 client rather than the FUSE client, the share size limits set in Manila
 may not be obeyed.
 
-Prerequisities
+Prerequisites
 --------------
 
 - A Ceph cluster with a filesystem configured (
