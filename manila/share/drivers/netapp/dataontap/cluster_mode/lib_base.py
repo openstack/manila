@@ -800,6 +800,7 @@ class NetAppCmodeFileStorageLibrary(object):
         # Get existing volume info
         volume = vserver_client.get_volume_to_manage(aggregate_name,
                                                      volume_name)
+
         if not volume:
             msg = _('Volume %(volume)s not found on aggregate %(aggr)s.')
             msg_args = {'volume': volume_name, 'aggr': aggregate_name}
@@ -863,6 +864,12 @@ class NetAppCmodeFileStorageLibrary(object):
 
         if vserver_client.volume_has_junctioned_volumes(volume['name']):
             msg = _('Volume %(volume)s must not have junctioned volumes.')
+            msg_args = {'volume': volume['name']}
+            raise exception.ManageInvalidShare(reason=msg % msg_args)
+
+        if vserver_client.volume_has_snapmirror_relationships(volume):
+            msg = _('Volume %(volume)s must not be in any snapmirror '
+                    'relationships.')
             msg_args = {'volume': volume['name']}
             raise exception.ManageInvalidShare(reason=msg % msg_args)
 

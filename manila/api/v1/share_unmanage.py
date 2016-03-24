@@ -37,6 +37,10 @@ class ShareUnmanageMixin(object):
 
         try:
             share = self.share_api.get(context, id)
+            if share.get('has_replicas'):
+                msg = _("Share %s has replicas. It cannot be unmanaged "
+                        "until all replicas are removed.") % share['id']
+                raise exc.HTTPConflict(explanation=msg)
             if share['instance'].get('share_server_id'):
                 msg = _("Operation 'unmanage' is not supported for shares "
                         "that are created on top of share servers "

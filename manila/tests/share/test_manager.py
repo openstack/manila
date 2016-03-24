@@ -2136,10 +2136,13 @@ class ShareManagerTestCase(test.TestCase):
             share['project_id'], {'shares': 1, 'gigabytes': 3})
 
     @ddt.data(
-        {'size': 1},
-        {'size': 2, 'name': 'fake'},
-        {'size': 3, 'export_locations': ['foo', 'bar', 'quuz']})
+        {'size': 1, 'replication_type': None},
+        {'size': 2, 'name': 'fake', 'replication_type': 'dr'},
+        {'size': 3, 'export_locations': ['foo', 'bar', 'quuz'],
+         'replication_type': 'writable'},
+    )
     def test_manage_share_valid_share(self, driver_data):
+        replication_type = driver_data.pop('replication_type')
         export_locations = driver_data.get('export_locations')
         self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
         self.mock_object(self.share_manager, 'driver', mock.Mock())
@@ -2157,7 +2160,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.driver,
                          "manage_existing",
                          mock.Mock(return_value=driver_data))
-        share = db_utils.create_share()
+        share = db_utils.create_share(replication_type=replication_type)
         share_id = share['id']
         driver_options = {'fake': 'fake'}
 
@@ -2175,6 +2178,8 @@ class ShareManagerTestCase(test.TestCase):
                 self.share_manager.db.share_export_locations_update.called)
         valid_share_data = {
             'status': constants.STATUS_AVAILABLE, 'launched_at': mock.ANY}
+        if replication_type:
+            valid_share_data['replica_state'] = constants.REPLICA_STATE_ACTIVE
         valid_share_data.update(driver_data)
         self.share_manager.db.share_update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),

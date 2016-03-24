@@ -1,0 +1,12 @@
+---
+features:
+  - Share can be managed with replication_type extra-spec
+    in the share_type
+issues:
+  - Managing a share with replication_type can only be
+    possible if the share does not already have replicas.
+fixes:
+  - Retrying to manage shares in ``manage_error`` status
+    works as expected.
+  - Snapshot manage and unmange operations are disabled
+    for shares with replicas.

@@ -637,8 +637,12 @@ class ShareDriver(object):
     def manage_existing(self, share, driver_options):
         """Brings an existing share under Manila management.
 
-        If provided share is not valid, then raise a
+        If the provided share is not valid, then raise a
         ManageInvalidShare exception, specifying a reason for the failure.
+
+        If the provided share is not in a state that can be managed, such as
+        being replicated on the backend, the driver *MUST* raise
+        ManageInvalidShare exception with an appropriate message.
 
         The share has a share_type, and the driver can inspect that and
         compare against the properties of the referenced backend share.

@@ -59,6 +59,11 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
                         "snapshots of shares that are created with share"
                         " servers (created with share-networks).")
                 raise exc.HTTPForbidden(explanation=msg)
+            elif share.get('has_replicas'):
+                msg = _("Share %s has replicas. Snapshots of this share "
+                        "cannot currently be unmanaged until all replicas "
+                        "are removed.") % share['id']
+                raise exc.HTTPConflict(explanation=msg)
             elif snapshot['status'] in constants.TRANSITIONAL_STATUSES:
                 msg = _("Snapshot with transitional state cannot be "
                         "unmanaged. Snapshot '%(s_id)s' is in '%(state)s' "
@@ -118,7 +123,8 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
                                                           driver_options)
         except (exception.ShareNotFound, exception.ShareSnapshotNotFound) as e:
             raise exc.HTTPNotFound(explanation=six.text_type(e))
-        except exception.ManageInvalidShareSnapshot as e:
+        except (exception.InvalidShare,
+                exception.ManageInvalidShareSnapshot) as e:
             raise exc.HTTPConflict(explanation=six.text_type(e))
 
         return self._view_builder.detail(req, snapshot_ref)

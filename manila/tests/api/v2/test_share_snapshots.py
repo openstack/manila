@@ -486,7 +486,8 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
 
     @ddt.data(exception.ShareNotFound(share_id='fake'),
               exception.ShareSnapshotNotFound(snapshot_id='fake'),
-              exception.ManageInvalidShareSnapshot(reason='error'))
+              exception.ManageInvalidShareSnapshot(reason='error'),
+              exception.InvalidShare(reason='error'))
     def test_manage_exception(self, exception_type):
         self.mock_policy_check = self.mock_object(
             policy, 'check_policy', mock.Mock(return_value=True))
@@ -497,10 +498,12 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
             share_api.API, 'manage_snapshot', mock.Mock(
                 side_effect=exception_type))
 
-        if isinstance(exception_type, exception.ManageInvalidShareSnapshot):
+        http_ex = webob.exc.HTTPNotFound
+
+        if (isinstance(exception_type, exception.ManageInvalidShareSnapshot)
+                or isinstance(exception_type, exception.InvalidShare)):
             http_ex = webob.exc.HTTPConflict
-        else:
-            http_ex = webob.exc.HTTPNotFound
+
         self.assertRaises(http_ex,
                           self.controller.manage,
                           self.manage_request, body)
@@ -533,6 +536,29 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
                          mock.Mock(return_value=snapshot))
 
         self.assertRaises(webob.exc.HTTPForbidden,
+                          self.controller.unmanage,
+                          self.unmanage_request,
+                          snapshot['id'])
+        self.controller.share_api.get_snapshot.assert_called_once_with(
+            self.unmanage_request.environ['manila.context'], snapshot['id'])
+        self.controller.share_api.get.assert_called_once_with(
+            self.unmanage_request.environ['manila.context'], share['id'])
+        self.mock_policy_check.assert_called_once_with(
+            self.unmanage_request.environ['manila.context'],
+            self.resource_name, 'unmanage_snapshot')
+
+    def test_snapshot_unmanage_replicated_snapshot(self):
+        self.mock_policy_check = self.mock_object(
+            policy, 'check_policy', mock.Mock(return_value=True))
+        share = {'status': constants.STATUS_AVAILABLE, 'id': 'bar_id',
+                 'has_replicas': True}
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+        snapshot = {'status': constants.STATUS_AVAILABLE, 'id': 'foo_id',
+                    'share_id': 'bar_id'}
+        self.mock_object(share_api.API, 'get_snapshot',
+                         mock.Mock(return_value=snapshot))
+
+        self.assertRaises(webob.exc.HTTPConflict,
                           self.controller.unmanage,
                           self.unmanage_request,
                           snapshot['id'])

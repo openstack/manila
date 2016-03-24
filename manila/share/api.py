@@ -505,15 +505,15 @@ class API(base.Base):
             'share_type_id': share_data['share_type_id']
         })
 
-        share_type = {}
         share_type_id = share_data['share_type_id']
-        if share_type_id:
-            share_type = share_types.get_share_type(context, share_type_id)
+        share_type = share_types.get_share_type(context, share_type_id)
 
         snapshot_support = strutils.bool_from_string(
             share_type.get('extra_specs', {}).get(
                 'snapshot_support', True) if share_type else True,
             strict=True)
+        replication_type = share_type.get('extra_specs', {}).get(
+            'replication_type')
 
         share_data.update({
             'user_id': context.user_id,
@@ -521,6 +521,7 @@ class API(base.Base):
             'status': constants.STATUS_MANAGING,
             'scheduled_at': timeutils.utcnow(),
             'snapshot_support': snapshot_support,
+            'replication_type': replication_type,
         })
 
         LOG.debug("Manage: Found shares %s.", len(shares))
@@ -620,6 +621,12 @@ class API(base.Base):
             share = self.db.share_get(context, snapshot_data['share_id'])
         except exception.NotFound:
             raise exception.ShareNotFound(share_id=snapshot_data['share_id'])
+
+        if share['has_replicas']:
+            msg = (_("Share %s has replicas. Snapshots of this share cannot "
+                     "currently be managed until all replicas are removed.")
+                   % share['id'])
+            raise exception.InvalidShare(reason=msg)
 
         existing_snapshots = self.db.share_snapshot_get_all_for_share(
             context, snapshot_data['share_id'])

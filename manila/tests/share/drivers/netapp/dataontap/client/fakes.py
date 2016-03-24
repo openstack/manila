@@ -1955,3 +1955,12 @@ FAKE_RESULT_SUCCESS = api.NaElement('result')
 FAKE_RESULT_SUCCESS.add_attr('status', 'passed')
 
 FAKE_HTTP_OPENER = urllib.request.build_opener()
+
+FAKE_MANAGE_VOLUME = {
+    'aggregate': SHARE_AGGREGATE_NAME,
+    'name': SHARE_NAME,
+    'owning-vserver-name': VSERVER_NAME,
+    'junction_path': VOLUME_JUNCTION_PATH,
+    'style': 'fake_style',
+    'size': SHARE_SIZE,
+}

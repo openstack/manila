@@ -1566,6 +1566,11 @@ class ShareManager(manager.SchedulerDependentManager):
                 'availability_zone': CONF.storage_availability_zone,
             })
 
+            # If the share was managed with `replication_type` extra-spec, the
+            # instance becomes an `active` replica.
+            if share_ref.get('replication_type'):
+                share_update['replica_state'] = constants.REPLICA_STATE_ACTIVE
+
             # NOTE(vponomaryov): we should keep only those export locations
             # that driver has calculated to avoid incompatibilities with one
             # provided by user.

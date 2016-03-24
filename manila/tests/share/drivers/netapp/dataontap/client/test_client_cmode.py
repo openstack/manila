@@ -2840,6 +2840,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                         'name': None,
                         'type': None,
                         'style': None,
+                        'owning-vserver-name': None,
                     },
                     'volume-space-attributes': {
                         'size': None,
@@ -2854,6 +2855,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'type': 'rw',
             'style': 'flex',
             'size': fake.SHARE_SIZE,
+            'owning-vserver-name': fake.VSERVER_NAME
         }
         self.client.send_iter_request.assert_has_calls([
             mock.call('volume-get-iter', volume_get_iter_args)])
@@ -5014,3 +5016,67 @@ class NetAppClientCmodeTestCase(test.TestCase):
         }
         self.client.send_request.assert_has_calls([
             mock.call('snapmirror-resync', snapmirror_resync_args)])
+
+    @ddt.data('source', 'destination', None)
+    def test_volume_has_snapmirror_relationships(self, snapmirror_rel_type):
+        """Snapmirror relationships can be both ways."""
+
+        vol = fake.FAKE_MANAGE_VOLUME
+        snapmirror = {
+            'source-vserver': fake.SM_SOURCE_VSERVER,
+            'source-volume': fake.SM_SOURCE_VOLUME,
+            'destination-vserver': fake.SM_DEST_VSERVER,
+            'destination-volume': fake.SM_DEST_VOLUME,
+            'is-healthy': 'true',
+            'mirror-state': 'snapmirrored',
+            'schedule': 'daily',
+        }
+        expected_get_snapmirrors_call_count = 2
+        expected_get_snapmirrors_calls = [
+            mock.call(vol['owning-vserver-name'], vol['name'], None, None),
+            mock.call(None, None, vol['owning-vserver-name'], vol['name']),
+        ]
+        if snapmirror_rel_type is None:
+            side_effect = ([], [])
+        elif snapmirror_rel_type == 'source':
+            snapmirror['source-vserver'] = vol['owning-vserver-name']
+            snapmirror['source-volume'] = vol['name']
+            side_effect = ([snapmirror], None)
+            expected_get_snapmirrors_call_count = 1
+            expected_get_snapmirrors_calls.pop()
+        else:
+            snapmirror['destination-vserver'] = vol['owning-vserver-name']
+            snapmirror['destination-volume'] = vol['name']
+            side_effect = (None, [snapmirror])
+        mock_get_snapmirrors_call = self.mock_object(
+            self.client, 'get_snapmirrors', mock.Mock(side_effect=side_effect))
+        mock_exc_log = self.mock_object(client_cmode.LOG, 'exception')
+        expected_retval = True if snapmirror_rel_type else False
+
+        retval = self.client.volume_has_snapmirror_relationships(vol)
+
+        self.assertEqual(expected_retval, retval)
+        self.assertEqual(expected_get_snapmirrors_call_count,
+                         mock_get_snapmirrors_call.call_count)
+        mock_get_snapmirrors_call.assert_has_calls(
+            expected_get_snapmirrors_calls)
+        self.assertFalse(mock_exc_log.called)
+
+    def test_volume_has_snapmirror_relationships_api_error(self):
+
+        vol = fake.FAKE_MANAGE_VOLUME
+        expected_get_snapmirrors_calls = [
+            mock.call(vol['owning-vserver-name'], vol['name'], None, None),
+        ]
+        mock_get_snapmirrors_call = self.mock_object(
+            self.client, 'get_snapmirrors', mock.Mock(
+                side_effect=self._mock_api_error(netapp_api.EINTERNALERROR)))
+        mock_exc_log = self.mock_object(client_cmode.LOG, 'exception')
+
+        retval = self.client.volume_has_snapmirror_relationships(vol)
+
+        self.assertFalse(retval)
+        self.assertEqual(1, mock_get_snapmirrors_call.call_count)
+        mock_get_snapmirrors_call.assert_has_calls(
+            expected_get_snapmirrors_calls)
+        self.assertTrue(mock_exc_log.called)

@@ -124,6 +124,7 @@ def fake_snapshot(create_instance=False, **kwargs):
             snapshot['instance']['provider_location']
         )
         snapshot['progress'] = snapshot['instance']['progress']
+        snapshot['instances'] = snapshot['instance'],
     else:
         snapshot['status'] = constants.STATUS_AVAILABLE
         snapshot['progress'] = '0%'
