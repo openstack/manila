@@ -405,5 +405,6 @@ class HDSHNASTestCase(test.TestCase):
         self.assertEqual(30, self._driver._stats['free_capacity_gb'])
         self.assertEqual(0, self._driver._stats['reserved_percentage'])
         self.assertEqual(True, self._driver._stats['snapshot_support'])
+        self.assertTrue(self._driver._stats['thin_provisioning'])
         ssh.HNASSSHBackend.get_stats.assert_called_once_with()
         self.assertTrue(self.mock_log.info.called)
