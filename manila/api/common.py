@@ -265,7 +265,7 @@ class ViewBuilder(object):
         return parse.urlunsplit(url_parts)
 
     def update_versioned_resource_dict(self, request, resource_dict, resource):
-        """Updates teh given resource dict for the given request version.
+        """Updates the given resource dict for the given request version.
 
         This method calls every method, that is applicable to the request
         version, in _detail_version_modifiers.

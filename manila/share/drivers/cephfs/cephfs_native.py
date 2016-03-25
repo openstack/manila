@@ -65,7 +65,7 @@ CONF.register_opts(cephfs_native_opts)
 
 
 class CephFSNativeDriver(driver.ShareDriver,):
-    """Driver for the Ceph Filsystem.
+    """Driver for the Ceph Filesystem.
 
     This driver is 'native' in the sense that it exposes a CephFS filesystem
     for use directly by guests, with no intermediate layer like NFS.

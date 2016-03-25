@@ -415,7 +415,7 @@ class IpRouteCommand(IpDeviceCommandBase):
         return routes
 
     def delete_net_route(self, cidr, device):
-        """Deletes a route according to suplied CIDR and interface device.
+        """Deletes a route according to supplied CIDR and interface device.
 
         :param cidr: The network CIDR to be removed.
         :param device: The network interface device to be removed.
