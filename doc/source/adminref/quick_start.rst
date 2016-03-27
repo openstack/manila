@@ -13,34 +13,34 @@
 
 Quick start
 ===========
-This document describes how to install Manila from the OpenStack `Kilo`
+This document describes how to install manila from the OpenStack `Mitaka`
 release. Note that the process differs from previous releases and is likely to
 change again in subsequent releases.
 
-Manila consists of three main services, which are similar to those of the
-OpenStack Cinder project:
+Manila consists of the following main services, which are similar to those of
+the OpenStack cinder project:
 
 - manila-api
+- manila-data
 - manila-scheduler
 - manila-share
 
-Installation of first two - `manila-api` and `manila-scheduler` is common
+Installations of `manila-api` and `manila-scheduler` are common
 for almost all deployments. But configuration of `manila-share` is
-backend-specific and can differ from deployment to deployment. Hence, this doc
-will cover just some specific case. Hence, this document will cover a single
-use case, configuring the "Generic" driver that uses the Cinder project as its
-backend.
+backend-specific and can differ from deployment to deployment. This
+document will cover only a single use case, configuring the "Generic" driver
+that uses the cinder project as its backend.
 
 Note that the `manila-share` service can run in two modes, with and without
 handling of `share servers`.  In most cases share servers are virtual machines
 that export file shares via various network file systems. The example in this
 document describes a backend that manages share servers using network resources
-provided by Neutron.
+provided by neutron.
 
 .. note::
     Manila supports any network architecture. When a driver is managing its own
     share servers, it can use any of several network plug-ins that provide
-    network resources. Manila includes plug-ins for Neutron and Nova-network,
+    network resources. Manila includes plug-ins for neutron and nova-network,
     as well as a `StandaloneNetworkPlugin` for simple networks. When a driver
     is not managing share servers, it has no need for network plug-ins.
 
@@ -48,27 +48,28 @@ Prerequisites
 -------------
 - MySQL database
 - RabbitMQ message bus
-- OpenStack Keystone
+- OpenStack keystone
 - Git
 
 For Generic driver:
 
-- OpenStack Nova
-- OpenStack Neutron
-- OpenStack Cinder
+- OpenStack cinder
+- OpenStack glance
+- OpenStack neutron
+- OpenStack nova
 
 Steps to perform
 ================
-- Installation of Manila binaries
-- Installation of Manila client
-- Registration in Keystone
+- Installation of manila binaries
+- Installation of manila client
+- Registration in keystone
 - Preparation of external files (configs, etc...)
-- Basic configuration of Manila
+- Basic configuration of manila
 - Database setup
-- Running Manila services
+- Running manila services
 - Creation of pilot share
 
-Installation of Manila binaries
+Installation of manila binaries
 -------------------------------
 Manila binaries may be installed using various distribution packages or from
 source code. In our case we will use the latter, installation by cloning a git
@@ -76,65 +77,74 @@ repository.
 
 Clone repo::
 
-    $ git clone -b stable/kilo https://github.com/openstack/manila
+    $ git clone -b stable/mitaka https://github.com/openstack/manila
 
 Then run the installation script::
 
     $ sudo python setup.py install
 
-It will install the Manila binaries and their dependencies.
+It will install the manila binaries and their dependencies.
 These are the expected binaries:
 
 - manila-all
 - manila-api
+- manila-data
 - manila-manage
 - manila-scheduler
 - manila-share
 
-Installation of Manila client
+Installation of manila client
 -----------------------------
 
-To send requests to Manila we need to install the Manila client.
+To send requests to manila we need to install the manila client.
 
-Install it using PIP::
+Install it using PIP:
 
-    $ sudo pip install python-manilaclient>=1.0.4
+.. code-block:: console
+
+    $ sudo pip install python-manilaclient>=1.8.1
 
 .. note::
-    The starting version of the Manila client for Kilo release is 1.0.4
+    The starting version of the manila client for Mitaka release is 1.8.1
 
-The above will install the Manila binary that will be used for issuing
+The above will install the manila binary that will be used for issuing
 manila requests.
 
-Registration in Keystone
+Registration in keystone
 ------------------------
 
-Like all other OpenStack projects, Manila should be registered with Keystone.
-Here are the registration steps, similar to those of Cinder:
+Like all other OpenStack projects, manila should be registered with keystone.
+Here are the registration steps, similar to those of cinder:
 
-1) Create Manila service user::
+1) Create manila service user:
 
-    $ keystone user-create --name manila --pass %PASSWORD%
+.. code-block:: console
 
-2) Add the admin role to the Manila user::
+    $ openstack user create --name manila --password %PASSWORD%
 
-    $ keystone user-role-add --user manila --tenant service --role admin
+2) Add the admin role to the manila user:
+
+.. code-block:: console
+
+    $ openstack role add --user manila --project service admin
 
 .. note::
     Tenant/project may differ, but it should be the same as for all other
     service users such as ‘cinder’, ‘nova’, etc.
 
-3) Create the Manila service entities::
+3) Create the manila service entities:
 
-    $ keystone service-create \
+.. code-block:: console
+
+    $ openstack service create \
         --name manila \
-        --type share \
-        --description "OpenStack Shared Filesystems"
+        --description "OpenStack Shared Filesystems"\
+        share
 
-    $ keystone service-create \
+    $ openstack service create \
         --name manilav2 \
-        --type sharev2 \
-        --description "OpenStack Shared Filesystems V2"
+        --description "OpenStack Shared Filesystems"\
+        sharev2
 
 
 Result::
@@ -162,47 +172,35 @@ Result::
 
 4) Create the Share Filesystems service API endpoints::
 
-    $ keystone endpoint-create \
-        --service-id $(keystone service-list | awk '/ share / {print $2}') \
+.. code-block:: console
+
+    $ openstack endpoint create \
+        --region RegionOne \
         --publicurl http://%controller%:8786/v1/%\(tenant_id\)s \
         --internalurl http://%controller%:8786/v1/%\(tenant_id\)s \
         --adminurl http://%controller%:8786/v1/%\(tenant_id\)s \
-        --region regionOne
+        share
 
-    $ keystone endpoint-create \
-        --service-id $(keystone service-list | awk '/ sharev2 / {print $2}') \
+    $ openstack endpoint create \
+        --region RegionOne \
         --publicurl http://%controller%:8786/v2/%\(tenant_id\)s \
         --internalurl http://%controller%:8786/v2/%\(tenant_id\)s \
         --adminurl http://%controller%:8786/v2/%\(tenant_id\)s \
-        --region regionOne
+        sharev2
 
-Result::
 
-    +-------------+-------------------------------------------+
-    |   Property  |                   Value                   |
-    +-------------+-------------------------------------------+
-    |   adminurl  | http://%controller%:8786/v1/%(tenant_id)s |
-    |      id     |     c1984777db6941919657d15b25f05c94      |
-    | internalurl | http://%controller%:8786/v1/%(tenant_id)s |
-    |  publicurl  | http://%controller%:8786/v1/%(tenant_id)s |
-    |    region   |                 regionOne                 |
-    |  service_id |     4c13e9ff7ec04f4e95a26f72ecdf9919      |
-    +-------------+-------------------------------------------+
+Result should be similar to::
 
-    +-------------+-------------------------------------------+
-    |   Property  |                   Value                   |
-    +-------------+-------------------------------------------+
-    |   adminurl  | http://%controller%:8786/v2/%(tenant_id)s |
-    |      id     |      63ddffd27e8c4c62b4ffb228083325e6     |
-    | internalurl | http://%controller%:8786/v2/%(tenant_id)s |
-    |  publicurl  | http://%controller%:8786/v2/%(tenant_id)s |
-    |    region   |                 regionOne                 |
-    |  service_id |      2840d1e7b033437f8776a7bd5045b28d     |
-    +-------------+-------------------------------------------+
+    +----------------------------------+-----------+--------------+----------------+----------------------------------------------------+
+    | ID                               | Region    | Service Name | Service Type   | PublicURL                                          |
+    +----------------------------------+-----------+--------------+----------------+----------------------------------------------------+
+    | 3933b186baec48b9bc647877ee685d0f | RegionOne | Manila       | share          | http://%controller%:8786/v1/%\(tenant_id\)s        |
+    | de06e6d76b534fac854dba8d740a1741 | RegionOne | Manilav2     | sharev2        | http://%controller%:8786/v2/%\(tenant_id\)s        |
+    +----------------------------------+-----------+--------------+----------------+----------------------------------------------------+
 
 .. note::
-    Port ‘8786’ is the default port for Manila. It may be changed to any
-    other port, but this change should also be made in the Manila configuration
+    Port ‘8786’ is the default port for manila. It may be changed to any
+    other port, but this change should also be made in the manila configuration
     file using opt ‘osapi_share_listen_port’ which defaults to ‘8786’.
 
 Preparation of external files
@@ -216,7 +214,9 @@ to dir ‘/etc/manila’::
     rootwrap.d/share.filters
 
 
-Then generate a config sample file using tox::
+Then generate a config sample file using tox:
+
+.. code-block:: console
 
     $ tox -e genconfig
 
@@ -225,7 +225,9 @@ This will create a file with the latest config options and their descriptions::
     ‘%git_dir%/etc/manila/manila.conf.sample’
 
 Copy this file to the same directory as the above files, removing the suffix
-‘.sample’ from its name::
+‘.sample’ from its name:
+
+.. code-block:: console
 
     $ cp %git_dir%/etc/manila/manila.conf.sample /etc/manila/manila.conf
 
@@ -233,11 +235,14 @@ Copy this file to the same directory as the above files, removing the suffix
     Manila configuration file may be used from different places.
     `/etc/manila/manila.conf` is one of expected paths by default.
 
-Basic configuration of Manila
+Basic configuration of manila
 -----------------------------
-In our case we will set up one backend with generic driver (using Cinder
+In our case we will set up one backend with generic driver (using cinder
 as its backend) configured to manage its own share servers.
-Open Manila configuration file `/etc/manila/manila.conf`::
+Below is an example of the configuration file, `/etc/manila/manila.conf`,
+outlining some core sections.
+
+.. code-block:: ini
 
     [keystone_authtoken]
     signing_dir = /var/cache/manila
@@ -268,7 +273,7 @@ Open Manila configuration file `/etc/manila/manila.conf`::
     logging_default_format_string = %(asctime)s.%(msecs)d %(color)s%(levelname)s %(name)s [^[[00;36m-%(color)s] ^[[01;35m%(instance)s%(color)s%(message)s^[[00m
     logging_context_format_string = %(asctime)s.%(msecs)d %(color)s%(levelname)s %(name)s [^[[01;36m%(request_id)s ^[[00;36m%(user_id)s %(project_id)s%(color)s] ^[[01;35m%(instance)s%(color)s%(message)s^[[00m
 
-    # Set auth strategy for usage of Keystone
+    # Set auth strategy for usage of keystone
     auth_strategy = keystone
 
     # Set message bus creds
@@ -283,27 +288,8 @@ Open Manila configuration file `/etc/manila/manila.conf`::
 
     # Enable protocols ‘NFS’ and ‘CIFS’ as those are the only supported
     # by Generic driver that we are configuring in this set up.
-    # All available values are (‘NFS’, ‘CIFS’, ‘GlusterFS’, ‘HDFS’)
+    # All available values are (‘NFS’, ‘CIFS’, ‘GlusterFS’, ‘HDFS’, 'CEPHFS')
     enabled_share_protocols = NFS,CIFS
-
-    # Following is password for user ‘neutron’ for interaction with Neutron.
-    # It is required only when Neutron is set up in lab, and handling of
-    # share servers is used within configured share drivers.
-    neutron_admin_password = %password%
-
-    # Following is password for user ‘cinder’ for interaction with Cinder service.
-    # Used only by Generic driver.
-    cinder_admin_password = %password%
-
-    # Following is password for user ‘nova’ for interaction with Nova service.
-    # Used only by Generic driver for the moment.
-    nova_admin_password = %password%
-
-    # Set the project/tenant name of the ‘service’ tenant. These should all be the
-    # same value, but may be different than the default.
-    neutron_admin_project_name = service
-    cinder_admin_tenant_name = service
-    nova_admin_tenant_name = service
 
     # Manila requires ‘share-type’ for share creation.
     # So, set here name of some share-type that will be used by default.
@@ -321,12 +307,45 @@ Open Manila configuration file `/etc/manila/manila.conf`::
     # Set following opt to ‘True’ to get more info in logging.
     debug = True
 
+    [nova]
+    # Only needed by generic or windows drivers, the only drivers
+    # as of Mitaka that require it.
+    username = nova
+    password = %password%
+    project_domain_id = default
+    project_name = service
+    user_domain_id = default
+    auth_url = http://127.0.0.1:5000
+    auth_type = password
+
+    [neutron]
+    # Only needed when the networking drivers use nova and "generic" driver,
+    # as used in this example.
+    username = neutron
+    password = %password%
+    project_domain_id = default
+    project_name = service
+    user_domain_id = default
+    auth_url = http://127.0.0.1:5000
+    auth_type = password
+
+    [cinder]
+    # Only needed by generic or windows drivers, the only drivers
+    # as of Mitaka that require it.
+    username = cinder
+    password = %password%
+    project_domain_id = default
+    project_name = service
+    user_domain_id = default
+    auth_url = http://127.0.0.1:5000
+    auth_type = password
+
     [london]
     # This is custom opt group that is used for storing opts of share-service.
     # This one is used only when enabled using opt `enabled_share_backends`
     # from DEFAULT group.
 
-    # Set usage of Generic driver which uses Cinder as backend.
+    # Set usage of Generic driver which uses cinder as backend.
     share_driver = manila.share.drivers.generic.GenericShareDriver
 
     # Generic driver supports both driver modes - with and without handling
@@ -334,13 +353,13 @@ Open Manila configuration file `/etc/manila/manila.conf`::
     # enabling using this driver.
     driver_handles_share_servers = True
 
-    # Generic driver is the only driver that uses image from Glance for building
-    # service VMs in Nova. And following are data for some specific image.
-    # We used one defined in [1]
-    # [1] https://github.com/openstack/manila/blob/6785cad9/devstack/plugin.sh#L86
-    service_instance_password = ubuntu
-    service_instance_user = ubuntu
-    service_image_name = ubuntu_1204_nfs_cifs
+    # Generic driver uses a glance image for building service VMs in nova.
+    # The following options specify the image to use.
+    # We use the latest build of [1].
+    # [1] https://github.com/openstack/manila-image-elements
+    service_instance_password = manila
+    service_instance_user = manila
+    service_image_name = manila-service-image
 
     # These will be used for keypair creation and inserted into service VMs.
     path_to_private_key = /home/stack/.ssh/id_rsa
@@ -352,28 +371,38 @@ Open Manila configuration file `/etc/manila/manila.conf`::
 .. note::
     The Generic driver does not use network plugins, so none is part of the
     above configuration. Other drivers that manage their own share servers may
-    require one of Manila's network plug-ins.
+    require one of manila's network plug-ins.
 
 Database setup
 --------------
 Manila supports different SQL dialects in theory, but it is only tested with
 MySQL, so this step assumes that MySQL has been installed.
 
-Create the database for Manila::
+Create the database for manila:
+
+.. code-block:: console
 
     $ mysql -u%DATABASE_USER% -p%DATABASE_PASSWORD% -h%MYSQL_HOST% -e "DROP DATABASE IF EXISTS manila;"
     $ mysql -u%DATABASE_USER% -p%DATABASE_PASSWORD% -h%MYSQL_HOST% -e "CREATE DATABASE manila CHARACTER SET utf8;"
 
-Then create Manila's tables and apply all migrations::
+Then create manila's tables and apply all migrations:
+
+.. code-block:: console
 
     $ manila-manage db sync
 
-Here is the list of tables for the Kilo release of Manila::
+Here is the list of tables for the Mitaka release of manila::
 
     +--------------------------------------------+
     | Tables_in_manila                           |
     +--------------------------------------------+
     | alembic_version                            |
+    | availability_zones                         |
+    | cgsnapshot_members                         |
+    | cgsnapshots                                |
+    | consistency_group_share_type_mappings      |
+    | consistency_groups                         |
+    | drivers_private_data                       |
     | network_allocations                        |
     | project_user_quotas                        |
     | quota_classes                              |
@@ -383,12 +412,16 @@ Here is the list of tables for the Kilo release of Manila::
     | security_services                          |
     | services                                   |
     | share_access_map                           |
-    | share_export_locations                     |
+    | share_instance_access_map                  |
+    | share_instance_export_locations            |
+    | share_instance_export_locations_metadata   |
+    | share_instances                            |
     | share_metadata                             |
     | share_network_security_service_association |
     | share_networks                             |
     | share_server_backend_details               |
     | share_servers                              |
+    | share_snapshot_instances                   |
     | share_snapshots                            |
     | share_type_extra_specs                     |
     | share_type_projects                        |
@@ -396,10 +429,12 @@ Here is the list of tables for the Kilo release of Manila::
     | shares                                     |
     +--------------------------------------------+
 
-Running Manila services
+Running manila services
 -----------------------
 
-Run manila-api first::
+Run manila-api first:
+
+.. code-block:: console
 
     $ manila-api \
         --config-file /etc/manila/manila.conf & \
@@ -407,7 +442,9 @@ Run manila-api first::
         fg || echo "m-api failed to start" | \
         tee "/opt/stack/status/stack/m-api.failure"
 
-Create a default share type before running `manila-share` service::
+Create a default share type before running `manila-share` service:
+
+.. code-block:: console
 
     $ manila type-create default_share_type True
 
@@ -417,36 +454,49 @@ params for creation of `share-type`.
 
 Result::
 
-    +-----------+--------------------+------------+------------+-------------------------------------+
-    | ID        | Name               | Visibility | is_default | required_extra_specs                |
-    +-----------+--------------------+------------+------------+-------------------------------------+
-    | %some_id% | default_share_type | public     | -          | driver_handles_share_servers : True |
-    +-----------+--------------------+------------+------------+-------------------------------------+
+    +----------------------+-------------------------------------+
+    | Property             | Value                               |
+    +----------------------+-------------------------------------+
+    | required_extra_specs | driver_handles_share_servers : True |
+    | Name                 | default_share_type                  |
+    | Visibility           | public                              |
+    | is_default           | -                                   |
+    | ID                   | %some_id%                           |
+    | optional_extra_specs | snapshot_support : True             |
+    +----------------------+-------------------------------------+
 
 Service `manila-api` may be restarted to get updated information about
 `default share type`. So, get list of share types after restart of
-service `manila-api`::
+service `manila-api`:
+
+.. code-block:: console
 
     $ manila type-list
 
 Result::
 
-    +-----------+----------------------------+------------+------------+--------------------------------------+
-    | ID        | Name                       | Visibility | is_default | required_extra_specs                 |
-    +-----------+----------------------------+------------+------------+--------------------------------------+
-    | %some_id% | default_share_type         | public     | YES        | driver_handles_share_servers : True  |
-    +-----------+----------------------------+------------+------------+--------------------------------------+
+    +-----------+--------------------+------------+------------+-------------------------------------+-------------------------+
+    | ID        | Name               | visibility | is_default | required_extra_specs                | optional_extra_specs    |
+    +-----------+--------------------+------------+------------+-------------------------------------+-------------------------+
+    | %some_id% | default_share_type | public     | YES        | driver_handles_share_servers : True | snapshot_support : True |
+    +-----------+--------------------+------------+------------+-------------------------------------+-------------------------+
 
 
-Add any additional extra specs to `share-type` if needed using following command::
+Add any additional extra specs to `share-type` if needed using following command:
+
+.. code-block:: console
 
     $ manila type-key default_share_type set key=value
 
-This may be viewed as follows::
+This may be viewed as follows:
+
+.. code-block:: console
 
     $ manila extra-specs-list
 
-Run manila-scheduler::
+Run manila-scheduler:
+
+.. code-block:: console
 
     $ manila-scheduler \
         --config-file /etc/manila/manila.conf & \
@@ -454,7 +504,9 @@ Run manila-scheduler::
         fg || echo "m-sch failed to start" | \
         tee "/opt/stack/status/stack/m-sch.failure"
 
-Run manila-share::
+Run manila-share:
+
+.. code-block:: console
 
     $ manila-share \
         --config-file /etc/manila/manila.conf & \
@@ -462,24 +514,37 @@ Run manila-share::
         fg || echo "m-shr failed to start" | \
         tee "/opt/stack/status/stack/m-shr.failure"
 
+Run manila-data:
+
+.. code-block:: console
+
+    $ manila-data \
+        --config-file /etc/manila/manila.conf & \
+        echo $! >opt/stack/status/stack/m-dat.pid; \
+        fg || echo "m-dat failed to start" | \
+        tee "/opt/stack/status/stack/m-dat.failure"
+
+
 Creation of pilot share
 -----------------------
 
 In this step we assume that the following services are running:
 
-- Keystone
-- Nova (used by Generic driver, not strict dependency of Manila)
-- Neutron (default network backend for Generic driver, used when driver handles share servers)
-- Cinder (used by Generic driver)
+- keystone
+- nova (used by Generic driver, not strict dependency of manila)
+- neutron (default network backend for Generic driver, used when driver handles share servers)
+- cinder (used by Generic driver)
 
 To operate a driver that handles share servers, we must create
 a `share network`, which is a set of network information that will be used
 during share server creation.
-In our example, to use Neutron, we will do the following::
+In our example, to use neutron, we will do the following:
+
+.. code-block:: console
 
     $ neutron net-list
 
-Here we note the ID of a Neutron network and one of its subnets.
+Here we note the ID of a neutron network and one of its subnets.
 
 .. note::
     Some configurations of the Generic driver may require this network be
@@ -487,22 +552,39 @@ Here we note the ID of a Neutron network and one of its subnets.
     default configuration of Generic driver, make sure the network is attached
     to a public router.
 
-Then define a share network using the Neutron network and subnet IDs::
+Then define a share network using the neutron network and subnet IDs:
+
+.. code-block:: console
 
     $ manila share-network-create \
         --name test_share_network \
         --neutron-net-id %id_of_neutron_network% \
         --neutron-subnet-id %id_of_network_subnet%
 
-Now we can create a share using the following command::
+Now we can create a share using the following command:
+
+.. code-block:: console
 
     $ manila create NFS 1 --name testshare --share-network test_share_network
 
-The above command will instruct Manila to schedule a share for creation. Once
+The above command will instruct manila to schedule a share for creation. Once
 created, configure user access to the new share before attempting to mount it
-via the network::
+via the network:
+
+.. code-block:: console
 
     $ manila access-allow testshare ip 0.0.0.0/0 --access-level rw
 
 We added read-write access to all IP addresses. Now, you can try mounting this
-NFS share onto any host.
+NFS share onto any host. To determine the path required to mount the share onto
+a host, run:
+
+.. code-block:: console
+
+    # manila share-export-location-list testshare
+    +--------------------------------------+--------------------------------------------------------+-----------+
+    | ID                                   | Path                                                   | Preferred |
+    +--------------------------------------+--------------------------------------------------------+-----------+
+    | 6921e862-88bc-49a5-a2df-efeed9acd583 | 10.0.0.3:/share-e1c2d35e-fe67-4028-ad7a-45f668732b1d   | False     |
+    | b6bd76ce-12a2-42a9-a30a-8a43b503867d | 10.254.0.3:/share-e1c2d35e-fe67-4028-ad7a-45f668732b1d | False     |
+    +--------------------------------------+--------------------------------------------------------+-----------+
