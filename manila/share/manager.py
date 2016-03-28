@@ -244,6 +244,10 @@ class ShareManager(manager.SchedulerDependentManager):
         """Initialization for a standalone service."""
 
         ctxt = context.get_admin_context()
+        LOG.debug("Start initialization of driver: '%(driver)s"
+                  "@%(host)s'",
+                  {"driver": self.driver.__class__.__name__,
+                   "host": self.host})
         try:
             self.driver.do_setup(ctxt)
             self.driver.check_for_setup_error()
@@ -320,6 +324,10 @@ class ShareManager(manager.SchedulerDependentManager):
                     )
 
         self.publish_service_capabilities(ctxt)
+        LOG.info(_LI("Finished initialization of driver: '%(driver)s"
+                     "@%(host)s'"),
+                 {"driver": self.driver.__class__.__name__,
+                  "host": self.host})
 
     def _provide_share_server_for_share(self, context, share_network_id,
                                         share_instance, snapshot=None,
