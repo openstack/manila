@@ -94,7 +94,11 @@ function correctly in manila, such as:
 - compression: whether the backend supports compressed shares;
 - thin_provisioning: whether the backend is overprovisioning shares;
 - pools: list of storage pools managed by this driver instance;
-- qos: whether the backend supports quality of service for shares.
+- qos: whether the backend supports quality of service for shares;
+- replication_domain: string specifying a common group name for all backends
+  that can replicate between each other;
+- replication_type: string specifying the type of replication supported by
+  the driver. Can be one of ('readable', 'writable' or 'dr').
 
 .. note:: for more information please see http://docs.openstack.org/developer/manila/devref/capabilities_and_extra_specs.html
 
@@ -199,3 +203,14 @@ consistency of multiple shares. In order to make use of this feature, driver
 vendors must report this capability and implement its functions to work
 according to the backend, so the feature can be properly invoked through
 manila API.
+
+Share Replication
+-----------------
+
+Replicas of shares can be created for either data protection (for disaster
+recovery) or for load sharing. In order to utilize this feature, drivers must
+report the ``replication_type`` they support as a capability and implement
+necessary methods.
+
+More details can be found at:
+http://docs.openstack.org/developer/manila/devref/share_replication.html

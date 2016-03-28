@@ -14,7 +14,7 @@
 Introduction to Manila Shared Filesystem Management Service
 ===========================================================
 
-:term:`Manila` is the File Share service project for OpenStack. To administer the
+:term:`manila` is the File Share service project for OpenStack. To administer the
 OpenStack File Share service, it is helpful to understand a number of concepts
 like share networks, shares, multi-tenancy and back ends that can be configured
 with Manila. When configuring the File Share service, it is required to declare

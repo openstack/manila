@@ -78,6 +78,7 @@ Module Reference
    fakes
    manila
    ganesha
+   share_replication
 
 Capabilities and Extra-Specs
 ----------------------------

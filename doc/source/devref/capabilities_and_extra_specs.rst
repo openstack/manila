@@ -46,36 +46,36 @@ The CapabilitiesFilter uses the following for matching operators:
 
   This does a float conversion and then uses the python operators as expected.
 
-* **<in>** 
+* **<in>**
 
   This either chooses a host that has partially matching string in the capability
-  or chooses a host if it matches any value in a list. For example, if "<in> sse4" 
+  or chooses a host if it matches any value in a list. For example, if "<in> sse4"
   is used, it will match a host that reports capability of "sse4_1" or "sse4_2".
 
 * **<or>**
 
-  This chooses a host that has one of the items specified. If the first word in 
-  the string is <or>, another <or> and value pair can be concatenated. Examples 
-  are "<or> 3", "<or> 3 <or> 5", and "<or> 1 <or> 3 <or> 7". This is for 
-  string values only. 
+  This chooses a host that has one of the items specified. If the first word in
+  the string is <or>, another <or> and value pair can be concatenated. Examples
+  are "<or> 3", "<or> 3 <or> 5", and "<or> 1 <or> 3 <or> 7". This is for
+  string values only.
 
 * **<is>**
 
-  This chooses a host that matches a boolean capability. An example extra-spec value 
+  This chooses a host that matches a boolean capability. An example extra-spec value
   would be "<is> True".
 
 * **=**
 
-  This does a float conversion and chooses a host that has equal to or greater 
+  This does a float conversion and chooses a host that has equal to or greater
   than the resource specified. This operator behaves this way for historical
   reasons.
 
 * **s==, s!=, s>=, s>, s<=, s<**
 
-  The "s" indicates it is a string comparison. These choose a host that satisfies 
-  the comparison of strings in capability and specification. For example, 
-  if "capabilities:replication_type s== dr", a host that reports replication_type of 
-  "dr" will be chosen.
+  The "s" indicates it is a string comparison. These choose a host that satisfies
+  the comparison of strings in capability and specification. For example,
+  if "capabilities:replication_type s== dr", a host that reports
+  replication_type of "dr" will be chosen.
 
 For vendor-specific capabilities (which need to be visible to the
 CapabilityFilter), it is recommended to use the vendor prefix followed
@@ -133,6 +133,19 @@ be created.
   filter by pools that either have or don't have QoS support enabled. Added in
   Mitaka.
 
+* `replication_type` - indicates the style of replication supported for the
+  backend/pool. This extra_spec will have a string value and could be one
+  of :term:`writable`, :term:`readable` or :term:`dr`. `writable` replication
+  type involves synchronously replicated shares where all replicas are
+  writable. Promotion is not supported and not needed. `readable` and `dr`
+  replication types involve a single `active` or `primary` replica and one or
+  more `non-active` or secondary replicas per share. In `readable` type of
+  replication, `non-active` replicas have one or more export_locations and
+  can thus be mounted and read while the `active` replica is the only one
+  that can be written into. In `dr` style of replication, only
+  the `active` replica can be mounted, read from and written into. Added in
+  Mitaka.
+
 Reporting Capabilities
 ----------------------
 Drivers report capabilities as part of the updated stats (e.g. capacity)
@@ -173,10 +186,19 @@ example vendor prefix:
              'thin_provisioning': True,          #
              'max_over_subscription_ratio': 10,  # (mandatory for thin)
              'provisioned_capacity_gb': 270,     # (mandatory for thin)
+                                                 #
+                                                 #
+             'replication_type': 'dr',           # this backend supports
+                                                 # replication_type 'dr'
                                                  #/
              'my_dying_disks': 100,              #\
              'my_super_hero_1': 'Hulk',          #  "my" optional vendor
-             'my_super_hero_2': 'Spider-Man'     #  stats & capabilities
+             'my_super_hero_2': 'Spider-Man',    #  stats & capabilities
+                                                 #/
+                                                 #\
+                                                 # can replicate to other
+             'replication_domain': 'asgard',     # backends in
+                                                 # replication_domain 'asgard'
                                                  #/
             },
             {'pool_name': 'thick pool',
@@ -187,6 +209,7 @@ example vendor prefix:
              'dedupe': False,
              'compression': False,
              'thin_provisioning': False,
+             'replication_type': None,
              'my_dying_disks': 200,
              'my_super_hero_1': 'Batman',
              'my_super_hero_2': 'Robin',

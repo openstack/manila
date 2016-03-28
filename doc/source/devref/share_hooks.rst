@@ -90,6 +90,13 @@ Driver methods that are wrapped with hooks
 - publish_service_capabilities
 - shrink_share
 - unmanage_share
+- create_share_replica
+- promote_share_replica
+- delete_share_replica
+- update_share_replica
+- create_replicated_snapshot
+- delete_replicated_snapshot
+- update_replicated_snapshot
 
 Above list with wrapped methods can be extended in future.
 
