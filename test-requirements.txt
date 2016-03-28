@@ -11,10 +11,15 @@ ddt>=1.0.1 # MIT
 fixtures>=1.3.1 # Apache-2.0/BSD
 mock>=1.2 # BSD
 iso8601>=0.1.9 # MIT
-PyMySQL>=0.6.2 # MIT License
 oslotest>=1.10.0 # Apache-2.0
 oslosphinx!=3.4.0,>=2.5.0 # Apache-2.0
+
+# Do not remove 'PyMySQL' and 'psycopg2' dependencies. They are used
+# by oslo_db lib for running MySQL and PostgreSQL DB migration tests.
+# See http://docs.openstack.org/developer/oslo.db/contributing.html#how-to-run-unit-tests
+PyMySQL>=0.6.2 # MIT License
 psycopg2>=2.5 # LGPL/ZPL
+
 python-subunit>=0.0.18 # Apache-2.0/BSD
 requests-mock>=0.7.0 # Apache-2.0
 sphinx!=1.2.0,!=1.3b1,<1.3,>=1.1.2 # BSD
