@@ -1053,6 +1053,28 @@ class GenericShareDriverTestCase(test.TestCase):
             assert_called_once_with(
                 self._context, self.server['backend_details'])
 
+    def test_detach_volume_with_volume_not_found(self):
+        fake_vol = fake_volume.FakeVolume()
+        fake_server_details = mock.MagicMock()
+        self.mock_object(self._driver.compute_api, 'instance_volumes_list',
+                         mock.Mock(return_value=[]))
+
+        self.mock_object(self._driver, '_get_volume',
+                         mock.Mock(side_effect=exception.VolumeNotFound(
+                             volume_id=fake_vol['id'])))
+
+        self._driver._detach_volume(self._context,
+                                    self.share,
+                                    fake_server_details)
+
+        (self._driver.compute_api.instance_volumes_list.
+            assert_called_once_with(self._driver.admin_context,
+                                    fake_server_details['instance_id']))
+        (self._driver._get_volume.
+            assert_called_once_with(self._driver.admin_context,
+                                    self.share['id']))
+        self.assertEqual(1, self.mock_warning_log.call_count)
+
     def test_delete_share_without_share_server(self):
         self.mock_object(self._driver, '_unmount_device')
         self.mock_object(self._driver, '_detach_volume')
