@@ -498,7 +498,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
                 *args,
                 log=_LE("Creating share from snapshot"))
 
-        # Get a manager for the the new volume/share.
+        # Get a manager for the new volume/share.
         comp_vol = old_gmgr.components.copy()
         comp_vol.update({'volume': volume})
         gmgr = self._glustermanager(comp_vol)
