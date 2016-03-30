@@ -614,7 +614,6 @@ class ShareManager(manager.SchedulerDependentManager):
         if not force_host_copy:
 
             try:
-
                 dest_driver_migration_info = rpcapi.migration_get_driver_info(
                     context, share_instance)
 
@@ -632,12 +631,6 @@ class ShareManager(manager.SchedulerDependentManager):
                     context, share_instance, share_server, host,
                     dest_driver_migration_info, notify)
 
-                if moved and not notify:
-                    self.db.share_update(
-                        context, share_ref['id'],
-                        {'task_state':
-                            constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE})
-
                 # NOTE(ganso): Here we are allowing the driver to perform
                 # changes even if it has not performed migration. While this
                 # scenario may not be valid, I do not think it should be
@@ -654,10 +647,14 @@ class ShareManager(manager.SchedulerDependentManager):
                                 "with generic migration approach.") % share_id)
 
         if not moved:
-            try:
-                LOG.debug("Starting generic migration "
-                          "for share %s.", share_id)
+            LOG.debug("Starting generic migration "
+                      "for share %s.", share_id)
 
+            self.db.share_update(
+                context, share_id,
+                {'task_state': constants.TASK_STATE_MIGRATION_IN_PROGRESS})
+
+            try:
                 self._migration_start_generic(context, share_ref,
                                               share_instance, host, notify)
             except Exception:
@@ -670,6 +667,22 @@ class ShareManager(manager.SchedulerDependentManager):
                     context, share_instance['id'],
                     {'status': constants.STATUS_AVAILABLE})
                 raise exception.ShareMigrationFailed(reason=msg)
+        elif not notify:
+            self.db.share_update(
+                context, share_ref['id'],
+                {'task_state':
+                    constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE})
+        else:
+            self.db.share_instance_update(
+                context, share_instance['id'],
+                {'status': constants.STATUS_AVAILABLE,
+                 'host': host['host']})
+            self.db.share_update(
+                context, share_ref['id'],
+                {'task_state': constants.TASK_STATE_MIGRATION_SUCCESS})
+
+            LOG.info(_LI("Share Migration for share %s"
+                     " completed successfully."), share_ref['id'])
 
     def _migration_start_generic(self, context, share, share_instance, host,
                                  notify):
