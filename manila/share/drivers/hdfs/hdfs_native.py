@@ -17,7 +17,7 @@
 
 Manila share is a directory in HDFS. And this share does not use
 service VM instance (share server). The instance directly talks
-to the the HDFS cluster.
+to the HDFS cluster.
 
 The initial version only supports single namenode and flat network.
 

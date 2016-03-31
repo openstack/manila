@@ -67,7 +67,7 @@ class IsilonApiTest(test.TestCase):
 
         # In order to test cloning a snapshot, we build out a mock
         # source directory tree. After the method under test is called we
-        # will verify the the necessary calls are made to clone a snapshot.
+        # will verify the necessary calls are made to clone a snapshot.
         source_dir_listing_json = (
             '{"children": ['
             '{"name": "dir1", "type": "container"},'
