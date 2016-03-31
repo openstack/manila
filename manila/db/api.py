@@ -348,9 +348,9 @@ def share_instances_get_all_by_consistency_group_id(context, cg_id):
 ###################
 
 
-def share_create(context, values, create_share_instance=True):
+def share_create(context, share_values, create_share_instance=True):
     """Create new share."""
-    return IMPL.share_create(context, values,
+    return IMPL.share_create(context, share_values,
                              create_share_instance=create_share_instance)
 
 

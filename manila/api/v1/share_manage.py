@@ -58,7 +58,7 @@ class ShareManageMixin(object):
             share_ref = self.share_api.manage(context, share, driver_options)
         except exception.PolicyNotAuthorized as e:
             raise exc.HTTPForbidden(explanation=six.text_type(e))
-        except exception.ManilaException as e:
+        except exception.InvalidShare as e:
             raise exc.HTTPConflict(explanation=six.text_type(e))
 
         return self._view_builder.detail(req, share_ref)
