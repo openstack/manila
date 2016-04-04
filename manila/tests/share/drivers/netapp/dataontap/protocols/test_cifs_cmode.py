@@ -19,7 +19,6 @@ import copy
 
 import ddt
 import mock
-from oslo_log import log
 
 from manila.common import constants
 from manila import exception
@@ -34,12 +33,6 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
 
     def setUp(self):
         super(NetAppClusteredCIFSHelperTestCase, self).setUp()
-
-        # Mock loggers as themselves to allow logger arg validation
-        mock_logger = log.getLogger('mock_logger')
-        self.mock_object(cifs_cmode.LOG,
-                         'error',
-                         mock.Mock(side_effect=mock_logger.error))
 
         self.mock_context = mock.Mock()
 

@@ -21,7 +21,6 @@ from novaclient import client as nova_client
 from novaclient import exceptions as nova_exception
 from novaclient import utils
 from oslo_config import cfg
-from oslo_log import log
 import six
 
 from manila.common import client_auth
@@ -101,8 +100,6 @@ CONF.register_opts(core_opts)
 CONF.register_opts(nova_opts, NOVA_GROUP)
 ks_loading.register_session_conf_options(CONF, NOVA_GROUP)
 ks_loading.register_auth_conf_options(CONF, NOVA_GROUP)
-
-LOG = log.getLogger(__name__)
 
 
 def list_opts():

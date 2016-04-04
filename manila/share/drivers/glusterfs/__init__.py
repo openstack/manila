@@ -29,7 +29,6 @@ import socket
 import sys
 
 from oslo_config import cfg
-from oslo_log import log
 
 from manila import exception
 from manila.i18n import _
@@ -39,7 +38,6 @@ from manila.share.drivers.ganesha import utils as ganesha_utils
 from manila.share.drivers.glusterfs import layout
 from manila import utils
 
-LOG = log.getLogger(__name__)
 
 GlusterfsManilaShare_opts = [
     cfg.StrOpt('glusterfs_nfs_server_type',

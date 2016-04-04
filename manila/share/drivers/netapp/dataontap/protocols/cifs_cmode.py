@@ -17,16 +17,11 @@ NetApp cDOT CIFS protocol helper class.
 
 import re
 
-from oslo_log import log
-
 from manila.common import constants
 from manila import exception
 from manila.i18n import _
 from manila.share.drivers.netapp.dataontap.protocols import base
 from manila.share.drivers.netapp import utils as na_utils
-
-
-LOG = log.getLogger(__name__)
 
 
 class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):

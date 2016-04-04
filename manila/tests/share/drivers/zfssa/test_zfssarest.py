@@ -15,16 +15,12 @@
 Unit tests for Oracle's ZFSSA REST API.
 """
 import mock
-from oslo_log import log
 
 from manila import exception
 from manila.share.drivers.zfssa import restclient
 from manila.share.drivers.zfssa import zfssarest
 from manila import test
 from manila.tests import fake_zfssa
-
-
-LOG = log.getLogger(__name__)
 
 
 class ZFSSAApiTestCase(test.TestCase):

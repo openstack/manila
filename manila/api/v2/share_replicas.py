@@ -15,7 +15,6 @@
 
 """The Share Replication API."""
 
-from oslo_log import log
 import six
 import webob
 from webob import exc
@@ -30,7 +29,6 @@ from manila.i18n import _
 from manila import share
 
 
-LOG = log.getLogger(__name__)
 MIN_SUPPORTED_API_VERSION = '2.11'
 
 

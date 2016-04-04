@@ -16,10 +16,6 @@
 
 """Share-related Utilities and helpers."""
 
-from oslo_log import log
-
-LOG = log.getLogger(__name__)
-
 DEFAULT_POOL_NAME = '_pool0'
 
 

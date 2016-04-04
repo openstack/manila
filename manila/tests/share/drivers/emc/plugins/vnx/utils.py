@@ -17,11 +17,8 @@ import doctest
 
 from lxml import doctestcompare
 import mock
-from oslo_log import log
 import six
 
-
-LOG = log.getLogger(__name__)
 
 CHECKER = doctestcompare.LXMLOutputChecker()
 PARSE_XML = doctest.register_optionflag('PARSE_XML')

@@ -23,7 +23,6 @@ from cinderclient import exceptions as cinder_exception
 from cinderclient.v2 import client as cinder_client
 from keystoneauth1 import loading as ks_loading
 from oslo_config import cfg
-from oslo_log import log
 import six
 
 from manila.common import client_auth
@@ -105,9 +104,6 @@ CONF.register_opts(core_opts)
 CONF.register_opts(cinder_opts, CINDER_GROUP)
 ks_loading.register_session_conf_options(CONF, CINDER_GROUP)
 ks_loading.register_auth_conf_options(CONF, CINDER_GROUP)
-
-
-LOG = log.getLogger(__name__)
 
 
 def list_opts():
