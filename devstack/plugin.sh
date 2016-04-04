@@ -536,9 +536,11 @@ function install_manila {
     if [ "$SHARE_DRIVER" == "manila.share.drivers.lvm.LVMShareDriver" ]; then
         if is_service_enabled m-shr; then
             if is_ubuntu; then
-                sudo apt-get install -y nfs-kernel-server nfs-common samba
+                install_package nfs-kernel-server nfs-common samba
             elif is_fedora; then
-                sudo yum install -y nfs-utils nfs-utils-lib samba
+                install_package nfs-utils nfs-utils-lib samba
+            elif is_suse; then
+                install_package nfs-kernel-server nfs-utils samba
             fi
         fi
     elif [ "$SHARE_DRIVER" == "manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver" ]; then
