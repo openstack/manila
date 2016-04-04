@@ -1069,7 +1069,7 @@ class ShareAPITestCase(test.TestCase):
                                mock.Mock(return_value=share)):
             self.api.delete_snapshot(self.context, snapshot)
             self.share_rpcapi.delete_snapshot.assert_called_once_with(
-                self.context, snapshot, share['host'])
+                self.context, snapshot, share['host'], force=False)
             share_api.policy.check_policy.assert_called_once_with(
                 self.context, 'share', 'delete_snapshot', snapshot)
             db_api.share_snapshot_instance_update.assert_called_once_with(
@@ -1089,6 +1089,30 @@ class ShareAPITestCase(test.TestCase):
                           snapshot)
         share_api.policy.check_policy.assert_called_once_with(
             self.context, 'share', 'delete_snapshot', snapshot)
+
+    @ddt.data(constants.STATUS_MANAGING, constants.STATUS_ERROR_DELETING,
+              constants.STATUS_CREATING, constants.STATUS_AVAILABLE)
+    def test_delete_snapshot_force_delete(self, status):
+        share = fakes.fake_share(id=uuid.uuid4(), has_replicas=False)
+        snapshot = fakes.fake_snapshot(aggregate_status=status, share=share)
+        snapshot_instance = fakes.fake_snapshot_instance(
+            base_snapshot=snapshot)
+        self.mock_object(db_api, 'share_get', mock.Mock(return_value=share))
+        self.mock_object(
+            db_api, 'share_snapshot_instance_get_all_with_filters',
+            mock.Mock(return_value=[snapshot_instance]))
+        mock_instance_update_call = self.mock_object(
+            db_api, 'share_snapshot_instance_update')
+        mock_rpc_call = self.mock_object(self.share_rpcapi, 'delete_snapshot')
+
+        retval = self.api.delete_snapshot(self.context, snapshot, force=True)
+
+        self.assertIsNone(retval)
+        mock_instance_update_call.assert_called_once_with(
+            self.context, snapshot_instance['id'],
+            {'status': constants.STATUS_DELETING})
+        mock_rpc_call.assert_called_once_with(
+            self.context, snapshot, share['instance']['host'], force=True)
 
     @ddt.data(True, False)
     def test_delete_snapshot_replicated_snapshot(self, force):

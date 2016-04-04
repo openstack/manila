@@ -1,0 +1,5 @@
+---
+fixes:
+  - force-delete API requests for snapshots are now propagated to the
+    manila-share service and will not fail even if share drivers cannot remove
+    the snapshots on the storage backend.
