@@ -36,16 +36,13 @@ The following operations are supported with HPE 3PAR File Persona:
 - Allow/deny NFS share access
 
   * IP access rules are required for NFS share access
-  * User access rules are not allowed for NFS shares
-  * Access level (RW/RO) is ignored
   * Shares created from snapshots are always read-only
   * Shares not created from snapshots are read-write (and subject to ACLs)
 
 - Allow/deny CIFS share access
 
-  * Both IP and user access rules are required for CIFS share access
+  * CIFS shares require user access rules.
   * User access requires a 3PAR local user (LDAP and AD is not yet supported)
-  * Access level (RW/RO) is ignored
   * Shares created from snapshots are always read-only
   * Shares not created from snapshots are read-write (and subject to ACLs)
 
@@ -63,7 +60,7 @@ Requirements
 
 On the system running the manila share service:
 
-- python-3parclient 4.0.0 or newer from PyPI.
+- python-3parclient 4.2.0 or newer from PyPI.
 
 On the HPE 3PAR array:
 
@@ -98,11 +95,20 @@ file for the HPE 3PAR driver:
 - `hpe3par_san_login` = <Username for SSH access to the SAN controller>
 - `hpe3par_san_password` = <Password for SSH access to the SAN controller>
 - `hpe3par_debug` = <False or True for extra debug logging>
+- `hpe3par_cifs_admin_access_username` = <CIFS admin user name>
+- `hpe3par_cifs_admin_access_password` = <CIFS admin password>
+- `hpe3par_cifs_admin_access_domain` = <CIFS admin domain>
+- `hpe3par_share_mount_path` = <Full path to mount shares>
 
 The `hpe3par_share_ip_address` must be a valid IP address for the configured
 FPG's VFS. This IP address is used in export locations for shares that are
 created. Networking must be configured to allow connectivity from clients to
 shares.
+
+`hpe3par_cifs_admin_access_username` and `hpe3par_cifs_admin_access_password`
+must be provided to delete nested CIFS shares. If they are not, the share
+contents will not be deleted. `hpe3par_cifs_admin_access_domain` and
+`hpe3par_share_mount_path` can be provided for additional configuration.
 
 Restart of :term:`manila-share` service is needed for the configuration changes to take
 effect.
@@ -209,6 +215,21 @@ The NFS export options have the following limitations:
 All other NFS options are forwarded to the HPE 3PAR as part of share creation.
 The HPE 3PAR will do additional validation at share creation time. Refer to
 HPE 3PAR CLI help for more details.
+
+Delete Nested Shares
+--------------------
+
+When a nested share is deleted (nested shares will be created when
+``hpe_3par_fstore_per_share`` is set to ``False``), the file tree also
+attempts to be deleted.
+
+With NFS shares, there is no additional configuration that needs to be done.
+
+For CIFS shares, ``hpe3par_cifs_admin_access_username`` and
+``hpe3par_cifs_admin_access_password`` must be provided. If they are omitted,
+the original functionality is honored and the file tree remains untouched.
+``hpe3par_cifs_admin_access_domain`` and ``hpe3par_share_mount_path`` can also
+be specified to create further customization.
 
 The :mod:`manila.share.drivers.hpe.hpe_3par_driver` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
