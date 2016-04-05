@@ -663,11 +663,6 @@ elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
     echo_summary "Installing extra libraries"
     install_libraries
 
-    # Neutron config update
-    if is_service_enabled neutron; then
-        iniset $Q_DHCP_CONF_FILE DEFAULT dnsmasq_local_resolv False
-    fi
-
     # Cinder config update
     if is_service_enabled cinder && [[ -n "$CINDER_OVERSUBSCRIPTION_RATIO" ]]; then
         CINDER_CONF=${CINDER_CONF:-/etc/cinder/cinder.conf}
