@@ -33,11 +33,13 @@ import sys
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_log import versionutils
 
 from manila import i18n
 i18n.enable_lazy()
 
 from manila.common import config  # Need to register global_opts
+from manila.i18n import _
 from manila.i18n import _LE
 from manila import service
 from manila import utils
@@ -53,6 +55,10 @@ def main():
          version=version.version_string())
     log.setup(CONF, "manila")
     LOG = log.getLogger('manila.all')
+
+    msg = _('manila-all is deprecated in Newton and '
+            'will be removed in Ocata.')
+    versionutils.report_deprecated_feature(LOG, msg)
 
     utils.monkey_patch()
     launcher = service.process_launcher()
