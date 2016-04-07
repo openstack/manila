@@ -296,8 +296,9 @@ function create_service_share_servers {
             else
                 if is_service_enabled neutron; then
                     if [ $created_admin_network == false ]; then
-                        admin_net_id=$(neutron net-create --tenant-id $TENANT_ID admin_net | grep ' id ' | get_field 2)
-                        admin_subnet_id=$(neutron subnet-create --tenant-id $TENANT_ID --ip_version 4 --no-gateway --name admin_subnet --subnetpool None $admin_net_id $FIXED_RANGE | grep ' id ' | get_field 2)
+                        project_id=$(openstack project show $SERVICE_PROJECT_NAME -c id -f value)
+                        admin_net_id=$(neutron net-create --tenant-id $project_id admin_net | grep ' id ' | get_field 2)
+                        admin_subnet_id=$(neutron subnet-create --tenant-id $project_id --ip_version 4 --no-gateway --name admin_subnet --subnetpool None $admin_net_id $FIXED_RANGE | grep ' id ' | get_field 2)
                         created_admin_network=true
                     fi
                     iniset $MANILA_CONF $BE admin_network_id $admin_net_id
