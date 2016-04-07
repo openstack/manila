@@ -224,8 +224,6 @@ class NetAppCmodeFileStorageLibrary(object):
             'driver_version': '1.0',
             'netapp_storage_family': 'ontap_cluster',
             'storage_protocol': 'NFS_CIFS',
-            'total_capacity_gb': 0.0,
-            'free_capacity_gb': 0.0,
             'consistency_group_support': 'host',
             'pools': self._get_pools(),
         }
@@ -258,6 +256,8 @@ class NetAppCmodeFileStorageLibrary(object):
 
         for aggr_name in sorted(aggr_space.keys()):
 
+            reserved_percentage = self.configuration.reserved_share_percentage
+
             total_capacity_gb = na_utils.round_down(float(
                 aggr_space[aggr_name].get('total', 0)) / units.Gi, '0.01')
             free_capacity_gb = na_utils.round_down(float(
@@ -274,7 +274,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 'free_capacity_gb': free_capacity_gb,
                 'allocated_capacity_gb': allocated_capacity_gb,
                 'qos': 'False',
-                'reserved_percentage': 0,
+                'reserved_percentage': reserved_percentage,
                 'dedupe': [True, False],
                 'compression': [True, False],
                 'thin_provisioning': [True, False],
