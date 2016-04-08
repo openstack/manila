@@ -18,6 +18,7 @@ import sys
 import ddt
 import mock
 from oslo_log import log
+from oslo_log import versionutils
 
 from manila.cmd import all as manila_all
 from manila import service
@@ -41,6 +42,7 @@ class ManilaCmdAllTestCase(test.TestCase):
         self.mock_object(service, 'process_launcher')
         self.mock_object(service, 'WSGIService')
         self.mock_object(service.Service, 'create')
+        self.mock_object(versionutils, 'report_deprecated_feature')
         self.wsgi_service = service.WSGIService.return_value
         self.service = service.Service.create.return_value
         self.fake_log = log.getLogger.return_value
@@ -51,6 +53,7 @@ class ManilaCmdAllTestCase(test.TestCase):
         log.setup.assert_called_once_with(CONF, "manila")
         log.register_options.assert_called_once_with(CONF)
         log.getLogger.assert_called_once_with('manila.all')
+        self.assertEqual(versionutils.report_deprecated_feature.call_count, 1)
         utils.monkey_patch.assert_called_once_with()
         service.process_launcher.assert_called_once_with()
         service.WSGIService.assert_called_once_with('osapi_share')
