@@ -29,6 +29,7 @@ Programming HowTos and Tutorials
     development.environment
     unit_tests
     addmethod.openstackapi
+    adding_release_notes
 
 
 Background Concepts for manila
