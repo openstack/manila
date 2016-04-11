@@ -152,7 +152,7 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         :param tenant_id
         """
         if not client:
-            client = self.network_client
+            client = self.routers_client
         if not tenant_id:
             tenant_id = client.tenant_id
         if not router_id:
