@@ -15,9 +15,11 @@
 import copy
 import time
 
+import ddt
 import mock
 from oslo_config import cfg
 
+from manila import exception
 from manila.share import configuration
 from manila.share import driver
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
@@ -32,6 +34,7 @@ from manila.tests.share.drivers.netapp import fakes as na_fakes
 CONF = cfg.CONF
 
 
+@ddt.ddt
 class NetAppCDOTDataMotionTestCase(test.TestCase):
 
     def setUp(self):
@@ -89,38 +92,35 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
 
     def test_get_config_for_backend(self):
         self.mock_object(data_motion, "CONF")
+        CONF.set_override("netapp_vserver", 'fake_vserver',
+                          group=self.backend)
         data_motion.CONF.list_all_sections.return_value = [self.backend]
 
         config = data_motion.get_backend_configuration(self.backend)
 
-        self.assertEqual(self.backend, config.share_backend_name)
+        self.assertEqual('fake_vserver', config.netapp_vserver)
 
-    def test_get_config_for_backend_share_backend_name_mismatch(self):
+    def test_get_config_for_backend_different_backend_name(self):
         self.mock_object(data_motion, "CONF")
-        configuration.Configuration(driver.share_opts,
-                                    config_group='my_happy_stanza')
-        self.config.append_config_values(na_opts.netapp_cluster_opts)
-        self.config.append_config_values(na_opts.netapp_connection_opts)
-        self.config.append_config_values(na_opts.netapp_basicauth_opts)
-        self.config.append_config_values(na_opts.netapp_transport_opts)
-        self.config.append_config_values(na_opts.netapp_support_opts)
-        self.config.append_config_values(na_opts.netapp_provisioning_opts)
-        self.config.append_config_values(na_opts.netapp_replication_opts)
-        CONF.set_override("share_backend_name", self.backend,
-                          group='my_happy_stanza')
-        data_motion.CONF.list_all_sections.return_value = ['my_happy_stanza']
+        CONF.set_override("netapp_vserver", 'fake_vserver',
+                          group=self.backend)
+        CONF.set_override("share_backend_name", "fake_backend_name",
+                          group=self.backend)
+        data_motion.CONF.list_all_sections.return_value = [self.backend]
 
         config = data_motion.get_backend_configuration(self.backend)
 
-        self.assertEqual(self.backend, config.share_backend_name)
+        self.assertEqual('fake_vserver', config.netapp_vserver)
+        self.assertEqual('fake_backend_name', config.share_backend_name)
 
-    def test_get_config_for_backend_not_configured(self):
+    @ddt.data([], ['fake_backend1', 'fake_backend2'])
+    def test_get_config_for_backend_not_configured(self, conf_sections):
         self.mock_object(data_motion, "CONF")
-        data_motion.CONF.list_all_sections.return_value = []
+        data_motion.CONF.list_all_sections.return_value = conf_sections
 
-        config = data_motion.get_backend_configuration(self.backend)
-
-        self.assertIsNone(config)
+        self.assertRaises(exception.BadConfigurationException,
+                          data_motion.get_backend_configuration,
+                          self.backend)
 
 
 class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
