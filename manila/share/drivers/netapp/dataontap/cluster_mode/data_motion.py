@@ -25,7 +25,7 @@ from oslo_log import log
 from oslo_utils import excutils
 
 from manila import exception
-from manila.i18n import _LE, _LI, _LW
+from manila.i18n import _, _LE, _LI
 from manila.share import configuration
 from manila.share import driver
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
@@ -41,21 +41,28 @@ CONF = cfg.CONF
 
 
 def get_backend_configuration(backend_name):
-    for section in CONF.list_all_sections():
-        config = configuration.Configuration(driver.share_opts,
-                                             config_group=section)
-        config.append_config_values(na_opts.netapp_cluster_opts)
-        config.append_config_values(na_opts.netapp_connection_opts)
-        config.append_config_values(na_opts.netapp_basicauth_opts)
-        config.append_config_values(na_opts.netapp_transport_opts)
-        config.append_config_values(na_opts.netapp_support_opts)
-        config.append_config_values(na_opts.netapp_provisioning_opts)
-        config.append_config_values(na_opts.netapp_replication_opts)
-        if (config.share_backend_name and
-                config.share_backend_name.lower() == backend_name.lower()):
-            return config
-    msg = _LW("Could not find backend %s in configuration.")
-    LOG.warning(msg % backend_name)
+    config_stanzas = CONF.list_all_sections()
+    if backend_name not in config_stanzas:
+        msg = _("Could not find backend stanza %(backend_name)s in "
+                "configuration which is required for replication with "
+                "the backend. Available stanzas are %(stanzas)s")
+        params = {
+            "stanzas": config_stanzas,
+            "backend_name": backend_name,
+        }
+        raise exception.BadConfigurationException(reason=msg % params)
+
+    config = configuration.Configuration(driver.share_opts,
+                                         config_group=backend_name)
+    config.append_config_values(na_opts.netapp_cluster_opts)
+    config.append_config_values(na_opts.netapp_connection_opts)
+    config.append_config_values(na_opts.netapp_basicauth_opts)
+    config.append_config_values(na_opts.netapp_transport_opts)
+    config.append_config_values(na_opts.netapp_support_opts)
+    config.append_config_values(na_opts.netapp_provisioning_opts)
+    config.append_config_values(na_opts.netapp_replication_opts)
+
+    return config
 
 
 def get_client_for_backend(backend_name, vserver_name=None):
