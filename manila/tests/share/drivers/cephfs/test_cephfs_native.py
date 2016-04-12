@@ -200,6 +200,9 @@ class CephFSNativeDriverTestCase(test.TestCase):
         self._driver._volume_client.deauthorize.assert_called_once_with(
             self._driver._share_path(self._share),
             "alice")
+        self._driver._volume_client.evict.assert_called_once_with(
+            "alice",
+            volume_path=self._driver._share_path(self._share))
 
     def test_update_access_add_rm(self):
         alice = {
