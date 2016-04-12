@@ -227,8 +227,9 @@ class CephFSNativeDriver(driver.ShareDriver,):
 
         self.volume_client.deauthorize(self._share_path(share),
                                        access['access_to'])
-        self.volume_client.evict(self._share_path(share),
-                                 access['access_to'])
+        self.volume_client.evict(
+            access['access_to'],
+            volume_path=self._share_path(share))
 
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
