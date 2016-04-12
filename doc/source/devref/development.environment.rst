@@ -51,19 +51,42 @@ Linux Systems
 
 .. note::
 
-  This section is tested for manila on Ubuntu (12.04-64) and
-  Fedora-based (RHEL 6.1) distributions. Feel free to add notes and
-  change according to your experiences or operating system.
+  This section is tested for manila on Ubuntu and Fedora-based
+  distributions. Feel free to add notes and change according to
+  your experiences or operating system.
 
 Install the prerequisite packages.
 
-On Ubuntu::
+- On Ubuntu/Debian::
 
-  sudo apt-get install python-dev libssl-dev python-pip git-core libmysqlclient-dev libpq-dev
+    sudo apt-get install python-dev libssl-dev python-pip \
+    libmysqlclient-dev libxml2-dev libxslt-dev libpq-dev git \
+    git-review libffi-dev gettext graphviz libjpeg-dev
 
-On Fedora-based distributions (e.g., Fedora/RHEL/CentOS/Scientific Linux)::
+- On Fedora 21/RHEL7/Centos7::
 
-  sudo yum install python-devel openssl-devel python-pip git libmysqlclient-dev libqp-dev
+    sudo yum install python-devel openssl-devel python-pip mysql-devel \
+    libxml2-devel libxslt-devel postgresql-devel git git-review \
+    libffi-devel gettext graphviz gcc libjpeg-turbo-devel \
+    python-tox python3-devel python3
+
+.. note::
+
+   If using RHEL and yum reports "No package python-pip available" and "No
+   package git-review available", use the EPEL software repository.
+   Instructions can be found at `<http://fedoraproject.org/wiki/EPEL/FAQ#howtouse>`_.
+
+- On Fedora 22 and higher::
+
+    sudo dnf install python-devel openssl-devel python-pip mysql-devel \
+    libxml2-devel libxslt-devel postgresql-devel git git-review \
+    libffi-devel gettext graphviz gcc libjpeg-turbo-devel \
+    python-tox python3-devel python3
+
+.. note::
+
+   Additionally, if using Fedora 23, ``redhat-rpm-config`` package should be
+   installed so that development virtualenv can be built successfully.
 
 
 Mac OS X Systems
