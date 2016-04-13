@@ -143,18 +143,14 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
             self.addCleanup(client.delete_access_rule, share_id, access['id'])
         return access
 
-    def _create_router_interface(self, subnet_id, client=None,
-                                 tenant_id=None, router_id=None):
+    def _create_router_interface(self, subnet_id, client=None, router_id=None):
         """Create a router interface
 
         :param subnet_id: id of the subnet
         :param client: client object
-        :param tenant_id
         """
         if not client:
             client = self.routers_client
-        if not tenant_id:
-            tenant_id = client.tenant_id
         if not router_id:
             router_id = self._get_router()['id']
         client.add_router_interface(router_id, subnet_id=subnet_id)
