@@ -79,6 +79,8 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
 
         # Data for creating shares in parallel
         data = [creation_data, creation_data]
+        if utils.is_microversion_ge(CONF.share.max_api_microversion, "2.5"):
+            data.append(creation_data)
         if utils.is_microversion_ge(CONF.share.max_api_microversion, "2.8"):
             data.append(creation_data)
         shares_created = cls.create_shares(data)
@@ -94,12 +96,11 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
 
     def _test_manage(self, share, is_public=False,
                      version=CONF.share.max_api_microversion):
-        name = "Name for 'managed' share that had ID %s" % \
-               share['id']
+        name = "Name for 'managed' share that had ID %s" % share['id']
         description = "Description for 'managed' share"
 
         # Manage share
-        share = self.shares_v2_client.manage_share(
+        managed_share = self.shares_v2_client.manage_share(
             service_host=share['host'],
             export_path=share['export_locations'][0],
             protocol=share['share_proto'],
@@ -107,43 +108,53 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
             name=name,
             description=description,
             is_public=is_public,
+            version=version,
         )
 
         # Add managed share to cleanup queue
         self.method_resources.insert(
-            0, {'type': 'share', 'id': share['id'],
+            0, {'type': 'share', 'id': managed_share['id'],
                 'client': self.shares_client})
 
         # Wait for success
-        self.shares_v2_client.wait_for_share_status(share['id'], 'available')
+        self.shares_v2_client.wait_for_share_status(managed_share['id'],
+                                                    'available')
 
         # Verify data of managed share
-        get = self.shares_v2_client.get_share(share['id'], version="2.5")
-        self.assertEqual(name, get['name'])
-        self.assertEqual(description, get['description'])
-        self.assertEqual(share['host'], get['host'])
-        self.assertEqual(share['share_proto'], get['share_proto'])
-        self.assertEqual(self.st['share_type']['name'], get['share_type'])
+        self.assertEqual(name, managed_share['name'])
+        self.assertEqual(description, managed_share['description'])
+        self.assertEqual(share['host'], managed_share['host'])
+        self.assertEqual(share['share_proto'], managed_share['share_proto'])
 
-        share = self.shares_v2_client.get_share(share['id'], version="2.6")
-        self.assertEqual(self.st['share_type']['id'], share['share_type'])
+        if utils.is_microversion_ge(version, "2.6"):
+            self.assertEqual(self.st['share_type']['id'],
+                             managed_share['share_type'])
+        else:
+            self.assertEqual(self.st['share_type']['name'],
+                             managed_share['share_type'])
 
         if utils.is_microversion_ge(version, "2.8"):
-            self.assertEqual(is_public, share['is_public'])
+            self.assertEqual(is_public, managed_share['is_public'])
         else:
-            self.assertFalse(share['is_public'])
+            self.assertFalse(managed_share['is_public'])
 
         # Delete share
-        self.shares_v2_client.delete_share(share['id'])
-        self.shares_v2_client.wait_for_resource_deletion(share_id=share['id'])
+        self.shares_v2_client.delete_share(managed_share['id'])
+        self.shares_v2_client.wait_for_resource_deletion(
+            share_id=managed_share['id'])
         self.assertRaises(lib_exc.NotFound,
                           self.shares_v2_client.get_share,
-                          share['id'])
+                          managed_share['id'])
 
-    @base.skip_if_microversion_not_supported("2.8")
     @test.attr(type=["gate", "smoke"])
+    @base.skip_if_microversion_not_supported("2.5")
+    def test_manage_with_os_share_manage_url(self):
+        self._test_manage(share=self.shares[2], version="2.5")
+
+    @test.attr(type=["gate", "smoke"])
+    @base.skip_if_microversion_not_supported("2.8")
     def test_manage_with_is_public_True(self):
-        self._test_manage(share=self.shares[2], is_public=True)
+        self._test_manage(share=self.shares[3], is_public=True, version="2.8")
 
     @test.attr(type=["gate", "smoke"])
     def test_manage(self):
