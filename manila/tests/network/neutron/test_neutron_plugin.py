@@ -73,8 +73,8 @@ fake_neutron_network = {
 
 fake_share_network = {
     'id': 'fake nw info id',
-    'neutron_subnet_id': 'fake subnet id',
-    'neutron_net_id': 'fake net id',
+    'neutron_subnet_id': fake_neutron_network['subnets'][0],
+    'neutron_net_id': fake_neutron_network['id'],
     'project_id': 'fake project id',
     'status': 'test_subnet_status',
     'name': 'fake name',
@@ -109,6 +109,77 @@ fake_network_allocation = {
     'cidr': fake_share_network['cidr'],
     'gateway': fake_share_network['gateway'],
     'mtu': 1509,
+}
+
+fake_nw_info = {
+    'segments': [
+        {
+            'provider:network_type': 'vlan',
+            'provider:physical_network': 'net1',
+            'provider:segmentation_id': 3926,
+        },
+        {
+            'provider:network_type': 'vxlan',
+            'provider:physical_network': None,
+            'provider:segmentation_id': 2000,
+        },
+    ],
+    'mtu': 1509,
+}
+
+fake_neutron_network_multi = {
+    'admin_state_up': True,
+    'availability_zone_hints': [],
+    'availability_zones': ['nova'],
+    'description': '',
+    'id': 'fake net id',
+    'ipv4_address_scope': None,
+    'ipv6_address_scope': None,
+    'name': 'test_neutron_network',
+    'port_security_enabled': True,
+    'router:external': False,
+    'shared': False,
+    'status': 'ACTIVE',
+    'subnets': ['fake subnet id',
+                'fake subnet id 2'],
+    'segments': fake_nw_info['segments'],
+    'mtu': fake_nw_info['mtu'],
+}
+
+fake_share_network_multi = {
+    'id': 'fake nw info id',
+    'neutron_subnet_id': fake_neutron_network_multi['subnets'][0],
+    'neutron_net_id': fake_neutron_network_multi['id'],
+    'project_id': 'fake project id',
+    'status': 'test_subnet_status',
+    'name': 'fake name',
+    'description': 'fake description',
+    'security_services': [],
+    'ip_version': 4,
+    'cidr': 'fake_cidr',
+    'gateway': 'fake_gateway',
+    'mtu': fake_neutron_network_multi['mtu'],
+}
+
+fake_network_allocation_multi = {
+    'id': fake_neutron_port['id'],
+    'share_server_id': fake_share_server['id'],
+    'ip_address': fake_neutron_port['fixed_ips'][0]['ip_address'],
+    'mac_address': fake_neutron_port['mac_address'],
+    'status': constants.STATUS_ACTIVE,
+    'label': 'user',
+    'network_type': None,
+    'segmentation_id': None,
+    'ip_version': fake_share_network_multi['ip_version'],
+    'cidr': fake_share_network_multi['cidr'],
+    'gateway': 'fake_gateway',
+    'mtu': fake_share_network_multi['mtu'],
+}
+
+fake_binding_profile = {
+    'neutron_switch_id': 'fake switch id',
+    'neutron_port_id': 'fake port id',
+    'neutron_switch_info': 'fake switch info'
 }
 
 
@@ -309,6 +380,58 @@ class NeutronNetworkPluginTest(test.TestCase):
                 self.fake_context,
                 fake_share_network['id'],
                 share_nw_update_dict)
+
+    @mock.patch.object(db_api, 'share_network_update', mock.Mock())
+    def test_save_neutron_network_data_multi_segment(self):
+        share_nw_update_dict = {
+            'network_type': 'vlan',
+            'segmentation_id': 3926,
+            'mtu': 1509
+        }
+        config_data = {
+            'DEFAULT': {
+                'neutron_physical_net_name': 'net1',
+            }
+        }
+
+        self.mock_object(self.plugin.neutron_api, 'get_network')
+        self.plugin.neutron_api.get_network.return_value = fake_nw_info
+
+        with test_utils.create_temp_config_with_opts(config_data):
+            self.plugin._save_neutron_network_data(self.fake_context,
+                                                   fake_share_network)
+
+        self.plugin.neutron_api.get_network.assert_called_once_with(
+            fake_share_network['neutron_net_id'])
+        self.plugin.db.share_network_update.assert_called_once_with(
+            self.fake_context,
+            fake_share_network['id'],
+            share_nw_update_dict)
+
+    @mock.patch.object(db_api, 'share_network_update', mock.Mock())
+    def test_save_neutron_network_data_multi_segment_without_ident(self):
+        config_data = {
+            'DEFAULT': {
+                'neutron_physical_net_name': 'net100',
+            }
+        }
+
+        self.mock_object(self.plugin.neutron_api, 'get_network')
+        self.plugin.neutron_api.get_network.return_value = fake_nw_info
+
+        with test_utils.create_temp_config_with_opts(config_data):
+            self.assertRaises(exception.NetworkBadConfigurationException,
+                              self.plugin._save_neutron_network_data,
+                              self.fake_context, fake_share_network)
+
+    @mock.patch.object(db_api, 'share_network_update', mock.Mock())
+    def test_save_neutron_network_data_multi_segment_without_cfg(self):
+        self.mock_object(self.plugin.neutron_api, 'get_network')
+        self.plugin.neutron_api.get_network.return_value = fake_nw_info
+
+        self.assertRaises(exception.NetworkBadConfigurationException,
+                          self.plugin._save_neutron_network_data,
+                          self.fake_context, fake_share_network)
 
     @mock.patch.object(db_api, 'share_network_update', mock.Mock())
     def test_save_neutron_subnet_data(self):
@@ -543,6 +666,7 @@ class NeutronBindNetworkPluginTest(test.TestCase):
         self.bind_plugin = self._get_neutron_network_plugin_instance()
         self.bind_plugin.db = db_api
         self.sleep_mock = self.mock_object(time, 'sleep')
+        self.fake_share_network_multi = dict(fake_share_network_multi)
 
     def _get_neutron_network_plugin_instance(self, config_data=None):
         if config_data is None:
@@ -593,8 +717,6 @@ class NeutronBindNetworkPluginTest(test.TestCase):
                           [fake_neut_port1, fake_neut_port2],
                           fake_share_server)
 
-    @mock.patch.object(db_api, 'network_allocation_create',
-                       mock.Mock(return_values=fake_network_allocation))
     @mock.patch.object(db_api, 'share_network_get',
                        mock.Mock(return_value=fake_share_network))
     @mock.patch.object(db_api, 'share_server_get',
@@ -611,6 +733,10 @@ class NeutronBindNetworkPluginTest(test.TestCase):
         self.mock_object(neutron_host_id_opts, 'default')
         neutron_host_id_opts.default = 'foohost1'
         self.mock_object(db_api, 'network_allocation_create')
+        db_api.network_allocation_create.return_value = fake_network_allocation
+        self.mock_object(self.bind_plugin.neutron_api, 'get_network')
+        self.bind_plugin.neutron_api.get_network.return_value = (
+            fake_neutron_network)
 
         with mock.patch.object(self.bind_plugin.neutron_api, 'create_port',
                                mock.Mock(return_value=fake_neutron_port)):
@@ -640,6 +766,96 @@ class NeutronBindNetworkPluginTest(test.TestCase):
                 fake_network_allocation)
             self.bind_plugin._wait_for_ports_bind.assert_called_once_with(
                 [db_api.network_allocation_create()], fake_share_server)
+
+    @mock.patch.object(db_api, 'network_allocation_create',
+                       mock.Mock(return_values=fake_network_allocation_multi))
+    @mock.patch.object(db_api, 'share_network_get',
+                       mock.Mock(return_value=fake_share_network_multi))
+    @mock.patch.object(db_api, 'share_server_get',
+                       mock.Mock(return_value=fake_share_server))
+    def test_allocate_network_multi_segment(self):
+        network_allocation_update_data = {
+            'network_type':
+                fake_nw_info['segments'][0]['provider:network_type'],
+            'segmentation_id':
+                fake_nw_info['segments'][0]['provider:segmentation_id'],
+        }
+        network_update_data = dict(network_allocation_update_data)
+        network_update_data['mtu'] = fake_nw_info['mtu']
+        fake_network_allocation_multi_updated = dict(
+            fake_network_allocation_multi)
+        fake_network_allocation_multi_updated.update(
+            network_allocation_update_data)
+        fake_share_network_multi_updated = dict(fake_share_network_multi)
+        fake_share_network_multi_updated.update(network_update_data)
+        config_data = {
+            'DEFAULT': {
+                'neutron_net_id': 'fake net id',
+                'neutron_subnet_id': 'fake subnet id',
+                'neutron_physical_net_name': 'net1',
+            }
+        }
+        self.bind_plugin = self._get_neutron_network_plugin_instance(
+            config_data)
+        self.bind_plugin.db = db_api
+
+        self.mock_object(self.bind_plugin, '_has_provider_network_extension')
+        self.bind_plugin._has_provider_network_extension.return_value = True
+        save_subnet_data = self.mock_object(self.bind_plugin,
+                                            '_save_neutron_subnet_data')
+        self.mock_object(self.bind_plugin, '_wait_for_ports_bind')
+        neutron_host_id_opts = plugin.neutron_bind_network_plugin_opts[1]
+        self.mock_object(neutron_host_id_opts, 'default')
+        neutron_host_id_opts.default = 'foohost1'
+
+        self.mock_object(db_api, 'network_allocation_create')
+        db_api.network_allocation_create.return_value = (
+            fake_network_allocation_multi)
+        self.mock_object(db_api, 'network_allocation_update')
+        db_api.network_allocation_update.return_value = (
+            fake_network_allocation_multi_updated)
+        self.mock_object(self.bind_plugin.neutron_api, 'get_network')
+        self.bind_plugin.neutron_api.get_network.return_value = (
+            fake_neutron_network_multi)
+        self.mock_object(db_api, 'share_network_update')
+
+        with mock.patch.object(self.bind_plugin.neutron_api, 'create_port',
+                               mock.Mock(return_value=fake_neutron_port)):
+            self.bind_plugin.allocate_network(
+                self.fake_context,
+                fake_share_server,
+                self.fake_share_network_multi,
+                allocation_info={'count': 1})
+
+            self.bind_plugin._has_provider_network_extension.assert_any_call()
+            save_subnet_data.assert_called_once_with(
+                self.fake_context,
+                fake_share_network_multi_updated)
+            expected_kwargs = {
+                'binding:vnic_type': 'baremetal',
+                'host_id': 'foohost1',
+                'network_id': fake_share_network_multi['neutron_net_id'],
+                'subnet_id': fake_share_network_multi['neutron_subnet_id'],
+                'device_owner': 'manila:share',
+                'device_id': fake_share_network_multi['id']
+            }
+            self.bind_plugin.neutron_api.create_port.assert_called_once_with(
+                fake_share_network_multi['project_id'], **expected_kwargs)
+            db_api.network_allocation_create.assert_called_once_with(
+                self.fake_context,
+                fake_network_allocation_multi)
+            db_api.share_network_update.assert_called_once_with(
+                self.fake_context,
+                fake_share_network_multi['id'],
+                network_update_data)
+            network_allocation_update_data['cidr'] = (
+                fake_share_network_multi['cidr'])
+            network_allocation_update_data['ip_version'] = (
+                fake_share_network_multi['ip_version'])
+            db_api.network_allocation_update.assert_called_once_with(
+                self.fake_context,
+                fake_neutron_port['id'],
+                network_allocation_update_data)
 
     @ddt.data({
         'neutron_binding_profiles': None,
@@ -821,6 +1037,7 @@ class NeutronBindSingleNetworkPluginTest(test.TestCase):
                 'DEFAULT': {
                     'neutron_net_id': fake_net_id,
                     'neutron_subnet_id': fake_subnet_id,
+                    'neutron_physical_net_name': 'net1',
                 }
             }
             fake_net = {'subnets': ['fake1', 'fake2', fake_subnet_id]}
@@ -836,8 +1053,8 @@ class NeutronBindSingleNetworkPluginTest(test.TestCase):
             'port1', 'port2']
         instance = self._get_neutron_network_plugin_instance()
         share_server = 'fake_share_server'
-        share_network = 'fake_share_network'
-        share_network_upd = 'updated_fake_share_network'
+        share_network = {'neutron_net_id': {}}
+        share_network_upd = {'neutron_net_id': {'upd': True}}
         count = 2
         device_owner = 'fake_device_owner'
         self.mock_object(
@@ -1279,6 +1496,9 @@ class NeutronBindNetworkPluginWithNormalTypeTest(test.TestCase):
         self.mock_object(neutron_host_id_opts, 'default')
         neutron_host_id_opts.default = 'foohost1'
         self.mock_object(db_api, 'network_allocation_create')
+        multi_seg = self.mock_object(
+            self.bind_plugin, '_is_neutron_multi_segment')
+        multi_seg.return_value = False
 
         with mock.patch.object(self.bind_plugin.neutron_api, 'create_port',
                                mock.Mock(return_value=fake_neutron_port)):
