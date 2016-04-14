@@ -50,6 +50,17 @@ The following operations are supported on Clustered Data ONTAP:
 - Create consistency group from CG snapshot
 - Create CG snapshot
 - Delete CG snapshot
+- Create a replica (DHSS=False)
+- Promote a replica (DHSS=False)
+- Delete a replica (DHSS=False)
+- Update a replica (DHSS=False)
+- Create a replicated snapshot (DHSS=False)
+- Delete a replicated snapshot (DHSS=False)
+- Update a replicated snapshot (DHSS=False)
+
+.. note::
+
+    :term:`DHSS` is abbreviated from `driver_handles_share_servers`.
 
 Supported Operating Modes
 -------------------------
