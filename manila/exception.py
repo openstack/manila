@@ -554,6 +554,10 @@ class ShareTypeInUse(ManilaException):
                 "shares present with the type.")
 
 
+class IPAddressInUse(InUse):
+    message = _("IP address %(ip)s is already used.")
+
+
 class ShareTypeExists(ManilaException):
     message = _("Share Type %(id)s already exists.")
 
@@ -643,6 +647,10 @@ class EMCVnxLockRequiredException(ManilaException):
 
 class EMCVnxInvalidMoverID(ManilaException):
     message = _("Invalid mover or vdm %(id)s.")
+
+
+class EMCUnityError(ShareBackendException):
+    message = _("%(err)s")
 
 
 class HPE3ParInvalidClient(Invalid):

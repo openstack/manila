@@ -1,0 +1,235 @@
+network_allocations:
+  _type: 'network_allocations'
+  _properties: &network_allocations_prop
+    - id: '04ac4c27-9cf7-4406-809c-13edc93e4849'
+      ip_address: 'fake_ip_addr_1'
+      cidr: '192.168.1.0/24'
+      segmentation_id: null
+      gateway: '192.168.1.1'
+      network_type: flat
+    - id: '0cf87de7-5c65-4036-8b6a-e8176c356958'
+      ip_address: 'fake_ip_addr_2'
+      cidr: '192.168.1.0/24'
+      segmentation_id: null
+      gateway: '192.168.1.1'
+      network_type: flat
+
+network_allocations_vlan:
+  _type: 'network_allocations'
+  _properties: &network_allocations_vlan_prop
+    - id: '04ac4c27-9cf7-4406-809c-13edc93e4849'
+      ip_address: 'fake_ip_addr_1'
+      cidr: '192.168.1.0/24'
+      segmentation_id: 160
+      gateway: '192.168.1.1'
+      network_type: vlan
+    - id: '0cf87de7-5c65-4036-8b6a-e8176c356958'
+      ip_address: 'fake_ip_addr_2'
+      cidr: '192.168.1.0/24'
+      segmentation_id: 160
+      gateway: '192.168.1.1'
+      network_type: vlan
+
+network_allocations_vxlan:
+  _type: 'network_allocations'
+  _properties: &network_allocations_vxlan_prop
+    - id: '04ac4c27-9cf7-4406-809c-13edc93e4849'
+      ip_address: 'fake_ip_addr_1'
+      cidr: '192.168.1.0/24'
+      segmentation_id: 123
+      gateway: '192.168.1.1'
+      network_type: vxlan
+
+active_directory:
+  _type: 'security_service'
+  _properties: &active_directory_prop
+    type: 'active_directory'
+    domain: 'fake_domain_name'
+    dns_ip: 'fake_dns_ip'
+    user: 'fake_user'
+    password: 'fake_password'
+
+kerberos:
+  _type: 'security_service'
+  _properties: &kerberos_prop
+    <<: *active_directory_prop
+    type: 'kerberos'
+    server: 'fake_server'
+
+security_services:
+  _type: 'security_services'
+  _properties: &security_services_prop
+    services: [*active_directory_prop, *kerberos_prop]
+
+
+network_info__flat:
+  _type: 'network_info'
+  _properties: &network_info_flat_prop
+    name: 'share_network'
+    neutron_subnet_id: 'a3f3eeac-0b16-4932-8c03-0a37003644ff'
+    network_type: 'flat'
+    neutron_net_id: 'e6c96730-2bcf-4ce3-86fa-7cb7740086cb'
+    ip_version: 4
+    id: '232d8218-2743-41d1-832b-4194626e691e'
+    network_allocations: *network_allocations_prop
+    server_id: '78fd845f-8e7d-487f-bfde-051d83e78103'
+    security_services: []
+
+network_info__vlan:
+  _type: 'network_info'
+  _properties: &network_info__vlan_prop
+    <<: *network_info_flat_prop
+    network_type: 'vlan'
+    network_allocations: *network_allocations_vlan_prop
+
+network_info__vxlan:
+  _type: 'network_info'
+  _properties: &network_info__vxlan_prop
+    <<: *network_info_flat_prop
+    network_type: 'vxlan'
+    network_allocations: *network_allocations_vxlan_prop
+
+network_info__active_directory:
+  _type: 'network_info'
+  _properties:
+    <<: *network_info__vlan_prop
+    security_services: [*active_directory_prop]
+
+network_info__kerberos:
+  _type: 'network_info'
+  _properties:
+    <<: *network_info_flat_prop
+    security_services: [*kerberos_prop]
+
+share_server:
+  _type: 'share_server'
+  _properties: &share_server_prop
+    status: 'active'
+    share_network: *network_info_flat_prop
+    share_network_id: '232d8218-2743-41d1-832b-4194626e691e'
+    host: 'openstack@VNX'
+    backend_details:
+      share_server_name: '78fd845f-8e7d-487f-bfde-051d83e78103'
+    network_allocations: *network_allocations_prop
+    id: '78fd845f-8e7d-487f-bfde-051d83e78103'
+
+share_server__no_share_server_name:
+  _type: 'share_server'
+  _properties:
+    <<: *share_server_prop
+    backend_details:
+      share_server_name: None
+      id: '78fd845f-8e7d-487f-bfde-051d83e78103'
+
+server_detail:
+  _type: 'server_detail'
+  _properties: &server_detail_prop
+    share_server_name: '78fd845f-8e7d-487f-bfde-051d83e78103'
+
+cifs_share:
+  _type: 'share'
+  _properties: &cifs_share_prop
+    share_id: '708e753c-aacb-411f-9c8a-8b8175da4e73'
+    availability_zone_id: 'de628fb6-1c99-41f6-a06a-adb61ff693b5'
+    share_network_id: '232d8218-2743-41d1-832b-4194626e691e'
+    share_server_id: '78fd845f-8e7d-487f-bfde-051d83e78103'
+    id: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    size: 1
+    user_id: '19bbda71b578471a93363653dcb4c61d'
+    status: 'creating'
+    share_type_id: '57679eab-3e67-4052-b180-62b609670e93'
+    host: 'openstack@VNX#Pool_2'
+    display_name: 'cifs_share'
+    share_proto: 'CIFS'
+    export_locations: []
+    is_public: False
+
+nfs_share:
+  _type: 'share'
+  _properties: &nfs_share_prop
+    share_id: '12eb3777-7008-4721-8243-422507db8f9d'
+    availability_zone_id: 'de628fb6-1c99-41f6-a06a-adb61ff693b5'
+    share_network_id: '232d8218-2743-41d1-832b-4194626e691e'
+    share_server_id: '78fd845f-8e7d-487f-bfde-051d83e78103'
+    id: 'cb532599-8dc6-4c3e-bb21-74ea54be566c'
+    size: 1
+    user_id: '19bbda71b578471a93363653dcb4c61d'
+    status: 'creating'
+    share_type_id: '57679eab-3e67-4052-b180-62b609670e93'
+    host: 'openstack@VNX#Pool_2'
+    display_name: 'nfs_share'
+    share_proto: 'NFS'
+    export_locations: []
+    is_public: False
+
+invalid_share:
+  _type: 'share'
+  _properties: &invalid_share_prop
+    share_id: '12eb3777-7008-4721-8243-422507db8f9d'
+    availability_zone_id: 'de628fb6-1c99-41f6-a06a-adb61ff693b5'
+    share_network_id: '232d8218-2743-41d1-832b-4194626e691e'
+    share_server_id: '78fd845f-8e7d-487f-bfde-051d83e78103'
+    id: 'cb532599-8dc6-4c3e-bb21-74ea54be566c'
+    size: 1
+    user_id: '19bbda71b578471a93363653dcb4c61d'
+    status: 'creating'
+    share_type_id: '57679eab-3e67-4052-b180-62b609670e93'
+    host: 'openstack@VNX#Pool_2'
+    display_name: 'nfs_share'
+    share_proto: 'fake_proto'
+    export_locations: []
+    is_public: False
+
+snapshot:
+  _type: 'snapshot'
+  _properties: &snapshot_prop
+    status: 'creating'
+    share_instance_id: '27e4625e-c336-4749-85bc-634216755fbc'
+    share:
+      share_proto: 'CIFS'
+    snapshot_id: '345476cc-32ab-4565-ba88-e4733b7ffa0e'
+    progress: '0%'
+    id: 'ab411797-b1cf-4035-bf14-8771a7bf1805'
+    share_id: '27e4625e-c336-4749-85bc-634216755fbc'
+
+cifs_rw_access:
+  _type: 'access'
+  _properties:
+    access_level: 'rw'
+    access_to: 'administrator'
+    access_type: 'user'
+
+cifs_ro_access:
+  _type: 'access'
+  _properties:
+    access_level: 'ro'
+    access_to: 'administrator'
+    access_type: 'user'
+
+nfs_rw_access:
+  _type: 'access'
+  _properties:
+    access_level: 'rw'
+    access_to: '192.168.1.1'
+    access_type: 'ip'
+
+nfs_rw_access_cidr:
+  _type: 'access'
+  _properties:
+    access_level: 'rw'
+    access_to: '192.168.1.0/24'
+    access_type: 'ip'
+
+nfs_ro_access:
+  _type: 'access'
+  _properties:
+    access_level: 'ro'
+    access_to: '192.168.1.1'
+    access_type: 'ip'
+
+invalid_access:
+  _type: 'access'
+  _properties:
+    access_level: 'fake_access_level'
+    access_to: 'fake_access_to'
+    access_type: 'fake_type'

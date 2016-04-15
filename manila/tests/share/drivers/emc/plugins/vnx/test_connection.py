@@ -84,16 +84,19 @@ class StorageConnectionTestCase(test.TestCase):
     @ddt.data({'pool_conf': None,
                'real_pools': ['fake_pool', 'nas_pool'],
                'matched_pool': set()},
-              {'pool_conf': '*',
+              {'pool_conf': [],
+               'real_pools': ['fake_pool', 'nas_pool'],
+               'matched_pool': set()},
+              {'pool_conf': ['*'],
                'real_pools': ['fake_pool', 'nas_pool'],
                'matched_pool': {'fake_pool', 'nas_pool'}},
-              {'pool_conf': 'fake_*',
+              {'pool_conf': ['fake_*'],
                'real_pools': ['fake_pool', 'nas_pool', 'Perf_Pool'],
                'matched_pool': {'fake_pool'}},
-              {'pool_conf': '*pool',
+              {'pool_conf': ['*pool'],
                'real_pools': ['fake_pool', 'NAS_Pool', 'Perf_POOL'],
                'matched_pool': {'fake_pool'}},
-              {'pool_conf': 'nas_pool',
+              {'pool_conf': ['nas_pool'],
                'real_pools': ['fake_pool', 'nas_pool', 'perf_pool'],
                'matched_pool': {'nas_pool'}})
     @ddt.unpack
@@ -120,11 +123,11 @@ class StorageConnectionTestCase(test.TestCase):
         xml_req_mock.assert_has_calls(expected_calls)
 
     @ddt.data(
-        {'pool_conf': 'fake_*',
+        {'pool_conf': ['fake_*'],
          'real_pools': ['nas_pool', 'Perf_Pool']},
-        {'pool_conf': '*pool',
+        {'pool_conf': ['*pool'],
          'real_pools': ['NAS_Pool', 'Perf_POOL']},
-        {'pool_conf': 'nas_pool',
+        {'pool_conf': ['nas_pool'],
          'real_pools': ['fake_pool', 'perf_pool']},
     )
     @ddt.unpack

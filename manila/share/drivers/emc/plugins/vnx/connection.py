@@ -459,7 +459,7 @@ class VNXStorageConnection(driver.StorageConnection):
                 raise exception.EMCVnxXMLAPIError(err=message)
 
             real_pools = set([item for item in backend_pools])
-            conf_pools = set([item.strip() for item in pools.split(",")])
+            conf_pools = set([item.strip() for item in pools])
             matched_pools, unmatched_pools = vnx_utils.do_match_any(
                 real_pools, conf_pools)
 
