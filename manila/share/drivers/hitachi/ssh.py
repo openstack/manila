@@ -58,11 +58,9 @@ class HNASSSHBackend(object):
         output, err = self._execute(command)
 
         line = output.split('\n')
-        fs_capacity = Capacity(line[3])
-
-        available_space = fs_capacity.size - fs_capacity.used
-
-        return fs_capacity.size, available_space
+        fs = Filesystem(line[3])
+        available_space = fs.size - fs.used
+        return fs.size, available_space
 
     def nfs_export_add(self, share_id):
         path = '/shares/' + share_id
@@ -195,16 +193,16 @@ class HNASSSHBackend(object):
         self._locked_selectfs('delete', path)
 
     def check_fs_mounted(self):
-        fs_list = self._get_filesystem_list()
-        for i in range(0, len(fs_list)):
-            if fs_list[i].name == self.fs_name:
-                if fs_list[i].state == 'Mount':
-                    return True
-                else:
-                    return False
-        msg = (_("Filesystem %s does not exist or it is not available "
-                 "in the current EVS context.") % self.fs_name)
-        raise exception.HNASItemNotFoundException(msg=msg)
+        command = ['df', '-a', '-f', self.fs_name]
+        output, err = self._execute(command)
+        if "not found" in output:
+            msg = (_("Filesystem %s does not exist or it is not available "
+                     "in the current EVS context.") % self.fs_name)
+            raise exception.HNASItemNotFoundException(msg=msg)
+        else:
+            line = output.split('\n')
+            fs = Filesystem(line[3])
+            return fs.mounted
 
     def mount(self):
         command = ['mount', self.fs_name]
@@ -335,29 +333,6 @@ class HNASSSHBackend(object):
             export_list.append(Export(items[i]))
         return export_list
 
-    def _get_filesystem_list(self):
-        command = ['filesystem-list', self.fs_name]
-        output, err = self._execute(command)
-        items = output.split('\n')
-        filesystem_list = []
-        fs_name = None
-        if len(items) > 2:
-            j = 0
-            for i in range(2, len(items) - 1):
-                if "Filesystem " in items[i] and len(items[i].split()) == 2:
-                    description, fs_name = items[i].split()
-                    fs_name = fs_name[:len(fs_name) - 1]
-                elif "NoEVS" not in items[i]:
-                    # Not considering FS without EVS
-                    filesystem_list.append(FileSystem(items[i]))
-                    if fs_name is not None:
-                        filesystem_list[j].name = fs_name
-                        fs_name = None
-                    j += 1
-                else:
-                    LOG.debug("Ignoring filesystems without EVS.")
-        return filesystem_list
-
     @mutils.retry(exception=exception.HNASConnException, wait_random=True)
     def _execute(self, commands):
         command = ['ssc', '127.0.0.1']
@@ -426,24 +401,6 @@ class HNASSSHBackend(object):
                     msg = six.text_type(e)
                     LOG.exception(msg)
                     raise e
-
-
-class FileSystem(object):
-    def __init__(self, data):
-        if data:
-            items = data.split()
-            if len(items) >= 7:
-                self.name = items[0]
-                self.dev = items[1]
-                self.on_span = items[2]
-                self.state = items[3]
-                self.evs = int(items[4])
-                self.capacity = int(items[5])
-                self.confined = int(items[6])
-                if len(items) == 8:
-                    self.flag = items[7]
-                else:
-                    self.flag = ''
 
 
 class Export(object):
@@ -533,7 +490,7 @@ class JobSubmit(object):
             self.job_id = split_data[8]
 
 
-class Capacity(object):
+class Filesystem(object):
     def __init__(self, data):
         if data:
             items = data.split()
@@ -544,10 +501,14 @@ class Capacity(object):
             self.size_measure = items[4]
             if self.size_measure == 'TB':
                 self.size = self.size * units.Ki
-            self.used = float(items[5])
-            self.used_measure = items[6]
-            if self.used_measure == 'TB':
-                self.used = self.used * units.Ki
+            if items[5:7] == ["Not", "mounted"]:
+                self.mounted = False
+            else:
+                self.mounted = True
+                self.used = float(items[5])
+                self.used_measure = items[6]
+                if self.used_measure == 'TB':
+                    self.used = self.used * units.Ki
 
 
 class Quota(object):
