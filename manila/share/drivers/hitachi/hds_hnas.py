@@ -479,10 +479,10 @@ class HDSHNASDriver(driver.ShareDriver):
                 LOG.exception(msg)
 
     def _check_fs_mounted(self):
-        if not self.hnas.check_fs_mounted():
-            LOG.debug("Filesystem %(fs)s is unmounted. Mounting...",
-                      {'fs': self.fs_name})
-            self.hnas.mount()
+        mounted = self.hnas.check_fs_mounted()
+        if not mounted:
+            msg = _("Filesystem %s is not mounted.") % self.fs_name
+            raise exception.HNASBackendException(msg=msg)
 
     def _ensure_share(self, share_id):
         """Ensure that share is exported.
