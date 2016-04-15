@@ -114,7 +114,7 @@ class HNASSSHBackend(object):
             if ('Cannot find any clonable files in the source directory' in
                     e.stderr):
                 msg = _("Source path %s is empty") % src_path
-                raise exception.HNASNothingToCloneException(msg)
+                raise exception.HNASNothingToCloneException(msg=msg)
             else:
                 msg = six.text_type(e)
                 LOG.exception(msg)
