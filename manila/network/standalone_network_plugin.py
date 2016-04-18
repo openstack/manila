@@ -249,6 +249,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
             'network_type': self.network_type,
             'segmentation_id': self.segmentation_id,
             'cidr': six.text_type(self.net.cidr),
+            'gateway': six.text_type(self.gateway),
             'ip_version': self.ip_version,
         }
         share_network.update(data)
@@ -281,6 +282,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
                 'network_type': share_network['network_type'],
                 'segmentation_id': share_network['segmentation_id'],
                 'cidr': share_network['cidr'],
+                'gateway': share_network['gateway'],
                 'ip_version': share_network['ip_version'],
             }
             allocations.append(

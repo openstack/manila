@@ -19,6 +19,7 @@ from tempest import test
 import testtools
 
 from manila_tempest_tests.tests.api import base
+from manila_tempest_tests import utils
 
 CONF = config.CONF
 
@@ -37,7 +38,7 @@ class ShareNetworkListMixin(object):
 
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_list_share_networks_with_detail(self):
-        listed = self.shares_client.list_share_networks_with_detail()
+        listed = self.shares_v2_client.list_share_networks_with_detail()
         any(self.sn_with_ldap_ss["id"] in sn["id"] for sn in listed)
 
         # verify keys
@@ -47,6 +48,11 @@ class ShareNetworkListMixin(object):
             "neutron_net_id", "neutron_subnet_id",
             "created_at", "updated_at", "segmentation_id",
         ]
+
+        # In v2.18 and beyond, we expect gateway.
+        if utils.is_microversion_supported('2.18'):
+            keys.append('gateway')
+
         [self.assertIn(key, sn.keys()) for sn in listed for key in keys]
 
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])

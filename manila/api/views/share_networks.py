@@ -20,18 +20,22 @@ class ViewBuilder(common.ViewBuilder):
     """Model a server API response as a python dictionary."""
 
     _collection_name = 'share_networks'
+    _detail_version_modifiers = ["add_gateway"]
 
-    def build_share_network(self, share_network):
+    def build_share_network(self, request, share_network):
         """View of a share network."""
 
-        return {'share_network': self._build_share_network_view(share_network)}
+        return {'share_network': self._build_share_network_view(
+            request, share_network)}
 
-    def build_share_networks(self, share_networks, is_detail=True):
+    def build_share_networks(self, request, share_networks, is_detail=True):
         return {'share_networks':
-                [self._build_share_network_view(share_network, is_detail)
+                [self._build_share_network_view(
+                    request, share_network, is_detail)
                  for share_network in share_networks]}
 
-    def _build_share_network_view(self, share_network, is_detail=True):
+    def _build_share_network_view(self, request, share_network,
+                                  is_detail=True):
         sn = {
             'id': share_network.get('id'),
             'name': share_network.get('name'),
@@ -50,4 +54,10 @@ class ViewBuilder(common.ViewBuilder):
                 'ip_version': share_network.get('ip_version'),
                 'description': share_network.get('description'),
             })
+
+            self.update_versioned_resource_dict(request, sn, share_network)
         return sn
+
+    @common.ViewBuilder.versioned_method("2.18")
+    def add_gateway(self, context, network_dict, network):
+        network_dict['gateway'] = network.get('gateway')

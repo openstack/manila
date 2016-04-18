@@ -88,6 +88,7 @@ class NovaNetworkPlugin(network.NetworkBaseAPI):
                 'status': constants.STATUS_ACTIVE,
                 'label': self.label,
                 'cidr': share_network['cidr'],
+                'gateway': share_network['gateway'],
                 'ip_version': share_network['ip_version'],
                 'segmentation_id': share_network['segmentation_id'],
                 'network_type': share_network['network_type'],
@@ -150,6 +151,7 @@ class NovaNetworkPlugin(network.NetworkBaseAPI):
         """Update 'share-network' with plugin specific data."""
         data = {
             'cidr': (nova_net['cidr'] or nova_net['cidr_v6']),
+            'gateway': (nova_net['gateway'] or nova_net['gateway_v6']),
             'ip_version': (4 if nova_net['cidr'] else 6),
             'segmentation_id': nova_net['vlan'],
             'network_type': ('vlan' if nova_net['vlan'] else 'flat'),

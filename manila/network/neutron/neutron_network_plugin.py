@@ -123,6 +123,7 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
             'id': port['id'],
             'share_server_id': share_server['id'],
             'ip_address': port['fixed_ips'][0]['ip_address'],
+            'gateway': share_network['gateway'],
             'mac_address': port['mac_address'],
             'status': constants.STATUS_ACTIVE,
             'label': self.label,
@@ -167,6 +168,7 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
 
         subnet_values = {
             'cidr': subnet_info['cidr'],
+            'gateway': subnet_info['gateway_ip'],
             'ip_version': subnet_info['ip_version']
         }
         share_network.update(subnet_values)

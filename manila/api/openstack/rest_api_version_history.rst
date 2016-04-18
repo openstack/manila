@@ -114,3 +114,7 @@ user documentation.
 2.17
 ----
   Added user_id and project_id in snapshot show/create/manage APIs.
+
+2.18
+----
+  Add gateway in share network show API.
