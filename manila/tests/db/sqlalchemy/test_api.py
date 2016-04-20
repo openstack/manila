@@ -18,11 +18,13 @@
 """Testing of SQLAlchemy backend."""
 
 import copy
-
+import datetime
 import ddt
 import mock
+import random
 
 from oslo_db import exception as db_exception
+from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import six
 
@@ -2200,3 +2202,146 @@ class NetworkAllocationsDatabaseAPITestCase(test.TestCase):
         )
         for na in result:
             self.assertIn(na.label, ('admin', 'user', None))
+
+
+@ddt.ddt
+class PurgeDeletedTest(test.TestCase):
+
+    def setUp(self):
+        super(PurgeDeletedTest, self).setUp()
+        self.context = context.get_admin_context()
+
+    def _days_ago(self, begin, end):
+        return timeutils.utcnow() - datetime.timedelta(
+            days=random.randint(begin, end))
+
+    def _sqlite_has_fk_constraint(self):
+        # SQLAlchemy doesn't support it at all with < SQLite 3.6.19
+        import sqlite3
+        tup = sqlite3.sqlite_version_info
+        return tup[0] > 3 or (tup[0] == 3 and tup[1] >= 7)
+
+    def _turn_on_foreign_key(self):
+        engine = db_api.get_engine()
+        connection = engine.raw_connection()
+        try:
+            cursor = connection.cursor()
+            cursor.execute("PRAGMA foreign_keys = ON")
+        finally:
+            connection.close()
+
+    @ddt.data({"del_days": 0, "num_left": 0},
+              {"del_days": 10, "num_left": 2},
+              {"del_days": 20, "num_left": 4})
+    @ddt.unpack
+    def test_purge_records_with_del_days(self, del_days, num_left):
+        fake_now = timeutils.utcnow()
+        with mock.patch.object(timeutils, 'utcnow',
+                               mock.Mock(return_value=fake_now)):
+            # create resources soft-deleted in 0~9, 10~19 days ago
+            for start, end in ((0, 9), (10, 19)):
+                for unused in range(2):
+                    # share type
+                    db_utils.create_share_type(id=uuidutils.generate_uuid(),
+                                               deleted_at=self._days_ago(start,
+                                                                         end))
+                    # share
+                    share = db_utils.create_share_without_instance(
+                        metadata={},
+                        deleted_at=self._days_ago(start, end))
+                    # create share network
+                    network = db_utils.create_share_network(
+                        id=uuidutils.generate_uuid(),
+                        deleted_at=self._days_ago(start, end))
+                    # create security service
+                    db_utils.create_security_service(
+                        id=uuidutils.generate_uuid(),
+                        share_network_id=network.id,
+                        deleted_at=self._days_ago(start, end))
+                    # create share instance
+                    s_instance = db_utils.create_share_instance(
+                        id=uuidutils.generate_uuid(),
+                        share_network_id=network.id,
+                        share_id=share.id)
+                    # share access
+                    db_utils.create_share_access(
+                        id=uuidutils.generate_uuid(),
+                        share_id=share['id'],
+                        deleted_at=self._days_ago(start, end))
+                    # create share server
+                    db_utils.create_share_server(
+                        id=uuidutils.generate_uuid(),
+                        deleted_at=self._days_ago(start, end),
+                        share_network_id=network.id)
+                    # create snapshot
+                    db_api.share_snapshot_create(
+                        self.context, {'share_id': share['id'],
+                                       'deleted_at': self._days_ago(start,
+                                                                    end)},
+                        create_snapshot_instance=False)
+                    # create consistency group
+                    cg = db_utils.create_consistency_group(
+                        deleted_at=self._days_ago(start, end))
+                    # create cg snapshot
+                    db_utils.create_cgsnapshot(
+                        cg.id, deleted_at=self._days_ago(start, end))
+                    # create cgsnapshot member
+                    db_api.cgsnapshot_member_create(
+                        self.context,
+                        {'id': uuidutils.generate_uuid(),
+                         'share_id': share.id,
+                         'share_instance_id': s_instance.id,
+                         'deleted_at': self._days_ago(start, end)})
+                    # update share instance
+                    db_api.share_instance_update(
+                        self.context,
+                        s_instance.id,
+                        {'deleted_at': self._days_ago(start, end)})
+
+            db_api.purge_deleted_records(self.context, age_in_days=del_days)
+
+            for model in [models.ShareTypes, models.Share,
+                          models.ShareNetwork, models.ShareAccessMapping,
+                          models.ShareInstance, models.ShareServer,
+                          models.ShareSnapshot, models.ConsistencyGroup,
+                          models.CGSnapshot, models.SecurityService,
+                          models.CGSnapshotMember]:
+                rows = db_api.model_query(self.context, model).count()
+                self.assertEqual(num_left, rows)
+
+    def test_purge_records_with_illegal_args(self):
+        self.assertRaises(TypeError, db_api.purge_deleted_records,
+                          self.context)
+        self.assertRaises(exception.InvalidParameterValue,
+                          db_api.purge_deleted_records,
+                          self.context,
+                          age_in_days=-1)
+
+    def test_purge_records_with_constraint(self):
+        if not self._sqlite_has_fk_constraint():
+            self.skipTest(
+                'sqlite is too old for reliable SQLA foreign_keys')
+        self._turn_on_foreign_key()
+        type_id = uuidutils.generate_uuid()
+        # create share type1
+        db_utils.create_share_type(id=type_id,
+                                   deleted_at=self._days_ago(1, 1))
+        # create share type2
+        db_utils.create_share_type(id=uuidutils.generate_uuid(),
+                                   deleted_at=self._days_ago(1, 1))
+        # create share
+        share = db_utils.create_share(share_type_id=type_id)
+
+        db_api.purge_deleted_records(self.context, age_in_days=0)
+        type_row = db_api.model_query(self.context,
+                                      models.ShareTypes).count()
+        # share type1 should not be deleted
+        self.assertEqual(1, type_row)
+        db_api.model_query(self.context, models.ShareInstance).delete()
+        db_api.share_delete(self.context, share['id'])
+
+        db_api.purge_deleted_records(self.context, age_in_days=0)
+        s_row = db_api.model_query(self.context, models.Share).count()
+        type_row = db_api.model_query(self.context,
+                                      models.ShareTypes).count()
+        self.assertEqual(0, s_row + type_row)

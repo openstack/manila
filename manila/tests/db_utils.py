@@ -68,6 +68,15 @@ def create_cgsnapshot_member(cgsnapshot_id, **kwargs):
     return _create_db_row(db.cgsnapshot_member_create, member, kwargs)
 
 
+def create_share_access(**kwargs):
+    share_access = {
+        'id': 'fake_id',
+        'access_type': 'ip',
+        'access_to': 'fake_ip_address'
+    }
+    return _create_db_row(db.share_access_create, share_access, kwargs)
+
+
 def create_share(**kwargs):
     """Create a share object."""
     share = {
@@ -84,6 +93,24 @@ def create_share(**kwargs):
         'host': 'fake_host'
     }
     return _create_db_row(db.share_create, share, kwargs)
+
+
+def create_share_without_instance(**kwargs):
+    share = {
+        'share_proto': "NFS",
+        'size': 0,
+        'snapshot_id': None,
+        'share_network_id': None,
+        'share_server_id': None,
+        'user_id': 'fake',
+        'project_id': 'fake',
+        'metadata': {},
+        'availability_zone': 'fake_availability_zone',
+        'status': constants.STATUS_CREATING,
+        'host': 'fake_host'
+    }
+    share.update(copy.deepcopy(kwargs))
+    return db.share_create(context.get_admin_context(), share, False)
 
 
 def create_share_instance(**kwargs):
@@ -163,6 +190,17 @@ def create_share_server(**kwargs):
             context.get_admin_context(), share_srv['id'], backend_details)
     return db.share_server_get(context.get_admin_context(),
                                share_srv['id'])
+
+
+def create_share_type(**kwargs):
+    """Create a share type object"""
+
+    share_type = {
+        'name': 'fake_type',
+        'is_public': True,
+    }
+
+    return _create_db_row(db.share_type_create, share_type, kwargs)
 
 
 def create_share_network(**kwargs):

@@ -29,6 +29,7 @@ import manila.db.sqlalchemy.query  # noqa
 
 from oslo_config import cfg
 from oslo_db import api as oslo_db_api
+from oslo_db import exception as db_exc
 from oslo_db import exception as db_exception
 from oslo_db import options as db_options
 from oslo_db.sqlalchemy import session
@@ -38,6 +39,7 @@ from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import six
 from sqlalchemy import and_
+from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import true
@@ -46,7 +48,7 @@ from sqlalchemy.sql import func
 from manila.common import constants
 from manila.db.sqlalchemy import models
 from manila import exception
-from manila.i18n import _, _LE, _LW
+from manila.i18n import _, _LE, _LI, _LW
 
 CONF = cfg.CONF
 
@@ -3753,3 +3755,52 @@ def cgsnapshot_member_update(context, member_id, values):
         session.add(member)
 
         return cgsnapshot_member_get(context, member_id, session=session)
+
+
+@require_admin_context
+def purge_deleted_records(context, age_in_days):
+    """Purge soft-deleted records older than(and equal) age from tables."""
+
+    if age_in_days < 0:
+        msg = _('Must supply a non-negative value for "age_in_days".')
+        LOG.error(msg)
+        raise exception.InvalidParameterValue(msg)
+
+    metadata = MetaData()
+    metadata.reflect(get_engine())
+    session = get_session()
+    session.begin()
+    deleted_age = timeutils.utcnow() - datetime.timedelta(days=age_in_days)
+
+    for table in reversed(metadata.sorted_tables):
+        if 'deleted' in table.columns.keys():
+            try:
+                mds = [m for m in models.__dict__.values() if
+                       (hasattr(m, '__tablename__') and
+                        m.__tablename__ == six.text_type(table))]
+                if len(mds) > 0:
+                    # collect all soft-deleted records
+                    with session.begin_nested():
+                        model = mds[0]
+                        s_deleted_records = session.query(model).filter(
+                            model.deleted_at <= deleted_age)
+                    deleted_count = 0
+                    # delete records one by one,
+                    # skip the records which has FK constraints
+                    for record in s_deleted_records:
+                        try:
+                            with session.begin_nested():
+                                session.delete(record)
+                                deleted_count += 1
+                        except db_exc.DBError:
+                            LOG.warning(
+                                _LW("Deleting soft-deleted resource %s "
+                                    "failed, skipping."), record)
+                    if deleted_count != 0:
+                        LOG.info(_LI("Deleted %(count)s records in "
+                                     "table %(table)s."),
+                                 {'count': deleted_count, 'table': table})
+            except db_exc.DBError:
+                LOG.warning(_LW("Querying table %s's soft-deleted records "
+                                "failed, skipping."), table)
+    session.commit()

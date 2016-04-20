@@ -1,0 +1,4 @@
+---
+features:
+  - Add ``purge`` sub command to the ``manila-manage db`` command for
+    administrators to be able to purge soft-deleted rows.

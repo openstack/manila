@@ -240,6 +240,19 @@ class DbCommands(object):
         """Stamp the version table with the given version."""
         return migration.stamp(version)
 
+    @args('age_in_days', type=int, default=0, nargs='?',
+          help='A non-negative integer, denoting the age of soft-deleted '
+               'records in number of days. 0 can be specified to purge all '
+               'soft-deleted rows, default is %(default)d.')
+    def purge(self, age_in_days):
+        """Purge soft-deleted records older than a given age."""
+        age_in_days = int(age_in_days)
+        if age_in_days < 0:
+            print(_("Must supply a non-negative value for age."))
+            exit(1)
+        ctxt = context.get_admin_context()
+        db.purge_deleted_records(ctxt, age_in_days)
+
 
 class VersionCommands(object):
     """Class for exposing the codebase version."""

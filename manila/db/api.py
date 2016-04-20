@@ -1061,3 +1061,11 @@ def share_replica_update(context, share_replica_id, values,
 def share_replica_delete(context, share_replica_id):
     """Deletes a share replica."""
     return IMPL.share_replica_delete(context, share_replica_id)
+
+
+def purge_deleted_records(context, age_in_days):
+    """Purge deleted rows older than given age from all tables
+
+    :raises: InvalidParameterValue if age_in_days is incorrect.
+    """
+    return IMPL.purge_deleted_records(context, age_in_days=age_in_days)
