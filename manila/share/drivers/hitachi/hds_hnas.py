@@ -567,7 +567,7 @@ class HDSHNASDriver(driver.ShareDriver):
         if share_size is None:
             msg = (_("The share %s trying to be managed does not have a "
                      "quota limit, please set it before manage.") % share_id)
-            raise exception.ManageInvalidShare(msg)
+            raise exception.ManageInvalidShare(reason=msg)
 
         path = self.hnas_evs_ip + ':/shares/' + share_id
 
