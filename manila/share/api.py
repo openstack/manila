@@ -277,10 +277,16 @@ class API(base.Base):
                 share_network_id=share_network_id))
 
         if cgsnapshot_member:
-            host = cgsnapshot_member['share']['host']
+            # Inherit properties from the cgsnapshot_member
+            member_share_instance = cgsnapshot_member['share_instance']
+            updates = {
+                'host': member_share_instance['host'],
+                'share_network_id': member_share_instance['share_network_id'],
+                'share_server_id': member_share_instance['share_server_id'],
+            }
             share = self.db.share_instance_update(context,
                                                   share_instance['id'],
-                                                  {'host': host})
+                                                  updates)
             # NOTE(ameade): Do not cast to driver if creating from cgsnapshot
             return
 

@@ -45,9 +45,15 @@ def fake_cg(id, **kwargs):
         'host': None,
         'source_cgsnapshot_id': None,
         'share_network_id': None,
+        'share_server_id': None,
         'share_types': None,
         'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
     }
+
+    if 'source_cgsnapshot_id' in kwargs:
+        cg['share_network_id'] = 'fake_share_network_id'
+        cg['share_server_id'] = 'fake_share_server_id'
+
     cg.update(kwargs)
     return cg
 
@@ -89,6 +95,7 @@ class CGAPITestCase(test.TestCase):
                      user_id=self.context.user_id,
                      project_id=self.context.project_id,
                      status=constants.STATUS_CREATING)
+
         expected_values = cg.copy()
         for name in ('id', 'host', 'created_at'):
             expected_values.pop(name, None)
@@ -283,19 +290,26 @@ class CGAPITestCase(test.TestCase):
                           project_id=self.context.project_id,
                           share_types=[fake_share_type_mapping],
                           status=constants.STATUS_AVAILABLE,
-                          host='fake_original_host')
+                          host='fake_original_host',
+                          share_network_id='fake_network_id',
+                          share_server_id='fake_server_id')
 
         cg = fake_cg('fakeid',
                      user_id=self.context.user_id,
                      project_id=self.context.project_id,
                      share_types=[fake_share_type_mapping],
                      status=constants.STATUS_CREATING,
-                     host='fake_original_host')
+                     host='fake_original_host',
+                     share_network_id='fake_network_id',
+                     share_server_id='fake_server_id')
         expected_values = cg.copy()
-        for name in ('id', 'created_at'):
+        for name in ('id', 'created_at', 'share_network_id',
+                     'share_server_id'):
             expected_values.pop(name, None)
         expected_values['source_cgsnapshot_id'] = snap['id']
         expected_values['share_types'] = ["fake_share_type_id"]
+        expected_values['share_network_id'] = 'fake_network_id'
+        expected_values['share_server_id'] = 'fake_server_id'
 
         self.mock_object(db_driver, 'cgsnapshot_get',
                          mock.Mock(return_value=snap))
@@ -327,18 +341,25 @@ class CGAPITestCase(test.TestCase):
                           user_id=self.context.user_id,
                           project_id=self.context.project_id,
                           share_types=[fake_share_type_mapping],
-                          status=constants.STATUS_AVAILABLE)
+                          status=constants.STATUS_AVAILABLE,
+                          share_network_id='fake_network_id',
+                          share_server_id='fake_server_id')
 
         cg = fake_cg('fakeid',
                      user_id=self.context.user_id,
                      project_id=self.context.project_id,
                      share_types=[fake_share_type_mapping],
-                     status=constants.STATUS_CREATING)
+                     status=constants.STATUS_CREATING,
+                     share_network_id='fake_network_id',
+                     share_server_id='fake_server_id')
         expected_values = cg.copy()
-        for name in ('id', 'created_at'):
+        for name in ('id', 'created_at', 'fake_network_id',
+                     'fake_share_server_id'):
             expected_values.pop(name, None)
         expected_values['source_cgsnapshot_id'] = snap['id']
         expected_values['share_types'] = ["fake_share_type_id"]
+        expected_values['share_network_id'] = 'fake_network_id'
+        expected_values['share_server_id'] = 'fake_server_id'
 
         self.mock_object(db_driver, 'cgsnapshot_get',
                          mock.Mock(return_value=snap))
@@ -375,18 +396,25 @@ class CGAPITestCase(test.TestCase):
                           user_id=self.context.user_id,
                           project_id=self.context.project_id,
                           share_types=[fake_share_type_mapping],
-                          status=constants.STATUS_AVAILABLE)
+                          status=constants.STATUS_AVAILABLE,
+                          share_network_id='fake_network_id',
+                          share_server_id='fake_server_id')
 
         cg = fake_cg('fakeid',
                      user_id=self.context.user_id,
                      project_id=self.context.project_id,
                      share_types=[fake_share_type_mapping],
-                     status=constants.STATUS_CREATING)
+                     status=constants.STATUS_CREATING,
+                     share_network_id='fake_network_id',
+                     share_server_id='fake_server_id')
         expected_values = cg.copy()
-        for name in ('id', 'created_at'):
+        for name in ('id', 'created_at', 'share_network_id',
+                     'share_server_id'):
             expected_values.pop(name, None)
         expected_values['source_cgsnapshot_id'] = snap['id']
         expected_values['share_types'] = ["fake_share_type_id"]
+        expected_values['share_network_id'] = 'fake_network_id'
+        expected_values['share_server_id'] = 'fake_server_id'
 
         self.mock_object(db_driver, 'cgsnapshot_get',
                          mock.Mock(return_value=snap))

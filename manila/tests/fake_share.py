@@ -54,10 +54,15 @@ def fake_share_instance(base_share=None, **kwargs):
         'share_id': share['id'],
         'id': "fakeinstanceid",
         'status': "active",
+        'host': 'fakehost',
+        'share_network_id': 'fakesharenetworkid',
+        'share_server_id': 'fakeshareserverid',
     }
 
     for attr in models.ShareInstance._proxified_properties:
         share_instance[attr] = getattr(share, attr, None)
+
+    share_instance.update(kwargs)
 
     return db_fakes.FakeModel(share_instance)
 
