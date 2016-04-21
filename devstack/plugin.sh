@@ -118,9 +118,6 @@ function set_cinder_quotas {
 
 # configure_manila - Set config files, create data dirs, etc
 function configure_manila {
-    setup_develop $MANILA_DIR
-    setup_develop $MANILACLIENT_DIR
-
     if [[ ! -d $MANILA_CONF_DIR ]]; then
         sudo mkdir -p $MANILA_CONF_DIR
     fi
@@ -265,7 +262,12 @@ function configure_manila_ui {
 
 
 function create_manila_service_keypair {
-    nova keypair-add $MANILA_SERVICE_KEYPAIR_NAME --pub-key $MANILA_PATH_TO_PUBLIC_KEY
+    if is_service_enabled nova; then
+        local keypair_exists=$( nova keypair-list | grep " $MANILA_SERVICE_KEYPAIR_NAME " )
+        if [[ -z $keypair_exists ]]; then
+            nova keypair-add $MANILA_SERVICE_KEYPAIR_NAME --pub-key $MANILA_PATH_TO_PUBLIC_KEY
+        fi
+    fi
 }
 
 
@@ -281,12 +283,15 @@ function create_service_share_servers {
         if [[ $share_driver == $generic_driver ]]; then
             if [[ $(trueorfalse False driver_handles_share_servers) == False ]]; then
                 vm_name='manila_service_share_server_'$BE
-                nova boot $vm_name \
-                    --flavor $MANILA_SERVICE_VM_FLAVOR_NAME \
-                    --image $MANILA_SERVICE_IMAGE_NAME \
-                    --nic net-id=$private_net_id \
-                    --security-groups $MANILA_SERVICE_SECGROUP \
-                    --key-name $MANILA_SERVICE_KEYPAIR_NAME
+                local vm_exists=$( nova list --all-tenants | grep " $vm_name " )
+                if [[ -z $vm_exists ]]; then
+                    nova boot $vm_name \
+                        --flavor $MANILA_SERVICE_VM_FLAVOR_NAME \
+                        --image $MANILA_SERVICE_IMAGE_NAME \
+                        --nic net-id=$private_net_id \
+                        --security-groups $MANILA_SERVICE_SECGROUP \
+                        --key-name $MANILA_SERVICE_KEYPAIR_NAME
+                fi
 
                 vm_id=$(nova show $vm_name | grep ' id ' | get_field 2)
 
@@ -297,8 +302,15 @@ function create_service_share_servers {
                 if is_service_enabled neutron; then
                     if [ $created_admin_network == false ]; then
                         project_id=$(openstack project show $SERVICE_PROJECT_NAME -c id -f value)
-                        admin_net_id=$(neutron net-create --tenant-id $project_id admin_net | grep ' id ' | get_field 2)
-                        admin_subnet_id=$(neutron subnet-create --tenant-id $project_id --ip_version 4 --no-gateway --name admin_subnet --subnetpool None $admin_net_id $FIXED_RANGE | grep ' id ' | get_field 2)
+                        local admin_net_id=$( neutron net-list --all-tenants | grep " admin_net " | get_field 1 )
+                        if [[ -z $admin_net_id ]]; then
+                            admin_net_id=$(neutron net-create --tenant-id $project_id admin_net | grep ' id ' | get_field 2)
+                        fi
+
+                        local admin_subnet_id=$( neutron subnet-list --all-tenants | grep " admin_subnet " | get_field 1 )
+                        if [[ -z $admin_subnet_id ]]; then
+                            admin_subnet_id=$(neutron subnet-create --tenant-id $project_id --ip_version 4 --no-gateway --name admin_subnet --subnetpool None $admin_net_id $FIXED_RANGE | grep ' id ' | get_field 2)
+                        fi
                         created_admin_network=true
                     fi
                     iniset $MANILA_CONF $BE admin_network_id $admin_net_id
@@ -326,23 +338,32 @@ function configure_data_service_generic_driver {
 # create_manila_service_flavor - creates flavor, that will be used by backends
 # with configured generic driver to boot Nova VMs with.
 function create_manila_service_flavor {
-    # Create flavor for Manila's service VM
-    nova flavor-create \
-        $MANILA_SERVICE_VM_FLAVOR_NAME \
-        $MANILA_SERVICE_VM_FLAVOR_REF \
-        $MANILA_SERVICE_VM_FLAVOR_RAM \
-        $MANILA_SERVICE_VM_FLAVOR_DISK \
-        $MANILA_SERVICE_VM_FLAVOR_VCPUS
+    if is_service_enabled nova; then
+        local flavor_exists=$( nova flavor-list | grep " $MANILA_SERVICE_VM_FLAVOR_NAME " )
+        if [[ -z $flavor_exists ]]; then
+            # Create flavor for Manila's service VM
+            nova flavor-create \
+                $MANILA_SERVICE_VM_FLAVOR_NAME \
+                $MANILA_SERVICE_VM_FLAVOR_REF \
+                $MANILA_SERVICE_VM_FLAVOR_RAM \
+                $MANILA_SERVICE_VM_FLAVOR_DISK \
+                $MANILA_SERVICE_VM_FLAVOR_VCPUS
+        fi
+    fi
 }
 
 # create_manila_service_image - creates image, that will be used by backends
 # with configured generic driver to boot Nova VMs from.
 function create_manila_service_image {
-    TOKEN=$(openstack token issue -c id -f value)
-
-    # Download Manila's image
-    if is_service_enabled g-reg; then
-        upload_image $MANILA_SERVICE_IMAGE_URL $TOKEN
+    if is_service_enabled nova; then
+        TOKEN=$(openstack token issue -c id -f value)
+        local image_exists=$( nova image-list | grep " $MANILA_SERVICE_IMAGE_NAME " )
+        if [[ -z $image_exists ]]; then
+            # Download Manila's image
+            if is_service_enabled g-reg; then
+                upload_image $MANILA_SERVICE_IMAGE_URL $TOKEN
+            fi
+        fi
     fi
 }
 
@@ -420,7 +441,10 @@ function create_default_share_type {
     enabled_backends=(${MANILA_ENABLED_BACKENDS//,/ })
     driver_handles_share_servers=$(iniget $MANILA_CONF ${enabled_backends[0]} driver_handles_share_servers)
 
-    manila type-create $MANILA_DEFAULT_SHARE_TYPE $driver_handles_share_servers
+    local type_exists=$( manila type-list | grep " $MANILA_DEFAULT_SHARE_TYPE " )
+    if [[ -z $type_exists ]]; then
+        manila type-create $MANILA_DEFAULT_SHARE_TYPE $driver_handles_share_servers
+    fi
     if [[ $MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS ]]; then
         manila type-key $MANILA_DEFAULT_SHARE_TYPE set $MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS
     fi
@@ -533,6 +557,8 @@ function init_manila {
 # install_manila - Collect source and prepare
 function install_manila {
     git_clone $MANILACLIENT_REPO $MANILACLIENT_DIR $MANILACLIENT_BRANCH
+    setup_develop $MANILACLIENT_DIR
+    setup_develop $MANILA_DIR
 
     if [ "$SHARE_DRIVER" == "manila.share.drivers.lvm.LVMShareDriver" ]; then
         if is_service_enabled m-shr; then
@@ -610,10 +636,15 @@ function start_manila {
         sleep 3 # Wait for 3 sec to ensure that apache is running
     fi
 
-    screen_it m-api "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-api --config-file $MANILA_CONF"
-    screen_it m-shr "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-share --config-file $MANILA_CONF"
-    screen_it m-sch "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-scheduler --config-file $MANILA_CONF"
-    screen_it m-dat "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-data --config-file $MANILA_CONF"
+    run_process m-api "$MANILA_BIN_DIR/manila-api --config-file $MANILA_CONF"
+    run_process m-shr "$MANILA_BIN_DIR/manila-share --config-file $MANILA_CONF"
+    run_process m-sch "$MANILA_BIN_DIR/manila-scheduler --config-file $MANILA_CONF"
+    run_process m-dat "$MANILA_BIN_DIR/manila-data --config-file $MANILA_CONF"
+
+    echo "Waiting for Manila to start..."
+    if ! wait_for_service $SERVICE_TIMEOUT $MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT; then
+        die $LINENO "Manila did not start"
+    fi
 
     # Start proxies if enabled
     if is_service_enabled tls-proxy; then
@@ -623,9 +654,9 @@ function start_manila {
 
 # stop_manila - Stop running processes
 function stop_manila {
-    # Kill the manila screen windows
+    # Kill the manila processes
     for serv in m-api m-sch m-shr m-dat; do
-        screen -S $SCREEN_NAME -p $serv -X kill
+        stop_process $serv
     done
 }
 
