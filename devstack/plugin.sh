@@ -508,6 +508,7 @@ function init_manila {
                 iniset $MANILA_CONF $BE zfs_use_ssh $MANILA_ZFSONLINUX_USE_SSH
                 iniset $MANILA_CONF $BE zfs_ssh_username $MANILA_ZFSONLINUX_SSH_USERNAME
                 iniset $MANILA_CONF $BE replication_domain $MANILA_ZFSONLINUX_REPLICATION_DOMAIN
+                iniset $MANILA_CONF $BE driver_handles_share_servers False
                 let "file_counter=file_counter+1"
             done
             # Install the server's SSH key in our known_hosts file
