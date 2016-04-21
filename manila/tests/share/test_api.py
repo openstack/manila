@@ -29,6 +29,7 @@ from manila.data import rpcapi as data_rpc
 from manila import db as db_api
 from manila.db.sqlalchemy import models
 from manila import exception
+from manila import policy
 from manila import quota
 from manila import share
 from manila.share import api as share_api
@@ -727,6 +728,42 @@ class ShareAPITestCase(test.TestCase):
             assert_called_once_with(
                 self.context, request_spec=mock.ANY, filter_properties={})
         self.assertFalse(self.api.share_rpcapi.create_share_instance.called)
+
+    def test_create_instance_cgsnapshot_member(self):
+        fake_req_spec = {
+            'share_properties': 'fake_share_properties',
+            'share_instance_properties': 'fake_share_instance_properties',
+        }
+        share = fakes.fake_share()
+        member_info = {
+            'host': 'host',
+            'share_network_id': 'share_network_id',
+            'share_server_id': 'share_server_id',
+        }
+
+        fake_instance = fakes.fake_share_instance(
+            share_id=share['id'], **member_info)
+        cgsnapmember = {'share_instance': fake_instance}
+        self.mock_policy_check = self.mock_object(
+            policy, 'check_policy', mock.Mock(return_value=True))
+        mock_share_rpcapi_call = self.mock_object(self.share_rpcapi,
+                                                  'create_share_instance')
+        mock_scheduler_rpcapi_call = self.mock_object(self.scheduler_rpcapi,
+                                                      'create_share_instance')
+        mock_db_share_instance_update = self.mock_object(
+            db_api, 'share_instance_update')
+        self.mock_object(
+            share_api.API, '_create_share_instance_and_get_request_spec',
+            mock.Mock(return_value=(fake_req_spec, fake_instance)))
+
+        retval = self.api.create_instance(self.context, fake_share,
+                                          cgsnapshot_member=cgsnapmember)
+
+        self.assertIsNone(retval)
+        mock_db_share_instance_update.assert_called_once_with(
+            self.context, fake_instance['id'], member_info)
+        self.assertFalse(mock_scheduler_rpcapi_call.called)
+        self.assertFalse(mock_share_rpcapi_call.called)
 
     @ddt.data('dr', 'readable', None)
     def test_manage_new(self, replication_type):

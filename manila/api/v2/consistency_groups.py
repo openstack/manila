@@ -192,6 +192,12 @@ class CGController(wsgi.Controller, wsgi.AdminActionsMixin):
                 raise exc.HTTPBadRequest(explanation=msg)
             kwargs['share_type_ids'] = _share_types
 
+        if 'share_network_id' in cg and 'source_cgsnapshot_id' in cg:
+            msg = _("Cannot supply both 'share_network_id' and "
+                    "'source_cgsnapshot_id' attributes as the share network "
+                    "is inherited from the source.")
+            raise exc.HTTPBadRequest(explanation=msg)
+
         if 'source_cgsnapshot_id' in cg:
             source_cgsnapshot_id = cg.get('source_cgsnapshot_id')
             if not uuidutils.is_uuid_like(source_cgsnapshot_id):
@@ -199,7 +205,7 @@ class CGController(wsgi.Controller, wsgi.AdminActionsMixin):
                 raise exc.HTTPBadRequest(explanation=six.text_type(msg))
             kwargs['source_cgsnapshot_id'] = source_cgsnapshot_id
 
-        if 'share_network_id' in cg:
+        elif 'share_network_id' in cg:
             share_network_id = cg.get('share_network_id')
             if not uuidutils.is_uuid_like(share_network_id):
                 msg = _("The 'share_network_id' attribute must be a uuid.")

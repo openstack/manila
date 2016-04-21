@@ -1,0 +1,7 @@
+---
+fixes:
+  - Consistency Group APIs return share_server_id information correctly to
+    administrators.
+  - When using a consistency group snapshot to create another consistency
+    group, share server and network information is persisted from the source
+    consistency group to the new consistency group.

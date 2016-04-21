@@ -431,8 +431,9 @@ class BaseSharesTest(test.BaseTestCase):
     def create_consistency_group(cls, client=None, cleanup_in_class=True,
                                  share_network_id=None, **kwargs):
         client = client or cls.shares_v2_client
-        kwargs['share_network_id'] = (share_network_id or
-                                      client.share_network_id or None)
+        if kwargs.get('source_cgsnapshot_id') is None:
+            kwargs['share_network_id'] = (share_network_id or
+                                          client.share_network_id or None)
         consistency_group = client.create_consistency_group(**kwargs)
         resource = {
             "type": "consistency_group",
