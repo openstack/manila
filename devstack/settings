@@ -158,6 +158,14 @@ MANILA_ZFSONLINUX_SSH_USERNAME=${MANILA_ZFSONLINUX_SSH_USERNAME:-$STACK_USER}
 # Manila will consider replication feature as disabled for ZFSonLinux share driver.
 MANILA_ZFSONLINUX_REPLICATION_DOMAIN=${MANILA_ZFSONLINUX_REPLICATION_DOMAIN:-"ZFSonLinux"}
 
+# Container Driver
+MANILA_CONTAINER_DRIVER=${MANILA_CONTAINER_DRIVER:-"manila.share.drivers.container.driver.ContainerShareDriver"}
+MANILA_DOCKER_IMAGE_ALIAS=${MANILA_DOCKER_IMAGE_ALIAS:-"manila_docker_image"}
+MANILA_CONTAINER_VOLUME_GROUP_NAME=${MANILA_CONTAINER_VOLUME_GROUP_NAME:-"manila_docker_volumes"}
+# (aovchinnikov): This location is temporary and will be changed to a
+# permanent one as soon as possible.
+MANILA_DOCKER_IMAGE_URL=${MANILA_DOCKER_IMAGE_URL:-"https://github.com/a-ovchinnikov/manila-image-elements-lxd-images/releases/download/0.1.0/manila-docker-container.tar.gz"}
+
 # Enable manila services
 # ----------------------
 # We have to add Manila to enabled services for screen_it to work

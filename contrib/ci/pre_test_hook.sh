@@ -135,6 +135,10 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     # the build timeout for ZFS on the gate.
     echo "MANILA_REPLICA_STATE_UPDATE_INTERVAL=60" >> $localrc_path
     echo "MANILA_ZFSONLINUX_USE_SSH=True" >> $localrc_path
+elif [[ "$DRIVER" == "container" ]]; then
+    echo "SHARE_DRIVER=manila.share.drivers.container.driver.ContainerShareDriver" >> $localrc_path
+    echo "SHARE_BACKING_FILE_SIZE=32000M" >> $localrc_path
+    echo "MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS='snapshot_support=false'" >> $localrc_path
 fi
 
 echo "MANILA_SERVICE_IMAGE_ENABLED=$MANILA_SERVICE_IMAGE_ENABLED" >> $localrc_path

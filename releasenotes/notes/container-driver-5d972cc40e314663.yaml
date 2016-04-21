@@ -1,0 +1,14 @@
+---
+prelude: >
+    A new Container driver is added. It uses docker container as
+    a share server.
+features:
+  - The Container driver allows using a docker container as a share server.
+    This allows for very fast share server startup.
+  - The Container driver supports CIFS protocol.
+issues:
+  - |
+    The Container driver has the following known issues:
+
+    * Only basic driver operations are supported: create/delete share,
+      update access and extend share.

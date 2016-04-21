@@ -51,6 +51,8 @@ import manila.service
 import manila.share.api
 import manila.share.driver
 import manila.share.drivers.cephfs.cephfs_native
+import manila.share.drivers.container.driver
+import manila.share.drivers.container.storage_helper
 import manila.share.drivers.emc.driver
 import manila.share.drivers.emc.plugins.isilon.isilon
 import manila.share.drivers.generic
@@ -99,6 +101,8 @@ _global_opt_lists = [
     manila.network.network_opts,
     manila.network.neutron.api.neutron_opts,
     manila.network.neutron.neutron_network_plugin.
+    neutron_network_plugin_opts,
+    manila.network.neutron.neutron_network_plugin.
     neutron_single_network_plugin_opts,
     manila.network.nova_network_plugin.nova_single_network_plugin_opts,
     manila.network.standalone_network_plugin.standalone_network_plugin_opts,
@@ -117,6 +121,8 @@ _global_opt_lists = [
     manila.share.driver.ssh_opts,
     manila.share.drivers_private_data.private_data_opts,
     manila.share.drivers.cephfs.cephfs_native.cephfs_native_opts,
+    manila.share.drivers.container.driver.container_opts,
+    manila.share.drivers.container.storage_helper.lv_opts,
     manila.share.drivers.emc.driver.EMC_NAS_OPTS,
     manila.share.drivers.generic.share_opts,
     manila.share.drivers.glusterfs.common.glusterfs_common_opts,
