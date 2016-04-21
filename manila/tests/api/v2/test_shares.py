@@ -258,6 +258,32 @@ class ShareAPITest(test.TestCase):
         self.assertEqual("fakenetid",
                          create_mock.call_args[1]['share_network_id'])
 
+    @ddt.data("2.15", "2.16")
+    def test_share_create_original_with_user_id(self, microversion):
+        self.mock_object(share_api.API, 'create', self.create_mock)
+        body = {"share": copy.deepcopy(self.share)}
+        req = fakes.HTTPRequest.blank('/shares', version=microversion)
+
+        res_dict = self.controller.create(req, body)
+
+        expected = self._get_expected_share_detailed_response(self.share)
+        if api_version.APIVersionRequest(microversion) >= (
+                api_version.APIVersionRequest("2.16")):
+            expected['share']['user_id'] = 'fakeuser'
+        else:
+            self.assertNotIn('user_id', expected['share'])
+        expected['share']['task_state'] = None
+        expected['share']['consistency_group_id'] = None
+        expected['share']['source_cgsnapshot_member_id'] = None
+        expected['share']['replication_type'] = None
+        expected['share']['share_type_name'] = None
+        expected['share']['has_replicas'] = False
+        expected['share']['access_rules_status'] = 'active'
+        expected['share'].pop('export_location')
+        expected['share'].pop('export_locations')
+
+        self.assertEqual(expected, res_dict)
+
     @ddt.data('2.6', '2.7', '2.14', '2.15')
     def test_migration_start(self, version):
         share = db_utils.create_share()
@@ -787,6 +813,30 @@ class ShareAPITest(test.TestCase):
         expected['share']['source_cgsnapshot_member_id'] = None
         expected['share']['share_type_name'] = None
         expected['share']['task_state'] = None
+        self.assertEqual(expected, res_dict)
+
+    @ddt.data("2.15", "2.16")
+    def test_share_show_with_user_id(self, microversion):
+        req = fakes.HTTPRequest.blank('/shares/1', version=microversion)
+
+        res_dict = self.controller.show(req, '1')
+
+        expected = self._get_expected_share_detailed_response()
+        if api_version.APIVersionRequest(microversion) >= (
+                api_version.APIVersionRequest("2.16")):
+            expected['share']['user_id'] = 'fakeuser'
+        else:
+            self.assertNotIn('user_id', expected['share'])
+        expected['share']['consistency_group_id'] = None
+        expected['share']['source_cgsnapshot_member_id'] = None
+        expected['share']['share_type_name'] = None
+        expected['share']['task_state'] = None
+        expected['share']['access_rules_status'] = 'active'
+        expected['share'].pop('export_location')
+        expected['share'].pop('export_locations')
+        expected['share']['replication_type'] = None
+        expected['share']['has_replicas'] = False
+
         self.assertEqual(expected, res_dict)
 
     def test_share_show_admin(self):
@@ -1865,14 +1915,52 @@ class ShareManageTest(test.TestCase):
     def test_share_manage_with_is_public(self, data):
         self._test_share_manage(data, "2.8")
 
+    def test_share_manage_with_user_id(self):
+        self._test_share_manage(get_fake_manage_body(
+            name='foo', description='bar', is_public=True), "2.16")
+
     def _test_share_manage(self, data, version):
-        self._setup_manage_mocks()
-        return_share = {
-            'share_type_id': '', 'id': 'fake',
-            'instance': {},
+        expected = {
+            'share': {
+                'status': 'fakestatus',
+                'description': 'displaydesc',
+                'availability_zone': 'fakeaz',
+                'name': 'displayname',
+                'share_proto': 'FAKEPROTO',
+                'metadata': {},
+                'project_id': 'fakeproject',
+                'host': 'fakehost',
+                'id': 'fake',
+                'snapshot_id': '2',
+                'share_network_id': None,
+                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'size': 1,
+                'share_type_name': None,
+                'share_server_id': 'fake_share_server_id',
+                'share_type': '1',
+                'volume_type': '1',
+                'is_public': False,
+                'consistency_group_id': None,
+                'source_cgsnapshot_member_id': None,
+                'snapshot_support': True,
+                'task_state': None,
+                'links': [
+                    {
+                        'href': 'http://localhost/v1/fake/shares/fake',
+                        'rel': 'self'
+                    },
+                    {
+                        'href': 'http://localhost/fake/shares/fake',
+                        'rel': 'bookmark'
+                    }
+                ],
+            }
         }
+        self._setup_manage_mocks()
+        return_share = mock.Mock(
+            return_value=stubs.stub_share('fake', instance={}))
         self.mock_object(
-            share_api.API, 'manage', mock.Mock(return_value=return_share))
+            share_api.API, 'manage', return_share)
         share = {
             'host': data['share']['service_host'],
             'export_location': data['share']['export_path'],
@@ -1882,6 +1970,25 @@ class ShareManageTest(test.TestCase):
             'display_description': 'bar',
         }
         driver_options = data['share'].get('driver_options', {})
+
+        if (api_version.APIVersionRequest(version) <=
+                api_version.APIVersionRequest('2.8')):
+            expected['share']['export_location'] = 'fake_location'
+            expected['share']['export_locations'] = (
+                ['fake_location', 'fake_location2'])
+
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.10')):
+            expected['share']['access_rules_status'] = (
+                constants.STATUS_ACTIVE)
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.11')):
+            expected['share']['has_replicas'] = False
+            expected['share']['replication_type'] = None
+
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.16')):
+            expected['share']['user_id'] = 'fakeuser'
 
         if (api_version.APIVersionRequest(version) >=
                 api_version.APIVersionRequest('2.8')):
@@ -1894,7 +2001,9 @@ class ShareManageTest(test.TestCase):
 
         share_api.API.manage.assert_called_once_with(
             mock.ANY, share, driver_options)
+
         self.assertIsNotNone(actual_result)
+        self.assertEqual(expected, actual_result)
         self.mock_policy_check.assert_called_once_with(
             req.environ['manila.context'], self.resource_name, 'manage')
 

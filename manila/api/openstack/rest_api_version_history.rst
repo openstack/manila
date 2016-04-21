@@ -106,3 +106,7 @@ ____
   Added Share migration 'migration_cancel', 'migration_get_progress',
   'migration_complete' APIs, renamed 'migrate_share' to 'migration_start' and
   added notify parameter to 'migration_start'.
+
+2.16
+----
+  Add user_id in share show/create/manage API.
