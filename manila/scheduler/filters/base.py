@@ -16,12 +16,12 @@
 """
 Filter support
 """
-import logging
+from oslo_log import log
 
 from manila.i18n import _LI
 from manila.scheduler import base_handler
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class BaseFilter(object):

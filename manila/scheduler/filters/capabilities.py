@@ -13,12 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import logging
+from oslo_log import log
 
 from manila.scheduler.filters import base_host
 from manila.scheduler.filters import extra_specs_ops
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class CapabilitiesFilter(base_host.BaseHostFilter):

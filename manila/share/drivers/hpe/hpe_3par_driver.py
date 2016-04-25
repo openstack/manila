@@ -17,7 +17,6 @@
 import datetime
 import hashlib
 import inspect
-import logging
 import os
 import re
 
@@ -199,7 +198,7 @@ class HPE3ParShareDriver(driver.ShareDriver):
 
         try:
             # Log the source SHA for support.  Only do this with DEBUG.
-            if LOG.isEnabledFor(logging.DEBUG):
+            if LOG.isEnabledFor(log.DEBUG):
                 LOG.debug('HPE3ParShareDriver SHA1: %s',
                           self.sha1_hash(HPE3ParShareDriver))
                 LOG.debug('HPE3ParMediator SHA1: %s',
