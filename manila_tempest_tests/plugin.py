@@ -47,4 +47,5 @@ class ManilaTempestPlugin(plugins.TempestPlugin):
             )
 
     def get_opt_lists(self):
-        return [(config_share.share_group.name, config_share.ShareGroup)]
+        return [(config_share.share_group.name, config_share.ShareGroup),
+                ('service_available', config_share.ServiceAvailableGroup)]
