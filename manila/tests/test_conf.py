@@ -38,7 +38,7 @@ class ConfigTestCase(test.TestCase):
         self.assertEqual(42, CONF.answer)
 
         # Make sure we don't overwrite anything
-        CONF.set_override('answer', 256)
+        CONF.set_override('answer', 256, enforce_type=True)
         self.assertEqual(256, CONF.answer)
         CONF.import_opt('answer', 'manila.tests.declare_conf')
         self.assertEqual(256, CONF.answer)
