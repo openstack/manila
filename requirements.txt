@@ -6,7 +6,7 @@
 pbr>=1.6
 
 alembic>=0.8.0
-Babel>=1.3
+Babel!=2.3.0,!=2.3.1,!=2.3.2,!=2.3.3,>=1.3 # BSD
 eventlet>=0.17.4
 greenlet>=0.3.2
 httplib2>=0.7.5
@@ -33,8 +33,8 @@ python-neutronclient>=2.6.0
 keystonemiddleware!=2.4.0,>=2.0.0
 requests!=2.8.0,!=2.9.0,>=2.5.2
 retrying!=1.3.0,>=1.2.3 # Apache-2.0
-Routes!=2.0,!=2.1,>=1.12.3;python_version=='2.7'
-Routes!=2.0,>=1.12.3;python_version!='2.7'
+Routes!=2.0,!=2.1,!=2.3.0,>=1.12.3;python_version=='2.7' # MIT
+Routes!=2.0,!=2.3.0,>=1.12.3;python_version!='2.7' # MIT
 six>=1.9.0
 SQLAlchemy<1.1.0,>=0.9.9
 stevedore>=1.5.0 # Apache-2.0
