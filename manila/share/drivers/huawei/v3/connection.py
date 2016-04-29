@@ -654,6 +654,10 @@ class V3StorageConnection(driver.HuaweiBase):
             return
 
         access_to = access['access_to']
+        # Huawei array uses * to represent IP addresses of all clients
+        if (share_proto == 'NFS' and access_type == 'ip' and
+                access_to == '0.0.0.0/0'):
+            access_to = '*'
         share = self.helper._get_share_by_name(share_name, share_url_type)
         if not share:
             LOG.warning(_LW('Can not get share %s.'), share_name)
@@ -695,6 +699,10 @@ class V3StorageConnection(driver.HuaweiBase):
                 access_level = constants.ACCESS_NFS_RW
             else:
                 access_level = constants.ACCESS_NFS_RO
+            # Huawei array uses * to represent IP addresses of all clients
+            if access_to == '0.0.0.0/0':
+                access_to = '*'
+
         elif share_proto == 'CIFS':
             if access_type == 'user':
                 if access_level == common_constants.ACCESS_LEVEL_RW:

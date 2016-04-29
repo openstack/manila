@@ -1,0 +1,3 @@
+---
+fixes:
+  - Huawei driver now properly handles access for all IP addresses (0.0.0.0/0).
