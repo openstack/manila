@@ -15,11 +15,11 @@
 """VNX backend for the EMC Manila driver."""
 
 import copy
-import fnmatch
 import random
 
 from oslo_log import log
 from oslo_utils import excutils
+from oslo_utils import fnmatch
 from oslo_utils import units
 
 from manila.common import constants as const
