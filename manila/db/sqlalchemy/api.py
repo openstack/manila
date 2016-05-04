@@ -1473,7 +1473,8 @@ def _metadata_refs(metadata_dict, meta_class):
 
 
 @require_context
-def share_create(context, values, create_share_instance=True):
+def share_create(context, share_values, create_share_instance=True):
+    values = copy.deepcopy(share_values)
     values = ensure_model_dict_has_id(values)
     values['share_metadata'] = _metadata_refs(values.get('metadata'),
                                               models.ShareMetadata)

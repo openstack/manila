@@ -728,8 +728,7 @@ class ShareAPITestCase(test.TestCase):
                 self.context, request_spec=mock.ANY, filter_properties={})
         self.assertFalse(self.api.share_rpcapi.create_share_instance.called)
 
-    @ddt.data('no_valid_host', None)
-    def test_manage_new(self, exc):
+    def test_manage_new(self):
         share_data = {
             'host': 'fake',
             'export_location': 'fake',
@@ -752,9 +751,7 @@ class ShareAPITestCase(test.TestCase):
 
         share = db_api.share_create(self.context, fake_share_data)
 
-        if exc:
-            self.mock_object(self.scheduler_rpcapi, 'manage_share',
-                             mock.Mock(side_effect=exception.NoValidHost))
+        self.mock_object(self.scheduler_rpcapi, 'manage_share')
         self.mock_object(db_api, 'share_create',
                          mock.Mock(return_value=share))
         self.mock_object(db_api, 'share_export_locations_update')
@@ -764,14 +761,8 @@ class ShareAPITestCase(test.TestCase):
                          mock.Mock(return_value=fake_type))
         self.mock_object(self.api, 'get_all', mock.Mock(return_value=[]))
 
-        if exc:
-            self.assertRaises(exception.InvalidHost, self.api.manage,
-                              self.context, copy.deepcopy(share_data),
-                              driver_options)
-        else:
-            self.api.manage(self.context,
-                            copy.deepcopy(share_data),
-                            driver_options)
+        self.api.manage(self.context, copy.deepcopy(share_data),
+                        driver_options)
 
         share_data.update({
             'user_id': self.context.user_id,
@@ -782,13 +773,13 @@ class ShareAPITestCase(test.TestCase):
         })
 
         expected_request_spec = self._get_request_spec_dict(
-            share, fake_type, size=0)
+            share, fake_type, size=0, share_proto=share_data['share_proto'],
+            host=share_data['host'])
 
         export_location = share_data.pop('export_location')
         self.api.get_all.assert_called_once_with(self.context, mock.ANY)
         db_api.share_create.assert_called_once_with(self.context, share_data)
-        if not exc:
-            db_api.share_get.assert_called_once_with(self.context, share['id'])
+        db_api.share_get.assert_called_once_with(self.context, share['id'])
         db_api.share_export_locations_update.assert_called_once_with(
             self.context, share.instance['id'], export_location
         )
@@ -829,7 +820,8 @@ class ShareAPITestCase(test.TestCase):
                         driver_options)
 
         expected_request_spec = self._get_request_spec_dict(
-            share, fake_type, size=0)
+            share, fake_type, size=0, share_proto=share_data['share_proto'],
+            host=share_data['host'])
 
         db_api.share_update.assert_called_once_with(
             self.context, 'fake', mock.ANY)
@@ -863,43 +855,48 @@ class ShareAPITestCase(test.TestCase):
                           self.context, share_data, driver_options)
 
     def _get_request_spec_dict(self, share, share_type, **kwargs):
+
+        if share is None:
+            share = {'instance': {}}
+
         share_instance = share['instance']
 
         share_properties = {
-            'size': kwargs.get('size', share['size']),
-            'user_id': kwargs.get('user_id', share['user_id']),
-            'project_id': kwargs.get('project_id', share['project_id']),
+            'size': kwargs.get('size', share.get('size')),
+            'user_id': kwargs.get('user_id', share.get('user_id')),
+            'project_id': kwargs.get('project_id', share.get('project_id')),
             'snapshot_support': kwargs.get(
                 'snapshot_support',
                 share_type['extra_specs']['snapshot_support']),
-            'share_proto': kwargs.get('share_proto', share['share_proto']),
+            'share_proto': kwargs.get('share_proto', share.get('share_proto')),
             'share_type_id': kwargs.get('share_type_id',
-                                        share['share_type_id']),
-            'is_public': kwargs.get('is_public', share['is_public']),
-            'consistency_group_id': kwargs.get('consistency_group_id',
-                                               share['consistency_group_id']),
+                                        share.get('share_type_id')),
+            'is_public': kwargs.get('is_public', share.get('is_public')),
+            'consistency_group_id': kwargs.get(
+                'consistency_group_id', share.get('consistency_group_id')),
             'source_cgsnapshot_member_id': kwargs.get(
                 'source_cgsnapshot_member_id',
-                share['source_cgsnapshot_member_id']),
-            'snapshot_id': kwargs.get('snapshot_id', share['snapshot_id']),
+                share.get('source_cgsnapshot_member_id')),
+            'snapshot_id': kwargs.get('snapshot_id', share.get('snapshot_id')),
         }
         share_instance_properties = {
             'availability_zone_id': kwargs.get(
                 'availability_zone_id',
-                share_instance['availability_zone_id']),
-            'share_network_id': kwargs.get('share_network_id',
-                                           share_instance['share_network_id']),
-            'share_server_id': kwargs.get('share_server_id',
-                                          share_instance['share_server_id']),
-            'share_id': kwargs.get('share_id', share_instance['share_id']),
-            'host': kwargs.get('host', share_instance['host']),
-            'status': kwargs.get('status', share_instance['status']),
+                share_instance.get('availability_zone_id')),
+            'share_network_id': kwargs.get(
+                'share_network_id', share_instance.get('share_network_id')),
+            'share_server_id': kwargs.get(
+                'share_server_id', share_instance.get('share_server_id')),
+            'share_id': kwargs.get('share_id', share_instance.get('share_id')),
+            'host': kwargs.get('host', share_instance.get('host')),
+            'status': kwargs.get('status', share_instance.get('status')),
         }
+
         request_spec = {
             'share_properties': share_properties,
             'share_instance_properties': share_instance_properties,
             'share_type': share_type,
-            'share_id': share['id']
+            'share_id': share.get('id'),
         }
         return request_spec
 
