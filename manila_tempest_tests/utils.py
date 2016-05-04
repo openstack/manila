@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from netaddr import ip
 import random
 import re
 
@@ -90,16 +91,33 @@ def skip_if_microversion_lt(microversion):
     return lambda f: f
 
 
-def rand_ip():
+def rand_ip(network=False):
     """This uses the TEST-NET-3 range of reserved IP addresses.
 
     Using this range, which are reserved solely for use in
     documentation and example source code, should avoid any potential
     conflicts in real-world testing.
     """
-    TEST_NET_3 = '203.0.113.'
-    final_octet = six.text_type(random.randint(0, 255))
-    return TEST_NET_3 + final_octet
+    test_net_3 = '203.0.113.'
+    address = test_net_3 + six.text_type(random.randint(0, 255))
+    if network:
+        mask_length = six.text_type(random.randint(24, 32))
+        address = '/'.join((address, mask_length))
+        ip_network = ip.IPNetwork(address)
+        return '/'.join((six.text_type(ip_network.network), mask_length))
+    return address
+
+
+def rand_ipv6_ip(network=False):
+    """This uses the IPv6 documentation range of 2001:DB8::/32"""
+    ran_add = ["%x" % random.randrange(0, 16**4) for i in range(6)]
+    address = "2001:0DB8:" + ":".join(ran_add)
+    if network:
+        mask_length = six.text_type(random.randint(32, 128))
+        address = '/'.join((address, mask_length))
+        ip_network = ip.IPNetwork(address)
+        return '/'.join((six.text_type(ip_network.network), mask_length))
+    return address
 
 
 def choose_matching_backend(share, pools, share_type):

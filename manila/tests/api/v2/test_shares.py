@@ -1892,17 +1892,37 @@ class ShareActionsTest(test.TestCase):
         self.controller = shares.ShareController()
         self.mock_object(share_api.API, 'get', stubs.stub_share_get)
 
+    @ddt.unpack
     @ddt.data(
-        {'access_type': 'ip', 'access_to': '127.0.0.1'},
-        {'access_type': 'user', 'access_to': '1' * 4},
-        {'access_type': 'user', 'access_to': '1' * 255},
-        {'access_type': 'user', 'access_to': 'fake\\]{.-_\'`;}['},
-        {'access_type': 'user', 'access_to': 'MYDOMAIN\\Administrator'},
-        {'access_type': 'cert', 'access_to': 'x'},
-        {'access_type': 'cert', 'access_to': 'tenant.example.com'},
-        {'access_type': 'cert', 'access_to': 'x' * 64},
+        {"access": {'access_type': 'ip', 'access_to': '127.0.0.1'},
+         "version": "2.7"},
+        {"access": {'access_type': 'user', 'access_to': '1' * 4},
+         "version": "2.7"},
+        {"access": {'access_type': 'user', 'access_to': '1' * 255},
+         "version": "2.7"},
+        {"access": {'access_type': 'user', 'access_to': 'fake\\]{.-_\'`;}['},
+         "version": "2.7"},
+        {"access": {'access_type': 'user',
+                    'access_to': 'MYDOMAIN\\Administrator'},
+         "version": "2.7"},
+        {"access": {'access_type': 'cert', 'access_to': 'x'},
+         "version": "2.7"},
+        {"access": {'access_type': 'cert', 'access_to': 'tenant.example.com'},
+         "version": "2.7"},
+        {"access": {'access_type': 'cert', 'access_to': 'x' * 64},
+         "version": "2.7"},
+        {"access": {'access_type': 'ip', 'access_to': 'ad80::abaa:0:c2:2'},
+         "version": "2.38"},
+        {"access": {'access_type': 'ip', 'access_to': 'AD80:ABAA::'},
+         "version": "2.38"},
+        {"access": {'access_type': 'ip', 'access_to': 'AD80::/36'},
+         "version": "2.38"},
+        {"access": {'access_type': 'ip', 'access_to': 'AD80:ABAA::/128'},
+         "version": "2.38"},
+        {"access": {'access_type': 'ip', 'access_to': '127.0.0.1'},
+         "version": "2.38"},
     )
-    def test_allow_access(self, access):
+    def test_allow_access(self, access, version):
         self.mock_object(share_api.API,
                          'allow_access',
                          mock.Mock(return_value={'fake': 'fake'}))
@@ -1913,31 +1933,55 @@ class ShareActionsTest(test.TestCase):
         body = {'allow_access': access}
         expected = {'access': {'fake': 'fake'}}
         req = fakes.HTTPRequest.blank(
-            '/v2/tenant1/shares/%s/action' % id, version="2.7")
+            '/v2/tenant1/shares/%s/action' % id, version=version)
 
         res = self.controller.allow_access(req, id, body)
 
         self.assertEqual(expected, res)
 
+    @ddt.unpack
     @ddt.data(
-        {'access_type': 'error_type', 'access_to': '127.0.0.1'},
-        {'access_type': 'ip', 'access_to': 'localhost'},
-        {'access_type': 'ip', 'access_to': '127.0.0.*'},
-        {'access_type': 'ip', 'access_to': '127.0.0.0/33'},
-        {'access_type': 'ip', 'access_to': '127.0.0.256'},
-        {'access_type': 'user', 'access_to': '1'},
-        {'access_type': 'user', 'access_to': '1' * 3},
-        {'access_type': 'user', 'access_to': '1' * 256},
-        {'access_type': 'user', 'access_to': 'root^'},
-        {'access_type': 'cert', 'access_to': ''},
-        {'access_type': 'cert', 'access_to': ' '},
-        {'access_type': 'cert', 'access_to': 'x' * 65},
+        {"access": {'access_type': 'error_type',
+                    'access_to': '127.0.0.1'},
+         "version": "2.7"},
+        {"access": {'access_type': 'ip', 'access_to': 'localhost'},
+         "version": "2.7"},
+        {"access": {'access_type': 'ip', 'access_to': '127.0.0.*'},
+         "version": "2.7"},
+        {"access": {'access_type': 'ip', 'access_to': '127.0.0.0/33'},
+         "version": "2.7"},
+        {"access": {'access_type': 'ip', 'access_to': '127.0.0.256'},
+         "version": "2.7"},
+        {"access": {'access_type': 'user', 'access_to': '1'},
+         "version": "2.7"},
+        {"access": {'access_type': 'user', 'access_to': '1' * 3},
+         "version": "2.7"},
+        {"access": {'access_type': 'user', 'access_to': '1' * 256},
+         "version": "2.7"},
+        {"access": {'access_type': 'user', 'access_to': 'root^'},
+         "version": "2.7"},
+        {"access": {'access_type': 'cert', 'access_to': ''},
+         "version": "2.7"},
+        {"access": {'access_type': 'cert', 'access_to': ' '},
+         "version": "2.7"},
+        {"access": {'access_type': 'cert', 'access_to': 'x' * 65},
+         "version": "2.7"},
+        {"access": {'access_type': 'ip', 'access_to': 'ad80::abaa:0:c2:2'},
+         "version": "2.37"},
+        {"access": {'access_type': 'ip', 'access_to': '127.4.0.3/33'},
+         "version": "2.38"},
+        {"access": {'access_type': 'ip', 'access_to': 'AD80:ABAA::*'},
+         "version": "2.38"},
+        {"access": {'access_type': 'ip', 'access_to': 'AD80::/129'},
+         "version": "2.38"},
+        {"access": {'access_type': 'ip', 'access_to': 'ad80::abaa:0:c2:2/64'},
+         "version": "2.38"},
     )
-    def test_allow_access_error(self, access):
+    def test_allow_access_error(self, access, version):
         id = 'fake_share_id'
         body = {'allow_access': access}
         req = fakes.HTTPRequest.blank('/v2/tenant1/shares/%s/action' % id,
-                                      version="2.7")
+                                      version=version)
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.allow_access, req, id, body)
 

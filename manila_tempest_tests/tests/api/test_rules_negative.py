@@ -46,60 +46,23 @@ class ShareIpRulesForNFSNegativeTest(base.BaseSharesMixedTest):
             cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @ddt.data('shares_client', 'shares_v2_client')
-    def test_create_access_rule_ip_with_wrong_target_1(self, client_name):
-        self.assertRaises(lib_exc.BadRequest,
-                          getattr(self, client_name).create_access_rule,
-                          self.share["id"], "ip", "1.2.3.256")
-
-    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @ddt.data('shares_client', 'shares_v2_client')
-    def test_create_access_rule_ip_with_wrong_target_2(self, client_name):
-        self.assertRaises(lib_exc.BadRequest,
-                          getattr(self, client_name).create_access_rule,
-                          self.share["id"], "ip", "1.1.1.-")
-
-    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @ddt.data('shares_client', 'shares_v2_client')
-    def test_create_access_rule_ip_with_wrong_target_3(self, client_name):
-        self.assertRaises(lib_exc.BadRequest,
-                          getattr(self, client_name).create_access_rule,
-                          self.share["id"], "ip", "1.2.3.4/33")
-
-    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @ddt.data('shares_client', 'shares_v2_client')
-    def test_create_access_rule_ip_with_wrong_target_4(self, client_name):
-        self.assertRaises(lib_exc.BadRequest,
-                          getattr(self, client_name).create_access_rule,
-                          self.share["id"], "ip", "1.2.3.*")
-
-    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @ddt.data('shares_client', 'shares_v2_client')
-    def test_create_access_rule_ip_with_wrong_target_5(self, client_name):
-        self.assertRaises(lib_exc.BadRequest,
-                          getattr(self, client_name).create_access_rule,
-                          self.share["id"], "ip", "1.2.3.*/23")
-
-    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @ddt.data('shares_client', 'shares_v2_client')
-    def test_create_access_rule_ip_with_wrong_target_6(self, client_name):
-        self.assertRaises(lib_exc.BadRequest,
-                          getattr(self, client_name).create_access_rule,
-                          self.share["id"], "ip", "1.2.3.1|23")
-
-    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @ddt.data('shares_client', 'shares_v2_client')
-    def test_create_access_rule_ip_with_wrong_target_7(self, client_name):
-        self.assertRaises(lib_exc.BadRequest,
-                          getattr(self, client_name).create_access_rule,
-                          self.share["id"], "ip", "1.2.3.1/-1")
-
-    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @ddt.data('shares_client', 'shares_v2_client')
-    def test_create_access_rule_ip_with_wrong_target_8(self, client_name):
-        self.assertRaises(lib_exc.BadRequest,
-                          getattr(self, client_name).create_access_rule,
-                          self.share["id"], "ip", "1.2.3.1/")
+    @ddt.data('1.2.3.256',
+              '1.1.1.-',
+              '1.2.3.4/33',
+              '1.2.3.*',
+              '1.2.3.*/23',
+              '1.2.3.1|23',
+              '1.2.3.1/-1',
+              '1.2.3.1/',
+              'ad80::abaa:0:c2:2/-3',
+              'AD80:ABAA::|26',
+              '2001:DB8:2de:0:0:0:0:e13:200a',
+              )
+    def test_create_access_rule_ip_with_wrong_target(self, ip_address):
+        for client_name in ['shares_client', 'shares_v2_client']:
+            self.assertRaises(lib_exc.BadRequest,
+                              getattr(self, client_name).create_access_rule,
+                              self.share["id"], "ip", ip_address)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')

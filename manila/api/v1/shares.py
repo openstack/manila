@@ -372,7 +372,7 @@ class ShareMixin(object):
 
     @wsgi.Controller.authorize('allow_access')
     def _allow_access(self, req, id, body, enable_ceph=False,
-                      allow_on_error_status=False):
+                      allow_on_error_status=False, enable_ipv6=False):
         """Add share access rule."""
         context = req.environ['manila.context']
         access_data = body.get('allow_access', body.get('os-allow_access'))
@@ -394,7 +394,8 @@ class ShareMixin(object):
         access_to = access_data['access_to']
         common.validate_access(access_type=access_type,
                                access_to=access_to,
-                               enable_ceph=enable_ceph)
+                               enable_ceph=enable_ceph,
+                               enable_ipv6=enable_ipv6)
         try:
             access = self.share_api.allow_access(
                 context, share, access_type, access_to,
