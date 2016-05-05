@@ -200,7 +200,7 @@ echo 'import pkg_resources; print list(pkg_resources.iter_entry_points("tempest.
 # See bugs:
 # 1) https://bugs.launchpad.net/manila/+bug/1531049
 # 2) https://bugs.launchpad.net/tempest/+bug/1524717
-TEMPEST_CONFIG=$BASE/new/tempest/etc/tempest.conf
+TEMPEST_CONFIG=${TEMPEST_CONFIG:-$TEMPEST_DIR/etc/tempest.conf}
 ADMIN_TENANT_NAME=${ADMIN_TENANT_NAME:-"admin"}
 ADMIN_DOMAIN_NAME=${ADMIN_DOMAIN_NAME:-"Default"}
 ADMIN_PASSWORD=${ADMIN_PASSWORD:-"secretadmin"}

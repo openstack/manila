@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+# ``upgrade-manila``
+
+function configure_manila_upgrade {
+    XTRACE=$(set +o | grep xtrace)
+    set -o xtrace
+
+    # Copy release-specific files
+    sudo cp -f $TARGET_RELEASE_DIR/manila/etc/manila/rootwrap.d/* $MANILA_CONF_DIR/rootwrap.d
+    sudo cp $TARGET_RELEASE_DIR/manila/etc/manila/api-paste.ini $MANILA_CONF_DIR/api-paste.ini
+    sudo cp $TARGET_RELEASE_DIR/manila/etc/manila/policy.json $MANILA_CONF_DIR/policy.json
+    sudo cp $TARGET_RELEASE_DIR/manila/etc/manila/rootwrap.conf $MANILA_CONF_DIR/rootwrap.conf
+
+    # reset to previous state
+    $XTRACE
+}
