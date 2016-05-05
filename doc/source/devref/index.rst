@@ -30,6 +30,7 @@ Programming HowTos and Tutorials
     unit_tests
     addmethod.openstackapi
     adding_release_notes
+    commit_message_tags
 
 
 Background Concepts for manila
