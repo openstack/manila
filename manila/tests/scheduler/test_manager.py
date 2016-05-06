@@ -31,6 +31,7 @@ from manila.common import constants
 from manila import context
 from manila import db
 from manila import exception
+from manila.message import message_field
 from manila import quota
 from manila.scheduler.drivers import base
 from manila.scheduler.drivers import filter
@@ -136,7 +137,9 @@ class SchedulerManagerTestCase(test.TestCase):
                 assert_called_once_with(service_name, host, capabilities))
 
     @mock.patch.object(db, 'share_update', mock.Mock())
-    def test_create_share_exception_puts_share_in_error_state(self):
+    @mock.patch('manila.message.api.API.create')
+    def test_create_share_exception_puts_share_in_error_state(
+            self, _mock_message_create):
         """Test NoValidHost exception for create_share.
 
         Puts the share in 'error' state and eats the exception.
@@ -144,9 +147,10 @@ class SchedulerManagerTestCase(test.TestCase):
         fake_share_id = 1
 
         request_spec = {'share_id': fake_share_id}
+        ex = exception.NoValidHost(reason='')
         with mock.patch.object(
                 self.manager.driver, 'schedule_create_share',
-                mock.Mock(side_effect=self.raise_no_valid_host)):
+                mock.Mock(side_effect=ex)):
             self.mock_object(manager.LOG, 'error')
 
             self.manager.create_share_instance(
@@ -157,6 +161,12 @@ class SchedulerManagerTestCase(test.TestCase):
             (self.manager.driver.schedule_create_share.
                 assert_called_once_with(self.context, request_spec, {}))
             manager.LOG.error.assert_called_once_with(mock.ANY, mock.ANY)
+
+            _mock_message_create.assert_called_once_with(
+                self.context,
+                message_field.Action.ALLOCATE_HOST,
+                self.context.project_id, resource_type='SHARE',
+                exception=ex, resource_id=fake_share_id)
 
     @mock.patch.object(db, 'share_update', mock.Mock())
     def test_create_share_other_exception_puts_share_in_error_state(self):

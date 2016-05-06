@@ -4569,3 +4569,66 @@ def share_group_type_specs_update_or_create(context, type_id, specs):
             spec_ref.save(session=session)
 
         return specs
+
+
+###############################
+
+
+@require_context
+def message_get(context, message_id):
+    query = model_query(context,
+                        models.Message,
+                        read_deleted="no",
+                        project_only="yes")
+    result = query.filter_by(id=message_id).first()
+    if not result:
+        raise exception.MessageNotFound(message_id=message_id)
+    return result
+
+
+@require_context
+def message_get_all(context, filters=None, sort_key='created_at',
+                    sort_dir='asc'):
+    messages = models.Message
+    query = model_query(context,
+                        messages,
+                        read_deleted="no",
+                        project_only="yes")
+
+    legal_filter_keys = ('request_id', 'resource_type', 'resource_id',
+                         'action_id', 'detail_id', 'message_level')
+
+    if not filters:
+        filters = {}
+
+    query = exact_filter(query, messages, filters, legal_filter_keys)
+    try:
+        query = apply_sorting(messages, query, sort_key, sort_dir)
+    except AttributeError:
+        msg = _("Wrong sorting key provided - '%s'.") % sort_key
+        raise exception.InvalidInput(reason=msg)
+
+    return query.all()
+
+
+@require_context
+def message_create(context, message_values):
+    values = copy.deepcopy(message_values)
+    message_ref = models.Message()
+    if not values.get('id'):
+        values['id'] = uuidutils.generate_uuid()
+    message_ref.update(values)
+
+    session = get_session()
+    with session.begin():
+        session.add(message_ref)
+
+    return message_get(context, message_ref['id'])
+
+
+@require_context
+def message_destroy(context, message):
+    session = get_session()
+    with session.begin():
+        (model_query(context, models.Message, session=session).
+            filter_by(id=message.get('id')).soft_delete())

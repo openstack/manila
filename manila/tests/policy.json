@@ -130,5 +130,9 @@
     "share_group_types_spec:update": "rule:admin_api",
     "share_group_types_spec:show": "rule:admin_api",
     "share_group_types_spec:index": "rule:admin_api",
-    "share_group_types_spec:delete": "rule:admin_api"
+    "share_group_types_spec:delete": "rule:admin_api",
+
+    "message:delete": "rule:default",
+    "message:get": "rule:default",
+    "message:get_all": "rule:default"
 }

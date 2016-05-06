@@ -1178,6 +1178,31 @@ class ShareGroupShareTypeMapping(BASE, ManilaBase):
     )
 
 
+class Message(BASE, ManilaBase):
+    """Represents a user message.
+
+    User messages show information about API operations to the API end-user.
+    """
+    __tablename__ = 'messages'
+    id = Column(String(36), primary_key=True, nullable=False)
+    project_id = Column(String(255), nullable=False)
+    # Info/Error/Warning.
+    message_level = Column(String(255), nullable=False)
+    request_id = Column(String(255), nullable=True)
+    resource_type = Column(String(255))
+    # The uuid of the related resource.
+    resource_id = Column(String(36), nullable=True)
+    # Operation specific action ID, this ID is mapped
+    # to a message in manila/message/message_field.py
+    action_id = Column(String(10), nullable=False)
+    # After this time the message may no longer exist.
+    expires_at = Column(DateTime, nullable=True)
+    # Message detail ID, this ID is mapped
+    # to a message in manila/message/message_field.py
+    detail_id = Column(String(10), nullable=True)
+    deleted = Column(String(36), default='False')
+
+
 def register_models():
     """Register Models and create metadata.
 

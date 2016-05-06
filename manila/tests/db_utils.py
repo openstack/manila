@@ -18,6 +18,7 @@ import copy
 from manila.common import constants
 from manila import context
 from manila import db
+from manila.message import message_levels
 
 
 def _create_db_row(method, default_values, custom_values):
@@ -264,3 +265,12 @@ def create_security_service(**kwargs):
                                               share_network_id,
                                               service_ref['id'])
     return service_ref
+
+
+def create_message(**kwargs):
+    message_dict = {
+        'action': 'fake_Action',
+        'project_id': 'fake-project-id',
+        'message_level': message_levels.ERROR,
+    }
+    return _create_db_row(db.message_create, message_dict, kwargs)

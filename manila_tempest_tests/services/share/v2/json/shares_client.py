@@ -186,6 +186,9 @@ class SharesV2Client(shares_client.SharesClient):
         elif "replica_id" in kwargs:
             return self._is_resource_deleted(
                 self.get_share_replica, kwargs.get("replica_id"))
+        elif "message_id" in kwargs:
+            return self._is_resource_deleted(
+                self.get_message, kwargs.get("message_id"))
         else:
             return super(SharesV2Client, self).is_resource_deleted(
                 *args, **kwargs)
@@ -1673,3 +1676,44 @@ class SharesV2Client(shares_client.SharesClient):
             "snapshots/%s/export-locations" % snapshot_id, version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
+
+###############
+
+    def get_message(self, message_id, version=LATEST_MICROVERSION):
+        """Show details for a single message."""
+        url = 'messages/%s' % message_id
+        resp, body = self.get(url, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def list_messages(self, params=None, version=LATEST_MICROVERSION):
+        """List all messages."""
+        url = 'messages'
+        url += '?%s' % urlparse.urlencode(params) if params else ''
+        resp, body = self.get(url, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def delete_message(self, message_id, version=LATEST_MICROVERSION):
+        """Delete a single message."""
+        url = 'messages/%s' % message_id
+        resp, body = self.delete(url, version=version)
+        self.expected_success(204, resp.status)
+        return self._parse_resp(body)
+
+    def wait_for_message(self, resource_id):
+        """Waits until a message for a resource with given id exists"""
+        start = int(time.time())
+        message = None
+
+        while not message:
+            time.sleep(self.build_interval)
+            for msg in self.list_messages():
+                if msg['resource_id'] == resource_id:
+                    return msg
+
+            if int(time.time()) - start >= self.build_timeout:
+                message = ('No message for resource with id %s was created in'
+                           ' the required time (%s s).' %
+                           (resource_id, self.build_timeout))
+                raise exceptions.TimeoutException(message)

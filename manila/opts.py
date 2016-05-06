@@ -33,6 +33,7 @@ import manila.coordination
 import manila.db.api
 import manila.db.base
 import manila.exception
+import manila.message.api
 import manila.network
 import manila.network.linux.interface
 import manila.network.neutron.api
@@ -102,6 +103,7 @@ _global_opt_lists = [
     manila.db.api.db_opts,
     [manila.db.base.db_driver_opt],
     manila.exception.exc_log_opts,
+    manila.message.api.messages_opts,
     manila.network.linux.interface.OPTS,
     manila.network.network_opts,
     manila.network.neutron.neutron_network_plugin.

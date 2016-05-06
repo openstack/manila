@@ -2738,3 +2738,89 @@ class ShareTypeAPITestCase(test.TestCase):
         result = db_api.share_type_get_by_name_or_id(self.ctxt, fake_id)
 
         self.assertIsNone(result)
+
+
+class MessagesDatabaseAPITestCase(test.TestCase):
+
+    def setUp(self):
+        super(MessagesDatabaseAPITestCase, self).setUp()
+        self.user_id = uuidutils.generate_uuid()
+        self.project_id = uuidutils.generate_uuid()
+        self.ctxt = context.RequestContext(
+            user_id=self.user_id, project_id=self.project_id, is_admin=False)
+
+    def test_message_create(self):
+        result = db_utils.create_message(project_id=self.project_id,
+                                         action_id='001')
+
+        self.assertIsNotNone(result['id'])
+
+    def test_message_delete(self):
+        result = db_utils.create_message(project_id=self.project_id,
+                                         action_id='001')
+
+        db_api.message_destroy(self.ctxt, result)
+
+        self.assertRaises(exception.NotFound, db_api.message_get,
+                          self.ctxt, result['id'])
+
+    def test_message_get(self):
+        message = db_utils.create_message(project_id=self.project_id,
+                                          action_id='001')
+
+        result = db_api.message_get(self.ctxt, message['id'])
+
+        self.assertEqual(message['id'], result['id'])
+        self.assertEqual(message['action_id'], result['action_id'])
+        self.assertEqual(message['detail_id'], result['detail_id'])
+        self.assertEqual(message['project_id'], result['project_id'])
+        self.assertEqual(message['message_level'], result['message_level'])
+
+    def test_message_get_not_found(self):
+        self.assertRaises(exception.MessageNotFound, db_api.message_get,
+                          self.ctxt, 'fake_id')
+
+    def test_message_get_different_project(self):
+        message = db_utils.create_message(project_id='another-project',
+                                          action_id='001')
+
+        self.assertRaises(exception.MessageNotFound, db_api.message_get,
+                          self.ctxt, message['id'])
+
+    def test_message_get_all(self):
+        db_utils.create_message(project_id=self.project_id, action_id='001')
+        db_utils.create_message(project_id=self.project_id, action_id='001')
+        db_utils.create_message(project_id='another-project', action_id='001')
+
+        result = db_api.message_get_all(self.ctxt)
+
+        self.assertEqual(2, len(result))
+
+    def test_message_get_all_as_admin(self):
+        db_utils.create_message(project_id=self.project_id, action_id='001')
+        db_utils.create_message(project_id=self.project_id, action_id='001')
+        db_utils.create_message(project_id='another-project', action_id='001')
+
+        result = db_api.message_get_all(self.ctxt.elevated())
+
+        self.assertEqual(3, len(result))
+
+    def test_message_get_all_with_filter(self):
+        for i in ['001', '002', '002']:
+            db_utils.create_message(project_id=self.project_id, action_id=i)
+
+        result = db_api.message_get_all(self.ctxt,
+                                        filters={'action_id': '002'})
+
+        self.assertEqual(2, len(result))
+
+    def test_message_get_all_sorted(self):
+        ids = []
+        for i in ['001', '002', '003']:
+            msg = db_utils.create_message(project_id=self.project_id,
+                                          action_id=i)
+            ids.append(msg.id)
+
+        result = db_api.message_get_all(self.ctxt, sort_key='action_id')
+        result_ids = [r.id for r in result]
+        self.assertEqual(result_ids, ids)

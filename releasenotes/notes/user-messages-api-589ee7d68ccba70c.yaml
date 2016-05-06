@@ -1,0 +1,7 @@
+---
+features:
+    - Added new user messages API - GET /messages, GET /messages/<message_id>
+      and DELETE /messages/<message_id>.
+    - Added sorting, filtering and pagination to the user messages listing.
+    - Added 'message_ttl' configuration option which can be used for
+      configuring message expiration time.

@@ -1259,3 +1259,27 @@ def share_group_type_specs_update_or_create(context, type_id, group_specs):
     """
     return IMPL.share_group_type_specs_update_or_create(
         context, type_id, group_specs)
+
+
+####################
+
+
+def message_get(context, message_id):
+    """Return a message with the specified ID."""
+    return IMPL.message_get(context, message_id)
+
+
+def message_get_all(context, filters=None, sort_key=None, sort_dir=None):
+    """Returns all messages with the project of the specified context."""
+    return IMPL.message_get_all(context, filters=filters, sort_key=sort_key,
+                                sort_dir=sort_dir)
+
+
+def message_create(context, values):
+    """Creates a new message with the specified values."""
+    return IMPL.message_create(context, values)
+
+
+def message_destroy(context, message_id):
+    """Deletes message with the specified ID."""
+    return IMPL.message_destroy(context, message_id)
