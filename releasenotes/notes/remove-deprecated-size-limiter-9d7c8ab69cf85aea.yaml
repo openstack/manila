@@ -1,0 +1,10 @@
+deprecations:
+  - Removed manila RequestBodySizeLimiter shims and deprecation
+    log messages since it has been deprecated since equivalent
+    oslo.middleware library object was added in kilo.
+upgrade:
+  - Ensure that /etc/manila/api-paste.ini is up-to-date with
+    etc/manila/api-paste.ini, in particular that [filter:sizelimit]
+    section has
+      paste.filter_factory = oslo_middleware.sizelimit:RequestBodySizeLimiter.factory
+
