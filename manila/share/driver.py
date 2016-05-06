@@ -326,7 +326,8 @@ class ShareDriver(object):
         2nd phase call. Driver may throw exception when validating this
         parameter, exception if does not support 1-phase or 2-phase approach.
         :returns: Boolean value indicating if driver migration succeeded.
-        :returns: Dictionary containing a model update.
+        :returns: Dictionary containing a model update with relevant data to
+        be updated after migration, such as export locations.
         """
         return None, None
 
@@ -342,7 +343,8 @@ class ShareDriver(object):
         :param share_server: Share server model or None.
         :param dest_driver_migration_info: Migration information provided by
         destination host.
-        :returns: Dictionary containing a model update.
+        :returns: Dictionary containing a model update with relevant data to
+        be updated after migration, such as export locations.
         """
         return None
 
