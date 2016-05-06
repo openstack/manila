@@ -124,7 +124,8 @@ class StandaloneNetworkPluginTest(test.TestCase):
             ['2001:cdba::3257:9652/48'], instance.allowed_cidrs)
         self.assertEqual(
             ('2001:cdba::', '2001:cdba::3257:9652',
-             '2001:cdba:0:ffff:ffff:ffff:ffff:ffff'),
+             netaddr.IPAddress('2001:cdba:0:ffff:ffff:ffff:ffff:ffff').format()
+             ),
             instance.reserved_addresses)
 
     @ddt.data('custom_config_group_name', 'DEFAULT')
