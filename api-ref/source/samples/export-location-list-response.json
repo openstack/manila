@@ -1,0 +1,18 @@
+{
+    "export_locations": [
+        {
+            "path": "10.254.0.3:/shares/share-e1c2d35e-fe67-4028-ad7a-45f668732b1d",
+            "share_instance_id": "e1c2d35e-fe67-4028-ad7a-45f668732b1d",
+            "is_admin_only": false,
+            "id": "b6bd76ce-12a2-42a9-a30a-8a43b503867d",
+            "preferred": false
+        },
+        {
+            "path": "10.0.0.3:/shares/share-e1c2d35e-fe67-4028-ad7a-45f668732b1d",
+            "share_instance_id": "e1c2d35e-fe67-4028-ad7a-45f668732b1d",
+            "is_admin_only": true,
+            "id": "6921e862-88bc-49a5-a2df-efeed9acd583",
+            "preferred": false
+        }
+    ]
+}

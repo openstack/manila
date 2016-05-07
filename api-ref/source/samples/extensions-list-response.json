@@ -1,0 +1,102 @@
+{
+    "extensions": [
+        {
+            "alias": "os-extended-quotas",
+            "updated": "2013-06-09T00:00:00+00:00",
+            "name": "ExtendedQuotas",
+            "links": [],
+            "description": "Extend quotas. Adds ability for admins to delete quota and optionally force the update Quota command."
+        },
+        {
+            "alias": "os-quota-sets",
+            "updated": "2011-08-08T00:00:00+00:00",
+            "name": "Quotas",
+            "links": [],
+            "description": "Quotas management support."
+        },
+        {
+            "alias": "os-quota-class-sets",
+            "updated": "2012-03-12T00:00:00+00:00",
+            "name": "QuotaClasses",
+            "links": [],
+            "description": "Quota classes management support."
+        },
+        {
+            "alias": "os-share-unmanage",
+            "updated": "2015-02-17T00:00:00+00:00",
+            "name": "ShareUnmanage",
+            "links": [],
+            "description": "Enable share unmanage operation."
+        },
+        {
+            "alias": "os-types-manage",
+            "updated": "2011-08-24T00:00:00+00:00",
+            "name": "TypesManage",
+            "links": [],
+            "description": "Types manage support."
+        },
+        {
+            "alias": "share-actions",
+            "updated": "2012-08-14T00:00:00+00:00",
+            "name": "ShareActions",
+            "links": [],
+            "description": "Enable share actions."
+        },
+        {
+            "alias": "os-availability-zone",
+            "updated": "2015-07-28T00:00:00+00:00",
+            "name": "AvailabilityZones",
+            "links": [],
+            "description": "Describe Availability Zones."
+        },
+        {
+            "alias": "os-user-quotas",
+            "updated": "2013-07-18T00:00:00+00:00",
+            "name": "UserQuotas",
+            "links": [],
+            "description": "Project user quota support."
+        },
+        {
+            "alias": "os-share-type-access",
+            "updated": "2015-03-02T00:00:00Z",
+            "name": "ShareTypeAccess",
+            "links": [],
+            "description": "share type access support."
+        },
+        {
+            "alias": "os-types-extra-specs",
+            "updated": "2011-08-24T00:00:00+00:00",
+            "name": "TypesExtraSpecs",
+            "links": [],
+            "description": "Type extra specs support."
+        },
+        {
+            "alias": "os-admin-actions",
+            "updated": "2015-08-03T00:00:00+00:00",
+            "name": "AdminActions",
+            "links": [],
+            "description": "Enable admin actions."
+        },
+        {
+            "alias": "os-used-limits",
+            "updated": "2014-03-27T00:00:00+00:00",
+            "name": "UsedLimits",
+            "links": [],
+            "description": "Provide data on limited resources that are being used."
+        },
+        {
+            "alias": "os-services",
+            "updated": "2012-10-28T00:00:00-00:00",
+            "name": "Services",
+            "links": [],
+            "description": "Services support."
+        },
+        {
+            "alias": "os-share-manage",
+            "updated": "2015-02-17T00:00:00+00:00",
+            "name": "ShareManage",
+            "links": [],
+            "description": "Allows existing share to be 'managed' by Manila."
+        }
+    ]
+}

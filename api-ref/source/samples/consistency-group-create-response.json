@@ -1,0 +1,26 @@
+{
+    "consistency_group": {
+        "status": "creating",
+        "description": "my first consistency group",
+        "links": [
+            {
+                "href": "http://172.18.198.54:8786/v2/16e1ab15c35a457e9c2b2aa189f544e1/consistency_groups/6f519a48-3183-46cf-a32f-41815f813986",
+                "rel": "self"
+            },
+            {
+                "href": "http://172.18.198.54:8786/16e1ab15c35a457e9c2b2aa189f544e1/consistency_groups/6f519a48-3183-46cf-a32f-41815f813986",
+                "rel": "bookmark"
+            }
+        ],
+        "source_cgsnapshot_id": null,
+        "created_at": "2015-09-16T09:28:52.880949",
+        "share_network_id": "d8ae6799-2567-4a89-aafb-fa4424350d2b",
+        "host": null,
+        "project_id": "16e1ab15c35a457e9c2b2aa189f544e1",
+        "share_types": [
+            "d2ad4f9d-cae3-4660-b0b6-58c06b385203"
+        ],
+        "id": "6f519a48-3183-46cf-a32f-41815f813986",
+        "name": "my-cg1"
+    }
+}

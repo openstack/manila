@@ -1,0 +1,7 @@
+{
+    "allow_access": {
+        "access_level": "rw",
+        "access_type": "ip",
+        "access_to": "0.0.0.0/0"
+    }
+}

@@ -1,0 +1,7 @@
+{
+    "cgsnapshot": {
+        "consistency_group_id": "9397c191-8427-4661-a2e8-b23820dc01d4",
+        "name": "snapshot_cg1",
+        "description": "Snapshot of cg1"
+    }
+}

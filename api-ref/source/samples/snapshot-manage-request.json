@@ -1,0 +1,12 @@
+{
+    "snapshot": {
+        "share_id": "dd6c5d35-9db1-4662-a7ae-8b52f880aeba",
+        "provider_location": "4045fee5-4e0e-408e-97f3-15e25239dbc9",
+        "name": "managed_snapshot",
+        "description": "description_of_managed_snapshot",
+        "driver_options": {
+            "opt1": "opt1",
+            "opt2": "opt2"
+        }
+    }
+}

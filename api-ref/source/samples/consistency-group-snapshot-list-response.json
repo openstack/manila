@@ -1,0 +1,32 @@
+{
+    "cgsnapshots": [
+        {
+            "id": "7e5c3ca7-d54b-438d-9a9c-c65ece6bc6c6",
+            "links": [
+                {
+                    "href": "http://172.18.198.54:8786/v2/16e1ab15c35a457e9c2b2aa189f544e1/cgsnapshot/7e5c3ca7-d54b-438d-9a9c-c65ece6bc6c6",
+                    "rel": "self"
+                },
+                {
+                    "href": "http://172.18.198.54:8786/16e1ab15c35a457e9c2b2aa189f544e1/cgsnapshot/7e5c3ca7-d54b-438d-9a9c-c65ece6bc6c6",
+                    "rel": "bookmark"
+                }
+            ],
+            "name": "snapshot_CG2"
+        },
+        {
+            "id": "b44c894d-4bec-47aa-b389-cc8c6f0044a5",
+            "links": [
+                {
+                    "href": "http://172.18.198.54:8786/v2/16e1ab15c35a457e9c2b2aa189f544e1/cgsnapshot/b44c894d-4bec-47aa-b389-cc8c6f0044a5",
+                    "rel": "self"
+                },
+                {
+                    "href": "http://172.18.198.54:8786/16e1ab15c35a457e9c2b2aa189f544e1/cgsnapshot/b44c894d-4bec-47aa-b389-cc8c6f0044a5",
+                    "rel": "bookmark"
+                }
+            ],
+            "name": "snapshot_cg1"
+        }
+    ]
+}

@@ -1,0 +1,28 @@
+{
+    "versions": [
+        {
+            "status": "CURRENT",
+            "updated": "2015-08-27T11:33:21Z",
+            "links": [
+                {
+                    "href": "http://docs.openstack.org/",
+                    "type": "text/html",
+                    "rel": "describedby"
+                },
+                {
+                    "href": "http://172.18.198.54:8786/v2/",
+                    "rel": "self"
+                }
+            ],
+            "min_version": "2.0",
+            "version": "2.15",
+            "media-types": [
+                {
+                    "base": "application/json",
+                    "type": "application/vnd.openstack.share+json;version=1"
+                }
+            ],
+            "id": "v2.0"
+        }
+    ]
+}
