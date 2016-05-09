@@ -36,6 +36,9 @@ class SharesActionsNegativeTest(base.BaseSharesTest):
     @testtools.skipUnless(
         CONF.share.run_extend_tests,
         "Share extend tests are disabled.")
+    @testtools.skipUnless(
+        CONF.share.run_quota_tests,
+        "Quota tests are disabled.")
     def test_share_extend_over_quota(self):
         tenant_quotas = self.shares_client.show_quotas(
             self.shares_client.tenant_id)
