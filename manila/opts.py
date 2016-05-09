@@ -100,7 +100,7 @@ _global_opt_lists = [
     manila.network.linux.interface.OPTS,
     manila.network.network_opts,
     manila.network.neutron.neutron_network_plugin.
-    neutron_network_plugin_opts,
+    neutron_bind_network_plugin_opts,
     manila.network.neutron.neutron_network_plugin.
     neutron_single_network_plugin_opts,
     manila.network.nova_network_plugin.nova_single_network_plugin_opts,

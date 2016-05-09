@@ -77,6 +77,13 @@ There are three different network plugins and five python classes in Manila:
     `neutron_net_id` and `neutron_subnet_id` from the Manila configuration
     file and uses one network for all shares.
 
+  1.3 `manila.network.neutron.neutron_network_plugin.NeutronBindNetworkPlugin`.
+    This driver waits for active binding and fails if a Neutron port can't be
+    bound or an error occurs. This plugin is useful for agent based binding
+    (like OVS with docker driver) and fabric binding where real HW
+    reconfiguration is taking place. The existing
+    `NeutronBindSingleNetworkPlugin` is a combination of 1.2 and 1.3.
+
   When only a single network is needed, the NeutronSingleNetworkPlugin (1.2)
   is a simple solution. Otherwise NeutronNetworkPlugin (1.1) should be chosen.
 

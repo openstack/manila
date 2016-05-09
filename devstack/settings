@@ -166,6 +166,10 @@ MANILA_CONTAINER_VOLUME_GROUP_NAME=${MANILA_CONTAINER_VOLUME_GROUP_NAME:-"manila
 # permanent one as soon as possible.
 MANILA_DOCKER_IMAGE_URL=${MANILA_DOCKER_IMAGE_URL:-"https://github.com/a-ovchinnikov/manila-image-elements-lxd-images/releases/download/0.1.0/manila-docker-container.tar.gz"}
 
+# Network Plugin
+MANILA_NETWORK_API_CLASS=${MANILA_NETWORK_API_CLASS:-"manila.network.neutron.neutron_network_plugin.NeutronBindNetworkPlugin"}
+MANILA_NEUTRON_VNIC_TYPE=${MANILA_NEUTRON_VNIC_TYPE:-"normal"}
+
 # Enable manila services
 # ----------------------
 # We have to add Manila to enabled services for screen_it to work

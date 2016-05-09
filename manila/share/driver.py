@@ -570,6 +570,17 @@ class ShareDriver(object):
     def get_admin_network_allocations_number(self):
         return 0
 
+    def update_network_allocation(self, context, share_server):
+        """Update network allocation after share server creation."""
+        self.network_api.update_network_allocation(context, share_server)
+
+    def update_admin_network_allocation(self, context, share_server):
+        """Update admin network allocation after share server creation."""
+        if (self.get_admin_network_allocations_number() and
+                self.admin_network_api):
+            self.admin_network_api.update_network_allocation(context,
+                                                             share_server)
+
     def allocate_network(self, context, share_server, share_network,
                          count=None, **kwargs):
         """Allocate network resources using given network information."""

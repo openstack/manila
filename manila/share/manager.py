@@ -2375,6 +2375,9 @@ class ShareManager(manager.SchedulerDependentManager):
             server_info = self.driver.setup_server(
                 network_info, metadata=metadata)
 
+            self.driver.update_network_allocation(context, share_server)
+            self.driver.update_admin_network_allocation(context, share_server)
+
             if server_info and isinstance(server_info, dict):
                 self.db.share_server_backend_details_set(
                     context, share_server['id'], server_info)

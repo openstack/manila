@@ -15,3 +15,8 @@
 
 PROVIDER_NW_EXT = 'Provider Network'
 PORTBINDING_EXT = 'Port Binding'
+
+PORT_STATUS_ERROR = 'ERROR'
+PORT_STATUS_ACTIVE = 'ACTIVE'
+
+VIF_TYPE_BINDING_FAILED = 'binding_failed'

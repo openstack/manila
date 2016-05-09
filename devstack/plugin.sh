@@ -75,6 +75,12 @@ function configure_default_backends {
         iniset $MANILA_CONF $group_name service_instance_user $MANILA_SERVICE_INSTANCE_USER
         iniset $MANILA_CONF $group_name driver_handles_share_servers True
 
+        if [ "$SHARE_DRIVER" == $MANILA_CONTAINER_DRIVER ]; then
+            iniset $MANILA_CONF $group_name network_api_class $MANILA_NETWORK_API_CLASS
+            iniset $MANILA_CONF $group_name neutron_host_id $(hostname)
+            iniset $MANILA_CONF $group_name neutron_vnic_type $MANILA_NEUTRON_VNIC_TYPE
+        fi
+
         if [ $(trueorfalse False MANILA_USE_SERVICE_INSTANCE_PASSWORD) == True ]; then
             iniset $MANILA_CONF $group_name service_instance_password $MANILA_SERVICE_INSTANCE_PASSWORD
         fi
@@ -522,7 +528,6 @@ function init_manila {
     elif [ "$SHARE_DRIVER" == $MANILA_CONTAINER_DRIVER ]; then
         if is_service_enabled m-shr; then
             SHARE_GROUP=$MANILA_CONTAINER_VOLUME_GROUP_NAME
-            iniset $MANILA_CONF DEFAULT neutron_host_id $(hostname)
             configure_backing_file
         fi
 
