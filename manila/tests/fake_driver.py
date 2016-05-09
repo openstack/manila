@@ -22,7 +22,21 @@ LOG = log.getLogger(__name__)
 
 
 class FakeShareDriver(driver.ShareDriver):
-    """Fake share driver."""
+    """Fake share driver.
+
+    This fake driver can be also used as a test driver within a real
+    running manila-share instance. To activate it use this in manila.conf::
+
+        enabled_share_backends = fake
+
+        [fake]
+        driver_handles_share_servers = True
+        share_backend_name = fake
+        share_driver = manila.tests.fake_driver.FakeShareDriver
+
+    With it you basically mocked all backend driver calls but e.g. networking
+    will still be activated.
+    """
 
     def __init__(self, *args, **kwargs):
         super(FakeShareDriver, self).__init__([True, False], *args, **kwargs)
