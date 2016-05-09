@@ -28,20 +28,20 @@ The :mod:`manila.scheduler.manager` Module
     :show-inheritance:
 
 
-The :mod:`manila.scheduler.driver` Module
+The :mod:`manila.scheduler.drivers.base` Module
 -----------------------------------------
 
-.. automodule:: manila.scheduler.driver
+.. automodule:: manila.scheduler.drivers.base
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`manila.scheduler.simple` Driver
+The :mod:`manila.scheduler.drivers.simple` Driver
 -----------------------------------------
 
-.. automodule:: manila.scheduler.simple
+.. automodule:: manila.scheduler.drivers.simple
     :noindex:
     :members:
     :undoc-members:
