@@ -46,7 +46,6 @@ class ConsistencyGroupsTest(base.BaseSharesTest):
         # Populate
         share = self.create_share(consistency_group_id=consistency_group['id'],
                                   cleanup_in_class=False,
-                                  client=self.shares_v2_client,
                                   version='2.4')
         # Delete
         params = {"consistency_group_id": consistency_group['id']}

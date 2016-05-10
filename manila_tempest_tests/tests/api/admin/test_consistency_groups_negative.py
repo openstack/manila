@@ -51,7 +51,6 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesAdminTest):
             size=cls.share_size,
             consistency_group_id=cls.consistency_group['id'],
             share_type_id=cls.share_type['id'],
-            client=cls.shares_v2_client,
         )
 
         # Create a cgsnapshot of the consistency group
@@ -76,7 +75,6 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesAdminTest):
                           self.create_share,
                           size=1,
                           consistency_group_id=self.consistency_group['id'],
-                          client=self.shares_v2_client,
                           version='2.4')
 
     @test.attr(type=["negative", "gate", ])
@@ -98,7 +96,6 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesAdminTest):
                           size=self.share_size,
                           consistency_group_id=consistency_group['id'],
                           cleanup_in_class=False,
-                          client=self.shares_v2_client,
                           version='2.4')
         # deleting
         self.shares_v2_client.consistency_group_reset_state(
@@ -111,7 +108,6 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesAdminTest):
                           size=self.share_size,
                           consistency_group_id=consistency_group['id'],
                           cleanup_in_class=False,
-                          client=self.shares_v2_client,
                           version='2.4')
         # error
         self.shares_v2_client.consistency_group_reset_state(
@@ -124,7 +120,6 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesAdminTest):
                           size=self.share_size,
                           consistency_group_id=consistency_group['id'],
                           cleanup_in_class=False,
-                          client=self.shares_v2_client,
                           version='2.4')
 
     @test.attr(type=["negative", "gate", ])
@@ -178,7 +173,6 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesAdminTest):
             size=share_size,
             consistency_group_id=consistency_group['id'],
             cleanup_in_class=False,
-            client=self.shares_v2_client,
             version='2.4',
         )
         self.shares_client.reset_state(s_id=share['id'])

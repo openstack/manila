@@ -47,7 +47,6 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesTest):
             description=cls.share_desc,
             size=cls.share_size,
             consistency_group_id=cls.consistency_group['id'],
-            client=cls.shares_v2_client
         )
         # Create a cgsnapshot of the consistency group
         cls.cgsnap_name = data_utils.rand_name("tempest-cgsnap-name")
