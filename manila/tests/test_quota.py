@@ -628,8 +628,9 @@ class DbQuotaDriverTestCase(test.TestCase):
         super(DbQuotaDriverTestCase, self).tearDown()
 
     def test_get_defaults(self):
+        context = FakeContext('test_project', 'test_class')
         # Use our pre-defined resources
-        result = self.driver.get_defaults(None, quota.QUOTAS._resources)
+        result = self.driver.get_defaults(context, quota.QUOTAS._resources)
         expected = {
             "shares": 10,
             "gigabytes": 1000,

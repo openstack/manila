@@ -2094,10 +2094,10 @@ class AvailabilityZonesDatabaseAPITestCase(test.TestCase):
 
     @ddt.data({'fake': 'fake'}, {}, {'fakeavailability_zone': 'fake'},
               {'availability_zone': None}, {'availability_zone': ''})
-    def test_ensure_availability_zone_exists_invalid(self, test_values):
+    def test__ensure_availability_zone_exists_invalid(self, test_values):
         session = db_api.get_session()
 
-        self.assertRaises(ValueError, db_api.ensure_availability_zone_exists,
+        self.assertRaises(ValueError, db_api._ensure_availability_zone_exists,
                           self.ctxt, test_values, session)
 
     def test_az_get(self):
