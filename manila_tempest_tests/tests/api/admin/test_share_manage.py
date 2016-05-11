@@ -83,13 +83,22 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
             data.append(creation_data)
         if utils.is_microversion_ge(CONF.share.max_api_microversion, "2.8"):
             data.append(creation_data)
+        if utils.is_microversion_ge(CONF.share.max_api_microversion, "2.16"):
+            data.append(creation_data)
         shares_created = cls.create_shares(data)
 
         cls.shares = []
         # Load all share data (host, etc.)
         for share in shares_created:
             # Unmanage shares from manila
-            cls.shares.append(cls.shares_client.get_share(share['id']))
+            get_share = cls.shares_v2_client.get_share(share['id'])
+            if utils.is_microversion_ge(
+                    CONF.share.max_api_microversion, "2.9"):
+                get_share["export_locations"] = (
+                    cls.shares_v2_client.list_share_export_locations(
+                        share["id"])
+                    )
+            cls.shares.append(get_share)
             cls.shares_client.unmanage_share(share['id'])
             cls.shares_client.wait_for_resource_deletion(
                 share_id=share['id'])
@@ -138,6 +147,11 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
         else:
             self.assertFalse(managed_share['is_public'])
 
+        if utils.is_microversion_ge(version, "2.16"):
+            self.assertEqual(share['user_id'], managed_share['user_id'])
+        else:
+            self.assertNotIn('user_id', managed_share)
+
         # Delete share
         self.shares_v2_client.delete_share(managed_share['id'])
         self.shares_v2_client.wait_for_resource_deletion(
@@ -155,6 +169,11 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
     @base.skip_if_microversion_not_supported("2.8")
     def test_manage_with_is_public_True(self):
         self._test_manage(share=self.shares[3], is_public=True, version="2.8")
+
+    @test.attr(type=["gate", "smoke"])
+    @base.skip_if_microversion_not_supported("2.16")
+    def test_manage_show_user_id(self):
+        self._test_manage(share=self.shares[4], version="2.16")
 
     @test.attr(type=["gate", "smoke"])
     def test_manage(self):

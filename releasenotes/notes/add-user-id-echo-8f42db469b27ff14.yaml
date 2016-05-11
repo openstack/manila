@@ -1,0 +1,3 @@
+---
+features:
+  - User ID is added to the JSON response of the /shares APIs.

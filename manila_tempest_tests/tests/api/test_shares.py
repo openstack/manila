@@ -84,6 +84,12 @@ class SharesNFSTest(base.BaseSharesTest):
             detailed_elements.add('replication_type')
             self.assertTrue(detailed_elements.issubset(share.keys()), msg)
 
+        # In v 2.16 and beyond, we add user_id in show/create/manage
+        # share echo.
+        if utils.is_microversion_supported('2.16'):
+            detailed_elements.add('user_id')
+            self.assertTrue(detailed_elements.issubset(share.keys()), msg)
+
         # Delete share
         self.shares_v2_client.delete_share(share['id'])
         self.shares_v2_client.wait_for_resource_deletion(share_id=share['id'])

@@ -28,6 +28,7 @@ class ViewBuilder(common.ViewBuilder):
         "remove_export_locations",
         "add_access_rules_status_field",
         "add_replication_fields",
+        "add_user_id",
     ]
 
     def summary_list(self, request, shares):
@@ -143,6 +144,10 @@ class ViewBuilder(common.ViewBuilder):
     def add_replication_fields(self, share_dict, share):
         share_dict['replication_type'] = share.get('replication_type')
         share_dict['has_replicas'] = share['has_replicas']
+
+    @common.ViewBuilder.versioned_method("2.16")
+    def add_user_id(self, share_dict, share):
+        share_dict['user_id'] = share.get('user_id')
 
     def _list_view(self, func, request, shares):
         """Provide a view for a list of shares."""
