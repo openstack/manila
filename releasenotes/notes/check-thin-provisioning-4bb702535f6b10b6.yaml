@@ -1,0 +1,7 @@
+---
+fixes:
+  - Capacity filter and weigher scheduler logic was modified to
+    account for back ends that can support thin and thick provisioning
+    for shares. Over subscription calculation is triggered with the
+    presence of the ``thin_provisioning`` extra-spec in the share type
+    of the share being created.
