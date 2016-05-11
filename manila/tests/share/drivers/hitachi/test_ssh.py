@@ -58,27 +58,6 @@ Warning: Clearing dangling space trackers from empty vivol"""
 
 HNAS_RESULT_selectfs = "Current selected file system: fake_fs, number(1)"
 
-HNAS_RESULT_fs = """ \
-Instance name      Dev   On span            State   EVS  Cap/GiB Confined Flag
------------------  ----  -------            ------  ---  ------- -------- ----
-Filesystem 8e6e2c85-fake-long-filesystem-b9b4-e4b09993841e:
-8e6e2c8..9993841e  1057  fake_span           Mount   2        4        3
-fake_fs            1051  fake_span           NoEVS   -      100     1024
-file_system        1055  fake_span           Mount   2        4        5    1
-"""
-
-HNAS_RESULT_u_fs = """ \
-Instance name      Dev   On span            State   EVS  Cap/GiB Confined Flag
------------------  ----  -------            ------  ---  ------- -------- ----
-file_system        1055  fake_span          Umount   2        4      5
-file_system2       1050  fake_span2         NoEVS    -      10       0     1
-fake_fs            1051  fake_span          Umount   2      100     1024   """
-
-HNAS_RESULT_one_fs = """ \
-Instance name      Dev   On span            State   EVS  Cap/GiB Confined Flag
------------------  ----  -------            ------  ---  ------- -------- ----
-fake_fs            1051  fake_span          Mount   2      100    1024  1"""
-
 HNAS_RESULT_expadd = "NFS Export Add: Export added successfully"
 
 HNAS_RESULT_vvol = """vvol_test
@@ -261,36 +240,6 @@ Export Modify: Export modified successfully"""
 
 HNAS_RESULT_expnotmod = "Export not modified."
 
-HNAS_RESULT_fslimits = """
-Filesystem fake_fs on span fake_span:
-
-Current capacity                            100GiB
-
-Thin provision:                           disabled
-
-Free space on span allows expansion to:  10GiB    (Run 'span-expand')
-Filesystem is confined to:               1024GiB  (Run 'filesystem-confine')
-Chunk size allows growth to:             1024GiB  (This is a conservative \
- estimate)
-Largest filesystem that can be checked:  10000GiB (This is a hard limit)
-This server model allows growth to:      10000GiB (Upgrade the server)
-"""
-
-HNAS_RESULT_fslimits_tb = """ \
-Filesystem fake_fs on span fake_span:
-
-Current capacity                            1500GiB
-
-Thin provision:                           disabled
-
-Free space on span allows expansion to:   1000GiB   (Run 'span-expand')
-Filesystem is confined to:               10240GiB   (Run 'filesystem-confine')
-Chunk size allows growth to:             10240GiB   (This is a conservative \
-estimate)
-Largest filesystem that can be checked:  10000GiB   (This is a hard limit)
-This server model allows growth to:      10000GiB   (Upgrade the server)
-"""
-
 HNAS_RESULT_job = """tree-operation-job-submit: Request submitted successfully.
 tree-operation-job-submit: Job id = d933100a-b5f6-11d0-91d9-836896aada5d"""
 
@@ -339,9 +288,6 @@ HNAS_RESULT_tree_job_status_fail = """JOB ID : d933100a-b5f6-11d0-91d9-836896aad
         Source files skipped           : 801
         Skipping details               : 104 symlinks, 452 hard links,
 47 block special devices, 25 character devices"""
-
-HNAS_RESULT_job = """tree-operation-job-submit: Request submitted successfully.
-tree-operation-job-submit: Job id = d933100a-b5f6-11d0-91d9-836896aada5d """
 
 HNAS_RESULT_job_completed = """JOB ID : ab4211b8-aac8-11ce-91af-39e0822ea368
       Job request
@@ -416,6 +362,17 @@ HNAS_RESULT_df_tb = """
 1051  FS-ManilaDev1    3.00  7.00 TB  2 TB (75%)   0 B (0%)       NA  \
 18.3 GB (25%)    No                       4 KB,WFS-2,128 DSBs
 """
+
+HNAS_RESULT_df_unmounted = """
+  ID          Label  EVS      Size            Used  Snapshots  Deduped  \
+          Avail  Thin  ThinSize  ThinAvail              FS Type
+----  -------------  ---  --------  --------------  ---------  -------  \
+-------------  ----  --------  ---------  -------------------
+1051  FS-ManilaDev1    3  70.00 GB  Not mounted   0 B (0%)       NA  \
+18.3 GB (25%)    No                       4 KB,WFS-2,128 DSBs
+"""
+
+HNAS_RESULT_df_error = """File system file_system not found"""
 
 HNAS_RESULT_mounted_filesystem = """
 file_system        1055  fake_span           Mount   2        4        5    1
@@ -650,22 +607,22 @@ class HNASSSHTestCase(test.TestCase):
             *locked_selectfs_args)
 
     def test_check_fs_mounted_true(self):
-        self.mock_object(ssh.HNASSSHBackend, "_get_filesystem_list",
-                         mock.Mock(return_value=[ssh.FileSystem(
-                             HNAS_RESULT_mounted_filesystem)]))
+        self.mock_object(ssh.HNASSSHBackend, "_execute",
+                         mock.Mock(return_value=(HNAS_RESULT_df, '')))
 
         self.assertTrue(self._driver_ssh.check_fs_mounted())
 
     def test_check_fs_mounted_false(self):
-        self.mock_object(ssh.HNASSSHBackend, "_get_filesystem_list",
-                         mock.Mock(return_value=[ssh.FileSystem(
-                             HNAS_RESULT_unmounted_filesystem)]))
+        self.mock_object(
+            ssh.HNASSSHBackend, "_execute",
+            mock.Mock(return_value=(HNAS_RESULT_df_unmounted, '')))
 
         self.assertFalse(self._driver_ssh.check_fs_mounted())
 
-    def test_check_fs_mounted_eror(self):
-        self.mock_object(ssh.HNASSSHBackend, "_get_filesystem_list",
-                         mock.Mock(return_value=[]))
+    def test_check_fs_mounted_error(self):
+        self.mock_object(
+            ssh.HNASSSHBackend, "_execute",
+            mock.Mock(return_value=(HNAS_RESULT_df_error, '')))
 
         self.assertRaises(exception.HNASItemNotFoundException,
                           self._driver_ssh.check_fs_mounted)
@@ -852,19 +809,6 @@ class HNASSSHTestCase(test.TestCase):
 
         self.assertRaises(putils.ProcessExecutionError,
                           self._driver_ssh._get_share_export, 'fake_id')
-
-    def test__get_filesystem_list(self):
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(return_value=[HNAS_RESULT_fs, '']))
-
-        out = self._driver_ssh._get_filesystem_list()
-
-        self.assertEqual('8e6e2c85-fake-long-filesystem-b9b4-e4b09993841e',
-                         out[0].name)
-        self.assertEqual('fake_span', out[0].on_span)
-        self.assertEqual('Mount', out[0].state)
-        self.assertEqual(2, out[0].evs)
-        self.assertTrue(self.mock_log.debug.called)
 
     def test__execute(self):
         key = self.ssh_private_key
