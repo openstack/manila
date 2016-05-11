@@ -278,6 +278,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 'dedupe': [True, False],
                 'compression': [True, False],
                 'thin_provisioning': [True, False],
+                'netapp_aggregate': aggr_name,
             }
 
             # Add storage service catalog data.
@@ -1107,13 +1108,18 @@ class NetAppCmodeFileStorageLibrary(object):
         if not self._have_cluster_creds:
             return
 
-        raid_types = self._client.get_aggregate_raid_types(aggregate_names)
-        for aggregate_name, raid_type in raid_types.items():
-            ssc_stats[aggregate_name]['netapp_raid_type'] = raid_type
+        for aggregate_name in aggregate_names:
 
-        disk_types = self._client.get_aggregate_disk_types(aggregate_names)
-        for aggregate_name, disk_type in disk_types.items():
-            ssc_stats[aggregate_name]['netapp_disk_type'] = disk_type
+            aggregate = self._client.get_aggregate(aggregate_name)
+            hybrid = (six.text_type(aggregate.get('is-hybrid')).lower()
+                      if 'is-hybrid' in aggregate else None)
+            disk_types = self._client.get_aggregate_disk_types(aggregate_name)
+
+            ssc_stats[aggregate_name].update({
+                'netapp_raid_type': aggregate.get('raid-type'),
+                'netapp_hybrid_aggregate': hybrid,
+                'netapp_disk_type': disk_types,
+            })
 
     def _find_active_replica(self, replica_list):
         # NOTE(ameade): Find current active replica. There can only be one

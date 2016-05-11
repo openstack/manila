@@ -493,16 +493,19 @@ AGGREGATE_CAPACITIES_VSERVER_CREDS = {
 SSC_INFO = {
     AGGREGATES[0]: {
         'netapp_raid_type': 'raid4',
-        'netapp_disk_type': 'FCAL'
+        'netapp_disk_type': 'FCAL',
+        'netapp_hybrid_aggregate': 'false',
     },
     AGGREGATES[1]: {
         'netapp_raid_type': 'raid_dp',
-        'netapp_disk_type': 'SSD'
+        'netapp_disk_type': ['SATA', 'SSD'],
+        'netapp_hybrid_aggregate': 'true',
     }
 }
 
 POOLS = [
     {'pool_name': AGGREGATES[0],
+     'netapp_aggregate': AGGREGATES[0],
      'total_capacity_gb': 3.3,
      'free_capacity_gb': 1.1,
      'allocated_capacity_gb': 2.2,
@@ -512,9 +515,11 @@ POOLS = [
      'compression': [True, False],
      'thin_provisioning': [True, False],
      'netapp_raid_type': 'raid4',
-     'netapp_disk_type': 'FCAL'
+     'netapp_disk_type': 'FCAL',
+     'netapp_hybrid_aggregate': 'false',
      },
     {'pool_name': AGGREGATES[1],
+     'netapp_aggregate': AGGREGATES[1],
      'total_capacity_gb': 6.0,
      'free_capacity_gb': 2.0,
      'allocated_capacity_gb': 4.0,
@@ -524,12 +529,14 @@ POOLS = [
      'compression': [True, False],
      'thin_provisioning': [True, False],
      'netapp_raid_type': 'raid_dp',
-     'netapp_disk_type': 'SSD'
+     'netapp_disk_type': ['SATA', 'SSD'],
+     'netapp_hybrid_aggregate': 'true',
      },
 ]
 
 POOLS_VSERVER_CREDS = [
     {'pool_name': AGGREGATES[0],
+     'netapp_aggregate': AGGREGATES[0],
      'total_capacity_gb': 'unknown',
      'free_capacity_gb': 1.1,
      'allocated_capacity_gb': 0.0,
@@ -538,10 +545,9 @@ POOLS_VSERVER_CREDS = [
      'dedupe': [True, False],
      'compression': [True, False],
      'thin_provisioning': [True, False],
-     'netapp_raid_type': 'raid4',
-     'netapp_disk_type': 'FCAL'
      },
     {'pool_name': AGGREGATES[1],
+     'netapp_aggregate': AGGREGATES[1],
      'total_capacity_gb': 'unknown',
      'free_capacity_gb': 2.0,
      'allocated_capacity_gb': 0.0,
@@ -550,20 +556,23 @@ POOLS_VSERVER_CREDS = [
      'dedupe': [True, False],
      'compression': [True, False],
      'thin_provisioning': [True, False],
-     'netapp_raid_type': 'raid_dp',
-     'netapp_disk_type': 'SSD'
      },
 ]
 
-SSC_RAID_TYPES = {
-    AGGREGATES[0]: 'raid4',
-    AGGREGATES[1]: 'raid_dp'
-}
+SSC_AGGREGATES = [
+    {
+        'name': AGGREGATES[0],
+        'raid-type': 'raid4',
+        'is-hybrid': False,
+    },
+    {
+        'name': AGGREGATES[1],
+        'raid-type': 'raid_dp',
+        'is-hybrid': True,
+    },
+]
 
-SSC_DISK_TYPES = {
-    AGGREGATES[0]: 'FCAL',
-    AGGREGATES[1]: 'SSD'
-}
+SSC_DISK_TYPES = ['FCAL', ['SATA', 'SSD']]
 
 
 def get_config_cmode():

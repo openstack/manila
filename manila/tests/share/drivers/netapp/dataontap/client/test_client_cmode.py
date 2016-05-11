@@ -189,7 +189,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             max_page_length=10)
 
         num_records = result.get_child_content('num-records')
-        self.assertEqual('1', num_records)
+        self.assertEqual('4', num_records)
 
         args = copy.deepcopy(storage_disk_get_iter_args)
         args['max-records'] = 10
@@ -4184,90 +4184,185 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call('ems-autosupport-log', fake.EMS_MESSAGE)])
         self.assertEqual(1, client_cmode.LOG.warning.call_count)
 
-    def test_get_aggregate_raid_types(self):
+    def test_get_aggregate_none_specified(self):
 
-        api_response = netapp_api.NaElement(fake.AGGR_GET_RAID_TYPE_RESPONSE)
+        result = self.client.get_aggregate('')
+
+        self.assertEqual({}, result)
+
+    def test_get_aggregate(self):
+
+        api_response = netapp_api.NaElement(
+            fake.AGGR_GET_ITER_SSC_RESPONSE).get_child_by_name(
+            'attributes-list').get_children()
         self.mock_object(self.client,
-                         'send_iter_request',
+                         '_get_aggregates',
                          mock.Mock(return_value=api_response))
 
-        result = self.client.get_aggregate_raid_types(
-            fake.SHARE_AGGREGATE_NAMES)
+        result = self.client.get_aggregate(fake.SHARE_AGGREGATE_NAME)
 
-        aggr_get_iter_args = {
-            'query': {
-                'aggr-attributes': {
-                    'aggregate-name': '|'.join(fake.SHARE_AGGREGATE_NAMES),
-                }
+        desired_attributes = {
+            'aggr-attributes': {
+                'aggregate-name': None,
+                'aggr-raid-attributes': {
+                    'raid-type': None,
+                    'is-hybrid': None,
+                },
             },
-            'desired-attributes': {
-                'aggr-attributes': {
-                    'aggregate-name': None,
-                    'aggr-raid-attributes': {
-                        'raid-type': None,
-                    }
-                }
-            }
         }
+        self.client._get_aggregates.assert_has_calls([
+            mock.call(
+                aggregate_names=[fake.SHARE_AGGREGATE_NAME],
+                desired_attributes=desired_attributes)])
 
         expected = {
-            fake.SHARE_AGGREGATE_NAMES[0]:
-            fake.SHARE_AGGREGATE_RAID_TYPES[0],
-            fake.SHARE_AGGREGATE_NAMES[1]:
-            fake.SHARE_AGGREGATE_RAID_TYPES[1]
+            'name': fake.SHARE_AGGREGATE_NAME,
+            'raid-type': 'raid_dp',
+            'is-hybrid': False,
         }
+        self.assertEqual(expected, result)
 
-        self.client.send_iter_request.assert_has_calls([
-            mock.call('aggr-get-iter', aggr_get_iter_args)])
-        self.assertDictEqual(expected, result)
-
-    def test_get_aggregate_raid_types_not_found(self):
+    def test_get_aggregate_not_found(self):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_iter_request',
+                         'send_request',
                          mock.Mock(return_value=api_response))
 
-        result = self.client.get_aggregate_raid_types(
-            fake.SHARE_AGGREGATE_NAMES)
+        result = self.client.get_aggregate(fake.SHARE_AGGREGATE_NAME)
 
-        self.assertDictEqual({}, result)
+        self.assertEqual({}, result)
 
-    def test_get_aggregate_disk_types(self):
+    def test_get_aggregate_api_error(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=self._mock_api_error()))
+
+        result = self.client.get_aggregate(fake.SHARE_AGGREGATE_NAME)
+
+        self.assertEqual({}, result)
+
+    @ddt.data({'types': {'FCAL'}, 'expected': ['FCAL']},
+              {'types': {'SATA', 'SSD'}, 'expected': ['SATA', 'SSD']},)
+    @ddt.unpack
+    def test_get_aggregate_disk_types(self, types, expected):
+
+        mock_get_aggregate_disk_types = self.mock_object(
+            self.client, '_get_aggregate_disk_types',
+            mock.Mock(return_value=types))
+
+        result = self.client.get_aggregate_disk_types(
+            fake.SHARE_AGGREGATE_NAME)
+
+        self.assertItemsEqual(expected, result)
+        mock_get_aggregate_disk_types.assert_called_once_with(
+            fake.SHARE_AGGREGATE_NAME)
+
+    def test_get_aggregate_disk_types_not_found(self):
+
+        mock_get_aggregate_disk_types = self.mock_object(
+            self.client, '_get_aggregate_disk_types',
+            mock.Mock(return_value=set()))
+
+        result = self.client.get_aggregate_disk_types(
+            fake.SHARE_AGGREGATE_NAME)
+
+        self.assertIsNone(result)
+        mock_get_aggregate_disk_types.assert_called_once_with(
+            fake.SHARE_AGGREGATE_NAME)
+
+    def test_get_aggregate_disk_types_shared(self):
+
+        self.client.features.add_feature('ADVANCED_DISK_PARTITIONING')
+        mock_get_aggregate_disk_types = self.mock_object(
+            self.client, '_get_aggregate_disk_types',
+            mock.Mock(side_effect=[set(['SSD']), set(['SATA'])]))
+
+        result = self.client.get_aggregate_disk_types(
+            fake.SHARE_AGGREGATE_NAME)
+
+        self.assertIsInstance(result, list)
+        self.assertItemsEqual(['SATA', 'SSD'], result)
+        mock_get_aggregate_disk_types.assert_has_calls([
+            mock.call(fake.SHARE_AGGREGATE_NAME),
+            mock.call(fake.SHARE_AGGREGATE_NAME, shared=True),
+        ])
+
+    @ddt.data({
+        'shared': False,
+        'query_disk_raid_info': {
+            'disk-aggregate-info': {
+                'aggregate-name': fake.SHARE_AGGREGATE_NAME,
+            },
+        },
+    }, {
+        'shared': True,
+        'query_disk_raid_info': {
+            'disk-shared-info': {
+                'aggregate-list': {
+                    'shared-aggregate-info': {
+                        'aggregate-name':
+                        fake.SHARE_AGGREGATE_NAME,
+                    },
+                },
+            },
+        },
+    })
+    @ddt.unpack
+    def test__get_aggregate_disk_types_ddt(self, shared, query_disk_raid_info):
 
         api_response = netapp_api.NaElement(
             fake.STORAGE_DISK_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
-        result = self.client.get_aggregate_disk_types(
-            fake.SHARE_AGGREGATE_NAMES)
+        result = self.client._get_aggregate_disk_types(
+            fake.SHARE_AGGREGATE_NAME, shared=shared)
 
-        expected = {
-            fake.SHARE_AGGREGATE_NAMES[0]:
-            fake.SHARE_AGGREGATE_DISK_TYPE,
-            fake.SHARE_AGGREGATE_NAMES[1]:
-            fake.SHARE_AGGREGATE_DISK_TYPE
+        storage_disk_get_iter_args = {
+            'query': {
+                'storage-disk-info': {
+                    'disk-raid-info': query_disk_raid_info,
+                },
+            },
+            'desired-attributes': {
+                'storage-disk-info': {
+                    'disk-raid-info': {
+                        'effective-disk-type': None,
+                    },
+                },
+            },
         }
+        self.client.send_iter_request.assert_called_once_with(
+            'storage-disk-get-iter', storage_disk_get_iter_args)
 
-        self.assertEqual(len(fake.SHARE_AGGREGATE_NAMES),
-                         self.client.send_request.call_count)
-        self.assertDictEqual(expected, result)
+        expected = set(fake.SHARE_AGGREGATE_DISK_TYPES)
+        self.assertEqual(expected, result)
 
-    def test_get_aggregate_disk_types_not_found(self):
+    def test__get_aggregate_disk_types_not_found(self):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
-        result = self.client.get_aggregate_disk_types(
-            fake.SHARE_AGGREGATE_NAMES)
+        result = self.client._get_aggregate_disk_types(
+            fake.SHARE_AGGREGATE_NAME)
 
-        self.assertEqual(len(fake.SHARE_AGGREGATE_NAMES),
-                         self.client.send_request.call_count)
-        self.assertDictEqual({}, result)
+        self.assertEqual(set(), result)
+
+    def test__get_aggregate_disk_types_api_error(self):
+
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(side_effect=self._mock_api_error()))
+
+        result = self.client._get_aggregate_disk_types(
+            fake.SHARE_AGGREGATE_NAME)
+
+        self.assertEqual(set([]), result)
 
     def test_check_for_cluster_credentials(self):
 
