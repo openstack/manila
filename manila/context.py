@@ -108,13 +108,14 @@ class RequestContext(context.RequestContext):
     def to_dict(self):
         values = super(RequestContext, self).to_dict()
         values.update({
-            'user_id': self.user_id,
-            'project_id': self.project_id,
-            'read_deleted': self.read_deleted,
-            'remote_address': self.remote_address,
-            'timestamp': self.timestamp.isoformat(),
-            'quota_class': self.quota_class,
-            'service_catalog': self.service_catalog})
+            'user_id': getattr(self, 'user_id', None),
+            'project_id': getattr(self, 'project_id', None),
+            'read_deleted': getattr(self, 'read_deleted', None),
+            'remote_address': getattr(self, 'remote_address', None),
+            'timestamp': self.timestamp.isoformat() if hasattr(
+                self, 'timestamp') else None,
+            'quota_class': getattr(self, 'quota_class', None),
+            'service_catalog': getattr(self, 'service_catalog', None)})
         return values
 
     @classmethod
