@@ -1393,20 +1393,6 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call('net-interface-get-iter', None)])
         self.assertListEqual([], result)
 
-    def test_delete_network_interface(self):
-
-        self.mock_object(self.client, 'send_request')
-
-        self.client.delete_network_interface(fake.LIF_NAME)
-
-        net_interface_delete_args = {
-            'vserver': None,
-            'interface-name': fake.LIF_NAME
-        }
-
-        self.client.send_request.assert_has_calls([
-            mock.call('net-interface-delete', net_interface_delete_args)])
-
     def test_get_ipspaces(self):
 
         self.client.features.add_feature('IPSPACES')

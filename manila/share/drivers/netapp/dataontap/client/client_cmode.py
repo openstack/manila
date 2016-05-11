@@ -757,12 +757,6 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return interfaces
 
     @na_utils.trace
-    def delete_network_interface(self, interface_name):
-        """Deletes LIF."""
-        api_args = {'vserver': None, 'interface-name': interface_name}
-        self.send_request('net-interface-delete', api_args)
-
-    @na_utils.trace
     def get_ipspaces(self, ipspace_name=None):
         """Gets one or more IPSpaces."""
 
