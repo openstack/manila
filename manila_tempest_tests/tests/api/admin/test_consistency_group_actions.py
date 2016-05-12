@@ -43,6 +43,8 @@ class ConsistencyGroupActionsTest(base.BaseSharesAdminTest):
         # Create a consistency group
         cls.consistency_group = cls.create_consistency_group(
             share_type_ids=[cls.share_type['id'], cls.share_type2['id']])
+        cls.consistency_group = cls.shares_v2_client.get_consistency_group(
+            cls.consistency_group['id'])
 
     @test.attr(type=["gate", ])
     def test_create_cg_from_cgsnapshot_with_multiple_share_types_v2_4(self):
@@ -103,9 +105,13 @@ class ConsistencyGroupActionsTest(base.BaseSharesAdminTest):
             version='2.4',
         )
 
-        self.create_consistency_group(cleanup_in_class=False,
-                                      source_cgsnapshot_id=cgsnapshot['id'],
-                                      version='2.4')
+        new_cg = self.create_consistency_group(
+            cleanup_in_class=False, source_cgsnapshot_id=cgsnapshot['id'],
+            version='2.4')
+        new_cg_shares = self.shares_v2_client.list_shares(
+            detailed=True,
+            params={'consistency_group_id': new_cg['id']},
+            version='2.4')
 
         # TODO(akerr): Skip until bug 1483886 is resolved
         # Verify that the new shares correspond to correct share types
@@ -117,3 +123,29 @@ class ConsistencyGroupActionsTest(base.BaseSharesAdminTest):
         #                  'Expected shares of types %s, got %s.' % (
         #                      sorted(expected_share_types),
         #                     sorted(actual_share_types)))
+
+        # Ensure that share_server information of the child CG and associated
+        # shares match with that of the parent CG
+        self.assertEqual(self.consistency_group['share_network_id'],
+                         new_cg['share_network_id'])
+        self.assertEqual(self.consistency_group['share_server_id'],
+                         new_cg['share_server_id'])
+
+        for share in new_cg_shares:
+            msg = ('Share %(share)s has %(attr)s=%(value)s and it does not '
+                   'match that of the parent CG where %(attr)s=%(orig)s.')
+            payload = {
+                'share': share['id'],
+                'attr': 'share_network_id',
+                'value': share['share_network_id'],
+                'orig': self.consistency_group['share_network_id'],
+            }
+            self.assertEqual(self.consistency_group['share_network_id'],
+                             share['share_network_id'], msg % payload)
+
+            payload.update({'attr': 'share_server_id',
+                            'value': share['share_server_id'],
+                            'orig': self.consistency_group['share_server_id'],
+                            })
+            self.assertEqual(self.consistency_group['share_server_id'],
+                             share['share_server_id'], msg % payload)

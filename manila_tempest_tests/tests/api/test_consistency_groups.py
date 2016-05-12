@@ -124,7 +124,7 @@ class ConsistencyGroupsTest(base.BaseSharesTest):
         self.assertEmpty(new_shares,
                          'Expected 0 new shares, got %s' % len(new_shares))
 
-        msg = 'Expected cgsnapshot_id %s as source of share %s' % (
+        msg = 'Expected cgsnapshot_id %s as source of consistency group %s' % (
             cgsnapshot['id'], new_consistency_group['source_cgsnapshot_id'])
         self.assertEqual(new_consistency_group['source_cgsnapshot_id'],
                          cgsnapshot['id'], msg)
@@ -134,3 +134,11 @@ class ConsistencyGroupsTest(base.BaseSharesTest):
                                 new_consistency_group['share_types']))
         self.assertEqual(sorted(consistency_group['share_types']),
                          sorted(new_consistency_group['share_types']), msg)
+
+        # Assert the share_network information is the same
+        msg = 'Expected share_network %s as share_network of cg %s' % (
+            consistency_group['share_network_id'],
+            new_consistency_group['share_network_id'])
+        self.assertEqual(consistency_group['share_network_id'],
+                         new_consistency_group['share_network_id'],
+                         msg)

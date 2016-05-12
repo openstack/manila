@@ -54,6 +54,9 @@ class API(base.Base):
 
         cgsnapshot = None
         original_cg = None
+        # NOTE(gouthamr): share_server_id is inherited from the parent CG if a
+        # CG snapshot is specified, else, it will be set in the share manager.
+        share_server_id = None
         if source_cgsnapshot_id:
             cgsnapshot = self.db.cgsnapshot_get(context, source_cgsnapshot_id)
             if cgsnapshot['status'] != constants.STATUS_AVAILABLE:
@@ -65,6 +68,8 @@ class API(base.Base):
                 'consistency_group_id'])
             share_type_ids = [s['share_type_id'] for s in original_cg[
                 'share_types']]
+            share_network_id = original_cg['share_network_id']
+            share_server_id = original_cg['share_server_id']
 
         # Get share_type_objects
         share_type_objects = []
@@ -116,6 +121,7 @@ class API(base.Base):
         options = {
             'source_cgsnapshot_id': source_cgsnapshot_id,
             'share_network_id': share_network_id,
+            'share_server_id': share_server_id,
             'name': name,
             'description': description,
             'user_id': context.user_id,
@@ -135,7 +141,7 @@ class API(base.Base):
                 for member in members:
                     share_type = share_types.get_share_type(
                         context, member['share_type_id'])
-                    member['share'] = self.db.share_instance_get(
+                    member['share_instance'] = self.db.share_instance_get(
                         context, member['share_instance_id'],
                         with_share_data=True)
                     self.share_api.create(context, member['share_proto'],

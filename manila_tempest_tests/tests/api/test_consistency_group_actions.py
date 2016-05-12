@@ -263,6 +263,13 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
             version='2.4'
         )
 
+        new_consistency_group = self.shares_v2_client.get_consistency_group(
+            new_consistency_group['id'], version='2.4')
+
+        # Verify that share_network information matches source CG
+        self.assertEqual(self.cg['share_network_id'],
+                         new_consistency_group['share_network_id'])
+
         new_shares = self.shares_v2_client.list_shares(
             params={'consistency_group_id': new_consistency_group['id']},
             detailed=True,
@@ -292,6 +299,8 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
                     # TODO(akerr): Add back assert when bug 1483886 is fixed
                     # self.assertEqual(member['share_type_id'],
                     #                  share['share_type'])
+                    self.assertEqual(self.cg['share_network_id'],
+                                     share['share_network_id'])
 
 
 @testtools.skipUnless(CONF.share.run_consistency_group_tests,

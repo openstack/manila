@@ -59,7 +59,7 @@ class CGViewBuilder(common.ViewBuilder):
             'links': self._get_links(request, cg['id']),
         }
         if context.is_admin:
-            cg_dict['share_server_id'] = cg_dict.get('share_server_id')
+            cg_dict['share_server_id'] = cg.get('share_server_id')
         return {'consistency_group': cg_dict}
 
     def _list_view(self, func, request, shares):
