@@ -1946,22 +1946,6 @@ class ShareManager(manager.SchedulerDependentManager):
         try:
             self.driver.delete_snapshot(context, snapshot_instance,
                                         share_server=share_server)
-        except exception.ShareSnapshotIsBusy:
-            with excutils.save_and_reraise_exception() as exc:
-                if force:
-                    msg = _("The driver reported that the snapshot %s "
-                            "was busy on the backend. Since this "
-                            "operation was forced, the snapshot will "
-                            "be deleted from Manila's database. A "
-                            "cleanup on the backend may be necessary.")
-                    LOG.exception(msg, snapshot_id)
-                    exc.reraise = False
-                else:
-                    self.db.share_snapshot_instance_update(
-                        context,
-                        snapshot_instance_id,
-                        {'status': constants.STATUS_AVAILABLE})
-
         except Exception:
             with excutils.save_and_reraise_exception() as exc:
                 if force:
