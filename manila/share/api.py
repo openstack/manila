@@ -532,16 +532,10 @@ class API(base.Base):
 
         LOG.debug("Manage: Found shares %s.", len(shares))
 
-        retry_states = (constants.STATUS_MANAGE_ERROR,)
-
         export_location = share_data.pop('export_location')
 
         if len(shares) == 0:
             share = self.db.share_create(context, share_data)
-        # NOTE(u_glide): Case when administrator have fixed some problems and
-        # tries to manage share again
-        elif len(shares) == 1 and shares[0]['status'] in retry_states:
-            share = self.db.share_update(context, shares[0]['id'], share_data)
         else:
             msg = _("Share already exists.")
             raise exception.InvalidShare(reason=msg)
