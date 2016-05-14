@@ -39,8 +39,9 @@ class ManilaCmdShareTestCase(test.TestCase):
         self.mock_object(self.launcher, 'wait')
         self.server = manila_share.service.Service.create.return_value
         fake_host = 'fake_host'
-        CONF.set_override('enabled_share_backends', backends)
-        CONF.set_override('host', fake_host)
+        CONF.set_override('enabled_share_backends', backends,
+                          enforce_type=True)
+        CONF.set_override('host', fake_host, enforce_type=True)
         sys.argv = ['manila-share']
 
         manila_share.main()

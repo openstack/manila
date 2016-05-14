@@ -41,7 +41,8 @@ class PolicyFileTestCase(test.TestCase):
     def test_modified_policy_reloads(self):
         with utils.tempdir() as tmpdir:
             tmpfilename = os.path.join(tmpdir, 'policy')
-            CONF.set_override('policy_file', tmpfilename, group='oslo_policy')
+            CONF.set_override('policy_file', tmpfilename, group='oslo_policy',
+                              enforce_type=True)
             action = "example:test"
             with open(tmpfilename, "w") as policyfile:
                 policyfile.write("""{"example:test": []}""")

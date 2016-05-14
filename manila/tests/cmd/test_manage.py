@@ -260,7 +260,7 @@ class ManilaCmdManageTestCase(test.TestCase):
     @mock.patch('six.moves.builtins.open')
     @mock.patch('os.listdir')
     def test_get_log_commands_errors(self, listdir, open):
-        CONF.set_override('log_dir', 'fake-dir')
+        CONF.set_override('log_dir', 'fake-dir', enforce_type=True)
         listdir.return_value = ['fake-error.log']
 
         with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:

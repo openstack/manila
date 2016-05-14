@@ -53,17 +53,17 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
         self.config.append_config_values(na_opts.netapp_provisioning_opts)
         self.config.append_config_values(na_opts.netapp_replication_opts)
         CONF.set_override("share_backend_name", self.backend,
-                          group=self.backend)
+                          group=self.backend, enforce_type=True)
         CONF.set_override("netapp_transport_type", "https",
-                          group=self.backend)
+                          group=self.backend, enforce_type=True)
         CONF.set_override("netapp_login", "fake_user",
-                          group=self.backend)
+                          group=self.backend, enforce_type=True)
         CONF.set_override("netapp_password", "fake_password",
-                          group=self.backend)
+                          group=self.backend, enforce_type=True)
         CONF.set_override("netapp_server_hostname", "fake_hostname",
-                          group=self.backend)
+                          group=self.backend, enforce_type=True)
         CONF.set_override("netapp_server_port", 8866,
-                          group=self.backend)
+                          group=self.backend, enforce_type=True)
 
     def test_get_client_for_backend(self):
         self.mock_object(data_motion, "get_backend_configuration",
@@ -81,7 +81,7 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                          mock.Mock(return_value=self.config))
 
         CONF.set_override("netapp_vserver", 'fake_vserver',
-                          group=self.backend)
+                          group=self.backend, enforce_type=True)
 
         data_motion.get_client_for_backend(self.backend)
 
@@ -93,7 +93,7 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
     def test_get_config_for_backend(self):
         self.mock_object(data_motion, "CONF")
         CONF.set_override("netapp_vserver", 'fake_vserver',
-                          group=self.backend)
+                          group=self.backend, enforce_type=True)
         data_motion.CONF.list_all_sections.return_value = [self.backend]
 
         config = data_motion.get_backend_configuration(self.backend)
@@ -103,9 +103,9 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
     def test_get_config_for_backend_different_backend_name(self):
         self.mock_object(data_motion, "CONF")
         CONF.set_override("netapp_vserver", 'fake_vserver',
-                          group=self.backend)
+                          group=self.backend, enforce_type=True)
         CONF.set_override("share_backend_name", "fake_backend_name",
-                          group=self.backend)
+                          group=self.backend, enforce_type=True)
         data_motion.CONF.list_all_sections.return_value = [self.backend]
 
         config = data_motion.get_backend_configuration(self.backend)
