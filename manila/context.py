@@ -56,18 +56,25 @@ class RequestContext(context.RequestContext):
 
         user = kwargs.pop('user', None)
         tenant = kwargs.pop('tenant', None)
+        super(RequestContext, self).__init__(
+            auth_token=auth_token,
+            user=user_id or user,
+            tenant=project_id or tenant,
+            domain=kwargs.pop('domain', None),
+            user_domain=kwargs.pop('user_domain', None),
+            project_domain=kwargs.pop('project_domain', None),
+            is_admin=is_admin,
+            read_only=kwargs.pop('read_only', False),
+            show_deleted=kwargs.pop('show_deleted', False),
+            request_id=request_id,
+            resource_uuid=kwargs.pop('resource_uuid', None),
+            overwrite=overwrite,
+            roles=roles)
+
+        kwargs.pop('user_identity', None)
         if kwargs:
             LOG.warning(_LW('Arguments dropped when creating context: %s.'),
                         str(kwargs))
-
-        super(RequestContext, self).__init__(auth_token=auth_token,
-                                             user=user_id or user,
-                                             tenant=project_id or tenant,
-                                             is_admin=is_admin,
-                                             request_id=request_id,
-                                             overwrite=overwrite,
-                                             roles=roles)
-
         self.user_id = self.user
         self.project_id = self.tenant
 
