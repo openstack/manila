@@ -20,6 +20,7 @@
 
 import copy
 import datetime
+from functools import wraps
 import sys
 import uuid
 import warnings
@@ -139,7 +140,7 @@ def require_admin_context(f):
     The first argument to the wrapped function must be the context.
 
     """
-
+    @wraps(f)
     def wrapper(*args, **kwargs):
         if not is_admin_context(args[0]):
             raise exception.AdminRequired()
@@ -157,7 +158,7 @@ def require_context(f):
     The first argument to the wrapped function must be the context.
 
     """
-
+    @wraps(f)
     def wrapper(*args, **kwargs):
         if not is_admin_context(args[0]) and not is_user_context(args[0]):
             raise exception.NotAuthorized()
@@ -171,7 +172,7 @@ def require_share_exists(f):
     Requires the wrapped function to use context and share_id as
     their first two arguments.
     """
-
+    @wraps(f)
     def wrapper(context, share_id, *args, **kwargs):
         share_get(context, share_id)
         return f(context, share_id, *args, **kwargs)
@@ -185,7 +186,7 @@ def require_share_instance_exists(f):
     Requires the wrapped function to use context and share_instance_id as
     their first two arguments.
     """
-
+    @wraps(f)
     def wrapper(context, share_instance_id, *args, **kwargs):
         share_instance_get(context, share_instance_id)
         return f(context, share_instance_id, *args, **kwargs)
