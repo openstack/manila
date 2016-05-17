@@ -1,0 +1,15 @@
+---
+features:
+  - Add support for the tooz library.
+  - Allow configuration of file/distributed locking for the share manager
+    service.
+upgrade:
+  - New options are necessary in manila.conf to specify the coordination
+    back-end URL (for example, a Distributed Locking Manager (DLM) back-end
+    or a file based lock location). The configuration determines the tooz
+    driver invoked for the locking/coordination.
+fixes:
+  - Share replication workflows are coordinated by the share-manager service
+    with the help of the tooz library instead of oslo_concurrency. This
+    allows for deployers to configure Distributed Locking Management if
+    multiple manila-share services are run across different nodes.

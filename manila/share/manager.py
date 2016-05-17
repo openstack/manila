@@ -35,6 +35,7 @@ import six
 
 from manila.common import constants
 from manila import context
+from manila import coordination
 from manila.data import rpcapi as data_rpcapi
 from manila import exception
 from manila.i18n import _, _LE, _LI, _LW
@@ -144,12 +145,12 @@ def locked_share_replica_operation(operation):
     def wrapped(*args, **kwargs):
         share_id = kwargs.get('share_id')
 
-        @utils.synchronized(
-            "locked_share_replica_operation_by_share_%s" % share_id,
-            external=True)
-        def locked_operation(*_args, **_kwargs):
+        @coordination.synchronized(
+            'locked-share-replica-operation-for-share-%s' % share_id)
+        def locked_replica_operation(*_args, **_kwargs):
             return operation(*_args, **_kwargs)
-        return locked_operation(*args, **kwargs)
+        return locked_replica_operation(*args, **kwargs)
+
     return wrapped
 
 

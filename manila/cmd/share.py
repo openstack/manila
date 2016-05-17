@@ -48,7 +48,8 @@ def main():
             host = "%s@%s" % (CONF.host, backend)
             server = service.Service.create(host=host,
                                             service_name=backend,
-                                            binary='manila-share')
+                                            binary='manila-share',
+                                            coordination=True)
             launcher.launch_service(server)
     else:
         server = service.Service.create(binary='manila-share')

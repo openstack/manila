@@ -29,6 +29,7 @@ from oslo_service import service
 from oslo_utils import importutils
 
 from manila import context
+from manila import coordination
 from manila import db
 from manila import exception
 from manila.i18n import _, _LE, _LI, _LW
@@ -75,7 +76,7 @@ class Service(service.Service):
 
     def __init__(self, host, binary, topic, manager, report_interval=None,
                  periodic_interval=None, periodic_fuzzy_delay=None,
-                 service_name=None, *args, **kwargs):
+                 service_name=None, coordination=False, *args, **kwargs):
         super(Service, self).__init__()
         if not rpc.initialized():
             rpc.init(CONF)
@@ -92,6 +93,7 @@ class Service(service.Service):
         self.periodic_fuzzy_delay = periodic_fuzzy_delay
         self.saved_args, self.saved_kwargs = args, kwargs
         self.timers = []
+        self.coordinator = coordination
 
     def start(self):
         version_string = version.version_string()
@@ -99,6 +101,10 @@ class Service(service.Service):
                  {'topic': self.topic, 'version_string': version_string})
         self.model_disconnected = False
         ctxt = context.get_admin_context()
+
+        if self.coordinator:
+            coordination.LOCK_COORDINATOR.start()
+
         try:
             service_ref = db.service_get_by_args(ctxt,
                                                  self.host,
@@ -151,7 +157,8 @@ class Service(service.Service):
     @classmethod
     def create(cls, host=None, binary=None, topic=None, manager=None,
                report_interval=None, periodic_interval=None,
-               periodic_fuzzy_delay=None, service_name=None):
+               periodic_fuzzy_delay=None, service_name=None,
+               coordination=False):
         """Instantiates class and passes back application object.
 
         :param host: defaults to CONF.host
@@ -182,7 +189,8 @@ class Service(service.Service):
                           report_interval=report_interval,
                           periodic_interval=periodic_interval,
                           periodic_fuzzy_delay=periodic_fuzzy_delay,
-                          service_name=service_name)
+                          service_name=service_name,
+                          coordination=coordination)
 
         return service_obj
 
@@ -206,6 +214,13 @@ class Service(service.Service):
                 x.stop()
             except Exception:
                 pass
+        if self.coordinator:
+            try:
+                coordination.LOCK_COORDINATOR.stop()
+            except Exception:
+                LOG.exception(_LE("Unable to stop the Tooz Locking "
+                                  "Coordinator."))
+
         self.timers = []
 
         super(Service, self).stop()

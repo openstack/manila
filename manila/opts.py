@@ -29,6 +29,7 @@ import manila.api.middleware.auth
 import manila.common.config
 import manila.compute
 import manila.compute.nova
+import manila.coordination
 import manila.db.api
 import manila.db.base
 import manila.exception
@@ -95,6 +96,7 @@ _global_opt_lists = [
     manila.common.config.debug_opts,
     manila.common.config.global_opts,
     manila.compute._compute_opts,
+    manila.coordination.coordination_opts,
     manila.db.api.db_opts,
     [manila.db.base.db_driver_opt],
     manila.exception.exc_log_opts,

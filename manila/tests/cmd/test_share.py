@@ -57,7 +57,9 @@ class ManilaCmdShareTestCase(test.TestCase):
                 mock.call(
                     host=fake_host + '@' + backend,
                     service_name=backend,
-                    binary='manila-share') for backend in backends
+                    binary='manila-share',
+                    coordination=True,
+                ) for backend in backends
             ])
             self.launcher.launch_service.assert_has_calls([
                 mock.call(self.server) for backend in backends])
