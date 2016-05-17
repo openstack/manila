@@ -18,6 +18,7 @@
 Scheduler
 =========
 
+
 The :mod:`manila.scheduler.manager` Module
 ------------------------------------------
 
@@ -28,8 +29,58 @@ The :mod:`manila.scheduler.manager` Module
     :show-inheritance:
 
 
-The :mod:`manila.scheduler.drivers.base` Module
+The :mod:`manila.scheduler.base_handler` Module
+-----------------------------------------------
+
+.. automodule:: manila.scheduler.base_handler
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.host_manager` Module
+-----------------------------------------------
+
+.. automodule:: manila.scheduler.host_manager
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.rcpapi` Module
 -----------------------------------------
+
+.. automodule:: manila.scheduler.rcpapi
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.scheduler_options` Module
+----------------------------------------------------
+
+.. automodule:: manila.scheduler.scheduler_options
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.drivers.filter` Module
+-------------------------------------------------
+
+.. automodule:: manila.scheduler.drivers.filter
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.drivers.base` Module
+-----------------------------------------------
 
 .. automodule:: manila.scheduler.drivers.base
     :noindex:
@@ -38,8 +89,18 @@ The :mod:`manila.scheduler.drivers.base` Module
     :show-inheritance:
 
 
-The :mod:`manila.scheduler.drivers.simple` Driver
------------------------------------------
+The :mod:`manila.scheduler.drivers.chance` Module
+-------------------------------------------------
+
+.. automodule:: manila.scheduler.drivers.chance
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.drivers.simple` Module
+-------------------------------------------------
 
 .. automodule:: manila.scheduler.drivers.simple
     :noindex:
@@ -48,13 +109,158 @@ The :mod:`manila.scheduler.drivers.simple` Driver
     :show-inheritance:
 
 
-Tests
------
+Scheduler Filters
+=================
 
-The :mod:`scheduler` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.tests.scheduler
+The :mod:`manila.scheduler.filters.availability_zone` Filter
+------------------------------------------------------------
+
+.. automodule:: manila.scheduler.filters.availability_zone
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.filters.base` Filter
+-----------------------------------------------
+
+.. automodule:: manila.scheduler.filters.base
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.filters.base_host` Filter
+----------------------------------------------------
+
+.. automodule:: manila.scheduler.filters.base_host
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.filters.capabilities` Filter
+-------------------------------------------------------
+
+.. automodule:: manila.scheduler.filters.capabilities
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.filters.capacity` Filter
+---------------------------------------------------
+
+.. automodule:: manila.scheduler.filters.capacity
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.filters.consistency_group` Filter
+------------------------------------------------------------
+
+.. automodule:: manila.scheduler.filters.consistency_group
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.filters.extra_specs_ops` Filter
+----------------------------------------------------------
+
+.. automodule:: manila.scheduler.filters.extra_specs_ops
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.filters.ignore_attempted_hosts` Filter
+-----------------------------------------------------------------
+
+.. automodule:: manila.scheduler.filters.ignore_attempted_hosts
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.filters.json` Filter
+-----------------------------------------------
+
+.. automodule:: manila.scheduler.filters.json
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.filters.retry` Filter
+------------------------------------------------
+
+.. automodule:: manila.scheduler.filters.retry
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.filters.share_replication` Filter
+------------------------------------------------------------
+
+.. automodule:: manila.scheduler.filters.share_replication
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Scheduler Weighers
+==================
+
+
+The :mod:`manila.scheduler.weighers.base` Weigher
+-------------------------------------------------
+
+.. automodule:: manila.scheduler.weighers.base
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.weighers.base_host` Weigher
+------------------------------------------------------
+
+.. automodule:: manila.scheduler.weighers.base_host
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.weighers.capacity` Weigher
+-----------------------------------------------------
+
+.. automodule:: manila.scheduler.weighers.capacity
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`manila.scheduler.weighers.pool` Weigher
+-------------------------------------------------
+
+.. automodule:: manila.scheduler.weighers.pool
     :noindex:
     :members:
     :undoc-members:
