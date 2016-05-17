@@ -433,7 +433,7 @@ class HDSHNASDriver(driver.ShareDriver):
         LOG.debug("Shrinking share in HNAS: %(shr_id)s.",
                   {'shr_id': share['id']})
 
-        self._shrink_share(share_id, share['size'], new_size)
+        self._shrink_share(share_id, new_size)
         LOG.info(_LI("Share %(shr_id)s successfully shrunk to "
                      "%(shr_size)sG."),
                  {'shr_id': share['id'],
@@ -499,11 +499,10 @@ class HDSHNASDriver(driver.ShareDriver):
         self.hnas.check_export(share_id)
         return path
 
-    def _shrink_share(self, share_id, old_size, new_size):
+    def _shrink_share(self, share_id, new_size):
         """Shrinks a share to new size.
 
         :param share_id: ID of share that will be shrunk.
-        :param old_size: Current size of share that will be shrunk.
         :param new_size: New size of share after shrink operation.
         """
         self._ensure_share(share_id)
