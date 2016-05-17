@@ -110,6 +110,7 @@ class SmartX(object):
         opts = self.get_smartprovisioning_opts(opts)
         opts = self.get_smartcache_opts(opts)
         opts = self.get_smartpartition_opts(opts)
+        opts = self.get_sectorsize_opts(opts)
         qos = self.get_qos_opts(opts)
         return opts, qos
 
@@ -168,6 +169,26 @@ class SmartX(object):
         else:
             opts['partitionname'] = None
 
+        return opts
+
+    def get_sectorsize_opts(self, opts):
+        value = None
+        if strutils.bool_from_string(opts.get('huawei_sectorsize')):
+            value = opts.get('sectorsize')
+        if not value:
+            root = self.helper._read_xml()
+            sectorsize = root.findtext('Filesystem/SectorSize')
+            if sectorsize:
+                sectorsize = sectorsize.strip()
+                value = sectorsize
+
+        if value:
+            if value not in constants.VALID_SECTOR_SIZES:
+                raise exception.InvalidInput(
+                    reason=(_('Illegal value(%s) specified for sectorsize: '
+                              'set to either 4, 8, 16, 32 or 64.') % value))
+            else:
+                opts['sectorsize'] = int(value)
         return opts
 
     def get_qos_opts(self, opts):

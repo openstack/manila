@@ -1,0 +1,5 @@
+---
+features:
+  - Huawei driver supports setting the backend 'sectorsize' while creating shares
+    and administrators can use this capability via the share types extra-spec
+    'huawei_sectorsize:sectorsize' or via the XML configuration file.

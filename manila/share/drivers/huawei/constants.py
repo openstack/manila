@@ -80,11 +80,13 @@ OPTS_CAPABILITIES = {
     'huawei_smartpartition': False,
     'thin_provisioning': None,
     'qos': False,
+    'huawei_sectorsize': None,
 }
 
 OPTS_VALUE = {
     'cachename': None,
     'partitionname': None,
+    'sectorsize': None,
 }
 
 OPTS_VALUE.update(OPTS_QOS_VALUE)
@@ -92,5 +94,8 @@ OPTS_VALUE.update(OPTS_QOS_VALUE)
 OPTS_ASSOCIATE = {
     'huawei_smartcache': 'cachename',
     'huawei_smartpartition': 'partitionname',
+    'huawei_sectorsize': 'sectorsize',
     'qos': OPTS_QOS_VALUE,
 }
+
+VALID_SECTOR_SIZES = ('4', '8', '16', '32', '64')

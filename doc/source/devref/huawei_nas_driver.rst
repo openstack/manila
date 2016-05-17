@@ -84,6 +84,7 @@ storage systems, the driver configuration file is as follows:
         <Filesystem>
             <StoragePool>xxxxxxxxx</StoragePool>
             <AllocType>xxxxxxxx</AllocType>
+            <SectorSize>64</SectorSize>
             <WaitInterval>3</WaitInterval>
             <Timeout>60</Timeout>
             <NFSClient>
@@ -109,6 +110,11 @@ storage systems, the driver configuration file is as follows:
 - `UserPassword` is a password of an administrator.
 - `StoragePool` is a name of a storage pool to be used.
 - `AllocType` is the file system space allocation type, optional value is "Thick" or "Thin".
+- `SectorSize` is the size of the disk blocks, optional value can be "4", "8", "16", "32" or "64",
+  and the units is KB. If "sectorsize" is configured in both share_type and xml file, the value
+  of sectorsize in the share_type will be used. If "sectorsize" is configured in neither
+  share_type nor xml file, huawei storage backends will provide a default value(64) when creating
+  a new share.
 - `WaitInterval` is the interval time of querying the file system status.
 - `Timeout` is the timeout period for waiting command execution of a device to
   complete.
@@ -179,6 +185,8 @@ commit makes the Huawei driver report the following boolean capabilities:
   * qos:latency
   * qos:iotype
 
+- capabilities:huawei_sectorsize
+
 The scheduler will choose a host that supports the needed
 capability when the CapabilityFilter is used and a share
 type uses one or more of the following extra-specs:
@@ -203,6 +211,10 @@ type uses one or more of the following extra-specs:
   * qos:latency=10
   * qos:iotype=0
 
+- capabilities:huawei_sectorsize='<is> True' or '<is> False'
+
+  * huawei_sectorsize:sectorsize=4
+
 `thin_provisioning` will be reported as [True, False] for Huawei backends.
 
 `dedupe` will be reported as [True, False] for Huawei backends.
@@ -220,6 +232,8 @@ ensuring the quality of critical services.
 
 `qos` will be reported as True for backends that use QoS (Quality of Service)
 specification.
+
+`huawei_sectorsize` will be reported as [True, False] for Huawei backends.
 
 Restrictions
 ------------

@@ -1160,6 +1160,11 @@ class HuaweiShareDriverTestCase(test.TestCase):
             share = None
         return share
 
+    def mock_share_type(self, share_type):
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+
     def test_conf_product_fail(self):
         self.recreate_fake_conf_file(product_flag=False)
         self.driver.plugin.configuration.manila_huawei_conf_file = (
@@ -1373,6 +1378,99 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertEqual("100.115.10.68:/share_fake_uuid", location)
         self.assertEqual(constants.ALLOC_TYPE_THICK_FLAG,
                          self.driver.plugin.helper.alloc_type)
+
+    @ddt.data(*constants.VALID_SECTOR_SIZES)
+    def test_create_share_with_sectorsize_in_type(self, sectorsize):
+        share_type = {
+            'extra_specs': {
+                'capabilities:huawei_sectorsize': "<is> true",
+                'huawei_sectorsize:sectorsize': sectorsize,
+            },
+        }
+        self.mock_share_type(share_type)
+
+        self.driver.plugin.helper.login()
+        location = self.driver.create_share(self._context, self.share_nfs,
+                                            self.share_server)
+
+        self.assertEqual("100.115.10.68:/share_fake_uuid", location)
+        self.assertTrue(db.share_type_get.called)
+
+    @ddt.data('128', 'xx', 'None', ' ')
+    def test_create_share_with_illegal_sectorsize_in_type(self, sectorsize):
+        share_type = {
+            'extra_specs': {
+                'capabilities:huawei_sectorsize': "<is> true",
+                'huawei_sectorsize:sectorsize': sectorsize,
+            },
+        }
+        self.mock_share_type(share_type)
+
+        self.driver.plugin.helper.login()
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.create_share,
+                          self._context,
+                          self.share_nfs,
+                          self.share_server)
+
+    @ddt.data({'extra_specs': {'capabilities:huawei_sectorsize': "<is> false",
+               'huawei_sectorsize:sectorsize': '0'}, 'xmlvalue': '4'},
+              {'extra_specs': {'capabilities:huawei_sectorsize': "<is> False",
+               'huawei_sectorsize:sectorsize': '128'}, 'xmlvalue': '8'},
+              {'extra_specs': {'capabilities:huawei_sectorsize': "false",
+               'huawei_sectorsize:sectorsize': 'a'}, 'xmlvalue': '16'},
+              {'extra_specs': {'capabilities:huawei_sectorsize': "False",
+               'huawei_sectorsize:sectorsize': 'xx'}, 'xmlvalue': '32'},
+              {'extra_specs': {'capabilities:huawei_sectorsize': "true",
+               'huawei_sectorsize:sectorsize': 'None'}, 'xmlvalue': '64'},
+              {'extra_specs': {'capabilities:huawei_sectorsize': "True",
+               'huawei_sectorsize:sectorsize': ' '}, 'xmlvalue': ' '},
+              {'extra_specs': {'capabilities:huawei_sectorsize': "True",
+               'huawei_sectorsize:sectorsize': ''}, 'xmlvalue': ''})
+    @ddt.unpack
+    def test_create_share_with_invalid_type_valid_xml(self, extra_specs,
+                                                      xmlvalue):
+        fake_share_type = {}
+        fake_share_type['extra_specs'] = extra_specs
+        self.mock_share_type(fake_share_type)
+
+        self.recreate_fake_conf_file(sectorsize_value=xmlvalue)
+        self.driver.plugin.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+        self.driver.plugin.helper.login()
+        location = self.driver.create_share(self._context, self.share_nfs,
+                                            self.share_server)
+
+        self.assertEqual("100.115.10.68:/share_fake_uuid", location)
+        self.assertTrue(db.share_type_get.called)
+
+    @ddt.data({'extra_specs': {'capabilities:huawei_sectorsize': "<is> false",
+               'huawei_sectorsize:sectorsize': '4'}, 'xmlvalue': '0'},
+              {'extra_specs': {'capabilities:huawei_sectorsize': "<is> False",
+               'huawei_sectorsize:sectorsize': '8'}, 'xmlvalue': '128'},
+              {'extra_specs': {'capabilities:huawei_sectorsize': "false",
+               'huawei_sectorsize:sectorsize': '16'}, 'xmlvalue': 'a'},
+              {'extra_specs': {'capabilities:huawei_sectorsize': "False",
+               'huawei_sectorsize:sectorsize': '32'}, 'xmlvalue': 'xx'},
+              {'extra_specs': {'capabilities:huawei_sectorsize': "true",
+               'huawei_sectorsize:sectorsize': '64'}, 'xmlvalue': 'None'})
+    @ddt.unpack
+    def test_create_share_with_invalid_type_illegal_xml(self, extra_specs,
+                                                        xmlvalue):
+        fake_share_type = {}
+        fake_share_type['extra_specs'] = extra_specs
+        self.mock_share_type(fake_share_type)
+
+        self.recreate_fake_conf_file(sectorsize_value=xmlvalue)
+        self.driver.plugin.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+        self.driver.plugin.helper.login()
+
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.create_share,
+                          self._context,
+                          self.share_nfs,
+                          self.share_server)
 
     def test_shrink_share_success(self):
         self.driver.plugin.helper.shrink_share_flag = False
@@ -2158,6 +2256,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             thin_provisioning=[True, False],
             huawei_smartcache=[True, False],
             huawei_smartpartition=[True, False],
+            huawei_sectorsize=[True, False],
         )
         expected["pools"].append(pool)
         self.assertEqual(expected, self.driver._stats)
@@ -3475,6 +3574,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
                               pool_node_flag=True, timeout_flag=True,
                               wait_interval_flag=True,
                               alloctype_value='Thick',
+                              sectorsize_value='4',
                               multi_url=False,
                               logical_port='100.115.10.68'):
         doc = xml.dom.minidom.Document()
@@ -3584,6 +3684,12 @@ class HuaweiShareDriverTestCase(test.TestCase):
             alloctype.appendChild(alloctype_text)
             lun.appendChild(alloctype)
 
+        if sectorsize_value:
+            sectorsize = doc.createElement('SectorSize')
+            sectorsize_text = doc.createTextNode(sectorsize_value)
+            sectorsize.appendChild(sectorsize_text)
+            lun.appendChild(sectorsize)
+
         prefetch = doc.createElement('Prefetch')
         prefetch.setAttribute('Type', '0')
         prefetch.setAttribute('Value', '0')
@@ -3597,6 +3703,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
                                 pool_node_flag=True, timeout_flag=True,
                                 wait_interval_flag=True,
                                 alloctype_value='Thick',
+                                sectorsize_value='4',
                                 multi_url=False,
                                 logical_port='100.115.10.68'):
         self.tmp_dir = tempfile.mkdtemp()
@@ -3605,6 +3712,6 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.create_fake_conf_file(self.fake_conf_file, product_flag,
                                    username_flag, pool_node_flag,
                                    timeout_flag, wait_interval_flag,
-                                   alloctype_value, multi_url,
-                                   logical_port)
+                                   alloctype_value, sectorsize_value,
+                                   multi_url, logical_port)
         self.addCleanup(os.remove, self.fake_conf_file)

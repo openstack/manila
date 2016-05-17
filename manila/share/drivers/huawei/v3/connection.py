@@ -298,6 +298,7 @@ class V3StorageConnection(driver.HuaweiBase):
                     compression=[True, False],
                     huawei_smartcache=[True, False],
                     huawei_smartpartition=[True, False],
+                    huawei_sectorsize=[True, False],
                 )
                 stats_dict["pools"].append(pool)
 
@@ -630,6 +631,8 @@ class V3StorageConnection(driver.HuaweiBase):
                     ' so dedupe or compression cannot be set.')
                 LOG.error(err_msg)
                 raise exception.InvalidInput(reason=err_msg)
+        if extra_specs['sectorsize']:
+            fileparam['SECTORSIZE'] = extra_specs['sectorsize'] * units.Ki
 
         return fileparam
 
