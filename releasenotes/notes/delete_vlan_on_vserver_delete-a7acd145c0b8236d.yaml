@@ -1,0 +1,3 @@
+---
+features:
+  - NetApp cMode driver - configured VLAN will be deleted on Vserver removal

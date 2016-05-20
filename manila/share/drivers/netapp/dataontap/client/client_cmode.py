@@ -17,6 +17,7 @@
 
 import copy
 import hashlib
+import re
 import time
 
 from oslo_log import log
@@ -520,6 +521,34 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 msg = _('Failed to create VLAN %(vlan)s on '
                         'port %(port)s. %(err_msg)s')
                 msg_args = {'vlan': vlan, 'port': port, 'err_msg': e.message}
+                raise exception.NetAppException(msg % msg_args)
+
+    @na_utils.trace
+    def delete_vlan(self, node, port, vlan):
+        try:
+            api_args = {
+                'vlan-info': {
+                    'parent-interface': port,
+                    'node': node,
+                    'vlanid': vlan,
+                },
+            }
+            self.send_request('net-vlan-delete', api_args)
+        except netapp_api.NaApiError as e:
+            p = re.compile('port already has a lif bound.*', re.IGNORECASE)
+            if (e.code == netapp_api.EAPIERROR and re.match(p, e.message)):
+                LOG.debug('VLAN %(vlan)s on port %(port)s node %(node)s '
+                          'still used by LIF and cannot be deleted.',
+                          {'vlan': vlan, 'port': port, 'node': node})
+            else:
+                msg = _('Failed to delete VLAN %(vlan)s on '
+                        'port %(port)s node %(node)s: %(err_msg)s')
+                msg_args = {
+                    'vlan': vlan,
+                    'port': port,
+                    'node': node,
+                    'err_msg': e.message
+                }
                 raise exception.NetAppException(msg % msg_args)
 
     @na_utils.trace
