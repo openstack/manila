@@ -107,19 +107,26 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
     @na_utils.trace
     def setup_server(self, network_info, metadata=None):
         """Creates and configures new Vserver."""
-        LOG.debug('Creating server %s', network_info['server_id'])
-        self._validate_network_type(network_info)
 
-        vserver_name = self._get_vserver_name(network_info['server_id'])
-        server_details = {'vserver_name': vserver_name}
+        vlan = network_info['segmentation_id']
 
-        try:
-            self._create_vserver(vserver_name, network_info)
-        except Exception as e:
-            e.detail_data = {'server_details': server_details}
-            raise
+        @utils.synchronized('netapp-VLAN-%s' % vlan, external=True)
+        def setup_server_with_lock():
+            LOG.debug('Creating server %s', network_info['server_id'])
+            self._validate_network_type(network_info)
 
-        return server_details
+            vserver_name = self._get_vserver_name(network_info['server_id'])
+            server_details = {'vserver_name': vserver_name}
+
+            try:
+                self._create_vserver(vserver_name, network_info)
+            except Exception as e:
+                e.detail_data = {'server_details': server_details}
+                raise
+
+            return server_details
+
+        return setup_server_with_lock()
 
     @na_utils.trace
     def _validate_network_type(self, network_info):
@@ -311,10 +318,34 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         ipspace_name = self._client.get_vserver_ipspace(vserver)
 
         vserver_client = self._get_api_client(vserver=vserver)
-        self._client.delete_vserver(vserver,
-                                    vserver_client,
-                                    security_services=security_services)
+        network_interfaces = vserver_client.get_network_interfaces()
 
-        if ipspace_name and not self._client.ipspace_has_data_vservers(
-                ipspace_name):
-            self._client.delete_ipspace(ipspace_name)
+        home_port = network_interfaces[0]['home-port']
+        vlan = home_port.split('-')[1]
+
+        @utils.synchronized('netapp-VLAN-%s' % vlan, external=True)
+        def _delete_vserver_with_lock():
+            self._client.delete_vserver(vserver,
+                                        vserver_client,
+                                        security_services=security_services)
+
+            if ipspace_name and not self._client.ipspace_has_data_vservers(
+                    ipspace_name):
+                self._client.delete_ipspace(ipspace_name)
+
+            self._delete_vserver_vlan(network_interfaces)
+
+        return _delete_vserver_with_lock()
+
+    @na_utils.trace
+    def _delete_vserver_vlan(self, vserver_network_interfaces):
+        """Delete Vserver's VLAN configuration from ports"""
+
+        for interface in vserver_network_interfaces:
+            try:
+                home_port = interface['home-port']
+                port, vlan = home_port.split('-')
+                node = interface['home-node']
+                self._client.delete_vlan(node, port, vlan)
+            except exception.NetAppException:
+                LOG.exception(_LE("Deleting Vserver VLAN failed."))
