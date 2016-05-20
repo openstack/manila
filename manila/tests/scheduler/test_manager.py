@@ -175,44 +175,45 @@ class SchedulerManagerTestCase(test.TestCase):
         mock_get_pools.assert_called_once_with(self.context, 'fake_filters')
         self.assertEqual('fake_pools', result)
 
-    @mock.patch.object(db, 'consistency_group_update', mock.Mock())
-    def test_create_cg_no_valid_host_puts_cg_in_error_state(self):
-        """Test that NoValidHost is raised for create_consistency_group.
+    @mock.patch.object(db, 'share_group_update', mock.Mock())
+    def test_create_group_no_valid_host_puts_group_in_error_state(self):
+        """Test that NoValidHost is raised for create_share_group.
 
         Puts the share in 'error' state and eats the exception.
         """
 
-        fake_cg_id = 1
-        cg_id = fake_cg_id
-        request_spec = {"consistency_group_id": cg_id}
+        fake_group_id = 1
+        group_id = fake_group_id
+        request_spec = {"share_group_id": group_id}
         with mock.patch.object(
-                self.manager.driver, 'schedule_create_consistency_group',
+                self.manager.driver, 'schedule_create_share_group',
                 mock.Mock(side_effect=self.raise_no_valid_host)):
-            self.manager.create_consistency_group(self.context,
-                                                  fake_cg_id,
-                                                  request_spec=request_spec,
-                                                  filter_properties={})
-            db.consistency_group_update.assert_called_once_with(
-                self.context, fake_cg_id, {'status': 'error'})
-            (self.manager.driver.schedule_create_consistency_group.
-                assert_called_once_with(self.context, cg_id, request_spec, {}))
+            self.manager.create_share_group(self.context,
+                                            fake_group_id,
+                                            request_spec=request_spec,
+                                            filter_properties={})
+            db.share_group_update.assert_called_once_with(
+                self.context, fake_group_id, {'status': 'error'})
+            (self.manager.driver.schedule_create_share_group.
+                assert_called_once_with(self.context, group_id, request_spec,
+                                        {}))
 
-    @mock.patch.object(db, 'consistency_group_update', mock.Mock())
-    def test_create_cg_exception_puts_cg_in_error_state(self):
-        """Test that exceptions for create_consistency_group.
+    @mock.patch.object(db, 'share_group_update', mock.Mock())
+    def test_create_group_exception_puts_group_in_error_state(self):
+        """Test that exceptions for create_share_group.
 
         Puts the share in 'error' state and raises the exception.
         """
 
-        fake_cg_id = 1
-        cg_id = fake_cg_id
-        request_spec = {"consistency_group_id": cg_id}
+        fake_group_id = 1
+        group_id = fake_group_id
+        request_spec = {"share_group_id": group_id}
         with mock.patch.object(self.manager.driver,
-                               'schedule_create_consistency_group',
+                               'schedule_create_share_group',
                                mock.Mock(side_effect=exception.NotFound)):
             self.assertRaises(exception.NotFound,
-                              self.manager.create_consistency_group,
-                              self.context, fake_cg_id,
+                              self.manager.create_share_group,
+                              self.context, fake_group_id,
                               request_spec=request_spec,
                               filter_properties={})
 

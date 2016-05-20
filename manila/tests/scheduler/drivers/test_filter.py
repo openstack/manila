@@ -208,34 +208,6 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         self.assertIsNone(weighed_host)
         self.assertTrue(_mock_service_get_all_by_topic.called)
 
-    @mock.patch('manila.db.service_get_all_by_topic')
-    def test_schedule_share_with_cg_pool_support(
-            self, _mock_service_get_all_by_topic):
-        sched = fakes.FakeFilterScheduler()
-        sched.host_manager = fakes.FakeHostManager()
-        fake_context = context.RequestContext('user', 'project',
-                                              is_admin=True)
-        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
-        request_spec = {
-            'share_type': {
-                'name': 'NFS',
-                'extra_specs': {'consistency_group_support': 'pool'}
-            },
-            'share_properties': {'project_id': 1, 'size': 1},
-            'share_instance_properties': {'project_id': 1, 'size': 1},
-            'consistency_group': {
-                'id': 'fake-cg-id',
-                'host': 'host5#_pool0',
-            }
-        }
-
-        weighed_host = sched._schedule_share(fake_context, request_spec, {})
-
-        self.assertIsNotNone(weighed_host)
-        self.assertIsNotNone(weighed_host.obj)
-        self.assertEqual('host5#_pool0', weighed_host.obj.host)
-        self.assertTrue(_mock_service_get_all_by_topic.called)
-
     def _setup_dedupe_fakes(self, extra_specs):
         sched = fakes.FakeFilterScheduler()
         sched.host_manager = fakes.FakeHostManager()
@@ -401,41 +373,41 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
                          filter_properties['retry']['hosts'][0])
         self.assertEqual(1024, host_state.total_capacity_gb)
 
-    def test_schedule_create_consistency_group(self):
+    def test_schedule_create_share_group(self):
         # Ensure empty hosts/child_zones result in NoValidHosts exception.
         sched = fakes.FakeFilterScheduler()
         fake_context = context.RequestContext('user', 'project')
         fake_host = 'fake_host'
         request_spec = {'share_types': [{'id': 'NFS'}]}
-        self.mock_object(sched, "_get_best_host_for_consistency_group",
+        self.mock_object(sched, "_get_best_host_for_share_group",
                          mock.Mock(return_value=fake_host))
         fake_updated_group = mock.Mock()
-        self.mock_object(base, "cg_update_db", mock.Mock(
+        self.mock_object(base, "share_group_update_db", mock.Mock(
             return_value=fake_updated_group))
-        self.mock_object(sched.share_rpcapi, "create_consistency_group")
+        self.mock_object(sched.share_rpcapi, "create_share_group")
 
-        sched.schedule_create_consistency_group(fake_context, 'fake_id',
-                                                request_spec, {})
+        sched.schedule_create_share_group(fake_context, 'fake_id',
+                                          request_spec, {})
 
-        sched._get_best_host_for_consistency_group.assert_called_once_with(
+        sched._get_best_host_for_share_group.assert_called_once_with(
             fake_context, request_spec)
-        base.cg_update_db.assert_called_once_with(
+        base.share_group_update_db.assert_called_once_with(
             fake_context, 'fake_id', fake_host)
-        sched.share_rpcapi.create_consistency_group.assert_called_once_with(
+        sched.share_rpcapi.create_share_group.assert_called_once_with(
             fake_context, fake_updated_group, fake_host)
 
-    def test_create_cg_no_hosts(self):
+    def test_create_group_no_hosts(self):
         # Ensure empty hosts/child_zones result in NoValidHosts exception.
         sched = fakes.FakeFilterScheduler()
         fake_context = context.RequestContext('user', 'project')
         request_spec = {'share_types': [{'id': 'NFS'}]}
 
         self.assertRaises(exception.NoValidHost,
-                          sched.schedule_create_consistency_group,
+                          sched.schedule_create_share_group,
                           fake_context, 'fake_id', request_spec, {})
 
     @mock.patch('manila.db.service_get_all_by_topic')
-    def test_get_weighted_candidates_for_consistency_group(
+    def test_get_weighted_candidates_for_share_group(
             self, _mock_service_get_all_by_topic):
         sched = fakes.FakeFilterScheduler()
         sched.host_manager = fakes.FakeHostManager()
@@ -446,13 +418,13 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
                                              SNAPSHOT_SUPPORT: 'True',
                                          }}]}
 
-        hosts = sched._get_weighted_candidates_cg(fake_context,
-                                                  request_spec)
+        hosts = sched._get_weighted_candidates_share_group(
+            fake_context, request_spec)
 
         self.assertTrue(hosts)
 
     @mock.patch('manila.db.service_get_all_by_topic')
-    def test_get_weighted_candidates_for_consistency_group_no_hosts(
+    def test_get_weighted_candidates_for_share_group_no_hosts(
             self, _mock_service_get_all_by_topic):
         sched = fakes.FakeFilterScheduler()
         sched.host_manager = fakes.FakeHostManager()
@@ -463,13 +435,13 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
                                              SNAPSHOT_SUPPORT: 'False',
                                          }}]}
 
-        hosts = sched._get_weighted_candidates_cg(fake_context,
-                                                  request_spec)
+        hosts = sched._get_weighted_candidates_share_group(
+            fake_context, request_spec)
 
         self.assertEqual([], hosts)
 
     @mock.patch('manila.db.service_get_all_by_topic')
-    def test_get_weighted_candidates_for_consistency_group_many_hosts(
+    def test_get_weighted_candidates_for_share_group_many_hosts(
             self, _mock_service_get_all_by_topic):
         sched = fakes.FakeFilterScheduler()
         sched.host_manager = fakes.FakeHostManager()
@@ -480,10 +452,10 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
                                              SNAPSHOT_SUPPORT: 'True',
                                          }}]}
 
-        hosts = sched._get_weighted_candidates_cg(fake_context,
-                                                  request_spec)
+        hosts = sched._get_weighted_candidates_share_group(
+            fake_context, request_spec)
 
-        self.assertEqual(2, len(hosts))
+        self.assertEqual(6, len(hosts))
 
     def _host_passes_filters_setup(self, mock_obj):
         sched = fakes.FakeFilterScheduler()

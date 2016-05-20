@@ -343,7 +343,6 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         self.mock_object(self.driver, '_get_pools_info')
         self.assertEqual({}, self.driver._stats)
         expected = {
-            'consistency_group_support': None,
             'driver_handles_share_servers': False,
             'driver_name': 'ZFS',
             'driver_version': '1.0',
@@ -356,6 +355,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             'snapshot_support': True,
             'create_share_from_snapshot_support': True,
             'revert_to_snapshot_support': False,
+            'share_group_snapshot_support': True,
             'storage_protocol': 'NFS',
             'total_capacity_gb': 'unknown',
             'vendor_name': 'Open Source',

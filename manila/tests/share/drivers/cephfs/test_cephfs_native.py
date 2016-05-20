@@ -380,32 +380,30 @@ class CephFSNativeDriverTestCase(test.TestCase):
                 self._driver._share_path(self._share),
                 "snappy1_instance1"))
 
-    def test_create_consistency_group(self):
-        self._driver.create_consistency_group(self._context, {"id": "grp1"},
-                                              None)
+    def test_create_share_group(self):
+        self._driver.create_share_group(self._context, {"id": "grp1"}, None)
 
         self._driver._volume_client.create_group.assert_called_once_with(
             "grp1")
 
-    def test_delete_consistency_group(self):
-        self._driver.delete_consistency_group(self._context, {"id": "grp1"},
-                                              None)
+    def test_delete_share_group(self):
+        self._driver.delete_share_group(self._context, {"id": "grp1"}, None)
 
         self._driver._volume_client.destroy_group.assert_called_once_with(
             "grp1")
 
-    def test_create_cg_snapshot(self):
-        self._driver.create_cgsnapshot(self._context, {
-            'consistency_group_id': 'cgid',
+    def test_create_share_snapshot(self):
+        self._driver.create_share_group_snapshot(self._context, {
+            'share_group_id': 'cgid',
             'id': 'snapid'
         })
 
         (self._driver._volume_client.create_snapshot_group.
          assert_called_once_with("cgid", "snapid"))
 
-    def test_delete_cgsnapshot(self):
-        self._driver.delete_cgsnapshot(self._context, {
-            'consistency_group_id': 'cgid',
+    def test_delete_share_group_snapshot(self):
+        self._driver.delete_share_group_snapshot(self._context, {
+            'share_group_id': 'cgid',
             'id': 'snapid'
         })
 

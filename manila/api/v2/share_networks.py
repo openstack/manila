@@ -79,12 +79,12 @@ class ShareNetworkController(wsgi.Controller):
             LOG.error(msg)
             raise exc.HTTPConflict(explanation=msg)
 
-        # NOTE(ameade): Do not allow deletion of share network used by CG
-        cg_count = db_api.count_consistency_groups_in_share_network(context,
-                                                                    id)
-        if cg_count:
+        # NOTE(ameade): Do not allow deletion of share network used by share
+        # group
+        sg_count = db_api.count_share_groups_in_share_network(context, id)
+        if sg_count:
             msg = _("Can not delete share network %(id)s, it has %(len)s "
-                    "consistency group(s).") % {'id': id, 'len': cg_count}
+                    "share group(s).") % {'id': id, 'len': sg_count}
             LOG.error(msg)
             raise exc.HTTPConflict(explanation=msg)
 

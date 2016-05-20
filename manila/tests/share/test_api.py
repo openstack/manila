@@ -708,7 +708,7 @@ class ShareAPITestCase(test.TestCase):
                 self.context, request_spec=mock.ANY, filter_properties={})
         self.assertFalse(self.api.share_rpcapi.create_share_instance.called)
 
-    def test_create_instance_cgsnapshot_member(self):
+    def test_create_instance_share_group_snapshot_member(self):
         fake_req_spec = {
             'share_properties': 'fake_share_properties',
             'share_instance_properties': 'fake_share_instance_properties',
@@ -722,7 +722,7 @@ class ShareAPITestCase(test.TestCase):
 
         fake_instance = fakes.fake_share_instance(
             share_id=share['id'], **member_info)
-        cgsnapmember = {'share_instance': fake_instance}
+        sg_snap_member = {'share_instance': fake_instance}
         self.mock_policy_check = self.mock_object(
             policy, 'check_policy', mock.Mock(return_value=True))
         mock_share_rpcapi_call = self.mock_object(self.share_rpcapi,
@@ -735,8 +735,9 @@ class ShareAPITestCase(test.TestCase):
             share_api.API, 'create_share_instance_and_get_request_spec',
             mock.Mock(return_value=(fake_req_spec, fake_instance)))
 
-        retval = self.api.create_instance(self.context, fakes.fake_share(),
-                                          cgsnapshot_member=cgsnapmember)
+        retval = self.api.create_instance(
+            self.context, fakes.fake_share(),
+            share_group_snapshot_member=sg_snap_member)
 
         self.assertIsNone(retval)
         mock_db_share_instance_update.assert_called_once_with(
@@ -895,11 +896,11 @@ class ShareAPITestCase(test.TestCase):
             'share_proto': kwargs.get('share_proto', share.get('share_proto')),
             'share_type_id': share_type['id'],
             'is_public': kwargs.get('is_public', share.get('is_public')),
-            'consistency_group_id': kwargs.get(
-                'consistency_group_id', share.get('consistency_group_id')),
-            'source_cgsnapshot_member_id': kwargs.get(
-                'source_cgsnapshot_member_id',
-                share.get('source_cgsnapshot_member_id')),
+            'share_group_id': kwargs.get(
+                'share_group_id', share.get('share_group_id')),
+            'source_share_group_snapshot_member_id': kwargs.get(
+                'source_share_group_snapshot_member_id',
+                share.get('source_share_group_snapshot_member_id')),
             'snapshot_id': kwargs.get('snapshot_id', share.get('snapshot_id')),
         }
         share_instance_properties = {
@@ -1406,7 +1407,7 @@ class ShareAPITestCase(test.TestCase):
 
     @mock.patch.object(db_api, 'share_instances_get_all_by_share_server',
                        mock.Mock(return_value=[]))
-    @mock.patch.object(db_api, 'consistency_group_get_all_by_share_server',
+    @mock.patch.object(db_api, 'share_group_get_all_by_share_server',
                        mock.Mock(return_value=[]))
     def test_delete_share_server_no_dependent_shares(self):
         server = {'id': 'fake_share_server_id'}
@@ -1418,14 +1419,14 @@ class ShareAPITestCase(test.TestCase):
         self.api.delete_share_server(self.context, server)
         db_api.share_instances_get_all_by_share_server.assert_called_once_with(
             self.context, server['id'])
-        db_api.consistency_group_get_all_by_share_server.\
+        db_api.share_group_get_all_by_share_server.\
             assert_called_once_with(self.context, server['id'])
         self.share_rpcapi.delete_share_server.assert_called_once_with(
             self.context, server_returned)
 
     @mock.patch.object(db_api, 'share_instances_get_all_by_share_server',
                        mock.Mock(return_value=['fake_share', ]))
-    @mock.patch.object(db_api, 'consistency_group_get_all_by_share_server',
+    @mock.patch.object(db_api, 'share_group_get_all_by_share_server',
                        mock.Mock(return_value=[]))
     def test_delete_share_server_dependent_share_exists(self):
         server = {'id': 'fake_share_server_id'}
@@ -1438,9 +1439,9 @@ class ShareAPITestCase(test.TestCase):
 
     @mock.patch.object(db_api, 'share_instances_get_all_by_share_server',
                        mock.Mock(return_value=[]))
-    @mock.patch.object(db_api, 'consistency_group_get_all_by_share_server',
-                       mock.Mock(return_value=['fake_cg', ]))
-    def test_delete_share_server_dependent_cg_exists(self):
+    @mock.patch.object(db_api, 'share_group_get_all_by_share_server',
+                       mock.Mock(return_value=['fake_group', ]))
+    def test_delete_share_server_dependent_group_exists(self):
         server = {'id': 'fake_share_server_id'}
         self.assertRaises(exception.ShareServerInUse,
                           self.api.delete_share_server,
@@ -1449,7 +1450,7 @@ class ShareAPITestCase(test.TestCase):
 
         db_api.share_instances_get_all_by_share_server.assert_called_once_with(
             self.context, server['id'])
-        db_api.consistency_group_get_all_by_share_server.\
+        db_api.share_group_get_all_by_share_server.\
             assert_called_once_with(self.context, server['id'])
 
     @mock.patch.object(db_api, 'share_snapshot_instance_update', mock.Mock())
@@ -1597,7 +1598,7 @@ class ShareAPITestCase(test.TestCase):
             self.context, share, share_network_id=share['share_network_id'],
             host=valid_host, share_type_id=share_type['id'],
             availability_zone=snapshot['share']['availability_zone'],
-            consistency_group=None, cgsnapshot_member=None)
+            share_group=None, share_group_snapshot_member=None)
         share_api.policy.check_policy.assert_has_calls([
             mock.call(self.context, 'share', 'create'),
             mock.call(self.context, 'share_snapshot', 'get_snapshot')])
@@ -1713,9 +1714,9 @@ class ShareAPITestCase(test.TestCase):
         self.assertRaises(exception.Conflict, self.api.delete,
                           self.context, share)
 
-    @mock.patch.object(db_api, 'count_cgsnapshot_members_in_share',
+    @mock.patch.object(db_api, 'count_share_group_snapshot_members_in_share',
                        mock.Mock(return_value=2))
-    def test_delete_dependent_cgsnapshot_members(self):
+    def test_delete_dependent_share_group_snapshot_members(self):
         share_server_id = 'fake-ss-id'
         share = self._setup_delete_mocks(constants.STATUS_AVAILABLE,
                                          share_server_id)

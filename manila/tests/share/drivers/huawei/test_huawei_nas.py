@@ -2425,6 +2425,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             "snapshot_support": snapshot_support,
             "create_share_from_snapshot_support": snapshot_support,
             "revert_to_snapshot_support": False,
+            "share_group_snapshot_support": True,
             "replication_domain": None,
             "filter_function": None,
             "goodness_function": None,

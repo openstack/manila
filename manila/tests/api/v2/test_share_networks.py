@@ -292,11 +292,11 @@ class ShareNetworkAPITest(test.TestCase):
             assert_called_once_with(self.req.environ['manila.context'],
                                     share_nw['id'])
 
-    def test_delete_in_use_by_consistency_group(self):
+    def test_delete_in_use_by_share_group(self):
         share_nw = fake_share_network.copy()
         self.mock_object(db_api, 'share_network_get',
                          mock.Mock(return_value=share_nw))
-        self.mock_object(db_api, 'count_consistency_groups_in_share_network',
+        self.mock_object(db_api, 'count_share_groups_in_share_network',
                          mock.Mock(return_value=2))
 
         self.assertRaises(webob_exc.HTTPConflict,

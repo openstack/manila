@@ -69,6 +69,10 @@ class ShareAPI(object):
         1.14 - Add update_access() and remove allow_access() and deny_access().
         1.15 - Updated migration_start() method with new parameter
             "preserve_snapshots"
+        1.16  - Convert create_consistency_group, delete_consistency_group
+                create_cgsnapshot, and delete_cgsnapshot methods to
+                create_share_group, delete_share_group
+                create_share_group_snapshot, and delete_share_group_snapshot
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -77,7 +81,7 @@ class ShareAPI(object):
         super(ShareAPI, self).__init__()
         target = messaging.Target(topic=CONF.share_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.15')
+        self.client = rpc.get_client(target, version_cap='1.16')
 
     def create_share_instance(self, context, share_instance, host,
                               request_spec, filter_properties,
@@ -232,33 +236,31 @@ class ShareAPI(object):
                           share_id=share['id'],
                           new_size=new_size)
 
-    def create_consistency_group(self, context, cg, host):
+    def create_share_group(self, context, share_group, host):
         new_host = utils.extract_host(host)
-        call_context = self.client.prepare(server=new_host, version='1.5')
-        call_context.cast(context,
-                          'create_consistency_group',
-                          cg_id=cg['id'])
+        call_context = self.client.prepare(server=new_host, version='1.16')
+        call_context.cast(
+            context, 'create_share_group', share_group_id=share_group['id'])
 
-    def delete_consistency_group(self, context, cg):
-        new_host = utils.extract_host(cg['host'])
-        call_context = self.client.prepare(server=new_host, version='1.5')
-        call_context.cast(context,
-                          'delete_consistency_group',
-                          cg_id=cg['id'])
+    def delete_share_group(self, context, share_group):
+        new_host = utils.extract_host(share_group['host'])
+        call_context = self.client.prepare(server=new_host, version='1.16')
+        call_context.cast(
+            context, 'delete_share_group', share_group_id=share_group['id'])
 
-    def create_cgsnapshot(self, context, cgsnapshot, host):
+    def create_share_group_snapshot(self, context, share_group_snapshot, host):
         new_host = utils.extract_host(host)
-        call_context = self.client.prepare(server=new_host, version='1.5')
-        call_context.cast(context,
-                          'create_cgsnapshot',
-                          cgsnapshot_id=cgsnapshot['id'])
+        call_context = self.client.prepare(server=new_host, version='1.16')
+        call_context.cast(
+            context, 'create_share_group_snapshot',
+            share_group_snapshot_id=share_group_snapshot['id'])
 
-    def delete_cgsnapshot(self, context, cgsnapshot, host):
+    def delete_share_group_snapshot(self, context, share_group_snapshot, host):
         new_host = utils.extract_host(host)
-        call_context = self.client.prepare(server=new_host, version='1.5')
-        call_context.cast(context,
-                          'delete_cgsnapshot',
-                          cgsnapshot_id=cgsnapshot['id'])
+        call_context = self.client.prepare(server=new_host, version='1.16')
+        call_context.cast(
+            context, 'delete_share_group_snapshot',
+            share_group_snapshot_id=share_group_snapshot['id'])
 
     def create_share_replica(self, context, share_replica, host,
                              request_spec, filter_properties):

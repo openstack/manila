@@ -29,9 +29,9 @@ def _create_db_row(method, default_values, custom_values):
     return method(context.get_admin_context(), default_values)
 
 
-def create_consistency_group(**kwargs):
-    """Create a consistency group object."""
-    cg = {
+def create_share_group(**kwargs):
+    """Create a share group object."""
+    share_group = {
         'share_network_id': None,
         'share_server_id': None,
         'user_id': 'fake',
@@ -39,22 +39,22 @@ def create_consistency_group(**kwargs):
         'status': constants.STATUS_CREATING,
         'host': 'fake_host'
     }
-    return _create_db_row(db.consistency_group_create, cg, kwargs)
+    return _create_db_row(db.share_group_create, share_group, kwargs)
 
 
-def create_cgsnapshot(cg_id, **kwargs):
-    """Create a cgsnapshot object."""
+def create_share_group_snapshot(share_group_id, **kwargs):
+    """Create a share group snapshot object."""
     snapshot = {
-        'consistency_group_id': cg_id,
+        'share_group_id': share_group_id,
         'user_id': 'fake',
         'project_id': 'fake',
         'status': constants.STATUS_CREATING,
     }
-    return _create_db_row(db.cgsnapshot_create, snapshot, kwargs)
+    return _create_db_row(db.share_group_snapshot_create, snapshot, kwargs)
 
 
-def create_cgsnapshot_member(cgsnapshot_id, **kwargs):
-    """Create a cgsnapshot member object."""
+def create_share_group_snapshot_member(share_group_snapshot_id, **kwargs):
+    """Create a share group snapshot member object."""
     member = {
         'share_proto': "NFS",
         'size': 0,
@@ -63,9 +63,10 @@ def create_cgsnapshot_member(cgsnapshot_id, **kwargs):
         'user_id': 'fake',
         'project_id': 'fake',
         'status': 'creating',
-        'cgsnapshot_id': cgsnapshot_id,
+        'share_group_snapshot_id': share_group_snapshot_id,
     }
-    return _create_db_row(db.cgsnapshot_member_create, member, kwargs)
+    return _create_db_row(
+        db.share_group_snapshot_member_create, member, kwargs)
 
 
 def create_share_access(**kwargs):

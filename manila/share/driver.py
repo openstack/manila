@@ -25,7 +25,7 @@ from oslo_config import cfg
 from oslo_log import log
 
 from manila import exception
-from manila.i18n import _, _LE
+from manila.i18n import _, _LE, _LW
 from manila import network
 from manila import utils
 
@@ -825,7 +825,7 @@ class ShareDriver(object):
 
     def choose_share_server_compatible_with_share(self, context, share_servers,
                                                   share, snapshot=None,
-                                                  consistency_group=None):
+                                                  share_group=None):
         """Method that allows driver to choose share server for provided share.
 
         If compatible share-server is not found, method should return None.
@@ -834,21 +834,22 @@ class ShareDriver(object):
         :param share_servers: list with share-server models
         :param share:  share model
         :param snapshot: snapshot model
-        :param consistency_group: ConsistencyGroup model with shares
+        :param share_group: ConsistencyGroup model with shares
         :returns: share-server or None
         """
-        # If creating in a consistency group, use its share server
-        if consistency_group:
+        # If creating in a share group, use its share server
+        if share_group:
             for share_server in share_servers:
-                if (consistency_group.get('share_server_id') ==
+                if (share_group.get('share_server_id') ==
                         share_server['id']):
                     return share_server
             return None
 
         return share_servers[0] if share_servers else None
 
-    def choose_share_server_compatible_with_cg(self, context, share_servers,
-                                               cg_ref, cgsnapshot=None):
+    def choose_share_server_compatible_with_share_group(
+            self, context, share_servers, share_group_ref,
+            share_group_snapshot=None):
 
         return share_servers[0] if share_servers else None
 
@@ -1074,6 +1075,7 @@ class ShareDriver(object):
             create_share_from_snapshot_support=(
                 self.creating_shares_from_snapshots_is_supported),
             revert_to_snapshot_support=False,
+            share_group_snapshot_support=self.snapshots_are_supported,
             replication_domain=self.replication_domain,
             filter_function=self.get_filter_function(),
             goodness_function=self.get_goodness_function(),
@@ -1089,11 +1091,11 @@ class ShareDriver(object):
         """
         return []
 
-    def create_consistency_group(self, context, cg_dict, share_server=None):
-        """Create a consistency group.
+    def create_share_group(self, context, share_group_dict, share_server=None):
+        """Create a share group.
 
         :param context:
-        :param cg_dict: The consistency group details
+        :param share_group_dict: The share group details
             EXAMPLE:
             {
             'status': 'creating',
@@ -1103,27 +1105,30 @@ class ShareDriver(object):
             'deleted': 'False',
             'created_at': datetime.datetime(2015, 8, 10, 15, 14, 6),
             'updated_at': None,
-            'source_cgsnapshot_id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
-            'host': 'openstack2@cmodeSSVMNFS',
+            'source_share_group_snapshot_id': 'some_fake_uuid',
+            'share_group_type_id': 'some_fake_uuid',
+            'host': 'hostname@backend_name',
+            'share_network_id': None,
+            'share_server_id': None,
             'deleted_at': None,
-            'share_types': [<models.ConsistencyGroupShareTypeMapping>],
-            'id': 'eda52174-0442-476d-9694-a58327466c14',
+            'share_types': [<models.ShareGroupShareTypeMapping>],
+            'id': 'some_fake_uuid',
             'name': None
             }
-        :returns: (cg_model_update, share_update_list)
-            cg_model_update - a dict containing any values to be updated
-            for the CG in the database. This value may be None.
+        :returns: (share_group_model_update, share_update_list)
+            share_group_model_update - a dict containing any values to be
+            updated for the SG in the database. This value may be None.
 
         """
-        raise NotImplementedError()
+        LOG.debug('Created a Share Group with ID: %s.', share_group_dict['id'])
 
-    def create_consistency_group_from_cgsnapshot(self, context, cg_dict,
-                                                 cgsnapshot_dict,
-                                                 share_server=None):
-        """Create a consistency group from a cgsnapshot.
+    def create_share_group_from_share_group_snapshot(
+            self, context, share_group_dict, share_group_snapshot_dict,
+            share_server=None):
+        """Create a share group from a share group snapshot.
 
         :param context:
-        :param cg_dict: The consistency group details
+        :param share_group_dict: The share group details
             EXAMPLE:
             .. code::
 
@@ -1135,15 +1140,16 @@ class ShareDriver(object):
                 'deleted': 'False',
                 'created_at': datetime.datetime(2015, 8, 10, 15, 14, 6),
                 'updated_at': None,
-                'source_cgsnapshot_id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
-                'host': 'openstack2@cmodeSSVMNFS',
+                'source_share_group_snapshot_id':
+                    'f6aa3b59-57eb-421e-965c-4e182538e36a',
+                'host': 'hostname@backend_name',
                 'deleted_at': None,
                 'shares': [<models.Share>], # The new shares being created
-                'share_types': [<models.ConsistencyGroupShareTypeMapping>],
-                'id': 'eda52174-0442-476d-9694-a58327466c14',
+                'share_types': [<models.ShareGroupShareTypeMapping>],
+                'id': 'some_fake_uuid',
                 'name': None
                 }
-        :param cgsnapshot_dict: The cgsnapshot details
+        :param share_group_snapshot_dict: The share group snapshot details
             EXAMPLE:
             .. code::
 
@@ -1155,11 +1161,10 @@ class ShareDriver(object):
                 'deleted': '0',
                 'created_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
                 'updated_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
-                'consistency_group_id': '4b04fdc3-00b9-4909-ba1a-06e9b3f88b67',
-                'cgsnapshot_members': [
+                'share_group_id': 'some_fake_uuid',
+                'share_share_group_snapshot_members': [
                     {
                      'status': 'available',
-                     'share_type_id': '1a9ed31e-ee70-483d-93ba-89690e028d7f',
                      'user_id': 'a0314a441ca842019b0952224aa39192',
                      'deleted': 'False',
                      'created_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
@@ -1167,9 +1172,9 @@ class ShareDriver(object):
                      'updated_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
                      'share_proto': 'NFS',
                      'project_id': '13c0be6290934bd98596cfa004650049',
-                     'cgsnapshot_id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+                     'share_group_snapshot_id': 'some_fake_uuid',
                      'deleted_at': None,
-                     'id': '6813e06b-a8f5-4784-b17d-f3e91afa370e',
+                     'id': 'some_fake_uuid',
                      'size': 1
                     }
                 ],
@@ -1177,27 +1182,48 @@ class ShareDriver(object):
                 'id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
                 'name': None
                 }
-        :return: (cg_model_update, share_update_list)
-            cg_model_update - a dict containing any values to be updated
-            for the CG in the database. This value may be None.
+        :return: (share_group_model_update, share_update_list)
+            share_group_model_update - a dict containing any values to be
+            updated for the share group in the database. This value may be None
 
             share_update_list - a list of dictionaries containing dicts for
-            every share created in the CG. Any share dicts should at a minimum
-            contain the 'id' key and 'export_locations'. Export locations
-            should be in the same format as returned by a share_create. This
-            list may be empty or None.
-            EXAMPLE:
+            every share created in the share group. Any share dicts should at a
+            minimum contain the 'id' key and 'export_locations'.
+            Export locations should be in the same format as returned by
+            a share_create. This list may be empty or None. EXAMPLE:
             .. code::
 
-                [{'id': 'uuid', 'export_locations': ['export_path']}]
+                [{'id': 'uuid', 'export_locations': [{...}, {...}]}]
         """
-        raise NotImplementedError()
+        # Ensure that the share group snapshot has members
+        if not share_group_snapshot_dict['share_group_snapshot_members']:
+            return None, None
 
-    def delete_consistency_group(self, context, cg_dict, share_server=None):
-        """Delete a consistency group
+        clone_list = self._collate_share_group_snapshot_info(
+            share_group_dict, share_group_snapshot_dict)
+        share_update_list = []
+
+        LOG.debug('Creating share group from group snapshot %s.',
+                  share_group_snapshot_dict['id'])
+
+        for clone in clone_list:
+            kwargs = {}
+            if self.driver_handles_share_servers:
+                kwargs['share_server'] = share_server
+            export_locations = (
+                self.create_share_from_snapshot(
+                    context, clone['share'], clone['snapshot'], **kwargs))
+            share_update_list.append({
+                'id': clone['share']['id'],
+                'export_locations': export_locations,
+            })
+        return None, share_update_list
+
+    def delete_share_group(self, context, share_group_dict, share_server=None):
+        """Delete a share group
 
         :param context: The request context
-        :param cg_dict: The consistency group details
+        :param share_group_dict: The share group details
             EXAMPLE:
             .. code::
 
@@ -1209,25 +1235,42 @@ class ShareDriver(object):
                 'deleted': 'False',
                 'created_at': datetime.datetime(2015, 8, 10, 15, 14, 6),
                 'updated_at': None,
-                'source_cgsnapshot_id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
-                'host': 'openstack2@cmodeSSVMNFS',
+                'source_share_group_snapshot_id': 'some_fake_uuid',
+                'share_share_group_type_id': 'some_fake_uuid',
+                'host': 'hostname@backend_name',
                 'deleted_at': None,
                 'shares': [<models.Share>], # The new shares being created
-                'share_types': [<models.ConsistencyGroupShareTypeMapping>],
-                'id': 'eda52174-0442-476d-9694-a58327466c14',
+                'share_types': [<models.ShareGroupShareTypeMapping>],
+                'id': 'some_fake_uuid',
                 'name': None
                 }
-        :return: cg_model_update
-            cg_model_update - a dict containing any values to be updated
-            for the CG in the database. This value may be None.
+        :return: share_group_model_update
+            share_group_model_update - a dict containing any values to be
+            updated for the group in the database. This value may be None.
         """
-        raise NotImplementedError()
 
-    def create_cgsnapshot(self, context, snap_dict, share_server=None):
-        """Create a consistency group snapshot.
+    def _cleanup_group_share_snapshot(self, context, share_snapshot,
+                                      share_server):
+        """Deletes the snapshot of a share belonging to a group."""
+
+        try:
+            self.delete_snapshot(
+                context, share_snapshot, share_server=share_server)
+        except exception.ManilaException:
+            msg = _LE('Could not delete share group snapshot member %(snap)s '
+                      'for share %(share)s.')
+            LOG.error(msg % {
+                'snap': share_snapshot['id'],
+                'share': share_snapshot['share_id'],
+            })
+            raise
+
+    def create_share_group_snapshot(self, context, snap_dict,
+                                    share_server=None):
+        """Create a share group snapshot.
 
         :param context:
-        :param snap_dict: The cgsnapshot details
+        :param snap_dict: The share group snapshot details
             EXAMPLE:
             .. code::
 
@@ -1239,11 +1282,11 @@ class ShareDriver(object):
                 'deleted': '0',
                 'created_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
                 'updated_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
-                'consistency_group_id': '4b04fdc3-00b9-4909-ba1a-06e9b3f88b67',
-                'cgsnapshot_members': [
+                'share_group_id': 'some_fake_uuid',
+                'share_group_snapshot_members': [
                     {
                      'status': 'available',
-                     'share_type_id': '1a9ed31e-ee70-483d-93ba-89690e028d7f',
+                     'share_type_id': 'some_fake_uuid',
                      'user_id': 'a0314a441ca842019b0952224aa39192',
                      'deleted': 'False',
                      'created_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
@@ -1251,32 +1294,75 @@ class ShareDriver(object):
                      'updated_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
                      'share_proto': 'NFS',
                      'project_id': '13c0be6290934bd98596cfa004650049',
-                     'cgsnapshot_id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+                     'share_group_snapshot_id': 'some_fake_uuid',
                      'deleted_at': None,
-                     'id': '6813e06b-a8f5-4784-b17d-f3e91afa370e',
+                     'share_id': 'some_fake_uuid',
+                     'id': 'some_fake_uuid',
                      'size': 1
                     }
                 ],
                 'deleted_at': None,
-                'id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+                'id': 'some_fake_uuid',
                 'name': None
                 }
-        :return: (cgsnapshot_update, member_update_list)
-            cgsnapshot_update - a dict containing any values to be updated
-            for the CGSnapshot in the database. This value may be None.
+        :return: (share_group_snapshot_update, member_update_list)
+            share_group_snapshot_update - a dict containing any values to be
+            updated for the CGSnapshot in the database. This value may be None.
 
             member_update_list -  a list of dictionaries containing for every
-            member of the cgsnapshot. Each dict should contains values to be
-            updated for the CGSnapshotMember in the database. This list may be
-            empty or None.
+            member of the share group snapshot. Each dict should contains
+            values to be updated for the ShareGroupSnapshotMember in
+            the database. This list may be empty or None.
         """
-        raise NotImplementedError()
+        LOG.debug('Attempting to create a share group snapshot %s.',
+                  snap_dict['id'])
 
-    def delete_cgsnapshot(self, context, snap_dict, share_server=None):
-        """Delete a consistency group snapshot
+        snapshot_members = snap_dict.get('share_group_snapshot_members', [])
+        if not self._stats.get('share_group_snapshot_support'):
+            raise exception.ShareGroupSnapshotNotSupported(
+                share_group=snap_dict['share_group_id'])
+        elif not snapshot_members:
+            LOG.warning(_LW('No shares in share group to create snapshot.'))
+        else:
+            share_snapshots = []
+            for member in snapshot_members:
+                share_snapshot = {
+                    'snapshot_id': member['share_group_snapshot_id'],
+                    'share_id': member['share_id'],
+                    'id': member['id'],
+                }
+                try:
+                    self.create_snapshot(context, share_snapshot,
+                                         share_server=share_server)
+                    share_snapshots.append(share_snapshot)
+                except exception.ManilaException as e:
+                    msg = _LE('Could not create share group snapshot. Failed '
+                              'to create share snapshot %(snap)s for '
+                              'share %(share)s.')
+                    LOG.exception(msg % {
+                        'snap': share_snapshot['id'],
+                        'share': share_snapshot['share_id']
+                    })
+
+                    # clean up any share snapshots previously created
+                    LOG.debug(
+                        'Attempting to clean up snapshots due to failure.')
+                    for share_snapshot in share_snapshots:
+                        self._cleanup_group_share_snapshot(
+                            context, share_snapshot, share_server)
+                    raise e
+
+            LOG.debug('Successfully created share group snapshot %s.',
+                      snap_dict['id'])
+
+        return None, None
+
+    def delete_share_group_snapshot(self, context, snap_dict,
+                                    share_server=None):
+        """Delete a share group snapshot
 
         :param context:
-        :param snap_dict: The cgsnapshot details
+        :param snap_dict: The share group snapshot details
             EXAMPLE:
             .. code::
 
@@ -1288,12 +1374,12 @@ class ShareDriver(object):
                 'deleted': '0',
                 'created_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
                 'updated_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
-                'consistency_group_id': '4b04fdc3-00b9-4909-ba1a-06e9b3f88b67',
-                'cgsnapshot_members': [
+                'share_group_id': 'some_fake_uuid',
+                'share_group_snapshot_members': [
                     {
                      'status': 'available',
-                     'share_type_id': '1a9ed31e-ee70-483d-93ba-89690e028d7f',
-                     'share_id': 'e14b5174-e534-4f35-bc4f-fe81c1575d6f',
+                     'share_type_id': 'some_fake_uuid',
+                     'share_id': 'some_fake_uuid',
                      'user_id': 'a0314a441ca842019b0952224aa39192',
                      'deleted': 'False',
                      'created_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
@@ -1301,9 +1387,9 @@ class ShareDriver(object):
                      'updated_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
                      'share_proto': 'NFS',
                      'project_id': '13c0be6290934bd98596cfa004650049',
-                     'cgsnapshot_id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+                     'share_group_snapshot_id': 'some_fake_uuid',
                      'deleted_at': None,
-                     'id': '6813e06b-a8f5-4784-b17d-f3e91afa370e',
+                     'id': 'some_fake_uuid',
                      'size': 1
                     }
                 ],
@@ -1311,11 +1397,54 @@ class ShareDriver(object):
                 'id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
                 'name': None
                 }
-        :return: (cgsnapshot_update, member_update_list)
-            cgsnapshot_update - a dict containing any values to be updated
-            for the CGSnapshot in the database. This value may be None.
+        :return: (share_group_snapshot_update, member_update_list)
+            share_group_snapshot_update - a dict containing any values
+            to be updated for the ShareGroupSnapshot in the database.
+            This value may be None.
         """
-        raise NotImplementedError()
+        snapshot_members = snap_dict.get('share_group_snapshot_members', [])
+        LOG.debug('Deleting share group snapshot %s.' % snap_dict['id'])
+        for member in snapshot_members:
+            share_snapshot = {
+                'share_id': member['share_id'],
+                'id': member['id'],
+            }
+            self.delete_snapshot(
+                context, share_snapshot, share_server=share_server)
+
+        LOG.debug('Deleted share group snapshot %s.' % snap_dict['id'])
+        return None, None
+
+    def _collate_share_group_snapshot_info(self, share_group_dict,
+                                           share_group_snapshot_dict):
+        """Collate the data for a clone of the SG snapshot.
+
+        Given two data structures, a share group snapshot (
+        share_group_snapshot_dict) and a new share to be cloned from
+        the snapshot (share_group_dict), match up both structures into a list
+        of dicts (share & snapshot) suitable for use by existing method
+        that clones individual share snapshots.
+        """
+        clone_list = []
+        for share in share_group_dict['shares']:
+            clone_info = {'share': share}
+            for share_group_snapshot_member in share_group_snapshot_dict[
+                    'share_group_snapshot_members']:
+                if (share['source_share_group_snapshot_member_id'] ==
+                        share_group_snapshot_member['id']):
+                    clone_info['snapshot'] = share_group_snapshot_member
+                    break
+
+            if len(clone_info) != 2:
+                msg = _(
+                    "Invalid data supplied for creating share group from "
+                    "share group snapshot "
+                    "%s.") % share_group_snapshot_dict['id']
+                raise exception.InvalidShareGroup(reason=msg)
+
+            clone_list.append(clone_info)
+
+        return clone_list
 
     def get_periodic_hook_data(self, context, share_instances):
         """Dedicated for update/extend of data for existing share instances.

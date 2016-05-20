@@ -13,65 +13,67 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""The consistency groups API."""
-
 from manila.api import common
 
 
-class CGViewBuilder(common.ViewBuilder):
-    """Model a consistency group API response as a python dictionary."""
+class ShareGroupViewBuilder(common.ViewBuilder):
+    """Model a share group API response as a python dictionary."""
 
-    _collection_name = 'consistency_groups'
+    _collection_name = 'share_groups'
 
-    def summary_list(self, request, cgs):
-        """Show a list of consistency groups without many details."""
-        return self._list_view(self.summary, request, cgs)
+    def summary_list(self, request, share_groups):
+        """Show a list of share groups without many details."""
+        return self._list_view(self.summary, request, share_groups)
 
-    def detail_list(self, request, cgs):
-        """Detailed view of a list of consistency groups."""
-        return self._list_view(self.detail, request, cgs)
+    def detail_list(self, request, share_groups):
+        """Detailed view of a list of share groups."""
+        return self._list_view(self.detail, request, share_groups)
 
-    def summary(self, request, cg):
-        """Generic, non-detailed view of a consistency group."""
+    def summary(self, request, share_group):
+        """Generic, non-detailed view of a share group."""
         return {
-            'consistency_group': {
-                'id': cg.get('id'),
-                'name': cg.get('name'),
-                'links': self._get_links(request, cg['id'])
+            'share_group': {
+                'id': share_group.get('id'),
+                'name': share_group.get('name'),
+                'links': self._get_links(request, share_group['id'])
             }
         }
 
-    def detail(self, request, cg):
-        """Detailed view of a single consistency group."""
+    def detail(self, request, share_group):
+        """Detailed view of a single share group."""
         context = request.environ['manila.context']
-        cg_dict = {
-            'id': cg.get('id'),
-            'name': cg.get('name'),
-            'created_at': cg.get('created_at'),
-            'status': cg.get('status'),
-            'description': cg.get('description'),
-            'project_id': cg.get('project_id'),
-            'host': cg.get('host'),
-            'source_cgsnapshot_id': cg.get('source_cgsnapshot_id'),
-            'share_network_id': cg.get('share_network_id'),
-            'share_types': [st['share_type_id'] for st in cg.get(
+        share_group_dict = {
+            'id': share_group.get('id'),
+            'name': share_group.get('name'),
+            'created_at': share_group.get('created_at'),
+            'status': share_group.get('status'),
+            'description': share_group.get('description'),
+            'project_id': share_group.get('project_id'),
+            'host': share_group.get('host'),
+            'share_group_type_id': share_group.get('share_group_type_id'),
+            'source_share_group_snapshot_id': share_group.get(
+                'source_share_group_snapshot_id'),
+            'share_network_id': share_group.get('share_network_id'),
+            'share_types': [st['share_type_id'] for st in share_group.get(
                 'share_types')],
-            'links': self._get_links(request, cg['id']),
+            'links': self._get_links(request, share_group['id']),
         }
         if context.is_admin:
-            cg_dict['share_server_id'] = cg.get('share_server_id')
-        return {'consistency_group': cg_dict}
+            share_group_dict['share_server_id'] = share_group.get(
+                'share_server_id')
+        return {'share_group': share_group_dict}
 
     def _list_view(self, func, request, shares):
-        """Provide a view for a list of consistency groups."""
-        cg_list = [func(request, share)['consistency_group']
-                   for share in shares]
-        cgs_links = self._get_collection_links(request,
-                                               shares,
-                                               self._collection_name)
-        cgs_dict = dict(consistency_groups=cg_list)
+        """Provide a view for a list of share groups."""
+        share_group_list = [
+            func(request, share)['share_group']
+            for share in shares
+        ]
+        share_groups_links = self._get_collection_links(
+            request, shares, self._collection_name)
+        share_groups_dict = {"share_groups": share_group_list}
 
-        if cgs_links:
-            cgs_dict['consistency_groups_links'] = cgs_links
+        if share_groups_links:
+            share_groups_dict['share_groups_links'] = share_groups_links
 
-        return cgs_dict
+        return share_groups_dict

@@ -188,7 +188,6 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
             'storage_protocol': 'NFS_CIFS',
             'reserved_percentage':
                 self.configuration.reserved_share_percentage,
-            'consistency_group_support': None,
             'snapshot_support': True,
             'create_share_from_snapshot_support': True,
             'revert_to_snapshot_support': True,

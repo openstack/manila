@@ -36,6 +36,8 @@ from manila.api.v2 import quota_sets
 from manila.api.v2 import services
 from manila.api.v2 import share_export_locations
 from manila.api.v2 import share_group_snapshots
+from manila.api.v2 import share_group_type_specs
+from manila.api.v2 import share_group_types
 from manila.api.v2 import share_groups
 from manila.api.v2 import share_instance_export_locations
 from manila.api.v2 import share_instances
@@ -280,21 +282,83 @@ class APIRouter(manila.api.openstack.APIRouter):
                        action="pools_detail",
                        conditions={"method": ["GET"]})
 
-        self.resources["consistency-groups"] = share_groups.create_resource()
-        mapper.resource("consistency-group", "consistency-groups",
-                        controller=self.resources["consistency-groups"],
-                        collection={"detail": "GET"})
-        mapper.connect("consistency-groups",
-                       "/{project_id}/consistency-groups/{id}/action",
-                       controller=self.resources["consistency-groups"],
-                       action="action",
-                       conditions={"action": ["POST"]})
+        self.resources["share-groups"] = share_groups.create_resource()
+        mapper.resource(
+            "share-group",
+            "share-groups",
+            controller=self.resources["share-groups"],
+            collection={"detail": "GET"})
+        mapper.connect(
+            "share-groups",
+            "/{project_id}/share-groups/{id}/action",
+            controller=self.resources["share-groups"],
+            action="action",
+            conditions={"method": ["POST"]})
 
-        self.resources["cgsnapshots"] = share_group_snapshots.create_resource()
-        mapper.resource("cgsnapshot", "cgsnapshots",
-                        controller=self.resources["cgsnapshots"],
-                        collection={"detail": "GET"},
-                        member={"members": "GET", "action": "POST"})
+        self.resources["share-group-types"] = (
+            share_group_types.create_resource())
+        mapper.resource(
+            "share-group-type",
+            "share-group-types",
+            controller=self.resources["share-group-types"],
+            collection={"detail": "GET", "default": "GET"},
+            member={"action": "POST"})
+        mapper.connect(
+            "share-group-types",
+            "/{project_id}/share-group-types/{id}/access",
+            controller=self.resources["share-group-types"],
+            action="share_group_type_access",
+            conditions={"method": ["GET"]})
+
+        # NOTE(ameade): These routes can be simplified when the following
+        # issue is fixed: https://github.com/bbangert/routes/issues/68
+        self.resources["group-specs"] = (
+            share_group_type_specs.create_resource())
+        mapper.connect(
+            "share-group-types",
+            "/{project_id}/share-group-types/{id}/group-specs",
+            controller=self.resources["group-specs"],
+            action="index",
+            conditions={"method": ["GET"]})
+        mapper.connect(
+            "share-group-types",
+            "/{project_id}/share-group-types/{id}/group-specs",
+            controller=self.resources["group-specs"],
+            action="create",
+            conditions={"method": ["POST"]})
+        mapper.connect(
+            "share-group-types",
+            "/{project_id}/share-group-types/{id}/group-specs/{key}",
+            controller=self.resources["group-specs"],
+            action="show",
+            conditions={"method": ["GET"]})
+        mapper.connect(
+            "share-group-types",
+            "/{project_id}/share-group-types/{id}/group-specs/{key}",
+            controller=self.resources["group-specs"],
+            action="delete",
+            conditions={"method": ["DELETE"]})
+        mapper.connect(
+            "share-group-types",
+            "/{project_id}/share-group-types/{id}/group-specs/{key}",
+            controller=self.resources["group-specs"],
+            action="update",
+            conditions={"method": ["PUT"]})
+
+        self.resources["share-group-snapshots"] = (
+            share_group_snapshots.create_resource())
+        mapper.resource(
+            "share-group-snapshot",
+            "share-group-snapshots",
+            controller=self.resources["share-group-snapshots"],
+            collection={"detail": "GET"},
+            member={"members": "GET", "action": "POST"})
+        mapper.connect(
+            "share-group-snapshots",
+            "/{project_id}/share-group-snapshots/{id}/action",
+            controller=self.resources["share-group-snapshots"],
+            action="action",
+            conditions={"method": ["POST"]})
 
         self.resources['share-replicas'] = share_replicas.create_resource()
         mapper.resource("share-replica", "share-replicas",

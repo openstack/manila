@@ -676,3 +676,336 @@ class ShareDriverTestCase(test.TestCase):
                           share_driver.update_replicated_snapshot,
                           'fake_context', ['r1', 'r2'], 'r1',
                           ['s1', 's2'], 's1')
+
+    @ddt.data(True, False)
+    def test_share_group_snapshot_support_exists_and_equals_snapshot_support(
+            self, snapshots_are_supported):
+        driver.CONF.set_default('driver_handles_share_servers', True)
+        child_class_instance = driver.ShareDriver(True)
+        child_class_instance._snapshots_are_supported = snapshots_are_supported
+        self.mock_object(child_class_instance, "configuration")
+
+        child_class_instance._update_share_stats()
+
+        self.assertEqual(
+            snapshots_are_supported,
+            child_class_instance._stats["snapshot_support"])
+        self.assertEqual(
+            snapshots_are_supported,
+            child_class_instance._stats["share_group_snapshot_support"])
+        self.assertTrue(child_class_instance.configuration.safe_get.called)
+
+    def test_create_share_group_from_share_group_snapshot(self):
+        share_driver = self._instantiate_share_driver(None, False)
+        fake_shares = [
+            {'id': 'fake_share_%d' % i,
+             'source_share_group_snapshot_member_id': 'fake_member_%d' % i}
+            for i in (1, 2)]
+        fake_share_group_dict = {
+            'source_share_group_snapshot_id': 'some_fake_uuid_abc',
+            'shares': fake_shares,
+            'id': 'some_fake_uuid_def',
+        }
+        fake_share_group_snapshot_dict = {
+            'share_group_snapshot_members': [
+                {'id': 'fake_member_1'}, {'id': 'fake_member_2'}],
+            'id': 'fake_share_group_snapshot_id',
+        }
+        mock_create = self.mock_object(
+            share_driver, 'create_share_from_snapshot',
+            mock.Mock(side_effect=['fake_export1', 'fake_export2']))
+        expected_share_updates = [
+            {
+                'id': 'fake_share_1',
+                'export_locations': 'fake_export1',
+            },
+            {
+                'id': 'fake_share_2',
+                'export_locations': 'fake_export2',
+            },
+        ]
+
+        share_group_update, share_update = (
+            share_driver.create_share_group_from_share_group_snapshot(
+                'fake_context', fake_share_group_dict,
+                fake_share_group_snapshot_dict))
+
+        mock_create.assert_has_calls([
+            mock.call(
+                'fake_context',
+                {'id': 'fake_share_1',
+                 'source_share_group_snapshot_member_id': 'fake_member_1'},
+                {'id': 'fake_member_1'}),
+            mock.call(
+                'fake_context',
+                {'id': 'fake_share_2',
+                 'source_share_group_snapshot_member_id': 'fake_member_2'},
+                {'id': 'fake_member_2'})
+        ])
+        self.assertIsNone(share_group_update)
+        self.assertEqual(expected_share_updates, share_update)
+
+    def test_create_share_group_from_share_group_snapshot_dhss(self):
+        share_driver = self._instantiate_share_driver(None, True)
+        mock_share_server = mock.Mock()
+        fake_shares = [
+            {'id': 'fake_share_1',
+             'source_share_group_snapshot_member_id': 'foo_member_1'},
+            {'id': 'fake_share_2',
+             'source_share_group_snapshot_member_id': 'foo_member_2'}]
+        fake_share_group_dict = {
+            'source_share_group_snapshot_id': 'some_fake_uuid',
+            'shares': fake_shares,
+            'id': 'eda52174-0442-476d-9694-a58327466c14',
+        }
+        fake_share_group_snapshot_dict = {
+            'share_group_snapshot_members': [
+                {'id': 'foo_member_1'}, {'id': 'foo_member_2'}],
+            'id': 'fake_share_group_snapshot_id'
+        }
+        mock_create = self.mock_object(
+            share_driver, 'create_share_from_snapshot',
+            mock.Mock(side_effect=['fake_export1', 'fake_export2']))
+        expected_share_updates = [
+            {'id': 'fake_share_1', 'export_locations': 'fake_export1'},
+            {'id': 'fake_share_2', 'export_locations': 'fake_export2'},
+        ]
+
+        share_group_update, share_update = (
+            share_driver.create_share_group_from_share_group_snapshot(
+                'fake_context',
+                fake_share_group_dict,
+                fake_share_group_snapshot_dict, share_server=mock_share_server,
+            )
+        )
+
+        mock_create.assert_has_calls([
+            mock.call(
+                'fake_context',
+                {'id': 'fake_share_%d' % i,
+                 'source_share_group_snapshot_member_id': 'foo_member_%d' % i},
+                {'id': 'foo_member_%d' % i},
+                share_server=mock_share_server)
+            for i in (1, 2)
+        ])
+        self.assertIsNone(share_group_update)
+        self.assertEqual(expected_share_updates, share_update)
+
+    def test_create_share_group_from_sg_snapshot_with_no_members(self):
+        share_driver = self._instantiate_share_driver(None, False)
+        fake_share_group_dict = {}
+        fake_share_group_snapshot_dict = {'share_group_snapshot_members': []}
+
+        share_group_update, share_update = (
+            share_driver.create_share_group_from_share_group_snapshot(
+                'fake_context', fake_share_group_dict,
+                fake_share_group_snapshot_dict))
+
+        self.assertIsNone(share_group_update)
+        self.assertIsNone(share_update)
+
+    def test_create_share_group_snapshot(self):
+        fake_snap_member_1 = {
+            'share_group_snapshot_id': 'fake_sg_snap_id',
+            'id': '6813e06b-a8f5-4784-b17d-f3e91afa370e',
+            'share_id': '420f978b-dbf6-4b3c-92fe-f5b17a0bb5e2',
+            'status': 'bar',
+        }
+        fake_snap_member_2 = {
+            'share_group_snapshot_id': 'fake_sg_snap_id',
+            'id': '1e010dfe-545b-432d-ab95-4ef03cd82f89',
+            'share_id': 'a3ebdba5-b4e1-46c8-a0ea-a9ac8daf5296',
+            'status': 'foo',
+        }
+        fake_snap_dict = {
+            'status': 'available',
+            'project_id': '13c0be6290934bd98596cfa004650049',
+            'user_id': 'a0314a441ca842019b0952224aa39192',
+            'description': None,
+            'deleted': '0',
+            'share_group_id': '4b04fdc3-00b9-4909-ba1a-06e9b3f88b67',
+            'share_group_snapshot_members': [
+                fake_snap_member_1, fake_snap_member_2],
+            'deleted_at': None,
+            'id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+            'name': None
+        }
+        share_driver = self._instantiate_share_driver(None, False)
+        share_driver._stats['share_group_snapshot_support'] = True
+        mock_create_snap = self.mock_object(share_driver, 'create_snapshot')
+
+        share_group_snapshot_update, member_update_list = (
+            share_driver.create_share_group_snapshot(
+                'fake_context', fake_snap_dict))
+
+        mock_create_snap.assert_has_calls([
+            mock.call(
+                'fake_context',
+                {'id': fake_snap_member_1['id'],
+                 'share_id': fake_snap_member_1['share_id'],
+                 'snapshot_id': fake_snap_member_1['share_group_snapshot_id']},
+                share_server=None),
+            mock.call(
+                'fake_context',
+                {'id': fake_snap_member_2['id'],
+                 'share_id': fake_snap_member_2['share_id'],
+                 'snapshot_id': fake_snap_member_2['share_group_snapshot_id']},
+                share_server=None),
+        ])
+        self.assertIsNone(share_group_snapshot_update)
+        self.assertIsNone(member_update_list)
+
+    def test_create_share_group_snapshot_failed_snapshot(self):
+        fake_snap_member_1 = {
+            'share_group_snapshot_id': 'fake_sg_snap_id',
+            'id': '6813e06b-a8f5-4784-b17d-f3e91afa370e',
+            'share_id': '420f978b-dbf6-4b3c-92fe-f5b17a0bb5e2',
+            'status': 'bar',
+        }
+        fake_snap_member_2 = {
+            'share_group_snapshot_id': 'fake_sg_snap_id',
+            'id': '1e010dfe-545b-432d-ab95-4ef03cd82f89',
+            'share_id': 'a3ebdba5-b4e1-46c8-a0ea-a9ac8daf5296',
+            'status': 'foo',
+        }
+        fake_snap_dict = {
+            'status': 'available',
+            'project_id': '13c0be6290934bd98596cfa004650049',
+            'user_id': 'a0314a441ca842019b0952224aa39192',
+            'description': None,
+            'deleted': '0',
+            'share_group_id': '4b04fdc3-00b9-4909-ba1a-06e9b3f88b67',
+            'share_group_snapshot_members': [
+                fake_snap_member_1, fake_snap_member_2],
+            'deleted_at': None,
+            'id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+            'name': None
+        }
+        expected_exception = exception.ManilaException
+
+        share_driver = self._instantiate_share_driver(None, False)
+        share_driver._stats['share_group_snapshot_support'] = True
+        mock_create_snap = self.mock_object(
+            share_driver, 'create_snapshot',
+            mock.Mock(side_effect=[None, expected_exception]))
+        mock_delete_snap = self.mock_object(share_driver, 'delete_snapshot')
+
+        self.assertRaises(
+            expected_exception,
+            share_driver.create_share_group_snapshot,
+            'fake_context', fake_snap_dict)
+
+        fake_snap_member_1_expected = {
+            'id': fake_snap_member_1['id'],
+            'share_id': fake_snap_member_1['share_id'],
+            'snapshot_id': fake_snap_member_1['share_group_snapshot_id'],
+        }
+        mock_create_snap.assert_has_calls([
+            mock.call(
+                'fake_context', fake_snap_member_1_expected, share_server=None,
+            ),
+            mock.call(
+                'fake_context',
+                {'id': fake_snap_member_2['id'],
+                 'share_id': fake_snap_member_2['share_id'],
+                 'snapshot_id': fake_snap_member_2['share_group_snapshot_id']},
+                share_server=None),
+        ])
+        mock_delete_snap.assert_called_with(
+            'fake_context', fake_snap_member_1_expected, share_server=None)
+
+    def test_create_share_group_snapshot_no_support(self):
+        fake_snap_dict = {
+            'status': 'available',
+            'project_id': '13c0be6290934bd98596cfa004650049',
+            'user_id': 'a0314a441ca842019b0952224aa39192',
+            'description': None,
+            'deleted': '0',
+            'share_group_id': '4b04fdc3-00b9-4909-ba1a-06e9b3f88b67',
+            'share_group_snapshot_members': [
+                {
+                    'status': 'available',
+                    'share_type_id': '1a9ed31e-ee70-483d-93ba-89690e028d7f',
+                    'user_id': 'a0314a441ca842019b0952224aa39192',
+                    'deleted': 'False',
+                    'share_proto': 'NFS',
+                    'project_id': '13c0be6290934bd98596cfa004650049',
+                    'share_group_snapshot_id':
+                        'f6aa3b59-57eb-421e-965c-4e182538e36a',
+                    'deleted_at': None,
+                    'id': '6813e06b-a8f5-4784-b17d-f3e91afa370e',
+                    'size': 1
+                },
+            ],
+            'deleted_at': None,
+            'id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+            'name': None
+        }
+        share_driver = self._instantiate_share_driver(None, False)
+        share_driver._stats['share_group_snapshot_support'] = False
+
+        self.assertRaises(
+            exception.ShareGroupSnapshotNotSupported,
+            share_driver.create_share_group_snapshot,
+            'fake_context', fake_snap_dict)
+
+    def test_create_share_group_snapshot_no_members(self):
+        fake_snap_dict = {
+            'status': 'available',
+            'project_id': '13c0be6290934bd98596cfa004650049',
+            'user_id': 'a0314a441ca842019b0952224aa39192',
+            'description': None,
+            'deleted': '0',
+            'share_group_id': '4b04fdc3-00b9-4909-ba1a-06e9b3f88b67',
+            'share_group_snapshot_members': [],
+            'deleted_at': None,
+            'id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+            'name': None
+        }
+        share_driver = self._instantiate_share_driver(None, False)
+        share_driver._stats['share_group_snapshot_support'] = True
+
+        share_group_snapshot_update, member_update_list = (
+            share_driver.create_share_group_snapshot(
+                'fake_context', fake_snap_dict))
+
+        self.assertIsNone(share_group_snapshot_update)
+        self.assertIsNone(member_update_list)
+
+    def test_delete_share_group_snapshot(self):
+        fake_snap_member_1 = {
+            'id': '6813e06b-a8f5-4784-b17d-f3e91afa370e',
+            'share_id': '420f978b-dbf6-4b3c-92fe-f5b17a0bb5e2'
+        }
+        fake_snap_member_2 = {
+            'id': '1e010dfe-545b-432d-ab95-4ef03cd82f89',
+            'share_id': 'a3ebdba5-b4e1-46c8-a0ea-a9ac8daf5296'
+        }
+        fake_snap_dict = {
+            'status': 'available',
+            'project_id': '13c0be6290934bd98596cfa004650049',
+            'user_id': 'a0314a441ca842019b0952224aa39192',
+            'description': None,
+            'deleted': '0',
+            'share_group_id': '4b04fdc3-00b9-4909-ba1a-06e9b3f88b67',
+            'share_group_snapshot_members': [
+                fake_snap_member_1, fake_snap_member_2],
+            'deleted_at': None,
+            'id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+            'name': None
+        }
+
+        share_driver = self._instantiate_share_driver(None, False)
+        share_driver._stats['share_group_snapshot_support'] = True
+        mock_delete_snap = self.mock_object(share_driver, 'delete_snapshot')
+
+        share_group_snapshot_update, member_update_list = (
+            share_driver.delete_share_group_snapshot(
+                'fake_context', fake_snap_dict))
+
+        mock_delete_snap.assert_has_calls([
+            mock.call('fake_context', fake_snap_member_1, share_server=None),
+            mock.call('fake_context', fake_snap_member_2, share_server=None),
+        ])
+        self.assertIsNone(share_group_snapshot_update)
+        self.assertIsNone(member_update_list)

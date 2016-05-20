@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""The consistency groups snapshot API."""
-
 from oslo_log import log
 from oslo_utils import uuidutils
 import six
@@ -23,86 +21,85 @@ from webob import exc
 
 from manila.api import common
 from manila.api.openstack import wsgi
-import manila.api.views.share_group_snapshots as sgs_views
+import manila.api.views.share_group_snapshots as share_group_snapshots_views
 from manila import db
 from manila import exception
 from manila.i18n import _, _LI
-import manila.share_group.api as sg_api
+import manila.share_group.api as share_group_api
 
 LOG = log.getLogger(__name__)
 
 
-class CGSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
-    """The Consistency Group Snapshots API controller for the OpenStack API."""
+class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
+    """The share group snapshots API controller for the OpenStack API."""
 
-    resource_name = 'cgsnapshot'
-    _view_builder_class = sgs_views.CGSnapshotViewBuilder
+    resource_name = 'share_group_snapshot'
+    _view_builder_class = (
+        share_group_snapshots_views.ShareGroupSnapshotViewBuilder)
 
     def __init__(self):
-        super(CGSnapshotController, self).__init__()
-        self.cg_api = sg_api.API()
+        super(ShareGroupSnapshotController, self).__init__()
+        self.share_group_api = share_group_api.API()
 
-    @wsgi.Controller.api_version('2.4', experimental=True)
-    @wsgi.Controller.authorize('get_cgsnapshot')
-    def show(self, req, id):
-        """Return data about the given cgsnapshot."""
-        context = req.environ['manila.context']
-
+    def _get_share_group_snapshot(self, context, sg_snapshot_id):
         try:
-            cg = self.cg_api.get_cgsnapshot(context, id)
+            return self.share_group_api.get_share_group_snapshot(
+                context, sg_snapshot_id)
         except exception.NotFound:
-            msg = _("Consistency group snapshot %s not found.") % id
+            msg = _("Share group snapshot %s not found.") % sg_snapshot_id
             raise exc.HTTPNotFound(explanation=msg)
 
-        return self._view_builder.detail(req, cg)
+    @wsgi.Controller.api_version('2.31', experimental=True)
+    @wsgi.Controller.authorize('get')
+    def show(self, req, id):
+        """Return data about the given share group snapshot."""
+        context = req.environ['manila.context']
+        sg_snapshot = self._get_share_group_snapshot(context, id)
+        return self._view_builder.detail(req, sg_snapshot)
 
-    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.Controller.authorize
     def delete(self, req, id):
-        """Delete a cgsnapshot."""
+        """Delete a share group snapshot."""
         context = req.environ['manila.context']
-
-        LOG.info(_LI("Delete consistency group snapshot with id: %s"), id,
-                 context=context)
-
+        LOG.info(_LI("Delete share group snapshot with id: %s"),
+                 id, context=context)
+        sg_snapshot = self._get_share_group_snapshot(context, id)
         try:
-            snap = self.cg_api.get_cgsnapshot(context, id)
-        except exception.NotFound:
-            msg = _("Consistency group snapshot %s not found.") % id
-            raise exc.HTTPNotFound(explanation=msg)
-
-        try:
-            self.cg_api.delete_cgsnapshot(context, snap)
-        except exception.InvalidCGSnapshot as e:
+            self.share_group_api.delete_share_group_snapshot(
+                context, sg_snapshot)
+        except exception.InvalidShareGroupSnapshot as e:
             raise exc.HTTPConflict(explanation=six.text_type(e))
-
         return webob.Response(status_int=202)
 
-    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.Controller.authorize('get_all')
     def index(self, req):
-        """Returns a summary list of cgsnapshots."""
-        return self._get_cgs(req, is_detail=False)
+        """Returns a summary list of share group snapshots."""
+        return self._get_share_group_snaps(req, is_detail=False)
 
-    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.Controller.authorize('get_all')
     def detail(self, req):
-        """Returns a detailed list of cgsnapshots."""
-        return self._get_cgs(req, is_detail=True)
+        """Returns a detailed list of share group snapshots."""
+        return self._get_share_group_snaps(req, is_detail=True)
 
-    def _get_cgs(self, req, is_detail):
-        """Returns a list of cgsnapshots."""
+    def _get_share_group_snaps(self, req, is_detail):
+        """Returns a list of share group snapshots."""
         context = req.environ['manila.context']
 
         search_opts = {}
         search_opts.update(req.GET)
 
-        # Remove keys that are not related to cg attrs
+        # Remove keys that are not related to group attrs
         search_opts.pop('limit', None)
         search_opts.pop('offset', None)
+        sort_key = search_opts.pop('sort_key', 'created_at')
+        sort_dir = search_opts.pop('sort_dir', 'desc')
 
-        snaps = self.cg_api.get_all_cgsnapshots(
-            context, detailed=is_detail, search_opts=search_opts)
+        snaps = self.share_group_api.get_all_share_group_snapshots(
+            context, detailed=is_detail, search_opts=search_opts,
+            sort_dir=sort_dir, sort_key=sort_key)
 
         limited_list = common.limited(snaps, req)
 
@@ -112,88 +109,76 @@ class CGSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
             snaps = self._view_builder.summary_list(req, limited_list)
         return snaps
 
-    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.Controller.authorize
     def update(self, req, id, body):
-        """Update a cgsnapshot."""
+        """Update a share group snapshot."""
         context = req.environ['manila.context']
-
-        if not self.is_valid_body(body, 'cgsnapshot'):
-            msg = _("'cgsnapshot' is missing from the request body")
+        key = 'share_group_snapshot'
+        if not self.is_valid_body(body, key):
+            msg = _("'%s' is missing from the request body.") % key
             raise exc.HTTPBadRequest(explanation=msg)
 
-        cg_data = body['cgsnapshot']
+        sg_snapshot_data = body[key]
         valid_update_keys = {
             'name',
             'description',
         }
-        invalid_fields = set(cg_data.keys()) - valid_update_keys
+        invalid_fields = set(sg_snapshot_data.keys()) - valid_update_keys
         if invalid_fields:
             msg = _("The fields %s are invalid or not allowed to be updated.")
             raise exc.HTTPBadRequest(explanation=msg % invalid_fields)
 
-        try:
-            cg = self.cg_api.get_cgsnapshot(context, id)
-        except exception.NotFound:
-            msg = _("Consistency group snapshot %s not found.") % id
-            raise exc.HTTPNotFound(explanation=msg)
+        sg_snapshot = self._get_share_group_snapshot(context, id)
+        sg_snapshot = self.share_group_api.update_share_group_snapshot(
+            context, sg_snapshot, sg_snapshot_data)
+        return self._view_builder.detail(req, sg_snapshot)
 
-        cg = self.cg_api.update_cgsnapshot(context, cg, cg_data)
-        return self._view_builder.detail(req, cg)
-
-    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.response(202)
     @wsgi.Controller.authorize
     def create(self, req, body):
-        """Creates a new cgsnapshot."""
+        """Creates a new share group snapshot."""
         context = req.environ['manila.context']
 
-        if not self.is_valid_body(body, 'cgsnapshot'):
-            msg = _("'cgsnapshot' is missing from the request body")
+        if not self.is_valid_body(body, 'share_group_snapshot'):
+            msg = _("'share_group_snapshot' is missing from the request body.")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        cgsnapshot = body.get('cgsnapshot')
+        share_group_snapshot = body.get('share_group_snapshot', {})
 
-        if not cgsnapshot.get('consistency_group_id'):
-            msg = _("Must supply 'consistency_group_id' attribute.")
+        share_group_id = share_group_snapshot.get('share_group_id')
+        if not share_group_id:
+            msg = _("Must supply 'share_group_id' attribute.")
             raise exc.HTTPBadRequest(explanation=msg)
-
-        consistency_group_id = cgsnapshot.get('consistency_group_id')
-        if (consistency_group_id and
-                not uuidutils.is_uuid_like(consistency_group_id)):
-            msg = _("The 'consistency_group_id' attribute must be a uuid.")
+        if not uuidutils.is_uuid_like(share_group_id):
+            msg = _("The 'share_group_id' attribute must be a uuid.")
             raise exc.HTTPBadRequest(explanation=six.text_type(msg))
 
-        kwargs = {"consistency_group_id": consistency_group_id}
-
-        if 'name' in cgsnapshot:
-            kwargs['name'] = cgsnapshot.get('name')
-        if 'description' in cgsnapshot:
-            kwargs['description'] = cgsnapshot.get('description')
+        kwargs = {"share_group_id": share_group_id}
+        if 'name' in share_group_snapshot:
+            kwargs['name'] = share_group_snapshot.get('name')
+        if 'description' in share_group_snapshot:
+            kwargs['description'] = share_group_snapshot.get('description')
 
         try:
-            new_snapshot = self.cg_api.create_cgsnapshot(context, **kwargs)
-        except exception.ConsistencyGroupNotFound as e:
+            new_snapshot = self.share_group_api.create_share_group_snapshot(
+                context, **kwargs)
+        except exception.ShareGroupNotFound as e:
             raise exc.HTTPBadRequest(explanation=six.text_type(e))
-        except exception.InvalidConsistencyGroup as e:
+        except exception.InvalidShareGroup as e:
             raise exc.HTTPConflict(explanation=six.text_type(e))
 
         return self._view_builder.detail(req, dict(new_snapshot.items()))
 
-    @wsgi.Controller.api_version('2.4', experimental=True)
-    @wsgi.Controller.authorize('get_cgsnapshot')
+    @wsgi.Controller.api_version('2.31', experimental=True)
+    @wsgi.Controller.authorize('get')
     def members(self, req, id):
-        """Returns a list of cgsnapshot members."""
+        """Returns a list of share group snapshot members."""
         context = req.environ['manila.context']
 
-        search_opts = {}
-        search_opts.update(req.GET)
-
-        # Remove keys that are not related to cg attrs
-        search_opts.pop('limit', None)
-        search_opts.pop('offset', None)
-
-        snaps = self.cg_api.get_all_cgsnapshot_members(context, id)
+        snaps = self.share_group_api.get_all_share_group_snapshot_members(
+            context, id)
 
         limited_list = common.limited(snaps, req)
 
@@ -201,34 +186,24 @@ class CGSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
         return snaps
 
     def _update(self, *args, **kwargs):
-        db.cgsnapshot_update(*args, **kwargs)
+        db.share_group_snapshot_update(*args, **kwargs)
 
     def _get(self, *args, **kwargs):
-        return self.cg_api.get_cgsnapshot(*args, **kwargs)
+        return self.share_group_api.get_share_group_snapshot(*args, **kwargs)
 
     def _delete(self, context, resource, force=True):
-        db.cgsnapshot_destroy(context.elevated(), resource['id'])
+        db.share_group_snapshot_destroy(context.elevated(), resource['id'])
 
-    @wsgi.Controller.api_version('2.4', '2.6', experimental=True)
-    @wsgi.action('os-reset_status')
-    def cgsnapshot_reset_status_legacy(self, req, id, body):
-        return self._reset_status(req, id, body)
-
-    @wsgi.Controller.api_version('2.7', experimental=True)
+    @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.action('reset_status')
-    def cgsnapshot_reset_status(self, req, id, body):
+    def share_group_snapshot_reset_status(self, req, id, body):
         return self._reset_status(req, id, body)
 
-    @wsgi.Controller.api_version('2.4', '2.6', experimental=True)
-    @wsgi.action('os-force_delete')
-    def cgsnapshot_force_delete_legacy(self, req, id, body):
-        return self._force_delete(req, id, body)
-
-    @wsgi.Controller.api_version('2.7', experimental=True)
+    @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.action('force_delete')
-    def cgsnapshot_force_delete(self, req, id, body):
+    def share_group_snapshot_force_delete(self, req, id, body):
         return self._force_delete(req, id, body)
 
 
 def create_resource():
-    return wsgi.Resource(CGSnapshotController())
+    return wsgi.Resource(ShareGroupSnapshotController())

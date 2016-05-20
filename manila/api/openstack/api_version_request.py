@@ -96,13 +96,14 @@ REST_API_VERSION_HISTORY = """
              migration_start APIs prior to this microversion are now
              unsupported.
     * 2.30 - Added cast_rules_to_readonly field to share_instances.
+    * 2.31 - Convert consistency groups to share groups.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.30"
+_MAX_API_VERSION = "2.31"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 
@@ -142,8 +143,13 @@ class APIVersionRequest(utils.ComparableMixin):
 
     def __str__(self):
         """Debug/Logging representation of object."""
-        return ("API Version Request Major: %(major)s, Minor: %(minor)s"
-                % {'major': self._ver_major, 'minor': self._ver_minor})
+        params = {
+            'major': self._ver_major,
+            'minor': self._ver_minor,
+            'experimental': self._experimental,
+        }
+        return ("API Version Request Major: %(major)s, Minor: %(minor)s, "
+                "Experimental: %(experimental)s" % params)
 
     def is_null(self):
         return self._ver_major is None and self._ver_minor is None

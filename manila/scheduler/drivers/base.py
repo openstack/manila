@@ -61,14 +61,14 @@ def share_replica_update_db(context, share_replica_id, host):
     return db.share_replica_update(context, share_replica_id, values)
 
 
-def cg_update_db(context, cg_id, host):
-    '''Set the host and set the updated_at field of a consistency group.
+def share_group_update_db(context, share_group_id, host):
+    '''Set the host and set the updated_at field of a share group.
 
-    :returns: A CG with the updated fields set properly.
+    :returns: A share group with the updated fields set properly.
     '''
     now = timeutils.utcnow()
     values = {'host': host, 'updated_at': now}
-    return db.consistency_group_update(context, cg_id, values)
+    return db.share_group_update(context, share_group_id, values)
 
 
 class Scheduler(object):
@@ -109,12 +109,12 @@ class Scheduler(object):
         """Must override schedule method for scheduler to work."""
         raise NotImplementedError(_("Must implement schedule_create_share"))
 
-    def schedule_create_consistency_group(self, context, group_id,
-                                          request_spec,
-                                          filter_properties):
+    def schedule_create_share_group(self, context, share_group_id,
+                                    request_spec,
+                                    filter_properties):
         """Must override schedule method for scheduler to work."""
         raise NotImplementedError(_(
-            "Must implement schedule_create_consistency_group"))
+            "Must implement schedule_create_share_group"))
 
     def get_pools(self, context, filters):
         """Must override schedule method for scheduler to work."""

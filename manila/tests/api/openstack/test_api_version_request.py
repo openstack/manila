@@ -186,13 +186,14 @@ class APIVersionRequestTests(test.TestCase):
         self.assertRaises(ValueError,
                           api_version_request.APIVersionRequest().get_string)
 
-    @ddt.data(('1', '0'), ('1', '1'))
+    @ddt.data(('1', '0', False), ('1', '1', False), ('1', '0', True))
     @ddt.unpack
-    def test_str(self, major, minor):
+    def test_str(self, major, minor, experimental):
         request_input = '%s.%s' % (major, minor)
-        request = api_version_request.APIVersionRequest(request_input)
+        request = api_version_request.APIVersionRequest(
+            request_input, experimental=experimental)
         request_string = six.text_type(request)
 
         self.assertEqual('API Version Request '
-                         'Major: %s, Minor: %s' % (major, minor),
-                         request_string)
+                         'Major: %s, Minor: %s, Experimental: %s' %
+                         (major, minor, experimental), request_string)

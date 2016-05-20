@@ -200,10 +200,10 @@ class ShareManagerTestCase(test.TestCase):
         "delete_share_server",
         "extend_share",
         "shrink_share",
-        "create_consistency_group",
-        "delete_consistency_group",
-        "create_cgsnapshot",
-        "delete_cgsnapshot",
+        "create_share_group",
+        "delete_share_group",
+        "create_share_group_snapshot",
+        "delete_share_group_snapshot",
         "create_share_replica",
         "delete_share_replica",
         "promote_share_replica",
@@ -1943,7 +1943,7 @@ class ShareManagerTestCase(test.TestCase):
         )
         driver_method_mock.assert_called_once_with(
             self.context, [fake_share_server], share.instance, snapshot=None,
-            consistency_group=None)
+            share_group=None)
 
     def test_provide_share_server_for_share_invalid_arguments(self):
         self.assertRaises(ValueError,
@@ -1994,34 +1994,36 @@ class ShareManagerTestCase(test.TestCase):
         db.share_server_get.assert_called_once_with(
             self.context, fake_parent_id)
 
-    def test_provide_share_server_for_cg_incompatible_servers(self):
+    def test_provide_share_server_for_share_group_incompatible_servers(self):
         fake_exception = exception.ManilaException("fake")
         fake_share_server = {'id': 'fake'}
-        cg = db_utils.create_consistency_group()
+        sg = db_utils.create_share_group()
 
         self.mock_object(db,
                          'share_server_get_all_by_host_and_share_net_valid',
                          mock.Mock(return_value=[fake_share_server]))
         self.mock_object(
             self.share_manager.driver,
-            "choose_share_server_compatible_with_cg",
+            "choose_share_server_compatible_with_share_group",
             mock.Mock(side_effect=fake_exception)
         )
 
-        self.assertRaises(exception.ManilaException,
-                          self.share_manager._provide_share_server_for_cg,
-                          self.context, "fake_id", cg)
+        self.assertRaises(
+            exception.ManilaException,
+            self.share_manager._provide_share_server_for_share_group,
+            self.context, "fake_id", sg)
+
         driver_mock = self.share_manager.driver
         driver_method_mock = (
-            driver_mock.choose_share_server_compatible_with_cg
-        )
+            driver_mock.choose_share_server_compatible_with_share_group)
         driver_method_mock.assert_called_once_with(
-            self.context, [fake_share_server], cg, cgsnapshot=None)
+            self.context, [fake_share_server], sg, share_group_snapshot=None)
 
-    def test_provide_share_server_for_cg_invalid_arguments(self):
-        self.assertRaises(exception.InvalidInput,
-                          self.share_manager._provide_share_server_for_cg,
-                          self.context, None, None)
+    def test_provide_share_server_for_share_group_invalid_arguments(self):
+        self.assertRaises(
+            exception.InvalidInput,
+            self.share_manager._provide_share_server_for_share_group,
+            self.context, None, None)
 
     def test_manage_share_invalid_driver(self):
         self.mock_object(self.share_manager, 'driver', mock.Mock())
@@ -3144,19 +3146,19 @@ class ShareManagerTestCase(test.TestCase):
         self.assertEqual(old_capabilities,
                          self.share_manager.last_capabilities)
 
-    def test_create_consistency_group(self):
-        fake_cg = {'id': 'fake_id'}
-        self.mock_object(self.share_manager.db, 'consistency_group_get',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.db, 'consistency_group_update',
-                         mock.Mock(return_value=fake_cg))
+    def test_create_share_group(self):
+        fake_group = {'id': 'fake_id'}
+        self.mock_object(self.share_manager.db, 'share_group_get',
+                         mock.Mock(return_value=fake_group))
+        self.mock_object(self.share_manager.db, 'share_group_update',
+                         mock.Mock(return_value=fake_group))
         self.mock_object(self.share_manager.driver,
-                         'create_consistency_group',
+                         'create_share_group',
                          mock.Mock(return_value=None))
 
-        self.share_manager.create_consistency_group(self.context, "fake_id")
+        self.share_manager.create_share_group(self.context, "fake_id")
 
-        self.share_manager.db.consistency_group_update.\
+        self.share_manager.db.share_group_update.\
             assert_called_once_with(mock.ANY, 'fake_id',
                                     {'status': constants.STATUS_AVAILABLE,
                                      'created_at': mock.ANY})
@@ -3166,207 +3168,226 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(
             self.share_manager.driver.configuration, 'safe_get',
             mock.Mock(return_value=False))
-        cg_id = 'fake_cg_id'
+        cg_id = 'fake_group_id'
         share_network_id = 'fake_sn'
-        fake_cg = {'id': 'fake_id', 'share_network_id': share_network_id}
+        fake_group = {'id': 'fake_id', 'share_network_id': share_network_id}
         self.mock_object(
-            self.share_manager.db, 'consistency_group_get',
-            mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.db, 'consistency_group_update')
+            self.share_manager.db, 'share_group_get',
+            mock.Mock(return_value=fake_group))
+        self.mock_object(self.share_manager.db, 'share_group_update')
 
         self.assertRaises(
             exception.ManilaException,
-            self.share_manager.create_consistency_group, self.context, cg_id)
+            self.share_manager.create_share_group, self.context, cg_id)
 
-        self.share_manager.db.consistency_group_get.assert_called_once_with(
+        self.share_manager.db.share_group_get.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), cg_id)
-        self.share_manager.db.consistency_group_update.assert_called_once_with(
+        self.share_manager.db.share_group_update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), cg_id,
             {'status': constants.STATUS_ERROR})
 
-    def test_create_cg_with_share_network_driver_handles_servers(self):
+    def test_create_sg_with_share_network_driver_handles_servers(self):
         manager.CONF.set_default('driver_handles_share_servers', True)
         self.mock_object(
             self.share_manager.driver.configuration, 'safe_get',
             mock.Mock(return_value=True))
         share_network_id = 'fake_sn'
-        fake_cg = {'id': 'fake_id', 'share_network_id': share_network_id,
-                   'host': "fake_host"}
-        self.mock_object(self.share_manager.db, 'consistency_group_get',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.db, 'consistency_group_update',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager, '_provide_share_server_for_cg',
-                         mock.Mock(return_value=({}, fake_cg)))
+        fake_group = {
+            'id': 'fake_id',
+            'share_network_id': share_network_id,
+            'host': "fake_host",
+        }
+        self.mock_object(
+            self.share_manager.db, 'share_group_get',
+            mock.Mock(return_value=fake_group))
+        self.mock_object(
+            self.share_manager.db, 'share_group_update',
+            mock.Mock(return_value=fake_group))
+        self.mock_object(
+            self.share_manager, '_provide_share_server_for_share_group',
+            mock.Mock(return_value=({}, fake_group)))
+        self.mock_object(
+            self.share_manager.driver, 'create_share_group',
+            mock.Mock(return_value=None))
+
+        self.share_manager.create_share_group(self.context, "fake_id")
+
+        self.share_manager.db.share_group_update.assert_called_once_with(
+            mock.ANY, 'fake_id',
+            {'status': constants.STATUS_AVAILABLE, 'created_at': mock.ANY})
+
+    def test_create_share_group_with_update(self):
+        fake_group = {'id': 'fake_id'}
+        self.mock_object(self.share_manager.db, 'share_group_get',
+                         mock.Mock(return_value=fake_group))
+        self.mock_object(self.share_manager.db, 'share_group_update',
+                         mock.Mock(return_value=fake_group))
         self.mock_object(self.share_manager.driver,
-                         'create_consistency_group',
-                         mock.Mock(return_value=None))
-
-        self.share_manager.create_consistency_group(self.context, "fake_id")
-
-        self.share_manager.db.consistency_group_update.\
-            assert_called_once_with(mock.ANY, 'fake_id',
-                                    {'status': constants.STATUS_AVAILABLE,
-                                     'created_at': mock.ANY})
-
-    def test_create_consistency_group_with_update(self):
-        fake_cg = {'id': 'fake_id'}
-        self.mock_object(self.share_manager.db, 'consistency_group_get',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.db, 'consistency_group_update',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.driver,
-                         'create_consistency_group',
+                         'create_share_group',
                          mock.Mock(return_value={'foo': 'bar'}))
 
-        self.share_manager.create_consistency_group(self.context, "fake_id")
+        self.share_manager.create_share_group(self.context, "fake_id")
 
-        self.share_manager.db.consistency_group_update.\
+        self.share_manager.db.share_group_update.\
             assert_any_call(mock.ANY, 'fake_id', {'foo': 'bar'})
-        self.share_manager.db.consistency_group_update.\
+        self.share_manager.db.share_group_update.\
             assert_any_call(mock.ANY, 'fake_id',
                             {'status': constants.STATUS_AVAILABLE,
                              'created_at': mock.ANY})
 
-    def test_create_consistency_group_with_error(self):
-        fake_cg = {'id': 'fake_id'}
-        self.mock_object(self.share_manager.db, 'consistency_group_get',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.db, 'consistency_group_update',
-                         mock.Mock(return_value=fake_cg))
+    def test_create_share_group_with_error(self):
+        fake_group = {'id': 'fake_id'}
+        self.mock_object(self.share_manager.db, 'share_group_get',
+                         mock.Mock(return_value=fake_group))
+        self.mock_object(self.share_manager.db, 'share_group_update',
+                         mock.Mock(return_value=fake_group))
         self.mock_object(self.share_manager.driver,
-                         'create_consistency_group',
+                         'create_share_group',
                          mock.Mock(side_effect=exception.Error))
 
         self.assertRaises(exception.Error,
-                          self.share_manager.create_consistency_group,
+                          self.share_manager.create_share_group,
                           self.context, "fake_id")
 
-        self.share_manager.db.consistency_group_update.\
-            assert_called_once_with(mock.ANY, 'fake_id',
-                                    {'status': constants.STATUS_ERROR})
+        self.share_manager.db.share_group_update.assert_called_once_with(
+            mock.ANY, 'fake_id', {'status': constants.STATUS_ERROR})
 
-    def test_create_consistency_group_from_cgsnapshot(self):
-        fake_cg = {'id': 'fake_id', 'source_cgsnapshot_id': 'fake_snap_id',
-                   'shares': [], 'share_server_id': 'fake_ss_id'}
+    def test_create_share_group_from_sg_snapshot(self):
+        fake_group = {
+            'id': 'fake_id',
+            'source_share_group_snapshot_id': 'fake_snap_id',
+            'shares': [],
+            'share_server_id': 'fake_ss_id',
+        }
         fake_ss = {'id': 'fake_ss_id', 'share_network_id': 'fake_sn'}
-        fake_snap = {'id': 'fake_snap_id', 'cgsnapshot_members': [],
-                     'consistency_group': {'share_server_id': fake_ss['id']}}
-        self.mock_object(self.share_manager.db, 'consistency_group_get',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.db, 'cgsnapshot_get',
+        fake_snap = {'id': 'fake_snap_id', 'share_group_snapshot_members': [],
+                     'share_group': {'share_server_id': fake_ss['id']}}
+        self.mock_object(self.share_manager.db, 'share_group_get',
+                         mock.Mock(return_value=fake_group))
+        self.mock_object(self.share_manager.db, 'share_group_snapshot_get',
                          mock.Mock(return_value=fake_snap))
         self.mock_object(self.share_manager.db, 'share_server_get',
                          mock.Mock(
                              return_value=fake_ss))
-        self.mock_object(self.share_manager.db, 'consistency_group_update',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.driver,
-                         'create_consistency_group_from_cgsnapshot',
-                         mock.Mock(return_value=(None, None)))
+        self.mock_object(self.share_manager.db, 'share_group_update',
+                         mock.Mock(return_value=fake_group))
+        mock_create_sg_from_sg_snap = self.mock_object(
+            self.share_manager.driver,
+            'create_share_group_from_share_group_snapshot',
+            mock.Mock(return_value=(None, None)))
 
-        self.share_manager.create_consistency_group(self.context, "fake_id")
+        self.share_manager.create_share_group(self.context, "fake_id")
 
-        self.share_manager.db.consistency_group_update.\
-            assert_called_once_with(mock.ANY, 'fake_id',
-                                    {'status': constants.STATUS_AVAILABLE,
-                                     'created_at': mock.ANY})
+        self.share_manager.db.share_group_update.assert_called_once_with(
+            mock.ANY, 'fake_id',
+            {'status': constants.STATUS_AVAILABLE, 'created_at': mock.ANY})
         self.share_manager.db.share_server_get(mock.ANY, 'fake_ss_id')
-        self.share_manager.driver.create_consistency_group_from_cgsnapshot.\
-            assert_called_once_with(
-                mock.ANY, fake_cg, fake_snap, share_server=fake_ss)
+        mock_create_sg_from_sg_snap.assert_called_once_with(
+            mock.ANY, fake_group, fake_snap, share_server=fake_ss)
 
-    def test_create_cg_cgsnapshot_share_network_driver_not_handles_servers(
-            self):
+    def test_create_sg_snapshot_share_network_driver_not_handles_servers(self):
         manager.CONF.set_default('driver_handles_share_servers', False)
         self.mock_object(
             self.share_manager.driver.configuration, 'safe_get',
             mock.Mock(return_value=False))
-        cg_id = 'fake_cg_id'
+        sg_id = 'fake_share_group_id'
         share_network_id = 'fake_sn'
-        fake_cg = {'id': 'fake_id', 'source_cgsnapshot_id': 'fake_snap_id',
-                   'shares': [], 'share_network_id': share_network_id,
-                   'host': "fake_host"}
+        fake_group = {
+            'id': 'fake_id',
+            'source_share_group_snapshot_id': 'fake_snap_id',
+            'shares': [],
+            'share_network_id': share_network_id,
+            'host': "fake_host",
+        }
         self.mock_object(
-            self.share_manager.db, 'consistency_group_get',
-            mock.Mock(return_value=fake_cg))
-        fake_snap = {'id': 'fake_snap_id', 'cgsnapshot_members': []}
-        self.mock_object(self.share_manager.db, 'cgsnapshot_get',
+            self.share_manager.db, 'share_group_get',
+            mock.Mock(return_value=fake_group))
+        fake_snap = {'id': 'fake_snap_id', 'share_group_snapshot_members': []}
+        self.mock_object(self.share_manager.db, 'share_group_snapshot_get',
                          mock.Mock(return_value=fake_snap))
-        self.mock_object(self.share_manager.db, 'consistency_group_update')
+        self.mock_object(self.share_manager.db, 'share_group_update')
 
         self.assertRaises(exception.ManilaException,
-                          self.share_manager.create_consistency_group,
-                          self.context, cg_id)
+                          self.share_manager.create_share_group,
+                          self.context, sg_id)
 
-        self.share_manager.db.consistency_group_get.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), cg_id)
-        self.share_manager.db.consistency_group_update.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), cg_id,
+        self.share_manager.db.share_group_get.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), sg_id)
+        self.share_manager.db.share_group_update.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), sg_id,
             {'status': constants.STATUS_ERROR})
 
-    def test_create_cg_from_cgsnapshot_share_network_driver_handles_servers(
-            self):
+    def test_create_share_group_from_sg_snapshot_share_network_dhss(self):
         manager.CONF.set_default('driver_handles_share_servers', True)
         self.mock_object(self.share_manager.driver.configuration, 'safe_get',
                          mock.Mock(return_value=True))
         share_network_id = 'fake_sn'
-        fake_cg = {'id': 'fake_id', 'source_cgsnapshot_id': 'fake_snap_id',
-                   'shares': [], 'share_network_id': share_network_id}
-        fake_snap = {'id': 'fake_snap_id', 'cgsnapshot_members': []}
-        self.mock_object(self.share_manager.db, 'consistency_group_get',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.db, 'cgsnapshot_get',
+        fake_group = {
+            'id': 'fake_id',
+            'source_share_group_snapshot_id': 'fake_snap_id',
+            'shares': [],
+            'share_network_id': share_network_id,
+        }
+        fake_snap = {'id': 'fake_snap_id', 'share_group_snapshot_members': []}
+        self.mock_object(self.share_manager.db, 'share_group_get',
+                         mock.Mock(return_value=fake_group))
+        self.mock_object(self.share_manager.db, 'share_group_snapshot_get',
                          mock.Mock(return_value=fake_snap))
-        self.mock_object(self.share_manager.db, 'consistency_group_update',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager, '_provide_share_server_for_cg',
-                         mock.Mock(return_value=({}, fake_cg)))
-        self.mock_object(self.share_manager.driver,
-                         'create_consistency_group_from_cgsnapshot',
-                         mock.Mock(return_value=(None, None)))
+        self.mock_object(self.share_manager.db, 'share_group_update',
+                         mock.Mock(return_value=fake_group))
+        self.mock_object(
+            self.share_manager, '_provide_share_server_for_share_group',
+            mock.Mock(return_value=({}, fake_group)))
+        self.mock_object(
+            self.share_manager.driver,
+            'create_share_group_from_share_group_snapshot',
+            mock.Mock(return_value=(None, None)))
 
-        self.share_manager.create_consistency_group(self.context, "fake_id")
+        self.share_manager.create_share_group(self.context, "fake_id")
 
-        self.share_manager.db.consistency_group_update.\
-            assert_called_once_with(mock.ANY, 'fake_id',
-                                    {'status': constants.STATUS_AVAILABLE,
-                                     'created_at': mock.ANY})
+        self.share_manager.db.share_group_update.assert_called_once_with(
+            mock.ANY, 'fake_id',
+            {'status': constants.STATUS_AVAILABLE, 'created_at': mock.ANY})
 
-    def test_create_consistency_group_from_cgsnapshot_with_update(self):
-        fake_cg = {'id': 'fake_id', 'source_cgsnapshot_id': 'fake_snap_id',
-                   'shares': []}
-        fake_snap = {'id': 'fake_snap_id', 'cgsnapshot_members': []}
-        self.mock_object(self.share_manager.db, 'consistency_group_get',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.db, 'cgsnapshot_get',
+    def test_create_share_group_from_share_group_snapshot_with_update(self):
+        fake_group = {
+            'id': 'fake_id',
+            'source_share_group_snapshot_id': 'fake_snap_id',
+            'shares': [],
+        }
+        fake_snap = {'id': 'fake_snap_id', 'share_group_snapshot_members': []}
+        self.mock_object(self.share_manager.db, 'share_group_get',
+                         mock.Mock(return_value=fake_group))
+        self.mock_object(self.share_manager.db, 'share_group_snapshot_get',
                          mock.Mock(return_value=fake_snap))
-        self.mock_object(self.share_manager.db, 'consistency_group_update',
-                         mock.Mock(return_value=fake_cg))
+        self.mock_object(self.share_manager.db, 'share_group_update',
+                         mock.Mock(return_value=fake_group))
         self.mock_object(self.share_manager.driver,
-                         'create_consistency_group_from_cgsnapshot',
+                         'create_share_group_from_share_group_snapshot',
                          mock.Mock(return_value=({'foo': 'bar'}, None)))
 
-        self.share_manager.create_consistency_group(self.context, "fake_id")
+        self.share_manager.create_share_group(self.context, "fake_id")
 
-        self.share_manager.db.consistency_group_update.\
-            assert_any_call(mock.ANY, 'fake_id', {'foo': 'bar'})
-        self.share_manager.db.consistency_group_update.\
-            assert_any_call(mock.ANY, 'fake_id',
-                            {'status': constants.STATUS_AVAILABLE,
-                             'created_at': mock.ANY})
+        self.share_manager.db.share_group_update.assert_any_call(
+            mock.ANY, 'fake_id', {'foo': 'bar'})
+        self.share_manager.db.share_group_update.assert_any_call(
+            mock.ANY, 'fake_id',
+            {'status': constants.STATUS_AVAILABLE, 'created_at': mock.ANY})
 
-    def test_create_consistency_group_from_cgsnapshot_with_share_update(self):
+    def test_create_share_group_from_sg_snapshot_with_share_update(self):
         fake_share = {'id': 'fake_share_id'}
         fake_export_locations = ['my_export_location']
-        fake_cg = {'id': 'fake_id', 'source_cgsnapshot_id': 'fake_snap_id',
-                   'shares': [fake_share]}
-        fake_snap = {'id': 'fake_snap_id', 'cgsnapshot_members': []}
-        self.mock_object(self.share_manager.db, 'consistency_group_get',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.db, 'cgsnapshot_get',
+        fake_group = {
+            'id': 'fake_id',
+            'source_share_group_snapshot_id': 'fake_snap_id',
+            'shares': [fake_share],
+        }
+        fake_snap = {'id': 'fake_snap_id', 'share_group_snapshot_members': []}
+        self.mock_object(self.share_manager.db, 'share_group_get',
+                         mock.Mock(return_value=fake_group))
+        self.mock_object(self.share_manager.db, 'share_group_snapshot_get',
                          mock.Mock(return_value=fake_snap))
-        self.mock_object(self.share_manager.db, 'consistency_group_update')
+        self.mock_object(self.share_manager.db, 'share_group_update')
         self.mock_object(self.share_manager.db, 'share_instance_update')
         self.mock_object(self.share_manager.db,
                          'share_export_locations_update')
@@ -3374,216 +3395,227 @@ class ShareManagerTestCase(test.TestCase):
                                    'foo': 'bar',
                                    'export_locations': fake_export_locations}]
         self.mock_object(self.share_manager.driver,
-                         'create_consistency_group_from_cgsnapshot',
+                         'create_share_group_from_share_group_snapshot',
                          mock.Mock(
                              return_value=(None, fake_share_update_list)))
 
-        self.share_manager.create_consistency_group(self.context, "fake_id")
+        self.share_manager.create_share_group(self.context, "fake_id")
 
-        self.share_manager.db.share_instance_update.\
-            assert_any_call(mock.ANY, 'fake_share_id', {'foo': 'bar'})
-        self.share_manager.db.share_export_locations_update.\
-            assert_any_call(mock.ANY, 'fake_share_id', fake_export_locations)
-        self.share_manager.db.consistency_group_update.\
-            assert_any_call(mock.ANY, 'fake_id',
-                            {'status': constants.STATUS_AVAILABLE,
-                             'created_at': mock.ANY})
+        self.share_manager.db.share_instance_update.assert_any_call(
+            mock.ANY, 'fake_share_id', {'foo': 'bar'})
+        self.share_manager.db.share_export_locations_update.assert_any_call(
+            mock.ANY, 'fake_share_id', fake_export_locations)
+        self.share_manager.db.share_group_update.assert_any_call(
+            mock.ANY, 'fake_id',
+            {'status': constants.STATUS_AVAILABLE, 'created_at': mock.ANY})
 
-    def test_create_consistency_group_from_cgsnapshot_with_error(self):
-        fake_cg = {'id': 'fake_id', 'source_cgsnapshot_id': 'fake_snap_id',
-                   'shares': []}
-        fake_snap = {'id': 'fake_snap_id', 'cgsnapshot_members': []}
-        self.mock_object(self.share_manager.db, 'consistency_group_get',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.db, 'cgsnapshot_get',
+    def test_create_share_group_from_sg_snapshot_with_error(self):
+        fake_group = {
+            'id': 'fake_id',
+            'source_share_group_snapshot_id': 'fake_snap_id',
+            'shares': [],
+        }
+        fake_snap = {'id': 'fake_snap_id', 'share_group_snapshot_members': []}
+        self.mock_object(self.share_manager.db, 'share_group_get',
+                         mock.Mock(return_value=fake_group))
+        self.mock_object(self.share_manager.db, 'share_group_snapshot_get',
                          mock.Mock(return_value=fake_snap))
         self.mock_object(self.share_manager.db,
-                         'share_instances_get_all_by_consistency_group_id',
+                         'share_instances_get_all_by_share_group_id',
                          mock.Mock(return_value=[]))
-        self.mock_object(self.share_manager.db, 'consistency_group_update',
-                         mock.Mock(return_value=fake_cg))
+        self.mock_object(self.share_manager.db, 'share_group_update',
+                         mock.Mock(return_value=fake_group))
         self.mock_object(self.share_manager.driver,
-                         'create_consistency_group_from_cgsnapshot',
+                         'create_share_group_from_share_group_snapshot',
                          mock.Mock(side_effect=exception.Error))
 
         self.assertRaises(exception.Error,
-                          self.share_manager.create_consistency_group,
+                          self.share_manager.create_share_group,
                           self.context, "fake_id")
 
-        self.share_manager.db.consistency_group_update.\
-            assert_called_once_with(mock.ANY, 'fake_id',
-                                    {'status': constants.STATUS_ERROR})
+        self.share_manager.db.share_group_update.assert_called_once_with(
+            mock.ANY, 'fake_id', {'status': constants.STATUS_ERROR})
 
-    def test_create_consistency_group_from_cgsnapshot_with_share_error(self):
+    def test_create_share_group_from_sg_snapshot_with_share_error(self):
         fake_share = {'id': 'fake_share_id'}
-        fake_cg = {'id': 'fake_id', 'source_cgsnapshot_id': 'fake_snap_id',
-                   'shares': [fake_share]}
-        fake_snap = {'id': 'fake_snap_id', 'cgsnapshot_members': []}
-        self.mock_object(self.share_manager.db, 'consistency_group_get',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.db, 'cgsnapshot_get',
+        fake_group = {
+            'id': 'fake_id',
+            'source_share_group_snapshot_id': 'fake_snap_id',
+            'shares': [fake_share],
+        }
+        fake_snap = {'id': 'fake_snap_id', 'share_group_snapshot_members': []}
+        self.mock_object(self.share_manager.db, 'share_group_get',
+                         mock.Mock(return_value=fake_group))
+        self.mock_object(self.share_manager.db, 'share_group_snapshot_get',
                          mock.Mock(return_value=fake_snap))
         self.mock_object(self.share_manager.db,
-                         'share_instances_get_all_by_consistency_group_id',
+                         'share_instances_get_all_by_share_group_id',
                          mock.Mock(return_value=[fake_share]))
-        self.mock_object(self.share_manager.db, 'consistency_group_update')
+        self.mock_object(self.share_manager.db, 'share_group_update')
         self.mock_object(self.share_manager.db, 'share_instance_update')
         self.mock_object(self.share_manager.driver,
-                         'create_consistency_group_from_cgsnapshot',
+                         'create_share_group_from_share_group_snapshot',
                          mock.Mock(side_effect=exception.Error))
 
         self.assertRaises(exception.Error,
-                          self.share_manager.create_consistency_group,
+                          self.share_manager.create_share_group,
                           self.context, "fake_id")
 
-        self.share_manager.db.share_instance_update.\
-            assert_any_call(mock.ANY, 'fake_share_id',
-                            {'status': constants.STATUS_ERROR})
-        self.share_manager.db.consistency_group_update.\
-            assert_called_once_with(mock.ANY, 'fake_id',
-                                    {'status': constants.STATUS_ERROR})
+        self.share_manager.db.share_instance_update.assert_any_call(
+            mock.ANY, 'fake_share_id', {'status': constants.STATUS_ERROR})
+        self.share_manager.db.share_group_update.assert_called_once_with(
+            mock.ANY, 'fake_id', {'status': constants.STATUS_ERROR})
 
-    def test_delete_consistency_group(self):
-        fake_cg = {'id': 'fake_id'}
-        self.mock_object(self.share_manager.db, 'consistency_group_get',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.db, 'consistency_group_update',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.db, 'consistency_group_destroy',
-                         mock.Mock(return_value=fake_cg))
+    def test_delete_share_group(self):
+        fake_group = {'id': 'fake_id'}
+        self.mock_object(self.share_manager.db, 'share_group_get',
+                         mock.Mock(return_value=fake_group))
+        self.mock_object(self.share_manager.db, 'share_group_update',
+                         mock.Mock(return_value=fake_group))
+        self.mock_object(self.share_manager.db, 'share_group_destroy',
+                         mock.Mock(return_value=fake_group))
         self.mock_object(self.share_manager.driver,
-                         'delete_consistency_group',
+                         'delete_share_group',
                          mock.Mock(return_value=None))
 
-        self.share_manager.delete_consistency_group(self.context, "fake_id")
+        self.share_manager.delete_share_group(self.context, "fake_id")
 
-        self.share_manager.db.consistency_group_destroy.\
-            assert_called_once_with(mock.ANY, 'fake_id')
+        self.share_manager.db.share_group_destroy.assert_called_once_with(
+            mock.ANY, 'fake_id')
 
-    def test_delete_consistency_group_with_update(self):
-        fake_cg = {'id': 'fake_id'}
-        self.mock_object(self.share_manager.db, 'consistency_group_get',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.db, 'consistency_group_update',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.db, 'consistency_group_destroy',
-                         mock.Mock(return_value=fake_cg))
+    def test_delete_share_group_with_update(self):
+        fake_group = {'id': 'fake_id'}
+        self.mock_object(self.share_manager.db, 'share_group_get',
+                         mock.Mock(return_value=fake_group))
+        self.mock_object(self.share_manager.db, 'share_group_update',
+                         mock.Mock(return_value=fake_group))
+        self.mock_object(self.share_manager.db, 'share_group_destroy',
+                         mock.Mock(return_value=fake_group))
         self.mock_object(self.share_manager.driver,
-                         'delete_consistency_group',
+                         'delete_share_group',
                          mock.Mock(return_value={'foo': 'bar'}))
 
-        self.share_manager.delete_consistency_group(self.context, "fake_id")
+        self.share_manager.delete_share_group(self.context, "fake_id")
 
-        self.share_manager.db.consistency_group_update.\
-            assert_called_once_with(mock.ANY, 'fake_id', {'foo': 'bar'})
-        self.share_manager.db.consistency_group_destroy.\
-            assert_called_once_with(mock.ANY, 'fake_id')
+        self.share_manager.db.share_group_update.assert_called_once_with(
+            mock.ANY, 'fake_id', {'foo': 'bar'})
+        self.share_manager.db.share_group_destroy.assert_called_once_with(
+            mock.ANY, 'fake_id')
 
-    def test_delete_consistency_group_with_error(self):
-        fake_cg = {'id': 'fake_id'}
-        self.mock_object(self.share_manager.db, 'consistency_group_get',
-                         mock.Mock(return_value=fake_cg))
-        self.mock_object(self.share_manager.db, 'consistency_group_update',
-                         mock.Mock(return_value=fake_cg))
+    def test_delete_share_group_with_error(self):
+        fake_group = {'id': 'fake_id'}
+        self.mock_object(self.share_manager.db, 'share_group_get',
+                         mock.Mock(return_value=fake_group))
+        self.mock_object(self.share_manager.db, 'share_group_update',
+                         mock.Mock(return_value=fake_group))
         self.mock_object(self.share_manager.driver,
-                         'delete_consistency_group',
+                         'delete_share_group',
                          mock.Mock(side_effect=exception.Error))
 
         self.assertRaises(exception.Error,
-                          self.share_manager.delete_consistency_group,
+                          self.share_manager.delete_share_group,
                           self.context, "fake_id")
 
-        self.share_manager.db.consistency_group_update.\
-            assert_called_once_with(mock.ANY, 'fake_id',
-                                    {'status': constants.STATUS_ERROR})
+        self.share_manager.db.share_group_update.assert_called_once_with(
+            mock.ANY, 'fake_id', {'status': constants.STATUS_ERROR})
 
-    def test_create_cgsnapshot(self):
-        fake_snap = {'id': 'fake_snap_id', 'consistency_group': {},
-                     'cgsnapshot_members': []}
-        self.mock_object(self.share_manager.db, 'cgsnapshot_get',
-                         mock.Mock(return_value=fake_snap))
-        self.mock_object(self.share_manager.db, 'cgsnapshot_update',
-                         mock.Mock(return_value=fake_snap))
-        self.mock_object(self.share_manager.driver,
-                         'create_cgsnapshot',
-                         mock.Mock(return_value=(None, None)))
+    def test_create_share_group_snapshot(self):
+        fake_snap = {
+            'id': 'fake_snap_id',
+            'share_group': {},
+            'share_group_snapshot_members': [],
+        }
+        self.mock_object(
+            self.share_manager.db, 'share_group_snapshot_get',
+            mock.Mock(return_value=fake_snap))
+        mock_sg_snap_update = self.mock_object(
+            self.share_manager.db, 'share_group_snapshot_update',
+            mock.Mock(return_value=fake_snap))
+        self.mock_object(
+            self.share_manager.driver,
+            'create_share_group_snapshot',
+            mock.Mock(return_value=(None, None)))
 
-        self.share_manager.create_cgsnapshot(self.context, fake_snap['id'])
+        self.share_manager.create_share_group_snapshot(
+            self.context, fake_snap['id'])
 
-        self.share_manager.db.cgsnapshot_update.\
-            assert_called_once_with(mock.ANY, fake_snap['id'],
-                                    {'status': constants.STATUS_AVAILABLE,
-                                     'created_at': mock.ANY})
-
-    def test_create_cgsnapshot_with_update(self):
-        fake_snap = {'id': 'fake_snap_id', 'consistency_group': {},
-                     'cgsnapshot_members': []}
-        self.mock_object(self.share_manager.db, 'cgsnapshot_get',
-                         mock.Mock(return_value=fake_snap))
-        self.mock_object(self.share_manager.db, 'cgsnapshot_update',
-                         mock.Mock(return_value=fake_snap))
-        self.mock_object(self.share_manager.driver,
-                         'create_cgsnapshot',
-                         mock.Mock(return_value=({'foo': 'bar'}, None)))
-
-        self.share_manager.create_cgsnapshot(self.context, fake_snap['id'])
-
-        self.share_manager.db.cgsnapshot_update.\
-            assert_any_call(mock.ANY, 'fake_snap_id', {'foo': 'bar'})
-        self.share_manager.db.cgsnapshot_update.assert_any_call(
+        mock_sg_snap_update.assert_called_once_with(
             mock.ANY, fake_snap['id'],
             {'status': constants.STATUS_AVAILABLE, 'created_at': mock.ANY})
 
-    def test_create_cgsnapshot_with_member_update(self):
-        fake_member = {
-            'id': 'fake_member_id',
-            'share_instance_id': 'blah',
-        }
-        fake_member_update = {
-            'id': 'fake_member_id',
-            'foo': 'bar'
-        }
-        fake_snap = {'id': 'fake_snap_id', 'consistency_group': {},
-                     'cgsnapshot_members': [fake_member]}
-        self.mock_object(self.share_manager.db, 'cgsnapshot_get',
+    def test_create_share_group_snapshot_with_update(self):
+        fake_snap = {'id': 'fake_snap_id', 'share_group': {},
+                     'share_group_snapshot_members': []}
+        self.mock_object(self.share_manager.db, 'share_group_snapshot_get',
                          mock.Mock(return_value=fake_snap))
-        self.mock_object(self.share_manager.db, 'cgsnapshot_update',
-                         mock.Mock(return_value=fake_snap))
-        self.mock_object(self.share_manager.db, 'cgsnapshot_member_update')
-        self.mock_object(self.share_manager.db, 'share_instance_get',
-                         mock.Mock(return_value={'id': 'blah'}))
-        self.mock_object(self.share_manager.driver, 'create_cgsnapshot',
-                         mock.Mock(return_value=(None, [fake_member_update])))
-
-        self.share_manager.create_cgsnapshot(self.context, fake_snap['id'])
-
-        self.share_manager.db.cgsnapshot_update.assert_any_call(
-            mock.ANY, fake_snap['id'],
-            {'cgsnapshot_members': [fake_member_update]})
-        self.share_manager.db.cgsnapshot_update.\
-            assert_any_call(mock.ANY, fake_snap['id'],
-                            {'status': constants.STATUS_AVAILABLE,
-                             'created_at': mock.ANY})
-        self.assertTrue(self.share_manager.db.cgsnapshot_member_update.called)
-
-    def test_create_cgsnapshot_with_error(self):
-        fake_snap = {'id': 'fake_snap_id', 'consistency_group': {},
-                     'cgsnapshot_members': []}
-        self.mock_object(self.share_manager.db, 'cgsnapshot_get',
-                         mock.Mock(return_value=fake_snap))
-        self.mock_object(self.share_manager.db, 'cgsnapshot_update',
+        self.mock_object(self.share_manager.db, 'share_group_snapshot_update',
                          mock.Mock(return_value=fake_snap))
         self.mock_object(self.share_manager.driver,
-                         'create_cgsnapshot',
-                         mock.Mock(side_effect=exception.Error))
+                         'create_share_group_snapshot',
+                         mock.Mock(return_value=({'foo': 'bar'}, None)))
 
-        self.assertRaises(exception.Error,
-                          self.share_manager.create_cgsnapshot,
-                          self.context, fake_snap['id'])
+        self.share_manager.create_share_group_snapshot(
+            self.context, fake_snap['id'])
 
-        self.share_manager.db.cgsnapshot_update.\
-            assert_called_once_with(mock.ANY, fake_snap['id'],
-                                    {'status': constants.STATUS_ERROR})
+        self.share_manager.db.share_group_snapshot_update.assert_any_call(
+            mock.ANY, 'fake_snap_id', {'foo': 'bar'})
+        self.share_manager.db.share_group_snapshot_update.assert_any_call(
+            mock.ANY, fake_snap['id'],
+            {'status': constants.STATUS_AVAILABLE, 'created_at': mock.ANY})
+
+    def test_create_share_group_snapshot_with_member_update(self):
+        fake_member = {'id': 'fake_member_id', 'share_instance_id': 'blah'}
+        fake_member_update = {'id': 'fake_member_id', 'foo': 'bar'}
+        fake_snap = {'id': 'fake_snap_id', 'share_group': {},
+                     'share_group_snapshot_members': [fake_member]}
+        self.mock_object(
+            self.share_manager.db, 'share_group_snapshot_get',
+            mock.Mock(return_value=fake_snap))
+        self.mock_object(
+            self.share_manager.db, 'share_group_snapshot_update',
+            mock.Mock(return_value=fake_snap))
+        self.mock_object(
+            self.share_manager.db, 'share_group_snapshot_member_update')
+        self.mock_object(
+            self.share_manager.db, 'share_instance_get',
+            mock.Mock(return_value={'id': 'blah'}))
+        self.mock_object(
+            self.share_manager.driver, 'create_share_group_snapshot',
+            mock.Mock(return_value=(None, [fake_member_update])))
+
+        self.share_manager.create_share_group_snapshot(
+            self.context, fake_snap['id'])
+
+        self.share_manager.db.share_group_snapshot_update.assert_any_call(
+            mock.ANY, fake_snap['id'],
+            {'share_group_snapshot_members': [fake_member_update]})
+        self.share_manager.db.share_group_snapshot_update.assert_any_call(
+            mock.ANY, fake_snap['id'],
+            {'status': constants.STATUS_AVAILABLE, 'created_at': mock.ANY})
+        self.assertTrue(
+            self.share_manager.db.share_group_snapshot_member_update.called)
+
+    def test_create_group_snapshot_with_error(self):
+        fake_snap = {'id': 'fake_snap_id', 'share_group': {},
+                     'share_group_snapshot_members': []}
+        self.mock_object(
+            self.share_manager.db, 'share_group_snapshot_get',
+            mock.Mock(return_value=fake_snap))
+        mock_sg_snap_update = self.mock_object(
+            self.share_manager.db, 'share_group_snapshot_update',
+            mock.Mock(return_value=fake_snap))
+        self.mock_object(
+            self.share_manager.driver,
+            'create_share_group_snapshot',
+            mock.Mock(side_effect=exception.Error))
+
+        self.assertRaises(
+            exception.Error,
+            self.share_manager.create_share_group_snapshot,
+            self.context, fake_snap['id'])
+
+        mock_sg_snap_update.assert_called_once_with(
+            mock.ANY, fake_snap['id'], {'status': constants.STATUS_ERROR})
 
     def test_connection_get_info(self):
         share_instance = {'share_server_id': 'fake_server_id'}
@@ -4857,9 +4889,9 @@ class ShareManagerTestCase(test.TestCase):
     def test_provide_share_server(self):
 
         instance = db_utils.create_share_instance(share_id='fake_id',
-                                                  consistency_group_id='cg_id')
+                                                  share_group_id='sg_id')
         snapshot = db_utils.create_snapshot(with_share=True)
-        cg = db_utils.create_consistency_group()
+        group = db_utils.create_share_group()
         server = db_utils.create_share_server()
 
         # mocks
@@ -4867,8 +4899,8 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(return_value=instance))
         self.mock_object(self.share_manager.db, 'share_snapshot_get',
                          mock.Mock(return_value=snapshot))
-        self.mock_object(self.share_manager.db, 'consistency_group_get',
-                         mock.Mock(return_value=cg))
+        self.mock_object(self.share_manager.db, 'share_group_get',
+                         mock.Mock(return_value=group))
         self.mock_object(self.share_manager, '_provide_share_server_for_share',
                          mock.Mock(return_value=(server, instance)))
 
@@ -4882,11 +4914,11 @@ class ShareManagerTestCase(test.TestCase):
             self.context, 'ins_id', with_share_data=True)
         self.share_manager.db.share_snapshot_get.assert_called_once_with(
             self.context, 'snap_id')
-        self.share_manager.db.consistency_group_get.assert_called_once_with(
-            self.context, 'cg_id')
+        self.share_manager.db.share_group_get.assert_called_once_with(
+            self.context, 'sg_id')
         (self.share_manager._provide_share_server_for_share.
          assert_called_once_with(self.context, 'net_id', instance, snapshot,
-                                 cg, create_on_backend=False))
+                                 group, create_on_backend=False))
 
     def test_create_share_server(self):
 

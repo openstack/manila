@@ -178,7 +178,7 @@ def stub_snapshot_get_all_by_project(self, context, search_opts=None,
     return [stub_snapshot_get(self, context, 2)]
 
 
-def stub_cgsnapshot_member(id, **kwargs):
+def stub_share_group_snapshot_member(id, **kwargs):
     member = {
         'id': id,
         'share_id': 'fakeshareid',
