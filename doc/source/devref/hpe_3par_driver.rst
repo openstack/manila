@@ -14,7 +14,7 @@
       under the License.
 
 HPE 3PAR Driver
-==============
+===============
 
 The HPE 3PAR manila driver provides NFS and CIFS shared file systems to
 OpenStack using HPE 3PAR's File Persona capabilities.
@@ -69,7 +69,7 @@ On the HPE 3PAR array:
 - The array class and hardware configuration must support File Persona
 
 Pre-Configuration on the HPE 3PAR
---------------------------------
+---------------------------------
 
 - HPE 3PAR File Persona must be initialized and started (:code:`startfs`)
 - A File Provisioning Group (FPG) must be created for use with manila
@@ -232,7 +232,7 @@ the original functionality is honored and the file tree remains untouched.
 be specified to create further customization.
 
 The :mod:`manila.share.drivers.hpe.hpe_3par_driver` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: manila.share.drivers.hpe.hpe_3par_driver
     :noindex:

@@ -185,7 +185,7 @@ Known Restrictions
 - The library does not support network segmented multi-tenancy model but
   instead works over a flat network, where the tenants share a network.
 
-.. _ganesha_known_issues
+.. _ganesha_known_issues:
 
 Known Issues
 ------------

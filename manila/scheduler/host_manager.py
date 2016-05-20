@@ -149,46 +149,47 @@ class HostState(object):
         """Update information about a host from its share_node info.
 
         'capability' is the status info reported by share backend, a typical
-        capability looks like this:
+        capability looks like this::
 
-        capability = {
-            'share_backend_name': 'Local NFS',    #\
-            'vendor_name': 'OpenStack',           #  backend level
-            'driver_version': '1.0',              #  mandatory/fixed
-            'storage_protocol': 'NFS',            #/ stats&capabilities
+            capability = {
+                'share_backend_name': 'Local NFS',    #\
+                'vendor_name': 'OpenStack',           #  backend level
+                'driver_version': '1.0',              #  mandatory/fixed
+                'storage_protocol': 'NFS',            #/ stats&capabilities
 
-            'active_shares': 10,                  #\
-            'IOPS_provisioned': 30000,            #  optional custom
-            'fancy_capability_1': 'eat',          #  stats & capabilities
-            'fancy_capability_2': 'drink',        #/
+                'active_shares': 10,                  #\
+                'IOPS_provisioned': 30000,            #  optional custom
+                'fancy_capability_1': 'eat',          #  stats & capabilities
+                'fancy_capability_2': 'drink',        #/
 
-            'pools': [
-                {'pool_name': '1st pool',         #\
-                 'total_capacity_gb': 500,        #  mandatory stats for
-                 'free_capacity_gb': 230,         #  pools
-                 'allocated_capacity_gb': 270,    # |
-                 'qos': 'False',                  # |
-                 'reserved_percentage': 0,        #/
+                'pools':[
+                  {
+                     'pool_name': '1st pool',         #\
+                     'total_capacity_gb': 500,        #  mandatory stats
+                     'free_capacity_gb': 230,         #   for pools
+                     'allocated_capacity_gb': 270,    # |
+                     'qos': 'False',                  # |
+                     'reserved_percentage': 0,        #/
 
-                 'dying_disks': 100,              #\
-                 'super_hero_1': 'spider-man',    #  optional custom
-                 'super_hero_2': 'flash',         #  stats & capabilities
-                 'super_hero_3': 'neoncat'        #/
-                 },
-                {'pool_name': '2nd pool',
-                 'total_capacity_gb': 1024,
-                 'free_capacity_gb': 1024,
-                 'allocated_capacity_gb': 0,
-                 'qos': 'False',
-                 'reserved_percentage': 0,
+                     'dying_disks': 100,              #\
+                     'super_hero_1': 'spider-man',    #  optional custom
+                     'super_hero_2': 'flash',         #  stats &
+                     'super_hero_3': 'neoncat',       #  capabilities
+                     'super_hero_4': 'green lantern', #/
+                   },
+                  {
+                     'pool_name': '2nd pool',
+                     'total_capacity_gb': 1024,
+                     'free_capacity_gb': 1024,
+                     'allocated_capacity_gb': 0,
+                     'qos': 'False',
+                     'reserved_percentage': 0,
 
-                 'dying_disks': 200,
-                 'super_hero_1': 'superman',
-                 'super_hero_2': ' ',
-                 'super_hero_2': 'Hulk',
-                 }
-            ]
-        }
+                     'dying_disks': 200,
+                     'super_hero_1': 'superman',
+                     'super_hero_2': 'Hulk',
+                  }]
+            }
         """
         self.update_capabilities(capability, service)
 

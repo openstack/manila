@@ -32,8 +32,8 @@ class SchedulerAPI(object):
 
         1.0 - Initial version.
         1.1 - Add get_pools method
-        1.2 - Introduce Share Instances:
-            Replace create_share() - > create_share_instance()
+        1.2 - Introduce Share Instances. Replace ``create_share()`` with
+        ``create_share_instance()``
         1.3 - Add create_consistency_group method
         1.4 - Add migrate_share_to_host method
         1.5 - Add create_share_replica

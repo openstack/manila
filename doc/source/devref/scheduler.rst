@@ -49,10 +49,10 @@ The :mod:`manila.scheduler.host_manager` Module
     :show-inheritance:
 
 
-The :mod:`manila.scheduler.rcpapi` Module
+The :mod:`manila.scheduler.rpcapi` Module
 -----------------------------------------
 
-.. automodule:: manila.scheduler.rcpapi
+.. automodule:: manila.scheduler.rpcapi
     :noindex:
     :members:
     :undoc-members:
