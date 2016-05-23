@@ -8,6 +8,8 @@ Manila Style Commandments
 
 Manila Specific Commandments
 ----------------------------
+
+- [M312] Use assertIsNone(...) instead of assertEqual(None, ...).
 - [M313] Use assertTrue(...) rather than assertEqual(True, ...).
 - [M319] Validate that debug level logs are not translated.
 - [M323] Ensure that the _() function is explicitly imported to ensure proper translations.
