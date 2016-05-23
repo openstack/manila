@@ -13,7 +13,7 @@ Manila Specific Commandments
 - [M313] Use assertTrue(...) rather than assertEqual(True, ...).
 - [M319] Validate that debug level logs are not translated.
 - [M323] Ensure that the _() function is explicitly imported to ensure proper translations.
-- [M325] str() cannot be used on an exception.  Remove use or use six.text_type()
+- [M325] str() and unicode() cannot be used on an exception. Remove or use six.text_type().
 - [M326] Translated messages cannot be concatenated.  String should be
   included in translated message.
 - [M328] LOG.critical messages require translations _LC()!
