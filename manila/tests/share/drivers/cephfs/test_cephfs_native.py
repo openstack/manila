@@ -345,7 +345,7 @@ class CephFSNativeDriverTestCase(test.TestCase):
         vc.disconnect.assert_called_once_with()
 
     def test_delete_driver_no_client(self):
-        self.assertEqual(None, self._driver._volume_client)
+        self.assertIsNone(self._driver._volume_client)
         del self._driver
 
     def test_connect_noevict(self):
