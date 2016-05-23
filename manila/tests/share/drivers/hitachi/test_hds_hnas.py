@@ -306,6 +306,7 @@ class HDSHNASTestCase(test.TestCase):
     def test_delete_snapshot(self):
         self.mock_object(hds_hnas.HDSHNASDriver, "_get_hnas_share_id",
                          mock.Mock(return_value=share['id']))
+        self.mock_object(hds_hnas.HDSHNASDriver, "_check_fs_mounted")
         self.mock_object(ssh.HNASSSHBackend, "tree_delete", mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "delete_directory", mock.Mock())
 
@@ -313,6 +314,7 @@ class HDSHNASTestCase(test.TestCase):
 
         self.assertTrue(self.mock_log.debug.called)
         self.assertTrue(self.mock_log.info.called)
+        hds_hnas.HDSHNASDriver._check_fs_mounted.assert_called_once_with()
         ssh.HNASSSHBackend.tree_delete.assert_called_once_with(
             '/snapshots/' + share['id'] + '/' + snapshot['id'])
         ssh.HNASSSHBackend.delete_directory.assert_called_once_with(
