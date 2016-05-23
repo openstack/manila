@@ -514,6 +514,6 @@ class LVMShareDriverTestCase(test.TestCase):
         self.assertEqual('NFS_CIFS', self._driver._stats['storage_protocol'])
         self.assertEqual(50, self._driver._stats['reserved_percentage'])
         self.assertIsNone(self._driver._stats['consistency_group_support'])
-        self.assertEqual(True, self._driver._stats['snapshot_support'])
+        self.assertTrue(self._driver._stats['snapshot_support'])
         self.assertEqual('LVMShareDriver', self._driver._stats['driver_name'])
         self.assertEqual('test-pool', self._driver._stats['pools'])

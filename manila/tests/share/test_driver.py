@@ -265,8 +265,7 @@ class ShareDriverTestCase(test.TestCase):
 
         child_class_instance._update_share_stats()
 
-        self.assertEqual(
-            True, child_class_instance._stats["snapshot_support"])
+        self.assertTrue(child_class_instance._stats["snapshot_support"])
         self.assertTrue(child_class_instance.configuration.safe_get.called)
 
     @ddt.data(
