@@ -9,6 +9,7 @@ Manila Style Commandments
 Manila Specific Commandments
 ----------------------------
 
+- [M310] Check for improper use of logging format arguments.
 - [M312] Use assertIsNone(...) instead of assertEqual(None, ...).
 - [M313] Use assertTrue(...) rather than assertEqual(True, ...).
 - [M319] Validate that debug level logs are not translated.

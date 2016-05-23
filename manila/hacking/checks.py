@@ -15,6 +15,7 @@
 
 import ast
 import re
+import six
 
 import pep8
 
@@ -120,6 +121,71 @@ def no_translate_debug_logs(logical_line, filename):
     """
     if logical_line.startswith("LOG.debug(_("):
         yield(0, "M319 Don't translate debug level logs")
+
+
+class CheckLoggingFormatArgs(BaseASTChecker):
+    """Check for improper use of logging format arguments.
+
+    LOG.debug("Volume %s caught fire and is at %d degrees C and climbing.",
+              ('volume1', 500))
+
+    The format arguments should not be a tuple as it is easy to miss.
+
+    """
+
+    CHECK_DESC = 'M310 Log method arguments should not be a tuple.'
+    LOG_METHODS = [
+        'debug', 'info',
+        'warn', 'warning',
+        'error', 'exception',
+        'critical', 'fatal',
+        'trace', 'log'
+    ]
+
+    def _find_name(self, node):
+        """Return the fully qualified name or a Name or Attribute."""
+        if isinstance(node, ast.Name):
+            return node.id
+        elif (isinstance(node, ast.Attribute)
+                and isinstance(node.value, (ast.Name, ast.Attribute))):
+            method_name = node.attr
+            obj_name = self._find_name(node.value)
+            if obj_name is None:
+                return None
+            return obj_name + '.' + method_name
+        elif isinstance(node, six.string_types):
+            return node
+        else:  # could be Subscript, Call or many more
+            return None
+
+    def visit_Call(self, node):
+        """Look for the 'LOG.*' calls."""
+        # extract the obj_name and method_name
+        if isinstance(node.func, ast.Attribute):
+            obj_name = self._find_name(node.func.value)
+            if isinstance(node.func.value, ast.Name):
+                method_name = node.func.attr
+            elif isinstance(node.func.value, ast.Attribute):
+                obj_name = self._find_name(node.func.value)
+                method_name = node.func.attr
+            else:  # could be Subscript, Call or many more
+                return super(CheckLoggingFormatArgs, self).generic_visit(node)
+
+            # obj must be a logger instance and method must be a log helper
+            if (obj_name != 'LOG'
+                    or method_name not in self.LOG_METHODS):
+                return super(CheckLoggingFormatArgs, self).generic_visit(node)
+
+            # the call must have arguments
+            if not len(node.args):
+                return super(CheckLoggingFormatArgs, self).generic_visit(node)
+
+            # any argument should not be a tuple
+            for arg in node.args:
+                if isinstance(arg, ast.Tuple):
+                    self.add_error(arg)
+
+        return super(CheckLoggingFormatArgs, self).generic_visit(node)
 
 
 def validate_log_translations(logical_line, physical_line, filename):
@@ -279,8 +345,9 @@ def validate_assertIsNone(logical_line):
 def factory(register):
     register(validate_log_translations)
     register(check_explicit_underscore_import)
-    register(CheckForStrUnicodeExc)
     register(no_translate_debug_logs)
+    register(CheckForStrUnicodeExc)
+    register(CheckLoggingFormatArgs)
     register(CheckForTransAdd)
     register(check_oslo_namespace_imports)
     register(dict_constructor_with_list_copy)

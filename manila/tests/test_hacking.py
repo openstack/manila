@@ -15,6 +15,7 @@
 import sys
 import textwrap
 
+import ddt
 import mock
 import pep8
 
@@ -22,6 +23,7 @@ from manila.hacking import checks
 from manila import test
 
 
+@ddt.ddt
 class HackingTestCase(test.TestCase):
     """Hacking test cases
 
@@ -126,6 +128,30 @@ class HackingTestCase(test.TestCase):
 
     def _assert_has_no_errors(self, code, checker, filename=None):
         self._assert_has_errors(code, checker, filename=filename)
+
+    def test_logging_format_no_tuple_arguments(self):
+        checker = checks.CheckLoggingFormatArgs
+        code = """
+               import logging
+               LOG = logging.getLogger()
+               LOG.info("Message without a second argument.")
+               LOG.critical("Message with %s arguments.", 'two')
+               LOG.debug("Volume %s caught fire and is at %d degrees C and"
+                         " climbing.", 'volume1', 500)
+               """
+        self._assert_has_no_errors(code, checker)
+
+    @ddt.data(*checks.CheckLoggingFormatArgs.LOG_METHODS)
+    def test_logging_with_tuple_argument(self, log_method):
+        checker = checks.CheckLoggingFormatArgs
+        code = """
+               import logging
+               LOG = logging.getLogger()
+               LOG.{0}("Volume %s caught fire and is at %d degrees C and "
+                      "climbing.", ('volume1', 500))
+               """
+        self._assert_has_errors(code.format(log_method), checker,
+                                expected_errors=[(4, 21, 'M310')])
 
     def test_str_on_exception(self):
 

@@ -396,8 +396,9 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         sharename = snapshot['share_name']
         snapshotname = snapshot['name']
         fsdev = self._get_gpfs_device()
-        LOG.debug("sharename = %s, snapshotname = %s, fsdev = %s",
-                  (sharename, snapshotname, fsdev))
+        LOG.debug("sharename = %{share}s, snapshotname = %{snap}s, "
+                  "fsdev = %{dev}s",
+                  {'share': sharename, 'snap': snapshotname, 'dev': fsdev})
 
         try:
             self._gpfs_execute('mmcrsnapshot', fsdev, snapshot['name'],
