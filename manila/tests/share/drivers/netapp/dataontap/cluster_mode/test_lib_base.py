@@ -2159,7 +2159,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                              fake.SHARE,
                                              [],
                                              share_server=None)
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
         mock_dm_session.delete_snapmirror.assert_called_with(fake.SHARE,
                                                              fake.SHARE)
         self.assertEqual(2, mock_dm_session.delete_snapmirror.call_count)
@@ -2186,7 +2186,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                              fake.SHARE,
                                              [],
                                              share_server=fake.SHARE_SERVER)
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
         mock_dm_session.delete_snapmirror.assert_called_with(fake.SHARE,
                                                              fake.SHARE)
         self.assertEqual(2, mock_dm_session.delete_snapmirror.call_count)
@@ -2215,7 +2215,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                              [],
                                              share_server=None)
 
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
         self.assertFalse(self.library._deallocate_container.called)
         mock_dm_session.delete_snapmirror.assert_called_with(fake.SHARE,
                                                              fake.SHARE)
@@ -3200,7 +3200,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         model_update = self.library.update_replicated_snapshot(
             replica_list, self.fake_replica_2, [fake_snapshot], fake_snapshot)
 
-        self.assertEqual(None, model_update)
+        self.assertIsNone(model_update)
         self.mock_dm_session.update_snapmirror.assert_called_once_with(
             self.fake_replica, self.fake_replica_2
         )
@@ -3224,7 +3224,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         model_update = self.library.update_replicated_snapshot(
             replica_list, self.fake_replica_2, [fake_snapshot], fake_snapshot)
 
-        self.assertEqual(None, model_update)
+        self.assertIsNone(model_update)
         self.mock_dm_session.update_snapmirror.assert_called_once_with(
             self.fake_replica, self.fake_replica_2
         )
@@ -3250,7 +3250,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         model_update = self.library.update_replicated_snapshot(
             replica_list, self.fake_replica_2, [fake_snapshot], fake_snapshot)
 
-        self.assertEqual(None, model_update)
+        self.assertIsNone(model_update)
         self.mock_dm_session.update_snapmirror.assert_called_once_with(
             self.fake_replica, self.fake_replica_2
         )
@@ -3298,7 +3298,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         model_update = self.library.update_replicated_snapshot(
             replica_list, self.fake_replica, [fake_snapshot], fake_snapshot)
 
-        self.assertEqual(None, model_update)
+        self.assertIsNone(model_update)
 
     def test_update_replicated_snapshot_created(self):
         vserver_client = mock.Mock()
@@ -3382,4 +3382,4 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         model_update = self.library.update_replicated_snapshot(
             replica_list, self.fake_replica, [fake_snapshot], fake_snapshot)
 
-        self.assertEqual(None, model_update)
+        self.assertIsNone(model_update)

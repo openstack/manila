@@ -1448,7 +1448,7 @@ class ShareManagerTestCase(test.TestCase):
         return_value = self.share_manager.create_snapshot(
             self.context, share_id, snapshot_id)
 
-        self.assertEqual(None, return_value)
+        self.assertIsNone(return_value)
         self.share_manager.driver.create_snapshot.assert_called_once_with(
             self.context, expected_snapshot_instance_dict, share_server=None)
         db_update.assert_has_calls(expected_update_calls, any_order=True)

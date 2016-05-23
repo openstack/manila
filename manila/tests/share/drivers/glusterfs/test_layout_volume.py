@@ -354,7 +354,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
 
         self._layout.private_storage.get.assert_called_once_with(
             self.share1['id'], 'volume')
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_ensure_share(self):
         share = self.share1
