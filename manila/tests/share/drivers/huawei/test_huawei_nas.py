@@ -1992,7 +1992,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.driver.plugin.helper.login()
         self.driver.plugin.helper.snapshot_flag = True
 
-        self.assertRaises(exception.InvalidShareAccess,
+        self.assertRaises(exception.ShareResourceNotFound,
                           self.driver.create_share_from_snapshot,
                           self._context, self.share_nfs,
                           self.nfs_snapshot, self.share_server)
@@ -2044,7 +2044,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.driver.plugin.helper.login()
         self.driver.plugin.helper.snapshot_flag = True
 
-        self.assertRaises(exception.InvalidShareAccess,
+        self.assertRaises(exception.ShareResourceNotFound,
                           self.driver.create_share_from_snapshot,
                           self._context, self.share_nfs,
                           self.nfs_snapshot, self.share_server)
@@ -2318,7 +2318,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.driver.plugin.helper.login()
         rules = [self.access_ip]
         self.driver.plugin.helper.share_exist = False
-        self.assertRaises(exception.InvalidShareAccess,
+        self.assertRaises(exception.ShareResourceNotFound,
                           self.driver.update_access, self._context,
                           self.share_nfs, rules, None, None, self.share_server)
 
@@ -2380,7 +2380,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
     def test_allow_access_ip_share_not_exist(self):
         self.driver.plugin.helper.login()
         self.driver.plugin.helper.share_exist = False
-        self.assertRaises(exception.InvalidShareAccess,
+        self.assertRaises(exception.ShareResourceNotFound,
                           self.driver.allow_access, self._context,
                           self.share_nfs, self.access_ip, self.share_server)
 

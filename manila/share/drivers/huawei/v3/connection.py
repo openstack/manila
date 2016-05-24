@@ -388,6 +388,7 @@ class V3StorageConnection(driver.HuaweiBase):
             "mount_path": new_share_path.replace("\\", "/"),
             "mount_src":
                 tempfile.mkdtemp(prefix=constants.TMP_PATH_DST_PREFIX),
+            "id": snapshot['share_id'],
         }
 
         old_share_path = self._get_location_path(old_share_name,
@@ -399,7 +400,8 @@ class V3StorageConnection(driver.HuaweiBase):
             "mount_src":
                 tempfile.mkdtemp(prefix=constants.TMP_PATH_SRC_PREFIX),
             "snapshot_name": ("share_snapshot_" +
-                              snapshot['id'].replace("-", "_"))
+                              snapshot['id'].replace("-", "_")),
+            "id": snapshot['share_id'],
         }
 
         try:
@@ -701,14 +703,15 @@ class V3StorageConnection(driver.HuaweiBase):
                             ' for CIFS shares.')
                 raise exception.InvalidShareAccess(reason=message)
 
-        share = self.helper._get_share_by_name(share_name, share_url_type)
-        if not share:
-            err_msg = (_("Can not get share ID by share %s.")
+        share_stor = self.helper._get_share_by_name(share_name,
+                                                    share_url_type)
+        if not share_stor:
+            err_msg = (_("Share %s does not exist on the backend.")
                        % share_name)
             LOG.error(err_msg)
-            raise exception.InvalidShareAccess(reason=err_msg)
+            raise exception.ShareResourceNotFound(share_id=share['id'])
 
-        share_id = share['ID']
+        share_id = share_stor['ID']
 
         # Check if access already exists
         access_id = self.helper._get_access_from_share(share_id,

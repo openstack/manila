@@ -1,0 +1,3 @@
+---
+fixes:
+  - Fix exception in update_access not found in Huawei driver.
