@@ -43,7 +43,7 @@ class HuaweiNasDriver(driver.ShareDriver):
     """Huawei Share Driver.
 
     Executes commands relating to Shares.
-    API version history:
+    API version history::
 
         1.0 - Initial version.
         1.1 - Add shrink share.

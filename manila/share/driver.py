@@ -680,14 +680,27 @@ class ShareDriver(object):
         the failure.
 
         :param snapshot: ShareSnapshotInstance model with ShareSnapshot data.
-                         Example:
-                         {'id': <instance id>, 'snapshot_id': < snapshot id>,
-                          'provider_location': <location>, ......}
+
+        Example::
+            {
+            'id': <instance id>,
+            'snapshot_id': < snapshot id>,
+            'provider_location': <location>,
+            ...
+            }
+
         :param driver_options: Optional driver-specific options provided
-                               by admin. Example:
-                               {'key': 'value', ......}
+            by admin.
+
+        Example::
+
+            {
+            'key': 'value',
+            ...
+            }
+
         :return: model_update dictionary with required key 'size',
-                 which should contain size of the share snapshot.
+            which should contain size of the share snapshot.
         """
         raise NotImplementedError()
 

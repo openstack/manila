@@ -27,13 +27,15 @@ class ShareReplicationFilter(base_host.BaseHostFilter):
         """Return True if 'active' replica's host can replicate with host.
 
         Design of this filter:
+
             - Share replication is symmetric. All backends that can
-            replicate between each other must share the same
-            'replication_domain'.
+              replicate between each other must share the same
+              'replication_domain'.
             - For scheduling a share that can be replicated in the future,
-            this filter checks for 'replication_domain' capability.
+              this filter checks for 'replication_domain' capability.
             - For scheduling a replica, it checks for the
-            'replication_domain' compatibility.
+              'replication_domain' compatibility.
+
         """
         active_replica_host = filter_properties.get('request_spec', {}).get(
             'active_replica_host')

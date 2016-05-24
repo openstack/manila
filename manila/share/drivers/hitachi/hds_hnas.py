@@ -140,15 +140,15 @@ class HDSHNASDriver(driver.ShareDriver):
         :param context: The `context.RequestContext` object for the request
         :param share: Share that will have its access rules updated.
         :param access_rules: All access rules for given share. This list
-        is enough to update the access rules for given share.
+            is enough to update the access rules for given share.
         :param add_rules: Empty List or List of access rules which should be
-        added. access_rules already contains these rules. Not used by this
-        driver.
+            added. access_rules already contains these rules. Not used by this
+            driver.
         :param delete_rules: Empty List or List of access rules which should be
-        removed. access_rules doesn't contain these rules. Not used by
-        this driver.
+            removed. access_rules doesn't contain these rules. Not used by
+            this driver.
         :param share_server: Data structure with share server information.
-        Not used by this driver.
+            Not used by this driver.
         """
 
         try:
@@ -186,9 +186,9 @@ class HDSHNASDriver(driver.ShareDriver):
         :param context: The `context.RequestContext` object for the request
         :param share: Share that will be created.
         :param share_server: Data structure with share server information.
-        Not used by this driver.
+            Not used by this driver.
         :returns: Returns a path of EVS IP concatenate with the path
-        of share in the filesystem (e.g. ['172.24.44.10:/shares/id']).
+            of share in the filesystem (e.g. ['172.24.44.10:/shares/id']).
         """
         LOG.debug("Creating share in HNAS: %(shr)s.",
                   {'shr': share['id']})
@@ -210,7 +210,7 @@ class HDSHNASDriver(driver.ShareDriver):
         :param context: The `context.RequestContext` object for the request
         :param share: Share that will be deleted.
         :param share_server: Data structure with share server information.
-        Not used by this driver.
+            Not used by this driver.
         """
         share_id = self._get_hnas_share_id(share['id'])
 
@@ -225,7 +225,7 @@ class HDSHNASDriver(driver.ShareDriver):
         :param context: The `context.RequestContext` object for the request
         :param snapshot: Snapshot that will be created.
         :param share_server: Data structure with share server information.
-        Not used by this driver.
+            Not used by this driver.
         """
         share_id = self._get_hnas_share_id(snapshot['share_id'])
 
@@ -242,8 +242,8 @@ class HDSHNASDriver(driver.ShareDriver):
 
         :param context: The `context.RequestContext` object for the request
         :param snapshot: Snapshot that will be deleted.
-        :param share_server:Data structure with share server information.
-        Not used by this driver.
+        :param share_server: Data structure with share server information.
+            Not used by this driver.
         """
         share_id = self._get_hnas_share_id(snapshot['share_id'])
 
@@ -262,11 +262,11 @@ class HDSHNASDriver(driver.ShareDriver):
         :param context: The `context.RequestContext` object for the request
         :param share: Information about the new share.
         :param snapshot: Information about the snapshot that will be copied
-        to new share.
+            to new share.
         :param share_server: Data structure with share server information.
-        Not used by this driver.
+            Not used by this driver.
         :returns: Returns a path of EVS IP concatenate with the path
-        of new share in the filesystem (e.g. ['172.24.44.10:/shares/id']).
+            of new share in the filesystem (e.g. ['172.24.44.10:/shares/id']).
         """
         LOG.debug("Creating a new share from snapshot: %(ss_id)s.",
                   {'ss_id': snapshot['id']})
@@ -284,9 +284,9 @@ class HDSHNASDriver(driver.ShareDriver):
         :param context: The `context.RequestContext` object for the request
         :param share: Share that will be checked.
         :param share_server: Data structure with share server information.
-        Not used by this driver.
+            Not used by this driver.
         :returns: Returns a list of EVS IP concatenated with the path
-        of share in the filesystem (e.g. ['172.24.44.10:/shares/id']).
+            of share in the filesystem (e.g. ['172.24.44.10:/shares/id']).
         """
         LOG.debug("Ensuring share in HNAS: %(shr)s.",
                   {'shr': share['id']})
@@ -308,7 +308,7 @@ class HDSHNASDriver(driver.ShareDriver):
         :param share: Share that will be extended.
         :param new_size: New size of share.
         :param share_server: Data structure with share server information.
-        Not used by this driver.
+            Not used by this driver.
         """
         share_id = self._get_hnas_share_id(share['id'])
 
@@ -365,7 +365,7 @@ class HDSHNASDriver(driver.ShareDriver):
         :param share: Share that will be managed.
         :param driver_options: Empty dict or dict with 'volume_id' option.
         :returns: Returns a dict with size of share managed
-        and its location (your path in file-system).
+            and its location (your path in file-system).
         """
         share_id = self._get_hnas_share_id(share['id'])
 
@@ -426,7 +426,7 @@ class HDSHNASDriver(driver.ShareDriver):
         :param share: Share that will be shrunk.
         :param new_size: New size of share.
         :param share_server: Data structure with share server information.
-        Not used by this driver.
+            Not used by this driver.
         """
         share_id = self._get_hnas_share_id(share['id'])
 
@@ -453,7 +453,7 @@ class HDSHNASDriver(driver.ShareDriver):
         :param share_id: ID of share that will be created.
         :param share_size: Size limit of share.
         :returns: Returns a path of /shares/share_id if the export was
-        created successfully.
+            created successfully.
         """
         path = '/shares/' + share_id
 
@@ -559,7 +559,7 @@ class HDSHNASDriver(driver.ShareDriver):
 
         :param share_id: ID of share that will be managed.
         :returns: Returns a dict with size of share managed
-        and its location (your path in file-system).
+            and its location (your path in file-system).
         """
         self._ensure_share(share_id)
 
@@ -622,7 +622,7 @@ class HDSHNASDriver(driver.ShareDriver):
         set a quota limit for it and export.
         :param share: a dict from new share.
         :param snapshot: a dict from snapshot that will be copied to
-        new share.
+            new share.
         :returns: Returns the path for new share.
         """
         dest_path = '/shares/' + share['id']

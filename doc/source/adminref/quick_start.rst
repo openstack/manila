@@ -170,7 +170,7 @@ Result::
     +-------------+----------------------------------+
 
 
-4) Create the Share Filesystems service API endpoints::
+4) Create the Share Filesystems service API endpoints:
 
 .. code-block:: console
 
