@@ -222,8 +222,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self.config = configuration.Configuration(opts, 'CUSTOM')
             self._manager = service_instance.ServiceInstanceManager(
                 self.config)
-        self.assertEqual(
-            True,
+        self.assertTrue(
             self._manager.get_config_option("driver_handles_share_servers"))
         self.assertIsNotNone(self._manager.driver_config)
         self.assertTrue(hasattr(self._manager, 'network_helper'))
@@ -255,8 +254,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             service_instance_network_helper_type=service_instance.NOVA_NAME))
         with test_utils.create_temp_config_with_opts(config_data):
             self._manager = service_instance.ServiceInstanceManager()
-        self.assertEqual(
-            True,
+        self.assertTrue(
             self._manager.get_config_option("driver_handles_share_servers"))
         self.assertIsNone(self._manager.driver_config)
         self.assertTrue(hasattr(self._manager, 'network_helper'))
@@ -309,8 +307,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                 "service_instance_name_template") % "%s_%s" % (
                     self._manager.driver_config.config_group, fake_server_id),
             result)
-        self.assertEqual(
-            True,
+        self.assertTrue(
             self._manager.get_config_option("driver_handles_share_servers"))
         self.assertTrue(hasattr(self._manager, 'network_helper'))
         self.assertTrue(service_instance.NovaNetworkHelper.called)

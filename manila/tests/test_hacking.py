@@ -243,3 +243,10 @@ class HackingTestCase(test.TestCase):
         self.assertEqual(1, len(list(checks.no_xrange("xrange(45)"))))
 
         self.assertEqual(0, len(list(checks.no_xrange("range(45)"))))
+
+    def test_validate_assertTrue(self):
+        test_value = True
+        self.assertEqual(0, len(list(checks.validate_assertTrue(
+            "assertTrue(True)"))))
+        self.assertEqual(1, len(list(checks.validate_assertTrue(
+            "assertEqual(True, %s)" % test_value))))

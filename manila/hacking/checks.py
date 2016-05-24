@@ -56,6 +56,8 @@ custom_underscore_check = re.compile(r"(.)*_\s*=\s*(.)*")
 oslo_namespace_imports = re.compile(r"from[\s]*oslo[.](.*)")
 dict_constructor_with_list_copy_re = re.compile(r".*\bdict\((\[)?(\(|\[)")
 assert_no_xrange_re = re.compile(r"\s*xrange\s*\(")
+assert_True = re.compile(
+    r".*assertEqual\(True, .*\)")
 
 
 class BaseASTChecker(ast.NodeVisitor):
@@ -249,6 +251,13 @@ def no_xrange(logical_line):
         yield(0, "M337: Do not use xrange().")
 
 
+def validate_assertTrue(logical_line):
+    if re.match(assert_True, logical_line):
+        msg = ("M313: Unit tests should use assertTrue(value) instead"
+               " of using assertEqual(True, value).")
+        yield(0, msg)
+
+
 def factory(register):
     register(validate_log_translations)
     register(check_explicit_underscore_import)
@@ -258,3 +267,4 @@ def factory(register):
     register(check_oslo_namespace_imports)
     register(dict_constructor_with_list_copy)
     register(no_xrange)
+    register(validate_assertTrue)
