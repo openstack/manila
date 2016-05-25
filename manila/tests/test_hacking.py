@@ -250,3 +250,10 @@ class HackingTestCase(test.TestCase):
             "assertTrue(True)"))))
         self.assertEqual(1, len(list(checks.validate_assertTrue(
             "assertEqual(True, %s)" % test_value))))
+
+    def test_validate_assertIsNone(self):
+        test_value = None
+        self.assertEqual(0, len(list(checks.validate_assertIsNone(
+            "assertIsNone(None)"))))
+        self.assertEqual(1, len(list(checks.validate_assertIsNone(
+            "assertEqual(None, %s)" % test_value))))
