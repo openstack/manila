@@ -55,11 +55,26 @@ How do I add a release note?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We use `Reno <http://docs.openstack.org/developer/reno>`_ to create and manage
-release notes. To create a release note for your change, use:
+release notes. The new subcommand combines a random suffix with a “slug” value
+to make the new file with a unique name that is easy to identify again later.
+To create a release note for your change, use:
 
 .. code-block:: console
 
-    $ reno new my_fancy_new_change
+    $ reno new slug-goes-here
+
+If reno is not installed globally on your system, you can use it from venv
+of your manila's tox. Prior to running the above command, run:
+
+.. code-block:: console
+
+    $ source .tox/py27/bin/activate
+
+Or directly as a one-liner, with:
+
+.. code-block:: console
+
+    $ tox -e venv -- reno new slug-goes-here
 
 Then add the notes in ``yaml`` format in the file created. Pay attention to the
 type of section. The following are general sections to use:
