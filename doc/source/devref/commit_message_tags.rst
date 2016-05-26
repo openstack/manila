@@ -1,3 +1,5 @@
+.. _commit_message_tags:
+
 Using Commit Message Tags in Manila
 ===================================
 
@@ -22,6 +24,8 @@ placed on a separate line. The following tags are used in manila.
   updates to documentation in order to be understood. This tag can also be
   used if the documentation is provided along with the patch itself. This will
   also generate a Launchpad bug in manila for triaging and tracking.
+  Refer to the section on :ref:`documenting_your_work` to understand where
+  to add documentation.
 - **Implements: | Partially Implements:** *blueprint <name_of_blueprint>* - Use
   this tag when a change implements or partially implements the given blueprint
   in Launchpad. This will automatically generate a link to the blueprint in
