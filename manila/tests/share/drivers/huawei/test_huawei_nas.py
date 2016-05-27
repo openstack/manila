@@ -450,10 +450,20 @@ class FakeHuaweiNasHelper(helper.RestHelper):
 
             if url == "/FSSNAPSHOT/4@share_snapshot_fake_snapshot_uuid":
                 if self.snapshot_flag:
-                    data = """{"error":{"code":0},"data":{"ID":"3"}}"""
+                    data = """{"error":{"code":0},
+                        "data":{"ID":"4@share_snapshot_fake_snapshot_uuid"}}"""
                 else:
                     data = '{"error":{"code":1073754118}}'
                 self.delete_flag = True
+
+            if url == "/FSSNAPSHOT/4@fake_storage_snapshot_name":
+                if self.snapshot_flag:
+                    data = """{"error":{"code":0},
+                        "data":{"ID":"4@share_snapshot_fake_snapshot_uuid",
+                        "NAME":"share_snapshot_fake_snapshot_uuid",
+                        "HEALTHSTATUS":"1"}}"""
+                else:
+                    data = '{"error":{"code":1073754118}}'
 
             if url == "/FSSNAPSHOT/3":
                 data = """{"error":{"code":0}}"""
@@ -932,6 +942,40 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'snapshot_id': 'fake_snapshot_uuid',
             'display_name': 'snapshot',
             'name': 'fake_snapshot_name',
+            'size': 1,
+            'share_name': 'share_fake_uuid',
+            'share_id': 'fake_uuid',
+            'share': {
+                'share_name': 'share_fake_uuid',
+                'share_id': 'fake_uuid',
+                'share_size': 1,
+                'share_proto': 'CIFS',
+            },
+        }
+
+        self.storage_nfs_snapshot = {
+            'id': 'fake_snapshot_uuid',
+            'snapshot_id': 'fake_snapshot_uuid',
+            'display_name': 'snapshot',
+            'name': 'fake_snapshot_name',
+            'provider_location': 'fake_storage_snapshot_name',
+            'size': 1,
+            'share_name': 'share_fake_uuid',
+            'share_id': 'fake_uuid',
+            'share': {
+                'share_name': 'share_fake_uuid',
+                'share_id': 'fake_uuid',
+                'share_size': 1,
+                'share_proto': 'NFS',
+            },
+        }
+
+        self.storage_cifs_snapshot = {
+            'id': 'fake_snapshot_uuid',
+            'snapshot_id': 'fake_snapshot_uuid',
+            'display_name': 'snapshot',
+            'name': 'fake_snapshot_name',
+            'provider_location': 'fake_storage_snapshot_name',
             'size': 1,
             'share_name': 'share_fake_uuid',
             'share_id': 'fake_uuid',
@@ -1762,12 +1806,14 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertTrue(self.driver.plugin.helper.delete_flag)
 
     def test_check_snapshot_id_exist_fail(self):
-        snapshot_id = "4"
+        snapshot_id = "4@share_snapshot_not_exist"
         self.driver.plugin.helper.login()
         self.driver.plugin.helper.test_normal = False
-        self.assertRaises(exception.InvalidShare,
+        snapshot_info = self.driver.plugin.helper._get_snapshot_by_id(
+            snapshot_id)
+        self.assertRaises(exception.InvalidShareSnapshot,
                           self.driver.plugin.helper._check_snapshot_id_exist,
-                          snapshot_id)
+                          snapshot_info)
 
     def test_delete_share_nfs_fail_not_exist(self):
         self.driver.plugin.helper.login()
@@ -2135,7 +2181,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         expected["share_backend_name"] = "fake_share_backend_name"
         expected["driver_handles_share_servers"] = False
         expected["vendor_name"] = 'Huawei'
-        expected["driver_version"] = '1.2'
+        expected["driver_version"] = '1.3'
         expected["storage_protocol"] = 'NFS_CIFS'
         expected['reserved_percentage'] = 0
         expected['total_capacity_gb'] = 0.0
@@ -2774,6 +2820,56 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           self.driver.manage_existing,
                           self.share_nfs,
+                          self.driver_options)
+
+    @ddt.data({"share_proto": "NFS",
+               "provider_location": "share_snapshot_fake_snapshot_uuid"},
+              {"share_proto": "CIFS",
+               "provider_location": "share_snapshot_fake_snapshot_uuid"})
+    @ddt.unpack
+    def test_manage_existing_snapshot_success(self, share_proto,
+                                              provider_location):
+        if share_proto == "NFS":
+            snapshot = self.storage_nfs_snapshot
+        elif share_proto == "CIFS":
+            snapshot = self.storage_cifs_snapshot
+        self.driver.plugin.helper.login()
+        snapshot_info = self.driver.manage_existing_snapshot(
+            snapshot, self.driver_options)
+        self.assertEqual(provider_location, snapshot_info['provider_location'])
+
+    def test_manage_existing_snapshot_share_not_exist(self):
+        self.driver.plugin.helper.login()
+        self.mock_object(self.driver.plugin.helper,
+                         '_get_share_by_name',
+                         mock.Mock(return_value={}))
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.manage_existing_snapshot,
+                          self.storage_nfs_snapshot,
+                          self.driver_options)
+
+    def test_manage_existing_snapshot_sharesnapshot_not_exist(self):
+        self.driver.plugin.helper.login()
+        self.mock_object(self.driver.plugin.helper,
+                         '_check_snapshot_id_exist',
+                         mock.Mock(return_value={}))
+        self.assertRaises(exception.ManageInvalidShareSnapshot,
+                          self.driver.manage_existing_snapshot,
+                          self.storage_nfs_snapshot,
+                          self.driver_options)
+
+    def test_manage_existing_snapshot_sharesnapshot_not_normal(self):
+        snapshot_info = {"error": {"code": 0},
+                         "data": {"ID": "4@share_snapshot_fake_snapshot_uuid",
+                                  "NAME": "share_snapshot_fake_snapshot_uuid",
+                                  "HEALTHSTATUS": "2"}}
+        self.driver.plugin.helper.login()
+        self.mock_object(self.driver.plugin.helper,
+                         '_get_snapshot_by_id',
+                         mock.Mock(return_value=snapshot_info))
+        self.assertRaises(exception.ManageInvalidShareSnapshot,
+                          self.driver.manage_existing_snapshot,
+                          self.storage_nfs_snapshot,
                           self.driver_options)
 
     def test_get_pool_success(self):

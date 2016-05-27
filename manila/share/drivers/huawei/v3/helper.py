@@ -588,23 +588,25 @@ class RestHelper(object):
 
         return share_client_type
 
-    def _check_snapshot_id_exist(self, snap_id):
+    def _check_snapshot_id_exist(self, snapshot_info):
         """Check the snapshot id exists."""
-        url_subfix = "/FSSNAPSHOT/" + snap_id
 
-        url = url_subfix
-        result = self.call(url, None, "GET")
-
-        if result['error']['code'] == constants.MSG_SNAPSHOT_NOT_FOUND:
+        if snapshot_info['error']['code'] == constants.MSG_SNAPSHOT_NOT_FOUND:
             return False
-        elif result['error']['code'] == 0:
+        elif snapshot_info['error']['code'] == 0:
             return True
         else:
             err_str = "Check the snapshot id exists error!"
             err_msg = (_('%(err)s\nresult: %(res)s.') % {'err': err_str,
-                                                         'res': result})
-            LOG.error(err_msg)
-            raise exception.InvalidShare(reason=err_msg)
+                                                         'res': snapshot_info})
+            raise exception.InvalidShareSnapshot(reason=err_msg)
+
+    def _get_snapshot_by_id(self, snap_id):
+        """Get snapshot by id"""
+        url = "/FSSNAPSHOT/" + snap_id
+
+        result = self.call(url, None, "GET")
+        return result
 
     def _delete_snapshot(self, snap_id):
         """Deletes snapshot."""
@@ -850,6 +852,14 @@ class RestHelper(object):
 
         self._assert_rest_result(result,
                                  _('Remove filesystem from partition error.'))
+
+    def _rename_share_snapshot(self, snapshot_id, new_name):
+        url = "/FSSNAPSHOT/" + snapshot_id
+        data = jsonutils.dumps({"NAME": new_name})
+        result = self.call(url, data, "PUT")
+        msg = _('Rename share snapshot on array error.')
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)
 
     def _get_cache_id_by_name(self, name):
         url = "/SMARTCACHEPARTITION"

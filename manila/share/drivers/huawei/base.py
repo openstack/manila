@@ -78,6 +78,10 @@ class HuaweiBase(object):
         """Manage existing share."""
 
     @abc.abstractmethod
+    def manage_existing_snapshot(self, snapshot, driver_options):
+        """Manage existing snapshot."""
+
+    @abc.abstractmethod
     def get_network_allocations_number(self):
         """Get number of network interfaces to be created."""
 

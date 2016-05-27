@@ -43,7 +43,7 @@ class HuaweiNasDriver(driver.ShareDriver):
     """Huawei Share Driver.
 
     Executes commands relating to Shares.
-    API version history::
+    Driver version history:
 
         1.0 - Initial version.
         1.1 - Add shrink share.
@@ -56,6 +56,7 @@ class HuaweiNasDriver(driver.ShareDriver):
               Add ensure share.
               Add QoS support.
               Add create share from snapshot.
+        1.3 - Add manage snapshot.
     """
 
     def __init__(self, *args, **kwargs):
@@ -134,7 +135,8 @@ class HuaweiNasDriver(driver.ShareDriver):
     def create_snapshot(self, context, snapshot, share_server=None):
         """Create a snapshot."""
         LOG.debug("Create a snapshot.")
-        self.plugin.create_snapshot(snapshot, share_server)
+        snapshot_name = self.plugin.create_snapshot(snapshot, share_server)
+        return {'provider_location': snapshot_name}
 
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Delete a snapshot."""
@@ -181,6 +183,13 @@ class HuaweiNasDriver(driver.ShareDriver):
                                                            driver_options)
         return {'size': share_size, 'export_locations': location}
 
+    def manage_existing_snapshot(self, snapshot, driver_options):
+        """Manage existing snapshot."""
+        LOG.debug("Manage existing snapshot to manila.")
+        snapshot_name = self.plugin.manage_existing_snapshot(snapshot,
+                                                             driver_options)
+        return {'provider_location': snapshot_name}
+
     def _update_share_stats(self):
         """Retrieve status info from share group."""
 
@@ -188,7 +197,7 @@ class HuaweiNasDriver(driver.ShareDriver):
         data = dict(
             share_backend_name=backend_name or 'HUAWEI_NAS_Driver',
             vendor_name='Huawei',
-            driver_version='1.2',
+            driver_version='1.3',
             storage_protocol='NFS_CIFS',
             qos=True,
             total_capacity_gb=0.0,

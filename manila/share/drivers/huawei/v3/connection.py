@@ -248,6 +248,7 @@ class V3StorageConnection(driver.HuaweiBase):
         snap_id = self.helper._create_snapshot(sharefsid,
                                                snapshot_name)
         LOG.info(_LI('Creating snapshot id %s.'), snap_id)
+        return snapshot_name.replace("-", "_")
 
     def delete_snapshot(self, snapshot, share_server=None):
         """Delete a snapshot."""
@@ -262,7 +263,8 @@ class V3StorageConnection(driver.HuaweiBase):
             return
 
         snapshot_id = self.helper._get_snapshot_id(sharefsid, snap_name)
-        snapshot_flag = self.helper._check_snapshot_id_exist(snapshot_id)
+        snapshot_info = self.helper._get_snapshot_by_id(snapshot_id)
+        snapshot_flag = self.helper._check_snapshot_id_exist(snapshot_info)
 
         if snapshot_flag:
             self.helper._delete_snapshot(snapshot_id)
@@ -358,7 +360,8 @@ class V3StorageConnection(driver.HuaweiBase):
                 name=snapshot['share_name'])
 
         snapshot_id = self.helper._get_snapshot_id(share_fs_id, snapshot['id'])
-        snapshot_flag = self.helper._check_snapshot_id_exist(snapshot_id)
+        snapshot_info = self.helper._get_snapshot_by_id(snapshot_id)
+        snapshot_flag = self.helper._check_snapshot_id_exist(snapshot_info)
         if not snapshot_flag:
             err_msg = (_("Cannot find snapshot %s on array.")
                        % snapshot['snapshot_id'])
@@ -872,6 +875,51 @@ class V3StorageConnection(driver.HuaweiBase):
         self.helper._change_fs_name(fs_id, share_name)
         location = self._get_location_path(share_name, share_proto)
         return (share_size, [location])
+
+    def _check_snapshot_valid_for_manage(self, snapshot_info):
+        snapshot_name = snapshot_info['data']['NAME']
+
+        # Check whether the snapshot is normal.
+        if (snapshot_info['data']['HEALTHSTATUS']
+                != constants.STATUS_FSSNAPSHOT_HEALTH):
+            msg = (_("Can't import snapshot %(snapshot)s to Manila. "
+                     "Snapshot status is not normal, snapshot status: "
+                     "%(status)s.")
+                   % {'snapshot': snapshot_name,
+                      'status': snapshot_info['data']['HEALTHSTATUS']})
+            raise exception.ManageInvalidShareSnapshot(
+                reason=msg)
+
+    def manage_existing_snapshot(self, snapshot, driver_options):
+        """Manage existing snapshot."""
+
+        share_proto = snapshot['share']['share_proto']
+        share_url_type = self.helper._get_share_url_type(share_proto)
+        share_storage = self.helper._get_share_by_name(snapshot['share_name'],
+                                                       share_url_type)
+        if not share_storage:
+            err_msg = (_("Failed to import snapshot %(snapshot)s to Manila. "
+                         "Snapshot source share %(share)s doesn't exist "
+                         "on array.")
+                       % {'snapshot': snapshot['provider_location'],
+                          'share': snapshot['share_name']})
+            raise exception.InvalidShare(reason=err_msg)
+        sharefsid = share_storage['FSID']
+
+        provider_location = snapshot.get('provider_location')
+        snapshot_id = sharefsid + "@" + provider_location
+        snapshot_info = self.helper._get_snapshot_by_id(snapshot_id)
+        snapshot_flag = self.helper._check_snapshot_id_exist(snapshot_info)
+        if not snapshot_flag:
+            err_msg = (_("Cannot find snapshot %s on array.")
+                       % snapshot['provider_location'])
+            raise exception.ManageInvalidShareSnapshot(reason=err_msg)
+        else:
+            self._check_snapshot_valid_for_manage(snapshot_info)
+            snapshot_name = ("share_snapshot_"
+                             + snapshot['id'].replace("-", "_"))
+            self.helper._rename_share_snapshot(snapshot_id, snapshot_name)
+        return snapshot_name
 
     def check_retype_change_opts(self, opts, poolinfo, fs):
         change_opts = {
