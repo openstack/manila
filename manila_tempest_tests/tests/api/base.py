@@ -21,6 +21,7 @@ import traceback
 from oslo_concurrency import lockutils
 from oslo_log import log
 import six
+from tempest import clients
 from tempest.common import credentials_factory as common_creds
 from tempest.common import dynamic_creds
 from tempest import config
@@ -28,8 +29,10 @@ from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions
 from tempest import test
 
-from manila_tempest_tests import clients_share as clients
 from manila_tempest_tests.common import constants
+from manila_tempest_tests.services.share.json import shares_client
+from manila_tempest_tests.services.share.v2.json import (
+    shares_client as shares_v2_client)
 from manila_tempest_tests import share_exceptions
 from manila_tempest_tests import utils
 
@@ -118,6 +121,7 @@ skip_if_microversion_lt = utils.skip_if_microversion_lt
 class BaseSharesTest(test.BaseTestCase):
     """Base test case class for all Manila API tests."""
 
+    credentials = ('primary', )
     force_tenant_isolation = False
     protocols = ["nfs", "cifs", "glusterfs", "hdfs", "cephfs"]
 
@@ -178,15 +182,15 @@ class BaseSharesTest(test.BaseTestCase):
         elif "alt" in type_of_creds:
             creds = ic.get_alt_creds()
         else:
-            creds = ic.self.get_credentials(type_of_creds)
+            creds = ic.get_credentials(type_of_creds)
         ic.type_of_creds = type_of_creds
 
         # create client with isolated creds
         os = clients.Manager(credentials=creds)
         if client_version == '1':
-            client = os.shares_client
+            client = shares_client.SharesClient(os.auth_provider)
         elif client_version == '2':
-            client = os.shares_v2_client
+            client = shares_v2_client.SharesV2Client(os.auth_provider)
 
         # Set place where will be deleted isolated creds
         ic_res = {
@@ -223,6 +227,23 @@ class BaseSharesTest(test.BaseTestCase):
             raise cls.skipException(msg)
 
     @classmethod
+    def setup_clients(cls):
+        super(BaseSharesTest, cls).setup_clients()
+        os = getattr(cls, 'os_%s' % cls.credentials[0])
+        os.shares_client = shares_client.SharesClient(os.auth_provider)
+        cls.shares_client = os.shares_client
+        os.shares_v2_client = shares_v2_client.SharesV2Client(
+            os.auth_provider)
+        cls.shares_v2_client = os.shares_v2_client
+        if CONF.share.multitenancy_enabled:
+            if not CONF.service_available.neutron:
+                raise cls.skipException("Neutron support is required")
+            share_network_id = cls.provide_share_network(
+                cls.shares_v2_client, os.networks_client)
+            cls.shares_client.share_network_id = share_network_id
+            cls.shares_v2_client.share_network_id = share_network_id
+
+    @classmethod
     def resource_setup(cls):
         if not (any(p in CONF.share.enable_protocols
                     for p in cls.protocols) and
@@ -230,22 +251,6 @@ class BaseSharesTest(test.BaseTestCase):
             skip_msg = "Manila is disabled"
             raise cls.skipException(skip_msg)
         super(BaseSharesTest, cls).resource_setup()
-        if not hasattr(cls, "os"):
-            cls.username = CONF.identity.username
-            cls.password = CONF.identity.password
-            cls.project_name = CONF.identity.project_name
-            cls.verify_nonempty(cls.username, cls.password, cls.project_name)
-            cls.os = clients.Manager()
-        if CONF.share.multitenancy_enabled:
-            if not CONF.service_available.neutron:
-                raise cls.skipException("Neutron support is required")
-            sc = cls.os.shares_client
-            nc = cls.os.networks_client
-            share_network_id = cls.provide_share_network(sc, nc)
-            cls.os.shares_client.share_network_id = share_network_id
-            cls.os.shares_v2_client.share_network_id = share_network_id
-        cls.shares_client = cls.os.shares_client
-        cls.shares_v2_client = cls.os.shares_v2_client
 
     def setUp(self):
         super(BaseSharesTest, self).setUp()
@@ -418,8 +423,7 @@ class BaseSharesTest(test.BaseTestCase):
         :returns: list -- list of shares created using provided data.
         """
 
-        data = [copy.deepcopy(d) for d in share_data_list]
-        for d in data:
+        for d in share_data_list:
             if not isinstance(d, dict):
                 raise exceptions.TempestException(
                     "Expected 'dict', got '%s'" % type(d))
@@ -431,11 +435,20 @@ class BaseSharesTest(test.BaseTestCase):
                 raise exceptions.TempestException(
                     "Expected only 'args' and 'kwargs' keys. "
                     "Provided %s" % list(d))
-            d["kwargs"]["client"] = d["kwargs"].get(
-                "client", cls.shares_v2_client)
-            d["share"] = cls._create_share(*d["args"], **d["kwargs"])
-            d["cnt"] = 0
-            d["available"] = False
+
+        data = []
+        for d in share_data_list:
+            client = d["kwargs"].pop("client", cls.shares_v2_client)
+            local_d = {
+                "args": d["args"],
+                "kwargs": copy.deepcopy(d["kwargs"]),
+            }
+            local_d["kwargs"]["client"] = client
+            local_d["share"] = cls._create_share(
+                *local_d["args"], **local_d["kwargs"])
+            local_d["cnt"] = 0
+            local_d["available"] = False
+            data.append(local_d)
 
         while not all(d["available"] for d in data):
             for d in data:
@@ -836,36 +849,38 @@ class BaseSharesTest(test.BaseTestCase):
 
 class BaseSharesAltTest(BaseSharesTest):
     """Base test case class for all Shares Alt API tests."""
-
-    @classmethod
-    def resource_setup(cls):
-        cls.username = CONF.identity.alt_username
-        cls.password = CONF.identity.alt_password
-        cls.project_name = CONF.identity.alt_project_name
-        cls.verify_nonempty(cls.username, cls.password, cls.project_name)
-        cls.os = clients.AltManager()
-        alt_share_network_id = CONF.share.alt_share_network_id
-        cls.os.shares_client.share_network_id = alt_share_network_id
-        cls.os.shares_v2_client.share_network_id = alt_share_network_id
-        super(BaseSharesAltTest, cls).resource_setup()
+    credentials = ('alt', )
 
 
 class BaseSharesAdminTest(BaseSharesTest):
     """Base test case class for all Shares Admin API tests."""
+    credentials = ('admin', )
+
+
+class BaseSharesMixedTest(BaseSharesTest):
+    """Base test case class for all Shares API tests with all user roles."""
+    credentials = ('primary', 'alt', 'admin')
 
     @classmethod
-    def resource_setup(cls):
-        if hasattr(CONF.identity, 'admin_username'):
-            cls.username = CONF.identity.admin_username
-            cls.password = CONF.identity.admin_password
-            cls.project_name = CONF.identity.admin_project_name
-        else:
-            cls.username = CONF.auth.admin_username
-            cls.password = CONF.auth.admin_password
-            cls.project_name = CONF.auth.admin_project_name
-        cls.verify_nonempty(cls.username, cls.password, cls.project_name)
-        cls.os = clients.AdminManager()
-        admin_share_network_id = CONF.share.admin_share_network_id
-        cls.os.shares_client.share_network_id = admin_share_network_id
-        cls.os.shares_v2_client.share_network_id = admin_share_network_id
-        super(BaseSharesAdminTest, cls).resource_setup()
+    def setup_clients(cls):
+        super(BaseSharesMixedTest, cls).setup_clients()
+        cls.admin_shares_client = shares_client.SharesClient(
+            cls.os_admin.auth_provider)
+        cls.admin_shares_v2_client = shares_v2_client.SharesV2Client(
+            cls.os_admin.auth_provider)
+        cls.alt_shares_client = shares_client.SharesClient(
+            cls.os_alt.auth_provider)
+        cls.alt_shares_v2_client = shares_v2_client.SharesV2Client(
+            cls.os_alt.auth_provider)
+
+        if CONF.share.multitenancy_enabled:
+            admin_share_network_id = cls.provide_share_network(
+                cls.admin_shares_v2_client, cls.os_admin.networks_client)
+            cls.admin_shares_client.share_network_id = admin_share_network_id
+            cls.admin_shares_v2_client.share_network_id = (
+                admin_share_network_id)
+
+            alt_share_network_id = cls.provide_share_network(
+                cls.alt_shares_v2_client, cls.os_alt.networks_client)
+            cls.alt_shares_client.share_network_id = alt_share_network_id
+            cls.alt_shares_v2_client.share_network_id = alt_share_network_id

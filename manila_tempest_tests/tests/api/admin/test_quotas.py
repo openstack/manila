@@ -13,10 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest import config  # noqa
-from tempest import test  # noqa
+from tempest import config
+from tempest import test
 
-from manila_tempest_tests import clients_share as clients
 from manila_tempest_tests.tests.api import base
 
 CONF = config.CONF
@@ -29,7 +28,6 @@ class SharesAdminQuotasTest(base.BaseSharesAdminTest):
         if not CONF.share.run_quota_tests:
             msg = "Quota tests are disabled."
             raise cls.skipException(msg)
-        cls.os = clients.AdminManager()
         super(SharesAdminQuotasTest, cls).resource_setup()
         cls.user_id = cls.shares_v2_client.user_id
         cls.tenant_id = cls.shares_v2_client.tenant_id
@@ -73,7 +71,6 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         if not CONF.share.run_quota_tests:
             msg = "Quota tests are disabled."
             raise cls.skipException(msg)
-        cls.os = clients.AdminManager()
         super(SharesAdminQuotasUpdateTest, cls).resource_setup()
 
     def setUp(self):

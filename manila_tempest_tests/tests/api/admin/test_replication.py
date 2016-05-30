@@ -18,7 +18,6 @@ from tempest.lib.common.utils import data_utils
 from tempest import test
 import testtools
 
-from manila_tempest_tests import clients_share as clients
 from manila_tempest_tests.common import constants
 from manila_tempest_tests import share_exceptions
 from manila_tempest_tests.tests.api import base
@@ -30,14 +29,15 @@ _MIN_SUPPORTED_MICROVERSION = '2.11'
 @testtools.skipUnless(CONF.share.run_replication_tests,
                       'Replication tests are disabled.')
 @base.skip_if_microversion_lt(_MIN_SUPPORTED_MICROVERSION)
-class ReplicationAdminTest(base.BaseSharesAdminTest):
+class ReplicationAdminTest(base.BaseSharesMixedTest):
 
     @classmethod
     def resource_setup(cls):
         super(ReplicationAdminTest, cls).resource_setup()
         # Create share_type
         name = data_utils.rand_name(constants.TEMPEST_MANILA_PREFIX)
-        cls.admin_client = clients.AdminManager().shares_v2_client
+        cls.admin_client = cls.admin_shares_v2_client
+        cls.member_client = cls.shares_v2_client
         cls.replication_type = CONF.share.backend_replication_type
 
         if cls.replication_type not in constants.REPLICATION_TYPE_CHOICES:
@@ -57,8 +57,9 @@ class ReplicationAdminTest(base.BaseSharesAdminTest):
         cls.share_type = share_type["share_type"]
         # Create share with above share_type
         cls.share = cls.create_share(share_type_id=cls.share_type["id"],
-                                     availability_zone=cls.share_zone,)
-        cls.replica = cls.shares_v2_client.list_share_replicas(
+                                     availability_zone=cls.share_zone,
+                                     client=cls.admin_client)
+        cls.replica = cls.admin_client.list_share_replicas(
             share_id=cls.share['id'])[0]
 
     @staticmethod
@@ -75,14 +76,16 @@ class ReplicationAdminTest(base.BaseSharesAdminTest):
             msg = "Option backend_replication_type should be one of (%s)!"
             raise self.skipException(
                 msg % ','.join(constants.REPLICATION_PROMOTION_CHOICES))
-        share = self.create_share(share_type_id=self.share_type['id'])
-        original_replica = self.shares_v2_client.list_share_replicas(
+        share = self.create_share(
+            share_type_id=self.share_type['id'], client=self.admin_client)
+        original_replica = self.admin_client.list_share_replicas(
             share_id=share['id'])[0]
 
         # NOTE(Yogi1): Cleanup needs to be disabled for replica that is
         # being promoted since it will become the 'primary'/'active' replica.
-        replica = self.create_share_replica(share["id"], self.replica_zone,
-                                            cleanup=False)
+        replica = self.create_share_replica(
+            share["id"], self.replica_zone, cleanup=False,
+            client=self.admin_client)
 
         # List replicas
         replica_list = self.admin_client.list_share_replicas(
@@ -96,7 +99,7 @@ class ReplicationAdminTest(base.BaseSharesAdminTest):
         # Set replica_state to 'out_of_sync'
         self.admin_client.reset_share_replica_state(
             replica['id'], constants.REPLICATION_STATE_OUT_OF_SYNC)
-        self.shares_v2_client.wait_for_share_replica_status(
+        self.admin_client.wait_for_share_replica_status(
             replica['id'], constants.REPLICATION_STATE_OUT_OF_SYNC,
             status_attr='replica_state')
 
@@ -107,7 +110,7 @@ class ReplicationAdminTest(base.BaseSharesAdminTest):
         self.addCleanup(self.delete_share_replica, original_replica['id'])
 
         # Check if there is still only 1 'active' replica after promotion.
-        replica_list = self.shares_v2_client.list_share_replicas(
+        replica_list = self.admin_client.list_share_replicas(
             share_id=self.share["id"])
         new_active_replicas = self._filter_share_replica_list(
             replica_list, constants.REPLICATION_STATE_ACTIVE)
@@ -118,24 +121,25 @@ class ReplicationAdminTest(base.BaseSharesAdminTest):
         """Test force deleting a replica that is in 'error_deleting' status."""
         replica = self.create_share_replica(self.share['id'],
                                             self.replica_zone,
-                                            cleanup_in_class=False)
+                                            cleanup_in_class=False,
+                                            client=self.admin_client)
         self.admin_client.reset_share_replica_status(
             replica['id'], constants.STATUS_ERROR_DELETING)
-        self.shares_v2_client.wait_for_share_replica_status(
+        self.admin_client.wait_for_share_replica_status(
             replica['id'], constants.STATUS_ERROR_DELETING)
         self.admin_client.force_delete_share_replica(replica['id'])
-        self.shares_v2_client.wait_for_resource_deletion(
-            replica_id=replica['id'])
+        self.admin_client.wait_for_resource_deletion(replica_id=replica['id'])
 
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_reset_share_replica_status(self):
         """Test resetting a replica's 'status' attribute."""
         replica = self.create_share_replica(self.share['id'],
                                             self.replica_zone,
-                                            cleanup_in_class=False)
+                                            cleanup_in_class=False,
+                                            client=self.admin_client)
         self.admin_client.reset_share_replica_status(replica['id'],
                                                      constants.STATUS_ERROR)
-        self.shares_v2_client.wait_for_share_replica_status(
+        self.admin_client.wait_for_share_replica_status(
             replica['id'], constants.STATUS_ERROR)
 
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
@@ -143,10 +147,11 @@ class ReplicationAdminTest(base.BaseSharesAdminTest):
         """Test resetting a replica's 'replica_state' attribute."""
         replica = self.create_share_replica(self.share['id'],
                                             self.replica_zone,
-                                            cleanup_in_class=False)
+                                            cleanup_in_class=False,
+                                            client=self.admin_client)
         self.admin_client.reset_share_replica_state(replica['id'],
                                                     constants.STATUS_ERROR)
-        self.shares_v2_client.wait_for_share_replica_status(
+        self.admin_client.wait_for_share_replica_status(
             replica['id'], constants.STATUS_ERROR, status_attr='replica_state')
 
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
@@ -154,20 +159,21 @@ class ReplicationAdminTest(base.BaseSharesAdminTest):
         """Test resyncing a replica."""
         replica = self.create_share_replica(self.share['id'],
                                             self.replica_zone,
-                                            cleanup_in_class=False)
-        self.shares_v2_client.wait_for_share_replica_status(
+                                            cleanup_in_class=False,
+                                            client=self.admin_client)
+        self.admin_client.wait_for_share_replica_status(
             replica['id'], constants.REPLICATION_STATE_IN_SYNC,
             status_attr='replica_state')
 
         # Set replica_state to 'out_of_sync'.
         self.admin_client.reset_share_replica_state(
             replica['id'], constants.REPLICATION_STATE_OUT_OF_SYNC)
-        self.shares_v2_client.wait_for_share_replica_status(
+        self.admin_client.wait_for_share_replica_status(
             replica['id'], constants.REPLICATION_STATE_OUT_OF_SYNC,
             status_attr='replica_state')
 
         # Attempt resync
         self.admin_client.resync_share_replica(replica['id'])
-        self.shares_v2_client.wait_for_share_replica_status(
+        self.admin_client.wait_for_share_replica_status(
             replica['id'], constants.REPLICATION_STATE_IN_SYNC,
             status_attr='replica_state')
