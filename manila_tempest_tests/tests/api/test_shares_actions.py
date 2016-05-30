@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import six
 from tempest import config
 from tempest.lib.common.utils import data_utils
@@ -23,8 +24,10 @@ from manila_tempest_tests.tests.api import base
 from manila_tempest_tests import utils
 
 CONF = config.CONF
+LATEST_MICROVERSION = CONF.share.max_api_microversion
 
 
+@ddt.ddt
 class SharesActionsTest(base.BaseSharesTest):
     """Covers share functionality, that doesn't related to share type."""
 
@@ -399,30 +402,58 @@ class SharesActionsTest(base.BaseSharesTest):
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
-    def test_get_snapshot(self):
+    @ddt.data(None, '2.16', LATEST_MICROVERSION)
+    def test_get_snapshot(self, version):
 
         # get snapshot
-        get = self.shares_client.get_snapshot(self.snap["id"])
+        if version is None:
+            snapshot = self.shares_client.get_snapshot(self.snap["id"])
+        else:
+            utils.skip_if_microversion_not_supported(version)
+            snapshot = self.shares_v2_client.get_snapshot(
+                self.snap["id"], version=version)
 
         # verify keys
         expected_keys = ["status", "links", "share_id", "name",
                          "share_proto", "created_at",
-                         "description", "id", "share_size"]
-        actual_keys = get.keys()
-        [self.assertIn(key, actual_keys) for key in expected_keys]
+                         "description", "id", "share_size", "size"]
+        if version and utils.is_microversion_ge(version, '2.17'):
+            expected_keys.extend(["user_id", "project_id"])
+        actual_keys = snapshot.keys()
+
+        # strict key check
+        self.assertEqual(set(expected_keys), set(actual_keys))
 
         # verify data
         msg = "Expected name: '%s', actual name: '%s'" % (self.snap_name,
-                                                          get["name"])
-        self.assertEqual(self.snap_name, get["name"], msg)
+                                                          snapshot["name"])
+        self.assertEqual(self.snap_name, snapshot["name"], msg)
 
-        msg = "Expected description: '%s', "\
-              "actual description: '%s'" % (self.snap_desc, get["description"])
-        self.assertEqual(self.snap_desc, get["description"], msg)
+        msg = ("Expected description: '%s' actual description: '%s'" %
+               (self.snap_desc, snapshot["description"]))
+        self.assertEqual(self.snap_desc, snapshot["description"], msg)
 
-        msg = "Expected share_id: '%s', "\
-              "actual share_id: '%s'" % (self.shares[0]["id"], get["share_id"])
-        self.assertEqual(self.shares[0]["id"], get["share_id"], msg)
+        msg = ("Expected share_id: '%s', actual share_id: '%s'" %
+               (self.shares[0]["id"], snapshot["share_id"]))
+        self.assertEqual(self.shares[0]["id"], snapshot["share_id"], msg)
+
+        # Verify that the user_id and project_id are same as the one for
+        # the base share
+        if version and utils.is_microversion_ge(version, '2.17'):
+            msg = ("Expected %(key)s in snapshot: '%(expected)s', "
+                   "actual %(key)s in snapshot: '%(actual)s'")
+            self.assertEqual(self.shares[0]['user_id'],
+                             snapshot['user_id'],
+                             msg % {
+                                 'expected': self.shares[0]['user_id'],
+                                 'actual': snapshot['user_id'],
+                                 'key': 'user_id'})
+            self.assertEqual(self.shares[0]['project_id'],
+                             snapshot['project_id'],
+                             msg % {
+                                 'expected': self.shares[0]['project_id'],
+                                 'actual': snapshot['project_id'],
+                                 'key': 'project_id'})
 
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
@@ -444,16 +475,26 @@ class SharesActionsTest(base.BaseSharesTest):
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
-    def test_list_snapshots_with_detail(self):
+    @ddt.data(None, '2.16', LATEST_MICROVERSION)
+    def test_list_snapshots_with_detail(self, version):
 
         # list share snapshots
-        snaps = self.shares_client.list_snapshots_with_detail()
+        if version is None:
+            snaps = self.shares_client.list_snapshots_with_detail()
+        else:
+            utils.skip_if_microversion_not_supported(version)
+            snaps = self.shares_v2_client.list_snapshots_with_detail(
+                version=version)
 
         # verify keys
-        keys = ["status", "links", "share_id", "name",
-                "share_proto", "created_at",
-                "description", "id", "share_size"]
-        [self.assertIn(key, sn.keys()) for sn in snaps for key in keys]
+        expected_keys = ["status", "links", "share_id", "name",
+                         "share_proto", "created_at", "description", "id",
+                         "share_size", "size"]
+        if version and utils.is_microversion_ge(version, '2.17'):
+            expected_keys.extend(["user_id", "project_id"])
+
+        # strict key check
+        [self.assertEqual(set(expected_keys), set(s.keys())) for s in snaps]
 
         # our share id in list and have no duplicates
         gen = [sid["id"] for sid in snaps if sid["id"] in self.snap["id"]]

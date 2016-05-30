@@ -110,3 +110,7 @@ user documentation.
 2.16
 ----
   Add user_id in share show/create/manage API.
+
+2.17
+----
+  Added user_id and project_id in snapshot show/create/manage APIs.

@@ -16,6 +16,7 @@
 import datetime
 import uuid
 
+from manila.api.openstack import api_version_request as api_version
 from manila.common import constants
 from manila.db.sqlalchemy import models
 from manila.tests.db import fakes as db_fakes
@@ -161,7 +162,7 @@ def fake_snapshot_instance(base_snapshot=None, **kwargs):
     return db_fakes.FakeModel(snapshot_instance)
 
 
-def expected_snapshot(id='fake_snapshot_id', **kwargs):
+def expected_snapshot(version=None, id='fake_snapshot_id', **kwargs):
     self_link = 'http://localhost/v1/fake/snapshots/%s' % id
     bookmark_link = 'http://localhost/fake/snapshots/%s' % id
     snapshot = {
@@ -185,6 +186,14 @@ def expected_snapshot(id='fake_snapshot_id', **kwargs):
             },
         ],
     }
+
+    if version and (api_version.APIVersionRequest(version)
+                    >= api_version.APIVersionRequest('2.17')):
+        snapshot.update({
+            'user_id': 'fakesnapuser',
+            'project_id': 'fakesnapproject',
+        })
+
     snapshot.update(kwargs)
     return {'snapshot': snapshot}
 

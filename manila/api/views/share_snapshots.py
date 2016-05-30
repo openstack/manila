@@ -22,6 +22,7 @@ class ViewBuilder(common.ViewBuilder):
     _collection_name = 'snapshots'
     _detail_version_modifiers = [
         "add_provider_location_field",
+        "add_project_and_user_ids",
     ]
 
     def summary_list(self, request, snapshots):
@@ -67,6 +68,11 @@ class ViewBuilder(common.ViewBuilder):
         if context.is_admin:
             snapshot_dict['provider_location'] = snapshot.get(
                 'provider_location')
+
+    @common.ViewBuilder.versioned_method("2.17")
+    def add_project_and_user_ids(self, context, snapshot_dict, snapshot):
+        snapshot_dict['user_id'] = snapshot.get('user_id')
+        snapshot_dict['project_id'] = snapshot.get('project_id')
 
     def _list_view(self, func, request, snapshots):
         """Provide a view for a list of share snapshots."""

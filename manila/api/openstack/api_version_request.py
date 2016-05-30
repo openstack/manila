@@ -66,13 +66,15 @@ REST_API_VERSION_HISTORY = """
             'migrate_share' to 'migration_start' and added notify parameter
              to 'migration_start'.
     * 2.16 - Add user_id in share show/create/manage API.
+    * 2.17 - Added project_id and user_id fields to the JSON response of
+             snapshot show/create/manage API.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # the minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.16"
+_MAX_API_VERSION = "2.17"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 
