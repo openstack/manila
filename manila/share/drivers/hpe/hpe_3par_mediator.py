@@ -71,10 +71,12 @@ class HPE3ParMediator(object):
         2.0.2 - Add extend/shrink
         2.0.3 - Fix SMB read-only access (added in 2.0.1)
         2.0.4 - Remove file tree on delete when using nested shares #1538800
+        2.0.5 - Reduce the fsquota by share size
+                when a share is deleted #1582931
 
     """
 
-    VERSION = "2.0.4"
+    VERSION = "2.0.5"
 
     def __init__(self, **kwargs):
 
@@ -634,7 +636,8 @@ class HPE3ParMediator(object):
             LOG.exception(msg)
             raise exception.ShareBackendException(msg=msg)
 
-    def delete_share(self, project_id, share_id, share_proto, fpg, vfs):
+    def delete_share(self, project_id, share_id, share_size, share_proto,
+                     fpg, vfs):
 
         protocol = self.ensure_supported_protocol(share_proto)
         share_name = self.ensure_prefix(share_id)
@@ -665,6 +668,9 @@ class HPE3ParMediator(object):
             # not treat this as an error_deleting issue. We will allow the
             # delete to continue as requested.
             self._delete_file_tree(share_name, protocol, fpg, vfs, fstore)
+            if fstore:
+                # reduce the fsquota by share size when a share is deleted.
+                self._update_capacity_quotas(fstore, 0, share_size, fpg, vfs)
 
         if fstore == share_name:
             try:

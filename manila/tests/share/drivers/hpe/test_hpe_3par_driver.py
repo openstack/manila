@@ -420,6 +420,7 @@ class HPE3ParDriverTestCase(test.TestCase):
         expected_calls = [
             mock.call.delete_share(constants.EXPECTED_PROJECT_ID,
                                    constants.EXPECTED_SHARE_ID,
+                                   constants.EXPECTED_SIZE_1,
                                    constants.CIFS,
                                    constants.EXPECTED_FPG,
                                    constants.EXPECTED_VFS)]
