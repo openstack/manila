@@ -1,3 +1,5 @@
+.. _adding_release_notes:
+
 Release Notes
 =============
 
