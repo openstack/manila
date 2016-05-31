@@ -21,6 +21,7 @@
 
 import copy
 import datetime
+import functools
 
 from oslo_config import cfg
 from oslo_log import log
@@ -140,7 +141,12 @@ def locked_share_replica_operation(operation):
 
 
 def add_hooks(f):
+    """Hook decorator to perform action before and after a share method call
 
+    The hook decorator can perform actions before some share driver methods
+    calls and after a call with results of driver call and preceding hook call.
+    """
+    @functools.wraps(f)
     def wrapped(self, *args, **kwargs):
         if not self.hooks:
             return f(self, *args, **kwargs)
