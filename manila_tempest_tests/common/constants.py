@@ -60,3 +60,24 @@ REVERT_TO_SNAPSHOT_SUPPORT = 'revert_to_snapshot_support'
 STATUS_RESTORING = 'restoring'
 STATUS_REVERTING = 'reverting'
 STATUS_REVERTING_ERROR = 'reverting_error'
+
+# Share groups
+MIN_SHARE_GROUP_MICROVERSION = '2.31'
+SHARE_GROUP_SIMPLE_KEYS = {
+    'id', 'name', 'links',
+}
+SHARE_GROUP_DETAIL_REQUIRED_KEYS = {
+    'id', 'name', 'description', 'created_at', 'status', 'share_types',
+    'project_id', 'host', 'links', 'share_group_type_id',
+}
+SHARE_GROUP_SNAPSHOT_SIMPLE_KEYS = {
+    'id', 'name', 'links',
+}
+SHARE_GROUP_SNAPSHOT_DETAIL_REQUIRED_KEYS = {
+    'id', 'name', 'description', 'created_at', 'status', 'project_id',
+    'links', 'share_group_id', 'members',
+}
+
+SHARE_GROUP_TYPE_REQUIRED_KEYS = {
+    'id', 'name', 'share_types', 'is_public', 'group_specs',
+}

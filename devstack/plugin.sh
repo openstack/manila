@@ -181,6 +181,7 @@ function configure_manila {
     iniset $MANILA_CONF DEFAULT osapi_share_extension manila.api.contrib.standard_extensions
     iniset $MANILA_CONF DEFAULT state_path $MANILA_STATE_PATH
     iniset $MANILA_CONF DEFAULT default_share_type $MANILA_DEFAULT_SHARE_TYPE
+    iniset $MANILA_CONF DEFAULT default_share_group_type $MANILA_DEFAULT_SHARE_GROUP_TYPE
 
     if ! [[ -z $MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL ]]; then
         iniset $MANILA_CONF DEFAULT migration_driver_continue_update_interval $MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL
@@ -453,6 +454,17 @@ function create_manila_accounts {
         "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v2/\$(tenant_id)s" \
         "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v2/\$(tenant_id)s" \
         "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v2/\$(tenant_id)s"
+}
+
+# create_default_share_group_type - create share group type that will be set as default.
+function create_default_share_group_type {
+    local type_exists=$( manila share-group-type-list | grep " $MANILA_DEFAULT_SHARE_GROUP_TYPE " )
+    if [[ -z $type_exists ]]; then
+        manila share-group-type-create $MANILA_DEFAULT_SHARE_GROUP_TYPE $MANILA_DEFAULT_SHARE_TYPE
+    fi
+    if [[ $MANILA_DEFAULT_SHARE_GROUP_TYPE_SPECS ]]; then
+        manila share-group-type-key $MANILA_DEFAULT_SHARE_GROUP_TYPE set $MANILA_DEFAULT_SHARE_GROUP_TYPE_SPECS
+    fi
 }
 
 # create_default_share_type - create share type that will be set as default.
@@ -914,6 +926,9 @@ elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
 
     echo_summary "Creating Manila default share type"
     create_default_share_type
+
+    echo_summary "Creating Manila default share group type"
+    create_default_share_group_type
 
     echo_summary "Creating Manila custom share types"
     create_custom_share_types

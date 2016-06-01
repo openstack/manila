@@ -392,7 +392,7 @@ class BaseSharesTest(test.BaseTestCase):
     def _create_share(cls, share_protocol=None, size=None, name=None,
                       snapshot_id=None, description=None, metadata=None,
                       share_network_id=None, share_type_id=None,
-                      consistency_group_id=None, client=None,
+                      share_group_id=None, client=None,
                       cleanup_in_class=True, is_public=False, **kwargs):
         client = client or cls.shares_v2_client
         description = description or "Tempest's share"
@@ -410,12 +410,12 @@ class BaseSharesTest(test.BaseTestCase):
             'share_type_id': share_type_id,
             'is_public': is_public,
         })
-        if consistency_group_id:
-            kwargs['consistency_group_id'] = consistency_group_id
+        if share_group_id:
+            kwargs['share_group_id'] = share_group_id
 
         share = client.create_share(**kwargs)
         resource = {"type": "share", "id": share["id"], "client": client,
-                    "consistency_group_id": consistency_group_id}
+                    "share_group_id": share_group_id}
         cleanup_list = (cls.class_resources if cleanup_in_class else
                         cls.method_resources)
         cleanup_list.insert(0, resource)
@@ -540,41 +540,63 @@ class BaseSharesTest(test.BaseTestCase):
         return [d["share"] for d in data]
 
     @classmethod
-    def create_consistency_group(cls, client=None, cleanup_in_class=True,
-                                 share_network_id=None, **kwargs):
+    def create_share_group(cls, client=None, cleanup_in_class=True,
+                           share_network_id=None, **kwargs):
         client = client or cls.shares_v2_client
-        if kwargs.get('source_cgsnapshot_id') is None:
+        if kwargs.get('source_share_group_snapshot_id') is None:
             kwargs['share_network_id'] = (share_network_id or
                                           client.share_network_id or None)
-        consistency_group = client.create_consistency_group(**kwargs)
+        share_group = client.create_share_group(**kwargs)
         resource = {
-            "type": "consistency_group",
-            "id": consistency_group["id"],
-            "client": client}
+            "type": "share_group",
+            "id": share_group["id"],
+            "client": client,
+        }
         if cleanup_in_class:
             cls.class_resources.insert(0, resource)
         else:
             cls.method_resources.insert(0, resource)
 
-        if kwargs.get('source_cgsnapshot_id'):
-            new_cg_shares = client.list_shares(
+        if kwargs.get('source_share_group_snapshot_id'):
+            new_share_group_shares = client.list_shares(
                 detailed=True,
-                params={'consistency_group_id': consistency_group['id']})
+                params={'share_group_id': share_group['id']},
+                experimental=True)
 
-            for share in new_cg_shares:
+            for share in new_share_group_shares:
                 resource = {"type": "share",
                             "id": share["id"],
                             "client": client,
-                            "consistency_group_id": share.get(
-                                'consistency_group_id')}
+                            "share_group_id": share.get("share_group_id")}
                 if cleanup_in_class:
                     cls.class_resources.insert(0, resource)
                 else:
                     cls.method_resources.insert(0, resource)
 
-        client.wait_for_consistency_group_status(consistency_group['id'],
-                                                 'available')
-        return consistency_group
+        client.wait_for_share_group_status(share_group['id'], 'available')
+        return share_group
+
+    @classmethod
+    def create_share_group_type(cls, name=None, share_types=(), is_public=None,
+                                group_specs=None, client=None,
+                                cleanup_in_class=True, **kwargs):
+        client = client or cls.shares_v2_client
+        share_group_type = client.create_share_group_type(
+            name=name,
+            share_types=share_types,
+            is_public=is_public,
+            group_specs=group_specs,
+            **kwargs)
+        resource = {
+            "type": "share_group_type",
+            "id": share_group_type["id"],
+            "client": client,
+        }
+        if cleanup_in_class:
+            cls.class_resources.insert(0, resource)
+        else:
+            cls.method_resources.insert(0, resource)
+        return share_group_type
 
     @classmethod
     def create_snapshot_wait_for_active(cls, share_id, name=None,
@@ -598,28 +620,26 @@ class BaseSharesTest(test.BaseTestCase):
         return snapshot
 
     @classmethod
-    def create_cgsnapshot_wait_for_active(cls, consistency_group_id,
-                                          name=None, description=None,
-                                          client=None, cleanup_in_class=True,
-                                          **kwargs):
+    def create_share_group_snapshot_wait_for_active(
+            cls, share_group_id, name=None, description=None, client=None,
+            cleanup_in_class=True, **kwargs):
         client = client or cls.shares_v2_client
         if description is None:
-            description = "Tempest's cgsnapshot"
-        cgsnapshot = client.create_cgsnapshot(consistency_group_id,
-                                              name=name,
-                                              description=description,
-                                              **kwargs)
+            description = "Tempest's share group snapshot"
+        sg_snapshot = client.create_share_group_snapshot(
+            share_group_id, name=name, description=description, **kwargs)
         resource = {
-            "type": "cgsnapshot",
-            "id": cgsnapshot["id"],
+            "type": "share_group_snapshot",
+            "id": sg_snapshot["id"],
             "client": client,
         }
         if cleanup_in_class:
             cls.class_resources.insert(0, resource)
         else:
             cls.method_resources.insert(0, resource)
-        client.wait_for_cgsnapshot_status(cgsnapshot["id"], "available")
-        return cgsnapshot
+        client.wait_for_share_group_snapshot_status(
+            sg_snapshot["id"], "available")
+        return sg_snapshot
 
     @classmethod
     def get_availability_zones(cls, client=None):
@@ -800,7 +820,6 @@ class BaseSharesTest(test.BaseTestCase):
 
         :param resources: dict with keys 'type','id','client' and 'deleted'
         """
-
         if resources is None:
             resources = cls.method_resources
         for res in resources:
@@ -814,9 +833,9 @@ class BaseSharesTest(test.BaseTestCase):
                 with handle_cleanup_exceptions():
                     if res["type"] is "share":
                         cls.clear_share_replicas(res_id)
-                        cg_id = res.get('consistency_group_id')
-                        if cg_id:
-                            params = {'consistency_group_id': cg_id}
+                        share_group_id = res.get('share_group_id')
+                        if share_group_id:
+                            params = {'share_group_id': share_group_id}
                             client.delete_share(res_id, params=params)
                         else:
                             client.delete_share(res_id)
@@ -833,12 +852,18 @@ class BaseSharesTest(test.BaseTestCase):
                     elif res["type"] is "share_type":
                         client.delete_share_type(res_id)
                         client.wait_for_resource_deletion(st_id=res_id)
-                    elif res["type"] is "consistency_group":
-                        client.delete_consistency_group(res_id)
-                        client.wait_for_resource_deletion(cg_id=res_id)
-                    elif res["type"] is "cgsnapshot":
-                        client.delete_cgsnapshot(res_id)
-                        client.wait_for_resource_deletion(cgsnapshot_id=res_id)
+                    elif res["type"] is "share_group":
+                        client.delete_share_group(res_id)
+                        client.wait_for_resource_deletion(
+                            share_group_id=res_id)
+                    elif res["type"] is "share_group_type":
+                        client.delete_share_group_type(res_id)
+                        client.wait_for_resource_deletion(
+                            share_group_type_id=res_id)
+                    elif res["type"] is "share_group_snapshot":
+                        client.delete_share_group_snapshot(res_id)
+                        client.wait_for_resource_deletion(
+                            share_group_snapshot_id=res_id)
                     elif res["type"] is "share_replica":
                         client.delete_share_replica(res_id)
                         client.wait_for_resource_deletion(replica_id=res_id)

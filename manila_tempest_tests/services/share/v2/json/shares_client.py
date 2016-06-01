@@ -173,12 +173,16 @@ class SharesV2Client(shares_client.SharesClient):
         if "share_instance_id" in kwargs:
             return self._is_resource_deleted(
                 self.get_share_instance, kwargs.get("share_instance_id"))
-        elif "cg_id" in kwargs:
+        elif "share_group_id" in kwargs:
             return self._is_resource_deleted(
-                self.get_consistency_group, kwargs.get("cg_id"))
-        elif "cgsnapshot_id" in kwargs:
+                self.get_share_group, kwargs.get("share_group_id"))
+        elif "share_group_snapshot_id" in kwargs:
             return self._is_resource_deleted(
-                self.get_cgsnapshot, kwargs.get("cgsnapshot_id"))
+                self.get_share_group_snapshot,
+                kwargs.get("share_group_snapshot_id"))
+        elif "share_group_type_id" in kwargs:
+            return self._is_resource_deleted(
+                self.get_share_group_type, kwargs.get("share_group_type_id"))
         elif "replica_id" in kwargs:
             return self._is_resource_deleted(
                 self.get_share_replica, kwargs.get("replica_id"))
@@ -192,8 +196,9 @@ class SharesV2Client(shares_client.SharesClient):
                      name=None, snapshot_id=None, description=None,
                      metadata=None, share_network_id=None,
                      share_type_id=None, is_public=False,
-                     consistency_group_id=None, availability_zone=None,
-                     version=LATEST_MICROVERSION):
+                     share_group_id=None, availability_zone=None,
+                     version=LATEST_MICROVERSION, experimental=False):
+        headers = EXPERIMENTAL if experimental else None
         metadata = metadata or {}
         if name is None:
             name = data_utils.rand_name("tempest-created-share")
@@ -222,29 +227,37 @@ class SharesV2Client(shares_client.SharesClient):
             post_body["share"]["share_network_id"] = share_network_id
         if share_type_id:
             post_body["share"]["share_type"] = share_type_id
-        if consistency_group_id:
-            post_body["share"]["consistency_group_id"] = consistency_group_id
+        if share_group_id:
+            post_body["share"]["share_group_id"] = share_group_id
         body = json.dumps(post_body)
-        resp, body = self.post("shares", body, version=version)
+        resp, body = self.post("shares", body, headers=headers,
+                               extra_headers=experimental, version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
     def list_shares(self, detailed=False, params=None,
-                    version=LATEST_MICROVERSION):
+                    version=LATEST_MICROVERSION, experimental=False):
         """Get list of shares w/o filters."""
+        headers = EXPERIMENTAL if experimental else None
         uri = 'shares/detail' if detailed else 'shares'
         uri += '?%s' % urlparse.urlencode(params) if params else ''
-        resp, body = self.get(uri, version=version)
+        resp, body = self.get(uri, headers=headers, extra_headers=experimental,
+                              version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
     def list_shares_with_detail(self, params=None,
-                                version=LATEST_MICROVERSION):
+                                version=LATEST_MICROVERSION,
+                                experimental=False):
         """Get detailed list of shares w/o filters."""
-        return self.list_shares(detailed=True, params=params, version=version)
+        return self.list_shares(detailed=True, params=params,
+                                version=version, experimental=experimental)
 
-    def get_share(self, share_id, version=LATEST_MICROVERSION):
-        resp, body = self.get("shares/%s" % share_id, version=version)
+    def get_share(self, share_id, version=LATEST_MICROVERSION,
+                  experimental=False):
+        headers = EXPERIMENTAL if experimental else None
+        resp, body = self.get("shares/%s" % share_id, headers=headers,
+                              extra_headers=experimental, version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
@@ -881,62 +894,68 @@ class SharesV2Client(shares_client.SharesClient):
 
 ###############
 
-    def create_consistency_group(self, name=None, description=None,
-                                 share_type_ids=(), share_network_id=None,
-                                 source_cgsnapshot_id=None,
-                                 version=LATEST_MICROVERSION):
-        """Create a new consistency group."""
-        uri = 'consistency-groups'
+    def create_share_group(self, name=None, description=None,
+                           share_group_type_id=None, share_type_ids=(),
+                           share_network_id=None,
+                           source_share_group_snapshot_id=None,
+                           availability_zone=None,
+                           version=LATEST_MICROVERSION):
+        """Create a new share group."""
+        uri = 'share-groups'
         post_body = {}
         if name:
             post_body['name'] = name
         if description:
             post_body['description'] = description
+        if share_group_type_id:
+            post_body['share_group_type_id'] = share_group_type_id
         if share_type_ids:
             post_body['share_types'] = share_type_ids
-        if source_cgsnapshot_id:
-            post_body['source_cgsnapshot_id'] = source_cgsnapshot_id
+        if source_share_group_snapshot_id:
+            post_body['source_share_group_snapshot_id'] = (
+                source_share_group_snapshot_id)
         if share_network_id:
             post_body['share_network_id'] = share_network_id
-        body = json.dumps({'consistency_group': post_body})
+        if availability_zone:
+            post_body['availability_zone'] = availability_zone
+        body = json.dumps({'share_group': post_body})
+
         resp, body = self.post(uri, body, headers=EXPERIMENTAL,
                                extra_headers=True, version=version)
+
         self.expected_success(202, resp.status)
         return self._parse_resp(body)
 
-    def delete_consistency_group(self, consistency_group_id,
-                                 version=LATEST_MICROVERSION):
-        """Delete a consistency group."""
-        uri = 'consistency-groups/%s' % consistency_group_id
+    def delete_share_group(self, share_group_id, version=LATEST_MICROVERSION):
+        """Delete a share group."""
+        uri = 'share-groups/%s' % share_group_id
         resp, body = self.delete(uri, headers=EXPERIMENTAL,
                                  extra_headers=True, version=version)
         self.expected_success(202, resp.status)
-        return body
+        return self._parse_resp(body)
 
-    def list_consistency_groups(self, detailed=False, params=None,
-                                version=LATEST_MICROVERSION):
-        """Get list of consistency groups w/o filters."""
-        uri = 'consistency-groups%s' % ('/detail' if detailed else '')
+    def list_share_groups(self, detailed=False, params=None,
+                          version=LATEST_MICROVERSION):
+        """Get list of share groups w/o filters."""
+        uri = 'share-groups%s' % ('/detail' if detailed else '')
         uri += '?%s' % (urlparse.urlencode(params) if params else '')
         resp, body = self.get(uri, headers=EXPERIMENTAL, extra_headers=True,
                               version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
-    def get_consistency_group(self, consistency_group_id,
-                              version=LATEST_MICROVERSION):
-        """Get consistency group info."""
-        uri = 'consistency-groups/%s' % consistency_group_id
+    def get_share_group(self, share_group_id, version=LATEST_MICROVERSION):
+        """Get share group info."""
+        uri = 'share-groups/%s' % share_group_id
         resp, body = self.get(uri, headers=EXPERIMENTAL, extra_headers=True,
                               version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
-    def update_consistency_group(self, consistency_group_id, name=None,
-                                 description=None,
-                                 version=LATEST_MICROVERSION, **kwargs):
-        """Update an existing consistency group."""
-        uri = 'consistency-groups/%s' % consistency_group_id
+    def update_share_group(self, share_group_id, name=None, description=None,
+                           version=LATEST_MICROVERSION, **kwargs):
+        """Update an existing share group."""
+        uri = 'share-groups/%s' % share_group_id
         post_body = {}
         if name:
             post_body['name'] = name
@@ -944,147 +963,291 @@ class SharesV2Client(shares_client.SharesClient):
             post_body['description'] = description
         if kwargs:
             post_body.update(kwargs)
-        body = json.dumps({'consistency_group': post_body})
+        body = json.dumps({'share_group': post_body})
+
         resp, body = self.put(uri, body, headers=EXPERIMENTAL,
                               extra_headers=True, version=version)
+
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
-    def consistency_group_reset_state(self, id, status,
-                                      version=LATEST_MICROVERSION):
-        self.reset_state(id, status=status,
-                         s_type='consistency-groups', headers=EXPERIMENTAL,
-                         version=version)
+    def share_group_reset_state(self, share_group_id, status='error',
+                                version=LATEST_MICROVERSION):
+        self.reset_state(share_group_id, status=status, s_type='groups',
+                         headers=EXPERIMENTAL, version=version)
 
-    def consistency_group_force_delete(self, id, version=LATEST_MICROVERSION):
-        self.force_delete(id, s_type='consistency-groups',
+    def share_group_force_delete(self, share_group_id,
+                                 version=LATEST_MICROVERSION):
+        self.force_delete(share_group_id, s_type='share-groups',
                           headers=EXPERIMENTAL, version=version)
 
-    def wait_for_consistency_group_status(self, consistency_group_id, status):
-        """Waits for a consistency group to reach a given status."""
-        body = self.get_consistency_group(consistency_group_id)
-        consistency_group_name = body['name']
-        consistency_group_status = body['status']
+    def wait_for_share_group_status(self, share_group_id, status):
+        """Waits for a share group to reach a given status."""
+        body = self.get_share_group(share_group_id)
+        sg_name = body['name']
+        sg_status = body['status']
         start = int(time.time())
 
-        while consistency_group_status != status:
+        while sg_status != status:
             time.sleep(self.build_interval)
-            body = self.get_consistency_group(consistency_group_id)
-            consistency_group_status = body['status']
-            if 'error' in consistency_group_status and status != 'error':
-                raise share_exceptions.ConsistencyGroupBuildErrorException(
-                    consistency_group_id=consistency_group_id)
+            body = self.get_share_group(share_group_id)
+            sg_status = body['status']
+            if 'error' in sg_status and status != 'error':
+                raise share_exceptions.ShareGroupBuildErrorException(
+                    share_group_id=share_group_id)
 
             if int(time.time()) - start >= self.build_timeout:
-                consistency_group_name = (
-                    consistency_group_name if consistency_group_name else
-                    consistency_group_id
-                )
-                message = ('Consistency Group %s failed to reach %s status '
+                sg_name = sg_name or share_group_id
+                message = ('Share Group %s failed to reach %s status '
                            'within the required time (%s s). '
                            'Current status: %s' %
-                           (consistency_group_name, status,
-                            self.build_timeout, consistency_group_status))
+                           (sg_name, status, self.build_timeout, sg_status))
                 raise exceptions.TimeoutException(message)
 
 ###############
 
-    def create_cgsnapshot(self, consistency_group_id,
-                          name=None, description=None,
-                          version=LATEST_MICROVERSION):
-        """Create a new cgsnapshot of an existing consistency group."""
-        uri = 'cgsnapshots'
-        post_body = {'consistency_group_id': consistency_group_id}
-        if name:
+    def create_share_group_type(self, name=None, share_types=(),
+                                is_public=None, group_specs=None,
+                                version=LATEST_MICROVERSION):
+        """Create a new share group type."""
+        uri = 'share-group-types'
+        post_body = {}
+        if isinstance(share_types, (tuple, list)):
+            share_types = list(share_types)
+        else:
+            share_types = [share_types]
+        if name is not None:
             post_body['name'] = name
-        if description:
-            post_body['description'] = description
-        body = json.dumps({'cgsnapshot': post_body})
+        if share_types:
+            post_body['share_types'] = share_types
+        if is_public is not None:
+            post_body['is_public'] = is_public
+        if group_specs:
+            post_body['group_specs'] = group_specs
+        body = json.dumps({'share_group_type': post_body})
         resp, body = self.post(uri, body, headers=EXPERIMENTAL,
                                extra_headers=True, version=version)
-        self.expected_success(202, resp.status)
+        self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
-    def delete_cgsnapshot(self, cgsnapshot_id,
-                          version=LATEST_MICROVERSION):
-        """Delete an existing cgsnapshot."""
-        uri = 'cgsnapshots/%s' % cgsnapshot_id
-        resp, body = self.delete(uri, headers=EXPERIMENTAL,
-                                 extra_headers=True, version=version)
-        self.expected_success(202, resp.status)
-        return body
-
-    def list_cgsnapshots(self, detailed=False, params=None,
-                         version=LATEST_MICROVERSION):
-        """Get list of cgsnapshots w/o filters."""
-        uri = 'cgsnapshots/detail' if detailed else 'cgsnapshots'
+    def list_share_group_types(self, detailed=False, params=None,
+                               version=LATEST_MICROVERSION):
+        """Get list of share group types."""
+        uri = 'share-group-types%s' % ('/detail' if detailed else '')
         uri += '?%s' % (urlparse.urlencode(params) if params else '')
         resp, body = self.get(uri, headers=EXPERIMENTAL, extra_headers=True,
                               version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
-    def list_cgsnapshot_members(self, cgsnapshot_id,
+    def get_share_group_type(self, share_group_type_id,
+                             version=LATEST_MICROVERSION):
+        """Get share group type info."""
+        uri = 'share-group-types/%s' % share_group_type_id
+        resp, body = self.get(uri, headers=EXPERIMENTAL, extra_headers=True,
+                              version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def get_default_share_group_type(self, version=LATEST_MICROVERSION):
+        """Get default share group type info."""
+        uri = 'share-group-types/default'
+        resp, body = self.get(uri, headers=EXPERIMENTAL, extra_headers=True,
+                              version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def delete_share_group_type(self, share_group_type_id,
                                 version=LATEST_MICROVERSION):
-        """Get list of members of a cgsnapshots."""
-        uri = 'cgsnapshots/%s/members' % cgsnapshot_id
+        """Delete an existing share group type."""
+        uri = 'share-group-types/%s' % share_group_type_id
+        resp, body = self.delete(uri, headers=EXPERIMENTAL,
+                                 extra_headers=True, version=version)
+        self.expected_success(204, resp.status)
+        return self._parse_resp(body)
+
+    def add_access_to_share_group_type(self, share_group_type_id, project_id,
+                                       version=LATEST_MICROVERSION):
+        uri = 'share-group-types/%s/action' % share_group_type_id
+        post_body = {'project': project_id}
+        post_body = json.dumps({'addProjectAccess': post_body})
+        resp, body = self.post(uri, post_body, headers=EXPERIMENTAL,
+                               extra_headers=True, version=version)
+        self.expected_success(202, resp.status)
+        return self._parse_resp(body)
+
+    def remove_access_from_share_group_type(self, share_group_type_id,
+                                            project_id,
+                                            version=LATEST_MICROVERSION):
+        uri = 'share-group-types/%s/action' % share_group_type_id
+        post_body = {'project': project_id}
+        post_body = json.dumps({'removeProjectAccess': post_body})
+        resp, body = self.post(uri, post_body, headers=EXPERIMENTAL,
+                               extra_headers=True, version=version)
+        self.expected_success(202, resp.status)
+        return self._parse_resp(body)
+
+    def list_access_to_share_group_type(self, share_group_type_id,
+                                        version=LATEST_MICROVERSION):
+        uri = 'share-group-types/%s/access' % share_group_type_id
         resp, body = self.get(uri, headers=EXPERIMENTAL, extra_headers=True,
                               version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
-    def get_cgsnapshot(self, cgsnapshot_id, version=LATEST_MICROVERSION):
-        """Get cgsnapshot info."""
-        uri = 'cgsnapshots/%s' % cgsnapshot_id
+###############
+
+    def create_share_group_type_specs(self, share_group_type_id,
+                                      group_specs_dict,
+                                      version=LATEST_MICROVERSION):
+        url = "share-group-types/%s/group-specs" % share_group_type_id
+        post_body = json.dumps({'group_specs': group_specs_dict})
+        resp, body = self.post(url, post_body, headers=EXPERIMENTAL,
+                               extra_headers=True, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def get_share_group_type_spec(self, share_group_type_id, group_spec_key,
+                                  version=LATEST_MICROVERSION):
+        uri = "group-types/%s/group_specs/%s" % (
+            share_group_type_id, group_spec_key)
         resp, body = self.get(uri, headers=EXPERIMENTAL, extra_headers=True,
                               version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
-    def update_cgsnapshot(self, cgsnapshot_id, name=None, description=None,
-                          version=LATEST_MICROVERSION):
-        """Update an existing cgsnapshot."""
-        uri = 'cgsnapshots/%s' % cgsnapshot_id
+    def list_share_group_type_specs(self, share_group_type_id, params=None,
+                                    version=LATEST_MICROVERSION):
+        uri = "share-group-types/%s/group_specs" % share_group_type_id
+        if params is not None:
+            uri += '?%s' % urlparse.urlencode(params)
+        resp, body = self.get(uri, headers=EXPERIMENTAL, extra_headers=True,
+                              version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def update_share_group_type_spec(self, share_group_type_id, group_spec_key,
+                                     group_spec_value,
+                                     version=LATEST_MICROVERSION):
+        uri = "share-group-types/%s/group-specs/%s" % (
+            share_group_type_id, group_spec_key)
+        group_spec = {group_spec_key: group_spec_value}
+        post_body = json.dumps(group_spec)
+        resp, body = self.put(uri, post_body, headers=EXPERIMENTAL,
+                              extra_headers=True, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def update_share_group_type_specs(self, share_group_type_id,
+                                      group_specs_dict,
+                                      version=LATEST_MICROVERSION):
+        return self.create_share_group_type_specs(
+            share_group_type_id, group_specs_dict, version=version)
+
+    def delete_share_group_type_spec(self, share_type_id, group_spec_key,
+                                     version=LATEST_MICROVERSION):
+        uri = "share-group-types/%s/group-specs/%s" % (
+            share_type_id, group_spec_key)
+        resp, body = self.delete(uri, headers=EXPERIMENTAL, extra_headers=True,
+                                 version=version)
+        self.expected_success(204, resp.status)
+        return body
+
+###############
+
+    def create_share_group_snapshot(self, share_group_id, name=None,
+                                    description=None,
+                                    version=LATEST_MICROVERSION):
+        """Create a new share group snapshot of an existing share group."""
+        uri = 'share-group-snapshots'
+        post_body = {'share_group_id': share_group_id}
+        if name:
+            post_body['name'] = name
+        if description:
+            post_body['description'] = description
+        body = json.dumps({'share_group_snapshot': post_body})
+        resp, body = self.post(uri, body, headers=EXPERIMENTAL,
+                               extra_headers=True, version=version)
+        self.expected_success(202, resp.status)
+        return self._parse_resp(body)
+
+    def delete_share_group_snapshot(self, share_group_snapshot_id,
+                                    version=LATEST_MICROVERSION):
+        """Delete an existing share group snapshot."""
+        uri = 'share-group-snapshots/%s' % share_group_snapshot_id
+        resp, body = self.delete(uri, headers=EXPERIMENTAL,
+                                 extra_headers=True, version=version)
+        self.expected_success(202, resp.status)
+        return body
+
+    def list_share_group_snapshots(self, detailed=False, params=None,
+                                   version=LATEST_MICROVERSION):
+        """Get list of share group snapshots w/o filters."""
+        uri = 'share-group-snapshots%s' % ('/detail' if detailed else '')
+        uri += '?%s' % (urlparse.urlencode(params) if params else '')
+        resp, body = self.get(uri, headers=EXPERIMENTAL, extra_headers=True,
+                              version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def get_share_group_snapshot(self, share_group_snapshot_id,
+                                 version=LATEST_MICROVERSION):
+        """Get share group snapshot info."""
+        uri = 'share-group-snapshots/%s' % share_group_snapshot_id
+        resp, body = self.get(uri, headers=EXPERIMENTAL, extra_headers=True,
+                              version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def update_share_group_snapshot(self, share_group_snapshot_id, name=None,
+                                    description=None,
+                                    version=LATEST_MICROVERSION):
+        """Update an existing share group snapshot."""
+        uri = 'share-group-snapshots/%s' % share_group_snapshot_id
         post_body = {}
         if name:
             post_body['name'] = name
         if description:
             post_body['description'] = description
-        body = json.dumps({'cgsnapshot': post_body})
+        body = json.dumps({'share_group_snapshot': post_body})
         resp, body = self.put(uri, body, headers=EXPERIMENTAL,
                               extra_headers=True, version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
-    def cgsnapshot_reset_state(self, id, status,
-                               version=LATEST_MICROVERSION):
-        self.reset_state(id, status=status,
-                         s_type='cgsnapshots', headers=EXPERIMENTAL,
-                         version=version)
+    def share_group_snapshot_reset_state(self, share_group_snapshot_id,
+                                         status='error',
+                                         version=LATEST_MICROVERSION):
+        self.reset_state(
+            share_group_snapshot_id, status=status,
+            s_type='group-snapshots', headers=EXPERIMENTAL, version=version)
 
-    def cgsnapshot_force_delete(self, id, version=LATEST_MICROVERSION):
-        self.force_delete(id, s_type='cgsnapshots', headers=EXPERIMENTAL,
-                          version=version)
+    def share_group_snapshot_force_delete(self, share_group_snapshot_id,
+                                          version=LATEST_MICROVERSION):
+        self.force_delete(
+            share_group_snapshot_id, s_type='share-group-snapshots',
+            headers=EXPERIMENTAL, version=version)
 
-    def wait_for_cgsnapshot_status(self, cgsnapshot_id, status):
-        """Waits for a cgsnapshot to reach a given status."""
-        body = self.get_cgsnapshot(cgsnapshot_id)
-        cgsnapshot_name = body['name']
-        cgsnapshot_status = body['status']
+    def wait_for_share_group_snapshot_status(self, share_group_snapshot_id,
+                                             status):
+        """Waits for a share group snapshot to reach a given status."""
+        body = self.get_share_group_snapshot(share_group_snapshot_id)
+        sg_snapshot_name = body['name']
+        sg_snapshot_status = body['status']
         start = int(time.time())
 
-        while cgsnapshot_status != status:
+        while sg_snapshot_status != status:
             time.sleep(self.build_interval)
-            body = self.get_cgsnapshot(cgsnapshot_id)
-            cgsnapshot_status = body['status']
-            if 'error' in cgsnapshot_status and status != 'error':
-                raise share_exceptions.CGSnapshotBuildErrorException(
-                    cgsnapshot_id=cgsnapshot_id)
+            body = self.get_share_group_snapshot(share_group_snapshot_id)
+            sg_snapshot_status = body['status']
+            if 'error' in sg_snapshot_status and status != 'error':
+                raise share_exceptions.ShareGroupSnapshotBuildErrorException(
+                    share_group_snapshot_id=share_group_snapshot_id)
 
             if int(time.time()) - start >= self.build_timeout:
-                message = ('CGSnapshot %s failed to reach %s status '
+                message = ('Share Group Snapshot %s failed to reach %s status '
                            'within the required time (%s s).' %
-                           (cgsnapshot_name, status, self.build_timeout))
+                           (sg_snapshot_name, status, self.build_timeout))
                 raise exceptions.TimeoutException(message)
 
 ###############
