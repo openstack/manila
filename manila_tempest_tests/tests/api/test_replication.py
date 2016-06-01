@@ -127,7 +127,7 @@ class ReplicationTest(base.BaseSharesTest):
 
         return access_type, access_to
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_add_delete_share_replica(self):
         # Create the replica
         share_replica = self._verify_create_replica()
@@ -135,7 +135,7 @@ class ReplicationTest(base.BaseSharesTest):
         # Delete the replica
         self.delete_share_replica(share_replica["id"])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_add_access_rule_create_replica_delete_rule(self):
         # Add access rule to the share
         access_type, access_to = self._verify_config_and_set_access_rule_data()
@@ -158,7 +158,7 @@ class ReplicationTest(base.BaseSharesTest):
         self.shares_v2_client.wait_for_resource_deletion(
             rule_id=rule["id"], share_id=self.shares[0]['id'])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_create_replica_add_access_rule_delete_replica(self):
         access_type, access_to = self._verify_config_and_set_access_rule_data()
         # Create the replica
@@ -175,7 +175,7 @@ class ReplicationTest(base.BaseSharesTest):
         # Delete the replica
         self.delete_share_replica(share_replica["id"])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_add_multiple_share_replicas(self):
         rep_domain, pools = self.get_pools_for_replication_domain()
         if len(pools) < 3:
@@ -204,7 +204,7 @@ class ReplicationTest(base.BaseSharesTest):
         self.assertIn(share_replica1["id"], replica_ids)
         self.assertIn(share_replica2["id"], replica_ids)
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_promote_in_sync_share_replica(self):
         # Test promote 'in_sync' share_replica to 'active' state
         if (self.replication_type
@@ -235,7 +235,7 @@ class ReplicationTest(base.BaseSharesTest):
         self.assertEqual(constants.REPLICATION_STATE_ACTIVE,
                          promoted_replica["replica_state"])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_promote_and_promote_back(self):
         # Test promote back and forth between 2 share replicas
         if (self.replication_type
@@ -277,7 +277,7 @@ class ReplicationTest(base.BaseSharesTest):
             new_replica['id'], constants.REPLICATION_STATE_IN_SYNC,
             status_attr='replica_state')
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_active_replication_state(self):
         # Verify the replica_state of first instance is set to active.
         replica = self.shares_v2_client.get_share_replica(self.instance_id1)
@@ -355,7 +355,7 @@ class ReplicationActionsTest(base.BaseSharesTest):
                 replica['id'], len(replica_id_list))
             self.assertEqual(1, len(replica_id_list), msg)
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_show_share_replica(self):
         replica = self.shares_v2_client.get_share_replica(self.replica1["id"])
 
@@ -366,7 +366,7 @@ class ReplicationActionsTest(base.BaseSharesTest):
                          'expected %s, got %s.' % (replica["id"],
                                                    detail_keys, actual_keys))
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_detail_list_share_replicas_for_share(self):
         # List replicas for share
         replica_list = self.shares_v2_client.list_share_replicas(
@@ -378,7 +378,7 @@ class ReplicationActionsTest(base.BaseSharesTest):
         # Verify keys
         self._validate_replica_list(replica_list)
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_detail_list_share_replicas_for_all_shares(self):
         # List replicas for all available shares
         replica_list = self.shares_v2_client.list_share_replicas()
@@ -390,7 +390,7 @@ class ReplicationActionsTest(base.BaseSharesTest):
         # Verify keys
         self._validate_replica_list(replica_list)
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_summary_list_share_replicas_for_all_shares(self):
         # List replicas
         replica_list = self.shares_v2_client.list_share_replicas_summary()

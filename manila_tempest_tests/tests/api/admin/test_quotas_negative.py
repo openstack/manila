@@ -38,18 +38,18 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
         cls.user_id = cls.shares_client.user_id
         cls.tenant_id = cls.shares_client.tenant_id
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_get_quotas_with_empty_tenant_id(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.show_quotas, "")
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_reset_quotas_with_empty_tenant_id(self):
         client = self.get_client_with_isolated_creds()
         self.assertRaises(lib_exc.NotFound,
                           client.reset_quotas, "")
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_update_shares_quota_with_wrong_data(self):
         # -1 is acceptable value as unlimited
         client = self.get_client_with_isolated_creds()
@@ -58,7 +58,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           client.tenant_id,
                           shares=-2)
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_update_snapshots_quota_with_wrong_data(self):
         # -1 is acceptable value as unlimited
         client = self.get_client_with_isolated_creds()
@@ -67,7 +67,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           client.tenant_id,
                           snapshots=-2)
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_update_gigabytes_quota_with_wrong_data(self):
         # -1 is acceptable value as unlimited
         client = self.get_client_with_isolated_creds()
@@ -76,7 +76,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           client.tenant_id,
                           gigabytes=-2)
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_update_snapshot_gigabytes_quota_with_wrong_data(self):
         # -1 is acceptable value as unlimited
         client = self.get_client_with_isolated_creds()
@@ -85,7 +85,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           client.tenant_id,
                           snapshot_gigabytes=-2)
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_update_share_networks_quota_with_wrong_data(self):
         # -1 is acceptable value as unlimited
         client = self.get_client_with_isolated_creds()
@@ -94,7 +94,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           client.tenant_id,
                           share_networks=-2)
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_create_share_with_size_bigger_than_quota(self):
         quotas = self.shares_client.show_quotas(
             self.shares_client.tenant_id)
@@ -105,7 +105,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           self.create_share,
                           size=overquota)
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_set_user_quota_shares_bigger_than_tenant_quota(self):
         client = self.get_client_with_isolated_creds()
 
@@ -120,7 +120,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           client.user_id,
                           shares=bigger_value)
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_set_user_quota_snaps_bigger_than_tenant_quota(self):
         client = self.get_client_with_isolated_creds()
 
@@ -135,7 +135,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           client.user_id,
                           snapshots=bigger_value)
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_set_user_quota_gigabytes_bigger_than_tenant_quota(self):
         client = self.get_client_with_isolated_creds()
 
@@ -150,7 +150,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           client.user_id,
                           gigabytes=bigger_value)
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_set_user_quota_snap_gigabytes_bigger_than_tenant_quota(self):
         client = self.get_client_with_isolated_creds()
 
@@ -165,7 +165,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           client.user_id,
                           snapshot_gigabytes=bigger_value)
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_set_user_quota_share_networks_bigger_than_tenant_quota(self):
         client = self.get_client_with_isolated_creds()
 

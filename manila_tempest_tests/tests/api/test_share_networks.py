@@ -26,6 +26,7 @@ CONF = config.CONF
 class ShareNetworkListMixin(object):
 
     @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_list_share_networks(self):
         listed = self.shares_client.list_share_networks()
         any(self.sn_with_ldap_ss["id"] in sn["id"] for sn in listed)
@@ -34,7 +35,7 @@ class ShareNetworkListMixin(object):
         keys = ["name", "id"]
         [self.assertIn(key, sn.keys()) for sn in listed for key in keys]
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_list_share_networks_with_detail(self):
         listed = self.shares_client.list_share_networks_with_detail()
         any(self.sn_with_ldap_ss["id"] in sn["id"] for sn in listed)
@@ -48,7 +49,7 @@ class ShareNetworkListMixin(object):
         ]
         [self.assertIn(key, sn.keys()) for sn in listed for key in keys]
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_list_share_networks_filter_by_ss(self):
         listed = self.shares_client.list_share_networks_with_detail(
             {'security_service_id': self.ss_ldap['id']})
@@ -60,7 +61,7 @@ class ShareNetworkListMixin(object):
             self.assertTrue(any(ss['id'] == self.ss_ldap['id']
                                 for ss in ss_list))
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_list_share_networks_all_filter_opts(self):
         valid_filter_opts = {
             'created_before': '2002-10-10',
@@ -140,7 +141,7 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
             cls.sn_with_kerberos_ss["id"],
             cls.ss_kerberos["id"])
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_create_delete_share_network(self):
         # generate data for share network
         data = self.generate_share_network_data()
@@ -152,7 +153,7 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
         # Delete share_network
         self.shares_client.delete_share_network(created["id"])
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_get_share_network(self):
         get = self.shares_client.get_share_network(self.sn_with_ldap_ss["id"])
         self.assertEqual('2002-02-02T00:00:00.000000', get['created_at'])
@@ -160,7 +161,7 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
         del data['created_at']
         self.assertDictContainsSubset(data, get)
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_update_share_network(self):
         update_data = self.generate_share_network_data()
         updated = self.shares_client.update_share_network(
@@ -168,7 +169,7 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
             **update_data)
         self.assertDictContainsSubset(update_data, updated)
 
-    @test.attr(type=["gate", "smoke"])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipIf(
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_update_valid_keys_sh_server_exists(self):
@@ -181,7 +182,7 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
             self.shares_client.share_network_id, **update_dict)
         self.assertDictContainsSubset(update_dict, updated)
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_recreate_share_network(self):
         # generate data for share network
         data = self.generate_share_network_data()
@@ -200,7 +201,7 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
         # Delete second share network
         self.shares_client.delete_share_network(sn2["id"])
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_create_two_share_networks_with_same_net_and_subnet(self):
         # generate data for share network
         data = self.generate_share_network_data()

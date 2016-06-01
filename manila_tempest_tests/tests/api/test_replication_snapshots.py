@@ -63,7 +63,7 @@ class ReplicationSnapshotTest(base.BaseSharesTest):
             'availability_zone': cls.share_zone,
         }}
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_snapshot_after_share_replica(self):
         """Test the snapshot for replicated share.
 
@@ -89,7 +89,7 @@ class ReplicationSnapshotTest(base.BaseSharesTest):
         self.delete_share_replica(original_replica['id'])
         self.create_share(snapshot_id=snapshot['id'])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_snapshot_before_share_replica(self):
         """Test the snapshot for replicated share.
 
@@ -119,7 +119,7 @@ class ReplicationSnapshotTest(base.BaseSharesTest):
         self.delete_share_replica(original_replica['id'])
         self.create_share(snapshot_id=snapshot['id'])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_snapshot_before_and_after_share_replica(self):
         """Test the snapshot for replicated share.
 
@@ -156,7 +156,7 @@ class ReplicationSnapshotTest(base.BaseSharesTest):
         self.create_share(snapshot_id=snapshot1['id'])
         self.create_share(snapshot_id=snapshot2['id'])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_delete_snapshot_after_adding_replica(self):
         """Verify the snapshot delete.
 
@@ -176,7 +176,7 @@ class ReplicationSnapshotTest(base.BaseSharesTest):
         self.shares_v2_client.wait_for_resource_deletion(
             snapshot_id=snapshot["id"])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_create_replica_from_snapshot_share(self):
         """Test replica for a share that was created from snapshot."""
 

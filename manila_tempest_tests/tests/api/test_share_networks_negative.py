@@ -25,39 +25,39 @@ CONF = config.CONF
 
 class ShareNetworksNegativeTest(base.BaseSharesTest):
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_get_share_network_without_id(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_share_network, "")
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_get_share_network_with_wrong_id(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_share_network, "wrong_id")
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_delete_share_network_without_id(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_share_network, "")
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_delete_share_network_with_wrong_type(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_share_network, "wrong_id")
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_update_nonexistant_share_network(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.update_share_network,
                           "wrong_id", name="name")
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_update_share_network_with_empty_id(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.update_share_network,
                           "", name="name")
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipIf(
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_try_update_invalid_keys_sh_server_exists(self):
@@ -68,7 +68,7 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
                           self.shares_client.share_network_id,
                           neutron_net_id="new_net_id")
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_get_deleted_share_network(self):
         data = self.generate_share_network_data()
         sn = self.create_share_network(**data)
@@ -81,33 +81,33 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
                           self.shares_client.get_security_service,
                           sn["id"])
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_list_share_networks_all_tenants(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.list_share_networks_with_detail,
                           params={'all_tenants': 1})
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_list_share_networks_project_id(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.list_share_networks_with_detail,
                           params={'project_id': 'some_project'})
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_list_share_networks_wrong_created_since_value(self):
         self.assertRaises(
             lib_exc.BadRequest,
             self.shares_client.list_share_networks_with_detail,
             params={'created_since': '2014-10-23T08:31:58.000000'})
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_list_share_networks_wrong_created_before_value(self):
         self.assertRaises(
             lib_exc.BadRequest,
             self.shares_client.list_share_networks_with_detail,
             params={'created_before': '2014-10-23T08:31:58.000000'})
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipIf(not CONF.share.multitenancy_enabled,
                       'Can run only with drivers that do handle share servers '
                       'creation. Skipping.')

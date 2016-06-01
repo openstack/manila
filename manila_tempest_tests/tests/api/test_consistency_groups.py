@@ -32,7 +32,7 @@ CGSNAPSHOT_REQUIRED_ELEMENTS = {"id", "name", "description", "created_at",
 class ConsistencyGroupsTest(base.BaseSharesTest):
     """Covers consistency group functionality."""
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_create_populate_delete_consistency_group_v2_4(self):
         # Create a consistency group
         consistency_group = self.create_consistency_group(
@@ -65,7 +65,7 @@ class ConsistencyGroupsTest(base.BaseSharesTest):
                           self.shares_client.get_share,
                           share['id'])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_create_delete_empty_cgsnapshot_v2_4(self):
         # Create base consistency group
         consistency_group = self.create_consistency_group(
@@ -98,7 +98,7 @@ class ConsistencyGroupsTest(base.BaseSharesTest):
                           cgsnapshot['id'],
                           version='2.4')
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_create_consistency_group_from_empty_cgsnapshot(self):
         # Create base consistency group
         consistency_group = self.create_consistency_group(

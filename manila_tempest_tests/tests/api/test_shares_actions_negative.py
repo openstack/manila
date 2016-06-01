@@ -32,7 +32,7 @@ class SharesActionsNegativeTest(base.BaseSharesTest):
             size=1,
         )
 
-    @test.attr(type=["negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipUnless(
         CONF.share.run_extend_tests,
         "Share extend tests are disabled.")
@@ -50,7 +50,7 @@ class SharesActionsNegativeTest(base.BaseSharesTest):
                           self.share['id'],
                           new_size)
 
-    @test.attr(type=["negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipUnless(
         CONF.share.run_extend_tests,
         "Share extend tests are disabled.")
@@ -63,7 +63,7 @@ class SharesActionsNegativeTest(base.BaseSharesTest):
                           self.share['id'],
                           new_size)
 
-    @test.attr(type=["negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipUnless(
         CONF.share.run_extend_tests,
         "Share extend tests are disabled.")
@@ -76,7 +76,7 @@ class SharesActionsNegativeTest(base.BaseSharesTest):
                           self.share['id'],
                           new_size)
 
-    @test.attr(type=["negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipUnless(
         CONF.share.run_extend_tests,
         "Share extend tests are disabled.")
@@ -94,7 +94,7 @@ class SharesActionsNegativeTest(base.BaseSharesTest):
                           share['id'],
                           new_size)
 
-    @test.attr(type=["negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipUnless(
         CONF.share.run_shrink_tests,
         "Share shrink tests are disabled.")
@@ -107,7 +107,7 @@ class SharesActionsNegativeTest(base.BaseSharesTest):
                           self.share['id'],
                           new_size)
 
-    @test.attr(type=["negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipUnless(
         CONF.share.run_shrink_tests,
         "Share shrink tests are disabled.")
@@ -120,7 +120,7 @@ class SharesActionsNegativeTest(base.BaseSharesTest):
                           self.share['id'],
                           new_size)
 
-    @test.attr(type=["negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipUnless(
         CONF.share.run_shrink_tests,
         "Share shrink tests are disabled.")
