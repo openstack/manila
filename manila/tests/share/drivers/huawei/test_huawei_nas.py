@@ -361,13 +361,19 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     "NAME":"OpenStack_Pool",
                     "USERTOTALCAPACITY":"4194304",
                     "USAGETYPE":"2",
-                    "USERCONSUMEDCAPACITY":"2097152"},
+                    "USERCONSUMEDCAPACITY":"2097152",
+                    "TIER0CAPACITY":"100",
+                    "TIER1CAPACITY":"0",
+                    "TIER2CAPACITY":"0"},
                     {"USERFREECAPACITY":"2097152",
                     "ID":"2",
                     "NAME":"OpenStack_Pool_Thick",
                     "USERTOTALCAPACITY":"4194304",
                     "USAGETYPE":"2",
-                    "USERCONSUMEDCAPACITY":"2097152"}]}"""
+                    "USERCONSUMEDCAPACITY":"2097152",
+                    "TIER0CAPACITY":"100",
+                    "TIER1CAPACITY":"0",
+                    "TIER2CAPACITY":"0"}]}"""
 
             if url == "/filesystem":
                 request_data = jsonutils.loads(data)
@@ -2303,9 +2309,64 @@ class HuaweiShareDriverTestCase(test.TestCase):
             huawei_smartcache=[True, False],
             huawei_smartpartition=[True, False],
             huawei_sectorsize=[True, False],
+            huawei_disk_type='ssd'
         )
         expected["pools"].append(pool)
         self.assertEqual(expected, self.driver._stats)
+
+    @ddt.data({'TIER0CAPACITY': '100',
+               'TIER1CAPACITY': '0',
+               'TIER2CAPACITY': '0',
+               'disktype': 'ssd'},
+              {'TIER0CAPACITY': '0',
+               'TIER1CAPACITY': '100',
+               'TIER2CAPACITY': '0',
+               'disktype': 'sas'},
+              {'TIER0CAPACITY': '0',
+               'TIER1CAPACITY': '0',
+               'TIER2CAPACITY': '100',
+               'disktype': 'nl_sas'},
+              {'TIER0CAPACITY': '100',
+               'TIER1CAPACITY': '100',
+               'TIER2CAPACITY': '100',
+               'disktype': 'mix'},
+              {'TIER0CAPACITY': '0',
+               'TIER1CAPACITY': '0',
+               'TIER2CAPACITY': '0',
+               'disktype': ''})
+    def test_get_share_stats_disk_type(self, disk_type_value):
+        self.driver.plugin.helper.login()
+        storage_pool_info = {"error": {"code": 0},
+                             "data": [{"USERFREECAPACITY": "2097152",
+                                       "ID": "1",
+                                       "NAME": "OpenStack_Pool",
+                                       "USERTOTALCAPACITY": "4194304",
+                                       "USAGETYPE": "2",
+                                       "USERCONSUMEDCAPACITY": "2097152"}]}
+        storage_pool_info['data'][0]['TIER0CAPACITY'] = (
+            disk_type_value['TIER0CAPACITY'])
+        storage_pool_info['data'][0]['TIER1CAPACITY'] = (
+            disk_type_value['TIER1CAPACITY'])
+        storage_pool_info['data'][0]['TIER2CAPACITY'] = (
+            disk_type_value['TIER2CAPACITY'])
+        self.mock_object(self.driver.plugin.helper, '_find_all_pool_info',
+                         mock.Mock(return_value=storage_pool_info))
+        self.driver._update_share_stats()
+
+        if disk_type_value['disktype']:
+            self.assertEqual(
+                disk_type_value['disktype'],
+                self.driver._stats['pools'][0]['huawei_disk_type'])
+        else:
+            self.assertIsNone(
+                self.driver._stats['pools'][0].get('huawei_disk_type'))
+
+    def test_get_disk_type_pool_info_none(self):
+        self.driver.plugin.helper.login()
+        self.mock_object(self.driver.plugin.helper, '_find_pool_info',
+                         mock.Mock(return_value=None))
+        self.assertRaises(exception.InvalidInput,
+                          self.driver._update_share_stats)
 
     def test_allow_access_proto_fail(self):
         self.driver.plugin.helper.login()

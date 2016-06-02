@@ -345,6 +345,9 @@ class RestHelper(object):
                 poolinfo['CAPACITY'] = item['USERFREECAPACITY']
                 poolinfo['TOTALCAPACITY'] = item['USERTOTALCAPACITY']
                 poolinfo['CONSUMEDCAPACITY'] = item['USERCONSUMEDCAPACITY']
+                poolinfo['TIER0CAPACITY'] = item['TIER0CAPACITY']
+                poolinfo['TIER1CAPACITY'] = item['TIER1CAPACITY']
+                poolinfo['TIER2CAPACITY'] = item['TIER2CAPACITY']
                 break
 
         return poolinfo

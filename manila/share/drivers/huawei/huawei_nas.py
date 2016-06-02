@@ -57,6 +57,7 @@ class HuaweiNasDriver(driver.ShareDriver):
               Add QoS support.
               Add create share from snapshot.
         1.3 - Add manage snapshot.
+              Support reporting disk type of pool.
     """
 
     def __init__(self, *args, **kwargs):
