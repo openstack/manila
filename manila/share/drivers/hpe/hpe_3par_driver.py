@@ -123,10 +123,12 @@ class HPE3ParShareDriver(driver.ShareDriver):
         2.0.1 - Add access_level (e.g. read-only support)
         2.0.2 - Add extend/shrink
         2.0.3 - Remove file tree on delete when using nested shares #1538800
+        2.0.4 - Reduce the fsquota by share size
+                when a share is deleted #1582931
 
     """
 
-    VERSION = "2.0.3"
+    VERSION = "2.0.4"
 
     def __init__(self, *args, **kwargs):
         super(HPE3ParShareDriver, self).__init__((True, False),
@@ -353,6 +355,7 @@ class HPE3ParShareDriver(driver.ShareDriver):
 
         self._hpe3par.delete_share(share['project_id'],
                                    share['id'],
+                                   share['size'],
                                    share['share_proto'],
                                    self.fpg,
                                    self.vfs)

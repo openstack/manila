@@ -1,0 +1,4 @@
+---
+fixes:
+  - HPE3PAR Driver fix to reduce the fsquota when a share is deleted
+    for shared fstores.
