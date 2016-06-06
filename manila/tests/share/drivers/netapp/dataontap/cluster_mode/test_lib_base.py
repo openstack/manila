@@ -340,8 +340,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'driver_version': '1.0',
             'netapp_storage_family': 'ontap_cluster',
             'storage_protocol': 'NFS_CIFS',
-            'total_capacity_gb': 0.0,
-            'free_capacity_gb': 0.0,
             'consistency_group_support': 'host',
             'pools': fake.POOLS,
         }
@@ -363,8 +361,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'driver_version': '1.0',
             'netapp_storage_family': 'ontap_cluster',
             'storage_protocol': 'NFS_CIFS',
-            'total_capacity_gb': 0.0,
-            'free_capacity_gb': 0.0,
             'consistency_group_support': 'host',
             'replication_type': 'dr',
             'replication_domain': 'fake_domain',
