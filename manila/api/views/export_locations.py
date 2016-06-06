@@ -77,6 +77,7 @@ class ViewBuilder(common.ViewBuilder):
                                            detail=False)
 
     @common.ViewBuilder.versioned_method('2.14')
-    def add_preferred_path_attribute(self, view_dict, export_location):
+    def add_preferred_path_attribute(self, context, view_dict,
+                                     export_location):
         view_dict['preferred'] = strutils.bool_from_string(
             export_location['el_metadata'].get('preferred'))
