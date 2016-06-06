@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
+
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
@@ -151,13 +153,14 @@ class HDSHNASDriver(driver.ShareDriver):
         Not used by this driver.
         """
 
+        hnas_share_id = self._get_hnas_share_id(share['id'])
+
         try:
-            self._ensure_share(share['id'])
+            self._ensure_share(hnas_share_id)
         except exception.HNASItemNotFoundException:
             raise exception.ShareResourceNotFound(share_id=share['id'])
 
         host_list = []
-        share_id = self._get_hnas_share_id(share['id'])
 
         for rule in access_rules:
             if rule['access_type'].lower() != 'ip':
@@ -172,13 +175,13 @@ class HDSHNASDriver(driver.ShareDriver):
                 host_list.append(rule['access_to'] + '(' +
                                  rule['access_level'] + ')')
 
-        self.hnas.update_access_rule(share_id, host_list)
+        self.hnas.update_access_rule(hnas_share_id, host_list)
 
         if host_list:
             LOG.debug("Share %(share)s has the rules: %(rules)s",
-                      {'share': share_id, 'rules': ', '.join(host_list)})
+                      {'share': share['id'], 'rules': ', '.join(host_list)})
         else:
-            LOG.debug("Share %(share)s has no rules.", {'share': share_id})
+            LOG.debug("Share %(share)s has no rules.", {'share': share['id']})
 
     def create_share(self, context, share, share_server=None):
         """Creates share.
@@ -212,12 +215,15 @@ class HDSHNASDriver(driver.ShareDriver):
         :param share_server: Data structure with share server information.
         Not used by this driver.
         """
-        share_id = self._get_hnas_share_id(share['id'])
+        hnas_share_id = self._get_hnas_share_id(share['id'])
 
         LOG.debug("Deleting share in HNAS: %(shr)s.",
                   {'shr': share['id']})
 
-        self._delete_share(share_id)
+        self._delete_share(hnas_share_id)
+
+        LOG.debug("Export and share successfully deleted: %(shr)s.",
+                  {'shr': share['id']})
 
     def create_snapshot(self, context, snapshot, share_server=None):
         """Creates snapshot.
@@ -227,13 +233,13 @@ class HDSHNASDriver(driver.ShareDriver):
         :param share_server: Data structure with share server information.
         Not used by this driver.
         """
-        share_id = self._get_hnas_share_id(snapshot['share_id'])
+        hnas_share_id = self._get_hnas_share_id(snapshot['share_id'])
 
         LOG.debug("The snapshot of share %(ss_sid)s will be created with "
                   "id %(ss_id)s.", {'ss_sid': snapshot['share_id'],
                                     'ss_id': snapshot['id']})
 
-        self._create_snapshot(share_id, snapshot['id'])
+        self._create_snapshot(hnas_share_id, snapshot['id'])
         LOG.info(_LI("Snapshot %(id)s successfully created."),
                  {'id': snapshot['id']})
 
@@ -245,13 +251,13 @@ class HDSHNASDriver(driver.ShareDriver):
         :param share_server:Data structure with share server information.
         Not used by this driver.
         """
-        share_id = self._get_hnas_share_id(snapshot['share_id'])
+        hnas_share_id = self._get_hnas_share_id(snapshot['share_id'])
 
         LOG.debug("The snapshot %(ss_sid)s will be deleted. The related "
                   "share ID is %(ss_id)s.",
                   {'ss_sid': snapshot['share_id'], 'ss_id': snapshot['id']})
 
-        self._delete_snapshot(share_id, snapshot['id'])
+        self._delete_snapshot(hnas_share_id, snapshot['id'])
         LOG.info(_LI("Snapshot %(id)s successfully deleted."),
                  {'id': snapshot['id']})
 
@@ -271,11 +277,15 @@ class HDSHNASDriver(driver.ShareDriver):
         LOG.debug("Creating a new share from snapshot: %(ss_id)s.",
                   {'ss_id': snapshot['id']})
 
-        path = self._create_share_from_snapshot(share, snapshot)
+        hnas_src_share_id = self._get_hnas_share_id(snapshot['share_id'])
+
+        path = self._create_share_from_snapshot(share, hnas_src_share_id,
+                                                snapshot)
         uri = self.hnas_evs_ip + ":" + path
 
-        LOG.debug("Share created successfully on path: %(uri)s.",
-                  {'uri': uri})
+        LOG.debug("Share %(share)s created successfully on path: %(uri)s.",
+                  {'uri': uri,
+                   'share': share['id']})
         return uri
 
     def ensure_share(self, context, share, share_server=None):
@@ -291,9 +301,9 @@ class HDSHNASDriver(driver.ShareDriver):
         LOG.debug("Ensuring share in HNAS: %(shr)s.",
                   {'shr': share['id']})
 
-        share_id = self._get_hnas_share_id(share['id'])
+        hnas_share_id = self._get_hnas_share_id(share['id'])
 
-        path = self._ensure_share(share_id)
+        path = self._ensure_share(hnas_share_id)
 
         export = self.hnas_evs_ip + ":" + path
         export_list = [export]
@@ -310,12 +320,12 @@ class HDSHNASDriver(driver.ShareDriver):
         :param share_server: Data structure with share server information.
         Not used by this driver.
         """
-        share_id = self._get_hnas_share_id(share['id'])
+        hnas_share_id = self._get_hnas_share_id(share['id'])
 
         LOG.debug("Expanding share in HNAS: %(shr_id)s.",
                   {'shr_id': share['id']})
 
-        self._extend_share(share_id, share['size'], new_size)
+        self._extend_share(hnas_share_id, share, new_size)
         LOG.info(_LI("Share %(shr_id)s successfully extended to "
                      "%(shr_size)s."),
                  {'shr_id': share['id'],
@@ -367,10 +377,12 @@ class HDSHNASDriver(driver.ShareDriver):
         :returns: Returns a dict with size of share managed
         and its location (your path in file-system).
         """
-        share_id = self._get_hnas_share_id(share['id'])
+        hnas_share_id = self._get_hnas_share_id(share['id'])
 
-        if share_id != share['id']:
-            msg = _("Share ID %s already exists, cannot manage.") % share_id
+        # Make sure returned value is the same as provided,
+        # confirming it does not exist.
+        if hnas_share_id != share['id']:
+            msg = _("Share ID %s already exists, cannot manage.") % share['id']
             raise exception.HNASBackendException(msg=msg)
 
         LOG.info(_LI("Share %(shr_path)s will be managed with ID %(shr_id)s."),
@@ -382,7 +394,7 @@ class HDSHNASDriver(driver.ShareDriver):
 
         if len(old_path) == 3:
             evs_ip = old_path_info[0]
-            share_id = old_path[2]
+            hnas_share_id = old_path[2]
         else:
             msg = _("Incorrect path. It should have the following format: "
                     "IP:/shares/share_id.")
@@ -398,9 +410,18 @@ class HDSHNASDriver(driver.ShareDriver):
                     "not configured.") % {'shr': share['host']}
             raise exception.ShareBackendException(msg=msg)
 
-        output = self._manage_existing(share_id)
+        output = self._manage_existing(share['id'], hnas_share_id)
         self.private_storage.update(
-            share['id'], {'hnas_id': share_id})
+            share['id'], {'hnas_id': hnas_share_id})
+
+        LOG.debug("HNAS ID %(hnas_id)s has been saved to private storage for "
+                  "Share ID %(share_id)s", {'hnas_id': hnas_share_id,
+                                            'share_id': share['id']})
+
+        LOG.info(_LI("Share %(shr_path)s was successfully managed with ID "
+                     "%(shr_id)s."),
+                 {'shr_path': share['export_locations'][0]['path'],
+                  'shr_id': share['id']})
 
         return output
 
@@ -428,12 +449,12 @@ class HDSHNASDriver(driver.ShareDriver):
         :param share_server: Data structure with share server information.
         Not used by this driver.
         """
-        share_id = self._get_hnas_share_id(share['id'])
+        hnas_share_id = self._get_hnas_share_id(share['id'])
 
         LOG.debug("Shrinking share in HNAS: %(shr_id)s.",
                   {'shr_id': share['id']})
 
-        self._shrink_share(share_id, share['size'], new_size)
+        self._shrink_share(hnas_share_id, share, new_size)
         LOG.info(_LI("Share %(shr_id)s successfully shrunk to "
                      "%(shr_size)sG."),
                  {'shr_id': share['id'],
@@ -444,18 +465,23 @@ class HDSHNASDriver(driver.ShareDriver):
 
         if hnas_id is None:
             hnas_id = share_id
+
+        LOG.debug("Share ID is %(shr_id)s and respective HNAS ID "
+                  "is %(hnas_id)s.", {'shr_id': share_id,
+                                      'hnas_id': hnas_id})
+
         return hnas_id
 
     def _create_share(self, share_id, share_size):
         """Creates share.
 
         Creates a virtual-volume, adds a quota limit and exports it.
-        :param share_id: ID of share that will be created.
+        :param share_id: manila's database ID of share that will be created.
         :param share_size: Size limit of share.
         :returns: Returns a path of /shares/share_id if the export was
         created successfully.
         """
-        path = '/shares/' + share_id
+        path = os.path.join('/shares', share_id)
 
         self._check_fs_mounted()
 
@@ -484,113 +510,113 @@ class HDSHNASDriver(driver.ShareDriver):
             msg = _("Filesystem %s is not mounted.") % self.fs_name
             raise exception.HNASBackendException(msg=msg)
 
-    def _ensure_share(self, share_id):
+    def _ensure_share(self, hnas_share_id):
         """Ensure that share is exported.
 
-        :param share_id: ID of share that will be checked.
+        :param hnas_share_id: HNAS ID of share that will be checked.
         :returns: Returns a path of /shares/share_id if the export is ok.
         """
-        path = '/shares/' + share_id
+        path = os.path.join('/shares', hnas_share_id)
 
         self._check_fs_mounted()
 
-        self.hnas.check_vvol(share_id)
-        self.hnas.check_quota(share_id)
-        self.hnas.check_export(share_id)
+        self.hnas.check_vvol(hnas_share_id)
+        self.hnas.check_quota(hnas_share_id)
+        self.hnas.check_export(hnas_share_id)
         return path
 
-    def _shrink_share(self, share_id, old_size, new_size):
+    def _shrink_share(self, hnas_share_id, share, new_size):
         """Shrinks a share to new size.
 
-        :param share_id: ID of share that will be shrunk.
-        :param old_size: Current size of share that will be shrunk.
+        :param hnas_share_id: HNAS ID of share that will be shrunk.
+        :param share: model of share that will be shrunk.
         :param new_size: New size of share after shrink operation.
         """
-        self._ensure_share(share_id)
+        self._ensure_share(hnas_share_id)
 
-        usage = self.hnas.get_share_usage(share_id)
+        usage = self.hnas.get_share_usage(hnas_share_id)
 
         LOG.debug("Usage space in share %(share)s: %(usage)sG",
-                  {'share': share_id, 'usage': usage})
+                  {'share': share['id'], 'usage': usage})
 
         if new_size > usage:
-            self.hnas.modify_quota(share_id, new_size)
+            self.hnas.modify_quota(hnas_share_id, new_size)
         else:
-            raise exception.ShareShrinkingPossibleDataLoss(share_id=share_id)
+            raise exception.ShareShrinkingPossibleDataLoss(
+                share_id=share['id'])
 
-    def _extend_share(self, share_id, old_size, new_size):
+    def _extend_share(self, hnas_share_id, share, new_size):
         """Extends a share to new size.
 
-        :param share_id: ID of share that will be extended.
-        :param old_size: Current size of share that will be extended.
+        :param hnas_share_id: HNAS ID of share that will be extended.
+        :param share: model of share that will be extended.
         :param new_size: New size of share after extend operation.
         """
-        self._ensure_share(share_id)
+        self._ensure_share(hnas_share_id)
 
+        old_size = share['size']
         total, available_space = self.hnas.get_stats()
 
         LOG.debug("Available space in filesystem: %(space)sG.",
                   {'space': available_space})
 
         if (new_size - old_size) < available_space:
-            self.hnas.modify_quota(share_id, new_size)
+            self.hnas.modify_quota(hnas_share_id, new_size)
         else:
             msg = (_("Share %s cannot be extended due to insufficient space.")
-                   % share_id)
+                   % share['id'])
             raise exception.HNASBackendException(msg=msg)
 
-    def _delete_share(self, share_id):
+    def _delete_share(self, hnas_share_id):
         """Deletes share.
 
         It uses tree-delete-job-submit to format and delete virtual-volumes.
         Quota is deleted with virtual-volume.
-        :param share_id: ID of share that will be deleted.
+        :param hnas_share_id: HNAS ID of share that will be deleted.
         """
         self._check_fs_mounted()
 
-        self.hnas.nfs_export_del(share_id)
-        self.hnas.vvol_delete(share_id)
+        self.hnas.nfs_export_del(hnas_share_id)
+        self.hnas.vvol_delete(hnas_share_id)
 
-        LOG.debug("Export and share successfully deleted: %(shr)s on Manila.",
-                  {'shr': share_id})
-
-    def _manage_existing(self, share_id):
+    def _manage_existing(self, share_id, hnas_share_id):
         """Manages a share that exists on backend.
 
-        :param share_id: ID of share that will be managed.
+        :param share_id: manila's database ID of share that will be managed.
+        :param hnas_share_id: HNAS ID of share that will be managed.
         :returns: Returns a dict with size of share managed
         and its location (your path in file-system).
         """
-        self._ensure_share(share_id)
+        self._ensure_share(hnas_share_id)
 
-        share_size = self.hnas.get_share_quota(share_id)
+        share_size = self.hnas.get_share_quota(hnas_share_id)
         if share_size is None:
             msg = (_("The share %s trying to be managed does not have a "
                      "quota limit, please set it before manage.") % share_id)
             raise exception.ManageInvalidShare(msg)
 
-        path = self.hnas_evs_ip + ':/shares/' + share_id
+        path = self.hnas_evs_ip + os.path.join(':/shares', hnas_share_id)
 
         return {'size': share_size, 'export_locations': [path]}
 
-    def _create_snapshot(self, share_id, snapshot_id):
+    def _create_snapshot(self, hnas_share_id, snapshot_id):
         """Creates a snapshot of share.
 
         It copies the directory and all files to a new directory inside
         /snapshots/share_id/.
-        :param share_id: ID of share for snapshot.
+        :param hnas_share_id: HNAS ID of share for snapshot.
         :param snapshot_id: ID of new snapshot.
         """
-        self._ensure_share(share_id)
+        self._ensure_share(hnas_share_id)
 
-        saved_list = self.hnas.get_host_list(share_id)
+        saved_list = self.hnas.get_host_list(hnas_share_id)
         new_list = []
         for access in saved_list:
             new_list.append(access.replace('(rw)', '(ro)'))
-        self.hnas.update_access_rule(share_id, new_list)
+        self.hnas.update_access_rule(hnas_share_id, new_list)
 
-        src_path = '/shares/' + share_id
-        dest_path = '/snapshots/' + share_id + '/' + snapshot_id
+        src_path = os.path.join('/shares', hnas_share_id)
+        dest_path = os.path.join('/snapshots', hnas_share_id, snapshot_id)
         try:
             self.hnas.tree_clone(src_path, dest_path)
         except exception.HNASNothingToCloneException:
@@ -598,35 +624,37 @@ class HDSHNASDriver(driver.ShareDriver):
                             "directory."))
             self.hnas.create_directory(dest_path)
         finally:
-            self.hnas.update_access_rule(share_id, saved_list)
+            self.hnas.update_access_rule(hnas_share_id, saved_list)
 
-    def _delete_snapshot(self, share_id, snapshot_id):
+    def _delete_snapshot(self, hnas_share_id, snapshot_id):
         """Deletes snapshot.
 
-        It receives the share_id only to mount the path for snapshot.
-        :param share_id: ID of share that snapshot was created.
+        It receives the hnas_share_id only to join the path for snapshot.
+        :param hnas_share_id: HNAS ID of share from which snapshot was taken.
         :param snapshot_id: ID of snapshot.
         """
-
         self._check_fs_mounted()
 
-        path = '/snapshots/' + share_id + '/' + snapshot_id
+        path = os.path.join('/snapshots', hnas_share_id, snapshot_id)
         self.hnas.tree_delete(path)
-        path = '/snapshots/' + share_id
+        path = os.path.join('/snapshots', hnas_share_id)
         self.hnas.delete_directory(path)
 
-    def _create_share_from_snapshot(self, share, snapshot):
+    def _create_share_from_snapshot(self, share, src_hnas_share_id, snapshot):
         """Creates a new share from snapshot.
 
         It copies everything from snapshot directory to a new vvol,
         set a quota limit for it and export.
         :param share: a dict from new share.
+        :param src_hnas_share_id: HNAS ID of share from which snapshot was
+            taken.
         :param snapshot: a dict from snapshot that will be copied to
         new share.
         :returns: Returns the path for new share.
         """
-        dest_path = '/shares/' + share['id']
-        src_path = '/snapshots/' + snapshot['share_id'] + '/' + snapshot['id']
+        dest_path = os.path.join('/shares', share['id'])
+        src_path = os.path.join('/snapshots', src_hnas_share_id,
+                                snapshot['id'])
 
         # Before copying everything to new vvol, we need to create it,
         # because we only can transform an empty directory into a vvol.
