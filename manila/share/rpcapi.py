@@ -62,7 +62,8 @@ class ShareAPI(object):
         1.12 - Add provide_share_server(), create_share_server() and
             migration_driver_recovery(), remove migration_get_driver_info(),
             update migration_cancel(), migration_complete() and
-            migration_get_progress method signature
+            migration_get_progress method signature, rename
+            migration_get_info() to connection_get_info()
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -123,28 +124,27 @@ class ShareAPI(object):
                           share_instance_id=share_instance['id'],
                           force=force)
 
-    def migration_start(self, context, share, dest_host, force_host_copy,
-                        notify):
+    def migration_start(self, context, share, dest_host,
+                        force_host_assisted_migration, preserve_metadata,
+                        writable, nondisruptive, new_share_network_id):
         new_host = utils.extract_host(share['instance']['host'])
-        call_context = self.client.prepare(server=new_host, version='1.6')
-        call_context.cast(context,
-                          'migration_start',
-                          share_id=share['id'],
-                          dest_host=dest_host,
-                          force_host_copy=force_host_copy,
-                          notify=notify)
+        call_context = self.client.prepare(server=new_host, version='1.12')
+        call_context.cast(
+            context,
+            'migration_start',
+            share_id=share['id'],
+            dest_host=dest_host,
+            force_host_assisted_migration=force_host_assisted_migration,
+            preserve_metadata=preserve_metadata,
+            writable=writable,
+            nondisruptive=nondisruptive,
+            new_share_network_id=new_share_network_id)
 
-    def migration_driver_recovery(self, context, share, host):
-        call_context = self.client.prepare(server=host, version='1.12')
-        call_context.cast(context,
-                          'migration_driver_recovery',
-                          share_id=share['id'])
-
-    def migration_get_info(self, context, share_instance):
+    def connection_get_info(self, context, share_instance):
         new_host = utils.extract_host(share_instance['host'])
-        call_context = self.client.prepare(server=new_host, version='1.6')
+        call_context = self.client.prepare(server=new_host, version='1.12')
         return call_context.call(context,
-                                 'migration_get_info',
+                                 'connection_get_info',
                                  share_instance_id=share_instance['id'])
 
     def delete_share_server(self, context, share_server):

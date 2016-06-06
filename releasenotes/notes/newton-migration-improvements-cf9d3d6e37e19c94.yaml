@@ -1,0 +1,29 @@
+---
+prelude: >
+    Added new parameters to Share Migration experimental API and
+    more combinations of share protocols and access types support
+    to the Data Service.
+features:
+  - Share Migration now has parameters to force share migration
+    procedure to maintain the share writable, preserve its metadata
+    and be non-disruptive when migrating.
+  - Added CIFS protocol support to Data Service, along with
+    respective 'user' access type support, through
+    the 'data_node_access_admin_user' configuration option.
+  - Added possibility to include options to mount commands issued by
+    the Data Service through the 'data_node_mount_options'
+    configuration option.
+  - Administrators can now change share's share network during a
+    migration.
+  - Added possibility of having files hash verified during migration.
+deprecations:
+  - Renamed Share Migration 'force_host_copy' parameter
+    to 'force_host_assisted_migration', to better represent
+    the parameter's functionality in API version 2.22.
+  - API version 2.22 is now required for all Share Migration APIs.
+upgrades:
+  - Removed Share Migration 'notify' parameter, it is no longer
+    possible to perform a 1-phase migration.
+  - Removed 'migrate_share' API support.
+  - Added 'None' to 'reset_task_state' API possible values so it
+    can unset the task_state.

@@ -225,26 +225,55 @@ class SchedulerManagerTestCase(test.TestCase):
         host = fake_host()
 
         self.mock_object(db, 'share_get', mock.Mock(return_value=share))
-        self.mock_object(share_rpcapi.ShareAPI, 'migration_start')
+        self.mock_object(share_rpcapi.ShareAPI, 'migration_start',
+                         mock.Mock(side_effect=TypeError))
         self.mock_object(base.Scheduler,
                          'host_passes_filters',
                          mock.Mock(return_value=host))
 
-        self.manager.migrate_share_to_host(self.context, share['id'],
-                                           host.host, False, True, {}, None)
+        self.assertRaises(
+            TypeError, self.manager.migrate_share_to_host,
+            self.context, share['id'], 'fake@backend#pool', False, True,
+            True, False, 'fake_net_id', {}, None)
 
-    def test_migrate_share_to_host_no_valid_host(self):
+        db.share_get.assert_called_once_with(self.context, share['id'])
+        base.Scheduler.host_passes_filters.assert_called_once_with(
+            self.context, 'fake@backend#pool', {}, None)
+        share_rpcapi.ShareAPI.migration_start.assert_called_once_with(
+            self.context, share, host.host, False, True, True, False,
+            'fake_net_id')
 
-        share = db_utils.create_share()
+    @ddt.data(exception.NoValidHost(reason='fake'), TypeError)
+    def test_migrate_share_to_host_exception(self, exc):
+
+        share = db_utils.create_share(status=constants.STATUS_MIGRATING)
         host = 'fake@backend#pool'
+        request_spec = {'share_id': share['id']}
 
+        self.mock_object(db, 'share_get', mock.Mock(return_value=share))
         self.mock_object(
             base.Scheduler, 'host_passes_filters',
-            mock.Mock(side_effect=[exception.NoValidHost('fake')]))
+            mock.Mock(side_effect=exc))
+        self.mock_object(db, 'share_update')
+        self.mock_object(db, 'share_instance_update')
+
+        capture = (exception.NoValidHost if
+                   isinstance(exc, exception.NoValidHost) else TypeError)
 
         self.assertRaises(
-            exception.NoValidHost, self.manager.migrate_share_to_host,
-            self.context, share['id'], host, False, True, {}, None)
+            capture, self.manager.migrate_share_to_host,
+            self.context, share['id'], host, False, True, True, False,
+            'fake_net_id', request_spec, None)
+
+        base.Scheduler.host_passes_filters.assert_called_once_with(
+            self.context, host, request_spec, None)
+        db.share_get.assert_called_once_with(self.context, share['id'])
+        db.share_update.assert_called_once_with(
+            self.context, share['id'],
+            {'task_state': constants.TASK_STATE_MIGRATION_ERROR})
+        db.share_instance_update.assert_called_once_with(
+            self.context, share.instance['id'],
+            {'status': constants.STATUS_AVAILABLE})
 
     def test_manage_share(self):
 

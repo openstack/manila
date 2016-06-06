@@ -17,6 +17,8 @@ import os
 from oslo_log import log
 import six
 
+from manila import exception
+from manila.i18n import _
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -24,7 +26,7 @@ LOG = log.getLogger(__name__)
 
 class Copy(object):
 
-    def __init__(self, src, dest, ignore_list):
+    def __init__(self, src, dest, ignore_list, check_hash=False):
         self.src = src
         self.dest = dest
         self.total_size = 0
@@ -36,6 +38,7 @@ class Copy(object):
         self.cancelled = False
         self.initialized = False
         self.completed = False
+        self.check_hash = check_hash
 
     def get_progress(self):
 
@@ -138,12 +141,18 @@ class Copy(object):
                 self.current_copy = {'file_path': dest_item,
                                      'size': int(size)}
 
-                utils.execute("cp", "-P", "--preserve=all", src_item,
-                              dest_item, run_as_root=True)
+                self._copy_and_validate(src_item, dest_item)
 
                 self.current_size += int(size)
-
                 LOG.info(six.text_type(self.get_progress()))
+
+    @utils.retry(exception.ShareDataCopyFailed, retries=2)
+    def _copy_and_validate(self, src_item, dest_item):
+        utils.execute("cp", "-P", "--preserve=all", src_item,
+                      dest_item, run_as_root=True)
+
+        if self.check_hash:
+            _validate_item(src_item, dest_item)
 
     def copy_stats(self, path):
         if self.cancelled:
@@ -169,3 +178,13 @@ class Copy(object):
                               run_as_root=True)
                 utils.execute("chown", "--reference=%s" % src_item, dest_item,
                               run_as_root=True)
+
+
+def _validate_item(src_item, dest_item):
+    src_sum, err = utils.execute(
+        "sha256sum", "%s" % src_item, run_as_root=True)
+    dest_sum, err = utils.execute(
+        "sha256sum", "%s" % dest_item, run_as_root=True)
+    if src_sum.split()[0] != dest_sum.split()[0]:
+        msg = _("Data corrupted while copying. Aborting data copy.")
+        raise exception.ShareDataCopyFailed(reason=msg)

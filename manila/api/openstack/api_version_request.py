@@ -73,13 +73,18 @@ REST_API_VERSION_HISTORY = """
             (list/show/detail/reset-status).
     * 2.20 - Add MTU to the JSON response of share network show API.
     * 2.21 - Add access_key to the response of access_list API.
+    * 2.22 - Updated migration_start API with 'preserve-metadata', 'writable',
+            'nondisruptive' and 'new_share_network_id' parameters, renamed
+            'force_host_copy' to 'force_host_assisted_migration', removed
+            'notify' parameter and removed previous migrate_share API support.
+            Updated reset_task_state API to accept 'None' value.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # the minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.21"
+_MAX_API_VERSION = "2.22"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

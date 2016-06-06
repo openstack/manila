@@ -1215,7 +1215,8 @@ class AdminActionsMixin(object):
             raise webob.exc.HTTPBadRequest(explanation=msg)
         if update[status_attr] not in self.valid_statuses[status_attr]:
             expl = (_("Invalid state. Valid states: %s.") %
-                    ", ".join(self.valid_statuses[status_attr]))
+                    ", ".join(six.text_type(i) for i in
+                              self.valid_statuses[status_attr]))
             raise webob.exc.HTTPBadRequest(explanation=expl)
         return update
 

@@ -30,7 +30,7 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         super(AdminActionsTest, cls).resource_setup()
         cls.states = ["error", "available"]
         cls.task_states = ["migration_starting", "data_copying_in_progress",
-                           "migration_success"]
+                           "migration_success", None]
         cls.bad_status = "error_deleting"
         cls.sh = cls.create_share()
         cls.sh_instance = (
@@ -120,7 +120,7 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         self.shares_v2_client.wait_for_resource_deletion(snapshot_id=sn["id"])
 
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
-    @base.skip_if_microversion_lt("2.15")
+    @base.skip_if_microversion_lt("2.22")
     def test_reset_share_task_state(self):
         for task_state in self.task_states:
             self.shares_v2_client.reset_task_state(self.sh["id"], task_state)

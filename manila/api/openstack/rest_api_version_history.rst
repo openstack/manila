@@ -130,3 +130,11 @@ user documentation.
 2.21
 ----
   Add access_key in access_list API.
+
+2.22
+----
+  Updated migration_start API with 'preserve-metadata', 'writable',
+  'nondisruptive' and 'new_share_network_id' parameters, renamed
+  'force_host_copy' to 'force_host_assisted_migration', removed 'notify'
+  parameter and removed previous migrate_share API support. Updated
+  reset_task_state API to accept 'None' value.

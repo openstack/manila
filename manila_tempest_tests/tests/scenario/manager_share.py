@@ -21,6 +21,7 @@ from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest.scenario import manager
 
+from manila_tempest_tests.common import constants
 from manila_tempest_tests.services.share.json import shares_client
 from manila_tempest_tests.services.share.v2.json import (
     shares_client as shares_v2_client)
@@ -196,11 +197,19 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
 
         return linux_client
 
-    def _migrate_share(self, share_id, dest_host, client=None):
+    def _migrate_share(self, share_id, dest_host, status, client=None):
         client = client or self.shares_admin_v2_client
-        client.migrate_share(share_id, dest_host, True)
-        share = client.wait_for_migration_status(share_id, dest_host,
-                                                 'migration_success')
+        client.migrate_share(share_id, dest_host, writable=False,
+                             preserve_metadata=False, nondisruptive=False)
+        share = client.wait_for_migration_status(share_id, dest_host, status)
+        return share
+
+    def _migration_complete(self, share_id, dest_host, client=None, **kwargs):
+        client = client or self.shares_admin_v2_client
+        client.migration_complete(share_id, **kwargs)
+        share = client.wait_for_migration_status(
+            share_id, dest_host, constants.TASK_STATE_MIGRATION_SUCCESS,
+            **kwargs)
         return share
 
     def _create_share_type(self, name, is_public=True, **kwargs):
