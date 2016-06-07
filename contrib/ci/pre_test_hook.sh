@@ -92,6 +92,9 @@ echo "MANILA_SERVICE_IMAGE_ENABLED=$MANILA_SERVICE_IMAGE_ENABLED" >> $localrc_pa
 # created vm's in scenario tests.
 echo 'ENABLE_ISOLATED_METADATA=True' >> $localrc_path
 
+# Workaround for broken CI, see bug #1589964.
+cd $BASE/new/neutron-fwaas
+git revert --no-edit a59df892d3f90f97c967a46b6c18e595d60a9b85
 
 # Go to Tempest dir and checkout stable commit to avoid possible
 # incompatibilities for plugin stored in Manila repo.
