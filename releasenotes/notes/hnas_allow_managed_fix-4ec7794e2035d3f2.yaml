@@ -1,0 +1,9 @@
+---
+fixes:
+  - Fixed error when allowing access to a managed share in
+    HDS HNAS driver.
+  - Fixed error when attempting to create a new share from
+    a snapshot taken from a managed share in HDS HNAS
+    driver.
+  - Fixed ID inconsistencies in log when handling managed
+    shares in HDS HNAS driver.
