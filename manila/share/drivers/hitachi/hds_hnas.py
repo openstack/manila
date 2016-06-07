@@ -607,6 +607,9 @@ class HDSHNASDriver(driver.ShareDriver):
         :param share_id: ID of share that snapshot was created.
         :param snapshot_id: ID of snapshot.
         """
+
+        self._check_fs_mounted()
+
         path = '/snapshots/' + share_id + '/' + snapshot_id
         self.hnas.tree_delete(path)
         path = '/snapshots/' + share_id
