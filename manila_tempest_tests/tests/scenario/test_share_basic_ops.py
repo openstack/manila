@@ -16,6 +16,7 @@
 from oslo_log import log as logging
 from tempest import config  # noqa
 from tempest.lib.common.utils import data_utils
+from tempest.lib.common.utils import test_utils
 from tempest.lib import exceptions
 from tempest import test  # noqa
 
@@ -83,7 +84,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         # Obtain a floating IP
         floating_ip = (self.compute_floating_ips_client.create_floating_ip()
                        ['floating_ip'])
-        self.addCleanup(self.delete_wrapper,
+        self.addCleanup(test_utils.call_and_ignore_notfound_exc,
                         self.compute_floating_ips_client.delete_floating_ip,
                         floating_ip['id'])
         # Attach a floating IP

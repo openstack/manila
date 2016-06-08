@@ -175,8 +175,7 @@ class BaseSharesTest(test.BaseTestCase):
             identity_version=CONF.identity.auth_version,
             name=name,
             admin_role=CONF.identity.admin_role,
-            admin_creds=common_creds.get_configured_credentials(
-                'identity_admin'))
+            admin_creds=common_creds.get_configured_admin_credentials())
         if "admin" in type_of_creds:
             creds = ic.get_admin_creds()
         elif "alt" in type_of_creds:
@@ -315,8 +314,8 @@ class BaseSharesTest(test.BaseTestCase):
                         identity_version=CONF.identity.auth_version,
                         name=service_net_name,
                         admin_role=CONF.identity.admin_role,
-                        admin_creds=common_creds.get_configured_credentials(
-                            'identity_admin'))
+                        admin_creds=(
+                            common_creds.get_configured_admin_credentials()))
                     net_data = ic._create_network_resources(sc.tenant_id)
                     network, subnet, router = net_data
                     net_id = network["id"]
