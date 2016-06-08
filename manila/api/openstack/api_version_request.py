@@ -84,13 +84,15 @@ REST_API_VERSION_HISTORY = """
              spec. Also made the 'snapshot_support' extra spec optional.
     * 2.25 - Added quota-show detail API.
     * 2.26 - Removed 'nova_net_id' parameter from share_network API.
+
+    * 2.27 - Added share revert to snapshot API.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.26"
+_MAX_API_VERSION = "2.27"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

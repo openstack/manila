@@ -740,6 +740,8 @@ class BaseSharesTest(test.BaseTestCase):
             CONF.share.capability_snapshot_support)
         create_from_snapshot_support = six.text_type(
             CONF.share.capability_create_share_from_snapshot_support)
+        revert_to_snapshot_support = six.text_type(
+            CONF.share.capability_revert_to_snapshot_support)
 
         extra_specs_dict = {
             "driver_handles_share_servers": dhss,
@@ -748,6 +750,7 @@ class BaseSharesTest(test.BaseTestCase):
         optional = {
             "snapshot_support": snapshot_support,
             "create_share_from_snapshot_support": create_from_snapshot_support,
+            "revert_to_snapshot_support": revert_to_snapshot_support,
         }
         # NOTE(gouthamr): In micro-versions < 2.24, snapshot_support is a
         # required extra-spec

@@ -41,6 +41,7 @@
     "share:unmanage": "rule:admin_api",
     "share:force_delete": "rule:admin_api",
     "share:reset_status": "rule:admin_api",
+    "share:revert_to_snapshot": "rule:default",
     "share_export_location:index": "rule:default",
     "share_export_location:show": "rule:default",
 

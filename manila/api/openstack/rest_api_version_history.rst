@@ -156,3 +156,10 @@ user documentation.
 ----
   Removed nova-net plugin support and removed 'nova_net_id' parameter from
   share_network API.
+
+2.27
+----
+  Added share revert to snapshot. This API reverts a share to the specified
+  snapshot. The share is reverted in place, and the snapshot must be the most
+  recent one known to manila. The feature is controlled by a new standard
+  optional extra spec, revert_to_snapshot_support.

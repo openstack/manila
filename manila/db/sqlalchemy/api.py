@@ -2193,6 +2193,14 @@ def share_snapshot_get_all_for_share(context, share_id, filters=None,
 
 
 @require_context
+def share_snapshot_get_latest_for_share(context, share_id):
+
+    snapshots = _share_snapshot_get_all_with_filters(
+        context, share_id=share_id, sort_key='created_at', sort_dir='desc')
+    return snapshots[0] if snapshots else None
+
+
+@require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_snapshot_update(context, snapshot_id, values):
     session = get_session()

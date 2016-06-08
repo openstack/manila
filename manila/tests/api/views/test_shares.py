@@ -45,13 +45,14 @@ class ViewBuilderTestCase(test.TestCase):
             'user_id': 'fake_userid',
             'snapshot_support': True,
             'create_share_from_snapshot_support': True,
+            'revert_to_snapshot_support': True,
         }
         return stubs.stub_share('fake_id', **fake_share)
 
     def test__collection_name(self):
         self.assertEqual('shares', self.builder._collection_name)
 
-    @ddt.data('2.6', '2.9', '2.10', '2.11', '2.16', '2.24')
+    @ddt.data('2.6', '2.9', '2.10', '2.11', '2.16', '2.24', '2.27')
     def test_detail(self, microversion):
         req = fakes.HTTPRequest.blank('/shares', version=microversion)
 
@@ -77,5 +78,7 @@ class ViewBuilderTestCase(test.TestCase):
             expected['user_id'] = 'fake_userid'
         if self.is_microversion_ge(microversion, '2.24'):
             expected['create_share_from_snapshot_support'] = True
+        if self.is_microversion_ge(microversion, '2.27'):
+            expected['revert_to_snapshot_support'] = True
 
         self.assertSubDictMatch(expected, result['share'])

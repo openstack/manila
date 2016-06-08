@@ -40,6 +40,9 @@ STATUS_SHRINKING_POSSIBLE_DATA_LOSS_ERROR = (
     'shrinking_possible_data_loss_error'
 )
 STATUS_REPLICATION_CHANGE = 'replication_change'
+STATUS_RESTORING = 'restoring'
+STATUS_REVERTING = 'reverting'
+STATUS_REVERTING_ERROR = 'reverting_error'
 
 TASK_STATE_MIGRATION_STARTING = 'migration_starting'
 TASK_STATE_MIGRATION_IN_PROGRESS = 'migration_in_progress'
@@ -81,6 +84,7 @@ TRANSITIONAL_STATUSES = (
     STATUS_MANAGING, STATUS_UNMANAGING,
     STATUS_EXTENDING, STATUS_SHRINKING,
     STATUS_MIGRATING, STATUS_MIGRATING_TO,
+    STATUS_RESTORING, STATUS_REVERTING,
 )
 
 UPDATING_RULES_STATUSES = (
@@ -161,6 +165,7 @@ class ExtraSpecs(object):
     SNAPSHOT_SUPPORT = "snapshot_support"
     REPLICATION_TYPE_SPEC = "replication_type"
     CREATE_SHARE_FROM_SNAPSHOT_SUPPORT = "create_share_from_snapshot_support"
+    REVERT_TO_SNAPSHOT_SUPPORT = "revert_to_snapshot_support"
 
     # Extra specs containers
     REQUIRED = (
@@ -170,6 +175,7 @@ class ExtraSpecs(object):
     OPTIONAL = (
         SNAPSHOT_SUPPORT,
         CREATE_SHARE_FROM_SNAPSHOT_SUPPORT,
+        REVERT_TO_SNAPSHOT_SUPPORT,
         REPLICATION_TYPE_SPEC,
     )
 
@@ -182,6 +188,7 @@ class ExtraSpecs(object):
         DRIVER_HANDLES_SHARE_SERVERS,
         SNAPSHOT_SUPPORT,
         CREATE_SHARE_FROM_SNAPSHOT_SUPPORT,
+        REVERT_TO_SNAPSHOT_SUPPORT,
     )
 
     # NOTE(cknight): Some extra specs are optional, but a nominal (typically
@@ -190,6 +197,7 @@ class ExtraSpecs(object):
     INFERRED_OPTIONAL_MAP = {
         SNAPSHOT_SUPPORT: False,
         CREATE_SHARE_FROM_SNAPSHOT_SUPPORT: False,
+        REVERT_TO_SNAPSHOT_SUPPORT: False,
     }
 
     REPLICATION_TYPES = ('writable', 'readable', 'dr')

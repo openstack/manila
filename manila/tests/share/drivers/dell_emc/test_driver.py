@@ -125,6 +125,7 @@ class EMCShareFrameworkTestCase(test.TestCase):
         data['pools'] = None
         data['snapshot_support'] = True
         data['create_share_from_snapshot_support'] = True
+        data['revert_to_snapshot_support'] = False
         data['replication_domain'] = None
         data['filter_function'] = None
         data['goodness_function'] = None

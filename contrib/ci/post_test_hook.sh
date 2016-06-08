@@ -69,6 +69,7 @@ PASSWORD_FOR_SAMBA_USER=${PASSWORD_FOR_SAMBA_USER:-$USERNAME_FOR_USER_RULES}
 RUN_MANILA_QUOTA_TESTS=${RUN_MANILA_QUOTA_TESTS:-True}
 RUN_MANILA_SHRINK_TESTS=${RUN_MANILA_SHRINK_TESTS:-True}
 RUN_MANILA_SNAPSHOT_TESTS=${RUN_MANILA_SNAPSHOT_TESTS:-True}
+RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS=${RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS:-False}
 RUN_MANILA_CG_TESTS=${RUN_MANILA_CG_TESTS:-True}
 RUN_MANILA_MANAGE_TESTS=${RUN_MANILA_MANAGE_TESTS:-True}
 RUN_MANILA_MANAGE_SNAPSHOT_TESTS=${RUN_MANILA_MANAGE_SNAPSHOT_TESTS:-False}
@@ -164,6 +165,7 @@ if [[ "$DRIVER" == "lvm" ]]; then
     RUN_MANILA_MANAGE_TESTS=False
     RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=True
     RUN_MANILA_SHRINK_TESTS=False
+    RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS=True
     iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
     iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
     iniset $TEMPEST_CONFIG share image_with_share_tools 'manila-service-image-master'
@@ -207,6 +209,7 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     RUN_MANILA_CG_TESTS=True
     RUN_MANILA_MANAGE_TESTS=False
     RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS=True
+    RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS=True
     iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
     iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
     iniset $TEMPEST_CONFIG share enable_cert_rules_for_protocols ''
@@ -243,6 +246,9 @@ iniset $TEMPEST_CONFIG share run_shrink_tests $RUN_MANILA_SHRINK_TESTS
 # Enable snapshot tests
 iniset $TEMPEST_CONFIG share run_snapshot_tests $RUN_MANILA_SNAPSHOT_TESTS
 
+# Enable revert to snapshot tests
+iniset $TEMPEST_CONFIG share run_revert_to_snapshot_tests $RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS
+
 # Enable consistency group tests
 iniset $TEMPEST_CONFIG share run_consistency_group_tests $RUN_MANILA_CG_TESTS
 
@@ -261,6 +267,10 @@ iniset $TEMPEST_CONFIG share run_driver_assisted_migration_tests $RUN_MANILA_DRI
 
 # Create share from snapshot support
 iniset $TEMPEST_CONFIG share capability_create_share_from_snapshot_support $CAPABILITY_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT
+
+# Revert share to snapshot support
+CAPABILITY_REVERT_TO_SNAPSHOT_SUPPORT=${CAPABILITY_REVERT_TO_SNAPSHOT_SUPPORT:-$RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS}
+iniset $TEMPEST_CONFIG share capability_revert_to_snapshot_support $CAPABILITY_REVERT_TO_SNAPSHOT_SUPPORT
 
 iniset $TEMPEST_CONFIG validation ip_version_for_ssh 4
 iniset $TEMPEST_CONFIG validation network_for_ssh ${PRIVATE_NETWORK_NAME:-"private"}

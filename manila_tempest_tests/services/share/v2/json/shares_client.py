@@ -553,6 +553,67 @@ class SharesV2Client(shares_client.SharesClient):
 
 ###############
 
+    def revert_to_snapshot(self, share_id, snapshot_id,
+                           version=LATEST_MICROVERSION):
+        url = 'shares/%s/action' % share_id
+        body = json.dumps({'revert': {'snapshot_id': snapshot_id}})
+        resp, body = self.post(url, body, version=version)
+        self.expected_success(202, resp.status)
+        return self._parse_resp(body)
+
+###############
+
+    def create_share_type_extra_specs(self, share_type_id, extra_specs,
+                                      version=LATEST_MICROVERSION):
+        url = "types/%s/extra_specs" % share_type_id
+        post_body = json.dumps({'extra_specs': extra_specs})
+        resp, body = self.post(url, post_body, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def get_share_type_extra_spec(self, share_type_id, extra_spec_name,
+                                  version=LATEST_MICROVERSION):
+        uri = "types/%s/extra_specs/%s" % (share_type_id, extra_spec_name)
+        resp, body = self.get(uri, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def get_share_type_extra_specs(self, share_type_id, params=None,
+                                   version=LATEST_MICROVERSION):
+        uri = "types/%s/extra_specs" % share_type_id
+        if params is not None:
+            uri += '?%s' % urlparse.urlencode(params)
+        resp, body = self.get(uri, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def update_share_type_extra_spec(self, share_type_id, spec_name,
+                                     spec_value, version=LATEST_MICROVERSION):
+        uri = "types/%s/extra_specs/%s" % (share_type_id, spec_name)
+        extra_spec = {spec_name: spec_value}
+        post_body = json.dumps(extra_spec)
+        resp, body = self.put(uri, post_body, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def update_share_type_extra_specs(self, share_type_id, extra_specs,
+                                      version=LATEST_MICROVERSION):
+        uri = "types/%s/extra_specs" % share_type_id
+        extra_specs = {"extra_specs": extra_specs}
+        post_body = json.dumps(extra_specs)
+        resp, body = self.post(uri, post_body, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def delete_share_type_extra_spec(self, share_type_id, extra_spec_name,
+                                     version=LATEST_MICROVERSION):
+        uri = "types/%s/extra_specs/%s" % (share_type_id, extra_spec_name)
+        resp, body = self.delete(uri, version=version)
+        self.expected_success(202, resp.status)
+        return body
+
+###############
+
     def get_snapshot_instance(self, instance_id, version=LATEST_MICROVERSION):
         resp, body = self.get("snapshot-instances/%s" % instance_id,
                               version=version)
@@ -725,13 +786,6 @@ class SharesV2Client(shares_client.SharesClient):
         resp, body = self.get("types/%s" % share_type_id, version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
-
-    def delete_share_type_extra_spec(self, share_type_id, extra_spec_name,
-                                     version=LATEST_MICROVERSION):
-        uri = "types/%s/extra_specs/%s" % (share_type_id, extra_spec_name)
-        resp, body = self.delete(uri, version=version)
-        self.expected_success(202, resp.status)
-        return body
 
     def list_access_to_share_type(self, share_type_id,
                                   version=LATEST_MICROVERSION,

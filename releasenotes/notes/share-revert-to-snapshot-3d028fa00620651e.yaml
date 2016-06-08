@@ -1,0 +1,4 @@
+---
+features:
+  - Added revert-to-snapshot feature for regular and replicated shares.
+  - Added revert-to-snapshot support to the LVM driver.

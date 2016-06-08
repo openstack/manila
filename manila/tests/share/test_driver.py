@@ -230,6 +230,14 @@ class ShareDriverTestCase(test.TestCase):
 
         self._assert_is_callable(share_driver, method)
 
+    @ddt.data('revert_to_snapshot',
+              'revert_to_replicated_snapshot')
+    def test_drivers_methods_needed_by_share_revert_to_snapshot_functionality(
+            self, method):
+        share_driver = self._instantiate_share_driver(None, False)
+
+        self._assert_is_callable(share_driver, method)
+
     @ddt.data(True, False)
     def test_get_share_server_pools(self, value):
         driver.CONF.set_default('driver_handles_share_servers', value)

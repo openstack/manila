@@ -171,6 +171,12 @@ can be used verbatim as extra_specs in share types used to create shares.
   type in pools without regard for whether creating shares from snapshots is
   supported, and those shares will not support creating shares from snapshots.
 
+* `revert_to_snapshot_support` - indicates that a driver is capable of
+  reverting a share in place to its most recent snapshot. When administrators
+  do not set this capability as an extra-spec in a share type, the scheduler
+  can place new shares of that type in pools without regard for whether
+  reverting shares to snapshots is supported, and those shares will not support
+  reverting shares to snapshots.
 
 Reporting Capabilities
 ----------------------
@@ -210,6 +216,7 @@ example vendor prefix:
              'compression': True,                 #
              'snapshot_support': True,            #
              'create_share_from_snapshot_support': True,
+             'revert_to_snapshot_support': True,
              'qos': True,                         # this backend supports QoS
              'thin_provisioning': True,           #
              'max_over_subscription_ratio': 10,   # (mandatory for thin)
@@ -238,6 +245,7 @@ example vendor prefix:
                                                           # allow creating
                                                           # shares from
                                                           # snapshots
+             'revert_to_snapshot_support': True,
              'reserved_percentage': 0,
              'dedupe': False,
              'compression': False,

@@ -76,6 +76,28 @@ class ShareTestCase(test.TestCase):
 
         self.assertEqual(constants.STATUS_CREATING, share.instance['status'])
 
+    @ddt.data(constants.STATUS_REPLICATION_CHANGE, constants.STATUS_AVAILABLE,
+              constants.STATUS_ERROR, constants.STATUS_CREATING)
+    def test_share_instance_reverting(self, status):
+
+        instance_list = [
+            db_utils.create_share_instance(
+                status=constants.STATUS_REVERTING,
+                share_id='fake_id'),
+            db_utils.create_share_instance(
+                status=status, share_id='fake_id'),
+            db_utils.create_share_instance(
+                status=constants.STATUS_ERROR_DELETING, share_id='fake_id'),
+        ]
+
+        share1 = db_utils.create_share(instances=instance_list)
+        share2 = db_utils.create_share(instances=list(reversed(instance_list)))
+
+        self.assertEqual(
+            constants.STATUS_REVERTING, share1.instance['status'])
+        self.assertEqual(
+            constants.STATUS_REVERTING, share2.instance['status'])
+
     @ddt.data(constants.STATUS_AVAILABLE, constants.STATUS_ERROR,
               constants.STATUS_CREATING)
     def test_share_instance_replication_change(self, status):
