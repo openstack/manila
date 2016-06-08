@@ -38,6 +38,7 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
+from oslo_utils import netutils
 from oslo_utils import timeutils
 import paramiko
 import retrying
@@ -501,9 +502,9 @@ def cidr_to_netmask(cidr):
 
 def is_valid_ip_address(ip_address, ip_version):
     if int(ip_version) == 4:
-        return netaddr.valid_ipv4(ip_address)
+        return netutils.is_valid_ipv4(ip_address)
     elif int(ip_version) == 6:
-        return netaddr.valid_ipv6(ip_address)
+        return netutils.is_valid_ipv6(ip_address)
     else:
         raise exception.ManilaException(
             _("Provided improper IP version '%s'.") % ip_version)

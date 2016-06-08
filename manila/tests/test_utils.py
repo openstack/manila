@@ -661,7 +661,7 @@ class IsValidIPVersion(test.TestCase):
         for vers in (6, '6'):
             self.assertFalse(utils.is_valid_ip_address(addr, vers))
 
-    @ddt.data(None, 'fake', '255.255.255.256', '2001:cdba::3257:9652')
+    @ddt.data(None, 'fake', '255.255.255.256', '2001:cdba::3257:9652', '')
     def test_provided_invalid_v4_address(self, addr):
         for vers in (4, '4'):
             self.assertFalse(utils.is_valid_ip_address(addr, vers))
