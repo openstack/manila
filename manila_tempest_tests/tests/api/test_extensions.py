@@ -20,7 +20,7 @@ from manila_tempest_tests.tests.api import base
 
 class ExtensionsTest(base.BaseSharesTest):
 
-    @test.attr(type=["smoke", "gate"])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_extensions(self):
 
         # get extensions

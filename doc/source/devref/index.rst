@@ -28,6 +28,7 @@ Programming HowTos and Tutorials
 
     development.environment
     unit_tests
+    tempest_tests
     addmethod.openstackapi
     documenting_your_work
     adding_release_notes

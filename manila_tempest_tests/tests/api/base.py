@@ -15,6 +15,7 @@
 
 import copy
 import inspect
+import re
 import traceback
 
 from oslo_concurrency import lockutils
@@ -34,6 +35,37 @@ from manila_tempest_tests import utils
 
 CONF = config.CONF
 LOG = log.getLogger(__name__)
+
+# Test tags related to test direction
+TAG_POSITIVE = "positive"
+TAG_NEGATIVE = "negative"
+
+# Test tags related to service involvement
+TAG_API = "api"
+TAG_BACKEND = "backend"
+TAG_API_WITH_BACKEND = "api_with_backend"
+
+TAGS_MAPPER = {
+    "p": TAG_POSITIVE,
+    "n": TAG_NEGATIVE,
+    "a": TAG_API,
+    "b": TAG_BACKEND,
+    "ab": TAG_API_WITH_BACKEND,
+}
+TAGS_PATTERN = re.compile(
+    r"(?=.*\[.*\b(%(p)s|%(n)s)\b.*\])(?=.*\[.*\b(%(a)s|%(b)s|%(ab)s)\b.*\])" %
+    TAGS_MAPPER)
+
+
+def verify_test_has_appropriate_tags(self):
+    if not TAGS_PATTERN.match(self.id()):
+        msg = (
+            "Required attributes either not set or set improperly. "
+            "Two test attributes are expected:\n"
+            " - one of '%(p)s' or '%(n)s' and \n"
+            " - one of '%(a)s', '%(b)s' or '%(ab)s'."
+        ) % TAGS_MAPPER
+        raise self.failureException(msg)
 
 
 class handle_cleanup_exceptions(object):
@@ -219,6 +251,7 @@ class BaseSharesTest(test.BaseTestCase):
         super(BaseSharesTest, self).setUp()
         self.addCleanup(self.clear_isolated_creds)
         self.addCleanup(self.clear_resources)
+        verify_test_has_appropriate_tags(self)
 
     @classmethod
     def resource_cleanup(cls):

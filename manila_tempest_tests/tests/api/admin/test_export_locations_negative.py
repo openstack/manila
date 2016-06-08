@@ -36,15 +36,7 @@ class ExportLocationsNegativeTest(base.BaseSharesAdminTest):
         cls.share_instances = cls.shares_v2_client.get_instances_of_share(
             cls.share['id'])
 
-    @test.attr(type=["gate", "negative"])
-    def test_get_export_locations_by_inexistent_share(self):
-        self.assertRaises(
-            lib_exc.NotFound,
-            self.admin_client.list_share_export_locations,
-            "fake-inexistent-share-id",
-        )
-
-    @test.attr(type=["gate", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_get_inexistent_share_export_location(self):
         self.assertRaises(
             lib_exc.NotFound,
@@ -53,15 +45,7 @@ class ExportLocationsNegativeTest(base.BaseSharesAdminTest):
             "fake-inexistent-share-instance-id",
         )
 
-    @test.attr(type=["gate", "negative"])
-    def test_get_export_locations_by_inexistent_share_instance(self):
-        self.assertRaises(
-            lib_exc.NotFound,
-            self.admin_client.list_share_instance_export_locations,
-            "fake-inexistent-share-instance-id",
-        )
-
-    @test.attr(type=["gate", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_get_inexistent_share_instance_export_location(self):
         for share_instance in self.share_instances:
             self.assertRaises(
@@ -71,7 +55,7 @@ class ExportLocationsNegativeTest(base.BaseSharesAdminTest):
                 "fake-inexistent-share-instance-id",
             )
 
-    @test.attr(type=["gate", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_list_share_instance_export_locations_by_member(self):
         for share_instance in self.share_instances:
             self.assertRaises(
@@ -80,7 +64,7 @@ class ExportLocationsNegativeTest(base.BaseSharesAdminTest):
                 "fake-inexistent-share-instance-id",
             )
 
-    @test.attr(type=["gate", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_get_share_instance_export_location_by_member(self):
         for share_instance in self.share_instances:
             export_locations = (
@@ -92,3 +76,23 @@ class ExportLocationsNegativeTest(base.BaseSharesAdminTest):
                     self.member_client.get_share_instance_export_location,
                     share_instance['id'], el['id'],
                 )
+
+
+@base.skip_if_microversion_not_supported("2.9")
+class ExportLocationsAPIOnlyNegativeTest(base.BaseSharesAdminTest):
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_get_export_locations_by_nonexistent_share(self):
+        self.assertRaises(
+            lib_exc.NotFound,
+            self.shares_v2_client.list_share_export_locations,
+            "fake-inexistent-share-id",
+        )
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_get_export_locations_by_nonexistent_share_instance(self):
+        self.assertRaises(
+            lib_exc.NotFound,
+            self.shares_v2_client.list_share_instance_export_locations,
+            "fake-inexistent-share-instance-id",
+        )

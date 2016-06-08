@@ -20,7 +20,7 @@ from manila_tempest_tests.tests.api import base
 
 class ShareLimitsTest(base.BaseSharesTest):
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_limits_keys(self):
 
         # list limits
@@ -44,7 +44,7 @@ class ShareLimitsTest(base.BaseSharesTest):
         ]
         [self.assertIn(key, limits["absolute"].keys()) for key in abs_keys]
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_limits_values(self):
 
         # list limits

@@ -76,7 +76,7 @@ class ReplicationNegativeTest(base.BaseSharesTest):
             raise self.skipException(
                 msg % ','.join(constants.REPLICATION_PROMOTION_CHOICES))
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_try_add_replica_to_share_with_no_replication_share_type(self):
         # Create share without replication type
         share = self.create_share()
@@ -85,7 +85,7 @@ class ReplicationNegativeTest(base.BaseSharesTest):
                           share['id'],
                           self.replica_zone)
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_add_replica_to_share_with_error_state(self):
         # Set "error" state
         self.admin_client.reset_state(
@@ -98,25 +98,13 @@ class ReplicationNegativeTest(base.BaseSharesTest):
                           self.share1['id'],
                           self.replica_zone)
 
-    @test.attr(type=["gate", "negative", ])
-    def test_get_replica_by_nonexistent_id(self):
-        self.assertRaises(lib_exc.NotFound,
-                          self.shares_v2_client.get_share_replica,
-                          data_utils.rand_uuid())
-
-    @test.attr(type=["gate", "negative", ])
-    def test_try_delete_replica_by_nonexistent_id(self):
-        self.assertRaises(lib_exc.NotFound,
-                          self.shares_v2_client.delete_share_replica,
-                          data_utils.rand_uuid())
-
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_try_delete_last_active_replica(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_v2_client.delete_share_replica,
                           self.instance_id1)
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_try_delete_share_having_replica(self):
         self.create_share_replica(self.share1["id"], self.replica_zone,
                                   cleanup_in_class=False)
@@ -124,7 +112,7 @@ class ReplicationNegativeTest(base.BaseSharesTest):
                           self.shares_v2_client.delete_share,
                           self.share1["id"])
 
-    @test.attr(type=["negative", "gate", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_promote_out_of_sync_share_replica(self):
         # Test promoting an out_of_sync share_replica to active state
         self._is_replication_type_promotable()
@@ -142,7 +130,7 @@ class ReplicationNegativeTest(base.BaseSharesTest):
                           self.shares_v2_client.promote_share_replica,
                           replica['id'])
 
-    @test.attr(type=["negative", "gate", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_promote_active_share_replica(self):
         # Test promote active share_replica
         self._is_replication_type_promotable()
@@ -151,7 +139,7 @@ class ReplicationNegativeTest(base.BaseSharesTest):
         self.shares_v2_client.promote_share_replica(self.instance_id1,
                                                     expected_status=200)
 
-    @test.attr(type=["negative", "gate", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_promote_share_replica_for_writable_share_type(self):
         # Test promote active share_replica for writable share
         if self.replication_type != "writable":
@@ -167,3 +155,21 @@ class ReplicationNegativeTest(base.BaseSharesTest):
 
         # Try promoting the replica
         self.shares_v2_client.promote_share_replica(replica['id'])
+
+
+@testtools.skipUnless(CONF.share.run_replication_tests,
+                      'Replication tests are disabled.')
+@base.skip_if_microversion_lt(_MIN_SUPPORTED_MICROVERSION)
+class ReplicationAPIOnlyNegativeTest(base.BaseSharesTest):
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_get_replica_by_nonexistent_id(self):
+        self.assertRaises(lib_exc.NotFound,
+                          self.shares_v2_client.get_share_replica,
+                          data_utils.rand_uuid())
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_try_delete_replica_by_nonexistent_id(self):
+        self.assertRaises(lib_exc.NotFound,
+                          self.shares_v2_client.delete_share_replica,
+                          data_utils.rand_uuid())

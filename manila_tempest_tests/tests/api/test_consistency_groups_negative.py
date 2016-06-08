@@ -26,6 +26,86 @@ CONF = config.CONF
 
 @testtools.skipUnless(CONF.share.run_consistency_group_tests,
                       'Consistency Group tests disabled.')
+class ConsistencyGroupsAPIOnlyNegativeTest(base.BaseSharesTest):
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_delete_cg_without_passing_cg_id_v2_4(self):
+        self.assertRaises(lib_exc.NotFound,
+                          self.shares_v2_client.delete_consistency_group,
+                          '',
+                          version='2.4')
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_delete_cg_with_wrong_id_v2_4(self):
+        self.assertRaises(lib_exc.NotFound,
+                          self.shares_v2_client.delete_consistency_group,
+                          "wrong_consistency_group_id",
+                          version='2.4')
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_update_cg_with_wrong_id_v2_4(self):
+        self.assertRaises(lib_exc.NotFound,
+                          self.shares_v2_client.update_consistency_group,
+                          'wrong_consistency_group_id',
+                          name='new_name',
+                          description='new_description',
+                          version='2.4')
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_get_cg_without_passing_cg_id_v2_4(self):
+        self.assertRaises(lib_exc.NotFound,
+                          self.shares_v2_client.get_consistency_group,
+                          '',
+                          version='2.4')
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_filter_shares_on_invalid_cg_id_v2_4(self):
+        shares = self.shares_v2_client.list_shares(
+            detailed=True,
+            params={'consistency_group_id': 'foobar'},
+            version='2.4',
+        )
+
+        self.assertEqual(0, len(shares),
+                         'Incorrect number of shares returned. Expected 0, '
+                         'got %s.' % len(shares))
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_create_cgsnapshot_with_invalid_cg_id_value_v2_4(self):
+        self.assertRaises(lib_exc.BadRequest,
+                          self.create_cgsnapshot_wait_for_active,
+                          'foobar',
+                          cleanup_in_class=False,
+                          version='2.4')
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_create_cg_with_invalid_share_type_id_value_v2_4(self):
+        self.assertRaises(lib_exc.BadRequest,
+                          self.create_consistency_group,
+                          share_type_ids=['foobar'],
+                          cleanup_in_class=False,
+                          version='2.4')
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_create_cg_with_invalid_share_network_id_value_v2_4(self):
+        self.assertRaises(lib_exc.BadRequest,
+                          self.create_consistency_group,
+                          share_network_id='foobar',
+                          cleanup_in_class=False,
+                          version='2.4')
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_create_cg_with_invalid_source_cgsnapshot_id_value_v2_4(
+            self):
+        self.assertRaises(lib_exc.BadRequest,
+                          self.create_consistency_group,
+                          source_cgsnapshot_id='foobar',
+                          cleanup_in_class=False,
+                          version='2.4')
+
+
+@testtools.skipUnless(CONF.share.run_consistency_group_tests,
+                      'Consistency Group tests disabled.')
 class ConsistencyGroupsNegativeTest(base.BaseSharesTest):
 
     @classmethod
@@ -56,16 +136,7 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesTest):
             name=cls.cgsnap_name,
             description=cls.cgsnap_desc)
 
-    @test.attr(type=["negative", "smoke", "gate", ])
-    def test_create_cg_with_invalid_source_cgsnapshot_id_value_v2_4(
-            self):
-        self.assertRaises(lib_exc.BadRequest,
-                          self.create_consistency_group,
-                          source_cgsnapshot_id='foobar',
-                          cleanup_in_class=False,
-                          version='2.4')
-
-    @test.attr(type=["negative", "smoke", "gate", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_create_cg_with_nonexistent_source_cgsnapshot_id_value_v2_4(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.create_consistency_group,
@@ -73,15 +144,7 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesTest):
                           cleanup_in_class=False,
                           version='2.4')
 
-    @test.attr(type=["negative", "smoke", "gate", ])
-    def test_create_cg_with_invalid_share_network_id_value_v2_4(self):
-        self.assertRaises(lib_exc.BadRequest,
-                          self.create_consistency_group,
-                          share_network_id='foobar',
-                          cleanup_in_class=False,
-                          version='2.4')
-
-    @test.attr(type=["negative", "smoke", "gate", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_create_cg_with_nonexistent_share_network_id_value_v2_4(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.create_consistency_group,
@@ -89,15 +152,7 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesTest):
                           cleanup_in_class=False,
                           version='2.4')
 
-    @test.attr(type=["negative", "smoke", "gate", ])
-    def test_create_cg_with_invalid_share_type_id_value_v2_4(self):
-        self.assertRaises(lib_exc.BadRequest,
-                          self.create_consistency_group,
-                          share_type_ids=['foobar'],
-                          cleanup_in_class=False,
-                          version='2.4')
-
-    @test.attr(type=["negative", "smoke", "gate", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_create_cg_with_nonexistent_share_type_id_value_v2_4(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.create_consistency_group,
@@ -105,15 +160,7 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesTest):
                           cleanup_in_class=False,
                           version='2.4')
 
-    @test.attr(type=["negative", "smoke", "gate", ])
-    def test_create_cgsnapshot_with_invalid_cg_id_value_v2_4(self):
-        self.assertRaises(lib_exc.BadRequest,
-                          self.create_cgsnapshot_wait_for_active,
-                          'foobar',
-                          cleanup_in_class=False,
-                          version='2.4')
-
-    @test.attr(type=["negative", "smoke", "gate", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_create_cgsnapshot_with_nonexistent_cg_id_value_v2_4(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.create_cgsnapshot_wait_for_active,
@@ -121,44 +168,7 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesTest):
                           cleanup_in_class=False,
                           version='2.4')
 
-    @test.attr(type=["negative", "smoke", "gate", ])
-    def test_get_cg_with_wrong_id_v2_4(self):
-        self.assertRaises(lib_exc.NotFound,
-                          self.shares_v2_client.get_consistency_group,
-                          "wrong_consistency_group_id",
-                          version='2.4')
-
-    @test.attr(type=["negative", "smoke", "gate", ])
-    def test_get_cg_without_passing_cg_id_v2_4(self):
-        self.assertRaises(lib_exc.NotFound,
-                          self.shares_v2_client.get_consistency_group,
-                          '',
-                          version='2.4')
-
-    @test.attr(type=["negative", "smoke", "gate", ])
-    def test_update_cg_with_wrong_id_v2_4(self):
-        self.assertRaises(lib_exc.NotFound,
-                          self.shares_v2_client.update_consistency_group,
-                          'wrong_consistency_group_id',
-                          name='new_name',
-                          description='new_description',
-                          version='2.4')
-
-    @test.attr(type=["negative", "smoke", "gate", ])
-    def test_delete_cg_with_wrong_id_v2_4(self):
-        self.assertRaises(lib_exc.NotFound,
-                          self.shares_v2_client.delete_consistency_group,
-                          "wrong_consistency_group_id",
-                          version='2.4')
-
-    @test.attr(type=["negative", "smoke", "gate", ])
-    def test_delete_cg_without_passing_cg_id_v2_4(self):
-        self.assertRaises(lib_exc.NotFound,
-                          self.shares_v2_client.delete_consistency_group,
-                          '',
-                          version='2.4')
-
-    @test.attr(type=["negative", "gate", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_delete_cg_in_use_by_cgsnapshot_v2_4(self):
         # Attempt delete of share type
         self.assertRaises(lib_exc.Conflict,
@@ -166,7 +176,7 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesTest):
                           self.consistency_group['id'],
                           version='2.4')
 
-    @test.attr(type=["negative", "gate", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_delete_share_in_use_by_cgsnapshot_v2_4(self):
         # Attempt delete of share type
         params = {'consistency_group_id': self.share['consistency_group_id']}
@@ -176,7 +186,7 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesTest):
                           params=params,
                           version='2.4')
 
-    @test.attr(type=["negative", "smoke", "gate", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_delete_cg_containing_a_share_v2_4(self):
         self.assertRaises(lib_exc.Conflict,
                           self.shares_v2_client.delete_consistency_group,
@@ -187,19 +197,7 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesTest):
             self.consistency_group['id'], version='2.4')
         self.assertEqual('available', cg['status'])
 
-    @test.attr(type=["negative", "smoke", "gate", ])
-    def test_filter_shares_on_invalid_cg_id_v2_4(self):
-        shares = self.shares_v2_client.list_shares(
-            detailed=True,
-            params={'consistency_group_id': 'foobar'},
-            version='2.4'
-        )
-
-        self.assertEqual(0, len(shares),
-                         'Incorrect number of shares returned. Expected 0, '
-                         'got %s.' % len(shares))
-
-    @test.attr(type=["negative", "smoke", "gate", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_filter_shares_on_nonexistent_cg_id_v2_4(self):
         shares = self.shares_v2_client.list_shares(
             detailed=True,
@@ -211,7 +209,7 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesTest):
                          'Incorrect number of shares returned. Expected 0, '
                          'got %s.' % len(shares))
 
-    @test.attr(type=["negative", "smoke", "gate", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_filter_shares_on_empty_cg_id_v2_4(self):
         consistency_group = self.create_consistency_group(
             name='tempest_cg',

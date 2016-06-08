@@ -50,7 +50,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         cls.date_re = re.compile("^([0-9]{4}-[0-9]{2}-[0-9]{2}[A-Z]{1}"
                                  "[0-9]{2}:[0-9]{2}:[0-9]{2}).*$")
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_list_share_servers_without_filters(self):
         servers = self.shares_client.list_share_servers()
         self.assertTrue(len(servers) > 0)
@@ -81,7 +81,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         # Server we used is present.
         any(s["share_network_name"] in self.sn_name_and_id for s in servers)
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_list_share_servers_with_host_filter(self):
         # Get list of share servers and remember 'host' name
         servers = self.shares_client.list_share_servers()
@@ -107,7 +107,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         for server in servers:
             self.assertEqual(server["host"], host)
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_list_share_servers_with_status_filter(self):
         # Get list of share servers
         servers = self.shares_client.list_share_servers()
@@ -133,7 +133,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         for server in servers:
             self.assertEqual(server["status"], status)
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_list_share_servers_with_project_id_filter(self):
         search_opts = {"project_id": self.share_network["project_id"]}
         servers = self.shares_client.list_share_servers(search_opts)
@@ -143,7 +143,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             self.assertEqual(server["project_id"],
                              self.share_network["project_id"])
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_list_share_servers_with_share_network_name_filter(self):
         search_opts = {"share_network": self.share_network["name"]}
         servers = self.shares_client.list_share_servers(search_opts)
@@ -153,7 +153,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             self.assertEqual(server["share_network_name"],
                              self.share_network["name"])
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_list_share_servers_with_share_network_id_filter(self):
         search_opts = {"share_network": self.share_network["id"]}
         servers = self.shares_client.list_share_servers(search_opts)
@@ -163,7 +163,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             self.assertIn(server["share_network_name"],
                           self.sn_name_and_id)
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_show_share_server(self):
         servers = self.shares_client.list_share_servers()
         server = self.shares_client.show_share_server(servers[0]["id"])
@@ -198,7 +198,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         # backend_details should be a dict
         self.assertIsInstance(server["backend_details"], dict)
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_show_share_server_details(self):
         servers = self.shares_client.list_share_servers()
         details = self.shares_client.show_share_server_details(
@@ -208,7 +208,6 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             self.assertIsInstance(k, six.string_types)
             self.assertIsInstance(v, six.string_types)
 
-    @test.attr(type=["gate", "smoke", ])
     def _delete_share_server(self, delete_share_network):
         # Get network and subnet from existing share_network and reuse it
         # to be able to delete share_server after test ends.
@@ -266,10 +265,10 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
                 self.shares_client.wait_for_resource_deletion(
                     sn_id=new_sn["id"])
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_delete_share_server(self):
         self._delete_share_server(False)
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_delete_share_server_by_deletion_of_share_network(self):
         self._delete_share_server(True)

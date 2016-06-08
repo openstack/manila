@@ -38,30 +38,13 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
         cls.member_shares_client = clients.Manager().shares_client
         cls.member_shares_v2_client = clients.Manager().shares_v2_client
 
-    @test.attr(type=["gate", "negative", ])
-    def test_reset_nonexistent_share_state(self):
-        self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.reset_state, "fake")
-
-    @test.attr(type=["gate", "negative", ])
-    def test_reset_nonexistent_share_instance_state(self):
-        self.assertRaises(lib_exc.NotFound, self.shares_v2_client.reset_state,
-                          "fake", s_type="share_instances")
-
-    @test.attr(type=["gate", "negative", ])
-    @testtools.skipUnless(CONF.share.run_snapshot_tests,
-                          "Snapshot tests are disabled.")
-    def test_reset_nonexistent_snapshot_state(self):
-        self.assertRaises(lib_exc.NotFound, self.shares_client.reset_state,
-                          "fake", s_type="snapshots")
-
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_reset_share_state_to_unacceptable_state(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.reset_state,
                           self.sh["id"], status="fake")
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_reset_share_instance_state_to_unacceptable_state(self):
         self.assertRaises(
             lib_exc.BadRequest,
@@ -71,7 +54,7 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
             status="fake"
         )
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
     def test_reset_snapshot_state_to_unacceptable_state(self):
@@ -79,21 +62,21 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
                           self.shares_client.reset_state,
                           self.sn["id"], s_type="snapshots", status="fake")
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_try_reset_share_state_with_member(self):
         # Even if member from another tenant, it should be unauthorized
         self.assertRaises(lib_exc.Forbidden,
                           self.member_shares_client.reset_state,
                           self.sh["id"])
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_try_reset_share_instance_state_with_member(self):
         # Even if member from another tenant, it should be unauthorized
         self.assertRaises(lib_exc.Forbidden,
                           self.member_shares_v2_client.reset_state,
                           self.sh_instance["id"], s_type="share_instances")
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
     def test_try_reset_snapshot_state_with_member(self):
@@ -102,42 +85,21 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
                           self.member_shares_client.reset_state,
                           self.sn["id"], s_type="snapshots")
 
-    @test.attr(type=["gate", "negative", ])
-    def test_force_delete_nonexistent_share(self):
-        self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.force_delete, "fake")
-
-    @test.attr(type=["gate", "negative", ])
-    def test_force_delete_nonexistent_share_instance(self):
-        self.assertRaises(lib_exc.NotFound,
-                          self.shares_v2_client.force_delete,
-                          "fake",
-                          s_type="share_instances")
-
-    @test.attr(type=["gate", "negative", ])
-    @testtools.skipUnless(CONF.share.run_snapshot_tests,
-                          "Snapshot tests are disabled.")
-    def test_force_delete_nonexistent_snapshot(self):
-        self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.force_delete,
-                          "fake",
-                          s_type="snapshots")
-
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_try_force_delete_share_with_member(self):
         # If a non-admin tries to do force_delete, it should be unauthorized
         self.assertRaises(lib_exc.Forbidden,
                           self.member_shares_client.force_delete,
                           self.sh["id"])
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_try_force_delete_share_instance_with_member(self):
         # If a non-admin tries to do force_delete, it should be unauthorized
         self.assertRaises(lib_exc.Forbidden,
                           self.member_shares_v2_client.force_delete,
                           self.sh_instance["id"], s_type="share_instances")
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
     def test_try_force_delete_snapshot_with_member(self):
@@ -146,20 +108,14 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
                           self.member_shares_client.force_delete,
                           self.sn["id"], s_type="snapshots")
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_try_get_share_instance_with_member(self):
         # If a non-admin tries to get instance, it should be unauthorized
         self.assertRaises(lib_exc.Forbidden,
                           self.member_shares_v2_client.get_share_instance,
                           self.sh_instance["id"])
 
-    @test.attr(type=["gate", "negative", ])
-    def test_try_list_share_instance_with_member(self):
-        # If a non-admin tries to list instances, it should be unauthorized
-        self.assertRaises(lib_exc.Forbidden,
-                          self.member_shares_v2_client.list_share_instances)
-
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_try_get_instances_of_share_with_member(self):
         # If a non-admin tries to list instances of given share, it should be
         # unauthorized
@@ -167,23 +123,75 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
                           self.member_shares_v2_client.get_instances_of_share,
                           self.sh['id'])
 
-    @test.attr(type=["gate", "negative", ])
-    @base.skip_if_microversion_lt("2.15")
-    def test_reset_task_state_share_not_found(self):
-        self.assertRaises(
-            lib_exc.NotFound, self.shares_v2_client.reset_task_state,
-            'fake_share', 'migration_error')
-
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @base.skip_if_microversion_lt("2.15")
     def test_reset_task_state_empty(self):
         self.assertRaises(
             lib_exc.BadRequest, self.shares_v2_client.reset_task_state,
             self.sh['id'], None)
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @base.skip_if_microversion_lt("2.15")
     def test_reset_task_state_invalid_state(self):
         self.assertRaises(
             lib_exc.BadRequest, self.shares_v2_client.reset_task_state,
             self.sh['id'], 'fake_state')
+
+
+class AdminActionsAPIOnlyNegativeTest(base.BaseSharesAdminTest):
+
+    @classmethod
+    def resource_setup(cls):
+        super(AdminActionsAPIOnlyNegativeTest, cls).resource_setup()
+        cls.member_shares_v2_client = clients.Manager().shares_v2_client
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_try_list_share_instance_with_member(self):
+        # If a non-admin tries to list instances, it should be unauthorized
+        self.assertRaises(lib_exc.Forbidden,
+                          self.member_shares_v2_client.list_share_instances)
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @base.skip_if_microversion_lt("2.15")
+    def test_reset_task_state_share_not_found(self):
+        self.assertRaises(
+            lib_exc.NotFound, self.shares_v2_client.reset_task_state,
+            'fake_share', 'migration_error')
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
+    def test_force_delete_nonexistent_snapshot(self):
+        self.assertRaises(lib_exc.NotFound,
+                          self.shares_client.force_delete,
+                          "fake",
+                          s_type="snapshots")
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_force_delete_nonexistent_share(self):
+        self.assertRaises(lib_exc.NotFound,
+                          self.shares_client.force_delete, "fake")
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_force_delete_nonexistent_share_instance(self):
+        self.assertRaises(lib_exc.NotFound,
+                          self.shares_v2_client.force_delete,
+                          "fake",
+                          s_type="share_instances")
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_reset_nonexistent_share_state(self):
+        self.assertRaises(lib_exc.NotFound,
+                          self.shares_client.reset_state, "fake")
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    def test_reset_nonexistent_share_instance_state(self):
+        self.assertRaises(lib_exc.NotFound, self.shares_v2_client.reset_state,
+                          "fake", s_type="share_instances")
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
+    def test_reset_nonexistent_snapshot_state(self):
+        self.assertRaises(lib_exc.NotFound, self.shares_client.reset_state,
+                          "fake", s_type="snapshots")

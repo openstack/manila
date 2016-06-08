@@ -46,7 +46,7 @@ class SecurityServiceAdminTest(
             'kerberos',
             **ss_kerberos_data)
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_list_security_services_all_tenants(self):
         listed = self.shares_client.list_security_services(
             params={'all_tenants': 1})
@@ -57,7 +57,7 @@ class SecurityServiceAdminTest(
         keys = ["name", "id", "status", "type", ]
         [self.assertIn(key, s_s.keys()) for s_s in listed for key in keys]
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_list_security_services_invalid_filters(self):
         listed = self.shares_client.list_security_services(
             params={'fake_opt': 'some_value'})

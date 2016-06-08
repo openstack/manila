@@ -36,27 +36,27 @@ class ShareTypesNegativeTest(base.BaseSharesTest):
         super(ShareTypesNegativeTest, cls).resource_setup()
         cls.st = cls._create_share_type()
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_create_share_type_with_user(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.create_share_type,
                           data_utils.rand_name("used_user_creds"),
                           client=self.shares_client)
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_delete_share_type_with_user(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.delete_share_type,
                           self.st["share_type"]["id"])
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_add_access_to_share_type_with_user(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.add_access_to_share_type,
                           self.st['share_type']['id'],
                           self.shares_client.tenant_id)
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_remove_access_from_share_type_with_user(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.remove_access_from_share_type,

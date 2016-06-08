@@ -125,7 +125,7 @@ class ManageNFSSnapshotTest(base.BaseSharesAdminTest):
                           self.shares_v2_client.get_snapshot,
                           get_snapshot['id'])
 
-    @test.attr(type=["gate", "smoke"])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_manage(self):
         # Manage snapshot
         self._test_manage(snapshot=self.snapshot)

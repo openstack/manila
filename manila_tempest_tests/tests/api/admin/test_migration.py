@@ -39,7 +39,7 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
         if not CONF.share.run_migration_tests:
             raise cls.skipException("Migration tests disabled. Skipping.")
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     @base.skip_if_microversion_lt("2.5")
     def test_migration_empty_v2_5(self):
 
@@ -52,7 +52,7 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
         self._validate_migration_successful(dest_pool, share, old_exports,
                                             version='2.5')
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     @base.skip_if_microversion_lt("2.15")
     def test_migration_completion_empty_v2_15(self):
 

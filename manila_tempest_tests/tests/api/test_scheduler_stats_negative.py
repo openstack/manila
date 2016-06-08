@@ -21,12 +21,12 @@ from manila_tempest_tests.tests.api import base
 
 class SchedulerStatsNegativeTest(base.BaseSharesTest):
 
-    @test.attr(type=["gate", "smoke", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_list_pools_with_user(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.list_pools)
 
-    @test.attr(type=["gate", "smoke", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_list_pools_detailed_with_user(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.list_pools,
