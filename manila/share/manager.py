@@ -90,7 +90,9 @@ share_manager_opts = [
                     'defines. This value reflects the shortest time Manila '
                     'will wait for a share server to go unutilized before '
                     'deleting it.',
-               deprecated_group='DEFAULT'),
+               deprecated_group='DEFAULT',
+               min=10,
+               max=60),
     cfg.IntOpt('replica_state_update_interval',
                default=300,
                help='This value, specified in seconds, determines how often '
@@ -182,7 +184,6 @@ class ShareManager(manager.SchedulerDependentManager):
         self.configuration = manila.share.configuration.Configuration(
             share_manager_opts,
             config_group=service_name)
-        self._verify_unused_share_server_cleanup_interval()
         super(ShareManager, self).__init__(service_name='share',
                                            *args, **kwargs)
 
@@ -2504,13 +2505,6 @@ class ShareManager(manager.SchedulerDependentManager):
             _LI("Share server '%s' has been deleted successfully."),
             share_server['id'])
         self.driver.deallocate_network(context, share_server['id'])
-
-    def _verify_unused_share_server_cleanup_interval(self):
-        if not 10 <= self.configuration.\
-                unused_share_server_cleanup_interval <= 60:
-            raise exception.InvalidParameterValue(
-                "Option unused_share_server_cleanup_interval should be "
-                "between 10 minutes and 1 hour.")
 
     @add_hooks
     @utils.require_driver_initialized
