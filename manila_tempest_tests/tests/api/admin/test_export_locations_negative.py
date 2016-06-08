@@ -17,23 +17,22 @@ from tempest import config
 from tempest.lib import exceptions as lib_exc
 from tempest import test
 
-from manila_tempest_tests import clients_share as clients
 from manila_tempest_tests.tests.api import base
 
 CONF = config.CONF
 
 
 @base.skip_if_microversion_not_supported("2.9")
-class ExportLocationsNegativeTest(base.BaseSharesAdminTest):
+class ExportLocationsNegativeTest(base.BaseSharesMixedTest):
 
     @classmethod
     def resource_setup(cls):
         super(ExportLocationsNegativeTest, cls).resource_setup()
-        cls.admin_client = cls.shares_v2_client
-        cls.member_client = clients.Manager().shares_v2_client
-        cls.share = cls.create_share()
-        cls.share = cls.shares_v2_client.get_share(cls.share['id'])
-        cls.share_instances = cls.shares_v2_client.get_instances_of_share(
+        cls.admin_client = cls.admin_shares_v2_client
+        cls.member_client = cls.shares_v2_client
+        cls.share = cls.create_share(client=cls.admin_client)
+        cls.share = cls.admin_client.get_share(cls.share['id'])
+        cls.share_instances = cls.admin_client.get_instances_of_share(
             cls.share['id'])
 
     @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])

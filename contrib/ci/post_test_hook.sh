@@ -23,7 +23,7 @@ sudo chmod -R o+rx $BASE/new/devstack/files
 # Import devstack functions 'iniset', 'iniget' and 'trueorfalse'
 source $BASE/new/devstack/functions
 
-export TEMPEST_CONFIG=$BASE/new/tempest/etc/tempest.conf
+export TEMPEST_CONFIG=${TEMPEST_CONFIG:-$BASE/new/tempest/etc/tempest.conf}
 
 # === Handle script arguments ===
 
@@ -120,13 +120,14 @@ if [[ "$MULTITENANCY_ENABLED" == "False"  ]]; then
     # threads to avoid errors for Cinder volume creations that appear
     # because of lack of free space.
     MANILA_TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-8}
+    iniset $TEMPEST_CONFIG auth create_isolated_networks False
 fi
 
 # let us control if we die or not
 set +o errexit
 cd $BASE/new/tempest
 
-export MANILA_TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-20}
+export MANILA_TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-6}
 export MANILA_TESTS=${MANILA_TESTS:-'manila_tempest_tests.tests.api'}
 
 if [[ "$TEST_TYPE" == "scenario" ]]; then
@@ -143,6 +144,7 @@ elif [[ "$DRIVER" == "generic" ]]; then
         # per job using 'generic' share driver.
         iniset $TEMPEST_CONFIG share enable_protocols nfs
     fi
+    MANILA_TESTS="(^manila_tempest_tests.tests.api)(?=.*\[.*\bbackend\b.*\])"
 fi
 
 if [[ "$DRIVER" == "lvm" ]]; then
@@ -193,30 +195,13 @@ iniset $TEMPEST_CONFIG share run_manage_unmanage_tests $RUN_MANILA_MANAGE_TESTS
 # Enable manage/unmanage snapshot tests
 iniset $TEMPEST_CONFIG share run_manage_unmanage_snapshot_tests $RUN_MANILA_MANAGE_SNAPSHOT_TESTS
 
-# check if tempest plugin was installed correctly
-echo 'import pkg_resources; print list(pkg_resources.iter_entry_points("tempest.test_plugins"))' | python
-
-# Workaround for Tempest architectural changes
-# See bugs:
-# 1) https://bugs.launchpad.net/manila/+bug/1531049
-# 2) https://bugs.launchpad.net/tempest/+bug/1524717
-TEMPEST_CONFIG=${TEMPEST_CONFIG:-$TEMPEST_DIR/etc/tempest.conf}
-ADMIN_TENANT_NAME=${ADMIN_TENANT_NAME:-"admin"}
-ADMIN_DOMAIN_NAME=${ADMIN_DOMAIN_NAME:-"Default"}
-ADMIN_PASSWORD=${ADMIN_PASSWORD:-"secretadmin"}
-iniset $TEMPEST_CONFIG auth admin_username ${ADMIN_USERNAME:-"admin"}
-iniset $TEMPEST_CONFIG auth admin_password $ADMIN_PASSWORD
-iniset $TEMPEST_CONFIG auth admin_tenant_name $ADMIN_TENANT_NAME
-iniset $TEMPEST_CONFIG auth admin_domain_name $ADMIN_DOMAIN_NAME
-iniset $TEMPEST_CONFIG identity username ${TEMPEST_USERNAME:-"demo"}
-iniset $TEMPEST_CONFIG identity password $ADMIN_PASSWORD
-iniset $TEMPEST_CONFIG identity tenant_name ${TEMPEST_TENANT_NAME:-"demo"}
-iniset $TEMPEST_CONFIG identity alt_username ${ALT_USERNAME:-"alt_demo"}
-iniset $TEMPEST_CONFIG identity alt_password $ADMIN_PASSWORD
-iniset $TEMPEST_CONFIG identity alt_tenant_name ${ALT_TENANT_NAME:-"alt_demo"}
 iniset $TEMPEST_CONFIG validation ip_version_for_ssh 4
 iniset $TEMPEST_CONFIG validation network_for_ssh ${PRIVATE_NETWORK_NAME:-"private"}
 
+# check if tempest plugin was installed correctly
+echo 'import pkg_resources; print list(pkg_resources.iter_entry_points("tempest.test_plugins"))' | python
+
+ADMIN_DOMAIN_NAME=${ADMIN_DOMAIN_NAME:-"Default"}
 export OS_PROJECT_DOMAIN_NAME=$ADMIN_DOMAIN_NAME
 export OS_USER_DOMAIN_NAME=$ADMIN_DOMAIN_NAME
 

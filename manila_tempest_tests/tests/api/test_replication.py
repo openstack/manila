@@ -18,7 +18,6 @@ from tempest.lib.common.utils import data_utils
 from tempest import test
 import testtools
 
-from manila_tempest_tests import clients_share as clients
 from manila_tempest_tests.common import constants
 from manila_tempest_tests import share_exceptions
 from manila_tempest_tests.tests.api import base
@@ -34,14 +33,14 @@ DETAIL_KEYS = SUMMARY_KEYS + ['availability_zone', 'host', 'updated_at',
 @testtools.skipUnless(CONF.share.run_replication_tests,
                       'Replication tests are disabled.')
 @base.skip_if_microversion_lt(_MIN_SUPPORTED_MICROVERSION)
-class ReplicationTest(base.BaseSharesTest):
+class ReplicationTest(base.BaseSharesMixedTest):
 
     @classmethod
     def resource_setup(cls):
         super(ReplicationTest, cls).resource_setup()
         # Create share_type
         name = data_utils.rand_name(constants.TEMPEST_MANILA_PREFIX)
-        cls.admin_client = clients.AdminManager().shares_v2_client
+        cls.admin_client = cls.admin_shares_v2_client
         cls.replication_type = CONF.share.backend_replication_type
 
         if cls.replication_type not in constants.REPLICATION_TYPE_CHOICES:
@@ -288,14 +287,14 @@ class ReplicationTest(base.BaseSharesTest):
 @testtools.skipUnless(CONF.share.run_replication_tests,
                       'Replication tests are disabled.')
 @base.skip_if_microversion_lt(_MIN_SUPPORTED_MICROVERSION)
-class ReplicationActionsTest(base.BaseSharesTest):
+class ReplicationActionsTest(base.BaseSharesMixedTest):
 
     @classmethod
     def resource_setup(cls):
         super(ReplicationActionsTest, cls).resource_setup()
         # Create share_type
         name = data_utils.rand_name(constants.TEMPEST_MANILA_PREFIX)
-        cls.admin_client = clients.AdminManager().shares_v2_client
+        cls.admin_client = cls.admin_shares_v2_client
         cls.replication_type = CONF.share.backend_replication_type
 
         if cls.replication_type not in constants.REPLICATION_TYPE_CHOICES:

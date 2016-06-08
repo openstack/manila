@@ -58,7 +58,7 @@ class SecurityServiceListMixin(object):
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_list_security_services_filter_by_share_network(self):
         sn = self.shares_client.get_share_network(
-            self.os.shares_client.share_network_id)
+            self.shares_client.share_network_id)
         fresh_sn = []
         for i in range(2):
             sn = self.create_share_network(
@@ -163,7 +163,7 @@ class SecurityServicesTest(base.BaseSharesTest,
         ss = self.create_security_service(**ss_data)
 
         sn = self.shares_client.get_share_network(
-            self.os.shares_client.share_network_id)
+            self.shares_client.share_network_id)
         fresh_sn = self.create_share_network(
             neutron_net_id=sn["neutron_net_id"],
             neutron_subnet_id=sn["neutron_subnet_id"])

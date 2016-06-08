@@ -13,21 +13,21 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest import config  # noqa
-from tempest.lib import exceptions as lib_exc  # noqa
-from tempest import test  # noqa
-import testtools  # noqa
+from tempest import config
+from tempest.lib import exceptions as lib_exc
+from tempest import test
+import testtools
 
-from manila_tempest_tests import clients_share as clients
 from manila_tempest_tests.tests.api import base
 
 CONF = config.CONF
 
 
-class SharesActionsNegativeTest(base.BaseSharesTest):
+class SharesActionsNegativeTest(base.BaseSharesMixedTest):
     @classmethod
     def resource_setup(cls):
         super(SharesActionsNegativeTest, cls).resource_setup()
+        cls.admin_client = cls.admin_shares_v2_client
         cls.share = cls.create_share(
             size=1,
         )
@@ -85,8 +85,7 @@ class SharesActionsNegativeTest(base.BaseSharesTest):
         new_size = int(share['size']) + 1
 
         # set "error" state
-        admin_client = clients.AdminManager().shares_client
-        admin_client.reset_state(share['id'])
+        self.admin_client.reset_state(share['id'])
 
         # run extend operation on same share and check result
         self.assertRaises(lib_exc.BadRequest,
@@ -129,8 +128,7 @@ class SharesActionsNegativeTest(base.BaseSharesTest):
         new_size = int(share['size']) - 1
 
         # set "error" state
-        admin_client = clients.AdminManager().shares_client
-        admin_client.reset_state(share['id'])
+        self.admin_client.reset_state(share['id'])
 
         # run shrink operation on same share and check result
         self.assertRaises(lib_exc.BadRequest,
