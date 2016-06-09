@@ -75,6 +75,9 @@ class FakeZFSSA(object):
     def get_project_stats(self, pool, project):
         pass
 
+    def create_schema(self, schema):
+        pass
+
 
 class FakeRestClient(object):
     """Fake ZFSSA Rest Client."""

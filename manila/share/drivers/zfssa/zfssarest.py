@@ -20,6 +20,7 @@ from oslo_serialization import jsonutils
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
+from manila.i18n import _LW
 from manila.share.drivers.zfssa import restclient
 
 
@@ -385,3 +386,27 @@ class ZFSSAApi(object):
         arg = {'sharenfs': argval}
         LOG.debug('deny_access: %s', argval)
         self.modify_share(pool, project, share, arg)
+
+    def create_schema(self, schema):
+        """Create a custom ZFSSA schema."""
+        base = '/api/storage/v1/schema'
+        svc = "%(base)s/%(prop)s" % {'base': base, 'prop': schema['property']}
+        ret = self.rclient.get(svc)
+        if ret.status == restclient.Status.OK:
+            LOG.warning(_LW('Property %s already exists.'), schema['property'])
+            return
+        ret = self.rclient.post(base, schema)
+        if ret.status != restclient.Status.CREATED:
+            exception_msg = (_('Error Creating '
+                               'Property: %(property)s '
+                               'Type: %(type)s '
+                               'Description: %(description)s '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s.')
+                             % {'property': schema['property'],
+                                'type': schema['type'],
+                                'description': schema['description'],
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.ShareBackendException(msg=exception_msg)

@@ -16,7 +16,7 @@ ZFS Storage Appliance Manila Share Driver
 """
 
 import base64
-
+import math
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import units
@@ -57,7 +57,13 @@ ZFSSA_OPTS = [
     cfg.StrOpt('zfssa_nas_vscan', default='false',
                help='Controls whether the share is scanned for viruses.'),
     cfg.StrOpt('zfssa_rest_timeout',
-               help='REST connection timeout (in seconds).')
+               help='REST connection timeout (in seconds).'),
+    cfg.StrOpt('zfssa_manage_policy', default='loose',
+               choices=['loose', 'strict'],
+               help='Driver policy for share manage. A strict policy checks '
+                    'for a schema named manila_managed, and makes sure its '
+                    'value is true. A loose policy does not check for the '
+                    'schema.')
 ]
 
 cfg.CONF.register_opts(ZFSSA_OPTS)
@@ -77,9 +83,10 @@ class ZFSSAShareDriver(driver.ShareDriver):
 
         1.0 - Initial version.
         1.0.1 - Add share shrink/extend feature.
+        1.0.2 - Add share manage/unmanage feature.
     """
 
-    VERSION = '1.0.1'
+    VERSION = '1.0.2'
     PROTOCOL = 'NFS_CIFS'
 
     def __init__(self, *args, **kwargs):
@@ -122,6 +129,7 @@ class ZFSSAShareDriver(driver.ShareDriver):
             'sharesmb': 'off',
             'quota_snap': self.configuration.zfssa_nas_quota_snap,
             'reservation_snap': self.configuration.zfssa_nas_quota_snap,
+            'custom:manila_managed': True,
         }
 
     def do_setup(self, context):
@@ -147,6 +155,13 @@ class ZFSSAShareDriver(driver.ShareDriver):
         self.zfssa.create_project(lcfg.zfssa_pool, lcfg.zfssa_project, arg)
         self.zfssa.enable_service('nfs')
         self.zfssa.enable_service('smb')
+
+        schema = {
+            'property': 'manila_managed',
+            'description': 'Managed by Manila',
+            'type': 'Boolean',
+        }
+        self.zfssa.create_schema(schema)
 
     def check_for_setup_error(self):
         """Check for properly configured pool, project."""
@@ -270,14 +285,148 @@ class ZFSSAShareDriver(driver.ShareDriver):
                                    snapshot['share_id'],
                                    snapshot['id'])
 
-    def ensure_share(self, context, share, share_server=None):
+    def manage_existing(self, share, driver_options):
+        """Manage an existing ZFSSA share.
+
+        This feature requires an option 'zfssa_name', which specifies the
+        name of the share as appeared in ZFSSA.
+
+        The driver automatically retrieves information from the ZFSSA backend
+        and returns the correct share size and export location.
+        """
+        if 'zfssa_name' not in driver_options:
+            msg = _('Name of the share in ZFSSA share has to be '
+                    'specified in option zfssa_name.')
+            LOG.error(msg)
+            raise exception.ShareBackendException(msg=msg)
+        name = driver_options['zfssa_name']
+        try:
+            details = self._get_share_details(name)
+        except Exception as e:
+            LOG.error(_LE('Cannot manage share %s'), name)
+            raise e
+
+        lcfg = self.configuration
+        input_export_loc = share['export_locations'][0]['path']
+        proto = share['share_proto']
+
+        self._verify_share_to_manage(name, details)
+
+        # Get and verify share size:
+        size_byte = details['quota']
+        size_gb = int(math.ceil(size_byte / float(units.Gi)))
+        if size_byte % units.Gi != 0:
+            # Round up the size:
+            new_size_byte = size_gb * units.Gi
+            free_space = self.zfssa.get_project_stats(lcfg.zfssa_pool,
+                                                      lcfg.zfssa_project)
+
+            diff_space = int(new_size_byte - size_byte)
+
+            if diff_space > free_space:
+                msg = (_('Quota and reservation of share %(name)s need to be '
+                         'rounded up to %(size)d. But there is not enough '
+                         'space in the backend.') % {'name': name,
+                                                     'size': size_gb})
+                LOG.error(msg)
+                raise exception.ManageInvalidShare(reason=msg)
+            size_byte = new_size_byte
+
+        # Get and verify share export location, also update share properties.
+        arg = {
+            'host': lcfg.zfssa_data_ip,
+            'mountpoint': input_export_loc,
+            'name': share['id'],
+        }
+        manage_args = self.default_args.copy()
+        manage_args.update(self.share_args)
+        # The ZFSSA share name has to be updated, as Manila generates a new
+        # share id for each share to be managed.
+        manage_args.update({'name': share['id'],
+                            'quota': size_byte,
+                            'reservation': size_byte})
+        if proto == 'NFS':
+            export_loc = ("%(host)s:%(mountpoint)s/%(name)s" % arg)
+            manage_args.update({'sharenfs': 'sec=sys',
+                                'sharesmb': 'off'})
+        elif proto == 'CIFS':
+            export_loc = ("\\\\%(host)s\\%(name)s" % arg)
+            manage_args.update({'sharesmb': 'on',
+                                'sharenfs': 'off'})
+        else:
+            msg = _('Protocol %s is not supported.') % proto
+            LOG.error(msg)
+            raise exception.ManageInvalidShare(reason=msg)
+
+        self.zfssa.modify_share(lcfg.zfssa_pool, lcfg.zfssa_project,
+                                name, manage_args)
+        return {'size': size_gb, 'export_locations': export_loc}
+
+    def _verify_share_to_manage(self, name, details):
+        lcfg = self.configuration
+
+        if lcfg.zfssa_manage_policy == 'loose':
+            return
+
+        if 'custom:manila_managed' not in details:
+            msg = (_("Unknown if the share: %s to be managed is "
+                     "already being managed by Manila. Aborting manage "
+                     "share. Please add 'manila_managed' custom schema "
+                     "property to the share and set its value to False."
+                     "Alternatively, set Manila config property "
+                     "'zfssa_manage_policy' to 'loose' to remove this "
+                     "restriction.") % name)
+            LOG.error(msg)
+            raise exception.ManageInvalidShare(reason=msg)
+
+        if details['custom:manila_managed'] is True:
+            msg = (_("Share %s is already being managed by Manila.") % name)
+            LOG.error(msg)
+            raise exception.ManageInvalidShare(reason=msg)
+
+    def unmanage(self, share):
+        """Removes the specified share from Manila management.
+
+        This task involves only changing the custom:manila_managed
+        property to False. Current accesses to the share will be removed in
+        ZFSSA, as these accesses are removed in Manila.
+        """
+        name = share['id']
+        lcfg = self.configuration
+        managed = 'custom:manila_managed'
+        details = self._get_share_details(name)
+
+        if (managed not in details) or (details[managed] is not True):
+            msg = (_("Share %s is not being managed by the current Manila "
+                     "instance.") % name)
+            LOG.error(msg)
+            raise exception.UnmanageInvalidShare(reason=msg)
+
+        arg = {'custom:manila_managed': False}
+        if share['share_proto'] == 'NFS':
+            arg.update({'sharenfs': 'off'})
+        elif share['share_proto'] == 'CIFS':
+            arg.update({'sharesmb': 'off'})
+        else:
+            msg = (_("ZFSSA does not support %s protocol.") %
+                   share['share_proto'])
+            LOG.error(msg)
+            raise exception.UnmanageInvalidShare(reason=msg)
+        self.zfssa.modify_share(lcfg.zfssa_pool, lcfg.zfssa_project, name, arg)
+
+    def _get_share_details(self, name):
         lcfg = self.configuration
         details = self.zfssa.get_share(lcfg.zfssa_pool,
                                        lcfg.zfssa_project,
-                                       share['id'])
+                                       name)
         if not details:
-            msg = (_("Share %s doesn't exists.") % share['id'])
-            raise exception.ManilaException(msg)
+            msg = (_("Share %s doesn't exist in ZFSSA.") % name)
+            LOG.error(msg)
+            raise exception.ShareResourceNotFound(share_id=name)
+        return details
+
+    def ensure_share(self, context, share, share_server=None):
+        self._get_share_details(share['id'])
 
     def shrink_share(self, share, new_size, share_server=None):
         """Shrink a share to new_size."""
