@@ -146,8 +146,10 @@ class SharesNFSTest(base.BaseSharesTest):
             self.protocol, snapshot_id=snap["id"], cleanup_in_class=False)
 
         # The 'status' of the share returned by the create API must be
-        # the default value - 'creating'.
-        self.assertEqual('creating', s2['status'])
+        # set and have value either 'creating' or
+        # 'available' (if share creation is really fast as in
+        # case of Dummy driver).
+        self.assertIn(s2['status'], ('creating', 'available'))
 
         # verify share, created from snapshot
         get = self.shares_client.get_share(s2["id"])

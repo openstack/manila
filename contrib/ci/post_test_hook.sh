@@ -43,7 +43,9 @@ TEST_TYPE=$3
 POSTGRES_ENABLED=$4
 POSTGRES_ENABLED=$(trueorfalse True POSTGRES_ENABLED)
 
-if [[ "$BACK_END_TYPE" == "multibackend" ]]; then
+if [[ "$DRIVER" == "dummy" ]]; then
+    export BACKENDS_NAMES="ALPHA,BETA"
+elif [[ "$BACK_END_TYPE" == "multibackend" ]]; then
     iniset $TEMPEST_CONFIG share multi_backend True
     iniset $TEMPEST_CONFIG share run_migration_tests $(trueorfalse True RUN_MANILA_MIGRATION_TESTS)
 
@@ -185,6 +187,26 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     iniset $TEMPEST_CONFIG share multitenancy_enabled False
     iniset $TEMPEST_CONFIG share multi_backend True
     iniset $TEMPEST_CONFIG share backend_replication_type 'readable'
+elif [[ "$DRIVER" == "dummy" ]]; then
+    MANILA_TEMPEST_CONCURRENCY=24
+    RUN_MANILA_CG_TESTS=True
+    RUN_MANILA_MANAGE_TESTS=False
+    iniset $TEMPEST_CONFIG share run_migration_tests False
+    iniset $TEMPEST_CONFIG share run_quota_tests True
+    iniset $TEMPEST_CONFIG share run_replication_tests False
+    iniset $TEMPEST_CONFIG share run_shrink_tests True
+    iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
+    iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
+    iniset $TEMPEST_CONFIG share enable_cert_rules_for_protocols ''
+    iniset $TEMPEST_CONFIG share enable_ro_access_level_for_protocols 'nfs,cifs'
+    iniset $TEMPEST_CONFIG share build_timeout 180
+    iniset $TEMPEST_CONFIG share share_creation_retry_number 0
+    iniset $TEMPEST_CONFIG share capability_storage_protocol 'NFS_CIFS'
+    iniset $TEMPEST_CONFIG share enable_protocols 'nfs,cifs'
+    iniset $TEMPEST_CONFIG share suppress_errors_in_cleanup False
+    iniset $TEMPEST_CONFIG share multitenancy_enabled True
+    iniset $TEMPEST_CONFIG share create_networks_when_multitenancy_enabled False
+    iniset $TEMPEST_CONFIG share multi_backend True
 fi
 
 # Enable consistency group tests
@@ -213,3 +235,37 @@ manila_wait_for_drivers_init $MANILA_CONF
 
 echo "Running tempest manila test suites"
 sudo -H -u jenkins tox -eall-plugin $MANILA_TESTS -- --concurrency=$MANILA_TEMPEST_CONCURRENCY
+RETVAL=$?
+
+if [[ "$DRIVER" == "dummy" ]]; then
+    save_tempest_results 1
+    echo "First tempest run (DHSS=True) returned '$RETVAL'"
+    iniset $TEMPEST_CONFIG share backend_names "GAMMA,DELTA"
+
+    # NOTE(vponomaryov): enable migration tests when its support added to
+    # dummy driver.
+    iniset $TEMPEST_CONFIG share run_migration_tests False
+    iniset $TEMPEST_CONFIG share run_manage_unmanage_tests True
+    iniset $TEMPEST_CONFIG share run_manage_unmanage_snapshot_tests True
+    iniset $TEMPEST_CONFIG share run_replication_tests True
+    iniset $TEMPEST_CONFIG share multitenancy_enabled False
+    iniset $TEMPEST_CONFIG share backend_replication_type 'readable'
+
+    # Change driver mode for default share type to make tempest use
+    # DHSS=False backends.
+    source $BASE/new/devstack/openrc admin demo
+    manila type-key default set driver_handles_share_servers=False
+
+    echo "Running tempest manila test suites for DHSS=False mode"
+    sudo -H -u jenkins tox -eall-plugin $MANILA_TESTS -- --concurrency=$MANILA_TEMPEST_CONCURRENCY
+    RETVAL2=$?
+    save_tempest_results 2
+
+    # Exit with last code if first succeeded else exit with first error code
+    if [[ "$RETVAL" == "0" ]]; then
+        RETVAL=$RETVAL2
+    fi
+
+    echo "Second tempest run (DHSS=False) returned '$RETVAL2'"
+fi
+exit $RETVAL
