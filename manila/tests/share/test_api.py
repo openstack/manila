@@ -1764,7 +1764,7 @@ class ShareAPITestCase(test.TestCase):
         db_api.share_get.return_value = share
         access = db_utils.create_access(share_id=share['id'])
         share_instance = share.instances[0]
-        db_api.share_instance_access_get_all.return_value = [share_instance, ]
+
         self.api.deny_access(self.context, share, access)
         db_api.share_get.assert_called_once_with(self.context, share['id'])
         share_api.policy.check_policy.assert_called_once_with(
@@ -1773,13 +1773,11 @@ class ShareAPITestCase(test.TestCase):
             self.context, share_instance, access)
 
     @mock.patch.object(db_api, 'share_get', mock.Mock())
-    @mock.patch.object(db_api, 'share_instance_access_get_all', mock.Mock())
     @mock.patch.object(db_api, 'share_access_delete', mock.Mock())
     def test_deny_access_error_no_share_instance_mapping(self):
         share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
         db_api.share_get.return_value = share
         access = db_utils.create_access(share_id=share['id'])
-        db_api.share_instance_access_get_all.return_value = []
 
         self.api.deny_access(self.context, share, access)
 

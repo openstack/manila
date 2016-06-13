@@ -105,11 +105,6 @@ def service_get_all_by_topic(context, topic):
     return IMPL.service_get_all_by_topic(context, topic)
 
 
-def service_get_all_by_host(context, host):
-    """Get all services for a given host."""
-    return IMPL.service_get_all_by_host(context, host)
-
-
 def service_get_all_share_sorted(context):
     """Get all share services sorted by share count.
 
@@ -236,21 +231,6 @@ def quota_usage_update(context, project_id, user_id, resource, **kwargs):
 ###################
 
 
-def reservation_create(context, uuid, usage, project_id, user_id, resource,
-                       delta, expire):
-    """Create a reservation for the given project and resource."""
-    return IMPL.reservation_create(context, uuid, usage, project_id,
-                                   user_id, resource, delta, expire)
-
-
-def reservation_get(context, uuid):
-    """Retrieve a reservation or raise if it does not exist."""
-    return IMPL.reservation_get(context, uuid)
-
-
-###################
-
-
 def quota_reserve(context, resources, quotas, user_quotas, deltas, expire,
                   until_refresh, max_age, project_id=None, user_id=None):
     """Check quotas and create appropriate reservations."""
@@ -354,11 +334,6 @@ def share_create(context, share_values, create_share_instance=True):
                              create_share_instance=create_share_instance)
 
 
-def share_data_get_for_project(context, project_id, session=None):
-    """Get (share_count, gigabytes) for project."""
-    return IMPL.share_data_get_for_project(context, project_id)
-
-
 def share_update(context, share_id, values):
     """Update share fields."""
     return IMPL.share_update(context, share_id, values)
@@ -440,11 +415,6 @@ def share_access_get_all_for_share(context, share_id):
     return IMPL.share_access_get_all_for_share(context, share_id)
 
 
-def share_instance_access_get_all(context, access_id, session=None):
-    """Get access rules to all share instances."""
-    return IMPL.share_instance_access_get_all(context, access_id, session=None)
-
-
 def share_access_get_all_for_instance(context, instance_id, session=None):
     """Get all access rules related to a certain share instance."""
     return IMPL.share_access_get_all_for_instance(
@@ -517,16 +487,6 @@ def share_snapshot_create(context, values):
     return IMPL.share_snapshot_create(context, values)
 
 
-def snapshot_data_get_for_project(context, project_id, session=None):
-    """Get (snapshot_count, gigabytes) for project."""
-    return IMPL.snapshot_data_get_for_project(context, project_id)
-
-
-def share_snapshot_destroy(context, snapshot_id):
-    """Destroy the snapshot or raise if it does not exist."""
-    return IMPL.share_snapshot_destroy(context, snapshot_id)
-
-
 def share_snapshot_get(context, snapshot_id):
     """Get a snapshot or raise if it does not exist."""
     return IMPL.share_snapshot_get(context, snapshot_id)
@@ -564,13 +524,6 @@ def share_snapshot_update(context, snapshot_id, values):
     Raises NotFound if snapshot does not exist.
     """
     return IMPL.share_snapshot_update(context, snapshot_id, values)
-
-
-def share_snapshot_data_get_for_project(context, project_id, session=None):
-    """Get count and gigabytes used for snapshots for specified project."""
-    return IMPL.share_snapshot_data_get_for_project(context,
-                                                    project_id,
-                                                    session=None)
 
 
 ###################
@@ -874,14 +827,6 @@ def share_type_destroy(context, id):
     return IMPL.share_type_destroy(context, id)
 
 
-def volume_get_active_by_window(context, begin, end=None, project_id=None):
-    """Get all the volumes inside the window.
-
-    Specifying a project_id will filter for a certain project.
-    """
-    return IMPL.volume_get_active_by_window(context, begin, end, project_id)
-
-
 ####################
 
 
@@ -946,12 +891,6 @@ def consistency_group_get(context, consistency_group_id):
 def consistency_group_get_all(context, detailed=True):
     """Get all consistency groups."""
     return IMPL.consistency_group_get_all(context, detailed=detailed)
-
-
-def consistency_group_get_all_by_host(context, host, detailed=True):
-    """Get all consistency groups belonging to a host."""
-    return IMPL.consistency_group_get_all_by_host(context, host,
-                                                  detailed=detailed)
 
 
 def consistency_group_create(context, values):
@@ -1083,15 +1022,6 @@ def share_replicas_get_available_active_replica(context, share_id,
                                                 with_share_data=False):
     """Returns an active replica for a given share."""
     return IMPL.share_replicas_get_available_active_replica(
-        context, share_id, with_share_server=with_share_server,
-        with_share_data=with_share_data)
-
-
-def share_replicas_get_active_replicas_by_share(context, share_id,
-                                                with_share_server=False,
-                                                with_share_data=False):
-    """Returns all active replicas for a given share."""
-    return IMPL.share_replicas_get_active_replicas_by_share(
         context, share_id, with_share_server=with_share_server,
         with_share_data=with_share_data)
 
