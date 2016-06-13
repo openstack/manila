@@ -25,6 +25,7 @@ import netaddr
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
+from oslo_utils import netutils
 import six
 
 from manila.common import constants as const
@@ -257,13 +258,13 @@ class ServiceInstanceManager(object):
             self.admin_context,
             self.get_config_option('service_instance_name_or_id'))
 
-        if netaddr.valid_ipv4(data['service_net_name_or_ip']):
+        if netutils.is_valid_ipv4(data['service_net_name_or_ip']):
             data['private_address'] = [data['service_net_name_or_ip']]
         else:
             data['private_address'] = self._get_addresses_by_network_name(
                 data['service_net_name_or_ip'], data['instance'])
 
-        if netaddr.valid_ipv4(data['tenant_net_name_or_ip']):
+        if netutils.is_valid_ipv4(data['tenant_net_name_or_ip']):
             data['public_address'] = [data['tenant_net_name_or_ip']]
         else:
             data['public_address'] = self._get_addresses_by_network_name(
@@ -285,7 +286,7 @@ class ServiceInstanceManager(object):
         for key in ('private_address', 'public_address'):
             data[key + '_v4'] = None
             for address in data[key]:
-                if netaddr.valid_ipv4(address):
+                if netutils.is_valid_ipv4(address):
                     data[key + '_v4'] = address
                     break
         share_server['ip'] = data['private_address_v4']
