@@ -63,16 +63,18 @@ class ViewBuilder(common.ViewBuilder):
         return instances_dict
 
     @common.ViewBuilder.versioned_method("2.9")
-    def remove_export_locations(self, share_instance_dict, share_instance):
+    def remove_export_locations(self, context, share_instance_dict,
+                                share_instance):
         share_instance_dict.pop('export_location')
         share_instance_dict.pop('export_locations')
 
     @common.ViewBuilder.versioned_method("2.10")
-    def add_access_rules_status_field(self, instance_dict, share_instance):
+    def add_access_rules_status_field(self, context, instance_dict,
+                                      share_instance):
         instance_dict['access_rules_status'] = (
             share_instance.get('access_rules_status')
         )
 
     @common.ViewBuilder.versioned_method("2.11")
-    def add_replication_fields(self, instance_dict, share_instance):
+    def add_replication_fields(self, context, instance_dict, share_instance):
         instance_dict['replica_state'] = share_instance.get('replica_state')

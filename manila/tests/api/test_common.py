@@ -17,11 +17,14 @@
 Test suites for 'common' code used throughout the OpenStack HTTP API.
 """
 
+import ddt
 import webob
 import webob.exc
 
 from manila.api import common
 from manila import test
+from manila.tests.api import fakes
+from manila.tests.db import fakes as db_fakes
 
 
 NS = "{http://docs.openstack.org/compute/api/v1.1}"
@@ -240,3 +243,58 @@ class MiscFunctionsTest(test.TestCase):
         self.assertRaises(ValueError,
                           common.remove_version_from_href,
                           fixture)
+
+
+@ddt.ddt
+class ViewBuilderTest(test.TestCase):
+
+    def setUp(self):
+        super(ViewBuilderTest, self).setUp()
+        self.expected_resource_dict = {
+            'id': 'fake_resource_id',
+            'foo': 'quz',
+            'fred': 'bob',
+            'alice': 'waldo',
+            'spoon': 'spam',
+            'xyzzy': 'qwerty',
+        }
+        self.fake_resource = db_fakes.FakeModel(self.expected_resource_dict)
+        self.view_builder = fakes.FakeResourceViewBuilder()
+
+    @ddt.data('1.0', '1.40')
+    def test_versioned_method_no_updates(self, version):
+        req = fakes.HTTPRequest.blank('/my_resource', version=version)
+
+        actual_resource = self.view_builder.view(req, self.fake_resource)
+
+        self.assertEqual(set({'id', 'foo', 'fred', 'alice'}),
+                         set(actual_resource.keys()))
+
+    @ddt.data(True, False)
+    def test_versioned_method_v1_6(self, is_admin):
+        req = fakes.HTTPRequest.blank('/my_resource', version='1.6',
+                                      use_admin_context=is_admin)
+        expected_keys = set({'id', 'foo', 'fred', 'alice'})
+        if is_admin:
+            expected_keys.add('spoon')
+
+        actual_resource = self.view_builder.view(req, self.fake_resource)
+
+        self.assertEqual(expected_keys, set(actual_resource.keys()))
+
+    @ddt.unpack
+    @ddt.data({'is_admin': True, 'version': '3.14'},
+              {'is_admin': False, 'version': '3.14'},
+              {'is_admin': False, 'version': '6.2'},
+              {'is_admin': True, 'version': '6.2'})
+    def test_versioned_method_all_match(self, is_admin, version):
+        req = fakes.HTTPRequest.blank(
+            '/my_resource', version=version, use_admin_context=is_admin)
+
+        expected_keys = set({'id', 'fred', 'xyzzy', 'alice'})
+        if is_admin:
+            expected_keys.add('spoon')
+
+        actual_resource = self.view_builder.view(req, self.fake_resource)
+
+        self.assertEqual(expected_keys, set(actual_resource.keys()))

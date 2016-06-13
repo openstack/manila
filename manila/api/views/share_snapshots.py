@@ -57,17 +57,16 @@ class ViewBuilder(common.ViewBuilder):
             'links': self._get_links(request, snapshot['id']),
         }
 
-        # NOTE(xyang): Only retrieve provider_location for admin.
-        context = request.environ['manila.context']
-        if context.is_admin:
-            self.update_versioned_resource_dict(request, snapshot_dict,
-                                                snapshot)
+        self.update_versioned_resource_dict(request, snapshot_dict, snapshot)
 
         return {'snapshot': snapshot_dict}
 
     @common.ViewBuilder.versioned_method("2.12")
-    def add_provider_location_field(self, snapshot_dict, snapshot):
-        snapshot_dict['provider_location'] = snapshot.get('provider_location')
+    def add_provider_location_field(self, context, snapshot_dict, snapshot):
+        # NOTE(xyang): Only retrieve provider_location for admin.
+        if context.is_admin:
+            snapshot_dict['provider_location'] = snapshot.get(
+                'provider_location')
 
     def _list_view(self, func, request, snapshots):
         """Provide a view for a list of share snapshots."""

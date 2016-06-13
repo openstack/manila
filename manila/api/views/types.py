@@ -53,12 +53,14 @@ class ViewBuilder(common.ViewBuilder):
             return dict(volume_type=trimmed, share_type=trimmed)
 
     @common.ViewBuilder.versioned_method("2.7")
-    def add_is_public_attr_core_api_like(self, share_type_dict, share_type):
+    def add_is_public_attr_core_api_like(self, context, share_type_dict,
+                                         share_type):
         share_type_dict['share_type_access:is_public'] = share_type.get(
             'is_public', True)
 
     @common.ViewBuilder.versioned_method("1.0", "2.6")
-    def add_is_public_attr_extension_like(self, share_type_dict, share_type):
+    def add_is_public_attr_extension_like(self, context, share_type_dict,
+                                          share_type):
         share_type_dict['os-share-type-access:is_public'] = share_type.get(
             'is_public', True)
 

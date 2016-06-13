@@ -104,22 +104,22 @@ class ViewBuilder(common.ViewBuilder):
         return result
 
     @common.ViewBuilder.versioned_method("2.2")
-    def add_snapshot_support_field(self, share_dict, share):
+    def add_snapshot_support_field(self, context, share_dict, share):
         share_dict['snapshot_support'] = share.get('snapshot_support')
 
     @common.ViewBuilder.versioned_method("2.4")
-    def add_consistency_group_fields(self, share_dict, share):
+    def add_consistency_group_fields(self, context, share_dict, share):
         share_dict['consistency_group_id'] = share.get(
             'consistency_group_id')
         share_dict['source_cgsnapshot_member_id'] = share.get(
             'source_cgsnapshot_member_id')
 
     @common.ViewBuilder.versioned_method("2.5")
-    def add_task_state_field(self, share_dict, share):
+    def add_task_state_field(self, context, share_dict, share):
         share_dict['task_state'] = share.get('task_state')
 
     @common.ViewBuilder.versioned_method("2.6")
-    def modify_share_type_field(self, share_dict, share):
+    def modify_share_type_field(self, context, share_dict, share):
         share_type = share.get('share_type_id')
 
         share_type_name = None
@@ -132,21 +132,21 @@ class ViewBuilder(common.ViewBuilder):
         })
 
     @common.ViewBuilder.versioned_method("2.9")
-    def remove_export_locations(self, share_dict, share):
+    def remove_export_locations(self, context, share_dict, share):
         share_dict.pop('export_location')
         share_dict.pop('export_locations')
 
     @common.ViewBuilder.versioned_method("2.10")
-    def add_access_rules_status_field(self, share_dict, share):
+    def add_access_rules_status_field(self, context, share_dict, share):
         share_dict['access_rules_status'] = share.get('access_rules_status')
 
     @common.ViewBuilder.versioned_method('2.11')
-    def add_replication_fields(self, share_dict, share):
+    def add_replication_fields(self, context, share_dict, share):
         share_dict['replication_type'] = share.get('replication_type')
         share_dict['has_replicas'] = share['has_replicas']
 
     @common.ViewBuilder.versioned_method("2.16")
-    def add_user_id(self, share_dict, share):
+    def add_user_id(self, context, share_dict, share):
         share_dict['user_id'] = share.get('user_id')
 
     def _list_view(self, func, request, shares):
