@@ -61,8 +61,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.vserver_client.set_vserver(fake.VSERVER_NAME)
         self.vserver_client.connection = mock.MagicMock()
 
-    def _mock_api_error(self, code='fake'):
-        return mock.Mock(side_effect=netapp_api.NaApiError(code=code))
+    def _mock_api_error(self, code='fake', message='fake'):
+        return mock.Mock(side_effect=netapp_api.NaApiError(code=code,
+                                                           message=message))
 
     def test_init_features_ontapi_1_21(self):
 
@@ -928,6 +929,53 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.assertRaises(exception.NetAppException,
                           self.client._create_vlan,
+                          fake.NODE_NAME,
+                          fake.PORT,
+                          fake.VLAN)
+
+    def test_delete_vlan(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        vlan_delete_args = {
+            'vlan-info': {
+                'parent-interface': fake.PORT,
+                'node': fake.NODE_NAME,
+                'vlanid': fake.VLAN
+            }
+        }
+        self.client.delete_vlan(fake.NODE_NAME, fake.PORT, fake.VLAN)
+
+        self.client.send_request.assert_has_calls([
+            mock.call('net-vlan-delete', vlan_delete_args)])
+
+    def test_delete_vlan_still_used(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         self._mock_api_error(code=netapp_api.EAPIERROR,
+                                              message='Port already has a '
+                                              'lif bound. '))
+
+        vlan_delete_args = {
+            'vlan-info': {
+                'parent-interface': fake.PORT,
+                'node': fake.NODE_NAME,
+                'vlanid': fake.VLAN
+            }
+        }
+        self.client.delete_vlan(fake.NODE_NAME, fake.PORT, fake.VLAN)
+
+        self.client.send_request.assert_has_calls([
+            mock.call('net-vlan-delete', vlan_delete_args)])
+        self.assertEqual(1, client_cmode.LOG.debug.call_count)
+
+    def test_delete_vlan_api_error(self):
+
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.delete_vlan,
                           fake.NODE_NAME,
                           fake.PORT,
                           fake.VLAN)
