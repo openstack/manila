@@ -794,3 +794,16 @@ class StorageCommunicationException(ShareBackendException):
 
 class EvaluatorParseException(ManilaException):
     message = _("Error during evaluator parsing: %(reason)s")
+
+
+# Hitachi Scaleout Platform driver
+class HSPBackendException(ShareBackendException):
+    message = _("HSP Backend Exception: %(msg)s")
+
+
+class HSPTimeoutException(ShareBackendException):
+    message = _("HSP Timeout Exception: %(msg)s")
+
+
+class HSPItemNotFoundException(ShareBackendException):
+    message = _("HSP Item Not Found Exception: %(msg)s")
