@@ -38,6 +38,12 @@ smbcontrol: CommandFilter, smbcontrol, root
 # manila/share/drivers/helpers.py: 'net', 'conf', 'getparm', '%s', 'hosts allow'
 net: CommandFilter, net, root
 
+# manila/share/drivers/helpers.py: 'cp', '%s', '%s'
+cp: CommandFilter, cp, root
+
+# manila/share/drivers/helpers.py: 'service', '%s', '%s'
+service: CommandFilter, service, root
+
 # manila/share/drivers/lvm.py: 'lvremove', '-f', "%s/%s
 lvremove: CommandFilter, lvremove, root
 
@@ -106,21 +112,13 @@ exportfs: CommandFilter, exportfs, root
 stat: CommandFilter, stat, root
 # manila/share/drivers/ibm/gpfs.py: 'df', '-P', '-B', '1', '%s'
 df: CommandFilter, df, root
+# manila/share/drivers/ibm/gpfs.py: 'chmod', '777', '%s'
+chmod: CommandFilter, chmod, root
+# manila/share/drivers/ibm/gpfs.py: 'mmnfs', 'export', '%s', '%s'
+mmnfs: CommandFilter, mmnfs, root
 
-# Ganesha commands
-# manila/share/drivers/ibm/ganesha_utils.py: 'mv', '%s', '%s'
 # manila/share/drivers/ganesha/manager.py: 'mv', '%s', '%s'
 mv: CommandFilter, mv, root
-# manila/share/drivers/ibm/ganesha_utils.py: 'cp', '%s', '%s'
-cp: CommandFilter, cp, root
-# manila/share/drivers/ibm/ganesha_utils.py: 'scp', '-i', '%s', '%s', '%s'
-scp: CommandFilter, scp, root
-# manila/share/drivers/ibm/ganesha_utils.py: 'ssh', '%s', '%s'
-ssh: CommandFilter, ssh, root
-# manila/share/drivers/ibm/ganesha_utils.py: 'chmod', '%s', '%s'
-chmod: CommandFilter, chmod, root
-# manila/share/drivers/ibm/ganesha_utils.py: 'service', '%s', 'restart'
-service: CommandFilter, service, root
 
 # manila/share/drivers/ganesha/manager.py: 'mktemp', '-p', '%s', '-t', '%s'
 mktemp: CommandFilter, mktemp, root

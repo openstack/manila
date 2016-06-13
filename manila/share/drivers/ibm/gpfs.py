@@ -29,7 +29,6 @@ Limitation:
 
 """
 import abc
-import copy
 import math
 import os
 import re
@@ -43,10 +42,11 @@ from oslo_utils import strutils
 from oslo_utils import units
 import six
 
+from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LE, _LI
+from manila.i18n import _
 from manila.share import driver
-from manila.share.drivers.ibm import ganesha_utils
+from manila.share import share_types
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -67,10 +67,16 @@ gpfs_share_opts = [
     cfg.StrOpt('gpfs_nfs_server_type',
                default='KNFS',
                help=('NFS Server type. Valid choices are "KNFS" (kernel NFS) '
-                     'or "GNFS" (Ganesha NFS).')),
+                     'or "CES" (Ganesha NFS).')),
     cfg.ListOpt('gpfs_nfs_server_list',
                 help=('A list of the fully qualified NFS server names that '
                       'make up the OpenStack Manila configuration.')),
+    cfg.BoolOpt('is_gpfs_node',
+                default=False,
+                help=('True:when Manila services are running on one of the '
+                      'Spectrum Scale node. '
+                      'False:when Manila services are not running on any of '
+                      'the Spectrum Scale node.')),
     cfg.PortOpt('gpfs_ssh_port',
                 default=22,
                 help='GPFS server SSH port.'),
@@ -86,7 +92,7 @@ gpfs_share_opts = [
     cfg.ListOpt('gpfs_share_helpers',
                 default=[
                     'KNFS=manila.share.drivers.ibm.gpfs.KNFSHelper',
-                    'GNFS=manila.share.drivers.ibm.gpfs.GNFSHelper',
+                    'CES=manila.share.drivers.ibm.gpfs.CESHelper',
                 ],
                 help='Specify list of share export helpers.'),
     cfg.StrOpt('knfs_export_options',
@@ -95,7 +101,11 @@ gpfs_share_opts = [
                help=('Options to use when exporting a share using kernel '
                      'NFS server. Note that these defaults can be overridden '
                      'when a share is created by passing metadata with key '
-                     'name export_options.')),
+                     'name export_options.'),
+               deprecated_for_removal=True,
+               deprecated_reason="This option isn't used any longer. Please "
+                                 "use share-type extra specs for export "
+                                 "options."),
 ]
 
 
@@ -115,6 +125,7 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
         1.0 - Initial version.
         1.1 - Added extend_share functionality
+        2.0 - Added CES support for NFS Ganesha
     """
 
     def __init__(self, *args, **kwargs):
@@ -131,9 +142,7 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
     def do_setup(self, context):
         """Any initialization the share driver does while starting."""
         super(GPFSShareDriver, self).do_setup(context)
-        host = self.configuration.gpfs_share_export_ip
-        localserver_iplist = socket.gethostbyname_ex(socket.gethostname())[2]
-        if host in localserver_iplist:  # run locally
+        if self.configuration.is_gpfs_node:
             self._gpfs_execute = self._gpfs_local_execute
         else:
             self._gpfs_execute = self._gpfs_remote_execute
@@ -142,20 +151,24 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
     def _gpfs_local_execute(self, *cmd, **kwargs):
         if 'run_as_root' not in kwargs:
             kwargs.update({'run_as_root': True})
+        if 'ignore_exit_code' in kwargs:
+            check_exit_code = kwargs.pop('ignore_exit_code')
+            check_exit_code.append(0)
+            kwargs.update({'check_exit_code': check_exit_code})
 
         return utils.execute(*cmd, **kwargs)
 
     def _gpfs_remote_execute(self, *cmd, **kwargs):
         host = self.configuration.gpfs_share_export_ip
         check_exit_code = kwargs.pop('check_exit_code', True)
+        ignore_exit_code = kwargs.pop('ignore_exit_code', None)
 
-        return self._run_ssh(host, cmd, check_exit_code)
+        return self._run_ssh(host, cmd, ignore_exit_code, check_exit_code)
 
     def _run_ssh(self, host, cmd_list, ignore_exit_code=None,
                  check_exit_code=True):
         command = ' '.join(six.moves.shlex_quote(cmd_arg)
                            for cmd_arg in cmd_list)
-
         if not self.sshpool:
             gpfs_ssh_login = self.configuration.gpfs_ssh_login
             password = self.configuration.gpfs_ssh_password
@@ -178,6 +191,7 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                 return self._gpfs_ssh_execute(
                     ssh,
                     command,
+                    ignore_exit_code=ignore_exit_code,
                     check_exit_code=check_exit_code)
 
         except Exception as e:
@@ -326,8 +340,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             raise exception.GPFSException(msg)
 
         try:
-            self._gpfs_execute('mmsetquota', '-j', sharename, '-h',
-                               sizestr, fsdev)
+            self._gpfs_execute('mmsetquota', fsdev + ':' + sharename,
+                               '--block', '0:' + sizestr)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to set quota for the share %(sharename)s. '
                      'Error: %(excmsg)s.') %
@@ -354,11 +368,12 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         # we want to ignore that error condition while deleting the fileset,
         # i.e. 'Fileset name share-xyz not found', with error code '2'
         # and mark the deletion successful
-        # ignore_exit_code = [ERR_FILE_NOT_FOUND]
+        ignore_exit_code = [ERR_FILE_NOT_FOUND]
 
         # unlink and delete the share's fileset
         try:
-            self._gpfs_execute('mmunlinkfileset', fsdev, sharename, '-f')
+            self._gpfs_execute('mmunlinkfileset', fsdev, sharename, '-f',
+                               ignore_exit_code=ignore_exit_code)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed unlink fileset for share %(sharename)s. '
                      'Error: %(excmsg)s.') %
@@ -367,7 +382,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             raise exception.GPFSException(msg)
 
         try:
-            self._gpfs_execute('mmdelfileset', fsdev, sharename, '-f')
+            self._gpfs_execute('mmdelfileset', fsdev, sharename, '-f',
+                               ignore_exit_code=ignore_exit_code)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed delete fileset for share %(sharename)s. '
                      'Error: %(excmsg)s.') %
@@ -396,9 +412,11 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         sharename = snapshot['share_name']
         snapshotname = snapshot['name']
         fsdev = self._get_gpfs_device()
-        LOG.debug("sharename = %{share}s, snapshotname = %{snap}s, "
-                  "fsdev = %{dev}s",
-                  {'share': sharename, 'snap': snapshotname, 'dev': fsdev})
+        LOG.debug(
+            'Attempting to create a snapshot %(snap)s from share %(share)s '
+            'on device %(dev)s.',
+            {'share': sharename, 'snap': snapshotname, 'dev': fsdev}
+        )
 
         try:
             self._gpfs_execute('mmcrsnapshot', fsdev, snapshot['name'],
@@ -445,8 +463,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         sizestr = '%sG' % new_size
         fsdev = self._get_gpfs_device()
         try:
-            self._gpfs_execute('mmsetquota', '-j', sharename, '-h',
-                               sizestr, fsdev)
+            self._gpfs_execute('mmsetquota', fsdev + ':' + sharename,
+                               '--block', '0:' + sizestr)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to set quota for the share %(sharename)s. '
                      'Error: %(excmsg)s.') %
@@ -496,16 +514,12 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
     def allow_access(self, ctx, share, access, share_server=None):
         """Allow access to the share."""
         location = self._get_share_path(share)
-        self._get_helper(share).allow_access(location, share,
-                                             access['access_type'],
-                                             access['access_to'])
+        self._get_helper(share).allow_access(location, share, access)
 
     def deny_access(self, ctx, share, access, share_server=None):
         """Deny access to the share."""
         location = self._get_share_path(share)
-        self._get_helper(share).deny_access(location, share,
-                                            access['access_type'],
-                                            access['access_to'])
+        self._get_helper(share).deny_access(location, share, access)
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -536,14 +550,15 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
-        if self.configuration.gpfs_nfs_server_type not in ['KNFS', 'GNFS']:
+        if self.configuration.gpfs_nfs_server_type not in ("KNFS", "CES"):
             msg = (_('Invalid gpfs_nfs_server_type value: %s. '
-                     'Valid values are: "KNFS", "GNFS".')
+                     'Valid values are: "KNFS", "CES".')
                    % self.configuration.gpfs_nfs_server_type)
             LOG.error(msg)
             raise exception.InvalidParameterValue(err=msg)
 
-        if self.configuration.gpfs_nfs_server_list is None:
+        if ((not self.configuration.gpfs_nfs_server_list) and
+                (self.configuration.gpfs_nfs_server_type != 'CES')):
             msg = (_('Missing value for gpfs_nfs_server_list.'))
             LOG.error(msg)
             raise exception.InvalidParameterValue(err=msg)
@@ -599,6 +614,43 @@ class NASHelperBase(object):
         """Construct location of new export."""
         return ':'.join([self.configuration.gpfs_share_export_ip, local_path])
 
+    def get_export_options(self, share, access, helper, options_not_allowed):
+        """Get the export options."""
+        extra_specs = share_types.get_extra_specs_from_share(share)
+        if helper == 'KNFS':
+            export_options = extra_specs.get('knfs:export_options')
+        elif helper == 'CES':
+            export_options = extra_specs.get('ces:export_options')
+        else:
+            export_options = None
+
+        if export_options:
+            options = export_options.lower().split(',')
+        else:
+            options = []
+
+        invalid_options = [
+            option for option in options if option in options_not_allowed
+        ]
+
+        if invalid_options:
+            raise exception.InvalidInput(reason='Invalid export_option %s as '
+                                                'it is set by access_type.'
+                                                % invalid_options)
+
+        if access['access_level'] == constants.ACCESS_LEVEL_RO:
+            if helper == 'KNFS':
+                options.append(constants.ACCESS_LEVEL_RO)
+            elif helper == 'CES':
+                options.append('access_type=ro')
+        else:
+            if helper == 'KNFS':
+                options.append(constants.ACCESS_LEVEL_RW)
+            elif helper == 'CES':
+                options.append('access_type=rw')
+
+        return ','.join(options)
+
     @abc.abstractmethod
     def remove_export(self, local_path, share):
         """Remove export."""
@@ -643,33 +695,15 @@ class KNFSHelper(NASHelperBase):
             except exception.ProcessExecutionError:
                 raise
 
-    def _get_export_options(self, share):
-        """Set various export attributes for share."""
-
-        metadata = share.get('share_metadata')
-        options = None
-        if metadata:
-            for item in metadata:
-                if item['key'] == 'export_options':
-                    options = item['value']
-                else:
-                    msg = (_('Unknown metadata key %s.') % item['key'])
-                    LOG.error(msg)
-                    raise exception.InvalidInput(reason=msg)
-        if not options:
-            options = self.configuration.knfs_export_options
-
-        return options
-
     def remove_export(self, local_path, share):
         """Remove export."""
 
-    def allow_access(self, local_path, share, access_type, access):
+    def allow_access(self, local_path, share, access):
         """Allow access to one or more vm instances."""
 
-        if access_type != 'ip':
-            raise exception.InvalidShareAccess('Only ip access type '
-                                               'supported.')
+        if access['access_type'] != 'ip':
+            raise exception.InvalidShareAccess(reason='Only ip access type '
+                                                      'supported.')
 
         # check if present in export
         try:
@@ -680,16 +714,20 @@ class KNFSHelper(NASHelperBase):
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
-        out = re.search(re.escape(local_path) + '[\s\n]*' + re.escape(access),
-                        out)
+        out = re.search(re.escape(local_path) + '[\s\n]*'
+                        + re.escape(access['access_to']), out)
+
         if out is not None:
+            access_type = access['access_type']
+            access_to = access['access_to']
             raise exception.ShareAccessExists(access_type=access_type,
-                                              access=access)
+                                              access=access_to)
 
-        export_opts = self._get_export_options(share)
-
+        options_not_allowed = list(constants.ACCESS_LEVELS)
+        export_opts = self.get_export_options(share, access, 'KNFS',
+                                              options_not_allowed)
         cmd = ['exportfs', '-o', export_opts,
-               ':'.join([access, local_path])]
+               ':'.join([access['access_to'], local_path])]
         try:
             self._publish_access(*cmd)
         except exception.ProcessExecutionError as e:
@@ -700,10 +738,9 @@ class KNFSHelper(NASHelperBase):
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
-    def deny_access(self, local_path, share, access_type, access,
-                    force=False):
+    def deny_access(self, local_path, share, access, force=False):
         """Remove access for one or more vm instances."""
-        cmd = ['exportfs', '-u', ':'.join([access, local_path])]
+        cmd = ['exportfs', '-u', ':'.join([access['access_to'], local_path])]
         try:
             self._publish_access(*cmd)
         except exception.ProcessExecutionError as e:
@@ -715,141 +752,73 @@ class KNFSHelper(NASHelperBase):
             raise exception.GPFSException(msg)
 
 
-class GNFSHelper(NASHelperBase):
-    """Wrapper for Ganesha NFS Commands."""
+class CESHelper(NASHelperBase):
+    """Wrapper for NFS by Spectrum Scale CES"""
 
     def __init__(self, execute, config_object):
-        super(GNFSHelper, self).__init__(execute, config_object)
-        self.default_export_options = dict()
-        for m in AVPATTERN.finditer(
-            self.configuration.ganesha_nfs_export_options
-        ):
-            self.default_export_options[m.group('attr')] = m.group('val')
+        super(CESHelper, self).__init__(execute, config_object)
+        self._execute = execute
 
-    def _get_export_options(self, share):
-        """Set various export attributes for share."""
-
-        # load default options first - any options passed as share metadata
-        # will take precedence
-        options = copy.copy(self.default_export_options)
-
-        metadata = share.get('share_metadata')
-        for item in metadata:
-            attr = item['key']
-            if attr in ganesha_utils.valid_flags():
-                options[attr] = item['value']
-            else:
-                LOG.error(_LE('Invalid metadata %(attr)s for share '
-                              '%(share)s.'),
-                          {'attr': attr, 'share': share['name']})
-
-        return options
-
-    @utils.synchronized("ganesha-process-req", external=True)
-    def _ganesha_process_request(self, req_type, local_path,
-                                 share, access_type=None,
-                                 access=None, force=False):
-        cfgpath = self.configuration.ganesha_config_path
-        gservice = self.configuration.ganesha_service_name
-        gservers = self.configuration.gpfs_nfs_server_list
-        sshlogin = self.configuration.gpfs_ssh_login
-        sshkey = self.configuration.gpfs_ssh_private_key
-        pre_lines, exports = ganesha_utils.parse_ganesha_config(cfgpath)
-        reload_needed = True
-
-        if (req_type == "allow_access"):
-            export_opts = self._get_export_options(share)
-            # add the new share if it's not already defined
-            if not ganesha_utils.export_exists(exports, local_path):
-                # Add a brand new export definition
-                new_id = ganesha_utils.get_next_id(exports)
-                export = ganesha_utils.get_export_template()
-                export['fsal'] = '"GPFS"'
-                export['export_id'] = new_id
-                export['tag'] = '"fs%s"' % new_id
-                export['path'] = '"%s"' % local_path
-                export['pseudo'] = '"%s"' % local_path
-                export['rw_access'] = (
-                    '"%s"' % ganesha_utils.format_access_list(access)
-                )
-                for key in export_opts:
-                    export[key] = export_opts[key]
-
-                exports[new_id] = export
-                LOG.info(_LI('Add %(share)s with access from %(access)s'),
-                         {'share': share['name'], 'access': access})
-            else:
-                # Update existing access with new/extended access information
-                export = ganesha_utils.get_export_by_path(exports, local_path)
-                initial_access = export['rw_access'].strip('"')
-                merged_access = ','.join([access, initial_access])
-                updated_access = ganesha_utils.format_access_list(
-                    merged_access
-                )
-                if initial_access != updated_access:
-                    LOG.info(_LI('Update %(share)s with access from '
-                                 '%(access)s'),
-                             {'share': share['name'], 'access': access})
-                    export['rw_access'] = '"%s"' % updated_access
-                else:
-                    LOG.info(_LI('Do not update %(share)s, access from '
-                                 '%(access)s already defined'),
-                             {'share': share['name'], 'access': access})
-                    reload_needed = False
-
-        elif (req_type == "deny_access"):
-            export = ganesha_utils.get_export_by_path(exports, local_path)
-            initial_access = export['rw_access'].strip('"')
-            updated_access = ganesha_utils.format_access_list(
-                initial_access,
-                deny_access=access
-            )
-
-            if initial_access != updated_access:
-                LOG.info(_LI('Update %(share)s removing access from '
-                             '%(access)s'),
-                         {'share': share['name'], 'access': access})
-                export['rw_access'] = '"%s"' % updated_access
-            else:
-                LOG.info(_LI('Do not update %(share)s, access from %(access)s '
-                             'already removed'), {'share': share['name'],
-                                                  'access': access})
-                reload_needed = False
-
-        elif (req_type == "remove_export"):
-            export = ganesha_utils.get_export_by_path(exports, local_path)
-            if export:
-                exports.pop(export['export_id'])
-                LOG.info(_LI('Remove export for %s'), share['name'])
-            else:
-                LOG.info(_LI('Export for %s is not defined in Ganesha '
-                             'config.'),
-                         share['name'])
-                reload_needed = False
-
-        if reload_needed:
-            # publish config to all servers and reload or restart
-            ganesha_utils.publish_ganesha_config(gservers, sshlogin, sshkey,
-                                                 cfgpath, pre_lines, exports)
-            ganesha_utils.reload_ganesha_config(gservers, sshlogin, gservice)
+    def _execute_mmnfs_command(self, cmd, err_msg):
+        try:
+            out, __ = self._execute('mmnfs', 'export', *cmd)
+        except exception.ProcessExecutionError as e:
+            msg = (_('%(err_msg)s Error: %(e)s.')
+                   % {'err_msg': err_msg, 'e': e})
+            LOG.error(msg)
+            raise exception.GPFSException(msg)
+        return out
 
     def remove_export(self, local_path, share):
         """Remove export."""
-        self._ganesha_process_request("remove_export", local_path, share)
+        err_msg = 'Failed to check exports on the system.'
+        out = self._execute_mmnfs_command(('list', '-n', local_path), err_msg)
 
-    def allow_access(self, local_path, share, access_type, access):
+        out = re.search(re.escape(local_path), out)
+
+        if out is not None:
+            err_msg = ('Failed to remove export for share %s.'
+                       % share['name'])
+            self._execute_mmnfs_command(('remove', local_path), err_msg)
+
+    def allow_access(self, local_path, share, access):
         """Allow access to the host."""
-        # TODO(nileshb):  add support for read only, metadata, and other
-        # access types
-        if access_type != 'ip':
-            raise exception.InvalidShareAccess('Only ip access type '
-                                               'supported.')
 
-        self._ganesha_process_request("allow_access", local_path,
-                                      share, access_type, access)
+        if access['access_type'] != 'ip':
+            raise exception.InvalidShareAccess(reason='Only ip access type '
+                                                      'supported.')
+        err_msg = 'Failed to check exports on the system.'
+        out = self._execute_mmnfs_command(('list', '-n', local_path), err_msg)
 
-    def deny_access(self, local_path, share, access_type, access,
-                    force=False):
+        options_not_allowed = ['access_type=ro', 'access_type=rw']
+        export_opts = self.get_export_options(share, access, 'CES',
+                                              options_not_allowed)
+
+        out = re.search(re.escape(local_path), out)
+
+        if out is None:
+            cmd = ['add', local_path, '-c',
+                   access['access_to'] +
+                   '(' + export_opts + ')']
+        else:
+            cmd = ['change', local_path, '--nfsadd',
+                   access['access_to'] +
+                   '(' + export_opts + ')']
+
+        err_msg = ('Failed to allow access for share %s.'
+                   % share['name'])
+        self._execute_mmnfs_command(cmd, err_msg)
+
+    def deny_access(self, local_path, share, access, force=False):
         """Deny access to the host."""
-        self._ganesha_process_request("deny_access", local_path,
-                                      share, access_type, access, force)
+        err_msg = 'Failed to check exports on the system.'
+        out = self._execute_mmnfs_command(('list', '-n', local_path), err_msg)
+
+        out = re.search(re.escape(access['access_to']), out)
+
+        if out is not None:
+            err_msg = ('Failed to remove access for share %s.'
+                       % share['name'])
+            self._execute_mmnfs_command(('change', local_path,
+                                         '--nfsremove', access['access_to']),
+                                        err_msg)

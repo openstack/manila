@@ -1,0 +1,14 @@
+---
+prelude: >
+    Refactored GPFS driver to support NFS Ganesha
+    through Spectrum Scale CES framework.
+upgrade:
+  - Added a new config option is_gpfs_node which will
+    determine if manila share service is running on
+    GPFS node or not.
+    Added mmnfs commands in the root wrap share.filters.
+    Removed scp and ssh commands from root wrap share.filters.
+deprecations:
+  - Deprecated knfs_export_options configuration
+    parameter as export options are now configured
+    in extra specs of share types.
