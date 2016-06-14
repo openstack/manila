@@ -1714,7 +1714,8 @@ class ShareManagerTestCase(test.TestCase):
             )
         ])
         self.share_manager._setup_server.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), fake_server)
+            utils.IsAMatcher(context.RequestContext), fake_server,
+            metadata={'request_host': 'fake_host'})
         manager.LOG.error.assert_called_with(mock.ANY,
                                              fake_share.instance['id'])
 
@@ -1811,7 +1812,8 @@ class ShareManagerTestCase(test.TestCase):
         db.share_server_create.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), mock.ANY)
         self.share_manager._setup_server.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), fake_server)
+            utils.IsAMatcher(context.RequestContext), fake_server,
+            metadata={'request_host': 'fake_host'})
 
     def test_create_share_instance_update_replica_state(self):
         share_net = db_utils.create_share_network()
@@ -1846,7 +1848,8 @@ class ShareManagerTestCase(test.TestCase):
         db.share_server_create.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), mock.ANY)
         self.share_manager._setup_server.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), fake_server)
+            utils.IsAMatcher(context.RequestContext), fake_server,
+            metadata={'request_host': 'fake_host'})
 
     @ddt.data(True, False)
     def test_create_delete_share_instance_error(self, exception_update_access):

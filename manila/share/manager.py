@@ -476,19 +476,27 @@ class ShareManager(manager.SchedulerDependentManager):
                 with_share_data=True
             )
             if create_on_backend:
+                metadata = {'request_host': share_instance['host']}
                 compatible_share_server = (
                     self._create_share_server_in_backend(
-                        context, compatible_share_server))
+                        context, compatible_share_server,
+                        metadata=metadata))
 
             return compatible_share_server, share_instance_ref
 
         return _provide_share_server_for_share()
 
-    def _create_share_server_in_backend(self, context, share_server):
+    def _create_share_server_in_backend(self, context, share_server,
+                                        metadata=None):
+        """Perform setup_server on backend
+
+        :param metadata: A dictionary, to be passed to driver's setup_server()
+        """
 
         if share_server['status'] == constants.STATUS_CREATING:
             # Create share server on backend with data from db.
-            share_server = self._setup_server(context, share_server)
+            share_server = self._setup_server(context, share_server,
+                                              metadata=metadata)
             LOG.info(_LI("Share server created successfully."))
         else:
             LOG.info(_LI("Using preexisting share server: "

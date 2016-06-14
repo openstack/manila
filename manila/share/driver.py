@@ -730,6 +730,8 @@ class ShareDriver(object):
 
         Redefine it within share driver when it is going to handle share
         servers.
+
+        :param metadata: a dictionary, for now containing a key 'request_host'
         """
         raise NotImplementedError()
 

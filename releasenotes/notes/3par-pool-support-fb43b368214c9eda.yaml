@@ -1,0 +1,9 @@
+
+---
+features:
+  - HPE 3PAR driver now supports configuring multiple pools per backend.
+upgrade:
+  - HPE 3PAR driver no longer uses hpe3par_share_ip_address option in
+    configuration. With pool support, configuration just requires
+    hpe3par_fpg option or optionally supply share IP address(es) along with
+    hpe3par_fpg.
