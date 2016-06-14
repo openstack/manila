@@ -17,8 +17,6 @@ from __future__ import print_function
 
 from oslo_config import cfg
 
-from tempest import config  # noqa
-
 service_available_group = cfg.OptGroup(name="service_available",
                                        title="Available OpenStack Services")
 

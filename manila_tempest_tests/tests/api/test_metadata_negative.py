@@ -14,8 +14,8 @@
 #    under the License.
 
 import ddt
-from tempest.lib import exceptions as lib_exc  # noqa
-from tempest import test  # noqa
+from tempest.lib import exceptions as lib_exc
+from tempest import test
 
 from manila_tempest_tests.tests.api import base
 

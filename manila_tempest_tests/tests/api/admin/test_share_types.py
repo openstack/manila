@@ -14,10 +14,10 @@
 #    under the License.
 
 import ddt
-from tempest import config  # noqa
-from tempest.lib.common.utils import data_utils  # noqa
-from tempest.lib import exceptions as lib_exc  # noqa
-from tempest import test  # noqa
+from tempest import config
+from tempest.lib.common.utils import data_utils
+from tempest.lib import exceptions as lib_exc
+from tempest import test
 
 from manila_tempest_tests.tests.api import base
 from manila_tempest_tests import utils
