@@ -29,9 +29,9 @@ import re
 
 from oslo_log import log
 
+from manila.common import constants
 from manila import exception
 from manila.i18n import _
-from manila.i18n import _LW
 from manila.share import driver
 from manila.share.drivers.glusterfs import common
 from manila.share.drivers.glusterfs import layout
@@ -63,6 +63,8 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
 
     GLUSTERFS_VERSION_MIN = (3, 6)
 
+    _supported_access_levels = (constants.ACCESS_LEVEL_RW, )
+    _supported_access_types = (ACCESS_TYPE_CERT, )
     supported_layouts = ('layout_volume.GlusterfsVolumeMappedLayout',)
     supported_protocols = ('GLUSTERFS',)
 
@@ -145,67 +147,45 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
         return gluster_mgr.export
 
     @utils.synchronized("glusterfs_native_access", external=False)
-    def _allow_access_via_manager(self, gluster_mgr, context, share, access,
-                                  share_server=None):
-        """Allow access to a share using certs.
+    def _update_access_via_manager(self, gluster_mgr, context, share,
+                                   add_rules, delete_rules,
+                                   recovery=False, share_server=None):
+        """Update access rules, authorize SSL CNs (Common Names)."""
 
-        Add the SSL CN (Common Name) that's allowed to access the server.
-        """
-
-        if access['access_type'] != ACCESS_TYPE_CERT:
-            raise exception.InvalidShareAccess(_("Only 'cert' access type "
-                                                 "allowed"))
-
-        ssl_allow_opt = gluster_mgr.get_vol_option(AUTH_SSL_ALLOW)
+        # Fetch existing authorized CNs, the value of Gluster option
+        # 'auth.ssl-allow' that is available as a comma seperated string.
         # wrt. GlusterFS' parsing of auth.ssl-allow, please see code from
         # https://github.com/gluster/glusterfs/blob/v3.6.2/
         # xlators/protocol/auth/login/src/login.c#L80
         # until end of gf_auth() function
-        ssl_allow = re.split('[ ,]', ssl_allow_opt)
-        access_to = access['access_to']
-        if access_to in ssl_allow:
-            LOG.warning(_LW("Access to %(share)s at %(export)s is already "
-                            "granted for %(access_to)s. GlusterFS volume "
-                            "options might have been changed externally."),
-                        {'share': share['id'], 'export': gluster_mgr.qualified,
-                         'access_to': access_to})
-            return
-
-        ssl_allow.append(access_to)
-        ssl_allow_opt = ','.join(ssl_allow)
-        gluster_mgr.set_vol_option(AUTH_SSL_ALLOW, ssl_allow_opt)
-
-    @utils.synchronized("glusterfs_native_access", external=False)
-    def _deny_access_via_manager(self, gluster_mgr, context, share, access,
-                                 share_server=None):
-        """Deny access to a share that's using cert based auth.
-
-        Remove the SSL CN (Common Name) that's allowed to access the server.
-        """
-
-        if access['access_type'] != ACCESS_TYPE_CERT:
-            raise exception.InvalidShareAccess(_("Only 'cert' access type "
-                                                 "allowed for access "
-                                                 "removal."))
-
         ssl_allow_opt = gluster_mgr.get_vol_option(AUTH_SSL_ALLOW)
-        ssl_allow = re.split('[ ,]', ssl_allow_opt)
-        access_to = access['access_to']
-        if access_to not in ssl_allow:
-            LOG.warning(_LW("Access to %(share)s at %(export)s is already "
-                            "denied for %(access_to)s. GlusterFS volume "
-                            "options might have been changed externally."),
-                        {'share': share['id'], 'export': gluster_mgr.qualified,
-                         'access_to': access_to})
-            return
 
-        ssl_allow.remove(access_to)
-        ssl_allow_opt = ','.join(ssl_allow)
+        existing_rules_set = set(re.split('[ ,]', ssl_allow_opt))
+        add_rules_set = {rule['access_to'] for rule in add_rules}
+        for rule in add_rules_set:
+            if re.search('[ ,]', rule):
+                raise exception.GlusterfsException(
+                    _("Invalid 'access_to' '%s': common names used for "
+                      "GlusterFS authentication should not contain comma "
+                      "or whitespace.") % rule)
+        delete_rules_set = {rule['access_to'] for rule in delete_rules}
+        new_rules_set = (
+            (existing_rules_set | add_rules_set) - delete_rules_set)
+
+        # Addition or removal of CNs in the authorized list through the
+        # Gluster CLI, used by 'GlusterManager' objects, can only be done by
+        # replacing the existing list with the newly modified list.
+        ssl_allow_opt = ','.join(sorted(new_rules_set))
         gluster_mgr.set_vol_option(AUTH_SSL_ALLOW, ssl_allow_opt)
 
-        dynauth = gluster_mgr.get_vol_option(DYNAMIC_AUTH, boolean=True)
-        if not dynauth:
-            common._restart_gluster_vol(gluster_mgr)
+        # When the Gluster option, DYNAMIC_AUTH is not enabled for the gluster
+        # volume/manila share, the removal of CN of a client does not affect
+        # the client's existing connection to the volume until the volume is
+        # restarted.
+        if delete_rules:
+            dynauth = gluster_mgr.get_vol_option(DYNAMIC_AUTH, boolean=True)
+            if not dynauth:
+                common._restart_gluster_vol(gluster_mgr)
 
     def _update_share_stats(self):
         """Send stats info for the GlusterFS volume."""

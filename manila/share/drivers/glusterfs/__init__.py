@@ -30,6 +30,7 @@ import sys
 
 from oslo_config import cfg
 
+from manila.common import constants
 from manila import exception
 from manila.i18n import _
 from manila.share import driver
@@ -138,19 +139,27 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         helper.init_helper()
         return helper
 
-    def _allow_access_via_manager(self, gluster_mgr, context, share, access,
-                                  share_server=None):
-        """Allow access to the share."""
-        self._get_helper(gluster_mgr).allow_access('/', share, access)
+    @property
+    def supported_access_types(self):
+        return self.nfs_helper.supported_access_types
 
-    def _deny_access_via_manager(self, gluster_mgr, context, share, access,
-                                 share_server=None):
-        """Allow access to the share."""
-        self._get_helper(gluster_mgr).deny_access('/', share, access)
+    @property
+    def supported_access_levels(self):
+        return self.nfs_helper.supported_access_levels
+
+    def _update_access_via_manager(self, gluster_mgr, context, share,
+                                   add_rules, delete_rules, recovery=False,
+                                   share_server=None):
+        """Update access to the share."""
+        self._get_helper(gluster_mgr).update_access(
+            '/', share, add_rules, delete_rules, recovery=recovery)
 
 
 class GlusterNFSHelper(ganesha.NASHelperBase):
     """Manage shares with Gluster-NFS server."""
+
+    supported_access_types = ('ip', )
+    supported_access_levels = (constants.ACCESS_LEVEL_RW, )
 
     def __init__(self, execute, config_object, **kwargs):
         self.gluster_manager = kwargs.pop('gluster_manager')
@@ -179,73 +188,41 @@ class GlusterNFSHelper(ganesha.NASHelperBase):
                 edh[d] = e.split('|')
         return edh
 
-    def _manage_access(self, share_name, access_type, access_to, cbk):
-        """Manage share access with cbk.
-
-        Adjust the exports of the Gluster-NFS server using cbk.
-
-        :param share_name: name of the share
-        :type share_name: string
-        :param access_type: type of access allowed in Manila
-        :type access_type: string
-        :param access_to: ip of the guest whose share access is managed
-        :type access_to: string
-        :param cbk: callback to adjust the exports of NFS server
-
-        Following is the description of cbk(ddict, edir, host).
-
-        :param ddict: association of shares with ips that have access to them
-        :type ddict: dict
-        :param edir: name of share i.e. export directory
-        :type edir: string
-        :param host: ip address derived from the access object
-        :type host: string
-        :returns: bool (cbk leaves ddict intact) or None (cbk modifies ddict)
-        """
-
-        if access_type != 'ip':
-            raise exception.InvalidShareAccess('only ip access type allowed')
-        export_dir_dict = self._get_export_dir_dict()
-        if cbk(export_dir_dict, share_name, access_to):
-            return
-
-        if export_dir_dict:
-            export_dir_new = (",".join("/%s(%s)" % (d, "|".join(v))
-                              for d, v in sorted(export_dir_dict.items())))
-        else:
-            export_dir_new = None
-        self.gluster_manager.set_vol_option(NFS_EXPORT_DIR, export_dir_new)
-
-    def allow_access(self, base, share, access):
-        """Allow access to a share."""
-        def cbk(ddict, edir, host):
-            if edir not in ddict:
-                ddict[edir] = []
-            if host in ddict[edir]:
-                return True
-            ddict[edir].append(host)
-        path = self.gluster_manager.path
-        self._manage_access(path[1:], access['access_type'],
-                            access['access_to'], cbk)
-
-    def deny_access(self, base, share, access):
-        """Deny access to a share."""
-        def cbk(ddict, edir, host):
-            if edir not in ddict or host not in ddict[edir]:
-                return True
-            ddict[edir].remove(host)
-            if not ddict[edir]:
-                ddict.pop(edir)
-        path = self.gluster_manager.path
-        self._manage_access(path[1:], access['access_type'],
-                            access['access_to'], cbk)
-
     def update_access(self, base_path, share, add_rules, delete_rules,
                       recovery=False):
-        """Update access rules of share."""
+        """Update access rules."""
 
-        # Stub needed to meet parent's implementation enforcement.
-        raise NotImplementedError
+        existing_rules_set = set()
+
+        # The name of the directory, which is exported as the share.
+        export_dir = self.gluster_manager.path[1:]
+
+        # Fetch the existing export entries as an export dictionary with the
+        # exported directories and the list of client IP addresses authorized
+        # to access them as key-value pairs.
+        export_dir_dict = self._get_export_dir_dict()
+
+        if export_dir in export_dir_dict:
+            existing_rules_set = set(export_dir_dict[export_dir])
+        add_rules_set = {rule['access_to'] for rule in add_rules}
+        delete_rules_set = {rule['access_to'] for rule in delete_rules}
+        new_rules_set = (
+            (existing_rules_set | add_rules_set) - delete_rules_set)
+
+        if new_rules_set:
+            export_dir_dict[export_dir] = new_rules_set
+        elif export_dir not in export_dir_dict:
+            return
+        else:
+            export_dir_dict.pop(export_dir)
+
+        # Reconstruct the export entries.
+        if export_dir_dict:
+            export_dirs_new = (",".join("/%s(%s)" % (d, "|".join(sorted(v)))
+                               for d, v in sorted(export_dir_dict.items())))
+        else:
+            export_dirs_new = None
+        self.gluster_manager.set_vol_option(NFS_EXPORT_DIR, export_dirs_new)
 
 
 class GlusterNFSVolHelper(GlusterNFSHelper):
@@ -256,56 +233,25 @@ class GlusterNFSVolHelper(GlusterNFSHelper):
             NFS_RPC_AUTH_ALLOW)
         return export_vol.split(',') if export_vol else []
 
-    def _manage_access(self, access_type, access_to, cbk):
-        """Manage share access with cbk.
+    def update_access(self, base_path, share, add_rules, delete_rules,
+                      recovery=False):
+        """Update access rules."""
 
-        Adjust the exports of the Gluster-NFS server using cbk.
+        existing_rules_set = set(self._get_vol_exports())
+        add_rules_set = {rule['access_to'] for rule in add_rules}
+        delete_rules_set = {rule['access_to'] for rule in delete_rules}
+        new_rules_set = (
+            (existing_rules_set | add_rules_set) - delete_rules_set)
 
-        :param access_type: type of access allowed in Manila
-        :type access_type: string
-        :param access_to: ip of the guest whose share access is managed
-        :type access_to: string
-        :param cbk: callback to adjust the exports of NFS server
-
-        Following is the description of cbk(explist, host).
-
-        :param explist: list of hosts that have access to the share
-        :type explist: list
-        :param host: ip address derived from the access object
-        :type host: string
-        :returns: bool (cbk leaves ddict intact) or None (cbk modifies ddict)
-        """
-
-        if access_type != 'ip':
-            raise exception.InvalidShareAccess('only ip access type allowed')
-        export_vol_list = self._get_vol_exports()
-        if cbk(export_vol_list, access_to):
-            return
-
-        if export_vol_list:
-            argseq = ((NFS_RPC_AUTH_ALLOW, ','.join(export_vol_list)),
+        if new_rules_set:
+            argseq = ((NFS_RPC_AUTH_ALLOW, ','.join(sorted(new_rules_set))),
                       (NFS_RPC_AUTH_REJECT, None))
         else:
             argseq = ((NFS_RPC_AUTH_ALLOW, None),
                       (NFS_RPC_AUTH_REJECT, '*'))
+
         for args in argseq:
             self.gluster_manager.set_vol_option(*args)
-
-    def allow_access(self, base, share, access):
-        """Allow access to a share."""
-        def cbk(explist, host):
-            if host in explist:
-                return True
-            explist.append(host)
-        self._manage_access(access['access_type'], access['access_to'], cbk)
-
-    def deny_access(self, base, share, access):
-        """Deny access to a share."""
-        def cbk(explist, host):
-            if host not in explist:
-                return True
-            explist.remove(host)
-        self._manage_access(access['access_type'], access['access_to'], cbk)
 
 
 class GaneshaNFSHelper(ganesha.GaneshaNASHelper):
@@ -360,11 +306,3 @@ class GaneshaNFSHelper(ganesha.GaneshaNASHelper):
         return {"Hostname": self.gluster_manager.host,
                 "Volume": self.gluster_manager.volume,
                 "Volpath": self.gluster_manager.path}
-
-    # TODO(csaba): remove the following when the driver moves to update_access
-
-    def allow_access(self, *a, **kw):
-        self._allow_access(*a, **kw)
-
-    def deny_access(self, *a, **kw):
-        self._deny_access(*a, **kw)

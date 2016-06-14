@@ -26,6 +26,7 @@ from manila.share import configuration as config
 from manila.share import driver
 from manila.share.drivers.glusterfs import layout
 from manila import test
+from manila.tests import fake_share
 from manila.tests import fake_utils
 
 
@@ -38,11 +39,19 @@ fake_path_to_private_key = '/fakepath/to/privatekey'
 fake_remote_server_password = 'fakepassword'
 
 
+def fake_access(kwargs):
+    fake_access_rule = fake_share.fake_access(**kwargs)
+    fake_access_rule.to_dict = lambda: fake_access_rule.values
+    return fake_access_rule
+
+
 class GlusterfsFakeShareDriver(layout.GlusterfsShareDriverBase):
 
     supported_layouts = ('layout_fake.FakeLayout',
                          'layout_something.SomeLayout')
     supported_protocols = ('NFS,')
+    _supported_access_types = ('ip',)
+    _supported_access_levels = ('rw',)
 
 
 @ddt.ddt
@@ -54,9 +63,9 @@ class GlusterfsShareDriverBaseTestCase(test.TestCase):
         CONF.set_default('driver_handles_share_servers', False)
         fake_conf, __ = self._setup()
         self._driver = GlusterfsFakeShareDriver(False, configuration=fake_conf)
-        self.fake_share = mock.Mock()
-        self.fake_context = mock.Mock()
-        self.fake_access = mock.Mock()
+        self.fake_share = mock.Mock(name='fake_share')
+        self.fake_context = mock.Mock(name='fake_context')
+        self.fake_access = mock.Mock(name='fake_access')
 
     def _setup(self):
         fake_conf = config.Configuration(None)
@@ -104,31 +113,64 @@ class GlusterfsShareDriverBaseTestCase(test.TestCase):
     def test_setup_via_manager(self):
         self.assertIsNone(self._driver._setup_via_manager(mock.Mock()))
 
-    @ddt.data('allow', 'deny')
-    def test_allow_deny_access(self, op):
+    def test_supported_access_types(self):
+        self.assertEqual(('ip',), self._driver.supported_access_types)
+
+    def test_supported_access_levels(self):
+        self.assertEqual(('rw',), self._driver.supported_access_levels)
+
+    def test_access_rule_validator(self):
+        rule = mock.Mock()
+        abort = mock.Mock()
+        valid = mock.Mock()
+        self.mock_object(layout.ganesha_utils, 'validate_access_rule',
+                         mock.Mock(return_value=valid))
+
+        ret = self._driver._access_rule_validator(abort)(rule)
+
+        self.assertEqual(valid, ret)
+        layout.ganesha_utils.validate_access_rule.assert_called_once_with(
+            ('ip',), ('rw',), rule, abort)
+
+    @ddt.data({'inset': ([], ['ADD'], []), 'outset': (['ADD'], []),
+               'recovery': False},
+              {'inset': ([], [], ['DELETE']), 'outset': ([], ['DELETE']),
+               'recovery': False},
+              {'inset': (['EXISTING'], ['ADD'], ['DELETE']),
+               'outset': (['ADD'], ['DELETE']), 'recovery': False},
+              {'inset': (['EXISTING'], [], []), 'outset': (['EXISTING'], []),
+               'recovery': True})
+    @ddt.unpack
+    def test_update_access(self, inset, outset, recovery):
         conf, _layout = self._setup()
-        gmgr = mock.Mock()
+        gluster_mgr = mock.Mock(name='gluster_mgr')
         self.mock_object(_layout, '_share_manager',
-                         mock.Mock(return_value=gmgr))
-
+                         mock.Mock(return_value=gluster_mgr))
         _driver = GlusterfsFakeShareDriver(False, configuration=conf)
-        self.mock_object(_driver, "_%s_access_via_manager" % op, mock.Mock())
+        self.mock_object(_driver, '_update_access_via_manager', mock.Mock())
+        rulemap = {t: fake_access({'access_type': "ip",
+                                   'access_level': "rw",
+                                   'access_to': t}) for t in (
+            'EXISTING', 'ADD', 'DELETE')}
+        in_rules, out_rules = (
+            [
+                [
+                    rulemap[t] for t in r
+                ] for r in rs
+            ] for rs in (inset, outset))
 
-        getattr(_driver, "%s_access" % op)(self.fake_context, self.fake_share,
-                                           self.fake_access)
+        _driver.update_access(self.fake_context, self.fake_share, *in_rules)
 
         _layout._share_manager.assert_called_once_with(self.fake_share)
-        getattr(_driver,
-                "_%s_access_via_manager" % op).assert_called_once_with(
-            gmgr, self.fake_context, self.fake_share, self.fake_access, None)
+        _driver._update_access_via_manager.assert_called_once_with(
+            gluster_mgr, self.fake_context, self.fake_share,
+            *out_rules, recovery=recovery)
 
-    @ddt.data('allow', 'deny')
-    def test_allow_deny_access_via_manager(self, op):
+    def test_update_access_via_manager(self):
         self.assertRaises(NotImplementedError,
-                          getattr(self._driver,
-                                  "_%s_access_via_manager" % op),
+                          self._driver._update_access_via_manager,
                           mock.Mock(), self.fake_context, self.fake_share,
-                          self.fake_access, None)
+                          [self.fake_access], [self.fake_access])
 
     @ddt.data('NFS', 'PROTATO')
     def test_check_proto_baseclass(self, proto):
