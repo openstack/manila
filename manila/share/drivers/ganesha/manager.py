@@ -211,10 +211,6 @@ class GaneshaManager(object):
                      'value int); insert into ganesha values("exportid", '
                      '100);', run_as_root=False, check_exit_code=False)
         self.get_export_id(bump=False)
-        # Starting from empty state. State will be rebuilt in a later
-        # stage of service initialization.
-        self.reset_exports()
-        self.restart_service()
 
     def _getpath(self, name):
         """Get the path of config file for name."""

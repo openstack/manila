@@ -17,6 +17,7 @@ import copy
 import errno
 import os
 
+import ddt
 import mock
 from oslo_config import cfg
 
@@ -47,6 +48,7 @@ fake_output_template = {
 }
 
 
+@ddt.ddt
 class GaneshaNASHelperTestCase(test.TestCase):
     """Tests GaneshaNASHElper."""
 
@@ -229,8 +231,8 @@ class GaneshaNASHelperTestCase(test.TestCase):
                          mock.Mock(return_value='fakefsal'))
         self.mock_object(ganesha.ganesha_utils, 'patch',
                          mock.Mock(side_effect=fake_patch_run))
-        ret = self._helper.allow_access(fake_basepath, self.share,
-                                        self.access)
+        ret = self._helper._allow_access(fake_basepath, self.share,
+                                         self.access)
         self._helper.ganesha.get_export_id.assert_called_once_with()
         self._helper._fsal_hook.assert_called_once_with(
             fake_basepath, self.share, self.access)
@@ -245,11 +247,56 @@ class GaneshaNASHelperTestCase(test.TestCase):
     def test_allow_access_error_invalid_share(self):
         access = fake_share.fake_access(access_type='notip')
         self.assertRaises(exception.InvalidShareAccess,
-                          self._helper.allow_access, '/fakepath',
+                          self._helper._allow_access, '/fakepath',
                           self.share, access)
 
     def test_deny_access(self):
-        ret = self._helper.deny_access('/fakepath', self.share, self.access)
+        ret = self._helper._deny_access('/fakepath', self.share, self.access)
         self._helper.ganesha.remove_export.assert_called_once_with(
             'fakename--fakeaccid')
         self.assertIsNone(ret)
+
+    @ddt.data({}, {'recovery': False})
+    def test_update_access_for_allow(self, kwargs):
+        self.mock_object(self._helper, '_allow_access')
+        self.mock_object(self._helper, '_deny_access')
+
+        self._helper.update_access(
+            '/some/path', 'aShare', add_rules=["example.com"], delete_rules=[],
+            **kwargs)
+
+        self._helper._allow_access.assert_called_once_with(
+            '/some/path', 'aShare', 'example.com')
+
+        self.assertFalse(self._helper._deny_access.called)
+        self.assertFalse(self._helper.ganesha.reset_exports.called)
+        self.assertFalse(self._helper.ganesha.restart_service.called)
+
+    def test_update_access_for_deny(self):
+        self.mock_object(self._helper, '_allow_access')
+        self.mock_object(self._helper, '_deny_access')
+
+        self._helper.update_access(
+            '/some/path', 'aShare', [], delete_rules=["example.com"])
+
+        self._helper._deny_access.assert_called_once_with(
+            '/some/path', 'aShare', 'example.com')
+
+        self.assertFalse(self._helper._allow_access.called)
+        self.assertFalse(self._helper.ganesha.reset_exports.called)
+        self.assertFalse(self._helper.ganesha.restart_service.called)
+
+    def test_update_access_recovery(self):
+        self.mock_object(self._helper, '_allow_access')
+        self.mock_object(self._helper, '_deny_access')
+
+        self._helper.update_access(
+            '/some/path', 'aShare', add_rules=["example.com"], delete_rules=[],
+            recovery=True)
+
+        self._helper._allow_access.assert_called_once_with(
+            '/some/path', 'aShare', 'example.com')
+
+        self.assertFalse(self._helper._deny_access.called)
+        self.assertTrue(self._helper.ganesha.reset_exports.called)
+        self.assertTrue(self._helper.ganesha.restart_service.called)

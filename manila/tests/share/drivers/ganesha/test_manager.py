@@ -169,8 +169,6 @@ class GaneshaManagerTestCase(test.TestCase):
                        '100);', run_as_root=False, check_exit_code=False)],
             self._execute.call_args_list)
         self.mock_get_export_id.assert_called_once_with(bump=False)
-        self.mock_reset_exports.assert_called_once_with()
-        self.mock_restart_service.assert_called_once_with()
 
     def test_init_execute_error_log_message(self):
         fake_args = ('foo', 'bar')

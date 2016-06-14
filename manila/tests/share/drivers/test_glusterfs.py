@@ -633,3 +633,17 @@ class GaneshaNFSHelperTestCase(test.TestCase):
         ret = self._helper._fsal_hook('/fakepath', self.share, self.access)
 
         self.assertEqual(output, ret)
+
+    def test_allow_access(self):
+        self.mock_object(self._helper, '_allow_access')
+
+        self._helper.allow_access("foo")
+
+        self._helper._allow_access.assert_called_once_with("foo")
+
+    def test_deny_access(self):
+        self.mock_object(self._helper, '_deny_access')
+
+        self._helper.deny_access("foo")
+
+        self._helper._deny_access.assert_called_once_with("foo")
