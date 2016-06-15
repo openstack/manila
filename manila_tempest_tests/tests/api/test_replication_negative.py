@@ -78,7 +78,11 @@ class ReplicationNegativeTest(base.BaseSharesMixedTest):
     @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_try_add_replica_to_share_with_no_replication_share_type(self):
         # Create share without replication type
-        share = self.create_share()
+        share_type = self.create_share_type(
+            data_utils.rand_name(constants.TEMPEST_MANILA_PREFIX),
+            extra_specs=self.add_required_extra_specs_to_dict(),
+            client=self.admin_client)["share_type"]
+        share = self.create_share(share_type_id=share_type["id"])
         self.assertRaises(lib_exc.BadRequest,
                           self.create_share_replica,
                           share['id'],
