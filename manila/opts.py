@@ -69,6 +69,7 @@ import manila.share.drivers.huawei.huawei_nas
 import manila.share.drivers.ibm.gpfs
 import manila.share.drivers.lvm
 import manila.share.drivers.netapp.options
+import manila.share.drivers.nexenta.options
 import manila.share.drivers.quobyte.quobyte
 import manila.share.drivers.service_instance
 import manila.share.drivers.tegile.tegile
@@ -143,6 +144,9 @@ _global_opt_lists = [
     manila.share.drivers.netapp.options.netapp_basicauth_opts,
     manila.share.drivers.netapp.options.netapp_provisioning_opts,
     manila.share.drivers.netapp.options.netapp_replication_opts,
+    manila.share.drivers.nexenta.options.nexenta_connection_opts,
+    manila.share.drivers.nexenta.options.nexenta_dataset_opts,
+    manila.share.drivers.nexenta.options.nexenta_nfs_opts,
     manila.share.drivers.quobyte.quobyte.quobyte_manila_share_opts,
     manila.share.drivers.service_instance.common_opts,
     manila.share.drivers.service_instance.no_share_servers_handling_mode_opts,
