@@ -104,14 +104,26 @@ class SharesNFSTest(base.BaseSharesTest):
 
         # create snapshot
         snap = self.create_snapshot_wait_for_active(self.share["id"])
+
         detailed_elements = {'name', 'id', 'description',
                              'created_at', 'share_proto', 'size', 'share_size',
                              'share_id', 'status', 'links'}
-        self.assertTrue(detailed_elements.issubset(snap.keys()),
-                        'At least one expected element missing from snapshot '
-                        'response. Expected %(expected)s, got %(actual)s.' % {
-                            "expected": detailed_elements,
-                            "actual": snap.keys()})
+        msg = (
+            "At least one expected element missing from share "
+            "response. Expected %(expected)s, got %(actual)s." % {
+                "expected": detailed_elements,
+                "actual": snap.keys(),
+            }
+        )
+        self.assertTrue(detailed_elements.issubset(snap.keys()), msg)
+
+        # In v2.17 and beyond, we expect user_id and project_id keys
+        if utils.is_microversion_supported('2.17'):
+            detailed_elements.update({'user_id', 'project_id'})
+            self.assertTrue(detailed_elements.issubset(snap.keys()), msg)
+        else:
+            self.assertNotIn('user_id', detailed_elements)
+            self.assertNotIn('project_id', detailed_elements)
 
         # delete snapshot
         self.shares_client.delete_snapshot(snap["id"])

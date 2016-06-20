@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import six
 from tempest import config
 from tempest.lib.common.utils import data_utils
@@ -21,10 +22,12 @@ from tempest import test
 import testtools
 
 from manila_tempest_tests.tests.api import base
+from manila_tempest_tests import utils
 
 CONF = config.CONF
 
 
+@ddt.ddt
 class ManageNFSSnapshotTest(base.BaseSharesAdminTest):
     protocol = 'nfs'
 
@@ -59,31 +62,12 @@ class ManageNFSSnapshotTest(base.BaseSharesAdminTest):
             cleanup_in_class=True,
             extra_specs=cls.extra_specs)
 
-        creation_data = {'kwargs': {
-            'share_type_id': cls.st['share_type']['id'],
-            'share_protocol': cls.protocol,
-        }}
+        # Create the base share
+        cls.share = cls.create_share(share_type_id=cls.st['share_type']['id'],
+                                     share_protocol=cls.protocol)
 
-        # Data for creating shares
-        data = [creation_data]
-        shares_created = cls.create_shares(data)
-
-        cls.snapshot = None
-        cls.shares = []
-        # Load all share data (host, etc.)
-        for share in shares_created:
-            cls.shares.append(cls.shares_v2_client.get_share(share['id']))
-            # Create snapshot
-            snap_name = data_utils.rand_name("tempest-snapshot-name")
-            snap_desc = data_utils.rand_name(
-                "tempest-snapshot-description")
-            snap = cls.create_snapshot_wait_for_active(
-                share['id'], snap_name, snap_desc)
-            cls.snapshot = cls.shares_v2_client.get_snapshot(snap['id'])
-            # Unmanage snapshot
-            cls.shares_v2_client.unmanage_snapshot(snap['id'])
-            cls.shares_client.wait_for_resource_deletion(
-                snapshot_id=snap['id'])
+        # Get updated data
+        cls.share = cls.shares_v2_client.get_share(cls.share['id'])
 
     def _test_manage(self, snapshot, version=CONF.share.max_api_microversion):
         name = ("Name for 'managed' snapshot that had ID %s" %
@@ -97,7 +81,8 @@ class ManageNFSSnapshotTest(base.BaseSharesAdminTest):
             snapshot['provider_location'],
             name=name,
             description=description,
-            driver_options={}
+            driver_options={},
+            version=version,
         )
 
         # Add managed snapshot to cleanup queue
@@ -108,6 +93,19 @@ class ManageNFSSnapshotTest(base.BaseSharesAdminTest):
         # Wait for success
         self.shares_v2_client.wait_for_snapshot_status(snapshot['id'],
                                                        'available')
+
+        # Verify manage snapshot API response
+        expected_keys = ["status", "links", "share_id", "name",
+                         "share_proto", "created_at",
+                         "description", "id", "share_size", "size",
+                         "provider_location"]
+        if utils.is_microversion_ge(version, '2.17'):
+            expected_keys.extend(["user_id", "project_id"])
+
+        actual_keys = snapshot.keys()
+
+        # Strict key check
+        self.assertEqual(set(expected_keys), set(actual_keys))
 
         # Verify data of managed snapshot
         get_snapshot = self.shares_v2_client.get_snapshot(snapshot['id'])
@@ -126,9 +124,31 @@ class ManageNFSSnapshotTest(base.BaseSharesAdminTest):
                           get_snapshot['id'])
 
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
-    def test_manage(self):
+    @ddt.data('2.12', '2.16', CONF.share.max_api_microversion)
+    def test_manage_different_versions(self, version):
+        """Run snapshot manage test for multiple versions.
+
+        This test is configured with ddt to run for the configured maximum
+        version as well as versions 2.12 (when the API was introduced) and
+        2.16.
+        """
+        # Skip in case specified version is not supported
+        utils.skip_if_microversion_not_supported(version)
+
+        snap_name = data_utils.rand_name("tempest-snapshot-name")
+        snap_desc = data_utils.rand_name("tempest-snapshot-description")
+        # Create snapshot
+        snapshot = self.create_snapshot_wait_for_active(
+            self.share['id'], snap_name, snap_desc)
+        snapshot = self.shares_v2_client.get_snapshot(snapshot['id'])
+        # Unmanage snapshot
+        self.shares_v2_client.unmanage_snapshot(snapshot['id'],
+                                                version=version)
+        self.shares_client.wait_for_resource_deletion(
+            snapshot_id=snapshot['id'])
+
         # Manage snapshot
-        self._test_manage(snapshot=self.snapshot)
+        self._test_manage(snapshot=snapshot, version=version)
 
 
 class ManageCIFSSnapshotTest(ManageNFSSnapshotTest):
