@@ -168,6 +168,11 @@ ShareGroup = [
                 help="Defines whether to run replication tests or not. "
                      "Enable this feature if the driver is configured "
                      "for replication."),
+    cfg.BoolOpt("run_multiple_share_replicas_tests",
+                default=True,
+                help="Defines whether to run multiple replicas creation test "
+                     "or not. Enable this if the driver can create more than "
+                     "one replica for a share."),
     cfg.BoolOpt("run_migration_tests",
                 default=False,
                 help="Enable or disable migration tests."),

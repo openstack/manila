@@ -18,6 +18,7 @@
 
 import os
 import shutil
+import six
 import tempfile
 import time
 import xml.dom.minidom
@@ -26,15 +27,19 @@ import ddt
 import mock
 from oslo_serialization import jsonutils
 
+from manila.common import constants as common_constants
 from manila import context
 from manila.data import utils as data_utils
 from manila import db
 from manila import exception
+from manila import rpc
 from manila.share import configuration as conf
 from manila.share.drivers.huawei import constants
 from manila.share.drivers.huawei import huawei_nas
 from manila.share.drivers.huawei.v3 import connection
 from manila.share.drivers.huawei.v3 import helper
+from manila.share.drivers.huawei.v3 import replication
+from manila.share.drivers.huawei.v3 import rpcapi
 from manila.share.drivers.huawei.v3 import smartx
 from manila import test
 from manila import utils
@@ -324,6 +329,7 @@ class FakeHuaweiNasHelper(helper.RestHelper):
         self.cache_exist = True
         self.partition_exist = True
         self.alloc_type = None
+        self.custom_results = {}
 
     def _change_file_mode(self, filepath):
         pass
@@ -331,6 +337,14 @@ class FakeHuaweiNasHelper(helper.RestHelper):
     def do_call(self, url, data=None, method=None, calltimeout=4):
         url = url.replace('http://100.115.10.69:8082/deviceManager/rest', '')
         url = url.replace('/210235G7J20000000000/', '')
+
+        if self.custom_results and self.custom_results.get(url):
+            result = self.custom_results[url]
+            if isinstance(result, six.string_types):
+                return jsonutils.loads(result)
+
+            if isinstance(result, dict) and result.get(method):
+                return jsonutils.loads(result[method])
 
         if self.test_normal:
             if self.test_multi_url_flag == 1:
@@ -383,7 +397,14 @@ class FakeHuaweiNasHelper(helper.RestHelper):
 
             if url == "/system/":
                 data = """{"error":{"code":0},
-                    "data":{"PRODUCTVERSION": "V300R003C10"}}"""
+                    "data":{"PRODUCTVERSION": "V300R003C10",
+                            "wwn": "fake_wwn"}}"""
+
+            if url == "/remote_device":
+                data = """{"error":{"code":0},
+                    "data":[{"ID": "0",
+                            "NAME": "fake_name",
+                            "WWN": "fake_wwn"}]}"""
 
             if url == "/ioclass" or url == "/ioclass/11":
                 data = QoS_response(method)
@@ -568,7 +589,9 @@ class FakeHuaweiNasHelper(helper.RestHelper):
             if url == "/FILESYSTEM?range=[0-8191]":
                 data = """{"error":{"code":0},
                 "data":[{"ID":"4",
-                "NAME":"share_fake_uuid"}]}"""
+                "NAME":"share_fake_uuid"},
+                {"ID":"8",
+                "NAME":"share_fake_new_uuid"}]}"""
 
             if url == "/filesystem/4":
                 data, self.extend_share_flag, self.shrink_share_flag = (
@@ -707,6 +730,33 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                 else:
                     data = """{"error":{"code":0}}"""
 
+            if url == "/REPLICATIONPAIR":
+                data = """{"error":{"code":0},"data":{
+                        "ID":"fake_pair_id"}}"""
+
+            if url == "/REPLICATIONPAIR/sync":
+                data = """{"error":{"code":0}}"""
+
+            if url == "/REPLICATIONPAIR/switch":
+                data = """{"error":{"code":0}}"""
+
+            if url == "/REPLICATIONPAIR/split":
+                data = """{"error":{"code":0}}"""
+
+            if url == "/REPLICATIONPAIR/CANCEL_SECODARY_WRITE_LOCK":
+                data = """{"error":{"code":0}}"""
+
+            if url == "/REPLICATIONPAIR/SET_SECODARY_WRITE_LOCK":
+                data = """{"error":{"code":0}}"""
+
+            if url == "/REPLICATIONPAIR/fake_pair_id":
+                data = """{"error":{"code":0},"data":{
+                    "ID": "fake_pair_id",
+                    "HEALTHSTATUS": "1",
+                    "SECRESDATASTATUS": "1",
+                    "ISPRIMARY": "false",
+                    "SECRESACCESS": "1",
+                    "RUNNINGSTATUS": "1"}}"""
         else:
             data = '{"error":{"code":31755596}}'
 
@@ -714,21 +764,63 @@ class FakeHuaweiNasHelper(helper.RestHelper):
         return res_json
 
 
+class FakeRpcClient(rpcapi.HuaweiV3API):
+    def __init__(self, helper):
+        super(self.__class__, self).__init__()
+        self.replica_mgr = replication.ReplicaPairManager(helper)
+
+    class fake_call_context(object):
+        def __init__(self, replica_mgr):
+            self.replica_mgr = replica_mgr
+
+        def call(self, context, func_name, **kwargs):
+            if func_name == 'create_replica_pair':
+                return self.replica_mgr.create_replica_pair(
+                    context, **kwargs)
+
+    def create_replica_pair(self, context, host, local_share_info,
+                            remote_device_wwn, remote_fs_id):
+        self.client.prepare = mock.Mock(
+            return_value=self.fake_call_context(self.replica_mgr))
+        return super(self.__class__, self).create_replica_pair(
+            context, host, local_share_info,
+            remote_device_wwn, remote_fs_id)
+
+
+class FakeRpcServer(object):
+    def start(self):
+        pass
+
+
+class FakePrivateStorage(object):
+    def __init__(self):
+        self.map = {}
+
+    def get(self, entity_id, key=None, default=None):
+        if self.map.get(entity_id):
+            return self.map[entity_id].get(key, default)
+
+        return default
+
+    def update(self, entity_id, details, delete_existing=False):
+        self.map[entity_id] = details
+
+    def delete(self, entity_id, key=None):
+        self.map.pop(entity_id)
+
+
 class FakeHuaweiNasDriver(huawei_nas.HuaweiNasDriver):
     """Fake HuaweiNasDriver."""
 
     def __init__(self, *args, **kwargs):
         huawei_nas.HuaweiNasDriver.__init__(self, *args, **kwargs)
-        self.plugin = FakeV3StorageConnection(self.configuration)
+        self.plugin = connection.V3StorageConnection(self.configuration)
 
-
-class FakeV3StorageConnection(connection.V3StorageConnection):
-    """Fake V3StorageConnection."""
-
-    def __init__(self, configuration):
-        connection.V3StorageConnection.__init__(self, configuration)
-        self.configuration = configuration
-        self.helper = FakeHuaweiNasHelper(self.configuration)
+        self.plugin.helper = FakeHuaweiNasHelper(self.configuration)
+        self.plugin.replica_mgr = replication.ReplicaPairManager(
+            self.plugin.helper)
+        self.plugin.rpc_client = FakeRpcClient(self.plugin.helper)
+        self.plugin.private_storage = FakePrivateStorage()
 
 
 @ddt.ddt
@@ -747,6 +839,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.configuration.network_config_group = 'fake_network_config_group'
         self.configuration.admin_network_config_group = (
             'fake_admin_network_config_group')
+        self.configuration.config_group = 'fake_share_backend_name'
         self.configuration.share_backend_name = 'fake_share_backend_name'
         self.configuration.huawei_share_backend = 'V3'
         self.configuration.max_over_subscription_ratio = 1
@@ -1203,6 +1296,27 @@ class HuaweiShareDriverTestCase(test.TestCase):
             }
         }
 
+        self.active_replica = {
+            'id': 'fake_active_replica_id',
+            'share_id': 'fake_share_id',
+            'name': 'share_fake_uuid',
+            'host': 'hostname1@backend_name1#OpenStack_Pool',
+            'size': 5,
+            'share_proto': 'NFS',
+            'replica_state': common_constants.REPLICA_STATE_ACTIVE,
+        }
+
+        self.new_replica = {
+            'id': 'fake_new_replica_id',
+            'share_id': 'fake_share_id',
+            'name': 'share_fake_new_uuid',
+            'host': 'hostname2@backend_name2#OpenStack_Pool',
+            'size': 5,
+            'share_proto': 'NFS',
+            'replica_state': common_constants.REPLICA_STATE_OUT_OF_SYNC,
+            'share_type_id': 'fake_id',
+        }
+
     def _get_share_by_proto(self, share_proto):
         if share_proto == "NFS":
             share = self.share_nfs
@@ -1216,6 +1330,14 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.mock_object(db,
                          'share_type_get',
                          mock.Mock(return_value=share_type))
+
+    def test_no_configuration(self):
+        self.mock_object(huawei_nas.HuaweiNasDriver,
+                         'driver_handles_share_servers',
+                         True)
+
+        self.assertRaises(exception.InvalidInput,
+                          huawei_nas.HuaweiNasDriver)
 
     def test_conf_product_fail(self):
         self.recreate_fake_conf_file(product_flag=False)
@@ -1259,6 +1381,15 @@ class HuaweiShareDriverTestCase(test.TestCase):
             self.fake_conf_file)
         self.configuration.driver_handles_share_servers = False
         self.assertRaises(exception.InvalidInput,
+                          self.driver.plugin.check_conf_file)
+
+    def test_conf_snapshot_replication_conflict(self):
+        self.recreate_fake_conf_file(snapshot_support=True,
+                                     replication_support=True)
+        self.driver.plugin.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+        self.driver.plugin._setup_conf()
+        self.assertRaises(exception.BadConfigurationException,
                           self.driver.plugin.check_conf_file)
 
     def test_get_backend_driver_fail(self):
@@ -1322,9 +1453,15 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           self.driver.plugin.helper._read_xml)
 
+    def test_connect_success(self):
+        FakeRpcServer.start = mock.Mock()
+        rpc.get_server = mock.Mock(return_value=FakeRpcServer())
+        self.driver.plugin.connect()
+        FakeRpcServer.start.assert_called_once()
+
     def test_connect_fail(self):
-        self.driver.plugin.configuration = None
-        self.assertRaises(exception.InvalidInput,
+        self.driver.plugin.helper.test_multi_url_flag = 1
+        self.assertRaises(exception.InvalidShare,
                           self.driver.plugin.connect)
 
     def test_login_success(self):
@@ -2085,14 +2222,14 @@ class HuaweiShareDriverTestCase(test.TestCase):
     def test_create_share_from_snapshot_nonefs(self):
         self.driver.plugin.helper.login()
         self.mock_object(self.driver.plugin.helper,
-                         '_get_fsid_by_name',
+                         'get_fsid_by_name',
                          mock.Mock(return_value={}))
         self.assertRaises(exception.StorageResourceNotFound,
                           self.driver.create_share_from_snapshot,
                           self._context, self.share_nfs,
                           self.nfs_snapshot, self.share_server)
         self.assertTrue(self.driver.plugin.helper.
-                        _get_fsid_by_name.called)
+                        get_fsid_by_name.called)
 
     def test_create_share_from_notexistingsnapshot_fail(self):
         self.driver.plugin.helper.login()
@@ -2272,32 +2409,47 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertEqual("100.115.10.68:/share_fake_uuid", location)
 
     def test_get_share_stats_refresh_pool_not_exist(self):
-        self.driver.plugin.helper.login()
         self.recreate_fake_conf_file(pool_node_flag=False)
         self.driver.plugin.configuration.manila_huawei_conf_file = (
             self.fake_conf_file)
         self.assertRaises(exception.InvalidInput,
                           self.driver._update_share_stats)
 
-    def test_get_share_stats_refresh(self):
-        self.driver.plugin.helper.login()
+    @ddt.data({"snapshot_support": True,
+               "replication_support": False},
+              {"snapshot_support": False,
+               "replication_support": True})
+    @ddt.unpack
+    def test_get_share_stats_refresh(self, snapshot_support,
+                                     replication_support):
+        self.recreate_fake_conf_file(snapshot_support=snapshot_support,
+                                     replication_support=replication_support)
+        self.driver.plugin.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+
+        self.driver.plugin._setup_conf()
         self.driver._update_share_stats()
 
-        expected = {}
-        expected["share_backend_name"] = "fake_share_backend_name"
-        expected["driver_handles_share_servers"] = False
-        expected["vendor_name"] = 'Huawei'
-        expected["driver_version"] = '1.3'
-        expected["storage_protocol"] = 'NFS_CIFS'
-        expected['reserved_percentage'] = 0
-        expected['total_capacity_gb'] = 0.0
-        expected['free_capacity_gb'] = 0.0
-        expected['qos'] = True
-        expected["snapshot_support"] = True
-        expected['replication_domain'] = None
-        expected['filter_function'] = None
-        expected['goodness_function'] = None
-        expected["pools"] = []
+        expected = {
+            "share_backend_name": "fake_share_backend_name",
+            "driver_handles_share_servers": False,
+            "vendor_name": "Huawei",
+            "driver_version": "1.3",
+            "storage_protocol": "NFS_CIFS",
+            "reserved_percentage": 0,
+            "total_capacity_gb": 0.0,
+            "free_capacity_gb": 0.0,
+            "qos": True,
+            "snapshot_support": snapshot_support,
+            "replication_domain": None,
+            "filter_function": None,
+            "goodness_function": None,
+            "pools": [],
+        }
+
+        if replication_support:
+            expected['replication_type'] = 'dr'
+
         pool = dict(
             pool_name='OpenStack_Pool',
             total_capacity_gb=2.0,
@@ -2313,7 +2465,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             huawei_smartcache=[True, False],
             huawei_smartpartition=[True, False],
             huawei_sectorsize=[True, False],
-            huawei_disk_type='ssd'
+            huawei_disk_type='ssd',
         )
         expected["pools"].append(pool)
         self.assertEqual(expected, self.driver._stats)
@@ -3742,6 +3894,13 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           share,
                           self.share_server)
 
+    def _add_conf_file_element(self, doc, parent_element, name, value=None):
+            new_element = doc.createElement(name)
+            if value:
+                new_text = doc.createTextNode(value)
+                new_element.appendChild(new_text)
+            parent_element.appendChild(new_element)
+
     def create_fake_conf_file(self, fake_conf_file,
                               product_flag=True, username_flag=True,
                               pool_node_flag=True, timeout_flag=True,
@@ -3749,7 +3908,9 @@ class HuaweiShareDriverTestCase(test.TestCase):
                               alloctype_value='Thick',
                               sectorsize_value='4',
                               multi_url=False,
-                              logical_port='100.115.10.68'):
+                              logical_port='100.115.10.68',
+                              snapshot_support=True,
+                              replication_support=False):
         doc = xml.dom.minidom.Document()
         config = doc.createElement('Config')
         doc.appendChild(config)
@@ -3801,6 +3962,14 @@ class HuaweiShareDriverTestCase(test.TestCase):
                                           'deviceManager/rest/')
         url.appendChild(url_text)
         storage.appendChild(url)
+
+        if snapshot_support:
+            self._add_conf_file_element(
+                doc, storage, 'SnapshotSupport', 'True')
+
+        if replication_support:
+            self._add_conf_file_element(
+                doc, storage, 'ReplicationSupport', 'True')
 
         lun = doc.createElement('Filesystem')
         config.appendChild(lun)
@@ -3878,7 +4047,9 @@ class HuaweiShareDriverTestCase(test.TestCase):
                                 alloctype_value='Thick',
                                 sectorsize_value='4',
                                 multi_url=False,
-                                logical_port='100.115.10.68'):
+                                logical_port='100.115.10.68',
+                                snapshot_support=True,
+                                replication_support=False):
         self.tmp_dir = tempfile.mkdtemp()
         self.fake_conf_file = self.tmp_dir + '/manila_huawei_conf.xml'
         self.addCleanup(shutil.rmtree, self.tmp_dir)
@@ -3886,5 +4057,468 @@ class HuaweiShareDriverTestCase(test.TestCase):
                                    username_flag, pool_node_flag,
                                    timeout_flag, wait_interval_flag,
                                    alloctype_value, sectorsize_value,
-                                   multi_url, logical_port)
+                                   multi_url, logical_port,
+                                   snapshot_support, replication_support)
         self.addCleanup(os.remove, self.fake_conf_file)
+
+    @ddt.data(common_constants.STATUS_ERROR,
+              common_constants.REPLICA_STATE_IN_SYNC,
+              common_constants.REPLICA_STATE_OUT_OF_SYNC)
+    def test_create_replica_success(self, replica_state):
+        share_type = self.fake_type_not_extra['test_with_extra']
+        self.mock_object(db, 'share_type_get',
+                         mock.Mock(return_value=share_type))
+
+        if replica_state == common_constants.STATUS_ERROR:
+            self.driver.plugin.helper.custom_results[
+                '/REPLICATIONPAIR/fake_pair_id'] = {
+                "GET": """{"error":{"code":0},
+                       "data":{"HEALTHSTATUS": "2"}}"""}
+        elif replica_state == common_constants.REPLICA_STATE_OUT_OF_SYNC:
+            self.driver.plugin.helper.custom_results[
+                '/REPLICATIONPAIR/fake_pair_id'] = {
+                "GET": """{"error":{"code":0},
+                       "data":{"HEALTHSTATUS": "1",
+                       "RUNNINGSTATUS": "1",
+                       "SECRESDATASTATUS": "5"}}"""}
+
+        result = self.driver.create_replica(
+            self._context,
+            [self.active_replica, self.new_replica],
+            self.new_replica,
+            [], [], None)
+
+        expected = {
+            'export_locations': ['100.115.10.68:/share_fake_new_uuid'],
+            'replica_state': replica_state,
+            'access_rules_status': common_constants.STATUS_ACTIVE,
+        }
+
+        self.assertEqual(expected, result)
+        self.assertEqual('fake_pair_id',
+                         self.driver.plugin.private_storage.get(
+                             'fake_share_id', 'replica_pair_id'))
+
+    @ddt.data({'url': '/FILESYSTEM?range=[0-8191]',
+               'url_result': '{"error":{"code":0}}',
+               'expected_exception': exception.ReplicationException},
+              {'url': '/NFSHARE',
+               'url_result': '{"error":{"code":-403}}',
+               'expected_exception': exception.InvalidShare},
+              {'url': '/REPLICATIONPAIR',
+               'url_result': '{"error":{"code":-403}}',
+               'expected_exception': exception.InvalidShare},)
+    @ddt.unpack
+    def test_create_replica_fail(self, url, url_result, expected_exception):
+        share_type = self.fake_type_not_extra['test_with_extra']
+        self.mock_object(db, 'share_type_get',
+                         mock.Mock(return_value=share_type))
+
+        self.driver.plugin.helper.custom_results[url] = url_result
+
+        self.assertRaises(expected_exception,
+                          self.driver.create_replica,
+                          self._context,
+                          [self.active_replica, self.new_replica],
+                          self.new_replica,
+                          [], [], None)
+        self.assertIsNone(self.driver.plugin.private_storage.get(
+            'fake_share_id', 'replica_pair_id'))
+
+    def test_create_replica_with_get_state_fail(self):
+        share_type = self.fake_type_not_extra['test_with_extra']
+        self.mock_object(db, 'share_type_get',
+                         mock.Mock(return_value=share_type))
+
+        self.driver.plugin.helper.custom_results[
+            '/REPLICATIONPAIR/fake_pair_id'] = {
+            "GET": """{"error":{"code":-403}}"""}
+
+        result = self.driver.create_replica(
+            self._context,
+            [self.active_replica, self.new_replica],
+            self.new_replica,
+            [], [], None)
+
+        expected = {
+            'export_locations': ['100.115.10.68:/share_fake_new_uuid'],
+            'replica_state': common_constants.STATUS_ERROR,
+            'access_rules_status': common_constants.STATUS_ACTIVE,
+        }
+
+        self.assertEqual(expected, result)
+        self.assertEqual('fake_pair_id',
+                         self.driver.plugin.private_storage.get(
+                             'fake_share_id', 'replica_pair_id'))
+
+    def test_create_replica_with_already_exists(self):
+        self.driver.plugin.private_storage.update(
+            'fake_share_id',
+            {'replica_pair_id': 'fake_pair_id'})
+
+        self.assertRaises(exception.ReplicationException,
+                          self.driver.create_replica,
+                          self._context,
+                          [self.active_replica, self.new_replica],
+                          self.new_replica,
+                          [], [], None)
+
+    @ddt.data({'pair_info': """{"HEALTHSTATUS": "2",
+                             "SECRESDATASTATUS": "2",
+                             "ISPRIMARY": "false",
+                             "SECRESACCESS": "1",
+                             "RUNNINGSTATUS": "1"}""",
+               'assert_method': 'get_replication_pair_by_id'},
+              {'pair_info': """{"HEALTHSTATUS": "1",
+                             "SECRESDATASTATUS": "2",
+                             "ISPRIMARY": "true",
+                             "SECRESACCESS": "1",
+                             "RUNNINGSTATUS": "1"}""",
+               'assert_method': 'switch_replication_pair'},
+              {'pair_info': """{"HEALTHSTATUS": "1",
+                             "SECRESDATASTATUS": "2",
+                             "ISPRIMARY": "false",
+                             "SECRESACCESS": "3",
+                             "RUNNINGSTATUS": "1"}""",
+               'assert_method': 'set_pair_secondary_write_lock'},
+              {'pair_info': """{"HEALTHSTATUS": "1",
+                             "SECRESDATASTATUS": "2",
+                             "ISPRIMARY": "false",
+                             "SECRESACCESS": "1",
+                             "RUNNINGSTATUS": "33"}""",
+               'assert_method': 'sync_replication_pair'},)
+    @ddt.unpack
+    def test_update_replica_state_success(self, pair_info, assert_method):
+        self.driver.plugin.private_storage.update(
+            'fake_share_id',
+            {'replica_pair_id': 'fake_pair_id'})
+        helper_method = getattr(self.driver.plugin.helper, assert_method)
+        mocker = self.mock_object(self.driver.plugin.helper,
+                                  assert_method,
+                                  mock.Mock(wraps=helper_method))
+        self.driver.plugin.helper.custom_results[
+            '/REPLICATIONPAIR/fake_pair_id'] = {
+            "GET": """{"error":{"code":0},
+                       "data":%s}""" % pair_info}
+
+        self.driver.update_replica_state(
+            self._context,
+            [self.active_replica, self.new_replica],
+            self.new_replica,
+            [], [], None)
+
+        mocker.assert_called_with('fake_pair_id')
+
+    @ddt.data({'pair_info': """{"HEALTHSTATUS": "1",
+                             "SECRESDATASTATUS": "2",
+                             "ISPRIMARY": "true",
+                             "SECRESACCESS": "1",
+                             "RUNNINGSTATUS": "1"}""",
+               'assert_method': 'switch_replication_pair',
+               'error_url': '/REPLICATIONPAIR/switch'},
+              {'pair_info': """{"HEALTHSTATUS": "1",
+                             "SECRESDATASTATUS": "2",
+                             "ISPRIMARY": "false",
+                             "SECRESACCESS": "3",
+                             "RUNNINGSTATUS": "1"}""",
+               'assert_method': 'set_pair_secondary_write_lock',
+               'error_url': '/REPLICATIONPAIR/SET_SECODARY_WRITE_LOCK'},
+              {'pair_info': """{"HEALTHSTATUS": "1",
+                             "SECRESDATASTATUS": "2",
+                             "ISPRIMARY": "false",
+                             "SECRESACCESS": "1",
+                             "RUNNINGSTATUS": "26"}""",
+               'assert_method': 'sync_replication_pair',
+               'error_url': '/REPLICATIONPAIR/sync'},)
+    @ddt.unpack
+    def test_update_replica_state_with_exception_ignore(
+            self, pair_info, assert_method, error_url):
+        self.driver.plugin.private_storage.update(
+            'fake_share_id',
+            {'replica_pair_id': 'fake_pair_id'})
+        helper_method = getattr(self.driver.plugin.helper, assert_method)
+        mocker = self.mock_object(self.driver.plugin.helper,
+                                  assert_method,
+                                  mock.Mock(wraps=helper_method))
+        self.driver.plugin.helper.custom_results[
+            error_url] = """{"error":{"code":-403}}"""
+        self.driver.plugin.helper.custom_results[
+            '/REPLICATIONPAIR/fake_pair_id'] = {
+            "GET": """{"error":{"code":0},
+                       "data":%s}""" % pair_info}
+
+        self.driver.update_replica_state(
+            self._context,
+            [self.active_replica, self.new_replica],
+            self.new_replica,
+            [], [], None)
+
+        mocker.assert_called_once_with('fake_pair_id')
+
+    def test_update_replica_state_with_replication_abnormal(self):
+        self.driver.plugin.private_storage.update(
+            'fake_share_id',
+            {'replica_pair_id': 'fake_pair_id'})
+
+        self.driver.plugin.helper.custom_results[
+            '/REPLICATIONPAIR/fake_pair_id'] = {
+            "GET": """{"error":{"code":0},
+                       "data":{"HEALTHSTATUS": "2"}}"""}
+
+        result = self.driver.update_replica_state(
+            self._context,
+            [self.active_replica, self.new_replica],
+            self.new_replica,
+            [], [], None)
+
+        self.assertEqual(common_constants.STATUS_ERROR, result)
+
+    def test_update_replica_state_with_no_pair_id(self):
+        result = self.driver.update_replica_state(
+            self._context,
+            [self.active_replica, self.new_replica],
+            self.new_replica,
+            [], [], None)
+
+        self.assertEqual(common_constants.STATUS_ERROR, result)
+
+    @ddt.data('true', 'false')
+    def test_promote_replica_success(self, is_primary):
+        self.driver.plugin.private_storage.update(
+            'fake_share_id',
+            {'replica_pair_id': 'fake_pair_id'})
+
+        self.driver.plugin.helper.custom_results[
+            '/REPLICATIONPAIR/fake_pair_id'] = {
+            "GET": """{"error": {"code": 0},
+            "data": {"HEALTHSTATUS": "1",
+            "RUNNINGSTATUS": "1",
+            "SECRESDATASTATUS": "2",
+            "ISPRIMARY": "%s"}}""" % is_primary}
+
+        result = self.driver.promote_replica(
+            self._context,
+            [self.active_replica, self.new_replica],
+            self.new_replica,
+            [], None)
+
+        expected = [
+            {'id': self.new_replica['id'],
+             'replica_state': common_constants.REPLICA_STATE_ACTIVE,
+             'access_rules_status': common_constants.STATUS_ACTIVE},
+            {'id': self.active_replica['id'],
+             'replica_state': common_constants.REPLICA_STATE_IN_SYNC,
+             'access_rules_status': common_constants.STATUS_OUT_OF_SYNC},
+        ]
+
+        self.assertEqual(expected, result)
+
+    @ddt.data({'mock_method': 'update_access',
+               'new_access_status': common_constants.STATUS_OUT_OF_SYNC,
+               'old_access_status': common_constants.STATUS_OUT_OF_SYNC},
+              {'mock_method': 'clear_access',
+               'new_access_status': common_constants.STATUS_OUT_OF_SYNC,
+               'old_access_status': common_constants.STATUS_ACTIVE},)
+    @ddt.unpack
+    def test_promote_replica_with_access_update_error(
+            self, mock_method, new_access_status, old_access_status):
+        self.driver.plugin.private_storage.update(
+            'fake_share_id',
+            {'replica_pair_id': 'fake_pair_id'})
+
+        self.driver.plugin.helper.custom_results[
+            '/REPLICATIONPAIR/fake_pair_id'] = {
+            "GET": """{"error": {"code": 0},
+            "data": {"HEALTHSTATUS": "1",
+            "RUNNINGSTATUS": "1",
+            "SECRESDATASTATUS": "2",
+            "ISPRIMARY": "false"}}"""}
+
+        mocker = self.mock_object(self.driver.plugin,
+                                  mock_method,
+                                  mock.Mock(side_effect=Exception('err')))
+
+        result = self.driver.promote_replica(
+            self._context,
+            [self.active_replica, self.new_replica],
+            self.new_replica,
+            [], None)
+
+        expected = [
+            {'id': self.new_replica['id'],
+             'replica_state': common_constants.REPLICA_STATE_ACTIVE,
+             'access_rules_status': new_access_status},
+            {'id': self.active_replica['id'],
+             'replica_state': common_constants.REPLICA_STATE_IN_SYNC,
+             'access_rules_status': old_access_status},
+        ]
+
+        self.assertEqual(expected, result)
+        mocker.assert_called()
+
+    @ddt.data({'error_url': '/REPLICATIONPAIR/split',
+               'assert_method': 'split_replication_pair'},
+              {'error_url': '/REPLICATIONPAIR/switch',
+               'assert_method': 'switch_replication_pair'},
+              {'error_url': '/REPLICATIONPAIR/SET_SECODARY_WRITE_LOCK',
+               'assert_method': 'set_pair_secondary_write_lock'},
+              {'error_url': '/REPLICATIONPAIR/sync',
+               'assert_method': 'sync_replication_pair'},)
+    @ddt.unpack
+    def test_promote_replica_with_error_ignore(self, error_url, assert_method):
+        self.driver.plugin.private_storage.update(
+            'fake_share_id',
+            {'replica_pair_id': 'fake_pair_id'})
+        helper_method = getattr(self.driver.plugin.helper, assert_method)
+        mocker = self.mock_object(self.driver.plugin.helper,
+                                  assert_method,
+                                  mock.Mock(wraps=helper_method))
+        self.driver.plugin.helper.custom_results[
+            error_url] = '{"error":{"code":-403}}'
+        fake_pair_infos = [{'ISPRIMARY': 'False',
+                            'HEALTHSTATUS': '1',
+                            'RUNNINGSTATUS': '1',
+                            'SECRESDATASTATUS': '1'},
+                           {'HEALTHSTATUS': '2'}]
+        self.mock_object(self.driver.plugin.replica_mgr,
+                         '_get_replication_pair_info',
+                         mock.Mock(side_effect=fake_pair_infos))
+
+        result = self.driver.promote_replica(
+            self._context,
+            [self.active_replica, self.new_replica],
+            self.new_replica,
+            [], None)
+
+        expected = [
+            {'id': self.new_replica['id'],
+             'replica_state': common_constants.REPLICA_STATE_ACTIVE,
+             'access_rules_status': common_constants.STATUS_ACTIVE},
+            {'id': self.active_replica['id'],
+             'replica_state': common_constants.STATUS_ERROR,
+             'access_rules_status': common_constants.STATUS_OUT_OF_SYNC},
+        ]
+
+        self.assertEqual(expected, result)
+        mocker.assert_called_once_with('fake_pair_id')
+
+    @ddt.data({'error_url': '/REPLICATIONPAIR/fake_pair_id',
+               'url_result': """{"error":{"code":0},
+                       "data":{"HEALTHSTATUS": "1",
+                       "ISPRIMARY": "false",
+                       "RUNNINGSTATUS": "1",
+                       "SECRESDATASTATUS": "5"}}""",
+               'expected_exception': exception.ReplicationException},
+              {'error_url': '/REPLICATIONPAIR/CANCEL_SECODARY_WRITE_LOCK',
+               'url_result': """{"error":{"code":-403}}""",
+               'expected_exception': exception.InvalidShare},)
+    @ddt.unpack
+    def test_promote_replica_fail(self, error_url, url_result,
+                                  expected_exception):
+        self.driver.plugin.private_storage.update(
+            'fake_share_id',
+            {'replica_pair_id': 'fake_pair_id'})
+        self.driver.plugin.helper.custom_results[error_url] = url_result
+
+        self.assertRaises(expected_exception,
+                          self.driver.promote_replica,
+                          self._context,
+                          [self.active_replica, self.new_replica],
+                          self.new_replica,
+                          [], None)
+
+    def test_promote_replica_with_no_pair_id(self):
+        self.assertRaises(exception.ReplicationException,
+                          self.driver.promote_replica,
+                          self._context,
+                          [self.active_replica, self.new_replica],
+                          self.new_replica,
+                          [], None)
+
+    @ddt.data({'url': '/REPLICATIONPAIR/split',
+               'url_result': '{"error":{"code":-403}}'},
+              {'url': '/REPLICATIONPAIR/fake_pair_id',
+               'url_result': '{"error":{"code":1077937923}}'},
+              {'url': '/REPLICATIONPAIR/fake_pair_id',
+               'url_result': '{"error":{"code":0}}'},)
+    @ddt.unpack
+    def test_delete_replica_success(self, url, url_result):
+        self.driver.plugin.private_storage.update(
+            'fake_share_id',
+            {'replica_pair_id': 'fake_pair_id'})
+        self.driver.plugin.helper.custom_results['/filesystem/8'] = {
+            "DELETE": '{"error":{"code":0}}'}
+        self.driver.plugin.helper.custom_results[url] = url_result
+
+        self.driver.delete_replica(self._context,
+                                   [self.active_replica, self.new_replica],
+                                   [], self.new_replica, None)
+        self.assertIsNone(self.driver.plugin.private_storage.get(
+            'fake_share_id', 'replica_pair_id'))
+
+    @ddt.data({'url': '/REPLICATIONPAIR/fake_pair_id',
+               'expected': 'fake_pair_id'},
+              {'url': '/filesystem/8',
+               'expected': None},)
+    @ddt.unpack
+    def test_delete_replica_fail(self, url, expected):
+        self.driver.plugin.private_storage.update(
+            'fake_share_id',
+            {'replica_pair_id': 'fake_pair_id'})
+        self.driver.plugin.helper.custom_results[url] = {
+            "DELETE": '{"error":{"code":-403}}'}
+
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.delete_replica,
+                          self._context,
+                          [self.active_replica, self.new_replica],
+                          [], self.new_replica, None)
+        self.assertEqual(expected,
+                         self.driver.plugin.private_storage.get(
+                             'fake_share_id', 'replica_pair_id'))
+
+    def test_delete_replica_with_no_pair_id(self):
+        self.driver.plugin.helper.custom_results['/filesystem/8'] = {
+            "DELETE": '{"error":{"code":0}}'}
+
+        self.driver.delete_replica(self._context,
+                                   [self.active_replica, self.new_replica],
+                                   [], self.new_replica, None)
+
+    @ddt.data({'pair_info': """{"HEALTHSTATUS": "2"}""",
+               'expected_state': common_constants.STATUS_ERROR},
+              {'pair_info': """{"HEALTHSTATUS": "1",
+                             "RUNNINGSTATUS": "26"}""",
+               'expected_state': common_constants.REPLICA_STATE_OUT_OF_SYNC},
+              {'pair_info': """{"HEALTHSTATUS": "1",
+                             "RUNNINGSTATUS": "33"}""",
+               'expected_state': common_constants.REPLICA_STATE_OUT_OF_SYNC},
+              {'pair_info': """{"HEALTHSTATUS": "1",
+                             "RUNNINGSTATUS": "34"}""",
+               'expected_state': common_constants.STATUS_ERROR},
+              {'pair_info': """{"HEALTHSTATUS": "1",
+                             "RUNNINGSTATUS": "35"}""",
+               'expected_state': common_constants.STATUS_ERROR},
+              {'pair_info': """{"HEALTHSTATUS": "1",
+                             "SECRESDATASTATUS": "1",
+                             "RUNNINGSTATUS": "1"}""",
+               'expected_state': common_constants.REPLICA_STATE_IN_SYNC},
+              {'pair_info': """{"HEALTHSTATUS": "1",
+                             "SECRESDATASTATUS": "2",
+                             "RUNNINGSTATUS": "1"}""",
+               'expected_state': common_constants.REPLICA_STATE_IN_SYNC},
+              {'pair_info': """{"HEALTHSTATUS": "1",
+                             "SECRESDATASTATUS": "5",
+                             "RUNNINGSTATUS": "1"}""",
+               'expected_state': common_constants.REPLICA_STATE_OUT_OF_SYNC})
+    @ddt.unpack
+    def test_get_replica_state(self, pair_info, expected_state):
+        self.driver.plugin.helper.custom_results[
+            '/REPLICATIONPAIR/fake_pair_id'] = {
+            "GET": """{"error":{"code":0},
+                       "data":%s}""" % pair_info}
+
+        result_state = self.driver.plugin.replica_mgr.get_replica_state(
+            'fake_pair_id')
+
+        self.assertEqual(expected_state, result_state)

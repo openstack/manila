@@ -58,21 +58,23 @@ class HuaweiNasDriver(driver.ShareDriver):
               Add create share from snapshot.
         1.3 - Add manage snapshot.
               Support reporting disk type of pool.
+              Add replication support.
     """
 
     def __init__(self, *args, **kwargs):
         """Do initialization."""
-        LOG.debug("Enter into init function.")
+        LOG.debug("Enter into init function of Huawei Driver.")
         super(HuaweiNasDriver, self).__init__((True, False), *args, **kwargs)
-        self.configuration = kwargs.get('configuration', None)
-        if self.configuration:
-            self.configuration.append_config_values(huawei_opts)
-            backend_driver = self.get_backend_driver()
-            self.plugin = importutils.import_object(backend_driver,
-                                                    self.configuration)
-        else:
-            raise exception.InvalidShare(
-                reason=_("Huawei configuration missing."))
+
+        if not self.configuration:
+            raise exception.InvalidInput(reason=_(
+                "Huawei driver configuration missing."))
+
+        self.configuration.append_config_values(huawei_opts)
+        kwargs.pop('configuration')
+        self.plugin = importutils.import_object(self.get_backend_driver(),
+                                                self.configuration,
+                                                **kwargs)
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -202,7 +204,17 @@ class HuaweiNasDriver(driver.ShareDriver):
             storage_protocol='NFS_CIFS',
             qos=True,
             total_capacity_gb=0.0,
-            free_capacity_gb=0.0)
+            free_capacity_gb=0.0,
+            snapshot_support=self.plugin.snapshot_support,
+        )
+
+        # huawei array doesn't support snapshot replication, so driver can't
+        # create replicated snapshot, this's not fit the requirement of
+        # replication feature.
+        # to avoid this problem, we specify huawei driver can't support
+        # snapshot and replication both, as a workaround.
+        if not data['snapshot_support'] and self.plugin.replication_support:
+            data['replication_type'] = 'dr'
 
         self.plugin.update_share_stats(data)
         super(HuaweiNasDriver, self)._update_share_stats(data)
@@ -214,3 +226,42 @@ class HuaweiNasDriver(driver.ShareDriver):
     def _teardown_server(self, server_details, security_services=None):
         """Teardown share server."""
         return self.plugin.teardown_server(server_details, security_services)
+
+    def create_replica(self, context, replica_list, new_replica,
+                       access_rules, replica_snapshots, share_server=None):
+        """Replicate the active replica to a new replica on this backend."""
+        return self.plugin.create_replica(context,
+                                          replica_list,
+                                          new_replica,
+                                          access_rules,
+                                          replica_snapshots,
+                                          share_server)
+
+    def update_replica_state(self, context, replica_list, replica,
+                             access_rules, replica_snapshots,
+                             share_server=None):
+        """Update the replica_state of a replica."""
+        return self.plugin.update_replica_state(context,
+                                                replica_list,
+                                                replica,
+                                                access_rules,
+                                                replica_snapshots,
+                                                share_server)
+
+    def promote_replica(self, context, replica_list, replica, access_rules,
+                        share_server=None):
+        """Promote a replica to 'active' replica state.."""
+        return self.plugin.promote_replica(context,
+                                           replica_list,
+                                           replica,
+                                           access_rules,
+                                           share_server)
+
+    def delete_replica(self, context, replica_list, replica_snapshots,
+                       replica, share_server=None):
+        """Delete a replica."""
+        self.plugin.delete_replica(context,
+                                   replica_list,
+                                   replica_snapshots,
+                                   replica,
+                                   share_server)

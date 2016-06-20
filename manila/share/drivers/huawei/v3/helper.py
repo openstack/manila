@@ -218,7 +218,7 @@ class RestHelper(object):
             LOG.error(_LE('Bad response from change file: %s.') % err)
             raise err
 
-    def _create_share(self, share_name, fs_id, share_proto):
+    def create_share(self, share_name, fs_id, share_proto):
         """Create a share."""
         share_url_type = self._get_share_url_type(share_proto)
         share_path = self._get_share_path(share_name)
@@ -698,14 +698,14 @@ class RestHelper(object):
 
         return share_url_type
 
-    def _get_fsid_by_name(self, share_name):
+    def get_fsid_by_name(self, share_name):
         url = "/FILESYSTEM?range=[0-8191]"
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, 'Get filesystem by name error!')
-        sharename = share_name.replace("-", "_")
+        share_name = share_name.replace("-", "_")
 
         for item in result.get('data', []):
-            if sharename == item['NAME']:
+            if share_name == item['NAME']:
                 return item['ID']
 
     def _get_fs_info_by_id(self, fsid):
@@ -1336,8 +1336,111 @@ class RestHelper(object):
 
         return False, None
 
-    def find_array_version(self):
+    def _get_array_info(self):
         url = "/system/"
-        result = self.call(url, None)
-        self._assert_rest_result(result, _('Find array version error.'))
-        return result['data']['PRODUCTVERSION']
+        result = self.call(url, None, "GET")
+        msg = _('Get array info error.')
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)
+        return result.get('data')
+
+    def find_array_version(self):
+        info = self._get_array_info()
+        return info.get('PRODUCTVERSION')
+
+    def get_array_wwn(self):
+        info = self._get_array_info()
+        return info.get('wwn')
+
+    def _get_all_remote_devices(self):
+        url = "/remote_device"
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, _('Get all remote devices error.'))
+        return result.get('data', [])
+
+    def get_remote_device_by_wwn(self, wwn):
+        devices = self._get_all_remote_devices()
+        for device in devices:
+            if device.get('WWN') == wwn:
+                return device
+        return {}
+
+    def create_replication_pair(self, pair_params):
+        url = "/REPLICATIONPAIR"
+        data = jsonutils.dumps(pair_params)
+        result = self.call(url, data, "POST")
+
+        msg = _('Failed to create replication pair for '
+                '(LOCALRESID: %(lres)s, REMOTEDEVICEID: %(rdev)s, '
+                'REMOTERESID: %(rres)s).') % {
+                    'lres': pair_params['LOCALRESID'],
+                    'rdev': pair_params['REMOTEDEVICEID'],
+                    'rres': pair_params['REMOTERESID']}
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)
+        return result['data']
+
+    def split_replication_pair(self, pair_id):
+        url = '/REPLICATIONPAIR/split'
+        data = jsonutils.dumps({"ID": pair_id, "TYPE": "263"})
+        result = self.call(url, data, "PUT")
+
+        msg = _('Failed to split replication pair %s.') % pair_id
+        self._assert_rest_result(result, msg)
+
+    def switch_replication_pair(self, pair_id):
+        url = '/REPLICATIONPAIR/switch'
+        data = jsonutils.dumps({"ID": pair_id, "TYPE": "263"})
+        result = self.call(url, data, "PUT")
+
+        msg = _('Failed to switch replication pair %s.') % pair_id
+        self._assert_rest_result(result, msg)
+
+    def delete_replication_pair(self, pair_id):
+        url = "/REPLICATIONPAIR/" + pair_id
+        data = None
+        result = self.call(url, data, "DELETE")
+
+        if (result['error']['code'] ==
+                constants.ERROR_REPLICATION_PAIR_NOT_EXIST):
+            LOG.warning(_LW('Replication pair %s was not found.'),
+                        pair_id)
+            return
+
+        msg = _('Failed to delete replication pair %s.') % pair_id
+        self._assert_rest_result(result, msg)
+
+    def sync_replication_pair(self, pair_id):
+        url = "/REPLICATIONPAIR/sync"
+        data = jsonutils.dumps({"ID": pair_id, "TYPE": "263"})
+        result = self.call(url, data, "PUT")
+
+        msg = _('Failed to sync replication pair %s.') % pair_id
+        self._assert_rest_result(result, msg)
+
+    def cancel_pair_secondary_write_lock(self, pair_id):
+        url = "/REPLICATIONPAIR/CANCEL_SECODARY_WRITE_LOCK"
+        data = jsonutils.dumps({"ID": pair_id, "TYPE": "263"})
+        result = self.call(url, data, "PUT")
+
+        msg = _('Failed to cancel replication pair %s '
+                'secondary write lock.') % pair_id
+        self._assert_rest_result(result, msg)
+
+    def set_pair_secondary_write_lock(self, pair_id):
+        url = "/REPLICATIONPAIR/SET_SECODARY_WRITE_LOCK"
+        data = jsonutils.dumps({"ID": pair_id, "TYPE": "263"})
+        result = self.call(url, data, "PUT")
+
+        msg = _('Failed to set replication pair %s '
+                'secondary write lock.') % pair_id
+        self._assert_rest_result(result, msg)
+
+    def get_replication_pair_by_id(self, pair_id):
+        url = "/REPLICATIONPAIR/" + pair_id
+        result = self.call(url, None, "GET")
+
+        msg = _('Failed to get replication pair %s.') % pair_id
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)
+        return result.get('data')

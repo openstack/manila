@@ -2882,6 +2882,7 @@ class ShareManager(manager.SchedulerDependentManager):
         # TODO(gouthamr): remove method when the db layer returns primitives
         share_replica_ref = {
             'id': share_replica.get('id'),
+            'name': share_replica.get('name'),
             'share_id': share_replica.get('share_id'),
             'host': share_replica.get('host'),
             'status': share_replica.get('status'),

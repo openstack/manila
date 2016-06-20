@@ -16,6 +16,7 @@
 
 """Tests For miscellaneous util methods used with share."""
 
+from manila.common import constants
 from manila.share import utils as share_utils
 from manila import test
 
@@ -140,3 +141,21 @@ class ShareUtilsTestCase(test.TestCase):
         expected = None
         self.assertEqual(expected,
                          share_utils.append_host(host, pool))
+
+    def test_get_active_replica_success(self):
+        replica_list = [{'id': '123456',
+                         'replica_state': constants.REPLICA_STATE_IN_SYNC},
+                        {'id': '654321',
+                         'replica_state': constants.REPLICA_STATE_ACTIVE},
+                        ]
+        replica = share_utils.get_active_replica(replica_list)
+        self.assertEqual('654321', replica['id'])
+
+    def test_get_active_replica_not_exist(self):
+        replica_list = [{'id': '123456',
+                         'replica_state': constants.REPLICA_STATE_IN_SYNC},
+                        {'id': '654321',
+                         'replica_state': constants.REPLICA_STATE_OUT_OF_SYNC},
+                        ]
+        replica = share_utils.get_active_replica(replica_list)
+        self.assertIsNone(replica)

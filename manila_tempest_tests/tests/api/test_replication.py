@@ -175,6 +175,8 @@ class ReplicationTest(base.BaseSharesMixedTest):
         self.delete_share_replica(share_replica["id"])
 
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @testtools.skipUnless(CONF.share.run_multiple_share_replicas_tests,
+                          'Multiple share replicas tests are disabled.')
     def test_add_multiple_share_replicas(self):
         rep_domain, pools = self.get_pools_for_replication_domain()
         if len(pools) < 3:
