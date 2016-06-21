@@ -730,7 +730,7 @@ class SecurityService(BASE, ManilaBase):
     __tablename__ = 'security_services'
     id = Column(String(36), primary_key=True)
     deleted = Column(String(36), default='False')
-    project_id = Column(String(36), nullable=False)
+    project_id = Column(String(255), nullable=False)
     type = Column(String(32), nullable=False)
     dns_ip = Column(String(64), nullable=True)
     server = Column(String(255), nullable=True)
@@ -746,8 +746,8 @@ class ShareNetwork(BASE, ManilaBase):
     __tablename__ = 'share_networks'
     id = Column(String(36), primary_key=True, nullable=False)
     deleted = Column(String(36), default='False')
-    project_id = Column(String(36), nullable=False)
-    user_id = Column(String(36), nullable=False)
+    project_id = Column(String(255), nullable=False)
+    user_id = Column(String(255), nullable=False)
     nova_net_id = Column(String(36), nullable=True)
     neutron_net_id = Column(String(36), nullable=True)
     neutron_subnet_id = Column(String(36), nullable=True)
