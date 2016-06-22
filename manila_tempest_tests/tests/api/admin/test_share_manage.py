@@ -141,11 +141,11 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
                           share['id'])
 
     @base.skip_if_microversion_not_supported("2.8")
-    @test.attr(type=["gate", "smoke"])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_manage_with_is_public_True(self):
         self._test_manage(share=self.shares[2], is_public=True)
 
-    @test.attr(type=["gate", "smoke"])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_manage(self):
         # After 'unmanage' operation, share instance should be deleted.
         # Assert not related to 'manage' test, but placed here for
@@ -156,7 +156,7 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
 
         self._test_manage(share=self.shares[0])
 
-    @test.attr(type=["gate", "smoke", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_manage_invalid(self):
         # Try to manage share with invalid parameters, it should not succeed
         # because the scheduler will reject it. If it succeeds, then this test

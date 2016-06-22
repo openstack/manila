@@ -76,7 +76,7 @@ class ShareNetworkAdminTest(
             cls.sn_with_kerberos_ss["id"],
             cls.ss_kerberos["id"])
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_list_share_networks_all_tenants(self):
         listed = self.shares_client.list_share_networks_with_detail(
             {'all_tenants': 1})
@@ -85,7 +85,7 @@ class ShareNetworkAdminTest(
         self.assertTrue(any(self.sn_with_kerberos_ss['id'] == sn['id']
                             for sn in listed))
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_list_share_networks_filter_by_project_id(self):
         listed = self.shares_client.list_share_networks_with_detail(
             {'project_id': self.sn_with_kerberos_ss['project_id']})

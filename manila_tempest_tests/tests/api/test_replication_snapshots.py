@@ -18,7 +18,6 @@ from tempest.lib.common.utils import data_utils
 from tempest import test
 import testtools
 
-from manila_tempest_tests import clients_share as clients
 from manila_tempest_tests.common import constants
 from manila_tempest_tests import share_exceptions
 from manila_tempest_tests.tests.api import base
@@ -32,14 +31,14 @@ _MIN_SUPPORTED_MICROVERSION = '2.11'
 @testtools.skipUnless(CONF.share.run_snapshot_tests,
                       'Snapshot tests disabled.')
 @base.skip_if_microversion_lt(_MIN_SUPPORTED_MICROVERSION)
-class ReplicationSnapshotTest(base.BaseSharesTest):
+class ReplicationSnapshotTest(base.BaseSharesMixedTest):
 
     @classmethod
     def resource_setup(cls):
         super(ReplicationSnapshotTest, cls).resource_setup()
         # Create share_type
         name = data_utils.rand_name(constants.TEMPEST_MANILA_PREFIX)
-        cls.admin_client = clients.AdminManager().shares_v2_client
+        cls.admin_client = cls.admin_shares_v2_client
         cls.replication_type = CONF.share.backend_replication_type
 
         if cls.replication_type not in constants.REPLICATION_TYPE_CHOICES:
@@ -63,7 +62,7 @@ class ReplicationSnapshotTest(base.BaseSharesTest):
             'availability_zone': cls.share_zone,
         }}
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_snapshot_after_share_replica(self):
         """Test the snapshot for replicated share.
 
@@ -89,7 +88,7 @@ class ReplicationSnapshotTest(base.BaseSharesTest):
         self.delete_share_replica(original_replica['id'])
         self.create_share(snapshot_id=snapshot['id'])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_snapshot_before_share_replica(self):
         """Test the snapshot for replicated share.
 
@@ -119,7 +118,7 @@ class ReplicationSnapshotTest(base.BaseSharesTest):
         self.delete_share_replica(original_replica['id'])
         self.create_share(snapshot_id=snapshot['id'])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_snapshot_before_and_after_share_replica(self):
         """Test the snapshot for replicated share.
 
@@ -156,7 +155,7 @@ class ReplicationSnapshotTest(base.BaseSharesTest):
         self.create_share(snapshot_id=snapshot1['id'])
         self.create_share(snapshot_id=snapshot2['id'])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_delete_snapshot_after_adding_replica(self):
         """Verify the snapshot delete.
 
@@ -176,7 +175,7 @@ class ReplicationSnapshotTest(base.BaseSharesTest):
         self.shares_v2_client.wait_for_resource_deletion(
             snapshot_id=snapshot["id"])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_create_replica_from_snapshot_share(self):
         """Test replica for a share that was created from snapshot."""
 

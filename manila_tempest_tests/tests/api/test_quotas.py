@@ -34,7 +34,7 @@ class SharesQuotasTest(base.BaseSharesTest):
         cls.user_id = cls.shares_v2_client.user_id
         cls.tenant_id = cls.shares_v2_client.tenant_id
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     @ddt.data('shares_client', 'shares_v2_client')
     def test_default_quotas(self, client_name):
         quotas = getattr(self, client_name).default_quotas(self.tenant_id)
@@ -44,7 +44,7 @@ class SharesQuotasTest(base.BaseSharesTest):
         self.assertGreater(int(quotas["snapshots"]), -2)
         self.assertGreater(int(quotas["share_networks"]), -2)
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     @ddt.data('shares_client', 'shares_v2_client')
     def test_show_quotas(self, client_name):
         quotas = getattr(self, client_name).show_quotas(self.tenant_id)
@@ -54,7 +54,7 @@ class SharesQuotasTest(base.BaseSharesTest):
         self.assertGreater(int(quotas["snapshots"]), -2)
         self.assertGreater(int(quotas["share_networks"]), -2)
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     @ddt.data('shares_client', 'shares_v2_client')
     def test_show_quotas_for_user(self, client_name):
         quotas = getattr(self, client_name).show_quotas(

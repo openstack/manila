@@ -33,18 +33,18 @@ class SharesQuotasNegativeTest(base.BaseSharesTest):
             raise cls.skipException(msg)
         super(SharesQuotasNegativeTest, cls).resource_setup()
 
-    @test.attr(type=["gate", "smoke", "negative"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_get_quotas_with_empty_tenant_id(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_v2_client.show_quotas, "")
 
-    @test.attr(type=["gate", "smoke", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_reset_quotas_with_user(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_v2_client.reset_quotas,
                           self.shares_v2_client.tenant_id)
 
-    @test.attr(type=["gate", "smoke", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_try_update_quotas_with_user(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_v2_client.update_quotas,
@@ -66,7 +66,7 @@ class SharesQuotasNegativeTest(base.BaseSharesTest):
         ('os-services', '2.7', 'update_quotas'),
     )
     @ddt.unpack
-    @test.attr(type=["gate", "smoke", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     @base.skip_if_microversion_not_supported("2.7")
     def test_show_quotas_with_wrong_versions(self, url, version, method_name):
         self.assertRaises(

@@ -39,13 +39,13 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         if CONF.share.run_snapshot_tests:
             cls.sn = cls.create_snapshot_wait_for_active(cls.sh["id"])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_reset_share_state(self):
         for status in self.states:
             self.shares_v2_client.reset_state(self.sh["id"], status=status)
             self.shares_v2_client.wait_for_share_status(self.sh["id"], status)
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_reset_share_instance_state(self):
         id = self.sh_instance["id"]
         for status in self.states:
@@ -53,7 +53,7 @@ class AdminActionsTest(base.BaseSharesAdminTest):
                 id, s_type="share_instances", status=status)
             self.shares_v2_client.wait_for_share_instance_status(id, status)
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
     def test_reset_snapshot_state_to_error(self):
@@ -63,7 +63,7 @@ class AdminActionsTest(base.BaseSharesAdminTest):
             self.shares_v2_client.wait_for_snapshot_status(
                 self.sn["id"], status)
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_force_delete_share(self):
         share = self.create_share()
 
@@ -78,7 +78,7 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         self.shares_v2_client.force_delete(share["id"])
         self.shares_v2_client.wait_for_resource_deletion(share_id=share["id"])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_force_delete_share_instance(self):
         share = self.create_share(cleanup_in_class=False)
         instances = self.shares_v2_client.get_instances_of_share(share["id"])
@@ -101,7 +101,7 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         self.shares_v2_client.wait_for_resource_deletion(
             share_instance_id=instance["id"])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
     def test_force_delete_snapshot(self):
@@ -119,7 +119,7 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         self.shares_v2_client.force_delete(sn["id"], s_type="snapshots")
         self.shares_v2_client.wait_for_resource_deletion(snapshot_id=sn["id"])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     @base.skip_if_microversion_lt("2.15")
     def test_reset_share_task_state(self):
         for task_state in self.task_states:

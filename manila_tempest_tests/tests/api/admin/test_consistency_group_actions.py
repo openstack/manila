@@ -46,7 +46,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesAdminTest):
         cls.consistency_group = cls.shares_v2_client.get_consistency_group(
             cls.consistency_group['id'])
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_create_cg_from_cgsnapshot_with_multiple_share_types_v2_4(self):
         # Create cgsnapshot
         cgsnapshot = self.create_cgsnapshot_wait_for_active(
@@ -68,7 +68,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesAdminTest):
                          'Expected share types of %s, but got %s.' % (
                              expected_types, actual_types))
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_create_cg_from_multi_typed_populated_cgsnapshot_v2_4(self):
         share_name = data_utils.rand_name("tempest-share-name")
         share_desc = data_utils.rand_name("tempest-share-description")

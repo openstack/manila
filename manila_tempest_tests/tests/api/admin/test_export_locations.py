@@ -20,7 +20,6 @@ import six
 from tempest import config
 from tempest import test
 
-from manila_tempest_tests import clients_share as clients
 from manila_tempest_tests.tests.api import base
 from manila_tempest_tests import utils
 
@@ -30,16 +29,16 @@ LATEST_MICROVERSION = CONF.share.max_api_microversion
 
 @base.skip_if_microversion_not_supported("2.9")
 @ddt.ddt
-class ExportLocationsTest(base.BaseSharesAdminTest):
+class ExportLocationsTest(base.BaseSharesMixedTest):
 
     @classmethod
     def resource_setup(cls):
         super(ExportLocationsTest, cls).resource_setup()
-        cls.admin_client = cls.shares_v2_client
-        cls.member_client = clients.Manager().shares_v2_client
-        cls.share = cls.create_share()
-        cls.share = cls.shares_v2_client.get_share(cls.share['id'])
-        cls.share_instances = cls.shares_v2_client.get_instances_of_share(
+        cls.admin_client = cls.admin_shares_v2_client
+        cls.member_client = cls.shares_v2_client
+        cls.share = cls.create_share(client=cls.admin_client)
+        cls.share = cls.admin_client.get_share(cls.share['id'])
+        cls.share_instances = cls.admin_client.get_instances_of_share(
             cls.share['id'])
 
     def _verify_export_location_structure(
@@ -101,7 +100,7 @@ class ExportLocationsTest(base.BaseSharesAdminTest):
                     # it making assertion that it has proper date value.
                     timeutils.parse_strtime(time)
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     @utils.skip_if_microversion_not_supported('2.13')
     def test_list_share_export_locations(self):
         export_locations = self.admin_client.list_share_export_locations(
@@ -110,7 +109,7 @@ class ExportLocationsTest(base.BaseSharesAdminTest):
         self._verify_export_location_structure(export_locations,
                                                version='2.13')
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     @utils.skip_if_microversion_not_supported('2.14')
     def test_list_share_export_locations_with_preferred_flag(self):
         export_locations = self.admin_client.list_share_export_locations(
@@ -119,7 +118,7 @@ class ExportLocationsTest(base.BaseSharesAdminTest):
         self._verify_export_location_structure(export_locations,
                                                version='2.14')
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_get_share_export_location(self):
         export_locations = self.admin_client.list_share_export_locations(
             self.share['id'])
@@ -129,14 +128,14 @@ class ExportLocationsTest(base.BaseSharesAdminTest):
                 self.share['id'], export_location['id'])
             self._verify_export_location_structure(el, format='detail')
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_list_share_export_locations_by_member(self):
         export_locations = self.member_client.list_share_export_locations(
             self.share['id'])
 
         self._verify_export_location_structure(export_locations, role='member')
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_get_share_export_location_by_member(self):
         export_locations = self.admin_client.list_share_export_locations(
             self.share['id'])
@@ -149,7 +148,7 @@ class ExportLocationsTest(base.BaseSharesAdminTest):
             self._verify_export_location_structure(el, role='member',
                                                    format='detail')
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     @utils.skip_if_microversion_not_supported('2.13')
     def test_list_share_instance_export_locations(self):
         for share_instance in self.share_instances:
@@ -159,7 +158,7 @@ class ExportLocationsTest(base.BaseSharesAdminTest):
             self._verify_export_location_structure(export_locations,
                                                    version='2.13')
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     @utils.skip_if_microversion_not_supported('2.14')
     def test_list_share_instance_export_locations_with_preferred_flag(self):
         for share_instance in self.share_instances:
@@ -169,7 +168,7 @@ class ExportLocationsTest(base.BaseSharesAdminTest):
             self._verify_export_location_structure(export_locations,
                                                    version='2.14')
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_get_share_instance_export_location(self):
         for share_instance in self.share_instances:
             export_locations = (
@@ -180,7 +179,7 @@ class ExportLocationsTest(base.BaseSharesAdminTest):
                     share_instance['id'], el['id'])
                 self._verify_export_location_structure(el, format='detail')
 
-    @test.attr(type=["gate", ])
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_share_contains_all_export_locations_of_all_share_instances(self):
         share_export_locations = self.admin_client.list_share_export_locations(
             self.share['id'])

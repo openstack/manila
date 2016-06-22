@@ -47,28 +47,28 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
         cls.dest_pool = next((x for x in pools
                               if x['name'] != cls.share['host']), None)
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @base.skip_if_microversion_lt("2.15")
     def test_migration_cancel_invalid(self):
         self.assertRaises(
             lib_exc.BadRequest, self.shares_v2_client.migration_cancel,
             self.share['id'])
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @base.skip_if_microversion_lt("2.15")
     def test_migration_get_progress_invalid(self):
         self.assertRaises(
             lib_exc.BadRequest, self.shares_v2_client.migration_get_progress,
             self.share['id'])
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @base.skip_if_microversion_lt("2.15")
     def test_migration_complete_invalid(self):
         self.assertRaises(
             lib_exc.BadRequest, self.shares_v2_client.migration_complete,
             self.share['id'])
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @base.skip_if_microversion_lt("2.5")
     def test_migrate_share_with_snapshot_v2_5(self):
         snap = self.create_snapshot_wait_for_active(self.share['id'])
@@ -78,14 +78,14 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
         self.shares_client.delete_snapshot(snap['id'])
         self.shares_client.wait_for_resource_deletion(snapshot_id=snap["id"])
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @base.skip_if_microversion_lt("2.5")
     def test_migrate_share_same_host_v2_5(self):
         self.assertRaises(
             lib_exc.BadRequest, self.shares_v2_client.migrate_share,
             self.share['id'], self.share['host'], True, version='2.5')
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @base.skip_if_microversion_lt("2.5")
     def test_migrate_share_not_available_v2_5(self):
         self.shares_client.reset_state(self.share['id'], 'error')

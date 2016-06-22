@@ -16,9 +16,11 @@
 from oslo_log import log as logging
 from tempest import config  # noqa
 from tempest.lib.common.utils import data_utils
+from tempest.lib.common.utils import test_utils
 from tempest.lib import exceptions
 from tempest import test  # noqa
 
+from manila_tempest_tests.tests.api import base
 from manila_tempest_tests.tests.scenario import manager_share as manager
 from manila_tempest_tests import utils
 
@@ -43,6 +45,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
     def setUp(self):
         super(ShareBasicOpsBase, self).setUp()
+        base.verify_test_has_appropriate_tags(self)
         # Setup image and flavor the test instance
         # Support both configured and injected values
         if not hasattr(self, 'flavor_ref'):
@@ -81,7 +84,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         # Obtain a floating IP
         floating_ip = (self.compute_floating_ips_client.create_floating_ip()
                        ['floating_ip'])
-        self.addCleanup(self.delete_wrapper,
+        self.addCleanup(test_utils.call_and_ignore_notfound_exc,
                         self.compute_floating_ips_client.delete_floating_ip,
                         floating_ip['id'])
         # Attach a floating IP
@@ -169,6 +172,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
                            cleanup=cleanup)
 
     @test.services('compute', 'network')
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_mount_share_one_vm(self):
         self.security_group = self._create_security_group()
         self.create_share()
@@ -190,6 +194,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         self.servers_client.delete_server(instance['id'])
 
     @test.services('compute', 'network')
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_read_write_two_vms(self):
         """Boots two vms and writes/reads data on it."""
         test_data = "Some test data to write"
@@ -225,6 +230,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         self.assertEqual(test_data, data)
 
     @test.services('compute', 'network')
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_migration_files(self):
 
         if self.protocol == "CIFS":

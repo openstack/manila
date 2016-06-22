@@ -21,6 +21,7 @@
 source $BASE/new/devstack/functions
 
 localrc_path=$BASE/new/devstack/localrc
+local_conf_path=$BASE/new/devstack/local.conf
 echo "DEVSTACK_GATE_TEMPEST_ALLOW_TENANT_ISOLATION=1" >> $localrc_path
 echo "API_RATE_LIMIT=False" >> $localrc_path
 echo "TEMPEST_SERVICES+=,manila" >> $localrc_path
@@ -68,6 +69,9 @@ MANILA_SERVICE_IMAGE_ENABLED=False
 if [[ "$DRIVER" == "generic" ]]; then
     MANILA_SERVICE_IMAGE_ENABLED=True
     echo "SHARE_DRIVER=manila.share.drivers.generic.GenericShareDriver" >> $localrc_path
+    echo -e "[[post-config|${NOVA_CONF:-/etc/nova/nova.conf}]]\n[DEFAULT]\nquota_instances=30\n" >> $local_conf_path
+    echo -e "[[post-config|${NEUTRON_CONF:-/etc/neutron/neutron.conf}]]\n[DEFAULT]\nmax_fixed_ips_per_port=100\n" >> $local_conf_path
+    echo -e "[[post-config|${NEUTRON_CONF:-/etc/neutron/neutron.conf}]]\n[QUOTAS]\nquota_subnet=-1\n" >> $local_conf_path
 elif [[ "$DRIVER" == "windows" ]]; then
     MANILA_SERVICE_IMAGE_ENABLED=True
     echo "SHARE_DRIVER=manila.share.drivers.windows.windows_smb_driver.WindowsSMBDriver" >> $localrc_path
@@ -92,6 +96,7 @@ echo "MANILA_SERVICE_IMAGE_ENABLED=$MANILA_SERVICE_IMAGE_ENABLED" >> $localrc_pa
 # created vm's in scenario tests.
 echo 'ENABLE_ISOLATED_METADATA=True' >> $localrc_path
 
+echo "TEMPEST_CONCURRENCY=8" >> $localrc_path
 
 # Go to Tempest dir and checkout stable commit to avoid possible
 # incompatibilities for plugin stored in Manila repo.

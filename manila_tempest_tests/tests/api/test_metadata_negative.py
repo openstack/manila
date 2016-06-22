@@ -13,10 +13,33 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 from tempest.lib import exceptions as lib_exc  # noqa
 from tempest import test  # noqa
 
 from manila_tempest_tests.tests.api import base
+
+
+@ddt.ddt
+class SharesMetadataAPIOnlyNegativeTest(base.BaseSharesTest):
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @ddt.data(True, False)
+    def test_try_set_metadata_to_unexisting_share(self, is_v2_client):
+        md = {u"key1": u"value1", u"key2": u"value2", }
+        client = self.shares_v2_client if is_v2_client else self.shares_client
+        self.assertRaises(lib_exc.NotFound,
+                          client.set_metadata,
+                          "wrong_share_id", md)
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @ddt.data(True, False)
+    def test_try_update_all_metadata_for_unexisting_share(self, is_v2_client):
+        md = {u"key1": u"value1", u"key2": u"value2", }
+        client = self.shares_v2_client if is_v2_client else self.shares_client
+        self.assertRaises(lib_exc.NotFound,
+                          client.update_all_metadata,
+                          "wrong_share_id", md)
 
 
 class SharesMetadataNegativeTest(base.BaseSharesTest):
@@ -26,33 +49,19 @@ class SharesMetadataNegativeTest(base.BaseSharesTest):
         super(SharesMetadataNegativeTest, cls).resource_setup()
         cls.share = cls.create_share()
 
-    @test.attr(type=["gate", "negative", ])
-    def test_try_set_metadata_to_unexisting_share(self):
-        md = {u"key1": u"value1", u"key2": u"value2", }
-        self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.set_metadata,
-                          "wrong_share_id", md)
-
-    @test.attr(type=["gate", "negative", ])
-    def test_try_update_all_metadata_for_unexisting_share(self):
-        md = {u"key1": u"value1", u"key2": u"value2", }
-        self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.update_all_metadata,
-                          "wrong_share_id", md)
-
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_try_set_metadata_with_empty_key(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.set_metadata,
                           self.share["id"], {"": "value"})
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_try_upd_metadata_with_empty_key(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.update_all_metadata,
                           self.share["id"], {"": "value"})
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_try_set_metadata_with_too_big_key(self):
         too_big_key = "x" * 256
         md = {too_big_key: "value"}
@@ -60,7 +69,7 @@ class SharesMetadataNegativeTest(base.BaseSharesTest):
                           self.shares_client.set_metadata,
                           self.share["id"], md)
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_try_upd_metadata_with_too_big_key(self):
         too_big_key = "x" * 256
         md = {too_big_key: "value"}
@@ -68,7 +77,7 @@ class SharesMetadataNegativeTest(base.BaseSharesTest):
                           self.shares_client.update_all_metadata,
                           self.share["id"], md)
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_try_set_metadata_with_too_big_value(self):
         too_big_value = "x" * 1024
         md = {"key": too_big_value}
@@ -76,7 +85,7 @@ class SharesMetadataNegativeTest(base.BaseSharesTest):
                           self.shares_client.set_metadata,
                           self.share["id"], md)
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_try_upd_metadata_with_too_big_value(self):
         too_big_value = "x" * 1024
         md = {"key": too_big_value}
@@ -84,7 +93,7 @@ class SharesMetadataNegativeTest(base.BaseSharesTest):
                           self.shares_client.update_all_metadata,
                           self.share["id"], md)
 
-    @test.attr(type=["gate", "negative", ])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     def test_try_delete_unexisting_metadata(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_metadata,

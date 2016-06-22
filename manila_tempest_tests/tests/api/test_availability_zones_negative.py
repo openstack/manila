@@ -22,7 +22,7 @@ from manila_tempest_tests.tests.api import base
 @base.skip_if_microversion_not_supported("2.7")
 class AvailabilityZonesNegativeTest(base.BaseSharesTest):
 
-    @test.attr(type=["smoke", "gate"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_list_availability_zones_api_not_found_with_legacy_url(self):
         # NOTE(vponomaryov): remove this test with removal of availability zone
         # extension url support.
@@ -33,7 +33,7 @@ class AvailabilityZonesNegativeTest(base.BaseSharesTest):
             version='2.7',
         )
 
-    @test.attr(type=["smoke", "gate"])
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_list_availability_zones_api_not_found(self):
         self.assertRaises(
             lib_exc.NotFound,

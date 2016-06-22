@@ -16,20 +16,23 @@
 from oslo_log import log
 import six
 
-from tempest.common.utils.linux import remote_client  # noqa
-from tempest import config  # noqa
+from tempest.common.utils.linux import remote_client
+from tempest import config
 from tempest.lib.common.utils import data_utils
-from tempest.scenario import manager  # noqa
+from tempest.scenario import manager
 
-from manila_tempest_tests import clients_share
+from manila_tempest_tests.services.share.json import shares_client
+from manila_tempest_tests.services.share.v2.json import (
+    shares_client as shares_v2_client)
 
 CONF = config.CONF
-
 LOG = log.getLogger(__name__)
 
 
 class ShareScenarioTest(manager.NetworkScenarioTest):
     """Provide harness to do Manila scenario tests."""
+
+    credentials = ('admin', 'primary')
 
     @classmethod
     def resource_setup(cls):
@@ -37,11 +40,14 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         super(ShareScenarioTest, cls).resource_setup()
 
         # Manila clients
-        cls.shares_client = clients_share.Manager().shares_client
-        cls.shares_v2_client = clients_share.Manager().shares_v2_client
-        cls.shares_admin_client = clients_share.AdminManager().shares_client
-        cls.shares_admin_v2_client = (
-            clients_share.AdminManager().shares_v2_client)
+        cls.shares_client = shares_client.SharesClient(
+            cls.os_primary.auth_provider)
+        cls.shares_v2_client = shares_v2_client.SharesV2Client(
+            cls.os_primary.auth_provider)
+        cls.shares_admin_client = shares_client.SharesClient(
+            cls.os_admin.auth_provider)
+        cls.shares_admin_v2_client = shares_v2_client.SharesV2Client(
+            cls.os_admin.auth_provider)
 
     def _create_share(self, share_protocol=None, size=1, name=None,
                       snapshot_id=None, description=None, metadata=None,
