@@ -2075,7 +2075,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.driver,
                          "manage_existing",
                          mock.Mock(return_value={'size': 3}))
-        self.mock_object(self.share_manager, '_update_quota_usages',
+        self.mock_object(quota.QUOTAS, 'reserve',
                          mock.Mock(side_effect=exception.QuotaError))
         self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
         share = db_utils.create_share()
@@ -2092,9 +2092,6 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.share_update.assert_called_once_with(
             mock.ANY, share_id,
             {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
-        self.share_manager._update_quota_usages.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext),
-            share['project_id'], {'shares': 1, 'gigabytes': 3})
 
     @ddt.data(
         {'size': 1, 'replication_type': None},
@@ -2107,8 +2104,7 @@ class ShareManagerTestCase(test.TestCase):
         export_locations = driver_data.get('export_locations')
         self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
         self.mock_object(self.share_manager, 'driver', mock.Mock())
-        self.mock_object(self.share_manager, '_update_quota_usages',
-                         mock.Mock())
+        self.mock_object(quota.QUOTAS, 'reserve', mock.Mock())
         self.mock_object(
             self.share_manager.db,
             'share_export_locations_update',
@@ -4252,7 +4248,7 @@ class ShareManagerTestCase(test.TestCase):
                                                  mock.Mock(return_value=None))
         self.mock_object(self.share_manager.db, 'share_snapshot_update')
         self.mock_object(self.share_manager, 'driver')
-        self.mock_object(self.share_manager, '_update_quota_usages')
+        self.mock_object(quota.QUOTAS, 'reserve', mock.Mock())
         self.share_manager.driver.driver_handles_share_servers = False
         mock_manage = self.mock_object(
             self.share_manager.driver,
@@ -4277,10 +4273,6 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.share_snapshot_update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             snapshot_id, valid_snapshot_data)
-        self.share_manager._update_quota_usages.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext),
-            snapshot['project_id'],
-            {'snapshots': 1, 'snapshot_gigabytes': size})
         mock_get_share_server.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), snapshot['share'])
         mock_get.assert_called_once_with(
