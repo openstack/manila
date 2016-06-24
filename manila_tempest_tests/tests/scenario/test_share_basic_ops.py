@@ -14,11 +14,11 @@
 #    under the License.
 
 from oslo_log import log as logging
-from tempest import config  # noqa
+from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest.lib.common.utils import test_utils
 from tempest.lib import exceptions
-from tempest import test  # noqa
+from tempest import test
 
 from manila_tempest_tests.tests.api import base
 from manila_tempest_tests.tests.scenario import manager_share as manager

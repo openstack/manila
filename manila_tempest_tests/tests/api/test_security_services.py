@@ -13,11 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log  # noqa
-import six  # noqa
-from tempest import config  # noqa
-from tempest import test  # noqa
-import testtools  # noqa
+from oslo_log import log
+import six
+from tempest import config
+from tempest import test
+import testtools
 
 from manila_tempest_tests.tests.api import base
 

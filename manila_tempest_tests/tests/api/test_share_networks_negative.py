@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest import config  # noqa
-from tempest.lib import exceptions as lib_exc  # noqa
-from tempest import test  # noqa
-import testtools  # noqa
+from tempest import config
+from tempest.lib import exceptions as lib_exc
+from tempest import test
+import testtools
 
 from manila_tempest_tests.tests.api import base
 

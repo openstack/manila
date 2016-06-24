@@ -13,7 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from tempest import test  # noqa
+from tempest import test
 
 from manila_tempest_tests.tests.api import base
 from manila_tempest_tests.tests.api import test_share_networks
