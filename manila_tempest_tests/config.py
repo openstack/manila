@@ -197,4 +197,7 @@ ShareGroup = [
                default='none',
                choices=['none', 'writable', 'readable', 'dr'],
                help="Specify the replication type supported by the backend."),
+    cfg.IntOpt("share_size",
+               default=1,
+               help="Default size in GB for shares created by share tests."),
 ]

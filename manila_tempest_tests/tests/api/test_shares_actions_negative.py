@@ -28,9 +28,7 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
     def resource_setup(cls):
         super(SharesActionsNegativeTest, cls).resource_setup()
         cls.admin_client = cls.admin_shares_v2_client
-        cls.share = cls.create_share(
-            size=1,
-        )
+        cls.share = cls.create_share()
 
     @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @testtools.skipUnless(
@@ -81,7 +79,7 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
         CONF.share.run_extend_tests,
         "Share extend tests are disabled.")
     def test_share_extend_with_invalid_share_state(self):
-        share = self.create_share(size=1, cleanup_in_class=False)
+        share = self.create_share(cleanup_in_class=False)
         new_size = int(share['size']) + 1
 
         # set "error" state
@@ -124,7 +122,8 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
         CONF.share.run_shrink_tests,
         "Share shrink tests are disabled.")
     def test_share_shrink_with_invalid_share_state(self):
-        share = self.create_share(size=2, cleanup_in_class=False)
+        size = CONF.share.share_size + 1
+        share = self.create_share(size=size, cleanup_in_class=False)
         new_size = int(share['size']) - 1
 
         # set "error" state

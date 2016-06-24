@@ -44,11 +44,9 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesAdminTest):
         # Create share inside consistency group
         cls.share_name = data_utils.rand_name("tempest-share-name")
         cls.share_desc = data_utils.rand_name("tempest-share-description")
-        cls.share_size = 1
         cls.share = cls.create_share(
             name=cls.share_name,
             description=cls.share_desc,
-            size=cls.share_size,
             consistency_group_id=cls.consistency_group['id'],
             share_type_id=cls.share_type['id'],
         )
@@ -93,7 +91,6 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesAdminTest):
         self.assertRaises(exceptions.BadRequest, self.create_share,
                           name=self.share_name,
                           description=self.share_desc,
-                          size=self.share_size,
                           consistency_group_id=consistency_group['id'],
                           cleanup_in_class=False,
                           version='2.4')
@@ -105,7 +102,6 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesAdminTest):
         self.assertRaises(exceptions.BadRequest, self.create_share,
                           name=self.share_name,
                           description=self.share_desc,
-                          size=self.share_size,
                           consistency_group_id=consistency_group['id'],
                           cleanup_in_class=False,
                           version='2.4')
@@ -117,7 +113,6 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesAdminTest):
         self.assertRaises(exceptions.BadRequest, self.create_share,
                           name=self.share_name,
                           description=self.share_desc,
-                          size=self.share_size,
                           consistency_group_id=consistency_group['id'],
                           cleanup_in_class=False,
                           version='2.4')
@@ -166,11 +161,9 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesAdminTest):
         consistency_group = self.create_consistency_group(version='2.4')
         share_name = data_utils.rand_name("tempest-share-name")
         share_desc = data_utils.rand_name("tempest-share-description")
-        share_size = 1
         share = self.create_share(
             name=share_name,
             description=share_desc,
-            size=share_size,
             consistency_group_id=consistency_group['id'],
             cleanup_in_class=False,
             version='2.4',

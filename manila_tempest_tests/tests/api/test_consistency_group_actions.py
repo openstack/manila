@@ -54,8 +54,8 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
         # Create 2 shares inside first CG and 1 inside second CG
         cls.share_name = data_utils.rand_name("tempest-share-name")
         cls.share_desc = data_utils.rand_name("tempest-share-description")
-        cls.share_size = 1
-        cls.share_size2 = 2
+        cls.share_size = CONF.share.share_size
+        cls.share_size2 = cls.share_size + 1
         cls.shares = cls.create_shares([
             {'kwargs': {
                 'name': cls.share_name,
