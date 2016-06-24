@@ -124,6 +124,10 @@ class ExecuteMixin(driver.ExecuteMixin):
         """ZFS shell commands executor."""
         return self.execute('sudo', 'zfs', *cmd, **kwargs)
 
+    def zfs_with_retry(self, *cmd, **kwargs):
+        """ZFS shell commands executor."""
+        return self.execute_with_retry('sudo', 'zfs', *cmd, **kwargs)
+
 
 @six.add_metaclass(abc.ABCMeta)
 class NASHelperBase(object):

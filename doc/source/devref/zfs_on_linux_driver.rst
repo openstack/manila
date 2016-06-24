@@ -40,6 +40,8 @@ The following operations are supported:
 
 * Create NFS Share
 * Delete NFS Share
+* Manage NFS Share
+* Unmanage NFS Share
 * Allow NFS Share access
    * Only IP access type is supported for NFS
    * Both access levels are supported - 'RW' and 'RO'
@@ -79,7 +81,6 @@ The ZFSonLinux share driver has the following restrictions:
 * 'Promote share replica' operation will switch roles of
   current 'secondary' replica and 'active'. It does not make more than
   one active replica available.
-* 'Manage share' operation is not yet implemented.
 * 'SaMBa' based sharing is not yet implemented.
 * 'Thick provisioning' is not yet implemented.
 

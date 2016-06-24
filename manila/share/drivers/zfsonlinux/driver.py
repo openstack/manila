@@ -446,6 +446,8 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
     def delete_share(self, context, share, share_server=None):
         """Is called to remove a share."""
         pool_name = self.private_storage.get(share['id'], 'pool_name')
+        pool_name = pool_name or share_utils.extract_host(
+            share["host"], level="pool")
         dataset_name = self.private_storage.get(share['id'], 'dataset_name')
         if not dataset_name:
             dataset_name = self._get_dataset_name(share)
@@ -624,6 +626,98 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
         dataset_name = self._get_dataset_name(share)
         return self._get_share_helper(share['share_proto']).update_access(
             dataset_name, access_rules, add_rules, delete_rules)
+
+    def manage_existing(self, share, driver_options):
+        """Manage existing ZFS dataset as manila share.
+
+        ZFSonLinux driver accepts only one driver_option 'size'.
+        If an administrator provides this option, then such quota will be set
+        to dataset and used as share size. Otherwise, driver will set quota
+        equal to nearest bigger rounded integer of usage size.
+        Driver does not expect mountpoint to be changed (should be equal
+        to default that is "/%(dataset_name)s").
+
+        :param share: share data
+        :param driver_options: Empty dict or dict with 'size' option.
+        :return: dict with share size and its export locations.
+        """
+        old_export_location = share["export_locations"][0]["path"]
+        old_dataset_name = old_export_location.split(":/")[-1]
+
+        scheduled_pool_name = share_utils.extract_host(
+            share["host"], level="pool")
+        actual_pool_name = old_dataset_name.split("/")[0]
+
+        new_dataset_name = self._get_dataset_name(share)
+
+        # Calculate quota for managed dataset
+        quota = driver_options.get("size")
+        if not quota:
+            consumed_space = self.get_zfs_option(old_dataset_name, "used")
+            consumed_space = utils.translate_string_size_to_float(
+                consumed_space)
+            quota = int(consumed_space) + 1
+        share["size"] = int(quota)
+
+        # Save dataset-specific data in private storage
+        options = self._get_dataset_creation_options(share, is_readonly=False)
+        ssh_cmd = "%(username)s@%(host)s" % {
+            "username": self.configuration.zfs_ssh_username,
+            "host": self.service_ip,
+        }
+        self.private_storage.update(
+            share["id"], {
+                "entity_type": "share",
+                "dataset_name": new_dataset_name,
+                "ssh_cmd": ssh_cmd,  # used in replication
+                "pool_name": actual_pool_name,  # used in replication
+                "used_options": " ".join(options),
+            }
+        )
+
+        # Perform checks on requested dataset
+        if actual_pool_name != scheduled_pool_name:
+            raise exception.ZFSonLinuxException(
+                _("Cannot manage share '%(share_id)s' "
+                  "(share_instance '%(si_id)s'), because scheduled "
+                  "pool '%(sch)s' and actual '%(actual)s' differ.") % {
+                    "share_id": share["share_id"],
+                    "si_id": share["id"],
+                    "sch": scheduled_pool_name,
+                    "actual": actual_pool_name})
+
+        out, err = self.zfs("list", "-r", actual_pool_name)
+        data = self.parse_zfs_answer(out)
+        for datum in data:
+            if datum["NAME"] == old_dataset_name:
+                break
+        else:
+            raise exception.ZFSonLinuxException(
+                _("Cannot manage share '%(share_id)s' "
+                  "(share_instance '%(si_id)s'), because dataset "
+                  "'%(dataset)s' not found in zpool '%(zpool)s'.") % {
+                    "share_id": share["share_id"],
+                    "si_id": share["id"],
+                    "dataset": old_dataset_name,
+                    "zpool": actual_pool_name})
+
+        # Rename dataset
+        out, err = self.execute("sudo", "mount")
+        if "%s " % old_dataset_name in out:
+            self.zfs_with_retry("umount", "-f", old_dataset_name)
+            time.sleep(1)
+        self.zfs_with_retry("rename", old_dataset_name, new_dataset_name)
+        self.zfs("mount", new_dataset_name)
+
+        # Apply options to dataset
+        for option in options:
+            self.zfs("set", option, new_dataset_name)
+
+        # Get new export locations of renamed dataset
+        export_locations = self._get_share_helper(
+            share["share_proto"]).get_exports(new_dataset_name)
+
+        return {"size": share["size"], "export_locations": export_locations}
 
     def unmanage(self, share):
         """Removes the specified share from Manila management."""
