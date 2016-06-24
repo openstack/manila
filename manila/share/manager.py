@@ -1575,10 +1575,12 @@ class ShareManager(manager.SchedulerDependentManager):
                 msg = _("Driver cannot calculate share size.")
                 raise exception.InvalidShare(reason=msg)
 
-            self._update_quota_usages(context, project_id, {
-                "shares": 1,
-                "gigabytes": share_update['size'],
-            })
+            reservations = QUOTAS.reserve(context,
+                                          project_id=project_id,
+                                          user_id=context.user_id,
+                                          shares=1,
+                                          gigabytes=share_update['size'])
+            QUOTAS.commit(context, reservations, project_id=project_id)
 
             share_update.update({
                 'status': constants.STATUS_AVAILABLE,
