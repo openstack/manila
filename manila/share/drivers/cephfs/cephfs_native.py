@@ -207,10 +207,6 @@ class CephFSNativeDriver(driver.ShareDriver,):
             raise exception.InvalidShareAccess(
                 reason=_("Only 'cephx' access type allowed."))
 
-        if access['access_level'] == constants.ACCESS_LEVEL_RO:
-            raise exception.InvalidShareAccessLevel(
-                level=constants.ACCESS_LEVEL_RO)
-
         ceph_auth_id = access['access_to']
 
         # We need to check here rather than the API or Manila Client to see
@@ -224,8 +220,18 @@ class CephFSNativeDriver(driver.ShareDriver,):
                              ceph_auth_id)
             raise exception.InvalidInput(message=error_message)
 
-        auth_result = self.volume_client.authorize(self._share_path(share),
-                                                   ceph_auth_id)
+        # TODO(rraja): Log the Ceph point release version, once available, in
+        # which the volume client can enable read-only access.
+        if not getattr(self.volume_client, 'version', None):
+            if access['access_level'] == constants.ACCESS_LEVEL_RO:
+                raise exception.InvalidShareAccessLevel(
+                    level=constants.ACCESS_LEVEL_RO)
+            auth_result = self.volume_client.authorize(
+                self._share_path(share), ceph_auth_id)
+        else:
+            readonly = access['access_level'] == constants.ACCESS_LEVEL_RO
+            auth_result = self.volume_client.authorize(
+                self._share_path(share), ceph_auth_id, readonly=readonly)
 
         return auth_result['auth_key']
 
