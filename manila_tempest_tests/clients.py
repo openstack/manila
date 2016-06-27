@@ -12,7 +12,21 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-from manila_tempest_tests.services.share.v2.json.shares_client import \
-    SharesV2Client
+from tempest import config
+from tempest.lib.services import clients
 
-__all__ = ['SharesV2Client']
+
+CONF = config.CONF
+
+
+class Clients(clients.ServiceClients):
+    """Tempest stable service clients and loaded plugins service clients"""
+
+    def __init__(self, credentials, service=None):
+        """Emulate the interface of Tempest's clients.Manager"""
+        # Identity settings
+        if CONF.identity.auth_version == 'v2':
+            identity_uri = CONF.identity.uri
+        else:
+            identity_uri = CONF.identity.uri_v3
+        super(Clients, self).__init__(credentials, identity_uri)

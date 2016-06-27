@@ -247,8 +247,7 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
     @base.skip_if_microversion_lt("2.18")
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_gateway_with_neutron(self):
-        os = getattr(self, 'os_%s' % self.credentials[0])
-        subnet_client = os.subnets_client
+        subnet_client = self.subnets_client
 
         self.create_share(cleanup_in_class=False)
         share_net_details = self.shares_v2_client.get_share_network(
@@ -267,8 +266,7 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
     @base.skip_if_microversion_lt("2.20")
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_mtu_with_neutron(self):
-        os = getattr(self, 'os_%s' % self.credentials[0])
-        network_client = os.networks_client
+        network_client = self.networks_client
 
         self.create_share(cleanup_in_class=False)
         share_net_details = self.shares_v2_client.get_share_network(

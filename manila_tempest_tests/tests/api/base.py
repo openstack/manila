@@ -21,7 +21,6 @@ import traceback
 from oslo_concurrency import lockutils
 from oslo_log import log
 import six
-from tempest import clients
 from tempest.common import credentials_factory as common_creds
 
 from tempest import config
@@ -30,10 +29,8 @@ from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions
 from tempest import test
 
+from manila_tempest_tests import clients
 from manila_tempest_tests.common import constants
-from manila_tempest_tests.services.share.json import shares_client
-from manila_tempest_tests.services.share.v2.json import (
-    shares_client as shares_v2_client)
 from manila_tempest_tests import share_exceptions
 from manila_tempest_tests import utils
 
@@ -138,6 +135,10 @@ class BaseSharesTest(test.BaseTestCase):
     # Will be cleaned up in tearDown method
     method_isolated_creds = []
 
+    # NOTE(andreaf) Override the client manager class to be used, so that
+    # a stable class is used, which includes plugin registered services as well
+    client_manager = clients.Clients
+
     def skip_if_microversion_not_supported(self, microversion):
         if not utils.is_microversion_supported(microversion):
             raise self.skipException(
@@ -212,11 +213,11 @@ class BaseSharesTest(test.BaseTestCase):
         ic.type_of_creds = type_of_creds
 
         # create client with isolated creds
-        os = clients.Manager(credentials=creds)
+        os = clients.Clients(creds)
         if client_version == '1':
-            client = shares_client.SharesClient(os.auth_provider)
+            client = os.share_v1.SharesClient()
         elif client_version == '2':
-            client = shares_v2_client.SharesV2Client(os.auth_provider)
+            client = os.share_v2.SharesV2Client()
 
         # Set place where will be deleted isolated creds
         ic_res = {
@@ -233,7 +234,7 @@ class BaseSharesTest(test.BaseTestCase):
             if (not CONF.service_available.neutron and
                     CONF.share.create_networks_when_multitenancy_enabled):
                 raise cls.skipException("Neutron support is required")
-            nc = os.networks_client
+            nc = os.network.NetworksClient()
             share_network_id = cls.provide_share_network(client, nc, ic)
             client.share_network_id = share_network_id
             resource = {
@@ -263,7 +264,16 @@ class BaseSharesTest(test.BaseTestCase):
     def setup_clients(cls):
         super(BaseSharesTest, cls).setup_clients()
         os = getattr(cls, 'os_%s' % cls.credentials[0])
-        os.shares_client = shares_client.SharesClient(os.auth_provider)
+        # Initialise share clients for test credentials
+        cls.shares_client = os.share_v1.SharesClient()
+        cls.shares_v2_client = os.share_v2.SharesV2Client()
+        # Initialise network clients for test credentials
+        if CONF.service_available.neutron:
+            cls.networks_client = os.network.NetworksClient()
+            cls.subnets_client = os.network.SubnetsClient()
+        else:
+            cls.networks_client = None
+            cls.subnets_client = None
 
         if CONF.identity.auth_version == 'v3':
             project_id = os.auth_provider.auth_data[1]['project']['id']
@@ -272,16 +282,12 @@ class BaseSharesTest(test.BaseTestCase):
         cls.tenant_id = project_id
         cls.user_id = os.auth_provider.auth_data[1]['user']['id']
 
-        cls.shares_client = os.shares_client
-        os.shares_v2_client = shares_v2_client.SharesV2Client(
-            os.auth_provider)
-        cls.shares_v2_client = os.shares_v2_client
         if CONF.share.multitenancy_enabled:
             if (not CONF.service_available.neutron and
                     CONF.share.create_networks_when_multitenancy_enabled):
                 raise cls.skipException("Neutron support is required")
             share_network_id = cls.provide_share_network(
-                cls.shares_v2_client, os.networks_client)
+                cls.shares_v2_client, cls.networks_client)
             cls.shares_client.share_network_id = share_network_id
             cls.shares_v2_client.share_network_id = share_network_id
 
@@ -1046,14 +1052,14 @@ class BaseSharesMixedTest(BaseSharesTest):
     @classmethod
     def setup_clients(cls):
         super(BaseSharesMixedTest, cls).setup_clients()
-        cls.admin_shares_client = shares_client.SharesClient(
-            cls.os_admin.auth_provider)
-        cls.admin_shares_v2_client = shares_v2_client.SharesV2Client(
-            cls.os_admin.auth_provider)
-        cls.alt_shares_client = shares_client.SharesClient(
-            cls.os_alt.auth_provider)
-        cls.alt_shares_v2_client = shares_v2_client.SharesV2Client(
-            cls.os_alt.auth_provider)
+        # Initialise share clients
+        cls.admin_shares_client = cls.os_admin.share_v1.SharesClient()
+        cls.admin_shares_v2_client = cls.os_admin.share_v2.SharesV2Client()
+        cls.alt_shares_client = cls.os_alt.share_v1.SharesClient()
+        cls.alt_shares_v2_client = cls.os_alt.share_v2.SharesV2Client()
+        # Initialise network clients
+        cls.os_admin.networks_client = cls.os_admin.network.NetworksClient()
+        cls.os_alt.networks_client = cls.os_alt.network.NetworksClient()
 
         if CONF.share.multitenancy_enabled:
             admin_share_network_id = cls.provide_share_network(
