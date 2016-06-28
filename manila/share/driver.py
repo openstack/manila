@@ -106,7 +106,6 @@ share_opts = [
     # Replication option/s
     cfg.StrOpt(
         "replication_domain",
-        default=None,
         help="A string specifying the replication domain that the backend "
              "belongs to. This option needs to be specified the same in the "
              "configuration sections of all backends that support "
