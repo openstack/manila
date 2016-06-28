@@ -35,12 +35,10 @@ data_helper_opts = [
              "when migrating a share (seconds)."),
     cfg.StrOpt(
         'data_node_access_ip',
-        default=None,
         help="The IP of the node interface connected to the admin network. "
              "Used for allowing access to the mounting shares."),
     cfg.StrOpt(
         'data_node_access_cert',
-        default=None,
         help="The certificate installed in the data node in order to "
              "allow access to certificate authentication-based shares."),
 
