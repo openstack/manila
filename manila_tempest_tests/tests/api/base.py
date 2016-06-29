@@ -349,7 +349,7 @@ class BaseSharesTest(test.BaseTestCase):
         return share_network_id
 
     @classmethod
-    def _create_share(cls, share_protocol=None, size=1, name=None,
+    def _create_share(cls, share_protocol=None, size=None, name=None,
                       snapshot_id=None, description=None, metadata=None,
                       share_network_id=None, share_type_id=None,
                       consistency_group_id=None, client=None,
@@ -358,6 +358,7 @@ class BaseSharesTest(test.BaseTestCase):
         description = description or "Tempest's share"
         share_network_id = share_network_id or client.share_network_id or None
         metadata = metadata or {}
+        size = size or CONF.share.share_size
         kwargs.update({
             'share_protocol': share_protocol,
             'size': size,

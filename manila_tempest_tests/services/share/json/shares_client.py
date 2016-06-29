@@ -47,8 +47,9 @@ class SharesClient(rest_client.RestClient):
         self.share_network_id = CONF.share.share_network_id
         self.build_interval = CONF.share.build_interval
         self.build_timeout = CONF.share.build_timeout
+        self.share_size = CONF.share.share_size
 
-    def create_share(self, share_protocol=None, size=1,
+    def create_share(self, share_protocol=None, size=None,
                      name=None, snapshot_id=None, description=None,
                      metadata=None, share_network_id=None,
                      share_type_id=None, is_public=False):
@@ -57,6 +58,8 @@ class SharesClient(rest_client.RestClient):
             name = data_utils.rand_name("tempest-created-share")
         if description is None:
             description = data_utils.rand_name("tempest-created-share-desc")
+        if size is None:
+            size = self.share_size
         if share_protocol is None:
             share_protocol = self.share_protocol
         if share_protocol is None:

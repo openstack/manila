@@ -121,11 +121,9 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesTest):
         # Create a share in the consistency group
         cls.share_name = data_utils.rand_name("tempest-share-name")
         cls.share_desc = data_utils.rand_name("tempest-share-description")
-        cls.share_size = 1
         cls.share = cls.create_share(
             name=cls.share_name,
             description=cls.share_desc,
-            size=cls.share_size,
             consistency_group_id=cls.consistency_group['id'],
         )
         # Create a cgsnapshot of the consistency group

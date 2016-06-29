@@ -31,7 +31,6 @@ class SharesNegativeTest(base.BaseSharesTest):
         cls.share = cls.create_share(
             name='public_share',
             description='public_share_desc',
-            size=1,
             is_public=True,
             metadata={'key': 'value'}
         )
@@ -67,7 +66,8 @@ class SharesNegativeTest(base.BaseSharesTest):
         skip_msg = "Check disc space for this test"
 
         try:  # create share
-            share = self.create_share(size=2, cleanup_in_class=False)
+            size = CONF.share.share_size + 1
+            share = self.create_share(size=size, cleanup_in_class=False)
         except share_exceptions.ShareBuildErrorException:
             self.skip(skip_msg)
 
@@ -80,7 +80,7 @@ class SharesNegativeTest(base.BaseSharesTest):
         # try create share from snapshot with less size
         self.assertRaises(lib_exc.BadRequest,
                           self.create_share,
-                          size=1, snapshot_id=snap["id"],
+                          snapshot_id=snap["id"],
                           cleanup_in_class=False)
 
     @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])

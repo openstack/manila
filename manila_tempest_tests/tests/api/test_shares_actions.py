@@ -44,11 +44,9 @@ class SharesActionsTest(base.BaseSharesTest):
             'foo_key_share_1': 'foo_value_share_1',
             'bar_key_share_1': 'foo_value_share_1',
         }
-        cls.share_size = 1
         cls.shares.append(cls.create_share(
             name=cls.share_name,
             description=cls.share_desc,
-            size=cls.share_size,
             metadata=cls.metadata,
         ))
 
@@ -71,7 +69,6 @@ class SharesActionsTest(base.BaseSharesTest):
             cls.shares.append(cls.create_share(
                 name=cls.share_name2,
                 description=cls.share_desc2,
-                size=cls.share_size,
                 metadata=cls.metadata2,
                 snapshot_id=cls.snap['id'],
             ))
@@ -118,9 +115,9 @@ class SharesActionsTest(base.BaseSharesTest):
         self.assertEqual(
             self.share_desc, six.text_type(share["description"]), msg)
 
-        msg = "Expected size: '%s', actual size: '%s'" % (self.share_size,
-                                                          share["size"])
-        self.assertEqual(self.share_size, int(share["size"]), msg)
+        msg = "Expected size: '%s', actual size: '%s'" % (
+            CONF.share.share_size, share["size"])
+        self.assertEqual(CONF.share.share_size, int(share["size"]), msg)
 
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_get_share_v2_1(self):
@@ -369,14 +366,12 @@ class SharesActionsTest(base.BaseSharesTest):
         public_share = self.create_share(
             name='public_share',
             description='public_share_desc',
-            size=1,
             is_public=True,
             cleanup_in_class=False
         )
         private_share = self.create_share(
             name='private_share',
             description='private_share_desc',
-            size=1,
             is_public=False,
             cleanup_in_class=False
         )
@@ -563,8 +558,8 @@ class SharesActionsTest(base.BaseSharesTest):
         CONF.share.run_extend_tests,
         "Share extend tests are disabled.")
     def test_extend_share(self):
-        share = self.create_share(size=1, cleanup_in_class=False)
-        new_size = 2
+        share = self.create_share(cleanup_in_class=False)
+        new_size = int(share['size']) + 1
 
         # extend share and wait for active status
         self.shares_v2_client.extend_share(share['id'], new_size)
@@ -586,8 +581,9 @@ class SharesActionsTest(base.BaseSharesTest):
         CONF.share.run_shrink_tests,
         "Share shrink tests are disabled.")
     def test_shrink_share(self):
-        share = self.create_share(size=2, cleanup_in_class=False)
-        new_size = 1
+        size = CONF.share.share_size + 1
+        share = self.create_share(size=size, cleanup_in_class=False)
+        new_size = int(share['size']) - 1
 
         # shrink share and wait for active status
         self.shares_v2_client.shrink_share(share['id'], new_size)
@@ -614,10 +610,8 @@ class SharesRenameTest(base.BaseSharesTest):
         # create share
         cls.share_name = data_utils.rand_name("tempest-share-name")
         cls.share_desc = data_utils.rand_name("tempest-share-description")
-        cls.share_size = 1
         cls.share = cls.create_share(
-            name=cls.share_name, description=cls.share_desc,
-            size=cls.share_size)
+            name=cls.share_name, description=cls.share_desc)
 
         if CONF.share.run_snapshot_tests:
             # create snapshot

@@ -49,11 +49,9 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
             'foo_key_share_1': 'foo_value_share_1',
             'bar_key_share_1': 'foo_value_share_1',
         }
-        cls.share_size = 1
         cls.shares.append(cls.create_share(
             name=cls.share_name,
             description=cls.share_desc,
-            size=cls.share_size,
             metadata=cls.metadata,
             share_type_id=cls.st['share_type']['id'],
         ))
@@ -77,7 +75,6 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
             cls.shares.append(cls.create_share(
                 name=cls.share_name2,
                 description=cls.share_desc2,
-                size=cls.share_size,
                 metadata=cls.metadata2,
                 snapshot_id=cls.snap['id'],
             ))
@@ -105,9 +102,9 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
                                             share["description"])
         self.assertEqual(self.share_desc, str(share["description"]), msg)
 
-        msg = "Expected size: '%s', actual size: '%s'" % (self.share_size,
-                                                          share["size"])
-        self.assertEqual(self.share_size, int(share["size"]), msg)
+        msg = "Expected size: '%s', actual size: '%s'" % (
+            CONF.share.share_size, share["size"])
+        self.assertEqual(CONF.share.share_size, int(share["size"]), msg)
 
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_list_shares(self):
