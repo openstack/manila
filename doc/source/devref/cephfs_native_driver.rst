@@ -289,7 +289,7 @@ Mitaka release
   http://docs.ceph.com/docs/master/cephfs/file-layouts/
 
 - An additional level of resource isolation can be provided by mapping a
-  share's contents to a seperate RADOS pool.  This layout would be be preferred
+  share's contents to a separate RADOS pool.  This layout would be be preferred
   only for cloud deployments with a limited number of shares needing strong
   resource separation.  You can do this by setting a share type specification,
   ``cephfs:data_isolated`` for the share type used by the cephfs driver.
