@@ -1,0 +1,3 @@
+---
+fixes:
+  - HPE3PAR driver fix to allow delete of a share that does not exist on the backend.

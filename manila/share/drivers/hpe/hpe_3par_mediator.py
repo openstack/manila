@@ -662,24 +662,35 @@ class HPE3ParMediator(object):
         if fstore:
             self._delete_share(share_name_ro, protocol, fpg, vfs, fstore)
 
-        if not self.hpe3par_fstore_per_share:
-            # Attempt to remove file tree on delete when using nested shares.
-            # If the file tree cannot be removed for whatever reason, we will
-            # not treat this as an error_deleting issue. We will allow the
-            # delete to continue as requested.
-            self._delete_file_tree(share_name, protocol, fpg, vfs, fstore)
-            if fstore:
-                # reduce the fsquota by share size when a share is deleted.
-                self._update_capacity_quotas(fstore, 0, share_size, fpg, vfs)
+            if fstore == share_name:
+                try:
+                    self._client.removefstore(vfs, fstore, fpg=fpg)
+                except Exception as e:
+                    msg = (_('Failed to remove fstore %(fstore)s: %(e)s') %
+                           {'fstore': fstore, 'e': six.text_type(e)})
+                    LOG.exception(msg)
+                    raise exception.ShareBackendException(msg=msg)
 
-        if fstore == share_name:
-            try:
-                self._client.removefstore(vfs, fstore, fpg=fpg)
-            except Exception as e:
-                msg = (_('Failed to remove fstore %(fstore)s: %(e)s') %
-                       {'fstore': fstore, 'e': six.text_type(e)})
-                LOG.exception(msg)
-                raise exception.ShareBackendException(msg=msg)
+            else:
+                try:
+                    # Attempt to remove file tree on delete when using nested
+                    # shares. If the file tree cannot be removed for whatever
+                    # reason, we will not treat this as an error_deleting
+                    # issue. We will allow the delete to continue as requested.
+                    self._delete_file_tree(
+                        share_name, protocol, fpg, vfs, fstore)
+                    # reduce the fsquota by share size when a tree is deleted.
+                    self._update_capacity_quotas(
+                        fstore, 0, share_size, fpg, vfs)
+                except Exception as e:
+                    msg = _LW('Exception during cleanup of deleted '
+                              'share %(share)s in filestore %(fstore)s: %(e)s')
+                    data = {
+                        'fstore': fstore,
+                        'share': share_name,
+                        'e': six.text_type(e),
+                    }
+                    LOG.warning(msg, data)
 
     def _delete_file_tree(self, share_name, protocol, fpg, vfs, fstore):
         # If the share protocol is CIFS, we need to make sure the admin
