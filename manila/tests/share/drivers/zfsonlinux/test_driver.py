@@ -59,6 +59,8 @@ class FakeConfig(object):
             "reserved_share_percentage", 0)
         self.max_over_subscription_ratio = kwargs.get(
             "max_over_subscription_ratio", 15.0)
+        self.filter_function = kwargs.get("filter_function", None)
+        self.goodness_function = kwargs.get("goodness_function", None)
 
     def safe_get(self, key):
         return getattr(self, key)
@@ -303,6 +305,8 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             'storage_protocol': 'NFS',
             'total_capacity_gb': 'unknown',
             'vendor_name': 'Open Source',
+            'filter_function': None,
+            'goodness_function': None,
         }
         if replication_domain:
             expected['replication_type'] = 'readable'

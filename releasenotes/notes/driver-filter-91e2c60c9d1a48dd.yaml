@@ -1,0 +1,10 @@
+---
+features:
+  - Add DriverFilter and GoodnessWeigher to manila's scheduler.
+    These can use two new properties provided by backends, 'filter_function'
+    and 'goodness_function', which can be used to filter and weigh qualified
+    backends, respectively.
+upgrade:
+  - To add DriverFilter and GoodnessWeigher to an active deployment, their
+    references must be added to the filters and weighers sections on
+    entry_points.txt.

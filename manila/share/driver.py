@@ -112,6 +112,14 @@ share_opts = [
              "replication between each other. If this option is not "
              "specified in the group, it means that replication is not "
              "enabled on the backend."),
+    cfg.StrOpt('filter_function',
+               default=None,
+               help='String representation for an equation that will be '
+                    'used to filter hosts.'),
+    cfg.StrOpt('goodness_function',
+               default=None,
+               help='String representation for an equation that will be '
+                    'used to determine the goodness of a host.'),
 ]
 
 ssh_opts = [
@@ -808,6 +816,8 @@ class ShareDriver(object):
             pools=self.pools or None,
             snapshot_support=self.snapshots_are_supported,
             replication_domain=self.replication_domain,
+            filter_function=self.get_filter_function(),
+            goodness_function=self.get_goodness_function(),
         )
         if isinstance(data, dict):
             common.update(data)
@@ -1841,3 +1851,57 @@ class ShareDriver(object):
             backend and their status was 'deleting'.
         """
         raise NotImplementedError()
+
+    def get_filter_function(self):
+        """Get filter_function string.
+
+        Returns either the string from the driver instance or global section
+        in manila.conf. If nothing is specified in manila.conf, then try to
+        find the default filter_function. When None is returned the scheduler
+        will always pass the driver instance.
+
+        :return a filter_function string or None
+        """
+        ret_function = self.configuration.filter_function
+        if not ret_function:
+            ret_function = CONF.filter_function
+        if not ret_function:
+            ret_function = self.get_default_filter_function()
+        return ret_function
+
+    def get_goodness_function(self):
+        """Get good_function string.
+
+        Returns either the string from the driver instance or global section
+        in manila.conf. If nothing is specified in manila.conf, then try to
+        find the default goodness_function. When None is returned the scheduler
+        will give the lowest score to the driver instance.
+
+        :return a goodness_function string or None
+        """
+        ret_function = self.configuration.goodness_function
+        if not ret_function:
+            ret_function = CONF.goodness_function
+        if not ret_function:
+            ret_function = self.get_default_goodness_function()
+        return ret_function
+
+    def get_default_filter_function(self):
+        """Get the default filter_function string.
+
+        Each driver could overwrite the method to return a well-known
+        default string if it is available.
+
+        :return: None
+        """
+        return None
+
+    def get_default_goodness_function(self):
+        """Get the default goodness_function string.
+
+        Each driver could overwrite the method to return a well-known
+        default string if it is available.
+
+        :return: None
+        """
+        return None
