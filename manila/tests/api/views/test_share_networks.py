@@ -17,6 +17,7 @@ import ddt
 
 from manila.api.views import share_networks
 from manila import test
+from manila.tests.api import fakes
 
 
 @ddt.ddt
@@ -25,6 +26,7 @@ class ViewBuilderTestCase(test.TestCase):
     def setUp(self):
         super(ViewBuilderTestCase, self).setUp()
         self.builder = share_networks.ViewBuilder()
+        self.req = fakes.HTTPRequest.blank('/share-networks', version="2.18")
 
     def test__collection_name(self):
         self.assertEqual('share_networks', self.builder._collection_name)
@@ -33,14 +35,14 @@ class ViewBuilderTestCase(test.TestCase):
         {'id': 'fake_sn_id', 'name': 'fake_sn_name'},
         {'id': 'fake_sn_id', 'name': 'fake_sn_name', 'fake_extra_key': 'foo'},
     )
-    def test_build_share_network(self, sn):
+    def test_build_share_network_v_2_18(self, sn):
         expected_keys = (
             'id', 'name', 'project_id', 'created_at', 'updated_at',
             'neutron_net_id', 'neutron_subnet_id', 'nova_net_id',
             'network_type', 'segmentation_id', 'cidr', 'ip_version',
-            'description')
+            'gateway', 'description')
 
-        result = self.builder.build_share_network(sn)
+        result = self.builder.build_share_network(self.req, sn)
 
         self.assertEqual(1, len(result))
         self.assertIn('share_network', result)
@@ -64,10 +66,11 @@ class ViewBuilderTestCase(test.TestCase):
               segmentation_id='fake_segmentation_id',
               cidr='fake_cidr',
               ip_version='fake_ip_version',
+              gateway='fake_gateway',
               description='fake_description'),
          dict(id='fake_id2', name='fake_name2')],
     )
-    def test_build_share_networks_with_details(self, share_networks):
+    def test_build_share_networks_with_details_v_2_18(self, share_networks):
         expected = []
         for share_network in share_networks:
             expected.append(dict(
@@ -83,10 +86,12 @@ class ViewBuilderTestCase(test.TestCase):
                 segmentation_id=share_network.get('segmentation_id'),
                 cidr=share_network.get('cidr'),
                 ip_version=share_network.get('ip_version'),
+                gateway=share_network.get('gateway'),
                 description=share_network.get('description')))
         expected = {'share_networks': expected}
 
-        result = self.builder.build_share_networks(share_networks, True)
+        result = self.builder.build_share_networks(
+            self.req, share_networks, True)
 
         self.assertEqual(expected, result)
 
@@ -97,13 +102,15 @@ class ViewBuilderTestCase(test.TestCase):
         [{'id': 'id1', 'name': 'name1'},
          {'id': 'id2', 'name': 'name2', 'fake': 'I should not be returned'}],
     )
-    def test_build_share_networks_without_details(self, share_networks):
+    def test_build_share_networks_without_details_v_2_18(self,
+                                                         share_networks):
         expected = []
         for share_network in share_networks:
             expected.append(dict(
                 id=share_network.get('id'), name=share_network.get('name')))
         expected = {'share_networks': expected}
 
-        result = self.builder.build_share_networks(share_networks, False)
+        result = self.builder.build_share_networks(
+            self.req, share_networks, False)
 
         self.assertEqual(expected, result)

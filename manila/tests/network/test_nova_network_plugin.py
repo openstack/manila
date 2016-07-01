@@ -90,8 +90,9 @@ class NovaNetworkPluginTest(test.TestCase):
             self.instance.admin_context, expected_ip_address)
         self.instance.db.share_network_update.assert_called_once_with(
             self.fake_context, share_network['id'],
-            dict(cidr=nova_net['cidr'], ip_version=4,
-                 segmentation_id=nova_net['vlan'], network_type=net_type))
+            dict(cidr=nova_net['cidr'], gateway=nova_net['gateway'],
+                 ip_version=4, segmentation_id=nova_net['vlan'],
+                 network_type=net_type))
         self.instance.db.network_allocations_get_by_ip_address.\
             assert_has_calls([
                 mock.call(self.fake_context, '20.0.0.7'),
@@ -149,8 +150,9 @@ class NovaNetworkPluginTest(test.TestCase):
             mock.call(self.instance.admin_context, expected_ip_address2)])
         self.instance.db.share_network_update.assert_called_once_with(
             self.fake_context, self.share_network['id'],
-            dict(cidr=nova_net['cidr'], ip_version=4,
-                 segmentation_id=nova_net['vlan'], network_type=net_type))
+            dict(cidr=nova_net['cidr'], gateway=nova_net['gateway'],
+                 ip_version=4, segmentation_id=nova_net['vlan'],
+                 network_type=net_type))
         self.instance.db.network_allocations_get_by_ip_address.\
             assert_has_calls([
                 mock.call(self.fake_context, '20.0.0.2'),
@@ -186,8 +188,9 @@ class NovaNetworkPluginTest(test.TestCase):
             self.instance.admin_context, self.share_network['nova_net_id'])
         self.instance.db.share_network_update.assert_called_once_with(
             self.fake_context, self.share_network['id'],
-            dict(cidr=nova_net['cidr'], ip_version=4,
-                 segmentation_id=nova_net['vlan'], network_type='vlan'))
+            dict(cidr=nova_net['cidr'], gateway=nova_net['gateway'],
+                 ip_version=4, segmentation_id=nova_net['vlan'],
+                 network_type='vlan'))
         self.assertEqual(
             248,
             self.instance.db.network_allocations_get_by_ip_address.call_count)

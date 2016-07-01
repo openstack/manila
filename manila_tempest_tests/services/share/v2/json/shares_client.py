@@ -1210,3 +1210,24 @@ class SharesV2Client(shares_client.SharesClient):
                                version=version)
         self.expected_success(202, resp.status)
         return self._parse_resp(body)
+
+    def list_share_networks(self, detailed=False, params=None,
+                            version=LATEST_MICROVERSION):
+        """Get list of share networks w/o filters."""
+        uri = 'share-networks/detail' if detailed else 'share-networks'
+        uri += '?%s' % urlparse.urlencode(params) if params else ''
+        resp, body = self.get(uri, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def list_share_networks_with_detail(self, params=None,
+                                        version=LATEST_MICROVERSION):
+        """Get detailed list of share networks w/o filters."""
+        return self.list_share_networks(
+            detailed=True, params=params, version=version)
+
+    def get_share_network(self, share_network_id, version=LATEST_MICROVERSION):
+        resp, body = self.get("share-networks/%s" % share_network_id,
+                              version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)

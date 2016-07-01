@@ -61,6 +61,7 @@ fake_share_network = {
     'segmentation_id': 1234,
     'ip_version': 4,
     'cidr': 'fake_cidr',
+    'gateway': 'fake_gateway',
 }
 
 fake_share_server = {
@@ -82,6 +83,7 @@ fake_network_allocation = {
     'segmentation_id': fake_share_network['segmentation_id'],
     'ip_version': fake_share_network['ip_version'],
     'cidr': fake_share_network['cidr'],
+    'gateway': fake_share_network['gateway'],
 }
 
 
@@ -270,8 +272,16 @@ class NeutronNetworkPluginTest(test.TestCase):
 
     @mock.patch.object(db_api, 'share_network_update', mock.Mock())
     def test_save_neutron_subnet_data(self):
-        neutron_subnet_info = {'cidr': '10.0.0.0/24',
-                               'ip_version': 4}
+        neutron_subnet_info = {
+            'cidr': '10.0.0.0/24',
+            'ip_version': 4,
+            'gateway_ip': '10.0.0.1',
+        }
+        subnet_value = {
+            'cidr': '10.0.0.0/24',
+            'ip_version': 4,
+            'gateway': '10.0.0.1',
+        }
 
         with mock.patch.object(self.plugin.neutron_api,
                                'get_subnet',
@@ -284,7 +294,7 @@ class NeutronNetworkPluginTest(test.TestCase):
             self.plugin.db.share_network_update.assert_called_once_with(
                 self.fake_context,
                 fake_share_network['id'],
-                neutron_subnet_info)
+                subnet_value)
 
     def test_has_network_provider_extension_true(self):
         extensions = {neutron_constants.PROVIDER_NW_EXT: {}}
