@@ -398,53 +398,6 @@ class ShareDatabaseAPITestCase(test.TestCase):
                 expected_share_keys.issubset(replica_share_2.keys()))
             self.assertIsNone(replica_share_3)
 
-    def test_share_replicas_get_active_replicas_by_share(self):
-        db_utils.create_share_replica(
-            id='Replica1',
-            share_id='FAKE_SHARE_ID1',
-            status=constants.STATUS_AVAILABLE,
-            replica_state=constants.REPLICA_STATE_ACTIVE)
-        db_utils.create_share_replica(
-            id='Replica2',
-            status=constants.STATUS_AVAILABLE,
-            share_id='FAKE_SHARE_ID1',
-            replica_state=constants.REPLICA_STATE_ACTIVE)
-        db_utils.create_share_replica(
-            id='Replica3',
-            status=constants.STATUS_AVAILABLE,
-            share_id='FAKE_SHARE_ID2',
-            replica_state=constants.REPLICA_STATE_ACTIVE)
-        db_utils.create_share_replica(
-            id='Replica4',
-            status=constants.STATUS_ERROR,
-            share_id='FAKE_SHARE_ID2',
-            replica_state=constants.REPLICA_STATE_ACTIVE)
-        db_utils.create_share_replica(
-            id='Replica5',
-            status=constants.STATUS_AVAILABLE,
-            share_id='FAKE_SHARE_ID2',
-            replica_state=constants.REPLICA_STATE_IN_SYNC)
-        db_utils.create_share_replica(
-            id='Replica6',
-            share_id='FAKE_SHARE_ID3',
-            status=constants.STATUS_AVAILABLE,
-            replica_state=constants.REPLICA_STATE_IN_SYNC)
-
-        def get_active_replica_ids(share_id):
-            active_replicas = (
-                db_api.share_replicas_get_active_replicas_by_share(
-                    self.ctxt, share_id)
-            )
-            return [r['id'] for r in active_replicas]
-
-        active_ids_shr1 = get_active_replica_ids('FAKE_SHARE_ID1')
-        active_ids_shr2 = get_active_replica_ids('FAKE_SHARE_ID2')
-        active_ids_shr3 = get_active_replica_ids('FAKE_SHARE_ID3')
-
-        self.assertEqual(active_ids_shr1, ['Replica1', 'Replica2'])
-        self.assertEqual(active_ids_shr2, ['Replica3', 'Replica4'])
-        self.assertEqual([], active_ids_shr3)
-
     def test_share_replica_get_exception(self):
         replica = db_utils.create_share_replica(share_id='FAKE_SHARE_ID')
 
@@ -607,34 +560,6 @@ class ConsistencyGroupDatabaseAPITestCase(test.TestCase):
         self.assertEqual(1, len(cgs))
         cg = cgs[0]
         self.assertDictMatch(dict(expected_cg), dict(cg))
-
-    def test_consistency_group_get_all_by_host(self):
-        fake_host = 'my_fake_host'
-        expected_cg = db_utils.create_consistency_group(host=fake_host)
-        db_utils.create_consistency_group()
-
-        cgs = db_api.consistency_group_get_all_by_host(self.ctxt, fake_host,
-                                                       detailed=False)
-
-        self.assertEqual(1, len(cgs))
-        cg = cgs[0]
-        self.assertEqual(2, len(dict(cg).keys()))
-        self.assertEqual(expected_cg['id'], cg['id'])
-        self.assertEqual(expected_cg['name'], cg['name'])
-
-    def test_consistency_group_get_all_by_host_with_details(self):
-        fake_host = 'my_fake_host'
-        expected_cg = db_utils.create_consistency_group(host=fake_host)
-        db_utils.create_consistency_group()
-
-        cgs = db_api.consistency_group_get_all_by_host(self.ctxt,
-                                                       fake_host,
-                                                       detailed=True)
-
-        self.assertEqual(1, len(cgs))
-        cg = cgs[0]
-        self.assertDictMatch(dict(expected_cg), dict(cg))
-        self.assertEqual(fake_host, cg['host'])
 
     def test_consistency_group_get_all_by_project(self):
         fake_project = 'fake_project'
@@ -1043,14 +968,6 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
             snapshot = db_api.share_snapshot_get(self.ctxt, snapshot['id'])
             self.assertEqual(1, len(snapshot['instances']))
             self.assertEqual(first_instance_id, snapshot['instance']['id'])
-
-    def test_share_snapshot_destroy_has_instances(self):
-        snapshot = db_utils.create_snapshot(with_share=True)
-
-        self.assertRaises(exception.InvalidShareSnapshot,
-                          db_api.share_snapshot_destroy,
-                          context.get_admin_context(),
-                          snapshot['id'])
 
 
 class ShareExportLocationsDatabaseAPITestCase(test.TestCase):

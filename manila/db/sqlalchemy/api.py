@@ -371,14 +371,6 @@ def service_get_by_host_and_topic(context, host, topic):
 
 
 @require_admin_context
-def service_get_all_by_host(context, host):
-    return model_query(
-        context, models.Service, read_deleted="no").\
-        filter_by(host=host).\
-        all()
-
-
-@require_admin_context
 def _service_get_all_topic_subquery(context, session, topic, subq, label):
     sort_value = getattr(subq.c, label)
     return model_query(context, models.Service,
@@ -733,25 +725,6 @@ def quota_usage_update(context, project_id, user_id, resource, **kwargs):
 
 
 ###################
-
-
-@require_context
-def reservation_get(context, uuid, session=None):
-    result = model_query(context, models.Reservation, session=session,
-                         read_deleted="no").\
-        filter_by(uuid=uuid).first()
-
-    if not result:
-        raise exception.ReservationNotFound(uuid=uuid)
-
-    return result
-
-
-@require_admin_context
-def reservation_create(context, uuid, usage, project_id, user_id, resource,
-                       delta, expire):
-    return _reservation_create(context, uuid, usage, project_id, user_id,
-                               resource, delta, expire)
 
 
 def _reservation_create(context, uuid, usage, project_id, user_id, resource,
@@ -1389,24 +1362,6 @@ def share_replicas_get_available_active_replica(context, share_id,
 
     if result and with_share_data:
         result = _set_replica_share_data(context, result, session)[0]
-
-    return result
-
-
-@require_context
-def share_replicas_get_active_replicas_by_share(context, share_id,
-                                                with_share_data=False,
-                                                with_share_server=False,
-                                                session=None):
-    """Returns all active replicas for a given share."""
-    session = session or get_session()
-
-    result = _share_replica_get_with_filters(
-        context, with_share_server=with_share_server, share_id=share_id,
-        replica_state=constants.REPLICA_STATE_ACTIVE, session=session).all()
-
-    if with_share_data:
-        result = _set_replica_share_data(context, result, session)
 
     return result
 
@@ -2085,21 +2040,6 @@ def snapshot_data_get_for_project(context, project_id, user_id, session=None):
 
 
 @require_context
-def share_snapshot_destroy(context, snapshot_id):
-    session = get_session()
-    with session.begin():
-        snapshot_ref = share_snapshot_get(context, snapshot_id,
-                                          session=session)
-
-        if len(snapshot_ref.instances) > 0:
-            msg = _("Snapshot %(id)s has %(count)s snapshot instances.") % {
-                'id': snapshot_id, 'count': len(snapshot_ref.instances)}
-            raise exception.InvalidShareSnapshot(msg)
-
-        snapshot_ref.soft_delete(session=session)
-
-
-@require_context
 def share_snapshot_get(context, snapshot_id, session=None):
     result = model_query(context, models.ShareSnapshot, session=session,
                          project_only=True).\
@@ -2191,21 +2131,6 @@ def share_snapshot_get_all_for_share(context, share_id, filters=None,
         context, share_id=share_id,
         filters=filters, sort_key=sort_key, sort_dir=sort_dir,
     )
-
-
-@require_context
-def share_snapshot_data_get_for_project(context, project_id, session=None):
-    authorize_project_context(context, project_id)
-    result = model_query(context, models.ShareSnapshot,
-                         func.count(models.ShareSnapshot.id),
-                         func.sum(models.ShareSnapshot.share_size),
-                         read_deleted="no",
-                         session=session).\
-        filter_by(project_id=project_id).\
-        first()
-
-    # NOTE(vish): convert None to 0
-    return (result[0] or 0, result[1] or 0)
 
 
 @require_context
@@ -3509,21 +3434,6 @@ def _consistency_group_get_all_query(context, session=None):
 @require_admin_context
 def consistency_group_get_all(context, detailed=True):
     query = _consistency_group_get_all_query(context)
-    if detailed:
-        return query.options(joinedload('share_types')).all()
-    else:
-        query = query.with_entities(models.ConsistencyGroup.id,
-                                    models.ConsistencyGroup.name)
-        values = []
-        for item in query.all():
-            id, name = item
-            values.append({"id": id, "name": name})
-        return values
-
-
-@require_admin_context
-def consistency_group_get_all_by_host(context, host, detailed=True):
-    query = _consistency_group_get_all_query(context).filter_by(host=host)
     if detailed:
         return query.options(joinedload('share_types')).all()
     else:
