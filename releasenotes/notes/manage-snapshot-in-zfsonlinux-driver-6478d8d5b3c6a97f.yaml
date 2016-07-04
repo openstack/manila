@@ -1,0 +1,3 @@
+---
+features:
+  - Added support of 'manage snapshot' feature to ZFSonLinux driver.

@@ -18,6 +18,7 @@ Module with ZFSonLinux share driver that utilizes ZFS filesystem resources
 and exports them as shares.
 """
 
+import math
 import time
 
 from oslo_config import cfg
@@ -492,6 +493,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
             }
         )
         self.zfs('snapshot', snapshot_name)
+        return {"provider_location": snapshot_name}
 
     @ensure_share_server_not_provided
     def delete_snapshot(self, context, snapshot, share_server=None):
@@ -519,7 +521,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                 _LW("Snapshot with '%(id)s' ID and '%(name)s' NAME is "
                     "absent on backend. Nothing has been deleted."),
                 {'id': snapshot['id'], 'name': snapshot_name})
-        self.private_storage.delete(snapshot['id'])
+        self.private_storage.delete(snapshot['snapshot_id'])
 
     @ensure_share_server_not_provided
     def create_share_from_snapshot(self, context, share, snapshot,
@@ -722,6 +724,54 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
     def unmanage(self, share):
         """Removes the specified share from Manila management."""
         self.private_storage.delete(share['id'])
+
+    def manage_existing_snapshot(self, snapshot_instance, driver_options):
+        """Manage existing share snapshot with manila.
+
+        :param snapshot_instance: SnapshotInstance data
+        :param driver_options: expects only one optional key 'size'.
+        :return: dict with share snapshot instance fields for update, example:
+            {'size': 1,
+             'provider_location': 'path/to/some/dataset@some_snapshot_tag'}
+        """
+        snapshot_size = int(driver_options.get("size", 0))
+        old_provider_location = snapshot_instance.get("provider_location")
+        old_snapshot_tag = old_provider_location.split("@")[-1]
+        new_snapshot_tag = self._get_snapshot_name(snapshot_instance["id"])
+
+        self.private_storage.update(
+            snapshot_instance["snapshot_id"], {
+                "entity_type": "snapshot",
+                "old_snapshot_tag": old_snapshot_tag,
+                "snapshot_tag": new_snapshot_tag,
+            }
+        )
+
+        try:
+            self.zfs("list", "-r", "-t", "snapshot", old_provider_location)
+        except exception.ProcessExecutionError as e:
+            raise exception.ManageInvalidShareSnapshot(reason=e.stderr)
+
+        if not snapshot_size:
+            consumed_space = self.get_zfs_option(old_provider_location, "used")
+            consumed_space = utils.translate_string_size_to_float(
+                consumed_space)
+            snapshot_size = int(math.ceil(consumed_space))
+
+        dataset_name = self.private_storage.get(
+            snapshot_instance["share_instance_id"], "dataset_name")
+        new_provider_location = dataset_name + "@" + new_snapshot_tag
+
+        self.zfs("rename", old_provider_location, new_provider_location)
+
+        return {
+            "size": snapshot_size,
+            "provider_location": new_provider_location,
+        }
+
+    def unmanage_snapshot(self, snapshot_instance):
+        """Unmanage dataset snapshot."""
+        self.private_storage.delete(snapshot_instance["snapshot_id"])
 
     def _get_replication_snapshot_prefix(self, replica):
         """Returns replica-based snapshot prefix."""

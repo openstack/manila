@@ -632,7 +632,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             snapshot['share_instance_id'],
             {'dataset_name': 'foo_data_set_name'})
 
-        self.driver.create_snapshot('fake_context', snapshot)
+        result = self.driver.create_snapshot('fake_context', snapshot)
 
         self.driver.zfs.assert_called_once_with(
             'snapshot', snapshot_name)
@@ -640,6 +640,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             snapshot_name.split('@')[-1],
             self.driver.private_storage.get(
                 snapshot['snapshot_id'], 'snapshot_tag'))
+        self.assertEqual({"provider_location": snapshot_name}, result)
 
     def test_delete_snapshot(self):
         snapshot = {
@@ -1193,6 +1194,89 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         self.driver.unmanage(share)
 
         self.driver.private_storage.delete.assert_called_once_with(share['id'])
+
+    @ddt.data(
+        {},
+        {"size": 5},
+        {"size": "5"},
+    )
+    def test_manage_existing_snapshot(self, driver_options):
+        dataset_name = "path/to/dataset"
+        old_provider_location = dataset_name + "@original_snapshot_tag"
+        snapshot_instance = {
+            "id": "fake_snapshot_instance_id",
+            "share_instance_id": "fake_share_instance_id",
+            "snapshot_id": "fake_snapshot_id",
+            "provider_location": old_provider_location,
+        }
+        new_snapshot_tag = "fake_new_snapshot_tag"
+        new_provider_location = (
+            old_provider_location.split("@")[0] + "@" + new_snapshot_tag)
+
+        self.mock_object(self.driver, "zfs")
+        self.mock_object(
+            self.driver, "get_zfs_option", mock.Mock(return_value="5G"))
+        self.mock_object(
+            self.driver,
+            '_get_snapshot_name',
+            mock.Mock(return_value=new_snapshot_tag))
+        self.driver.private_storage.update(
+            snapshot_instance["share_instance_id"],
+            {"dataset_name": dataset_name})
+
+        result = self.driver.manage_existing_snapshot(
+            snapshot_instance, driver_options)
+
+        expected_result = {
+            "size": 5,
+            "provider_location": new_provider_location,
+        }
+        self.assertEqual(expected_result, result)
+        self.driver._get_snapshot_name.assert_called_once_with(
+            snapshot_instance["id"])
+        self.driver.zfs.assert_has_calls([
+            mock.call("list", "-r", "-t", "snapshot", old_provider_location),
+            mock.call("rename", old_provider_location, new_provider_location),
+        ])
+
+    def test_manage_existing_snapshot_not_found(self):
+        dataset_name = "path/to/dataset"
+        old_provider_location = dataset_name + "@original_snapshot_tag"
+        new_snapshot_tag = "fake_new_snapshot_tag"
+        snapshot_instance = {
+            "id": "fake_snapshot_instance_id",
+            "snapshot_id": "fake_snapshot_id",
+            "provider_location": old_provider_location,
+        }
+        self.mock_object(
+            self.driver, "_get_snapshot_name",
+            mock.Mock(return_value=new_snapshot_tag))
+        self.mock_object(
+            self.driver, "zfs",
+            mock.Mock(side_effect=exception.ProcessExecutionError("FAKE")))
+
+        self.assertRaises(
+            exception.ManageInvalidShareSnapshot,
+            self.driver.manage_existing_snapshot,
+            snapshot_instance, {},
+        )
+
+        self.driver.zfs.assert_called_once_with(
+            "list", "-r", "-t", "snapshot", old_provider_location)
+        self.driver._get_snapshot_name.assert_called_once_with(
+            snapshot_instance["id"])
+
+    def test_unmanage_snapshot(self):
+        snapshot_instance = {
+            "id": "fake_snapshot_instance_id",
+            "snapshot_id": "fake_snapshot_id",
+        }
+        self.mock_object(self.driver.private_storage, "delete")
+
+        self.driver.unmanage_snapshot(snapshot_instance)
+
+        self.driver.private_storage.delete.assert_called_once_with(
+            snapshot_instance["snapshot_id"])
 
     def test__delete_dataset_or_snapshot_with_retry_snapshot(self):
         self.mock_object(self.driver, 'get_zfs_option')
