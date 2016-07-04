@@ -112,8 +112,6 @@ class ManageNFSSnapshotTest(base.BaseSharesAdminTest):
         self.assertEqual(name, get_snapshot['name'])
         self.assertEqual(description, get_snapshot['description'])
         self.assertEqual(snapshot['share_id'], get_snapshot['share_id'])
-        self.assertEqual(snapshot['provider_location'],
-                         get_snapshot['provider_location'])
 
         # Delete snapshot
         self.shares_v2_client.delete_snapshot(get_snapshot['id'])
