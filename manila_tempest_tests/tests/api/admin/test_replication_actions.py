@@ -177,19 +177,3 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
             lib_exc.Conflict,
             self.admin_client.unmanage_snapshot,
             snapshot_id=snapshot['id'])
-
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
-    @testtools.skipUnless(CONF.share.run_manage_unmanage_snapshot_tests,
-                          'Manage/Unmanage Snapshot Tests are disabled.')
-    def test_unmanage_replicated_share_snapshot_with_no_replica(self):
-        """Unmanage a snapshot of the replicated share with no replica."""
-        share = self.create_share(size=2,
-                                  share_type_id=self.share_type["id"],
-                                  availability_zone=self.share_zone,
-                                  client=self.admin_client)
-
-        snapshot = self.create_snapshot_wait_for_active(
-            share["id"], client=self.admin_client)
-        self.admin_client.unmanage_snapshot(snapshot_id=snapshot['id'])
-        self.admin_client.wait_for_resource_deletion(
-            snapshot_id=snapshot['id'])
