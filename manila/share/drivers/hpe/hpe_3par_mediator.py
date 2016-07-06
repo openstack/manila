@@ -648,8 +648,10 @@ class HPE3ParMediator(object):
                                    vfs,
                                    allow_cross_protocol=True)
 
+        removed_writable = False
         if fstore:
             self._delete_share(share_name, protocol, fpg, vfs, fstore)
+            removed_writable = True
 
         share_name_ro = self.ensure_prefix(share_id, readonly=True)
         if not fstore:
@@ -671,7 +673,7 @@ class HPE3ParMediator(object):
                     LOG.exception(msg)
                     raise exception.ShareBackendException(msg=msg)
 
-            else:
+            elif removed_writable:
                 try:
                     # Attempt to remove file tree on delete when using nested
                     # shares. If the file tree cannot be removed for whatever
