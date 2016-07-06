@@ -19,13 +19,13 @@ import random
 
 from oslo_log import log
 from oslo_utils import excutils
-from oslo_utils import fnmatch
 from oslo_utils import units
 
 from manila.common import constants as const
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
+from manila.i18n import _LI
 from manila.i18n import _LW
 from manila.share.drivers.emc.plugins import base as driver
 from manila.share.drivers.emc.plugins.vnx import constants
@@ -53,6 +53,7 @@ class VNXStorageConnection(driver.StorageConnection):
         self.pool_conf = None
         self.reserved_percentage = None
         self.driver_handles_share_servers = True
+        self.port_conf = None
 
     def create_share(self, context, share, share_server=None):
         """Create a share and export it based on protocol used."""
@@ -458,33 +459,20 @@ class VNXStorageConnection(driver.StorageConnection):
                 raise exception.EMCVnxXMLAPIError(err=message)
 
             real_pools = set([item for item in backend_pools])
-
             conf_pools = set([item.strip() for item in pools.split(",")])
-
-            for pool in real_pools:
-                for matcher in conf_pools:
-                    if fnmatch.fnmatchcase(pool, matcher):
-                        matched_pools.add(pool)
-
-            nonexistent_pools = real_pools.difference(matched_pools)
+            matched_pools, unmatched_pools = vnx_utils.do_match_any(
+                real_pools, conf_pools)
 
             if not matched_pools:
-                msg = (_("All the specified storage pools to be managed "
-                         "do not exist. Please check your configuration "
+                msg = (_("None of the specified storage pools to be managed "
+                         "exist. Please check your configuration "
                          "emc_nas_pool_names in manila.conf. "
-                         "The available pools in the backend are %s") %
+                         "The available pools in the backend are %s.") %
                        ",".join(real_pools))
                 raise exception.InvalidParameterValue(err=msg)
-            if nonexistent_pools:
-                LOG.warning(_LW("The following specified storage pools "
-                                "do not exist: %(unexist)s. "
-                                "This host will only manage the storage "
-                                "pools: %(exist)s"),
-                            {'unexist': ",".join(nonexistent_pools),
-                             'exist': ",".join(matched_pools)})
-            else:
-                LOG.debug("Storage pools: %s will be managed.",
-                          ",".join(matched_pools))
+
+            LOG.info(_LI("Storage pools: %s will be managed."),
+                     ",".join(matched_pools))
         else:
             LOG.debug("No storage pool is specified, so all pools "
                       "in storage system will be managed.")
@@ -506,6 +494,32 @@ class VNXStorageConnection(driver.StorageConnection):
         configuration = emc_share_driver.configuration
 
         self.manager = manager.StorageObjectManager(configuration)
+        self.port_conf = emc_share_driver.configuration.safe_get(
+            'emc_interface_ports')
+
+    def get_managed_ports(self):
+        # Get the real ports(devices) list from the backend storage
+        real_ports = self._get_physical_devices(self.mover_name)
+
+        if not self.port_conf:
+            LOG.debug("No ports are specified, so any of the ports on the "
+                      "Data Mover can be used.")
+            return real_ports
+
+        matched_ports, unmanaged_ports = vnx_utils.do_match_any(
+            real_ports, self.port_conf)
+
+        if not matched_ports:
+            msg = (_("None of the specified network ports exist. "
+                     "Please check your configuration emc_interface_ports "
+                     "in manila.conf. The available ports on the Data Mover "
+                     "are %s.") %
+                   ",".join(real_ports))
+            raise exception.BadConfigurationException(reason=msg)
+
+        LOG.debug("Ports: %s can be used.", ",".join(matched_ports))
+
+        return list(matched_ports)
 
     def update_share_stats(self, stats_dict):
         """Communicate with EMCNASClient to get the stats."""
@@ -593,7 +607,7 @@ class VNXStorageConnection(driver.StorageConnection):
 
             netmask = utils.cidr_to_netmask(network_info['cidr'])
 
-            devices = self._get_physical_devices(self.mover_name)
+            devices = self.get_managed_ports()
 
             for net_info in network_info['network_allocations']:
                 random.shuffle(devices)

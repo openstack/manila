@@ -1024,7 +1024,7 @@ class MoverTestData(StorageObjectTestData):
             '    Link: Down\n'
             '    0:  cge-1-3  IRQ: 27\n'
             '    speed=auto duplex=auto txflowctl=disable rxflowctl=disable\n'
-            '    Link: Down\n'
+            '    Link: Up\n'
             'Slot: 4\n'
             '  PLX PCI-Express Switch  Controller\n'
             '    1:  PLX PEX8648  IRQ: 10\n'

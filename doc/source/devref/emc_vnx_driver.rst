@@ -187,6 +187,7 @@ for the VNX driver:
     emc_nas_login = <user>
     emc_nas_server_container = <Data Mover name>
     emc_nas_pool_name = <pool name>
+    emc_interface_ports = <Comma separated ports list>
     share_driver = manila.share.drivers.emc.driver.EMCShareDriver
 
 - `emc_share_backend` is the plugin name. Set it to `vnx` for the VNX driver.
@@ -198,6 +199,11 @@ for the VNX driver:
   share service.
 - `emc_nas_pool_name` is the pool name user wants to create volume from. The
   pools can be created using Unisphere for VNX.
+- `emc_interface_ports` is comma separated list specifying the ports(devices) of
+  Data Mover that can be used for share server interface.
+  Members of the list can be Unix-style glob expressions (supports Unix shell-style
+  wildcards). This list is optional. In the absence of this option, any of the ports
+  on the Data Mover can be used.
 
 Restart of :term:`manila-share` service is needed for the configuration changes to take
 effect.
