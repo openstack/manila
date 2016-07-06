@@ -72,6 +72,11 @@ class HPE3ParDriverTestCase(test.TestCase):
         self.mock_object(hpe3parmediator, 'HPE3ParMediator')
         self.mock_mediator_constructor = hpe3parmediator.HPE3ParMediator
         self.mock_mediator = self.mock_mediator_constructor()
+        # restore needed static methods
+        self.mock_mediator.ensure_supported_protocol = (
+            self.real_hpe_3par_mediator.ensure_supported_protocol)
+        self.mock_mediator.build_export_location = (
+            self.real_hpe_3par_mediator.build_export_location)
 
         self.driver = hpe3pardriver.HPE3ParShareDriver(
             configuration=self.conf)
@@ -293,6 +298,8 @@ class HPE3ParDriverTestCase(test.TestCase):
         self.mock_mediator.create_share.return_value = (
             constants.EXPECTED_SHARE_NAME)
 
+        hpe3parmediator.HPE3ParMediator = self.real_hpe_3par_mediator
+
         location = self.do_create_share(constants.CIFS,
                                         constants.SHARE_TYPE_ID,
                                         constants.EXPECTED_PROJECT_ID,
@@ -319,6 +326,7 @@ class HPE3ParDriverTestCase(test.TestCase):
 
         self.mock_mediator.create_share.return_value = (
             constants.EXPECTED_SHARE_PATH)
+        hpe3parmediator.HPE3ParMediator = self.real_hpe_3par_mediator
 
         location = self.do_create_share(constants.NFS,
                                         constants.SHARE_TYPE_ID,
@@ -347,6 +355,7 @@ class HPE3ParDriverTestCase(test.TestCase):
 
         self.mock_mediator.create_share_from_snapshot.return_value = (
             constants.EXPECTED_SHARE_NAME)
+        hpe3parmediator.HPE3ParMediator = self.real_hpe_3par_mediator
 
         snapshot_instance = constants.SNAPSHOT_INSTANCE.copy()
         snapshot_instance['protocol'] = constants.CIFS
@@ -369,7 +378,8 @@ class HPE3ParDriverTestCase(test.TestCase):
                 constants.EXPECTED_SNAP_ID,
                 constants.EXPECTED_FPG,
                 constants.EXPECTED_VFS,
-                comment=mock.ANY),
+                comment=mock.ANY,
+                size=constants.EXPECTED_SIZE_2),
         ]
         self.mock_mediator.assert_has_calls(expected_calls)
 
@@ -381,6 +391,7 @@ class HPE3ParDriverTestCase(test.TestCase):
 
         self.mock_mediator.create_share_from_snapshot.return_value = (
             constants.EXPECTED_SHARE_PATH)
+        hpe3parmediator.HPE3ParMediator = self.real_hpe_3par_mediator
 
         location = self.do_create_share_from_snapshot(
             constants.NFS,
@@ -400,7 +411,8 @@ class HPE3ParDriverTestCase(test.TestCase):
                 constants.EXPECTED_SNAP_ID,
                 constants.EXPECTED_FPG,
                 constants.EXPECTED_VFS,
-                comment=mock.ANY),
+                comment=mock.ANY,
+                size=constants.EXPECTED_SIZE_1),
         ]
 
         self.mock_mediator.assert_has_calls(expected_calls)
@@ -699,27 +711,6 @@ class HPE3ParDriverTestCase(test.TestCase):
 
     def test_get_network_allocations_number(self):
         self.assertEqual(1, self.driver.get_network_allocations_number())
-
-    def test_build_export_location_bad_protocol(self):
-        self.assertRaises(exception.InvalidInput,
-                          self.driver._build_export_location,
-                          "BOGUS",
-                          constants.EXPECTED_IP_1234,
-                          constants.EXPECTED_SHARE_PATH)
-
-    def test_build_export_location_bad_ip(self):
-        self.assertRaises(exception.InvalidInput,
-                          self.driver._build_export_location,
-                          constants.NFS,
-                          None,
-                          None)
-
-    def test_build_export_location_bad_path(self):
-        self.assertRaises(exception.InvalidInput,
-                          self.driver._build_export_location,
-                          constants.NFS,
-                          constants.EXPECTED_IP_1234,
-                          None)
 
     def test_setup_server(self):
         """Setup server by creating a new FSIP."""
