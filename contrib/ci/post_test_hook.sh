@@ -133,6 +133,7 @@ export MANILA_TESTS=${MANILA_TESTS:-'manila_tempest_tests.tests.api'}
 if [[ "$TEST_TYPE" == "scenario" ]]; then
     echo "Set test set to scenario only"
     MANILA_TESTS='manila_tempest_tests.tests.scenario'
+    iniset $TEMPEST_CONFIG auth use_dynamic_credentials True
 elif [[ "$DRIVER" == "generic" ]]; then
     RUN_MANILA_MANAGE_SNAPSHOT_TESTS=True
     if [[ "$POSTGRES_ENABLED" == "True" ]]; then
