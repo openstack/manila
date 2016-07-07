@@ -76,10 +76,11 @@ class HPE3ParMediator(object):
         2.0.5 - Reduce the fsquota by share size
                 when a share is deleted #1582931
         2.0.6 - Read-write share from snapshot (using driver mount and copy)
+        2.0.7 - Add update_access support
 
     """
 
-    VERSION = "2.0.6"
+    VERSION = "2.0.7"
 
     def __init__(self, **kwargs):
 
@@ -1497,35 +1498,119 @@ class HPE3ParMediator(object):
                    six.text_type(e))
             raise exception.ShareBackendException(msg)
 
-    def allow_access(self, project_id, share_id, share_proto,
-                     extra_specs, access_type, access_to, access_level,
-                     fpg, vfs):
-        """Grant access to a share."""
+    def update_access(self, project_id, share_id, share_proto, extra_specs,
+                      access_rules, add_rules, delete_rules, fpg, vfs):
+        """Update access to a share."""
+        protocol = self.ensure_supported_protocol(share_proto)
 
-        self._change_access(ALLOW,
-                            project_id,
-                            share_id,
-                            share_proto,
-                            access_type,
-                            access_to,
-                            access_level,
-                            fpg,
-                            vfs,
-                            extra_specs=extra_specs)
+        if not (delete_rules or add_rules):
+            # We need to re add all the rules. Check with 3PAR on it's current
+            # list and only add the deltas.
+            share = self._find_fshare(project_id,
+                                      share_id,
+                                      share_proto,
+                                      fpg,
+                                      vfs)
 
-    def deny_access(self, project_id, share_id, share_proto,
-                    access_type, access_to, access_level, fpg, vfs):
-        """Deny access to a share."""
+            ref_users = []
+            ro_ref_rules = []
+            if protocol == 'nfs':
+                ref_rules = share['clients']
 
-        self._change_access(DENY,
-                            project_id,
-                            share_id,
-                            share_proto,
-                            access_type,
-                            access_to,
-                            access_level,
-                            fpg,
-                            vfs)
+                # Check for RO rules.
+                ro_share = self._find_fshare(project_id,
+                                             share_id,
+                                             share_proto,
+                                             fpg,
+                                             vfs,
+                                             readonly=True)
+                if ro_share:
+                    ro_ref_rules = ro_share['clients']
+            else:
+                ref_rules = [x[0] for x in share['allowPerm']]
+                ref_users = ref_rules[:]
+                # Get IP access as well
+                ips = share['allowIP']
+                if not isinstance(ips, list):
+                    # If there is only one IP, the API returns a string
+                    # rather than a list. We need to account for that.
+                    ips = [ips]
+                ref_rules += ips
+
+            # Retrieve base rules.
+            base_rules = []
+            for rule in access_rules:
+                base_rules.append(rule['access_to'])
+
+            # Check if we need to remove any rules from 3PAR.
+            for rule in ref_rules:
+                if rule in ref_users:
+                    rule_type = 'user'
+                else:
+                    rule_type = 'ip'
+
+                if rule not in base_rules + [LOCAL_IP, LOCAL_IP_RO]:
+                    self._change_access(DENY,
+                                        project_id,
+                                        share_id,
+                                        share_proto,
+                                        rule_type,
+                                        rule,
+                                        None,
+                                        fpg,
+                                        vfs)
+
+            # Check to see if there are any RO rules to remove.
+            for rule in ro_ref_rules:
+                if rule not in base_rules + [LOCAL_IP, LOCAL_IP_RO]:
+                    self._change_access(DENY,
+                                        project_id,
+                                        share_id,
+                                        share_proto,
+                                        rule_type,
+                                        rule,
+                                        'ro',
+                                        fpg,
+                                        vfs)
+
+            # Check the rules we need to add.
+            for rule in access_rules:
+                if rule['access_to'] not in ref_rules and (
+                   rule['access_to'] not in ro_ref_rules):
+                    # Rule does not exist, we need to add it
+                    self._change_access(ALLOW,
+                                        project_id,
+                                        share_id,
+                                        share_proto,
+                                        rule['access_type'],
+                                        rule['access_to'],
+                                        rule['access_level'],
+                                        fpg,
+                                        vfs,
+                                        extra_specs=extra_specs)
+        else:
+            # We have deltas of the rules that need to be added and deleted.
+            for rule in delete_rules:
+                self._change_access(DENY,
+                                    project_id,
+                                    share_id,
+                                    share_proto,
+                                    rule['access_type'],
+                                    rule['access_to'],
+                                    rule['access_level'],
+                                    fpg,
+                                    vfs)
+            for rule in add_rules:
+                self._change_access(ALLOW,
+                                    project_id,
+                                    share_id,
+                                    share_proto,
+                                    rule['access_type'],
+                                    rule['access_to'],
+                                    rule['access_level'],
+                                    fpg,
+                                    vfs,
+                                    extra_specs=extra_specs)
 
     def resize_share(self, project_id, share_id, share_proto,
                      new_size, old_size, fpg, vfs):

@@ -67,6 +67,61 @@ EXPECTED_SUPER_SHARE_COMMENT = ('OpenStack super share used to delete nested '
 EXPECTED_CIFS_DOMAIN = 'LOCAL_CLUSTER'
 EXPECTED_MOUNT_PATH = '/mnt/'
 
+# Access rules. Allow for overwrites.
+ACCESS_RULE_NFS = {
+    'access_type': IP,
+    'access_to': EXPECTED_IP_1234,
+    'access_level': READ_WRITE,
+}
+
+ACCESS_RULE_CIFS = {
+    'access_type': USER,
+    'access_to': USERNAME,
+    'access_level': READ_WRITE,
+}
+
+ADD_RULE_BAD_TYPE = {
+    'access_type': 'unsupported_other_type',
+    'access_to': USERNAME,
+    'access_level': READ_WRITE,
+}
+
+ADD_RULE_IP = {
+    'access_type': IP,
+    'access_to': EXPECTED_IP_1234,
+    'access_level': READ_WRITE,
+}
+
+ADD_RULE_IP_RO = {
+    'access_type': IP,
+    'access_to': EXPECTED_IP_1234,
+    'access_level': READ_ONLY,
+}
+
+ADD_RULE_USER = {
+    'access_type': USER,
+    'access_to': USERNAME,
+    'access_level': READ_WRITE,
+}
+
+DELETE_RULE_IP = {
+    'access_type': IP,
+    'access_to': EXPECTED_IP_1234,
+    'access_level': READ_WRITE,
+}
+
+DELETE_RULE_USER = {
+    'access_type': USER,
+    'access_to': USERNAME,
+    'access_level': READ_WRITE,
+}
+
+DELETE_RULE_IP_RO = {
+    'access_type': IP,
+    'access_to': EXPECTED_IP_1234,
+    'access_level': READ_ONLY,
+}
+
 GET_FSQUOTA = {'message': None,
                'total': 1,
                'members': [{'hardBlock': '1024', 'softBlock': '1024'}]}
