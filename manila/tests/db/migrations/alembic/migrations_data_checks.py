@@ -606,3 +606,52 @@ class ShareSnapshotInstanceNewProviderLocationColumnChecks(
             self.test_case.assertFalse(hasattr(ss, 'provider_location'))
             self.test_case.assertEqual('new_snapshot_instance_id', ss.id)
             self.test_case.assertEqual('new_snapshot_id', ss.snapshot_id)
+
+
+@map_to_migration('221a83cfd85b')
+class ShareNetwoksFieldLengthChecks(BaseMigrationChecks):
+    def setup_upgrade_data(self, engine):
+        user_id = '123456789123456789'
+        project_id = 'project_id'
+
+        # Create share network data
+        share_network_data = {
+            'id': 'foo_share_network_id_2',
+            'user_id': user_id,
+            'project_id': project_id,
+        }
+        sn_table = utils.load_table('share_networks', engine)
+        engine.execute(sn_table.insert(share_network_data))
+
+        # Create security_service data
+        security_services_data = {
+            'id': 'foo_security_services_id',
+            'type': 'foo_type',
+            'project_id': project_id
+        }
+        ss_table = utils.load_table('security_services', engine)
+        engine.execute(ss_table.insert(security_services_data))
+
+    def _check_length_for_table_columns(self, table_name, engine,
+                                        cols, length):
+        table = utils.load_table(table_name, engine)
+        db_result = engine.execute(table.select())
+        self.test_case.assertTrue(db_result.rowcount > 0)
+
+        for col in cols:
+            self.test_case.assertEqual(table.columns.get(col).type.length,
+                                       length)
+
+    def check_upgrade(self, engine, data):
+        self._check_length_for_table_columns('share_networks', engine,
+                                             ('user_id', 'project_id'), 255)
+
+        self._check_length_for_table_columns('security_services', engine,
+                                             ('project_id',), 255)
+
+    def check_downgrade(self, engine):
+        self._check_length_for_table_columns('share_networks', engine,
+                                             ('user_id', 'project_id'), 36)
+
+        self._check_length_for_table_columns('security_services', engine,
+                                             ('project_id',), 36)
