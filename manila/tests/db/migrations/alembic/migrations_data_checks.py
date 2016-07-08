@@ -762,3 +762,34 @@ class NewGatewayColumnChecks(BaseMigrationChecks):
             self.test_case.assertTrue(db_result.rowcount >= len(ids))
             for record in db_result:
                 self.test_case.assertFalse(hasattr(record, 'gateway'))
+
+
+@map_to_migration('e8ea58723178')
+class RemoveHostFromDriverPrivateDataChecks(BaseMigrationChecks):
+    table_name = 'drivers_private_data'
+    host_column_name = 'host'
+
+    def setup_upgrade_data(self, engine):
+        dpd_data = {
+            'created_at': datetime.datetime(2016, 7, 14, 22, 31, 22),
+            'deleted': 0,
+            'host': 'host1',
+            'entity_uuid': 'entity_uuid1',
+            'key': 'key1',
+            'value': 'value1'
+        }
+        dpd_table = utils.load_table(self.table_name, engine)
+        engine.execute(dpd_table.insert(dpd_data))
+
+    def check_upgrade(self, engine, data):
+        dpd_table = utils.load_table(self.table_name, engine)
+        rows = engine.execute(dpd_table.select())
+        for row in rows:
+            self.test_case.assertFalse(hasattr(row, self.host_column_name))
+
+    def check_downgrade(self, engine):
+        dpd_table = utils.load_table(self.table_name, engine)
+        rows = engine.execute(dpd_table.select())
+        for row in rows:
+            self.test_case.assertTrue(hasattr(row, self.host_column_name))
+            self.test_case.assertEqual('unknown', row[self.host_column_name])

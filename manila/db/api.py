@@ -852,21 +852,21 @@ def share_type_extra_specs_update_or_create(context, share_type_id,
                                                         extra_specs)
 
 
-def driver_private_data_get(context, host, entity_id, key=None, default=None):
-    """Get one, list or all key-value pairs for given host and entity_id."""
-    return IMPL.driver_private_data_get(context, host, entity_id, key, default)
+def driver_private_data_get(context, entity_id, key=None, default=None):
+    """Get one, list or all key-value pairs for given entity_id."""
+    return IMPL.driver_private_data_get(context, entity_id, key, default)
 
 
-def driver_private_data_update(context, host, entity_id, details,
+def driver_private_data_update(context, entity_id, details,
                                delete_existing=False):
-    """Update key-value pairs for given host and entity_id."""
-    return IMPL.driver_private_data_update(context, host, entity_id, details,
+    """Update key-value pairs for given entity_id."""
+    return IMPL.driver_private_data_update(context, entity_id, details,
                                            delete_existing)
 
 
-def driver_private_data_delete(context, host, entity_id, key=None):
-    """Remove one, list or all key-value pairs for given host and entity_id."""
-    return IMPL.driver_private_data_delete(context, host, entity_id, key)
+def driver_private_data_delete(context, entity_id, key=None):
+    """Remove one, list or all key-value pairs for given entity_id."""
+    return IMPL.driver_private_data_delete(context, entity_id, key)
 
 
 ####################

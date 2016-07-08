@@ -2839,7 +2839,7 @@ def share_server_backend_details_delete(context, share_server_id,
 
 ###################
 
-def _driver_private_data_query(session, context, host, entity_id, key=None,
+def _driver_private_data_query(session, context, entity_id, key=None,
                                read_deleted=False):
     query = model_query(
         context, models.DriverPrivateData, session=session,
@@ -2857,12 +2857,12 @@ def _driver_private_data_query(session, context, host, entity_id, key=None,
 
 
 @require_context
-def driver_private_data_get(context, host, entity_id, key=None,
+def driver_private_data_get(context, entity_id, key=None,
                             default=None, session=None):
     if not session:
         session = get_session()
 
-    query = _driver_private_data_query(session, context, host, entity_id, key)
+    query = _driver_private_data_query(session, context, entity_id, key)
 
     if key is None or isinstance(key, list):
         return {item.key: item.value for item in query.all()}
@@ -2872,7 +2872,7 @@ def driver_private_data_get(context, host, entity_id, key=None,
 
 
 @require_context
-def driver_private_data_update(context, host, entity_id, details,
+def driver_private_data_update(context, entity_id, details,
                                delete_existing=False, session=None):
     # NOTE(u_glide): following code modifies details dict, that's why we should
     # copy it
@@ -2885,7 +2885,7 @@ def driver_private_data_update(context, host, entity_id, details,
         # Process existing data
         # NOTE(u_glide): read_deleted=None means here 'read all'
         original_data = _driver_private_data_query(
-            session, context, host, entity_id, read_deleted=None).all()
+            session, context, entity_id, read_deleted=None).all()
 
         for data_ref in original_data:
             in_new_details = data_ref['key'] in new_details
@@ -2908,7 +2908,6 @@ def driver_private_data_update(context, host, entity_id, details,
         for key, value in new_details.items():
             data_ref = models.DriverPrivateData()
             data_ref.update({
-                "host": host,
                 "entity_uuid": entity_id,
                 "key": key,
                 "value": six.text_type(value)
@@ -2919,13 +2918,13 @@ def driver_private_data_update(context, host, entity_id, details,
 
 
 @require_context
-def driver_private_data_delete(context, host, entity_id, key=None,
+def driver_private_data_delete(context, entity_id, key=None,
                                session=None):
     if not session:
         session = get_session()
 
     with session.begin():
-        query = _driver_private_data_query(session, context, host,
+        query = _driver_private_data_query(session, context,
                                            entity_id, key)
         query.update({"deleted": 1, "deleted_at": timeutils.utcnow()})
 
