@@ -47,6 +47,7 @@ ACCESS_STATE_APPLYING = 'applying'
 ACCESS_STATE_DENYING = 'denying'
 ACCESS_STATE_ACTIVE = 'active'
 ACCESS_STATE_ERROR = 'error'
+ACCESS_STATE_DELETED = 'deleted'
 
 # Share instance "access_rules_status" field values
 SHARE_INSTANCE_RULES_SYNCING = 'syncing'
@@ -56,6 +57,16 @@ SHARE_INSTANCE_RULES_ERROR = 'error'
 STATUS_NEW = 'new'
 STATUS_OUT_OF_SYNC = 'out_of_sync'
 STATUS_ACTIVE = 'active'
+
+ACCESS_RULES_STATES = (
+    ACCESS_STATE_QUEUED_TO_APPLY,
+    ACCESS_STATE_QUEUED_TO_DENY,
+    ACCESS_STATE_APPLYING,
+    ACCESS_STATE_DENYING,
+    ACCESS_STATE_ACTIVE,
+    ACCESS_STATE_ERROR,
+    ACCESS_STATE_DELETED,
+)
 
 TASK_STATE_MIGRATION_STARTING = 'migration_starting'
 TASK_STATE_MIGRATION_IN_PROGRESS = 'migration_in_progress'
@@ -182,6 +193,7 @@ class ExtraSpecs(object):
     REPLICATION_TYPE_SPEC = "replication_type"
     CREATE_SHARE_FROM_SNAPSHOT_SUPPORT = "create_share_from_snapshot_support"
     REVERT_TO_SNAPSHOT_SUPPORT = "revert_to_snapshot_support"
+    MOUNT_SNAPSHOT_SUPPORT = "mount_snapshot_support"
 
     # Extra specs containers
     REQUIRED = (
@@ -193,6 +205,7 @@ class ExtraSpecs(object):
         CREATE_SHARE_FROM_SNAPSHOT_SUPPORT,
         REVERT_TO_SNAPSHOT_SUPPORT,
         REPLICATION_TYPE_SPEC,
+        MOUNT_SNAPSHOT_SUPPORT,
     )
 
     # NOTE(cknight): Some extra specs are necessary parts of the Manila API and
@@ -205,6 +218,7 @@ class ExtraSpecs(object):
         SNAPSHOT_SUPPORT,
         CREATE_SHARE_FROM_SNAPSHOT_SUPPORT,
         REVERT_TO_SNAPSHOT_SUPPORT,
+        MOUNT_SNAPSHOT_SUPPORT,
     )
 
     # NOTE(cknight): Some extra specs are optional, but a nominal (typically
@@ -214,6 +228,7 @@ class ExtraSpecs(object):
         SNAPSHOT_SUPPORT: False,
         CREATE_SHARE_FROM_SNAPSHOT_SUPPORT: False,
         REVERT_TO_SNAPSHOT_SUPPORT: False,
+        MOUNT_SNAPSHOT_SUPPORT: False,
     }
 
     REPLICATION_TYPES = ('writable', 'readable', 'dr')

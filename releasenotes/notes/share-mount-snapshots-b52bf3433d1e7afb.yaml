@@ -1,0 +1,7 @@
+---
+features:
+  - Added mountable snapshots feature to manila. Access can now
+    be allowed and denied to snapshots of shares created
+    with a share type that supports this feature.
+  - Added mountable snapshots support to the LVM driver.
+

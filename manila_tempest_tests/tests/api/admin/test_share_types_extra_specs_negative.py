@@ -80,6 +80,8 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
         if utils.is_microversion_ge(CONF.share.max_api_microversion,
                                     constants.REVERT_TO_SNAPSHOT_MICROVERSION):
             expected_keys.append('revert_to_snapshot_support')
+        if utils.is_microversion_ge(CONF.share.max_api_microversion, '2.32'):
+            expected_keys.append('mount_snapshot_support')
         actual_keys = share_type['share_type']['extra_specs'].keys()
         self.assertEqual(sorted(expected_keys), sorted(actual_keys),
                          'Incorrect extra specs visible to non-admin user; '

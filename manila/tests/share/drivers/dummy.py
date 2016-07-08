@@ -229,19 +229,25 @@ class DummyDriver(driver.ShareDriver):
         """Is called to create share from snapshot."""
         return self._create_share(share, share_server=share_server)
 
-    def _create_snapshot(self, snapshot):
+    def _create_snapshot(self, snapshot, share_server=None):
         snapshot_name = self._get_snapshot_name(snapshot)
+        mountpoint = "/path/to/fake/snapshot/%s" % snapshot_name
         self.private_storage.update(
             snapshot["id"], {
                 "fake_provider_snapshot_name": snapshot_name,
+                "fake_provider_location": mountpoint,
             }
         )
-        return {"provider_location": snapshot_name}
+        return {
+            "provider_location": mountpoint,
+            "export_locations": self._generate_export_locations(
+                mountpoint, share_server=share_server)
+        }
 
     @slow_me_down
     def create_snapshot(self, context, snapshot, share_server=None):
         """Is called to create snapshot."""
-        return self._create_snapshot(snapshot)
+        return self._create_snapshot(snapshot, share_server)
 
     @slow_me_down
     def delete_share(self, context, share, share_server=None):
@@ -277,6 +283,13 @@ class DummyDriver(driver.ShareDriver):
                         "for '%(share_proto)s' share protocol.") % {
                     "access_type": access_type, "share_proto": share_proto}
                 raise exception.InvalidShareAccess(reason=msg)
+
+    @slow_me_down
+    def snapshot_update_access(self, context, snapshot, access_rules,
+                               add_rules, delete_rules, share_server=None):
+        """Update access rules for given snapshot."""
+        self.update_access(context, snapshot['share'], access_rules,
+                           add_rules, delete_rules, share_server)
 
     @slow_me_down
     def do_setup(self, context):
@@ -366,6 +379,7 @@ class DummyDriver(driver.ShareDriver):
             "snapshot_support": True,
             "create_share_from_snapshot_support": True,
             "revert_to_snapshot_support": True,
+            "mount_snapshot_support": True,
             "driver_name": "Dummy",
             "pools": self._get_pools_info(),
         }

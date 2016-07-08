@@ -191,6 +191,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
             'snapshot_support': True,
             'create_share_from_snapshot_support': True,
             'revert_to_snapshot_support': True,
+            'mount_snapshot_support': True,
             'driver_name': 'LVMShareDriver',
             'pools': self.get_share_server_pools()
         }
@@ -361,6 +362,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         self._execute('resize2fs', device_name, run_as_root=True)
 
     def revert_to_snapshot(self, context, snapshot, share_server=None):
+        self._remove_export(context, snapshot)
         # First we merge the snapshot LV and the share LV
         # This won't actually do anything until the LV is reactivated
         snap_lv_name = "%s/%s" % (self.configuration.lvm_share_volume_group,
@@ -381,3 +383,72 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         # Finally we can mount the share again
         device_name = self._get_local_path(share)
         self._mount_device(share, device_name)
+        device_name = self._get_local_path(snapshot)
+        self._mount_device(snapshot, device_name)
+
+    def create_snapshot(self, context, snapshot, share_server=None):
+        self._create_snapshot(context, snapshot)
+
+        helper = self._get_helper(snapshot['share'])
+        exports = helper.create_exports(self.share_server, snapshot['name'])
+
+        device_name = self._get_local_path(snapshot)
+        self._mount_device(snapshot, device_name)
+
+        return {'export_locations': exports}
+
+    def delete_snapshot(self, context, snapshot, share_server=None):
+        self._remove_export(context, snapshot)
+
+        super(LVMShareDriver, self).delete_snapshot(context, snapshot,
+                                                    share_server)
+
+    def snapshot_update_access(self, context, snapshot, access_rules,
+                               add_rules, delete_rules, share_server=None):
+        """Update access rules for given snapshot.
+
+        This driver has two different behaviors according to parameters:
+        1. Recovery after error - 'access_rules' contains all access_rules,
+        'add_rules' and 'delete_rules' shall be empty. Previously existing
+        access rules are cleared and then added back according
+        to 'access_rules'.
+
+        2. Adding/Deleting of several access rules - 'access_rules' contains
+        all access_rules, 'add_rules' and 'delete_rules' contain rules which
+        should be added/deleted. Rules in 'access_rules' are ignored and
+        only rules from 'add_rules' and 'delete_rules' are applied.
+
+        :param context: Current context
+        :param snapshot: Snapshot model with snapshot data.
+        :param access_rules: All access rules for given snapshot
+        :param add_rules: Empty List or List of access rules which should be
+               added. access_rules already contains these rules.
+        :param delete_rules: Empty List or List of access rules which should be
+               removed. access_rules doesn't contain these rules.
+        :param share_server: None or Share server model
+        """
+        helper = self._get_helper(snapshot['share'])
+        access_rules, add_rules, delete_rules = change_rules_to_readonly(
+            access_rules, add_rules, delete_rules)
+
+        helper.update_access(self.share_server,
+                             snapshot['name'], access_rules,
+                             add_rules=add_rules, delete_rules=delete_rules)
+
+
+def change_rules_to_readonly(access_rules, add_rules, delete_rules):
+    dict_access_rules = cast_access_object_to_dict_in_readonly(access_rules)
+    dict_add_rules = cast_access_object_to_dict_in_readonly(add_rules)
+    dict_delete_rules = cast_access_object_to_dict_in_readonly(delete_rules)
+    return dict_access_rules, dict_add_rules, dict_delete_rules
+
+
+def cast_access_object_to_dict_in_readonly(rules):
+    dict_rules = []
+    for rule in rules:
+        dict_rules.append({
+            'access_level': 'ro',
+            'access_type': rule['access_type'],
+            'access_to': rule['access_to']
+        })
+    return dict_rules

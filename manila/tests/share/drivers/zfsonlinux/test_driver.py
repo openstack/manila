@@ -356,6 +356,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             'create_share_from_snapshot_support': True,
             'revert_to_snapshot_support': False,
             'share_group_snapshot_support': True,
+            'mount_snapshot_support': False,
             'storage_protocol': 'NFS',
             'total_capacity_gb': 'unknown',
             'vendor_name': 'Open Source',

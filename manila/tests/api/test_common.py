@@ -194,6 +194,7 @@ class PaginationParamsTest(test.TestCase):
                          common.get_pagination_params(req))
 
 
+@ddt.ddt
 class MiscFunctionsTest(test.TestCase):
 
     def test_remove_major_version_from_href(self):
@@ -243,6 +244,39 @@ class MiscFunctionsTest(test.TestCase):
         self.assertRaises(ValueError,
                           common.remove_version_from_href,
                           fixture)
+
+    def test_validate_cephx_id_invalid_with_period(self):
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          common.validate_cephx_id,
+                          "client.manila")
+
+    def test_validate_cephx_id_invalid_with_non_ascii(self):
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          common.validate_cephx_id,
+                          u"bj\u00F6rn")
+
+    @ddt.data("alice", "alice_bob", "alice bob")
+    def test_validate_cephx_id_valid(self, test_id):
+        common.validate_cephx_id(test_id)
+
+    @ddt.data(['ip', '1.1.1.1', False], ['user', 'alice', False],
+              ['cert', 'alice', False], ['cephx', 'alice', True],
+              ['ip', '172.24.41.0/24', False],)
+    @ddt.unpack
+    def test_validate_access(self, access_type, access_to, ceph):
+        common.validate_access(access_type=access_type, access_to=access_to,
+                               enable_ceph=ceph)
+
+    @ddt.data(['ip', 'alice', False], ['ip', '1.1.1.0/10/12', False],
+              ['ip', '255.255.255.265', False], ['ip', '1.1.1.0/34', False],
+              ['cert', '', False], ['cephx', 'client.alice', True],
+              ['group', 'alice', True], ['cephx', 'alice', False],
+              ['cephx', '', True], ['user', 'bob', False])
+    @ddt.unpack
+    def test_validate_access_exception(self, access_type, access_to, ceph):
+        self.assertRaises(webob.exc.HTTPBadRequest, common.validate_access,
+                          access_type=access_type, access_to=access_to,
+                          enable_ceph=ceph)
 
 
 @ddt.ddt

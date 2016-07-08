@@ -995,6 +995,25 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
             id='fake_snapshot_id_2', share_id=self.share_2['id'],
             instances=self.snapshot_instances[3:4])
 
+        self.snapshot_instance_export_locations = [
+            db_utils.create_snapshot_instance_export_locations(
+                self.snapshot_instances[0].id,
+                path='1.1.1.1:/fake_path',
+                is_admin_only=True),
+            db_utils.create_snapshot_instance_export_locations(
+                self.snapshot_instances[1].id,
+                path='2.2.2.2:/fake_path',
+                is_admin_only=True),
+            db_utils.create_snapshot_instance_export_locations(
+                self.snapshot_instances[2].id,
+                path='3.3.3.3:/fake_path',
+                is_admin_only=True),
+            db_utils.create_snapshot_instance_export_locations(
+                self.snapshot_instances[3].id,
+                path='4.4.4.4:/fake_path',
+                is_admin_only=True)
+        ]
+
     def test_create(self):
         share = db_utils.create_share(size=1)
         values = {
@@ -1158,6 +1177,120 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
             snapshot = db_api.share_snapshot_get(self.ctxt, snapshot['id'])
             self.assertEqual(1, len(snapshot['instances']))
             self.assertEqual(first_instance_id, snapshot['instance']['id'])
+
+    def test_share_snapshot_access_create(self):
+        values = {
+            'share_snapshot_id': self.snapshot_1['id'],
+        }
+        actual_result = db_api.share_snapshot_access_create(self.ctxt,
+                                                            values)
+
+        self.assertSubDictMatch(values, actual_result.to_dict())
+
+    def test_share_snapshot_instance_access_get_all(self):
+        access = db_utils.create_snapshot_access(
+            share_snapshot_id=self.snapshot_1['id'])
+        session = db_api.get_session()
+        values = {'share_snapshot_instance_id': self.snapshot_instances[0].id,
+                  'access_id': access['id']}
+
+        rules = db_api.share_snapshot_instance_access_get_all(
+            self.ctxt, access['id'], session)
+
+        self.assertSubDictMatch(values, rules[0].to_dict())
+
+    def test_share_snapshot_access_get(self):
+        access = db_utils.create_snapshot_access(
+            share_snapshot_id=self.snapshot_1['id'])
+        values = {'share_snapshot_id': self.snapshot_1['id']}
+
+        actual_value = db_api.share_snapshot_access_get(
+            self.ctxt, access['id'])
+
+        self.assertSubDictMatch(values, actual_value.to_dict())
+
+    def test_share_snapshot_access_get_all_for_share_snapshot(self):
+        access = db_utils.create_snapshot_access(
+            share_snapshot_id=self.snapshot_1['id'])
+        values = {'access_type': access['access_type'],
+                  'access_to': access['access_to'],
+                  'share_snapshot_id': self.snapshot_1['id']}
+
+        actual_value = db_api.share_snapshot_access_get_all_for_share_snapshot(
+            self.ctxt, self.snapshot_1['id'], {})
+
+        self.assertSubDictMatch(values, actual_value[0].to_dict())
+
+    def test_share_snapshot_access_get_all_for_snapshot_instance(self):
+        access = db_utils.create_snapshot_access(
+            share_snapshot_id=self.snapshot_1['id'])
+        values = {'access_type': access['access_type'],
+                  'access_to': access['access_to'],
+                  'share_snapshot_id': self.snapshot_1['id']}
+
+        out = db_api.share_snapshot_access_get_all_for_snapshot_instance(
+            self.ctxt, self.snapshot_instances[0].id)
+
+        self.assertSubDictMatch(values, out[0].to_dict())
+
+    def test_share_snapshot_instance_access_update_state(self):
+        access = db_utils.create_snapshot_access(
+            share_snapshot_id=self.snapshot_1['id'])
+        values = {'state': constants.STATUS_ACTIVE,
+                  'access_id': access['id'],
+                  'share_snapshot_instance_id': self.snapshot_instances[0].id}
+
+        actual_result = db_api.share_snapshot_instance_access_update(
+            self.ctxt, access['id'], self.snapshot_1.instance['id'],
+            {'state': constants.STATUS_ACTIVE})
+
+        self.assertSubDictMatch(values, actual_result.to_dict())
+
+    def test_share_snapshot_instance_access_get(self):
+        access = db_utils.create_snapshot_access(
+            share_snapshot_id=self.snapshot_1['id'])
+        values = {'access_id': access['id'],
+                  'share_snapshot_instance_id': self.snapshot_instances[0].id}
+
+        actual_result = db_api.share_snapshot_instance_access_get(
+            self.ctxt, access['id'], self.snapshot_instances[0].id)
+
+        self.assertSubDictMatch(values, actual_result.to_dict())
+
+    def test_share_snapshot_instance_access_delete(self):
+        access = db_utils.create_snapshot_access(
+            share_snapshot_id=self.snapshot_1['id'])
+
+        db_api.share_snapshot_instance_access_delete(
+            self.ctxt, access['id'], self.snapshot_1.instance['id'])
+
+    def test_share_snapshot_instance_export_location_create(self):
+        values = {
+            'share_snapshot_instance_id': self.snapshot_instances[0].id,
+        }
+
+        actual_result = db_api.share_snapshot_instance_export_location_create(
+            self.ctxt, values)
+
+        self.assertSubDictMatch(values, actual_result.to_dict())
+
+    def test_share_snapshot_export_locations_get(self):
+        out = db_api.share_snapshot_export_locations_get(
+            self.ctxt, self.snapshot_1['id'])
+
+        keys = ['share_snapshot_instance_id', 'path', 'is_admin_only']
+        for expected, actual in zip(self.snapshot_instance_export_locations,
+                                    out):
+            [self.assertEqual(expected[k], actual[k]) for k in keys]
+
+    def test_share_snapshot_instance_export_locations_get(self):
+        out = db_api.share_snapshot_instance_export_locations_get_all(
+            self.ctxt, self.snapshot_instances[0].id)
+
+        keys = ['share_snapshot_instance_id', 'path', 'is_admin_only']
+        for key in keys:
+            self.assertEqual(self.snapshot_instance_export_locations[0][key],
+                             out[0][key])
 
 
 class ShareExportLocationsDatabaseAPITestCase(test.TestCase):

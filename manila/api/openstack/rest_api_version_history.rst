@@ -187,3 +187,7 @@ user documentation.
 2.31
 ----
   Convert consistency groups to share groups.
+
+2.32
+----
+  Added mountable snapshots APIs.

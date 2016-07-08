@@ -15,6 +15,7 @@
 
 import os
 import re
+import string
 
 from oslo_config import cfg
 from oslo_log import log
@@ -316,3 +317,98 @@ def remove_invalid_options(context, search_options, allowed_search_options):
               {"bad_options": bad_options})
     for opt in unknown_options:
         del search_options[opt]
+
+
+def validate_common_name(access):
+    """Validate common name passed by user.
+
+    'access' is used as the certificate's CN (common name)
+    to which access is allowed or denied by the backend.
+    The standard allows for just about any string in the
+    common name. The meaning of a string depends on its
+    interpretation and is limited to 64 characters.
+    """
+    if not(0 < len(access) < 65):
+        exc_str = _('Invalid CN (common name). Must be 1-64 chars long.')
+        raise webob.exc.HTTPBadRequest(explanation=exc_str)
+
+
+def validate_username(access):
+    valid_username_re = '[\w\.\-_\`;\'\{\}\[\]\\\\]{4,32}$'
+    username = access
+    if not re.match(valid_username_re, username):
+        exc_str = ('Invalid user or group name. Must be 4-32 characters '
+                   'and consist of alphanumeric characters and '
+                   'special characters ]{.-_\'`;}[\\')
+        raise webob.exc.HTTPBadRequest(explanation=exc_str)
+
+
+def validate_ip_range(ip_range):
+    ip_range = ip_range.split('/')
+    exc_str = ('Supported ip format examples:\n'
+               '\t10.0.0.2, 10.0.0.0/24')
+    if len(ip_range) > 2:
+        raise webob.exc.HTTPBadRequest(explanation=exc_str)
+    if len(ip_range) == 2:
+        try:
+            prefix = int(ip_range[1])
+            if prefix < 0 or prefix > 32:
+                raise ValueError()
+        except ValueError:
+            msg = 'IP prefix should be in range from 0 to 32.'
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+    ip_range = ip_range[0].split('.')
+    if len(ip_range) != 4:
+        raise webob.exc.HTTPBadRequest(explanation=exc_str)
+    for item in ip_range:
+        try:
+            if 0 <= int(item) <= 255:
+                continue
+            raise ValueError()
+        except ValueError:
+            raise webob.exc.HTTPBadRequest(explanation=exc_str)
+
+
+def validate_cephx_id(cephx_id):
+    if not cephx_id:
+        raise webob.exc.HTTPBadRequest(explanation=_(
+            'Ceph IDs may not be empty.'))
+
+    # This restriction may be lifted in Ceph in the future:
+    # http://tracker.ceph.com/issues/14626
+    if not set(cephx_id) <= set(string.printable):
+        raise webob.exc.HTTPBadRequest(explanation=_(
+            'Ceph IDs must consist of ASCII printable characters.'))
+
+    # Periods are technically permitted, but we restrict them here
+    # to avoid confusion where users are unsure whether they should
+    # include the "client." prefix: otherwise they could accidentally
+    # create "client.client.foobar".
+    if '.' in cephx_id:
+        raise webob.exc.HTTPBadRequest(explanation=_(
+            'Ceph IDs may not contain periods.'))
+
+
+def validate_access(*args, **kwargs):
+
+    access_type = kwargs.get('access_type')
+    access_to = kwargs.get('access_to')
+    enable_ceph = kwargs.get('enable_ceph')
+
+    if access_type == 'ip':
+        validate_ip_range(access_to)
+    elif access_type == 'user':
+        validate_username(access_to)
+    elif access_type == 'cert':
+        validate_common_name(access_to.strip())
+    elif access_type == "cephx" and enable_ceph:
+        validate_cephx_id(access_to)
+    else:
+        if enable_ceph:
+            exc_str = _("Only 'ip', 'user', 'cert' or 'cephx' access "
+                        "types are supported.")
+        else:
+            exc_str = _("Only 'ip', 'user' or 'cert' access types "
+                        "are supported.")
+
+        raise webob.exc.HTTPBadRequest(explanation=exc_str)

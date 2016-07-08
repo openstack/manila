@@ -674,6 +674,26 @@ class SharesV2Client(shares_client.SharesClient):
                            })
                 raise exceptions.TimeoutException(message)
 
+    def get_snapshot_instance_export_location(
+            self, instance_id, export_location_uuid,
+            version=LATEST_MICROVERSION):
+        resp, body = self.get(
+            "snapshot-instances/%(instance_id)s/export-locations/%("
+            "el_uuid)s" % {
+                "instance_id": instance_id,
+                "el_uuid": export_location_uuid},
+            version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def list_snapshot_instance_export_locations(
+            self, instance_id, version=LATEST_MICROVERSION):
+        resp, body = self.get(
+            "snapshot-instances/%s/export-locations" % instance_id,
+            version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
 ###############
 
     def _get_access_action_name(self, version, action):
@@ -1377,5 +1397,104 @@ class SharesV2Client(shares_client.SharesClient):
     def get_share_network(self, share_network_id, version=LATEST_MICROVERSION):
         resp, body = self.get("share-networks/%s" % share_network_id,
                               version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+################
+
+    def create_snapshot_access_rule(self, snapshot_id, access_type="ip",
+                                    access_to="0.0.0.0/0"):
+        body = {
+            "allow_access": {
+                "access_type": access_type,
+                "access_to": access_to
+            }
+        }
+        resp, body = self.post("snapshots/%s/action" % snapshot_id,
+                               json.dumps(body), version=LATEST_MICROVERSION)
+        self.expected_success(202, resp.status)
+        return self._parse_resp(body)
+
+    def get_snapshot_access_rule(self, snapshot_id, rule_id):
+        resp, body = self.get("snapshots/%s/access-list" % snapshot_id,
+                              version=LATEST_MICROVERSION)
+        body = self._parse_resp(body)
+        found_rules = filter(lambda x: x['id'] == rule_id, body)
+
+        return found_rules[0] if len(found_rules) > 0 else None
+
+    def wait_for_snapshot_access_rule_status(self, snapshot_id, rule_id,
+                                             expected_state='active'):
+        rule = self.get_snapshot_access_rule(snapshot_id, rule_id)
+        state = rule['state']
+        start = int(time.time())
+
+        while state != expected_state:
+            time.sleep(self.build_interval)
+            rule = self.get_snapshot_access_rule(snapshot_id, rule_id)
+            state = rule['state']
+            if state == expected_state:
+                return
+            if 'error' in state:
+                raise share_exceptions.AccessRuleBuildErrorException(
+                    snapshot_id)
+
+            if int(time.time()) - start >= self.build_timeout:
+                message = ('The status of snapshot access rule %(id)s failed '
+                           'to reach %(expected_state)s state within the '
+                           'required time (%(time)ss). Current '
+                           'state: %(current_state)s.' %
+                           {
+                               'expected_state': expected_state,
+                               'time': self.build_timeout,
+                               'id': rule_id,
+                               'current_state': state,
+                           })
+                raise exceptions.TimeoutException(message)
+
+    def delete_snapshot_access_rule(self, snapshot_id, rule_id):
+        body = {
+            "deny_access": {
+                "access_id": rule_id,
+            }
+        }
+        resp, body = self.post("snapshots/%s/action" % snapshot_id,
+                               json.dumps(body), version=LATEST_MICROVERSION)
+        self.expected_success(202, resp.status)
+        return self._parse_resp(body)
+
+    def wait_for_snapshot_access_rule_deletion(self, snapshot_id, rule_id):
+        rule = self.get_snapshot_access_rule(snapshot_id, rule_id)
+        start = int(time.time())
+
+        while rule is not None:
+            time.sleep(self.build_interval)
+
+            rule = self.get_snapshot_access_rule(snapshot_id, rule_id)
+
+            if rule is None:
+                return
+            if int(time.time()) - start >= self.build_timeout:
+                message = ('The snapshot access rule %(id)s failed to delete '
+                           'within the required time (%(time)ss).' %
+                           {
+                               'time': self.build_timeout,
+                               'id': rule_id,
+                           })
+                raise exceptions.TimeoutException(message)
+
+    def get_snapshot_export_location(self, snapshot_id, export_location_uuid,
+                                     version=LATEST_MICROVERSION):
+        resp, body = self.get(
+            "snapshots/%(snapshot_id)s/export-locations/%(el_uuid)s" % {
+                "snapshot_id": snapshot_id, "el_uuid": export_location_uuid},
+            version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def list_snapshot_export_locations(
+            self, snapshot_id, version=LATEST_MICROVERSION):
+        resp, body = self.get(
+            "snapshots/%s/export-locations" % snapshot_id, version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)

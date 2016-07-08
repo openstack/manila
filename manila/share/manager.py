@@ -48,6 +48,7 @@ from manila.share import drivers_private_data
 from manila.share import migration
 from manila.share import rpcapi as share_rpcapi
 from manila.share import share_types
+from manila.share import snapshot_access
 from manila.share import utils as share_utils
 from manila import utils
 
@@ -189,7 +190,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.16'
+    RPC_API_VERSION = '1.17'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -219,6 +220,8 @@ class ShareManager(manager.SchedulerDependentManager):
         )
 
         self.access_helper = access.ShareInstanceAccess(self.db, self.driver)
+        self.snapshot_access_helper = (
+            snapshot_access.ShareSnapshotInstanceAccess(self.db, self.driver))
         self.migration_wait_access_rules_timeout = (
             CONF.migration_wait_access_rules_timeout)
 
@@ -342,6 +345,34 @@ class ShareManager(manager.SchedulerDependentManager):
                             "rules for share instance %(s_id)s."),
                         {'s_id': share_instance['id']},
                     )
+
+            snapshot_instances = (
+                self.db.share_snapshot_instance_get_all_with_filters(
+                    ctxt, {'share_instance_ids': share_instance['id']},
+                    with_share_data=True))
+
+            for snap_instance in snapshot_instances:
+
+                rules = (
+                    self.db.
+                    share_snapshot_access_get_all_for_snapshot_instance(
+                        ctxt, snap_instance['id']))
+
+                # NOTE(ganso): We don't invoke update_access for snapshots if
+                # we don't have invalid rules or pending updates
+                if any(r['state'] in (constants.ACCESS_STATE_DENYING,
+                                      constants.ACCESS_STATE_QUEUED_TO_DENY,
+                                      constants.ACCESS_STATE_APPLYING,
+                                      constants.ACCESS_STATE_QUEUED_TO_APPLY)
+                       for r in rules):
+                    try:
+                        self.snapshot_access_helper.update_access_rules(
+                            ctxt, snap_instance['id'], share_server)
+                    except Exception:
+                        LOG.exception(_LE(
+                            "Unexpected error occurred while updating "
+                            "access rules for snapshot instance %s."),
+                            snap_instance['id'])
 
         self.publish_service_capabilities(ctxt)
         LOG.info(_LI("Finished initialization of driver: '%(driver)s"
@@ -2233,6 +2264,18 @@ class ShareManager(manager.SchedulerDependentManager):
                 "snapshot_gigabytes": snapshot_update['size'],
             })
 
+            snapshot_export_locations = snapshot_update.pop(
+                'export_locations', [])
+
+            for el in snapshot_export_locations:
+                values = {
+                    'share_snapshot_instance_id': snapshot_instance['id'],
+                    'path': el['path'],
+                    'is_admin_only': el['is_admin_only'],
+                }
+
+                self.db.share_snapshot_instance_export_location_create(context,
+                                                                       values)
             snapshot_update.update({
                 'status': constants.STATUS_AVAILABLE,
                 'progress': '100%',
@@ -2354,6 +2397,20 @@ class ShareManager(manager.SchedulerDependentManager):
             LOG.error(_LE("Share snapshot cannot be unmanaged: %s."),
                       msg)
             return
+
+        if self.configuration.safe_get('unmanage_remove_access_rules'):
+            try:
+                self.snapshot_access_helper.update_access_rules(
+                    context,
+                    snapshot_instance['id'],
+                    delete_all_rules=True,
+                    share_server=share_server)
+            except Exception:
+                LOG.exception(
+                    _LE("Cannot remove access rules of snapshot %s."),
+                    snapshot_id)
+                self.db.share_snapshot_update(context, snapshot_id, status)
+                return
 
         try:
             self.driver.unmanage_snapshot(snapshot_instance)
@@ -2561,6 +2618,18 @@ class ShareManager(manager.SchedulerDependentManager):
                     snapshot_instance_id,
                     {'status': constants.STATUS_ERROR})
 
+        snapshot_export_locations = model_update.pop('export_locations', [])
+
+        for el in snapshot_export_locations:
+            values = {
+                'share_snapshot_instance_id': snapshot_instance_id,
+                'path': el['path'],
+                'is_admin_only': el['is_admin_only'],
+            }
+
+            self.db.share_snapshot_instance_export_location_create(context,
+                                                                   values)
+
         if model_update.get('status') in (None, constants.STATUS_AVAILABLE):
             model_update['status'] = constants.STATUS_AVAILABLE
             model_update['progress'] = '100%'
@@ -2588,6 +2657,21 @@ class ShareManager(manager.SchedulerDependentManager):
 
         snapshot_instance = self._get_snapshot_instance_dict(
             context, snapshot_instance)
+
+        share_ref = self.db.share_get(context, snapshot_ref['share_id'])
+
+        if share_ref['mount_snapshot_support']:
+            try:
+                self.snapshot_access_helper.update_access_rules(
+                    context, snapshot_instance['id'], delete_all_rules=True,
+                    share_server=share_server)
+            except Exception:
+                LOG.exception(
+                    _LE("Failed to remove access rules for snapshot %s."),
+                    snapshot_instance['id'])
+                LOG.warning(_LW("The driver was unable to remove access rules "
+                                "for snapshot %s. Moving on."),
+                            snapshot_instance['snapshot_id'])
 
         try:
             self.driver.delete_snapshot(context, snapshot_instance,
@@ -3635,3 +3719,13 @@ class ShareManager(manager.SchedulerDependentManager):
             })
 
         return snapshot_instance_ref
+
+    def snapshot_update_access(self, context, snapshot_instance_id):
+        snapshot_instance = self.db.share_snapshot_instance_get(
+            context, snapshot_instance_id, with_share_data=True)
+
+        share_server = self._get_share_server(
+            context, snapshot_instance['share_instance'])
+
+        self.snapshot_access_helper.update_access_rules(
+            context, snapshot_instance['id'], share_server=share_server)

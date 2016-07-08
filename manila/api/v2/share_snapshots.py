@@ -21,6 +21,7 @@ import six
 import webob
 from webob import exc
 
+from manila.api import common
 from manila.api.openstack import wsgi
 from manila.api.v1 import share_snapshots
 from manila.api.views import share_snapshots as snapshot_views
@@ -134,19 +135,104 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
             msg = _("Snapshot entity not found in request body.")
             raise exc.HTTPUnprocessableEntity(explanation=msg)
 
-        required_parameters = ('share_id', 'provider_location')
-
         data = body['snapshot']
+
+        required_parameters = ('share_id', 'provider_location')
+        self._validate_parameters(data, required_parameters)
+
+        return data
+
+    def _validate_parameters(self, data, required_parameters,
+                             fix_response=False):
+
+        if fix_response:
+            exc_response = exc.HTTPBadRequest
+        else:
+            exc_response = exc.HTTPUnprocessableEntity
 
         for parameter in required_parameters:
             if parameter not in data:
                 msg = _("Required parameter %s not found.") % parameter
-                raise exc.HTTPUnprocessableEntity(explanation=msg)
+                raise exc_response(explanation=msg)
             if not data.get(parameter):
                 msg = _("Required parameter %s is empty.") % parameter
-                raise exc.HTTPUnprocessableEntity(explanation=msg)
+                raise exc_response(explanation=msg)
 
-        return data
+    def _allow(self, req, id, body):
+        context = req.environ['manila.context']
+
+        if not (body and self.is_valid_body(body, 'allow_access')):
+            msg = _("Access data not found in request body.")
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        access_data = body.get('allow_access')
+
+        required_parameters = ('access_type', 'access_to')
+        self._validate_parameters(access_data, required_parameters,
+                                  fix_response=True)
+
+        access_type = access_data['access_type']
+        access_to = access_data['access_to']
+
+        common.validate_access(access_type=access_type, access_to=access_to)
+
+        snapshot = self.share_api.get_snapshot(context, id)
+
+        self._check_mount_snapshot_support(context, snapshot)
+
+        try:
+            access = self.share_api.snapshot_allow_access(
+                context, snapshot, access_type, access_to)
+        except exception.ShareSnapshotAccessExists as e:
+            raise webob.exc.HTTPBadRequest(explanation=e.msg)
+
+        return self._view_builder.detail_access(req, access)
+
+    def _deny(self, req, id, body):
+        context = req.environ['manila.context']
+
+        if not (body and self.is_valid_body(body, 'deny_access')):
+            msg = _("Access data not found in request body.")
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        access_data = body.get('deny_access')
+
+        self._validate_parameters(
+            access_data, ('access_id',), fix_response=True)
+
+        access_id = access_data['access_id']
+
+        snapshot = self.share_api.get_snapshot(context, id)
+
+        self._check_mount_snapshot_support(context, snapshot)
+
+        access = self.share_api.snapshot_access_get(context, access_id)
+
+        if access['share_snapshot_id'] != snapshot['id']:
+            msg = _("Access rule provided is not associated with given"
+                    " snapshot.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        self.share_api.snapshot_deny_access(context, snapshot, access)
+        return webob.Response(status_int=202)
+
+    def _check_mount_snapshot_support(self, context, snapshot):
+        share = self.share_api.get(context, snapshot['share_id'])
+        if not share['mount_snapshot_support']:
+            msg = _("Cannot control access to the snapshot %(snap)s since the "
+                    "parent share %(share)s does not support mounting its "
+                    "snapshots.") % {'snap': snapshot['id'],
+                                     'share': share['id']}
+            raise exc.HTTPBadRequest(explanation=msg)
+
+    def _access_list(self, req, snapshot_id):
+        context = req.environ['manila.context']
+
+        snapshot = self.share_api.get_snapshot(context, snapshot_id)
+        self._check_mount_snapshot_support(context, snapshot)
+        access_list = self.share_api.snapshot_access_get_all(context, snapshot)
+
+        return self._view_builder.detail_list_access(req, access_list)
 
     @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.action('os-reset_status')
@@ -177,6 +263,24 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
     @wsgi.action('unmanage')
     def unmanage(self, req, id, body=None):
         return self._unmanage(req, id, body)
+
+    @wsgi.Controller.api_version('2.32')
+    @wsgi.action('allow_access')
+    @wsgi.response(202)
+    @wsgi.Controller.authorize
+    def allow_access(self, req, id, body=None):
+        return self._allow(req, id, body)
+
+    @wsgi.Controller.api_version('2.32')
+    @wsgi.action('deny_access')
+    @wsgi.Controller.authorize
+    def deny_access(self, req, id, body=None):
+        return self._deny(req, id, body)
+
+    @wsgi.Controller.api_version('2.32')
+    @wsgi.Controller.authorize
+    def access_list(self, req, snapshot_id):
+        return self._access_list(req, snapshot_id)
 
 
 def create_resource():

@@ -43,6 +43,8 @@ from manila.api.v2 import share_instance_export_locations
 from manila.api.v2 import share_instances
 from manila.api.v2 import share_networks
 from manila.api.v2 import share_replicas
+from manila.api.v2 import share_snapshot_export_locations
+from manila.api.v2 import share_snapshot_instance_export_locations
 from manila.api.v2 import share_snapshot_instances
 from manila.api.v2 import share_snapshots
 from manila.api.v2 import share_types
@@ -209,12 +211,55 @@ class APIRouter(manila.api.openstack.APIRouter):
                        action="manage",
                        conditions={"method": ["POST"]})
 
+        mapper.connect("snapshots",
+                       "/{project_id}/snapshots/{snapshot_id}/access-list",
+                       controller=self.resources["snapshots"],
+                       action="access_list",
+                       conditions={"method": ["GET"]})
+
+        self.resources["share_snapshot_export_locations"] = (
+            share_snapshot_export_locations.create_resource())
+        mapper.connect("snapshots",
+                       "/{project_id}/snapshots/{snapshot_id}/"
+                       "export-locations",
+                       controller=self.resources[
+                           "share_snapshot_export_locations"],
+                       action="index",
+                       conditions={"method": ["GET"]})
+
+        mapper.connect("snapshots",
+                       "/{project_id}/snapshots/{snapshot_id}/"
+                       "export-locations/{export_location_id}",
+                       controller=self.resources[
+                           "share_snapshot_export_locations"],
+                       action="show",
+                       conditions={"method": ["GET"]})
+
         self.resources['snapshot_instances'] = (
             share_snapshot_instances.create_resource())
         mapper.resource("snapshot-instance", "snapshot-instances",
                         controller=self.resources['snapshot_instances'],
                         collection={'detail': 'GET'},
                         member={'action': 'POST'})
+
+        self.resources["share_snapshot_instance_export_locations"] = (
+            share_snapshot_instance_export_locations.create_resource())
+        mapper.connect("snapshot-instance",
+                       "/{project_id}/snapshot-instances/"
+                       "{snapshot_instance_id}/export-locations",
+                       controller=self.resources[
+                           "share_snapshot_instance_export_locations"],
+                       action="index",
+                       conditions={"method": ["GET"]})
+
+        mapper.connect("snapshot-instance",
+                       "/{project_id}/snapshot-instances/"
+                       "{snapshot_instance_id}/export-locations/"
+                       "{export_location_id}",
+                       controller=self.resources[
+                           "share_snapshot_instance_export_locations"],
+                       action="show",
+                       conditions={"method": ["GET"]})
 
         self.resources["share_metadata"] = share_metadata.create_resource()
         share_metadata_controller = self.resources["share_metadata"]

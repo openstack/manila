@@ -16,8 +16,6 @@
 """The shares api."""
 
 import ast
-import re
-import string
 
 from oslo_log import log
 from oslo_utils import strutils
@@ -333,76 +331,6 @@ class ShareMixin(object):
         return self._view_builder.detail(req, new_share)
 
     @staticmethod
-    def _validate_common_name(access):
-        """Validate common name passed by user.
-
-        'access' is used as the certificate's CN (common name)
-        to which access is allowed or denied by the backend.
-        The standard allows for just about any string in the
-        common name. The meaning of a string depends on its
-        interpretation and is limited to 64 characters.
-        """
-        if len(access) == 0 or len(access) > 64:
-            exc_str = _('Invalid CN (common name). Must be 1-64 chars long')
-            raise webob.exc.HTTPBadRequest(explanation=exc_str)
-
-    @staticmethod
-    def _validate_username(access):
-        valid_username_re = '[\w\.\-_\`;\'\{\}\[\]\\\\]{4,32}$'
-        username = access
-        if not re.match(valid_username_re, username):
-            exc_str = ('Invalid user or group name. Must be 4-32 characters '
-                       'and consist of alphanumeric characters and '
-                       'special characters ]{.-_\'`;}[\\')
-            raise webob.exc.HTTPBadRequest(explanation=exc_str)
-
-    @staticmethod
-    def _validate_ip_range(ip_range):
-        ip_range = ip_range.split('/')
-        exc_str = ('Supported ip format examples:\n'
-                   '\t10.0.0.2, 10.0.0.0/24')
-        if len(ip_range) > 2:
-            raise webob.exc.HTTPBadRequest(explanation=exc_str)
-        if len(ip_range) == 2:
-            try:
-                prefix = int(ip_range[1])
-                if prefix < 0 or prefix > 32:
-                    raise ValueError()
-            except ValueError:
-                msg = 'IP prefix should be in range from 0 to 32'
-                raise webob.exc.HTTPBadRequest(explanation=msg)
-        ip_range = ip_range[0].split('.')
-        if len(ip_range) != 4:
-            raise webob.exc.HTTPBadRequest(explanation=exc_str)
-        for item in ip_range:
-            try:
-                if 0 <= int(item) <= 255:
-                    continue
-                raise ValueError()
-            except ValueError:
-                raise webob.exc.HTTPBadRequest(explanation=exc_str)
-
-    @staticmethod
-    def _validate_cephx_id(cephx_id):
-        if not cephx_id:
-            raise webob.exc.HTTPBadRequest(explanation=_(
-                'Ceph IDs may not be empty'))
-
-        # This restriction may be lifted in Ceph in the future:
-        # http://tracker.ceph.com/issues/14626
-        if not set(cephx_id) <= set(string.printable):
-            raise webob.exc.HTTPBadRequest(explanation=_(
-                'Ceph IDs must consist of ASCII printable characters'))
-
-        # Periods are technically permitted, but we restrict them here
-        # to avoid confusion where users are unsure whether they should
-        # include the "client." prefix: otherwise they could accidentally
-        # create "client.client.foobar".
-        if '.' in cephx_id:
-            raise webob.exc.HTTPBadRequest(explanation=_(
-                'Ceph IDs may not contain periods'))
-
-    @staticmethod
     def _any_instance_has_errored_rules(share):
         for instance in share['instances']:
             access_rules_status = instance['access_rules_status']
@@ -432,23 +360,9 @@ class ShareMixin(object):
 
         access_type = access_data['access_type']
         access_to = access_data['access_to']
-        if access_type == 'ip':
-            self._validate_ip_range(access_to)
-        elif access_type == 'user':
-            self._validate_username(access_to)
-        elif access_type == 'cert':
-            self._validate_common_name(access_to.strip())
-        elif access_type == "cephx" and enable_ceph:
-            self._validate_cephx_id(access_to)
-        else:
-            if enable_ceph:
-                exc_str = _("Only 'ip', 'user', 'cert' or 'cephx' access "
-                            "types are supported.")
-            else:
-                exc_str = _("Only 'ip', 'user' or 'cert' access types "
-                            "are supported.")
-
-            raise webob.exc.HTTPBadRequest(explanation=exc_str)
+        common.validate_access(access_type=access_type,
+                               access_to=access_to,
+                               enable_ceph=enable_ceph)
         try:
             access = self.share_api.allow_access(
                 context, share, access_type, access_to,

@@ -41,6 +41,7 @@ SERVICE_STATES_NO_POOLS = {
                   snapshot_support=False,
                   create_share_from_snapshot_support=False,
                   revert_to_snapshot_support=True,
+                  mount_snapshot_support=True,
                   driver_handles_share_servers=False),
     'host2@back1': dict(share_backend_name='BBB',
                         total_capacity_gb=256, free_capacity_gb=100,
@@ -51,6 +52,7 @@ SERVICE_STATES_NO_POOLS = {
                         snapshot_support=True,
                         create_share_from_snapshot_support=True,
                         revert_to_snapshot_support=False,
+                        mount_snapshot_support=False,
                         driver_handles_share_servers=False),
     'host2@back2': dict(share_backend_name='CCC',
                         total_capacity_gb=10000, free_capacity_gb=700,
@@ -61,6 +63,7 @@ SERVICE_STATES_NO_POOLS = {
                         snapshot_support=True,
                         create_share_from_snapshot_support=True,
                         revert_to_snapshot_support=False,
+                        mount_snapshot_support=False,
                         driver_handles_share_servers=False),
 }
 

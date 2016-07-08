@@ -40,6 +40,7 @@ def fake_share(**kwargs):
         'is_busy': False,
         'share_group_id': None,
         'instance': {'host': 'fakehost'},
+        'mount_snapshot_support': False,
     }
     share.update(kwargs)
     return db_fakes.FakeModel(share)

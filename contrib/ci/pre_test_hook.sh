@@ -99,7 +99,7 @@ elif [[ "$DRIVER" == "windows" ]]; then
     save_configuration "SHARE_DRIVER" "manila.share.drivers.windows.windows_smb_driver.WindowsSMBDriver"
 elif [[ "$DRIVER" == "dummy" ]]; then
     driver_path="manila.tests.share.drivers.dummy.DummyDriver"
-    DEFAULT_EXTRA_SPECS="'snapshot_support=True create_share_from_snapshot_support=True revert_to_snapshot_support=True'"
+    DEFAULT_EXTRA_SPECS="'snapshot_support=True create_share_from_snapshot_support=True revert_to_snapshot_support=True mount_snapshot_support=True'"
     save_configuration "MANILA_SERVICE_IMAGE_ENABLED" "False"
     save_configuration "SHARE_DRIVER" "$driver_path"
     save_configuration "SUPPRESS_ERRORS_IN_CLEANUP" "False"
@@ -149,7 +149,7 @@ elif [[ "$DRIVER" == "dummy" ]]; then
 
 elif [[ "$DRIVER" == "lvm" ]]; then
     MANILA_SERVICE_IMAGE_ENABLED=True
-    DEFAULT_EXTRA_SPECS="'snapshot_support=True create_share_from_snapshot_support=True revert_to_snapshot_support=True'"
+    DEFAULT_EXTRA_SPECS="'snapshot_support=True create_share_from_snapshot_support=True revert_to_snapshot_support=True mount_snapshot_support=True'"
     save_configuration "SHARE_DRIVER" "manila.share.drivers.lvm.LVMShareDriver"
     save_configuration "SHARE_BACKING_FILE_SIZE" "32000M"
 elif [[ "$DRIVER" == "zfsonlinux" ]]; then

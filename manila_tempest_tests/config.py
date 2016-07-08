@@ -30,7 +30,7 @@ ShareGroup = [
                help="The minimum api microversion is configured to be the "
                     "value of the minimum microversion supported by Manila."),
     cfg.StrOpt("max_api_microversion",
-               default="2.31",
+               default="2.32",
                help="The maximum api microversion is configured to be the "
                     "value of the latest microversion supported by Manila."),
     cfg.StrOpt("region",
@@ -203,6 +203,9 @@ ShareGroup = [
                 help="Defines whether to run manage/unmanage snapshot tests "
                      "or not. These tests may leave orphaned resources, so be "
                      "careful enabling this opt."),
+    cfg.BoolOpt("run_mount_snapshot_tests",
+                default=False,
+                help="Enable or disable mountable snapshot tests."),
 
     cfg.StrOpt("image_with_share_tools",
                default="manila-service-image-master",

@@ -275,12 +275,16 @@ class API(base.Base):
             constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT)
         revert_to_snapshot_key = (
             constants.ExtraSpecs.REVERT_TO_SNAPSHOT_SUPPORT)
+        mount_snapshot_support_key = (
+            constants.ExtraSpecs.MOUNT_SNAPSHOT_SUPPORT)
 
         snapshot_support_default = inferred_map.get(snapshot_support_key)
         create_share_from_snapshot_support_default = inferred_map.get(
             create_share_from_snapshot_key)
         revert_to_snapshot_support_default = inferred_map.get(
             revert_to_snapshot_key)
+        mount_snapshot_support_default = inferred_map.get(
+            constants.ExtraSpecs.MOUNT_SNAPSHOT_SUPPORT)
 
         if share_type:
             snapshot_support = share_types.parse_boolean_extra_spec(
@@ -299,6 +303,11 @@ class API(base.Base):
                     share_type.get('extra_specs', {}).get(
                         revert_to_snapshot_key,
                         revert_to_snapshot_support_default)))
+            mount_snapshot_support = share_types.parse_boolean_extra_spec(
+                mount_snapshot_support_key, share_type.get(
+                    'extra_specs', {}).get(
+                    mount_snapshot_support_key,
+                    mount_snapshot_support_default))
             replication_type = share_type.get('extra_specs', {}).get(
                 'replication_type')
         else:
@@ -306,6 +315,7 @@ class API(base.Base):
             create_share_from_snapshot_support = (
                 create_share_from_snapshot_support_default)
             revert_to_snapshot_support = revert_to_snapshot_support_default
+            mount_snapshot_support = mount_snapshot_support_default
             replication_type = None
 
         return {
@@ -314,6 +324,7 @@ class API(base.Base):
                 create_share_from_snapshot_support,
             'revert_to_snapshot_support': revert_to_snapshot_support,
             'replication_type': replication_type,
+            'mount_snapshot_support': mount_snapshot_support,
         }
 
     def create_instance(self, context, share, share_network_id=None,
@@ -399,6 +410,7 @@ class API(base.Base):
             'create_share_from_snapshot_support':
                 share['create_share_from_snapshot_support'],
             'revert_to_snapshot_support': share['revert_to_snapshot_support'],
+            'mount_snapshot_support': share['mount_snapshot_support'],
             'share_proto': share['share_proto'],
             'share_type_id': share_type_id,
             'is_public': share['is_public'],
@@ -646,7 +658,11 @@ class API(base.Base):
                 share_type.get('extra_specs', {}).get(
                     'revert_to_snapshot_support')
             ),
-
+            'mount_snapshot_support': kwargs.get(
+                'mount_snapshot_support',
+                share_type.get('extra_specs', {}).get(
+                    'mount_snapshot_support')
+            ),
             'share_proto': kwargs.get('share_proto', share.get('share_proto')),
             'share_type_id': share_type['id'],
             'is_public': kwargs.get('is_public', share.get('is_public')),
@@ -1819,3 +1835,77 @@ class API(base.Base):
         LOG.info(_LI("Shrink share (id=%(id)s) request issued successfully."
                      " New size: %(size)s") % {'id': share['id'],
                                                'size': new_size})
+
+    def snapshot_allow_access(self, context, snapshot, access_type, access_to):
+        """Allow access to a share snapshot."""
+
+        filters = {'access_to': access_to,
+                   'access_type': access_type}
+
+        access_list = self.db.share_snapshot_access_get_all_for_share_snapshot(
+            context, snapshot['id'], filters)
+
+        if len(access_list) > 0:
+            raise exception.ShareSnapshotAccessExists(access_type=access_type,
+                                                      access=access_to)
+
+        values = {
+            'share_snapshot_id': snapshot['id'],
+            'access_type': access_type,
+            'access_to': access_to,
+        }
+
+        if any((instance['status'] != constants.STATUS_AVAILABLE) or
+               (instance['share_instance']['host'] is None)
+               for instance in snapshot.instances):
+            msg = _("New access rules cannot be applied while the snapshot or "
+                    "any of its replicas or migration copies lacks a valid "
+                    "host or is not in %s state.") % constants.STATUS_AVAILABLE
+
+            raise exception.InvalidShareSnapshotInstance(reason=msg)
+
+        access = self.db.share_snapshot_access_create(context, values)
+
+        for snapshot_instance in snapshot.instances:
+            self.share_rpcapi.snapshot_update_access(
+                context, snapshot_instance)
+
+        return access
+
+    def snapshot_deny_access(self, context, snapshot, access):
+        """Deny access to a share snapshot."""
+        if any((instance['status'] != constants.STATUS_AVAILABLE) or
+               (instance['share_instance']['host'] is None)
+               for instance in snapshot.instances):
+            msg = _("Access rules cannot be denied while the snapshot or "
+                    "any of its replicas or migration copies lacks a valid "
+                    "host or is not in %s state.") % constants.STATUS_AVAILABLE
+
+            raise exception.InvalidShareSnapshotInstance(reason=msg)
+
+        for snapshot_instance in snapshot.instances:
+            rule = self.db.share_snapshot_instance_access_get(
+                context, access['id'], snapshot_instance['id'])
+            self.db.share_snapshot_instance_access_update(
+                context, rule['access_id'], snapshot_instance['id'],
+                {'state': constants.ACCESS_STATE_QUEUED_TO_DENY})
+            self.share_rpcapi.snapshot_update_access(
+                context, snapshot_instance)
+
+    def snapshot_access_get_all(self, context, snapshot):
+        """Returns all access rules for share snapshot."""
+        rules = self.db.share_snapshot_access_get_all_for_share_snapshot(
+            context, snapshot['id'], {})
+        return rules
+
+    def snapshot_access_get(self, context, access_id):
+        """Returns snapshot access rule with the id."""
+        rule = self.db.share_snapshot_access_get(context, access_id)
+        return rule
+
+    def snapshot_export_locations_get(self, context, snapshot):
+        return self.db.share_snapshot_export_locations_get(context, snapshot)
+
+    def snapshot_export_location_get(self, context, el_id):
+        return self.db.share_snapshot_instance_export_location_get(context,
+                                                                   el_id)

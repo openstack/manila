@@ -76,6 +76,7 @@ RUN_MANILA_MANAGE_SNAPSHOT_TESTS=${RUN_MANILA_MANAGE_SNAPSHOT_TESTS:-False}
 RUN_MANILA_REPLICATION_TESTS=${RUN_MANILA_REPLICATION_TESTS:-False}
 RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=${RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS:-False}
 RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS=${RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS:-False}
+RUN_MANILA_MOUNT_SNAPSHOT_TESTS=${RUN_MANILA_MOUNT_SNAPSHOT_TESTS:-False}
 
 MANILA_CONF=${MANILA_CONF:-/etc/manila/manila.conf}
 
@@ -167,6 +168,7 @@ if [[ "$DRIVER" == "lvm" ]]; then
     RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=True
     RUN_MANILA_SHRINK_TESTS=False
     RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS=True
+    RUN_MANILA_MOUNT_SNAPSHOT_TESTS=True
     iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
     iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
     iniset $TEMPEST_CONFIG share image_with_share_tools 'manila-service-image-master'
@@ -211,6 +213,7 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     RUN_MANILA_MANAGE_TESTS=False
     RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS=True
     RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS=True
+    RUN_MANILA_MOUNT_SNAPSHOT_TESTS=True
     iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
     iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
     iniset $TEMPEST_CONFIG share enable_cert_rules_for_protocols ''
@@ -265,6 +268,9 @@ iniset $TEMPEST_CONFIG share run_replication_tests $RUN_MANILA_REPLICATION_TESTS
 # Enable migration tests
 iniset $TEMPEST_CONFIG share run_host_assisted_migration_tests $RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS
 iniset $TEMPEST_CONFIG share run_driver_assisted_migration_tests $RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS
+
+# Enable mountable snapshots tests
+iniset $TEMPEST_CONFIG share run_mount_snapshot_tests $RUN_MANILA_MOUNT_SNAPSHOT_TESTS
 
 # Create share from snapshot support
 iniset $TEMPEST_CONFIG share capability_create_share_from_snapshot_support $CAPABILITY_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT

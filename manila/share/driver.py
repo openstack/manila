@@ -622,6 +622,8 @@ class ShareDriver(object):
         :param snapshot: Snapshot model. Share model could be
             retrieved through snapshot['share'].
         :param share_server: Share server model or None.
+        :return: None or a dictionary with key 'export_locations' containing
+            a list of export locations, if snapshots can be mounted.
         """
         raise NotImplementedError()
 
@@ -935,7 +937,9 @@ class ShareDriver(object):
             }
 
         :return: model_update dictionary with required key 'size',
-            which should contain size of the share snapshot.
+            which should contain size of the share snapshot, and key
+            'export_locations' containing a list of export locations, if
+            snapshots can be mounted.
         """
         raise NotImplementedError()
 
@@ -1076,6 +1080,7 @@ class ShareDriver(object):
                 self.creating_shares_from_snapshots_is_supported),
             revert_to_snapshot_support=False,
             share_group_snapshot_support=self.snapshots_are_supported,
+            mount_snapshot_support=False,
             replication_domain=self.replication_domain,
             filter_function=self.get_filter_function(),
             goodness_function=self.get_goodness_function(),
@@ -2325,3 +2330,35 @@ class ShareDriver(object):
         :return: None
         """
         return None
+
+    def snapshot_update_access(self, context, snapshot, access_rules,
+                               add_rules, delete_rules, share_server=None):
+        """Update access rules for given snapshot.
+
+        ``access_rules`` contains all access_rules that need to be on the
+        share. If the driver can make bulk access rule updates, it can
+        safely ignore the ``add_rules`` and ``delete_rules`` parameters.
+
+        If the driver cannot make bulk access rule changes, it can rely on
+        new rules to be present in ``add_rules`` and rules that need to be
+        removed to be present in ``delete_rules``.
+
+        When a rule in ``add_rules`` already exists in the back end, drivers
+        must not raise an exception. When a rule in ``delete_rules`` was never
+        applied, drivers must not raise an exception, or attempt to set the
+        rule to ``error`` state.
+
+        ``add_rules`` and ``delete_rules`` can be empty lists, in this
+        situation, drivers should ensure that the rules present in
+        ``access_rules`` are the same as those on the back end.
+
+        :param context: Current context
+        :param snapshot: Snapshot model with snapshot data.
+        :param access_rules: All access rules for given snapshot
+        :param add_rules: Empty List or List of access rules which should be
+               added. access_rules already contains these rules.
+        :param delete_rules: Empty List or List of access rules which should be
+               removed. access_rules doesn't contain these rules.
+        :param share_server: None or Share server model
+        """
+        raise NotImplementedError()
