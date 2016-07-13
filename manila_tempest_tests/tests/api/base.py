@@ -454,18 +454,28 @@ class BaseSharesTest(test.BaseTestCase):
             for d in data:
                 if d["available"]:
                     continue
+                client = d["kwargs"]["client"]
+                share_id = d["share"]["id"]
                 try:
-                    d["kwargs"]["client"].wait_for_share_status(
-                        d["share"]["id"], "available")
+                    client.wait_for_share_status(share_id, "available")
                     d["available"] = True
                 except (share_exceptions.ShareBuildErrorException,
                         exceptions.TimeoutException) as e:
                     if CONF.share.share_creation_retry_number > d["cnt"]:
                         d["cnt"] += 1
                         msg = ("Share '%s' failed to be built. "
-                               "Trying create another." % d["share"]["id"])
+                               "Trying create another." % share_id)
                         LOG.error(msg)
                         LOG.error(e)
+                        cg_id = d["kwargs"].get("consistency_group_id")
+                        if cg_id:
+                            # NOTE(vponomaryov): delete errored share
+                            # immediately in case share is part of CG.
+                            client.delete_share(
+                                share_id,
+                                params={"consistency_group_id": cg_id})
+                            client.wait_for_resource_deletion(
+                                share_id=share_id)
                         d["share"] = cls._create_share(
                             *d["args"], **d["kwargs"])
                     else:
