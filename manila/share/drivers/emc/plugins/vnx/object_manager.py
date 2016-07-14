@@ -98,7 +98,7 @@ class StorageObject(object):
                          'info': response})
 
     def _response_validation(self, response, error_code):
-        """Translate different status to ok/error status."""
+        """Validates whether a response includes a certain error code."""
         msg_codes = self._get_problem_message_codes(response['problems'])
 
         for code in msg_codes:
@@ -146,6 +146,7 @@ class StorageObject(object):
             )
         )
 
+    @utils.retry(exception.EMCVnxLockRequiredException)
     def _send_request(self, req):
         req_xml = constants.XML_HEADER + ET.tostring(req).decode('utf-8')
 
@@ -154,6 +155,11 @@ class StorageObject(object):
         response = self.xml_parser.parse(rsp_xml)
 
         self._translate_response(response)
+
+        if (response['maxSeverity'] != constants.STATUS_OK and
+                self._response_validation(response,
+                                          constants.MSG_CODE_RETRY)):
+            raise exception.EMCVnxLockRequiredException
 
         return response
 

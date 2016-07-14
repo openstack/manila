@@ -16,6 +16,7 @@
 import copy
 
 import ddt
+from lxml import builder
 import mock
 from oslo_concurrency import processutils
 
@@ -24,6 +25,7 @@ from manila import exception
 from manila.share.drivers.emc.plugins.vnx import connector
 from manila.share.drivers.emc.plugins.vnx import constants
 from manila.share.drivers.emc.plugins.vnx import object_manager as manager
+from manila.share.drivers.emc.plugins.vnx import xml_api_parser as parser
 from manila import test
 from manila.tests.share.drivers.emc.plugins.vnx import fakes
 from manila.tests.share.drivers.emc.plugins.vnx import utils
@@ -71,17 +73,17 @@ class StorageObjectManagerTestCase(test.TestCase):
                           fake_type)
 
 
-class StorageObjectTestCase(test.TestCase):
+class StorageObjectTestCaseBase(test.TestCase):
     @mock.patch.object(connector, "XMLAPIConnector", mock.Mock())
     @mock.patch.object(connector, "SSHConnector", mock.Mock())
     def setUp(self):
-        super(StorageObjectTestCase, self).setUp()
+        super(StorageObjectTestCaseBase, self).setUp()
 
         emd_share_driver = fakes.FakeEMCShareDriver()
 
         self.manager = manager.StorageObjectManager(
             emd_share_driver.configuration)
-
+        self.base = fakes.StorageObjectTestData()
         self.pool = fakes.PoolTestData()
         self.vdm = fakes.VDMTestData()
         self.mover = fakes.MoverTestData()
@@ -94,7 +96,32 @@ class StorageObjectTestCase(test.TestCase):
         self.dns = fakes.DNSDomainTestData()
 
 
-class FileSystemTestCase(StorageObjectTestCase):
+class StorageObjectTestCase(StorageObjectTestCaseBase):
+
+    def test_xml_api_retry(self):
+        hook = utils.RequestSideEffect()
+        hook.append(self.base.resp_need_retry())
+        hook.append(self.base.resp_task_succeed())
+        elt_maker = builder.ElementMaker(nsmap={None: constants.XML_NAMESPACE})
+        xml_parser = parser.XMLAPIParser()
+        storage_object = manager.StorageObject(self.manager.connectors,
+                                               elt_maker, xml_parser,
+                                               self.manager)
+        storage_object.conn['XML'].request = utils.EMCMock(side_effect=hook)
+        fake_req = storage_object._build_task_package(
+            elt_maker.StartFake(name='foo')
+        )
+        resp = storage_object._send_request(fake_req)
+        self.assertEqual('ok', resp['maxSeverity'])
+
+        expected_calls = [
+            mock.call(self.base.req_fake_start_task()),
+            mock.call(self.base.req_fake_start_task())
+        ]
+        storage_object.conn['XML'].request.assert_has_calls(expected_calls)
+
+
+class FileSystemTestCase(StorageObjectTestCaseBase):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.hook = utils.RequestSideEffect()
@@ -507,7 +534,7 @@ class FileSystemTestCase(StorageObjectTestCase):
         context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
 
 
-class MountPointTestCase(StorageObjectTestCase):
+class MountPointTestCase(StorageObjectTestCaseBase):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.hook = utils.RequestSideEffect()
@@ -824,7 +851,7 @@ class MountPointTestCase(StorageObjectTestCase):
         context.conn['XML'].request.assert_has_calls(expected_calls)
 
 
-class VDMTestCase(StorageObjectTestCase):
+class VDMTestCase(StorageObjectTestCaseBase):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.hook = utils.RequestSideEffect()
@@ -1088,7 +1115,7 @@ class VDMTestCase(StorageObjectTestCase):
         context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
 
 
-class StoragePoolTestCase(StorageObjectTestCase):
+class StoragePoolTestCase(StorageObjectTestCaseBase):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.hook = utils.RequestSideEffect()
@@ -1155,7 +1182,7 @@ class StoragePoolTestCase(StorageObjectTestCase):
         context.conn['XML'].request.assert_has_calls(expected_calls)
 
 
-class MoverTestCase(StorageObjectTestCase):
+class MoverTestCase(StorageObjectTestCaseBase):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.hook = utils.RequestSideEffect()
@@ -1332,7 +1359,7 @@ class MoverTestCase(StorageObjectTestCase):
         context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
 
 
-class SnapshotTestCase(StorageObjectTestCase):
+class SnapshotTestCase(StorageObjectTestCaseBase):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.hook = utils.RequestSideEffect()
@@ -1522,7 +1549,7 @@ class SnapshotTestCase(StorageObjectTestCase):
 
 
 @ddt.ddt
-class MoverInterfaceTestCase(StorageObjectTestCase):
+class MoverInterfaceTestCase(StorageObjectTestCaseBase):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.hook = utils.RequestSideEffect()
@@ -1815,7 +1842,7 @@ class MoverInterfaceTestCase(StorageObjectTestCase):
         context.conn['XML'].request.assert_has_calls(expected_calls)
 
 
-class DNSDomainTestCase(StorageObjectTestCase):
+class DNSDomainTestCase(StorageObjectTestCaseBase):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.hook = utils.RequestSideEffect()
@@ -1925,7 +1952,7 @@ class DNSDomainTestCase(StorageObjectTestCase):
         self.assertTrue(sleep_mock.called)
 
 
-class CIFSServerTestCase(StorageObjectTestCase):
+class CIFSServerTestCase(StorageObjectTestCaseBase):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.hook = utils.RequestSideEffect()
@@ -2363,7 +2390,7 @@ class CIFSServerTestCase(StorageObjectTestCase):
         context.conn['XML'].request.assert_has_calls(expected_calls)
 
 
-class CIFSShareTestCase(StorageObjectTestCase):
+class CIFSShareTestCase(StorageObjectTestCaseBase):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.hook = utils.RequestSideEffect()
@@ -2712,7 +2739,7 @@ class CIFSShareTestCase(StorageObjectTestCase):
         context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
 
 
-class NFSShareTestCase(StorageObjectTestCase):
+class NFSShareTestCase(StorageObjectTestCaseBase):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.ssh_hook = utils.SSHSideEffect()
