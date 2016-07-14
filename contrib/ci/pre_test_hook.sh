@@ -70,5 +70,9 @@ TEMPEST_COMMIT="3b1bb9be3265f"  # 28 Aug, 2015
 cd $BASE/new/tempest
 git checkout $TEMPEST_COMMIT
 
+# Inject tox changes made via change Iab2e6e04b6c5795a4d0c8214564106525b942308
+# See bug: https://bugs.launchpad.net/manila/+bug/1603275
+git cherry-pick 0e25a90793a17
+
 # Print current Tempest status
 git status
