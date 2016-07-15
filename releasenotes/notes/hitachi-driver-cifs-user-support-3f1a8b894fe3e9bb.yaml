@@ -1,0 +1,8 @@
+---
+prelude: >
+    Add support for CIFS protocol in Manila HNAS driver.
+features:
+  - Added support for CIFS shares in Hitachi HNAS driver. It supports
+    user access type, where a permission for a user or a group can be
+    added/removed. Also, accepts 'read write' and 'read only' as access
+    level.

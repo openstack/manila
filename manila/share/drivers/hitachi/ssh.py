@@ -82,11 +82,31 @@ class HNASSSHBackend(object):
                 LOG.exception(msg)
                 raise exception.HNASBackendException(msg=msg)
 
-    def get_host_list(self, share_id):
+    def cifs_share_add(self, share_id):
+        path = r'\\shares\\' + share_id
+        command = ['cifs-share', 'add', '-S', 'disable', '--enable-abe',
+                   '--nodefaultsaa', share_id, self.fs_name, path]
+        self._execute(command)
+
+    def cifs_share_del(self, share_id):
+        command = ['cifs-share', 'del', '--target-label', self.fs_name,
+                   share_id]
+        try:
+            self._execute(command)
+        except processutils.ProcessExecutionError as e:
+            if e.exit_code == 1:
+                LOG.warning(_LW("CIFS share %s does not exist on "
+                                "backend anymore."), share_id)
+            else:
+                msg = six.text_type(e)
+                LOG.exception(msg)
+                raise exception.HNASBackendException(msg=msg)
+
+    def get_nfs_host_list(self, share_id):
         export = self._get_share_export(share_id)
         return export[0].export_configuration
 
-    def update_access_rule(self, share_id, host_list):
+    def update_nfs_access_rule(self, share_id, host_list):
         command = ['nfs-export', 'mod', '-c']
 
         if len(host_list) == 0:
@@ -102,6 +122,55 @@ class HNASSSHBackend(object):
         path = '/shares/' + share_id
         command.append(path)
         self._execute(command)
+
+    def cifs_allow_access(self, hnas_share_id, user, permission):
+        command = ['cifs-saa', 'add', '--target-label', self.fs_name,
+                   hnas_share_id, user, permission]
+        try:
+            self._execute(command)
+        except processutils.ProcessExecutionError as e:
+            if 'already listed as a user' in e.stderr:
+                LOG.debug('User %(user)s already allowed to access share '
+                          '%(share)s.', {'user': user, 'share': hnas_share_id})
+            else:
+                msg = six.text_type(e)
+                LOG.exception(msg)
+                raise exception.InvalidShareAccess(reason=msg)
+
+    def cifs_deny_access(self, hnas_share_id, user):
+        command = ['cifs-saa', 'delete', '--target-label', self.fs_name,
+                   hnas_share_id, user]
+        try:
+            self._execute(command)
+        except processutils.ProcessExecutionError as e:
+            if ('not listed as a user' in e.stderr or
+                    'Could not delete user/group' in e.stderr):
+                LOG.warning(_LW('User %(user)s already not allowed to access '
+                                'share %(share)s.'),
+                            {'user': user, 'share': hnas_share_id})
+            else:
+                msg = six.text_type(e)
+                LOG.exception(msg)
+                raise exception.HNASBackendException(msg=msg)
+
+    def list_cifs_permissions(self, hnas_share_id):
+        command = ['cifs-saa', 'list', '--target-label', self.fs_name,
+                   hnas_share_id]
+        try:
+            output, err = self._execute(command)
+        except processutils.ProcessExecutionError as e:
+            if 'No entries for this share' in e.stderr:
+                LOG.debug('Share %(share)s does not have any permission '
+                          'added.', {'share': hnas_share_id})
+                return []
+            else:
+                msg = six.text_type(e)
+                LOG.exception(msg)
+                raise exception.HNASBackendException(msg=msg)
+
+        permissions = CIFSPermissions(output)
+
+        return permissions.permission_list
 
     def tree_clone(self, src_path, dest_path):
         command = ['tree-clone-job-submit', '-e', '-f', self.fs_name,
@@ -277,6 +346,40 @@ class HNASSSHBackend(object):
         else:
             msg = _("Export %s does not exist.") % export[0].export_name
             raise exception.HNASItemNotFoundException(msg=msg)
+
+    def check_cifs(self, vvol_name):
+        output = self._cifs_list(vvol_name)
+
+        cifs_share = CIFSShare(output)
+
+        if self.fs_name != cifs_share.fs:
+            msg = _("CIFS share %(share)s is not located in "
+                    "configured filesystem "
+                    "%(fs)s.") % {'share': vvol_name,
+                                  'fs': self.fs_name}
+            raise exception.HNASItemNotFoundException(msg=msg)
+
+    def is_cifs_in_use(self, vvol_name):
+        output = self._cifs_list(vvol_name)
+
+        cifs_share = CIFSShare(output)
+
+        return cifs_share.is_mounted
+
+    def _cifs_list(self, vvol_name):
+        command = ['cifs-share', 'list', vvol_name]
+        try:
+            output, err = self._execute(command)
+        except processutils.ProcessExecutionError as e:
+            if 'does not exist' in e.stderr:
+                msg = _("CIFS share %(share)s was not found in EVS "
+                        "%(evs_id)s") % {'share': vvol_name,
+                                         'evs_id': self.evs_id}
+                raise exception.HNASItemNotFoundException(msg=msg)
+            else:
+                raise
+
+        return output
 
     def get_share_quota(self, share_id):
         command = ['quota', 'list', self.fs_name, share_id]
@@ -532,3 +635,37 @@ class Quota(object):
                 else:
                     self.limit = float(items[13])
                     self.limit_unit = items[14]
+
+
+class CIFSPermissions(object):
+    def __init__(self, data):
+        self.permission_list = []
+        hnas_cifs_permissions = [('Allow Read', 'ar'),
+                                 ('Allow Change & Read', 'acr'),
+                                 ('Allow Full Control', 'af'),
+                                 ('Deny  Read', 'dr'),
+                                 ('Deny  Change & Read', 'dcr'),
+                                 ('Deny  Full Control', 'df')]
+
+        lines = data.split('\n')
+
+        for line in lines:
+            filtered = list(filter(lambda x: x[0] in line,
+                                   hnas_cifs_permissions))
+
+            if len(filtered) == 1:
+                token, permission = filtered[0]
+                user = line.split(token)[1:][0].strip()
+                self.permission_list.append((user, permission))
+
+
+class CIFSShare(object):
+    def __init__(self, data):
+        lines = data.split('\n')
+
+        for line in lines:
+            if 'File system label' in line:
+                self.fs = line.split(': ')[1]
+            elif 'Share users' in line:
+                users = line.split(': ')
+                self.is_mounted = users[1] != '0'
