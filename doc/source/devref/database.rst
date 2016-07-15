@@ -52,3 +52,15 @@ Tests
 
 Tests are lacking for the db api layer and for the sqlalchemy driver.
 Failures in the drivers would be detected in other test cases, though.
+
+DB migration revisions
+----------------------
+
+If a DB schema needs to be updated, a new DB migration file needs to be added
+in ``manila/db/migrations/alembic/versions``. To create such a file it's
+possible to use ``manila-manage db revision`` or the corresponding tox command::
+
+   tox -e dbrevision "change_foo_table"
+
+In addition every migration script must be tested. See examples in
+``manila/tests/db/migrations/alembic/migrations_data_checks.py``.
