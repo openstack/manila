@@ -77,6 +77,8 @@ def novaclient(context):
             CONF.nova_admin_password,
             CONF.nova_admin_tenant_name,
             CONF.nova_admin_auth_url,
+            insecure=CONF.nova_api_insecure,
+            cacert=CONF.nova_ca_certificates_file,
         )
         c.authenticate()
         return c

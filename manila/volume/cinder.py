@@ -78,7 +78,9 @@ def cinderclient(context):
                                  CONF.cinder_admin_password,
                                  CONF.cinder_admin_tenant_name,
                                  CONF.cinder_admin_auth_url,
-                                 retries=CONF.cinder_http_retries,)
+                                 insecure=CONF.cinder_api_insecure,
+                                 retries=CONF.cinder_http_retries,
+                                 cacert=CONF.cinder_ca_certificates_file)
         c.authenticate()
         return c
 
