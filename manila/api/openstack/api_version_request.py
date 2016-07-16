@@ -72,14 +72,14 @@ REST_API_VERSION_HISTORY = """
     * 2.19 - Share snapshot instances admin APIs
             (list/show/detail/reset-status).
     * 2.20 - Add MTU to the JSON response of share network show API.
-
+    * 2.21 - Add access_key to the response of access_list API.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # the minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.20"
+_MAX_API_VERSION = "2.21"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

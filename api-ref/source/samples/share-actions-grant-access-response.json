@@ -6,6 +6,7 @@
         "access_type": "ip",
         "access_to": "0.0.0.0/0",
         "access_level": "rw",
+        "access_key": null,
         "id": "a25b2df3-90bd-4add-afa6-5f0dbbd50452"
     }
 }

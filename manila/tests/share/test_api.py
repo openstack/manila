@@ -101,6 +101,7 @@ def fake_access(id, **kwargs):
         'access_type': 'fakeacctype',
         'access_to': 'fakeaccto',
         'access_level': 'rw',
+        'access_key': None,
         'state': 'fakeactive',
         'STATE_NEW': 'fakenew',
         'STATE_ACTIVE': 'fakeactive',
@@ -1630,13 +1631,10 @@ class ShareAPITestCase(test.TestCase):
             'access_to': 'fake_access_to',
             'access_level': level,
         }
-        fake_access_expected = copy.deepcopy(values)
-        fake_access_expected.update({
+        fake_access = copy.deepcopy(values)
+        fake_access.update({
             'id': 'fake_access_id',
             'state': constants.STATUS_ACTIVE,
-        })
-        fake_access = copy.deepcopy(fake_access_expected)
-        fake_access.update({
             'deleted': 'fake_deleted',
             'deleted_at': 'fake_deleted_at',
             'instance_mappings': ['foo', 'bar'],
@@ -1650,7 +1648,7 @@ class ShareAPITestCase(test.TestCase):
             self.context, share, fake_access['access_type'],
             fake_access['access_to'], level)
 
-        self.assertEqual(fake_access_expected, access)
+        self.assertEqual(fake_access, access)
         self.share_rpcapi.allow_access.assert_called_once_with(
             self.context, utils.IsAMatcher(models.ShareInstance),
             fake_access)
@@ -1865,11 +1863,8 @@ class ShareAPITestCase(test.TestCase):
         self.mock_object(db_api, 'share_access_get_all_for_share',
                          mock.Mock(return_value=rules))
         actual = self.api.access_get_all(self.context, share)
-        for access in actual:
-            expected_access = values[access['id']]
-            expected_access.pop('share_id')
-            self.assertEqual(expected_access, access)
 
+        self.assertEqual(rules, actual)
         share_api.policy.check_policy.assert_called_once_with(
             self.context, 'share', 'access_get_all')
         db_api.share_access_get_all_for_share.assert_called_once_with(

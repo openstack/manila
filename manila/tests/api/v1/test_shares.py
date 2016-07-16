@@ -827,6 +827,9 @@ class ShareActionsTest(test.TestCase):
         self.mock_object(share_api.API,
                          'allow_access',
                          mock.Mock(return_value={'fake': 'fake'}))
+        self.mock_object(self.controller._access_view_builder, 'view',
+                         mock.Mock(return_value={'access':
+                                                 {'fake': 'fake'}}))
 
         id = 'fake_share_id'
         body = {'os-allow_access': access}
@@ -887,20 +890,23 @@ class ShareActionsTest(test.TestCase):
                           body)
 
     def test_access_list(self):
-        def _fake_access_get_all(*args, **kwargs):
-            return [{"state": "fakestatus",
-                     "id": "fake_share_id",
-                     "access_type": "fakeip",
-                     "access_to": "127.0.0.1"}]
-
-        self.mock_object(share_api.API, "access_get_all",
-                         _fake_access_get_all)
+        fake_access_list = [
+            {
+                "state": "fakestatus",
+                "id": "fake_access_id",
+                "access_type": "fakeip",
+                "access_to": "127.0.0.1",
+            }
+        ]
+        self.mock_object(self.controller._access_view_builder, 'list_view',
+                         mock.Mock(return_value={'access_list':
+                                                 fake_access_list}))
         id = 'fake_share_id'
         body = {"os-access_list": None}
         req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+
         res_dict = self.controller._access_list(req, id, body)
-        expected = _fake_access_get_all()
-        self.assertEqual(expected, res_dict['access_list'])
+        self.assertEqual({'access_list': fake_access_list}, res_dict)
 
     def test_extend(self):
         id = 'fake_share_id'

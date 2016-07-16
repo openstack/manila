@@ -37,6 +37,10 @@ class ShareInstanceAccessTestCase(test.TestCase):
         self.share_instance = db_utils.create_share_instance(
             share_id=self.share['id'],
             access_rules_status=constants.STATUS_ERROR)
+        self.rule = db_utils.create_access(
+            id='fakeaccessid',
+            share_id=self.share['id'],
+            access_to='fakeaccessto')
 
     @ddt.data(True, False)
     def test_update_access_rules_maintenance_mode(self, maintenance_mode):
@@ -64,7 +68,8 @@ class ShareInstanceAccessTestCase(test.TestCase):
                          mock.Mock(return_value=existing_rules))
         self.mock_object(db, "share_instance_update_access_status",
                          mock.Mock())
-        self.mock_object(self.driver, "update_access", mock.Mock())
+        self.mock_object(self.driver, "update_access",
+                         mock.Mock(return_value=None))
         self.mock_object(self.share_access_helper,
                          "_remove_access_rules", mock.Mock())
         self.mock_object(self.share_access_helper, "_check_needs_refresh",
@@ -84,6 +89,87 @@ class ShareInstanceAccessTestCase(test.TestCase):
             self.context, rules, share_instance)
         db.share_instance_update_access_status.assert_called_with(
             self.context, share_instance['id'], constants.STATUS_ACTIVE)
+
+    @ddt.data(None, {'fakeaccessid': 'fakeaccesskey'})
+    def test_update_access_rules_returns_access_keys(self, access_keys):
+        share_instance = db_utils.create_share_instance(
+            id='fakeshareinstanceid',
+            share_id=self.share['id'],
+            access_rules_status=constants.STATUS_ACTIVE)
+        rules = [self.rule]
+
+        self.mock_object(db, "share_instance_get", mock.Mock(
+            return_value=share_instance))
+        self.mock_object(db, "share_access_get_all_for_instance",
+                         mock.Mock(return_value=rules))
+        self.mock_object(db, "share_instance_update_access_status",
+                         mock.Mock())
+        self.mock_object(db, "share_access_update_access_key",
+                         mock.Mock())
+        self.mock_object(self.driver, "update_access",
+                         mock.Mock(return_value=access_keys))
+        self.mock_object(self.share_access_helper,
+                         "_remove_access_rules", mock.Mock())
+        self.mock_object(self.share_access_helper, "_check_needs_refresh",
+                         mock.Mock(return_value=False))
+
+        self.share_access_helper.update_access_rules(
+            self.context, share_instance['id'], add_rules=rules)
+
+        self.driver.update_access.assert_called_once_with(
+            self.context, share_instance, rules, add_rules=rules,
+            delete_rules=[], share_server=None)
+        self.share_access_helper._remove_access_rules.assert_called_once_with(
+            self.context, [], share_instance['id'])
+        self.share_access_helper._check_needs_refresh.assert_called_once_with(
+            self.context, rules, share_instance)
+        if access_keys:
+            db.share_access_update_access_key.assert_called_with(
+                self.context, 'fakeaccessid', 'fakeaccesskey')
+        else:
+            self.assertFalse(db.share_access_update_access_key.called)
+        db.share_instance_update_access_status.assert_called_with(
+            self.context, share_instance['id'], constants.STATUS_ACTIVE)
+
+    @ddt.data({'maintenance_mode': True,
+               'access_keys': ['invalidaccesskey']},
+              {'maintenance_mode': True,
+               'access_keys': {'invalidaccessid': 'accesskey'}},
+              {'maintenance_mode': True,
+               'access_keys': {'fakeaccessid': 9}},
+              {'maintenance_mode': False,
+               'access_keys': {'fakeaccessid': 9}})
+    @ddt.unpack
+    def test_update_access_rules_invalid_access_keys(self, maintenance_mode,
+                                                     access_keys):
+        access_rules_status = (
+            constants.STATUS_ERROR if maintenance_mode
+            else constants.STATUS_ACTIVE)
+        share_instance = db_utils.create_share_instance(
+            id='fakeid',
+            share_id=self.share['id'],
+            access_rules_status=access_rules_status)
+
+        rules = [self.rule]
+        add_rules = [] if maintenance_mode else rules
+
+        self.mock_object(db, "share_instance_get", mock.Mock(
+            return_value=share_instance))
+        self.mock_object(db, "share_access_get_all_for_instance",
+                         mock.Mock(return_value=rules))
+        self.mock_object(db, "share_instance_update_access_status",
+                         mock.Mock())
+        self.mock_object(self.driver, "update_access",
+                         mock.Mock(return_value=access_keys))
+
+        self.assertRaises(exception.Invalid,
+                          self.share_access_helper.update_access_rules,
+                          self.context, share_instance['id'],
+                          add_rules=add_rules)
+
+        self.driver.update_access.assert_called_once_with(
+            self.context, share_instance, rules, add_rules=add_rules,
+            delete_rules=[], share_server=None)
 
     def test_update_access_rules_fallback(self):
         add_rules = [db_utils.create_access(share_id=self.share['id'])]
@@ -158,7 +244,8 @@ class ShareInstanceAccessTestCase(test.TestCase):
             return_value=share_instance))
         self.mock_object(db, "share_access_get_all_for_instance",
                          mock.Mock(return_value=original_rules))
-        mock_update_access = self.mock_object(self.driver, "update_access")
+        mock_update_access = self.mock_object(self.driver, "update_access",
+                                              mock.Mock(return_value=None))
         self.mock_object(self.share_access_helper, '_check_needs_refresh',
                          mock.Mock(side_effect=[True, False]))
 

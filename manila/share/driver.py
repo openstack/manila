@@ -532,6 +532,14 @@ class ShareDriver(object):
         :param delete_rules: Empty List or List of access rules which should be
                removed. access_rules doesn't contain these rules.
         :param share_server: None or Share server model
+        :returns: None, or a dictionary of ``access_id``, ``access_key`` as
+                  key: value pairs for the rules added, where, ``access_id``
+                  is the UUID (string) of the access rule, and ``access_key``
+                  is the credential (string) of the entity granted access.
+                  During recovery after error, the returned dictionary must
+                  contain ``access_id``, ``access_key`` for all the rules that
+                  the driver is ordered to resync, i.e. rules in the
+                  ``access_rules`` parameter.
         """
         raise NotImplementedError()
 

@@ -97,6 +97,7 @@ Response parameters
    - updated_at: updated_at_3
    - access_type: access_type_2
    - access_to: access_to_1
+   - access_key: access_key
    - access: access
    - access_level: access_level_2
    - id: id_7
@@ -169,6 +170,7 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - access_type: access_type_1
+   - access_key: access_key
    - access_to: access_to_1
    - access_level: access_level
    - state: state

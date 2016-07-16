@@ -18,6 +18,7 @@ from manila.api.openstack import wsgi
 from manila.api.v1 import share_manage
 from manila.api.v1 import share_unmanage
 from manila.api.v1 import shares
+from manila.api.views import share_accesses as share_access_views
 from manila.api.views import shares as share_views
 from manila import share
 
@@ -34,6 +35,7 @@ class ShareController(shares.ShareMixin,
     def __init__(self):
         super(self.__class__, self).__init__()
         self.share_api = share.API()
+        self._access_view_builder = share_access_views.ViewBuilder()
 
     @wsgi.Controller.api_version("2.4")
     def create(self, req, body):

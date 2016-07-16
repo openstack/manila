@@ -126,3 +126,7 @@ user documentation.
 2.20
 ----
   Add MTU in share network show API.
+
+2.21
+----
+  Add access_key in access_list API.

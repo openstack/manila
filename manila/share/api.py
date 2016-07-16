@@ -1213,14 +1213,7 @@ class API(base.Base):
         # NOTE(tpsilva): refreshing share_access model
         access = self.db.share_access_get(ctx, access['id'])
 
-        return {
-            'id': access['id'],
-            'share_id': access['share_id'],
-            'access_type': access['access_type'],
-            'access_to': access['access_to'],
-            'access_level': access['access_level'],
-            'state': access['state'],
-        }
+        return access
 
     def allow_access_to_instance(self, context, share_instance, access):
         policy.check_policy(context, 'share', 'allow_access')
@@ -1302,12 +1295,7 @@ class API(base.Base):
         """Returns all access rules for share."""
         policy.check_policy(context, 'share', 'access_get_all')
         rules = self.db.share_access_get_all_for_share(context, share['id'])
-        return [{'id': rule.id,
-                 'access_type': rule.access_type,
-                 'access_to': rule.access_to,
-                 'access_level': rule.access_level,
-                 'state': rule.state,
-                 } for rule in rules]
+        return rules
 
     def access_get(self, context, access_id):
         """Returns access rule with the id."""

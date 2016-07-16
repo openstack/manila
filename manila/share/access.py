@@ -17,6 +17,8 @@ from oslo_log import log
 import six
 
 from manila.common import constants
+from manila import exception
+from manila.i18n import _
 from manila.i18n import _LI
 from manila import utils
 
@@ -100,8 +102,9 @@ class ShareInstanceAccess(object):
                     delete_rules = []
 
         try:
+            access_keys = None
             try:
-                self.driver.update_access(
+                access_keys = self.driver.update_access(
                     context,
                     share_instance,
                     rules,
@@ -116,6 +119,15 @@ class ShareInstanceAccess(object):
                 self._update_access_fallback(add_rules, context, delete_rules,
                                              remove_rules, share_instance,
                                              share_server)
+
+            if access_keys:
+                self._validate_access_keys(rules, add_rules, delete_rules,
+                                           access_keys)
+
+                for access_id, access_key in access_keys.items():
+                    self.db.share_access_update_access_key(
+                        context, access_id, access_key)
+
         except Exception:
             self.db.share_instance_update_access_status(
                 context,
@@ -145,6 +157,32 @@ class ShareInstanceAccess(object):
             LOG.info(_LI("Access rules were successfully applied for "
                          "share instance: %s"),
                      share_instance['id'])
+
+    @staticmethod
+    def _validate_access_keys(access_rules, add_rules, delete_rules,
+                              access_keys):
+        if not isinstance(access_keys, dict):
+            msg = _("The access keys must be supplied as a dictionary that "
+                    "maps rule IDs to access keys.")
+            raise exception.Invalid(message=msg)
+
+        actual_rule_ids = sorted(access_keys)
+        expected_rule_ids = []
+        if not (add_rules or delete_rules):
+            expected_rule_ids = [rule['id'] for rule in access_rules]
+        else:
+            expected_rule_ids = [rule['id'] for rule in add_rules]
+        if actual_rule_ids != sorted(expected_rule_ids):
+            msg = (_("The rule IDs supplied: %(actual)s do not match the "
+                     "rule IDs that are expected: %(expected)s.")
+                   % {'actual': actual_rule_ids,
+                      'expected': expected_rule_ids})
+            raise exception.Invalid(message=msg)
+
+        for access_key in access_keys.values():
+            if not isinstance(access_key, six.string_types):
+                msg = (_("Access key %s is not string type.") % access_key)
+                raise exception.Invalid(message=msg)
 
     def _check_needs_refresh(self, context, rules, share_instance):
         rule_ids = set([rule['id'] for rule in rules])

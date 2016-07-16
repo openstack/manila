@@ -28,6 +28,7 @@ from webob import exc
 
 from manila.api import common
 from manila.api.openstack import wsgi
+from manila.api.views import share_accesses as share_access_views
 from manila.api.views import shares as share_views
 from manila import db
 from manila import exception
@@ -497,7 +498,8 @@ class ShareMixin(object):
                 access_data.get('access_level'))
         except exception.ShareAccessExists as e:
             raise webob.exc.HTTPBadRequest(explanation=e.msg)
-        return {'access': access}
+
+        return self._access_view_builder.view(req, access)
 
     def _deny_access(self, req, id, body):
         """Remove share access rule."""
@@ -521,8 +523,9 @@ class ShareMixin(object):
         context = req.environ['manila.context']
 
         share = self.share_api.get(context, id)
-        access_list = self.share_api.access_get_all(context, share)
-        return {'access_list': access_list}
+        access_rules = self.share_api.access_get_all(context, share)
+
+        return self._access_view_builder.list_view(req, access_rules)
 
     def _extend(self, req, id, body):
         """Extend size of a share."""
@@ -576,6 +579,7 @@ class ShareController(wsgi.Controller, ShareMixin, wsgi.AdminActionsMixin):
     def __init__(self):
         super(self.__class__, self).__init__()
         self.share_api = share.API()
+        self._access_view_builder = share_access_views.ViewBuilder()
 
     @wsgi.action('os-reset_status')
     def share_reset_status(self, req, id, body):
