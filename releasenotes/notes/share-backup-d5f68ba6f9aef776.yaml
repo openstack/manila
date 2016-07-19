@@ -1,0 +1,6 @@
+---
+features:
+  - Added support to share-backup feature. From this release, a backup of a share
+    can be can be created, deleted, listed, queried for detail, updated its
+    name/description and also restored to original share. Sample NFS backup-driver
+    is added.

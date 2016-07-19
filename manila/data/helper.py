@@ -79,17 +79,16 @@ class DataServiceHelper(object):
     # NOTE(ganso): Cleanup methods do not throw exceptions, since the
     # exceptions that should be thrown are the ones that call the cleanup
 
-    def cleanup_data_access(self, access_ref_list, share_instance_id):
+    def cleanup_data_access(self, access_ref_list, share_instance):
 
         try:
             self.deny_access_to_data_service(
-                access_ref_list, share_instance_id)
+                access_ref_list, share_instance)
         except Exception:
             LOG.warning("Could not cleanup access rule of share %s.",
                         self.share['id'])
 
-    def cleanup_temp_folder(self, instance_id, mount_path):
-
+    def cleanup_temp_folder(self, mount_path, instance_id):
         try:
             path = os.path.join(mount_path, instance_id)
             if os.path.exists(path):
@@ -102,12 +101,10 @@ class DataServiceHelper(object):
                             'instance_id': instance_id,
                             'share_id': self.share['id']})
 
-    def cleanup_unmount_temp_folder(self, unmount_template, mount_path,
-                                    share_instance_id):
-
+    def cleanup_unmount_temp_folder(self, unmount_info, mount_path):
+        share_instance_id = unmount_info.get('share_instance_id')
         try:
-            self.unmount_share_instance(unmount_template, mount_path,
-                                        share_instance_id)
+            self.unmount_share_instance_or_backup(unmount_info, mount_path)
         except Exception:
             LOG.warning("Could not unmount folder of instance"
                         " %(instance_id)s for data copy of "
@@ -251,16 +248,32 @@ class DataServiceHelper(object):
         if os.path.exists(path):
             raise exception.Found("Folder %s was found." % path)
 
-    def mount_share_instance(self, mount_template, mount_path,
-                             share_instance):
+    def mount_share_instance_or_backup(self, mount_info, mount_path):
+        mount_point = mount_info.get('mount_point')
+        mount_template = mount_info.get('mount')
+        share_instance_id = mount_info.get('share_instance_id')
+        backup = mount_info.get('backup')
+        restore = mount_info.get('restore')
+        backup_id = mount_info.get('backup_id')
 
-        path = os.path.join(mount_path, share_instance['id'])
+        if share_instance_id:
+            path = os.path.join(mount_path, share_instance_id)
+        else:
+            path = ''
 
-        options = CONF.data_node_mount_options
-        options = {k.lower(): v for k, v in options.items()}
-        proto_options = options.get(share_instance['share_proto'].lower())
+        # overwrite path in case different mount point is explicitly provided
+        if mount_point and mount_point != path:
+            path = mount_point
 
-        if not proto_options:
+        if share_instance_id:
+            share_instance = self.db.share_instance_get(
+                self.context, share_instance_id, with_share_data=True)
+            options = CONF.data_node_mount_options
+            options = {k.lower(): v for k, v in options.items()}
+            proto_options = options.get(
+                share_instance['share_proto'].lower(), '')
+        else:
+            # For backup proto_options are included in mount_template
             proto_options = ''
 
         if not os.path.exists(path):
@@ -269,16 +282,36 @@ class DataServiceHelper(object):
 
         mount_command = mount_template % {'path': path,
                                           'options': proto_options}
-
         utils.execute(*(mount_command.split()), run_as_root=True)
+        if backup:
+            # we create new folder, which named with backup_id. To distinguish
+            # different backup data at mount points
+            backup_folder = os.path.join(path, backup_id)
+            if not os.path.exists(backup_folder):
+                os.makedirs(backup_folder)
+            self._check_dir_exists(backup_folder)
+        if restore:
+            # backup_folder should exist after mount, else backup is
+            # already deleted
+            backup_folder = os.path.join(path, backup_id)
+            if not os.path.exists(backup_folder):
+                raise exception.ShareBackupNotFound(backup_id=backup_id)
 
-    def unmount_share_instance(self, unmount_template, mount_path,
-                               share_instance_id):
+    def unmount_share_instance_or_backup(self, unmount_info, mount_path):
+        mount_point = unmount_info.get('mount_point')
+        unmount_template = unmount_info.get('unmount')
+        share_instance_id = unmount_info.get('share_instance_id')
 
-        path = os.path.join(mount_path, share_instance_id)
+        if share_instance_id:
+            path = os.path.join(mount_path, share_instance_id)
+        else:
+            path = ''
+
+        # overwrite path in case different mount point is explicitly provided
+        if mount_point and mount_point != path:
+            path = mount_point
 
         unmount_command = unmount_template % {'path': path}
-
         utils.execute(*(unmount_command.split()), run_as_root=True)
 
         try:

@@ -97,6 +97,9 @@ class QuotaSetsControllerTest(test.TestCase):
             expected['quota_class_set']['replica_gigabytes'] = 1000
         if req.api_version_request >= api_version.APIVersionRequest("2.62"):
             expected['quota_class_set']['per_share_gigabytes'] = -1
+        if req.api_version_request >= api_version.APIVersionRequest("2.80"):
+            expected['quota_class_set']['backups'] = 10
+            expected['quota_class_set']['backup_gigabytes'] = 1000
 
         result = controller().show(req, self.class_name)
 
@@ -154,6 +157,9 @@ class QuotaSetsControllerTest(test.TestCase):
             expected['quota_class_set']['replica_gigabytes'] = 1000
         if req.api_version_request >= api_version.APIVersionRequest("2.62"):
             expected['quota_class_set']['per_share_gigabytes'] = -1
+        if req.api_version_request >= api_version.APIVersionRequest("2.80"):
+            expected['quota_class_set']['backups'] = 10
+            expected['quota_class_set']['backup_gigabytes'] = 1000
 
         update_result = controller().update(
             req, self.class_name, body=body)

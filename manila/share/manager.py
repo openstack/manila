@@ -142,6 +142,16 @@ share_manager_opts = [
                help='This value, specified in seconds, determines how often '
                     'the share manager will check for expired transfers and '
                     'destroy them and roll back share state.'),
+    cfg.IntOpt('driver_backup_continue_update_interval',
+               default=60,
+               help='This value, specified in seconds, determines how often '
+                    'the share manager will poll to perform the next steps '
+                    'of backup such as fetch the progress of backup.'),
+    cfg.IntOpt('driver_restore_continue_update_interval',
+               default=60,
+               help='This value, specified in seconds, determines how often '
+                    'the share manager will poll to perform the next steps '
+                    'of restore such as fetch the progress of restore.')
 ]
 
 CONF = cfg.CONF
@@ -249,7 +259,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.25'
+    RPC_API_VERSION = '1.26'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -5076,6 +5086,177 @@ class ShareManager(manager.SchedulerDependentManager):
         share_utils.notify_about_share_usage(
             context, share, share_instance, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
+
+    @utils.require_driver_initialized
+    def create_backup(self, context, backup):
+        share_id = backup['share_id']
+        backup_id = backup['id']
+        share = self.db.share_get(context, share_id)
+        share_instance = self._get_share_instance(context, share)
+
+        LOG.info('Create backup started, backup: %(backup)s share: '
+                 '%(share)s.', {'backup': backup_id, 'share': share_id})
+
+        try:
+            self.driver.create_backup(context, share_instance, backup)
+        except Exception as err:
+            with excutils.save_and_reraise_exception():
+                LOG.error("Failed to create share backup %s by driver.",
+                          backup_id)
+                self.db.share_update(
+                    context, share_id,
+                    {'status': constants.STATUS_AVAILABLE})
+                self.db.share_backup_update(
+                    context, backup_id,
+                    {'status': constants.STATUS_ERROR, 'fail_reason': err})
+
+    @periodic_task.periodic_task(
+        spacing=CONF.driver_backup_continue_update_interval)
+    @utils.require_driver_initialized
+    def create_backup_continue(self, context):
+        """Invokes driver to continue backup of share."""
+        filters = {'status': constants.STATUS_CREATING,
+                   'host': self.host,
+                   'topic': CONF.share_topic}
+        backups = self.db.share_backups_get_all(context, filters)
+        for backup in backups:
+            backup_id = backup['id']
+            share_id = backup['share_id']
+            share = self.db.share_get(context, share_id)
+            share_instance = self._get_share_instance(context, share)
+            result = {}
+            try:
+                result = self.driver.create_backup_continue(
+                    context, share_instance, backup)
+                progress = result.get('total_progress', '0')
+                self.db.share_backup_update(context, backup_id,
+                                            {'progress': progress})
+                if progress == '100':
+                    self.db.share_update(
+                        context, share_id,
+                        {'status': constants.STATUS_AVAILABLE})
+                    self.db.share_backup_update(
+                        context, backup_id,
+                        {'status': constants.STATUS_AVAILABLE})
+                    LOG.info("Created share backup %s successfully.",
+                             backup_id)
+            except Exception:
+                LOG.warning("Failed to get progress of share %(share)s "
+                            "backing up in share_backup %(backup).",
+                            {'share': share_id, 'backup': backup_id})
+                self.db.share_update(
+                    context, share_id,
+                    {'status': constants.STATUS_AVAILABLE})
+                self.db.share_backup_update(
+                    context, backup_id,
+                    {'status': constants.STATUS_ERROR, 'progress': '0'})
+
+    def delete_backup(self, context, backup):
+        LOG.info('Delete backup started, backup: %s.', backup['id'])
+
+        backup_id = backup['id']
+        project_id = backup['project_id']
+        try:
+            self.driver.delete_backup(context, backup)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error("Failed to delete share backup %s.", backup_id)
+                self.db.share_backup_update(
+                    context, backup_id,
+                    {'status': constants.STATUS_ERROR_DELETING})
+
+        try:
+            reserve_opts = {
+                'backups': -1,
+                'backup_gigabytes': -backup['size'],
+            }
+            reservations = QUOTAS.reserve(
+                context, project_id=project_id, **reserve_opts)
+        except Exception as e:
+            reservations = None
+            LOG.warning("Failed to update backup quota for %(pid)s: %(err)s.",
+                        {'pid': project_id, 'err': e})
+
+        if reservations:
+            QUOTAS.commit(context, reservations, project_id=project_id)
+
+        self.db.share_backup_delete(context, backup_id)
+        LOG.info("Share backup %s deleted successfully.", backup_id)
+
+    def restore_backup(self, context, backup, share_id):
+        LOG.info('Restore backup started, backup: %(backup_id)s '
+                 'share: %(share_id)s.',
+                 {'backup_id': backup['id'], 'share_id': share_id})
+
+        backup_id = backup['id']
+        share = self.db.share_get(context, share_id)
+        share_instance = self._get_share_instance(context, share)
+
+        try:
+            self.driver.restore_backup(context, backup, share_instance)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error("Failed to restore backup %(backup)s to share "
+                          "%(share)s by driver.",
+                          {'backup': backup_id, 'share': share_id})
+                self.db.share_update(
+                    context, share_id,
+                    {'status': constants.STATUS_BACKUP_RESTORING_ERROR})
+                self.db.share_backup_update(
+                    context, backup['id'],
+                    {'status': constants.STATUS_ERROR})
+
+    @periodic_task.periodic_task(
+        spacing=CONF.driver_restore_continue_update_interval)
+    @utils.require_driver_initialized
+    def restore_backup_continue(self, context):
+        filters = {'status': constants.STATUS_RESTORING,
+                   'host': self.host,
+                   'topic': CONF.share_topic}
+        backups = self.db.share_backups_get_all(context, filters)
+        for backup in backups:
+            backup_id = backup['id']
+            try:
+                filters = {'source_backup_id': backup_id}
+                shares = self.db.share_get_all(context, filters)
+            except Exception:
+                LOG.warning('Failed to get shares for backup %s', backup_id)
+                continue
+
+            for share in shares:
+                if share['status'] != constants.STATUS_BACKUP_RESTORING:
+                    continue
+
+                share_id = share['id']
+                share_instance = self._get_share_instance(context, share)
+                result = {}
+                try:
+                    result = self.driver.restore_backup_continue(
+                        context, backup, share_instance)
+                    progress = result.get('total_progress', '0')
+                    self.db.share_backup_update(
+                        context, backup_id, {'restore_progress': progress})
+
+                    if progress == '100':
+                        self.db.share_update(
+                            context, share_id,
+                            {'status': constants.STATUS_AVAILABLE})
+                        self.db.share_backup_update(
+                            context, backup_id,
+                            {'status': constants.STATUS_AVAILABLE})
+                        LOG.info("Share backup %s restored successfully.",
+                                 backup_id)
+                except Exception:
+                    LOG.warning("Failed to get progress of share_backup "
+                                "%(backup)s restoring in share %(share).",
+                                {'share': share_id, 'backup': backup_id})
+                    self.db.share_update(
+                        context, share_id,
+                        {'status': constants.STATUS_BACKUP_RESTORING_ERROR})
+                    self.db.share_backup_update(
+                        context, backup_id,
+                        {'status': constants.STATUS_AVAILABLE,
+                         'restore_progress': '0'})
 
     @periodic_task.periodic_task(
         spacing=CONF.share_usage_size_update_interval,

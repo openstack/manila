@@ -399,7 +399,6 @@ ____
 
 2.72
 ----
-
   Added 'share_network' option to share replica create API.
 
 2.73 (Maximum in Zed)
@@ -429,5 +428,9 @@ ____
   to Share Network Subnets.
 
 2.79
-------------------------
+----
   Added ``with_count`` in share snapshot list API to get total count info.
+
+2.80
+----
+  Added share backup APIs.

@@ -447,6 +447,16 @@ def _sync_share_groups(context, project_id, user_id, share_type_id=None):
     return {'share_groups': share_groups_count}
 
 
+def _sync_backups(context, project_id, user_id, share_type_id=None):
+    backups, _ = _backup_data_get_for_project(context, project_id, user_id)
+    return {'backups': backups}
+
+
+def _sync_backup_gigabytes(context, project_id, user_id, share_type_id=None):
+    _, backup_gigs = _backup_data_get_for_project(context, project_id, user_id)
+    return {'backup_gigabytes': backup_gigs}
+
+
 def _sync_share_group_snapshots(
     context, project_id, user_id, share_type_id=None,
 ):
@@ -480,6 +490,8 @@ QUOTA_SYNC_FUNCTIONS = {
     '_sync_share_group_snapshots': _sync_share_group_snapshots,
     '_sync_share_replicas': _sync_share_replicas,
     '_sync_replica_gigabytes': _sync_replica_gigabytes,
+    '_sync_backups': _sync_backups,
+    '_sync_backup_gigabytes': _sync_backup_gigabytes,
 }
 
 
@@ -2113,7 +2125,8 @@ def _process_share_filters(query, filters, project_id=None, is_public=False):
     if filters is None:
         filters = {}
 
-    share_filter_keys = ['share_group_id', 'snapshot_id', 'is_soft_deleted']
+    share_filter_keys = ['share_group_id', 'snapshot_id',
+                         'is_soft_deleted', 'source_backup_id']
     instance_filter_keys = ['share_server_id', 'status', 'share_type_id',
                             'host', 'share_network_id']
     share_filters = {}
@@ -7045,3 +7058,126 @@ def async_operation_data_update(
 def async_operation_data_delete(context, entity_id, key=None):
     query = _async_operation_data_query(context, entity_id, key)
     query.update({"deleted": 1, "deleted_at": timeutils.utcnow()})
+
+
+@require_context
+def share_backup_create(context, share_id, values):
+    return _share_backup_create(context, share_id, values)
+
+
+@require_context
+@context_manager.writer
+def _share_backup_create(context, share_id, values):
+    if not values.get('id'):
+        values['id'] = uuidutils.generate_uuid()
+    values.update({'share_id': share_id})
+
+    share_backup_ref = models.ShareBackup()
+    share_backup_ref.update(values)
+    share_backup_ref.save(session=context.session)
+    return share_backup_get(context, share_backup_ref['id'])
+
+
+@require_context
+@context_manager.reader
+def share_backup_get(context, share_backup_id):
+    result = model_query(
+        context, models.ShareBackup, project_only=True, read_deleted="no"
+    ).filter_by(
+        id=share_backup_id,
+    ).first()
+    if result is None:
+        raise exception.ShareBackupNotFound(backup_id=share_backup_id)
+
+    return result
+
+
+@require_context
+@context_manager.reader
+def share_backups_get_all(context, filters=None,
+                          limit=None, offset=None,
+                          sort_key=None, sort_dir=None):
+    project_id = filters.pop('project_id', None) if filters else None
+    query = _share_backups_get_with_filters(
+        context,
+        project_id=project_id,
+        filters=filters, limit=limit, offset=offset,
+        sort_key=sort_key, sort_dir=sort_dir)
+
+    return query
+
+
+def _share_backups_get_with_filters(context, project_id=None, filters=None,
+                                    limit=None, offset=None,
+                                    sort_key=None, sort_dir=None):
+    """Retrieves all backups.
+
+    If no sorting parameters are specified then returned backups are sorted
+    by the 'created_at' key and desc order.
+
+    :param context: context to query under
+    :param filters: dictionary of filters
+    :param limit: maximum number of items to return
+    :param sort_key: attribute by which results should be sorted,default is
+                     created_at
+    :param sort_dir: direction in which results should be sorted
+    :returns: list of matching backups
+    """
+    # Init data
+    sort_key = sort_key or 'created_at'
+    sort_dir = sort_dir or 'desc'
+    filters = copy.deepcopy(filters) if filters else {}
+    query = model_query(context, models.ShareBackup)
+
+    if project_id:
+        query = query.filter_by(project_id=project_id)
+
+    legal_filter_keys = ('display_name', 'display_name~',
+                         'display_description', 'display_description~',
+                         'id', 'share_id', 'host', 'topic', 'status')
+    query = exact_filter(query, models.ShareBackup,
+                         filters, legal_filter_keys)
+
+    query = apply_sorting(models.ShareBackup, query, sort_key, sort_dir)
+
+    if limit is not None:
+        query = query.limit(limit)
+
+    if offset:
+        query = query.offset(offset)
+
+    return query.all()
+
+
+@require_admin_context
+@context_manager.reader
+def _backup_data_get_for_project(context, project_id, user_id):
+    query = model_query(context, models.ShareBackup,
+                        func.count(models.ShareBackup.id),
+                        func.sum(models.ShareBackup.size),
+                        read_deleted="no").\
+        filter_by(project_id=project_id)
+
+    if user_id:
+        result = query.filter_by(user_id=user_id).first()
+    else:
+        result = query.first()
+
+    return (result[0] or 0, result[1] or 0)
+
+
+@require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@context_manager.writer
+def share_backup_update(context, backup_id, values):
+    backup_ref = share_backup_get(context, backup_id)
+    backup_ref.update(values)
+    backup_ref.save(session=context.session)
+    return backup_ref
+
+
+@require_context
+@context_manager.writer
+def share_backup_delete(context, backup_id):
+    backup_ref = share_backup_get(context, backup_id)
+    backup_ref.soft_delete(session=context.session, update_status=True)

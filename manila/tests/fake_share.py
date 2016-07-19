@@ -319,3 +319,27 @@ def fake_share_server_get():
         }
     }
     return fake_share_server
+
+
+def fake_backup(as_primitive=True, **kwargs):
+    backup = {
+        'id': uuidutils.generate_uuid(),
+        'host': "fake_host",
+        'user_id': 'fake',
+        'project_id': 'fake',
+        'availability_zone': 'fake_availability_zone',
+        'backup_state': constants.STATUS_CREATING,
+        'status': constants.STATUS_CREATING,
+        'progress': '0',
+        'restore_progress': '0',
+        'topic': 'fake_topic',
+        'share_id': uuidutils.generate_uuid(),
+        'display_name': 'fake_name',
+        'display_description': 'fake_description',
+        'size': '1',
+    }
+    backup.update(kwargs)
+    if as_primitive:
+        return backup
+    else:
+        return db_fakes.FakeModel(backup)

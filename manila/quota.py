@@ -97,7 +97,18 @@ quota_opts = [
                default='manila.quota.DbQuotaDriver',
                help='Default driver to use for quota checks.',
                deprecated_group='DEFAULT',
-               deprecated_name='quota_driver'), ]
+               deprecated_name='quota_driver'),
+    cfg.IntOpt('backups',
+               default=10,
+               help='Number of share backups allowed per project.',
+               deprecated_group='DEFAULT',
+               deprecated_name='quota_backups'),
+    cfg.IntOpt('backup_gigabytes',
+               default=1000,
+               help='Total amount of storage, in gigabytes, allowed '
+               'for backups per project.',
+               deprecated_group='DEFAULT',
+               deprecated_name='quota_backup_gigabytes'), ]
 
 CONF = cfg.CONF
 CONF.register_opts(quota_opts, QUOTA_GROUP)
@@ -1173,6 +1184,9 @@ resources = [
                        'share_replicas'),
     ReservableResource('replica_gigabytes', '_sync_replica_gigabytes',
                        'replica_gigabytes'),
+    ReservableResource('backups', '_sync_backups', 'backups'),
+    ReservableResource('backup_gigabytes', '_sync_backup_gigabytes',
+                       'backup_gigabytes')
 ]
 
 

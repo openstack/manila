@@ -5358,3 +5358,83 @@ class TransfersTestCase(test.TestCase):
         self.assertEqual(share['project_id'], self.project_id)
         self.assertEqual(share['user_id'], self.user_id)
         self.assertFalse(transfer['accepted'])
+
+
+class ShareBackupDatabaseAPITestCase(BaseDatabaseAPITestCase):
+
+    def setUp(self):
+        """Run before each test."""
+        super(ShareBackupDatabaseAPITestCase, self).setUp()
+        self.ctxt = context.get_admin_context()
+        self.backup = {
+            'id': 'fake_backup_id',
+            'host': "fake_host",
+            'user_id': 'fake',
+            'project_id': 'fake',
+            'availability_zone': 'fake_availability_zone',
+            'status': constants.STATUS_CREATING,
+            'progress': '0',
+            'display_name': 'fake_name',
+            'display_description': 'fake_description',
+            'size': 1,
+        }
+        self.share_id = "fake_share_id"
+
+    def test_create_share_backup(self):
+        result = db_api.share_backup_create(
+            self.ctxt, self.share_id, self.backup)
+        self._check_fields(expected=self.backup, actual=result)
+
+    def test_create_with_duplicated_id(self):
+        db_api.share_backup_create(
+            self.ctxt, self.share_id, self.backup)
+
+        self.assertRaises(db_exception.DBDuplicateEntry,
+                          db_api.share_backup_create,
+                          self.ctxt,
+                          self.share_id,
+                          self.backup)
+
+    def test_get(self):
+        db_api.share_backup_create(
+            self.ctxt, self.share_id, self.backup)
+        result = db_api.share_backup_get(
+            self.ctxt, self.backup['id'])
+        self._check_fields(expected=self.backup, actual=result)
+
+    def test_delete(self):
+        db_api.share_backup_create(
+            self.ctxt, self.share_id, self.backup)
+        db_api.share_backup_delete(self.ctxt,
+                                   self.backup['id'])
+
+        self.assertRaises(exception.ShareBackupNotFound,
+                          db_api.share_backup_get,
+                          self.ctxt,
+                          self.backup['id'])
+
+    def test_delete_not_found(self):
+        self.assertRaises(exception.ShareBackupNotFound,
+                          db_api.share_backup_delete,
+                          self.ctxt,
+                          'fake not exist id')
+
+    def test_update(self):
+        new_status = constants.STATUS_ERROR
+        db_api.share_backup_create(
+            self.ctxt, self.share_id, self.backup)
+        result_update = db_api.share_backup_update(
+            self.ctxt, self.backup['id'],
+            {'status': constants.STATUS_ERROR})
+        result_get = db_api.share_backup_get(self.ctxt,
+                                             self.backup['id'])
+        self.assertEqual(new_status, result_update['status'])
+        self._check_fields(expected=dict(result_update.items()),
+                           actual=dict(result_get.items()))
+
+    def test_update_not_found(self):
+        self.assertRaises(exception.ShareBackupNotFound,
+                          db_api.share_backup_update,
+                          self.ctxt,
+                          'fake id',
+                          {})

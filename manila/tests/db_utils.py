@@ -307,3 +307,22 @@ def create_transfer(**kwargs):
                 'crypt_hash': 'crypt_hash',
                 'resource_type': constants.SHARE_RESOURCE_TYPE}
     return _create_db_row(db.transfer_create, transfer, kwargs)
+
+
+def create_backup(share_id, **kwargs):
+    """Create a share backup object."""
+    backup = {
+        'host': "fake_host",
+        'share_network_id': None,
+        'share_server_id': None,
+        'user_id': 'fake',
+        'project_id': 'fake',
+        'availability_zone': 'fake_availability_zone',
+        'status': constants.STATUS_CREATING,
+        'topic': 'fake_topic',
+        'description': 'fake_description',
+        'size': '1',
+    }
+    backup.update(kwargs)
+    return db.share_backup_create(
+        context.get_admin_context(), share_id, backup)

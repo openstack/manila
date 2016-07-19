@@ -149,7 +149,9 @@ class QuotaSetsMixin(object):
                 body.get('share_group_snapshots') is None and
                 body.get('share_replicas') is None and
                 body.get('replica_gigabytes') is None and
-                body.get('per_share_gigabytes') is None):
+                body.get('per_share_gigabytes') is None and
+                body.get('backups') is None and
+                body.get('backup_gigabytes') is None):
             msg = _("Must supply at least one quota field to update.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
@@ -346,6 +348,9 @@ class QuotaSetsController(QuotaSetsMixin, wsgi.Controller):
         elif req.api_version_request < api_version.APIVersionRequest("2.62"):
             self._ensure_specific_microversion_args_are_absent(
                 body, ['per_share_gigabytes'], "2.62")
+        elif req.api_version_request < api_version.APIVersionRequest("2.80"):
+            self._ensure_specific_microversion_args_are_absent(
+                body, ['backups', 'backup_gigabytes'], "2.80")
         return self._update(req, id, body)
 
     @wsgi.Controller.api_version('2.7')

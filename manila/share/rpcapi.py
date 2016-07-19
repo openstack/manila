@@ -85,6 +85,8 @@ class ShareAPI(object):
             check_update_share_server_network_allocations()
         1.24 - Add quiesce_wait_time paramater to promote_share_replica()
         1.25 - Add transfer_accept()
+        1.26 - Add create_backup() and delete_backup()
+            restore_backup() methods
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -93,7 +95,7 @@ class ShareAPI(object):
         super(ShareAPI, self).__init__()
         target = messaging.Target(topic=CONF.share_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.25')
+        self.client = rpc.get_client(target, version_cap='1.26')
 
     def create_share_instance(self, context, share_instance, host,
                               request_spec, filter_properties,
@@ -502,3 +504,25 @@ class ShareAPI(object):
             'update_share_server_network_allocations',
             share_network_id=share_network_id,
             new_share_network_subnet_id=new_share_network_subnet_id)
+
+    def create_backup(self, context, backup):
+        host = utils.extract_host(backup['host'])
+        call_context = self.client.prepare(server=host, version='1.26')
+        return call_context.cast(context,
+                                 'create_backup',
+                                 backup=backup)
+
+    def delete_backup(self, context, backup):
+        host = utils.extract_host(backup['host'])
+        call_context = self.client.prepare(server=host, version='1.26')
+        return call_context.cast(context,
+                                 'delete_backup',
+                                 backup=backup)
+
+    def restore_backup(self, context, backup, share_id):
+        host = utils.extract_host(backup['host'])
+        call_context = self.client.prepare(server=host, version='1.26')
+        return call_context.cast(context,
+                                 'restore_backup',
+                                 backup=backup,
+                                 share_id=share_id)

@@ -26,6 +26,7 @@ from manila.policies import security_service
 from manila.policies import service
 from manila.policies import share_access
 from manila.policies import share_access_metadata
+from manila.policies import share_backup
 from manila.policies import share_export_location
 from manila.policies import share_group
 from manila.policies import share_group_snapshot
@@ -80,4 +81,5 @@ def list_rules():
         share_access.list_rules(),
         share_access_metadata.list_rules(),
         share_transfer.list_rules(),
+        share_backup.list_rules(),
     )

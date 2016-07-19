@@ -40,6 +40,8 @@ class DataRpcAPITestCase(test.TestCase):
             status=constants.STATUS_AVAILABLE
         )
         self.fake_share = jsonutils.to_primitive(share)
+        self.backup = db_utils.create_backup(
+            share_id=self.fake_share['id'], status=constants.STATUS_AVAILABLE)
 
     def tearDown(self):
         super(DataRpcAPITestCase, self).tearDown()
@@ -101,4 +103,23 @@ class DataRpcAPITestCase(test.TestCase):
         self._test_data_api('data_copy_get_progress',
                             rpc_method='call',
                             version='1.0',
+                            share_id=self.fake_share['id'])
+
+    def test_create_backup(self):
+        self._test_data_api('create_backup',
+                            rpc_method='cast',
+                            version='1.1',
+                            backup=self.backup)
+
+    def test_delete_backup(self):
+        self._test_data_api('delete_backup',
+                            rpc_method='cast',
+                            version='1.1',
+                            backup=self.backup)
+
+    def test_restore_backup(self):
+        self._test_data_api('restore_backup',
+                            rpc_method='cast',
+                            version='1.1',
+                            backup=self.backup,
                             share_id=self.fake_share['id'])

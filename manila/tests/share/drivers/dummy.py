@@ -85,6 +85,10 @@ dummy_opts = [
             "migration_cancel": 1.04,
             "migration_get_progress": 1.05,
             "migration_check_compatibility": 0.05,
+
+            "create_backup": "1.50",
+            "restore_backup": "1.50",
+
         },
     ),
 ]
@@ -1010,3 +1014,34 @@ class DummyDriver(driver.ShareDriver):
                     new_server["backend_details"]["subnet_allocations"])
             },
         }
+
+    @slow_me_down
+    def create_backup(self, context, share_instance, backup):
+        LOG.debug("Created backup %(backup)s of share %(share)s "
+                  "using dummy driver.",
+                  {'backup': backup['id'],
+                   'share': share_instance['share_id']})
+
+    def create_backup_continue(self, context, share_instance, backup):
+        LOG.debug("Continue backup %(backup)s of share %(share)s "
+                  "using dummy driver.",
+                  {'backup': backup['id'],
+                   'share': share_instance['share_id']})
+        return {'total_progress': '100'}
+
+    def delete_backup(self, context, backup):
+        LOG.debug("Deleted backup '%s' using dummy driver.", backup['id'])
+
+    @slow_me_down
+    def restore_backup(self, context, backup, share_instance):
+        LOG.debug("Restored backup %(backup)s into share %(share)s "
+                  "using dummy driver.",
+                  {'backup': backup['id'],
+                   'share': share_instance['share_id']})
+
+    def restore_backup_continue(self, context, share_instance, backup):
+        LOG.debug("Continue restore of backup %(backup)s into share "
+                  "%(share)s using dummy driver.",
+                  {'backup': backup['id'],
+                   'share': share_instance['share_id']})
+        return {'total_progress': '100'}

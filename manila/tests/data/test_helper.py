@@ -213,7 +213,7 @@ class DataServiceHelperTestCase(test.TestCase):
 
         # run
         self.helper.cleanup_temp_folder(
-            self.share_instance['id'], '/fake_path/')
+            '/fake_path/', self.share_instance['id'])
 
         # asserts
         os.rmdir.assert_called_once_with(fake_path)
@@ -230,17 +230,20 @@ class DataServiceHelperTestCase(test.TestCase):
     def test_cleanup_unmount_temp_folder(self, exc):
 
         # mocks
-        self.mock_object(self.helper, 'unmount_share_instance',
+        self.mock_object(self.helper, 'unmount_share_instance_or_backup',
                          mock.Mock(side_effect=exc))
         self.mock_object(data_copy_helper.LOG, 'warning')
 
+        unmount_info = {
+            'unmount': 'unmount_template',
+            'share_instance_id': self.share_instance['id']
+        }
         # run
-        self.helper.cleanup_unmount_temp_folder(
-            'unmount_template', 'fake_path', self.share_instance['id'])
+        self.helper.cleanup_unmount_temp_folder(unmount_info, 'fake_path')
 
         # asserts
-        self.helper.unmount_share_instance.assert_called_once_with(
-            'unmount_template', 'fake_path', self.share_instance['id'])
+        self.helper.unmount_share_instance_or_backup.assert_called_once_with(
+            unmount_info, 'fake_path')
 
         if exc:
             self.assertTrue(data_copy_helper.LOG.warning.called)
@@ -283,33 +286,65 @@ class DataServiceHelperTestCase(test.TestCase):
             self.context, self.helper.db, self.share_instance,
             data_copy_helper.CONF.data_access_wait_access_rules_timeout)
 
-    def test_mount_share_instance(self):
-
-        fake_path = ''.join(('/fake_path/', self.share_instance['id']))
+    @ddt.data('migration', 'backup', 'restore')
+    def test_mount_share_instance_or_backup(self, op):
 
         # mocks
         self.mock_object(utils, 'execute')
-        self.mock_object(os.path, 'exists', mock.Mock(
-            side_effect=[False, False, True]))
+        exists_calls = [False, True]
+        if op == 'backup':
+            exists_calls.extend([False, True])
+        if op == 'restore':
+            exists_calls.append([True])
+        self.mock_object(os.path, 'exists',
+                         mock.Mock(side_effect=exists_calls))
         self.mock_object(os, 'makedirs')
 
+        mount_info = {'mount': 'mount %(path)s'}
+        if op in ('backup', 'restore'):
+            fake_path = '/fake_backup_path/'
+            mount_info.update(
+                {'backup_id': 'fake_backup_id',
+                 'mount_point': '/fake_backup_path/', op: True})
+        if op == 'migration':
+            share_instance_id = self.share_instance['id']
+            fake_path = ''.join(('/fake_path/', share_instance_id))
+            mount_info.update({'share_instance_id': share_instance_id})
+
         # run
-        self.helper.mount_share_instance(
-            'mount %(path)s', '/fake_path', self.share_instance)
+        self.helper.mount_share_instance_or_backup(mount_info, '/fake_path')
 
         # asserts
         utils.execute.assert_called_once_with('mount', fake_path,
                                               run_as_root=True)
 
-        os.makedirs.assert_called_once_with(fake_path)
-        os.path.exists.assert_has_calls([
-            mock.call(fake_path),
-            mock.call(fake_path),
-            mock.call(fake_path)
-        ])
+        if op == 'migration':
+            os.makedirs.assert_called_once_with(fake_path)
+            os.path.exists.assert_has_calls([
+                mock.call(fake_path),
+                mock.call(fake_path),
+            ])
+        if op == 'backup':
+            os.makedirs.assert_has_calls([
+                mock.call(fake_path),
+                mock.call(fake_path + 'fake_backup_id')
+            ])
+            os.path.exists.assert_has_calls([
+                mock.call(fake_path),
+                mock.call(fake_path),
+                mock.call(fake_path + 'fake_backup_id'),
+                mock.call(fake_path + 'fake_backup_id'),
+            ])
+        if op == 'restore':
+            os.makedirs.assert_called_once_with(fake_path)
+            os.path.exists.assert_has_calls([
+                mock.call(fake_path),
+                mock.call(fake_path),
+                mock.call(fake_path + 'fake_backup_id'),
+            ])
 
-    @ddt.data([True, True, False], [True, True, Exception('fake')])
-    def test_unmount_share_instance(self, side_effect):
+    @ddt.data([True, True], [True, False], [True, Exception('fake')])
+    def test_unmount_share_instance_or_backup(self, side_effect):
 
         fake_path = ''.join(('/fake_path/', self.share_instance['id']))
 
@@ -320,9 +355,14 @@ class DataServiceHelperTestCase(test.TestCase):
         self.mock_object(os, 'rmdir')
         self.mock_object(data_copy_helper.LOG, 'warning')
 
+        unmount_info = {
+            'unmount': 'unmount %(path)s',
+            'share_instance_id': self.share_instance['id']
+        }
+
         # run
-        self.helper.unmount_share_instance(
-            'unmount %(path)s', '/fake_path', self.share_instance['id'])
+        self.helper.unmount_share_instance_or_backup(
+            unmount_info, '/fake_path')
 
         # asserts
         utils.execute.assert_called_once_with('unmount', fake_path,
@@ -331,7 +371,6 @@ class DataServiceHelperTestCase(test.TestCase):
         os.path.exists.assert_has_calls([
             mock.call(fake_path),
             mock.call(fake_path),
-            mock.call(fake_path)
         ])
 
         if any(isinstance(x, Exception) for x in side_effect):

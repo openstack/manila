@@ -25,7 +25,8 @@ class ViewBuilder(common.ViewBuilder):
     _collection_name = "limits"
     _detail_version_modifiers = [
         "add_share_replica_quotas",
-        "add_share_group_quotas"
+        "add_share_group_quotas",
+        "add_share_backup_quotas",
     ]
 
     def build(self, request, rate_limits, absolute_limits):
@@ -128,3 +129,12 @@ class ViewBuilder(common.ViewBuilder):
         limit_names["in_use"]["share_replicas"] = ["totalShareReplicasUsed"]
         limit_names["in_use"]["replica_gigabytes"] = (
             ["totalReplicaGigabytesUsed"])
+
+    @common.ViewBuilder.versioned_method("2.80")
+    def add_share_backup_quotas(self, request, limit_names, absolute_limits):
+        limit_names["limit"]["backups"] = ["maxTotalShareBackups"]
+        limit_names["limit"]["backup_gigabytes"] = (
+            ["maxTotalBackupGigabytes"])
+        limit_names["in_use"]["backups"] = ["totalShareBackupsUsed"]
+        limit_names["in_use"]["backup_gigabytes"] = (
+            ["totalBackupGigabytesUsed"])

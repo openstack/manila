@@ -197,6 +197,7 @@ REST_API_VERSION_HISTORY = """
     * 2.78 - Added Share Network Subnet Metadata to Metadata API.
     * 2.79 - Added ``with_count`` in share snapshot list API to get total
              count info.
+    * 2.80 - Added share backup APIs.
 
 """
 
@@ -204,7 +205,7 @@ REST_API_VERSION_HISTORY = """
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.79"
+_MAX_API_VERSION = "2.80"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

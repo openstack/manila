@@ -57,6 +57,9 @@ db_opts = [
                default='share-snapshot-%s',
                help='Template string to be used to generate share snapshot '
                     'names.'),
+    cfg.StrOpt('share_backup_name_template',
+               default='share-backup-%s',
+               help='Template string to be used to generate backup names.'),
 ]
 
 CONF = cfg.CONF
@@ -1789,3 +1792,33 @@ def async_operation_data_update(context, entity_id, details,
 def async_operation_data_delete(context, entity_id, key=None):
     """Remove one, list or all key-value pairs for given entity_id."""
     return IMPL.async_operation_data_delete(context, entity_id, key)
+
+####################
+
+
+def share_backup_create(context, share_id, values):
+    """Create new share backup with specified values."""
+    return IMPL.share_backup_create(context, share_id, values)
+
+
+def share_backup_update(context, backup_id, values):
+    """Updates a share backup with given values."""
+    return IMPL.share_backup_update(context, backup_id, values)
+
+
+def share_backup_get(context, backup_id):
+    """Get share backup by id."""
+    return IMPL.share_backup_get(context, backup_id)
+
+
+def share_backups_get_all(context, filters=None, limit=None, offset=None,
+                          sort_key=None, sort_dir=None):
+    """Get all backups."""
+    return IMPL.share_backups_get_all(
+        context, filters=filters, limit=limit, offset=offset,
+        sort_key=sort_key, sort_dir=sort_dir)
+
+
+def share_backup_delete(context, backup_id):
+    """Deletes backup with the specified ID."""
+    return IMPL.share_backup_delete(context, backup_id)
