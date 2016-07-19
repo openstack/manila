@@ -318,12 +318,38 @@ class QuobyteShareDriverTestCase(test.TestCase):
     def test_get_capacities_gb(self):
         capval = 42115548133
         useval = 19695128917
+        replfact = 3
+        self._driver._get_qb_replication_factor = mock.Mock(
+            return_value=replfact)
         self._driver.rpc.call = mock.Mock(
-            return_value={'total_logical_capacity': six.text_type(capval),
-                          'total_logical_usage': six.text_type(useval)})
+            return_value={'total_physical_capacity': six.text_type(capval),
+                          'total_physical_usage': six.text_type(useval)})
 
-        self.assertEqual((39.223160718, 20.880642548),
+        self.assertEqual((39.223160718, 6.960214182),
                          self._driver._get_capacities())
+
+    def test_get_capacities_gb_full(self):
+        capval = 1024 * 1024 * 1024 * 3
+        useval = 1024 * 1024 * 1024 * 3 + 1
+        replfact = 1
+        self._driver._get_qb_replication_factor = mock.Mock(
+            return_value=replfact)
+        self._driver.rpc.call = mock.Mock(
+            return_value={'total_physical_capacity': six.text_type(capval),
+                          'total_physical_usage': six.text_type(useval)})
+
+        self.assertEqual((3.0, 0), self._driver._get_capacities())
+
+    def test_get_replication(self):
+        fakerepl = 42
+        self._driver.configuration.quobyte_volume_configuration = 'fakeVolConf'
+        self._driver.rpc.call = mock.Mock(
+            return_value={'configuration':
+                          {'volume_metadata_configuration':
+                           {'replication_factor':
+                            six.text_type(fakerepl)}}})
+
+        self.assertEqual(fakerepl, self._driver._get_qb_replication_factor())
 
     @mock.patch.object(quobyte.QuobyteShareDriver,
                        "_resolve_volume_name",
