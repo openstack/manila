@@ -1021,13 +1021,14 @@ class SharesV2Client(shares_client.SharesClient):
                       force_host_assisted_migration=False,
                       new_share_network_id=None, writable=False,
                       preserve_metadata=False, nondisruptive=False,
-                      version=LATEST_MICROVERSION):
+                      new_share_type_id=None, version=LATEST_MICROVERSION):
 
         body = {
             'migration_start': {
                 'host': host,
                 'force_host_assisted_migration': force_host_assisted_migration,
                 'new_share_network_id': new_share_network_id,
+                'new_share_type_id': new_share_type_id,
                 'writable': writable,
                 'preserve_metadata': preserve_metadata,
                 'nondisruptive': nondisruptive,

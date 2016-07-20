@@ -114,11 +114,11 @@ class API(base.Base):
             if share_type is None:
                 # Grab the source share's share_type if no new share type
                 # has been provided.
-                share_type_id = source_share['share_type_id']
+                share_type_id = source_share['instance']['share_type_id']
                 share_type = share_types.get_share_type(context, share_type_id)
             else:
                 share_type_id = share_type['id']
-                if share_type_id != source_share['share_type_id']:
+                if share_type_id != source_share['instance']['share_type_id']:
                     msg = _("Invalid share type specified: the requested "
                             "share type must match the type of the source "
                             "share. If a share type is not specified when "
@@ -231,7 +231,6 @@ class API(base.Base):
                    'display_name': name,
                    'display_description': description,
                    'share_proto': share_proto,
-                   'share_type_id': share_type_id,
                    'is_public': is_public,
                    'consistency_group_id': consistency_group_id,
                    }
@@ -258,7 +257,8 @@ class API(base.Base):
         self.create_instance(context, share, share_network_id=share_network_id,
                              host=host, availability_zone=availability_zone,
                              consistency_group=consistency_group,
-                             cgsnapshot_member=cgsnapshot_member)
+                             cgsnapshot_member=cgsnapshot_member,
+                             share_type_id=share_type_id)
 
         # Retrieve the share with instance details
         share = self.db.share_get(context, share['id'])
@@ -267,14 +267,16 @@ class API(base.Base):
 
     def create_instance(self, context, share, share_network_id=None,
                         host=None, availability_zone=None,
-                        consistency_group=None, cgsnapshot_member=None):
+                        consistency_group=None, cgsnapshot_member=None,
+                        share_type_id=None):
         policy.check_policy(context, 'share', 'create')
 
         request_spec, share_instance = (
             self.create_share_instance_and_get_request_spec(
                 context, share, availability_zone=availability_zone,
                 consistency_group=consistency_group, host=host,
-                share_network_id=share_network_id))
+                share_network_id=share_network_id,
+                share_type_id=share_type_id))
 
         if cgsnapshot_member:
             # Inherit properties from the cgsnapshot_member
@@ -309,7 +311,8 @@ class API(base.Base):
 
     def create_share_instance_and_get_request_spec(
             self, context, share, availability_zone=None,
-            consistency_group=None, host=None, share_network_id=None):
+            consistency_group=None, host=None, share_network_id=None,
+            share_type_id=None):
 
         availability_zone_id = None
         if availability_zone:
@@ -327,6 +330,7 @@ class API(base.Base):
                 'scheduled_at': timeutils.utcnow(),
                 'host': host if host else '',
                 'availability_zone_id': availability_zone_id,
+                'share_type_id': share_type_id,
             }
         )
 
@@ -339,7 +343,7 @@ class API(base.Base):
             'share_server_id': share_instance['share_server_id'],
             'snapshot_support': share['snapshot_support'],
             'share_proto': share['share_proto'],
-            'share_type_id': share['share_type_id'],
+            'share_type_id': share_type_id,
             'is_public': share['is_public'],
             'consistency_group_id': share['consistency_group_id'],
             'source_cgsnapshot_member_id': share[
@@ -356,12 +360,13 @@ class API(base.Base):
             'host': share_instance['host'],
             'status': share_instance['status'],
             'replica_state': share_instance['replica_state'],
+            'share_type_id': share_instance['share_type_id'],
         }
 
         share_type = None
-        if share['share_type_id']:
+        if share_instance['share_type_id']:
             share_type = self.db.share_type_get(
-                context, share['share_type_id'])
+                context, share_instance['share_type_id'])
 
         request_spec = {
             'share_properties': share_properties,
@@ -395,7 +400,8 @@ class API(base.Base):
         request_spec, share_replica = (
             self.create_share_instance_and_get_request_spec(
                 context, share, availability_zone=availability_zone,
-                share_network_id=share_network_id))
+                share_network_id=share_network_id,
+                share_type_id=share['instance']['share_type_id']))
 
         all_replicas = self.db.share_replicas_get_all_by_share(
             context, share['id'])
@@ -873,10 +879,10 @@ class API(base.Base):
 
         return snapshot
 
-    def migration_start(self, context, share, dest_host,
-                        force_host_assisted_migration, preserve_metadata=True,
-                        writable=True, nondisruptive=False,
-                        new_share_network=None):
+    def migration_start(
+            self, context, share, dest_host, force_host_assisted_migration,
+            preserve_metadata=True, writable=True, nondisruptive=False,
+            new_share_network=None, new_share_type=None):
         """Migrates share to a new host."""
 
         share_instance = share.instance
@@ -921,13 +927,42 @@ class API(base.Base):
         service = self.db.service_get_by_args(
             context, dest_host_host, 'manila-share')
 
-        share_type = {}
-        share_type_id = share['share_type_id']
-        if share_type_id:
-            share_type = share_types.get_share_type(context, share_type_id)
+        if new_share_type:
+            share_type = new_share_type
+            new_share_type_id = new_share_type['id']
+            dhss = share_type['extra_specs']['driver_handles_share_servers']
+            dhss = strutils.bool_from_string(dhss, strict=True)
+            if (dhss and not new_share_network and
+                    not share_instance['share_network_id']):
+                msg = _(
+                    "New share network must be provided when share type of"
+                    " given share %s has extra_spec "
+                    "'driver_handles_share_servers' as True.") % share['id']
+                raise exception.InvalidInput(reason=msg)
+        else:
+            share_type = {}
+            share_type_id = share_instance['share_type_id']
+            if share_type_id:
+                share_type = share_types.get_share_type(context, share_type_id)
+            new_share_type_id = share_instance['share_type_id']
 
-        new_share_network_id = (new_share_network['id'] if new_share_network
-                                else share_instance['share_network_id'])
+        dhss = share_type['extra_specs']['driver_handles_share_servers']
+        dhss = strutils.bool_from_string(dhss, strict=True)
+
+        if dhss:
+            if new_share_network:
+                new_share_network_id = new_share_network['id']
+            else:
+                new_share_network_id = share_instance['share_network_id']
+        else:
+            if new_share_network:
+                msg = _(
+                    "New share network must not be provided when share type of"
+                    " given share %s has extra_spec "
+                    "'driver_handles_share_servers' as False.") % share['id']
+                raise exception.InvalidInput(reason=msg)
+
+            new_share_network_id = None
 
         request_spec = self._get_request_spec_dict(
             share,
@@ -945,7 +980,7 @@ class API(base.Base):
         self.scheduler_rpcapi.migrate_share_to_host(
             context, share['id'], dest_host, force_host_assisted_migration,
             preserve_metadata, writable, nondisruptive, new_share_network_id,
-            request_spec)
+            new_share_type_id, request_spec)
 
     def migration_complete(self, context, share):
 

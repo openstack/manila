@@ -664,9 +664,9 @@ class ShareManager(manager.SchedulerDependentManager):
                                                share_server)
 
     def _migration_start_driver(
-            self, context, share_ref, src_share_instance, dest_host,
-            writable, preserve_metadata, nondisruptive, new_share_network_id,
-            new_az_id):
+            self, context, share_ref, src_share_instance, dest_host, writable,
+            preserve_metadata, nondisruptive, new_share_network_id, new_az_id,
+            new_share_type_id):
 
         share_server = self._get_share_server(context, src_share_instance)
 
@@ -675,7 +675,7 @@ class ShareManager(manager.SchedulerDependentManager):
         request_spec, dest_share_instance = (
             share_api.create_share_instance_and_get_request_spec(
                 context, share_ref, new_az_id, None, dest_host,
-                new_share_network_id))
+                new_share_network_id, new_share_type_id))
 
         self.db.share_instance_update(
             context, dest_share_instance['id'],
@@ -852,10 +852,10 @@ class ShareManager(manager.SchedulerDependentManager):
                     LOG.exception(msg)
 
     @utils.require_driver_initialized
-    def migration_start(self, context, share_id, dest_host,
-                        force_host_assisted_migration, preserve_metadata=True,
-                        writable=True, nondisruptive=False,
-                        new_share_network_id=None):
+    def migration_start(
+            self, context, share_id, dest_host, force_host_assisted_migration,
+            preserve_metadata=True, writable=True, nondisruptive=False,
+            new_share_network_id=None, new_share_type_id=None):
         """Migrates a share from current host to another host."""
         LOG.debug("Entered migration_start method for share %s.", share_id)
 
@@ -878,7 +878,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 success = self._migration_start_driver(
                     context, share_ref, share_instance, dest_host, writable,
                     preserve_metadata, nondisruptive, new_share_network_id,
-                    new_az_id)
+                    new_az_id, new_share_type_id)
 
             except Exception as e:
                 if not isinstance(e, NotImplementedError):
@@ -907,7 +907,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
                 self._migration_start_host_assisted(
                     context, share_ref, share_instance, dest_host,
-                    new_share_network_id, new_az_id)
+                    new_share_network_id, new_az_id, new_share_type_id)
 
         except Exception:
             msg = _("Host-assisted migration failed for share %s.") % share_id
@@ -921,8 +921,8 @@ class ShareManager(manager.SchedulerDependentManager):
             raise exception.ShareMigrationFailed(reason=msg)
 
     def _migration_start_host_assisted(
-            self, context, share, src_share_instance,
-            dest_host, new_share_network_id, new_az_id):
+            self, context, share, src_share_instance, dest_host,
+            new_share_network_id, new_az_id, new_share_type_id):
 
         rpcapi = share_rpcapi.ShareAPI()
 
@@ -939,7 +939,8 @@ class ShareManager(manager.SchedulerDependentManager):
 
         try:
             dest_share_instance = helper.create_instance_and_wait(
-                share, dest_host, new_share_network_id, new_az_id)
+                share, dest_host, new_share_network_id, new_az_id,
+                new_share_type_id)
 
             self.db.share_instance_update(
                 context, dest_share_instance['id'],

@@ -3645,7 +3645,7 @@ class ShareManagerTestCase(test.TestCase):
         # run
         self.share_manager.migration_start(
             self.context, 'fake_id', host, False, False, False, False,
-            'fake_net_id')
+            'fake_net_id', 'fake_type_id')
 
         # asserts
         self.share_manager.db.share_get.assert_called_once_with(
@@ -3667,12 +3667,12 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.share_update.assert_has_calls(share_update_calls)
         self.share_manager._migration_start_driver.assert_called_once_with(
             self.context, share, instance, host, False, False, False,
-            'fake_net_id', 'fake_az_id')
+            'fake_net_id', 'fake_az_id', 'fake_type_id')
         if not success:
             (self.share_manager._migration_start_host_assisted.
                 assert_called_once_with(
                     self.context, share, instance, host, 'fake_net_id',
-                    'fake_az_id'))
+                    'fake_az_id', 'fake_type_id'))
         self.share_manager.db.service_get_by_args.assert_called_once_with(
             self.context, 'fake2@backend', 'manila-share')
 
@@ -3743,7 +3743,7 @@ class ShareManagerTestCase(test.TestCase):
             exception.ShareMigrationFailed,
             self.share_manager.migration_start,
             self.context, 'fake_id', host, False, False, False, False,
-            'fake_net_id')
+            'fake_net_id', 'fake_type_id')
 
         # asserts
         self.share_manager.db.share_get.assert_called_once_with(
@@ -3766,7 +3766,7 @@ class ShareManagerTestCase(test.TestCase):
             {'status': constants.STATUS_AVAILABLE})
         self.share_manager._migration_start_driver.assert_called_once_with(
             self.context, share, instance, host, False, False, False,
-            'fake_net_id', 'fake_az_id')
+            'fake_net_id', 'fake_az_id', 'fake_type_id')
         self.share_manager.db.service_get_by_args.assert_called_once_with(
             self.context, 'fake2@backend', 'manila-share')
 
@@ -3815,7 +3815,7 @@ class ShareManagerTestCase(test.TestCase):
             exception.ShareMigrationFailed,
             self.share_manager._migration_start_host_assisted,
             self.context, share, instance, 'fake_host', 'fake_net_id',
-            'fake_az_id')
+            'fake_az_id', 'fake_type_id')
 
         # asserts
         self.share_manager.db.share_server_get.assert_called_once_with(
@@ -3827,7 +3827,7 @@ class ShareManagerTestCase(test.TestCase):
                                     self.share_manager.driver)
         migration_api.ShareMigrationHelper.create_instance_and_wait.\
             assert_called_once_with(share, 'fake_host', 'fake_net_id',
-                                    'fake_az_id')
+                                    'fake_az_id', 'fake_type_id')
         migration_api.ShareMigrationHelper.\
             cleanup_access_rules.assert_called_once_with(
                 instance, server, self.share_manager.driver)
@@ -3904,11 +3904,11 @@ class ShareManagerTestCase(test.TestCase):
                 exception.ShareMigrationFailed,
                 self.share_manager._migration_start_driver,
                 self.context, share, src_instance, fake_dest_host, False,
-                False, False, share_network_id, 'fake_az_id')
+                False, False, share_network_id, 'fake_az_id', 'fake_type_id')
         else:
             result = self.share_manager._migration_start_driver(
                 self.context, share, src_instance, fake_dest_host, False,
-                False, False, share_network_id, 'fake_az_id')
+                False, False, share_network_id, 'fake_az_id', 'fake_type_id')
 
         # asserts
         if not exc:
@@ -3936,7 +3936,8 @@ class ShareManagerTestCase(test.TestCase):
             self.context, 'fake_src_server_id')
         (api.API.create_share_instance_and_get_request_spec.
          assert_called_once_with(self.context, share, 'fake_az_id', None,
-                                 'fake_host', share_network_id))
+                                 'fake_host', share_network_id,
+                                 'fake_type_id'))
         (self.share_manager.driver.migration_check_compatibility.
          assert_called_once_with(self.context, src_instance,
                                  migrating_instance, src_server, dest_server))
@@ -4011,7 +4012,7 @@ class ShareManagerTestCase(test.TestCase):
             exception.ShareMigrationFailed,
             self.share_manager._migration_start_driver,
             self.context, share, src_instance, fake_dest_host, True, True,
-            True, 'fake_net_id', 'fake_az_id')
+            True, 'fake_net_id', 'fake_az_id', 'fake_new_type_id')
 
         # asserts
         self.share_manager.db.share_server_get.assert_called_once_with(
@@ -4027,7 +4028,8 @@ class ShareManagerTestCase(test.TestCase):
          assert_called_once_with('fake_dest_share_server_id'))
         (api.API.create_share_instance_and_get_request_spec.
          assert_called_once_with(self.context, share, 'fake_az_id', None,
-                                 'fake_host', 'fake_net_id'))
+                                 'fake_host', 'fake_net_id',
+                                 'fake_new_type_id'))
         self.share_manager._migration_delete_instance.assert_called_once_with(
             self.context, migrating_instance['id'])
 

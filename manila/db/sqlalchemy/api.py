@@ -1100,7 +1100,7 @@ def _extract_share_instance_values(values):
     share_instance_model_fields = [
         'status', 'host', 'scheduled_at', 'launched_at', 'terminated_at',
         'share_server_id', 'share_network_id', 'availability_zone',
-        'replica_state',
+        'replica_state', 'share_type_id', 'share_type',
     ]
     share_instance_values, share_values = (
         _extract_instance_values(values, share_instance_model_fields)
@@ -1174,6 +1174,7 @@ def share_instance_get(context, share_instance_id, session=None,
         id=share_instance_id,
     ).options(
         joinedload('export_locations'),
+        joinedload('share_type'),
     ).first()
     if result is None:
         raise exception.NotFound()
@@ -1421,8 +1422,7 @@ def _share_get_query(context, session=None):
     if session is None:
         session = get_session()
     return model_query(context, models.Share, session=session).\
-        options(joinedload('share_metadata')).\
-        options(joinedload('share_type'))
+        options(joinedload('share_metadata'))
 
 
 def _metadata_refs(metadata_dict, meta_class):
@@ -1565,7 +1565,7 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
         query = query.join(
             models.ShareTypeExtraSpecs,
             models.ShareTypeExtraSpecs.share_type_id ==
-            models.Share.share_type_id)
+            models.ShareInstance.share_type_id)
         for k, v in filters['extra_specs'].items():
             query = query.filter(or_(models.ShareTypeExtraSpecs.key == k,
                                      models.ShareTypeExtraSpecs.value == v))
@@ -3222,7 +3222,7 @@ def share_type_destroy(context, id):
     session = get_session()
     with session.begin():
         _share_type_get(context, id, session)
-        results = model_query(context, models.Share, session=session,
+        results = model_query(context, models.ShareInstance, session=session,
                               read_deleted="no").\
             filter_by(share_type_id=id).count()
         cg_count = model_query(context,

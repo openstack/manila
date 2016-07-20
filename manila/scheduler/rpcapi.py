@@ -84,7 +84,7 @@ class SchedulerAPI(object):
     def migrate_share_to_host(
             self, context, share_id, host, force_host_assisted_migration,
             preserve_metadata, writable, nondisruptive, new_share_network_id,
-            request_spec=None, filter_properties=None):
+            new_share_type_id, request_spec=None, filter_properties=None):
 
         call_context = self.client.prepare(version='1.4')
         request_spec_p = jsonutils.to_primitive(request_spec)
@@ -97,6 +97,7 @@ class SchedulerAPI(object):
             writable=writable,
             nondisruptive=nondisruptive,
             new_share_network_id=new_share_network_id,
+            new_share_type_id=new_share_type_id,
             request_spec=request_spec_p,
             filter_properties=filter_properties)
 

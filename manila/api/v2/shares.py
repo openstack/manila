@@ -110,6 +110,7 @@ class ShareController(shares.ShareMixin,
             raise exc.HTTPBadRequest(explanation=msg)
 
         new_share_network = None
+        new_share_type = None
 
         preserve_metadata = params.get('preserve_metadata', True)
         try:
@@ -145,13 +146,23 @@ class ShareController(shares.ShareMixin,
             except exception.NotFound:
                 msg = _("Share network %s not "
                         "found.") % new_share_network_id
-                raise exc.HTTPNotFound(explanation=msg)
+                raise exc.HTTPBadRequest(explanation=msg)
+
+        new_share_type_id = params.get('new_share_type_id', None)
+        if new_share_type_id:
+            try:
+                new_share_type = db.share_type_get(
+                    context, new_share_type_id)
+            except exception.NotFound:
+                msg = _("Share type %s not found.") % new_share_type_id
+                raise exc.HTTPBadRequest(explanation=msg)
 
         try:
             self.share_api.migration_start(
                 context, share, host, force_host_assisted_migration,
                 preserve_metadata, writable, nondisruptive,
-                new_share_network=new_share_network)
+                new_share_network=new_share_network,
+                new_share_type=new_share_type)
         except exception.Conflict as e:
             raise exc.HTTPConflict(explanation=six.text_type(e))
 
