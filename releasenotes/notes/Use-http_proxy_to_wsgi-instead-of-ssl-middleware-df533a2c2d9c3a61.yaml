@@ -1,0 +1,8 @@
+---
+security:
+  - http_proxy_to_wsgi is taken into use instead of the deprecated ssl
+    middleware. This makes it easier for deployers to have Manila running
+    behind a proxy that terminates TLS connections. This middleware addition
+    adds the enable_proxy_headers_parsing option to the oslo_middleware section
+    which needs to be set in the configuration file in order to enable
+    middleware to do its work.
