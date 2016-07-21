@@ -78,9 +78,10 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         1.2     - Adds update_access() implementation and related methods
         1.2.1   - Improved capacity calculation
         1.2.2   - Minor optimizations
+        1.2.3   - Updated RPC layer for improved stability
     """
 
-    DRIVER_VERSION = '1.2.2'
+    DRIVER_VERSION = '1.2.3'
 
     def __init__(self, *args, **kwargs):
         super(QuobyteShareDriver, self).__init__(False, *args, **kwargs)
