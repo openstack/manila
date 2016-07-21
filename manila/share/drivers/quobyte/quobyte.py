@@ -77,9 +77,10 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         1.1     - Adds extend_share() and shrink_share() implementation.
         1.2     - Adds update_access() implementation and related methods
         1.2.1   - Improved capacity calculation
+        1.2.2   - Minor optimizations
     """
 
-    DRIVER_VERSION = '1.2.1'
+    DRIVER_VERSION = '1.2.2'
 
     def __init__(self, *args, **kwargs):
         super(QuobyteShareDriver, self).__init__(False, *args, **kwargs)
@@ -250,10 +251,10 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
 
         if self.configuration.quobyte_delete_shares:
             self.rpc.call('deleteVolume', {'volume_uuid': volume_uuid})
-
-        self.rpc.call('exportVolume', dict(
-            volume_uuid=volume_uuid,
-            remove_export=True))
+        else:
+            self.rpc.call('exportVolume', {"volume_uuid": volume_uuid,
+                                           "remove_export": True,
+                                           })
 
     def ensure_share(self, context, share, share_server=None):
         """Invoked to ensure that share is exported.
