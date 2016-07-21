@@ -2467,6 +2467,25 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           self.driver.update_access, self._context,
                           self.share_nfs, rules, None, None, self.share_server)
 
+    @ddt.data(True, False)
+    def test_nfs_access_for_all_ip_addresses(self, is_allow):
+        access_all = {
+            'access_type': 'ip',
+            'access_to': '0.0.0.0/0',
+            'access_level': 'rw',
+        }
+        self.driver.plugin.helper.login()
+        method = (self.driver.allow_access if is_allow
+                  else self.driver.deny_access)
+        with mock.patch.object(self.driver.plugin.helper,
+                               '_get_access_from_share') as mock_call:
+            mock_call.return_value = None
+
+            method(self._context, self.share_nfs,
+                   access_all, self.share_server)
+
+            mock_call.assert_called_with('1', '*', 'NFS')
+
     def test_get_share_client_type_fail(self):
         share_proto = 'fake_proto'
         self.assertRaises(exception.InvalidInput,
