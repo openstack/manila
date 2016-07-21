@@ -116,11 +116,21 @@ be created.
   by setting this extra-spec to '<is> True'. If a driver reports
   thin_provisioning=False (the default) then it's assumed that the driver is
   doing thick provisioning and overprovisioning is turned off.
-  If an array can technically support both thin and thick provisioning in a
-  pool, the driver still needs to programmatically determine which to use.
-  This should be done by configuring one pool for thin and another pool for
-  thick. So, a manila pool will always report thin_provisioning as True or
-  False. Added in Liberty.
+  This was added in Liberty. In Liberty and Mitaka, the driver was required
+  to configure one pool for thin and another pool for thick and report
+  thin_provisioning as either True or False even if an array can technically
+  support both thin and thick provisioning in a pool. In Newton, the logic is
+  changed to allow a driver to report thin_provisioning=[True, False] if it
+  can support both thin and thick provisioning in a pool. To provision a thick
+  share on a back end that supports both thin and thick provisioning, set one
+  of the following in extra specs:
+
+::
+
+    {'thin_provisioning': 'False'}
+    {'thin_provisioning': '<is> False'}
+    {'capabilities:thin_provisioning': 'False'}
+    {'capabilities:thin_provisioning': '<is> False'}
 
 * `qos` - indicates that a backend/pool can provide shares using some
   QoS (Quality of Service) specification. The default value of the qos
