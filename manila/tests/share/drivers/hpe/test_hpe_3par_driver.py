@@ -58,6 +58,8 @@ class HPE3ParDriverTestCase(test.TestCase):
         self.conf.network_config_group = 'test_network_config_group'
         self.conf.admin_network_config_group = (
             'test_admin_network_config_group')
+        self.conf.filter_function = None
+        self.conf.goodness_function = None
 
         def safe_get(attr):
             try:
@@ -560,6 +562,8 @@ class HPE3ParDriverTestCase(test.TestCase):
             'vendor_name': 'HPE',
             'pools': None,
             'replication_domain': None,
+            'filter_function': None,
+            'goodness_function': None,
         }
 
         result = self.driver.get_share_stats(refresh=True)
@@ -618,6 +622,8 @@ class HPE3ParDriverTestCase(test.TestCase):
             'hp3par_flash_cache': False,
             'snapshot_support': True,
             'replication_domain': None,
+            'filter_function': None,
+            'goodness_function': None,
         }
 
         result = self.driver.get_share_stats(refresh=True)
@@ -652,6 +658,8 @@ class HPE3ParDriverTestCase(test.TestCase):
             'vendor_name': 'HPE',
             'snapshot_support': True,
             'replication_domain': None,
+            'filter_function': None,
+            'goodness_function': None,
         }
 
         result = self.driver.get_share_stats(refresh=True)

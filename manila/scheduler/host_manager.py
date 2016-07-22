@@ -46,13 +46,15 @@ host_manager_opts = [
                     'CapacityFilter',
                     'CapabilitiesFilter',
                     'ConsistencyGroupFilter',
+                    'DriverFilter',
                     'ShareReplicationFilter',
                 ],
                 help='Which filter class names to use for filtering hosts '
                      'when not specified in the request.'),
     cfg.ListOpt('scheduler_default_weighers',
                 default=[
-                    'CapacityWeigher'
+                    'CapacityWeigher',
+                    'GoodnessWeigher',
                 ],
                 help='Which weigher class names to use for weighing hosts.')
 ]

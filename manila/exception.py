@@ -782,3 +782,7 @@ class TegileAPIException(ShareBackendException):
 
 class StorageCommunicationException(ShareBackendException):
     message = _("Could not communicate with storage array.")
+
+
+class EvaluatorParseException(ManilaException):
+    message = _("Error during evaluator parsing: %(reason)s")

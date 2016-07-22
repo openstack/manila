@@ -746,6 +746,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.configuration.max_over_subscription_ratio = 1
         self.configuration.driver_handles_share_servers = False
         self.configuration.replication_domain = None
+        self.configuration.filter_function = None
+        self.configuration.goodness_function = None
 
         self.tmp_dir = tempfile.mkdtemp()
         self.fake_conf_file = self.tmp_dir + '/manila_huawei_conf.xml'
@@ -2287,6 +2289,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
         expected['qos'] = True
         expected["snapshot_support"] = True
         expected['replication_domain'] = None
+        expected['filter_function'] = None
+        expected['goodness_function'] = None
         expected["pools"] = []
         pool = dict(
             pool_name='OpenStack_Pool',
