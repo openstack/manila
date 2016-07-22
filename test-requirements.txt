@@ -13,7 +13,7 @@ mock>=2.0 # BSD
 iso8601>=0.1.11 # MIT
 oslotest>=1.10.0 # Apache-2.0
 oslosphinx!=3.4.0,>=2.5.0 # Apache-2.0
-openstackdocstheme>=1.0.3 # Apache-2.0
+openstackdocstheme>=1.4.0 # Apache-2.0
 
 # Do not remove 'PyMySQL' and 'psycopg2' dependencies. They are used
 # by oslo_db lib for running MySQL and PostgreSQL DB migration tests.
