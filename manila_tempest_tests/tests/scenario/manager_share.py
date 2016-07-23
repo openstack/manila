@@ -107,6 +107,7 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
             search_opts={"share_network": sn_id})
         for server in servers:
             client.delete_share_server(server['id'])
+        for server in servers:
             client.wait_for_resource_deletion(server_id=server['id'])
 
     def _create_share_network(self, client=None, **kwargs):

@@ -14,6 +14,7 @@
 #    under the License.
 
 from oslo_log import log as logging
+from tempest.common import waiters
 from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest.lib.common.utils import test_utils
@@ -65,14 +66,17 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
                   'user: {ssh_user}'.format(
                       image=self.image_ref, flavor=self.flavor_ref,
                       ssh_user=self.ssh_user))
+        self.security_group = self._create_security_group()
+        if CONF.share.multitenancy_enabled:
+            self.create_share_network()
 
-    def boot_instance(self):
+    def boot_instance(self, wait_until="ACTIVE"):
         self.keypair = self.create_keypair()
         security_groups = [{'name': self.security_group['name']}]
         create_kwargs = {
             'key_name': self.keypair['name'],
             'security_groups': security_groups,
-            'wait_until': 'ACTIVE',
+            'wait_until': wait_until,
         }
         if CONF.share.multitenancy_enabled:
             create_kwargs['networks'] = [{'uuid': self.net['id']}, ]
@@ -152,7 +156,6 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
             'share_type_id': self._get_share_type()['id'],
         }
         if CONF.share.multitenancy_enabled:
-            self.create_share_network()
             kwargs.update({'share_network_id': self.share_net['id']})
         self.share = self._create_share(**kwargs)
 
@@ -163,6 +166,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
                 first_address = net_addresses.values()[0][0]
                 ip = first_address['addr']
             except Exception:
+                LOG.debug("Instance: %s" % instance)
                 # In case on an error ip will be still none
                 LOG.exception("Instance does not have a valid IP address."
                               "Falling back to default")
@@ -171,12 +175,17 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         self._allow_access(share_id, access_type='ip', access_to=ip,
                            cleanup=cleanup)
 
+    def wait_for_active_instance(self, instance_id):
+        waiters.wait_for_server_status(
+            self.manager.servers_client, instance_id, "ACTIVE")
+        return self.manager.servers_client.show_server(instance_id)["server"]
+
     @test.services('compute', 'network')
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     def test_mount_share_one_vm(self):
-        self.security_group = self._create_security_group()
+        instance = self.boot_instance(wait_until="BUILD")
         self.create_share()
-        instance = self.boot_instance()
+        instance = self.wait_for_active_instance(instance["id"])
         self.allow_access_ip(self.share['id'], instance=instance,
                              cleanup=False)
         ssh_client = self.init_ssh(instance)
@@ -198,11 +207,15 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
     def test_read_write_two_vms(self):
         """Boots two vms and writes/reads data on it."""
         test_data = "Some test data to write"
-        self.security_group = self._create_security_group()
-        self.create_share()
 
-        # boot first VM and write data
-        instance1 = self.boot_instance()
+        # Boot two VMs and create share
+        instance1 = self.boot_instance(wait_until="BUILD")
+        instance2 = self.boot_instance(wait_until="BUILD")
+        self.create_share()
+        instance1 = self.wait_for_active_instance(instance1["id"])
+        instance2 = self.wait_for_active_instance(instance2["id"])
+
+        # Write data to first VM
         self.allow_access_ip(self.share['id'], instance=instance1,
                              cleanup=False)
         ssh_client_inst1 = self.init_ssh(instance1)
@@ -219,9 +232,9 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
                         ssh_client_inst1)
         self.write_data(test_data, ssh_client_inst1)
 
-        # boot second VM and read
-        instance2 = self.boot_instance()
-        self.allow_access_ip(self.share['id'], instance=instance2)
+        # Read from second VM
+        self.allow_access_ip(
+            self.share['id'], instance=instance2, cleanup=False)
         ssh_client_inst2 = self.init_ssh(instance2)
         self.mount_share(locations[0], ssh_client_inst2)
         self.addCleanup(self.umount_share,
@@ -247,8 +260,9 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
                                      "are needed to run migration tests. "
                                      "Skipping.")
 
-        self.security_group = self._create_security_group()
+        instance = self.boot_instance(wait_until="BUILD")
         self.create_share()
+        instance = self.wait_for_active_instance(instance["id"])
         share = self.shares_client.get_share(self.share['id'])
 
         dest_pool = next((x for x in pools if x['name'] != share['host']),
@@ -259,10 +273,9 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
         dest_pool = dest_pool['name']
 
-        instance1 = self.boot_instance()
-        self.allow_access_ip(self.share['id'], instance=instance1,
+        self.allow_access_ip(self.share['id'], instance=instance,
                              cleanup=False)
-        ssh_client = self.init_ssh(instance1)
+        ssh_client = self.init_ssh(instance)
 
         if utils.is_microversion_lt(CONF.share.max_api_microversion, "2.9"):
             locations = self.share['export_locations']
