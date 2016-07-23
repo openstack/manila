@@ -103,6 +103,7 @@ share_manager_opts = [
 CONF = cfg.CONF
 CONF.register_opts(share_manager_opts)
 CONF.import_opt('periodic_hooks_interval', 'manila.share.hook')
+CONF.import_opt('periodic_interval', 'manila.service')
 
 # Drivers that need to change module paths or class names can add their
 # old/new path here to maintain backward compatibility.
