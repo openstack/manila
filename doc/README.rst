@@ -1,55 +1,33 @@
-=================
-Building the docs
-=================
+=======================
+Manila Development Docs
+=======================
 
-Dependencies
-============
+Files under this directory tree are used for generating the documentation
+for the manila source code.
 
-Sphinx_
-  You'll need sphinx (the python one) and if you are
-  using the virtualenv you'll need to install it in the virtualenv
-  specifically so that it can load the manila modules.
+Developer documentation is built to:
+http://docs.openstack.org/developer/manila/
 
-  ::
+Tools
+=====
 
-    pip install Sphinx
+Sphinx
+  The Python Sphinx package is used to generate the documentation output.
+  Information on Sphinx, including formatting information for RST source
+  files, can be found in the `Sphinx online documentation
+  <http://www.sphinx-doc.org/en/stable/>`_.
 
-Graphviz_
+Graphviz
   Some of the diagrams are generated using the ``dot`` language
-  from Graphviz.
-
-  ::
-
-    sudo apt-get install graphviz
-
-.. _Sphinx: http://sphinx.pocoo.org
-
-.. _Graphviz: http://www.graphviz.org/
+  from Graphviz. See the `Graphviz documentation <http://www.graphviz.org/>`_
+  for Graphviz and dot language usage information.
 
 
-Use `make`
-==========
+Building Documentation
+======================
 
-Just type make::
+Doc builds are performed using tox with the ``docs`` target::
 
-  % make
+ % cd ..
+ % tox -e docs
 
-Look in the Makefile for more targets.
-
-
-Manually
-========
-
-  1. Generate the code.rst file so that Sphinx will pull in our docstrings::
-     
-      % ./generate_autodoc_index.sh > source/code.rst
-
-  2. Run `sphinx_build`::
-
-      % sphinx-build -b html source build/html
-
-
-The docs have been built
-========================
-
-Check out the `build` directory to find them. Yay!
