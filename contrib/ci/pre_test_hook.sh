@@ -75,6 +75,55 @@ if [[ "$DRIVER" == "generic" ]]; then
 elif [[ "$DRIVER" == "windows" ]]; then
     MANILA_SERVICE_IMAGE_ENABLED=True
     echo "SHARE_DRIVER=manila.share.drivers.windows.windows_smb_driver.WindowsSMBDriver" >> $localrc_path
+elif [[ "$DRIVER" == "dummy" ]]; then
+    driver_path="manila.tests.share.drivers.dummy.DummyDriver"
+    echo "MANILA_SERVICE_IMAGE_ENABLED=False" >> $localrc_path
+    echo "SHARE_DRIVER=$driver_path" >> $localrc_path
+    echo "SUPPRESS_ERRORS_IN_CLEANUP=False" >> $localrc_path
+    echo "MANILA_REPLICA_STATE_UPDATE_INTERVAL=10" >> $localrc_path
+    echo "MANILA_ENABLED_BACKENDS=alpha,beta,gamma,delta" >> $localrc_path
+    echo "MANILA_CONFIGURE_GROUPS=alpha,beta,gamma,delta,membernet,adminnet" >> $localrc_path
+
+    echo "MANILA_OPTGROUP_alpha_share_driver=$driver_path" >> $localrc_path
+    echo "MANILA_OPTGROUP_alpha_driver_handles_share_servers=True" >> $localrc_path
+    echo "MANILA_OPTGROUP_alpha_share_backend_name=ALPHA" >> $localrc_path
+    echo "MANILA_OPTGROUP_alpha_network_config_group=membernet" >> $localrc_path
+    echo "MANILA_OPTGROUP_alpha_admin_network_config_group=adminnet" >> $localrc_path
+
+    echo "MANILA_OPTGROUP_beta_share_driver=$driver_path" >> $localrc_path
+    echo "MANILA_OPTGROUP_beta_driver_handles_share_servers=True" >> $localrc_path
+    echo "MANILA_OPTGROUP_beta_share_backend_name=BETA" >> $localrc_path
+    echo "MANILA_OPTGROUP_beta_network_config_group=membernet" >> $localrc_path
+    echo "MANILA_OPTGROUP_beta_admin_network_config_group=adminnet" >> $localrc_path
+
+    echo "MANILA_OPTGROUP_gamma_share_driver=$driver_path" >> $localrc_path
+    echo "MANILA_OPTGROUP_gamma_driver_handles_share_servers=False" >> $localrc_path
+    echo "MANILA_OPTGROUP_gamma_share_backend_name=GAMMA" >> $localrc_path
+    echo "MANILA_OPTGROUP_gamma_replication_domain=DUMMY_DOMAIN" >> $localrc_path
+
+    echo "MANILA_OPTGROUP_delta_share_driver=$driver_path" >> $localrc_path
+    echo "MANILA_OPTGROUP_delta_driver_handles_share_servers=False" >> $localrc_path
+    echo "MANILA_OPTGROUP_delta_share_backend_name=DELTA" >> $localrc_path
+    echo "MANILA_OPTGROUP_delta_replication_domain=DUMMY_DOMAIN" >> $localrc_path
+
+    echo "MANILA_OPTGROUP_membernet_network_api_class=manila.network.standalone_network_plugin.StandaloneNetworkPlugin" >> $localrc_path
+    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_gateway=10.0.0.1" >> $localrc_path
+    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_mask=24" >> $localrc_path
+    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_network_type=vlan" >> $localrc_path
+    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_segmentation_id=1010" >> $localrc_path
+    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_allowed_ip_ranges=10.0.0.10-10.0.0.209" >> $localrc_path
+    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_ip_version=4" >> $localrc_path
+
+    echo "MANILA_OPTGROUP_adminnet_network_api_class=manila.network.standalone_network_plugin.StandaloneNetworkPlugin" >> $localrc_path
+    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_gateway=11.0.0.1" >> $localrc_path
+    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_mask=24" >> $localrc_path
+    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_network_type=vlan" >> $localrc_path
+    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_segmentation_id=1011" >> $localrc_path
+    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_allowed_ip_ranges=11.0.0.10-11.0.0.19,11.0.0.30-11.0.0.39,11.0.0.50-11.0.0.199" >> $localrc_path
+    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_ip_version=4" >> $localrc_path
+
+    export MANILA_TEMPEST_CONCURRENCY=24
+
 elif [[ "$DRIVER" == "lvm" ]]; then
     echo "SHARE_DRIVER=manila.share.drivers.lvm.LVMShareDriver" >> $localrc_path
     echo "SHARE_BACKING_FILE_SIZE=32000M" >> $localrc_path
@@ -98,7 +147,7 @@ echo 'ENABLE_ISOLATED_METADATA=True' >> $localrc_path
 
 echo "TEMPEST_USE_TEST_ACCOUNTS=True" >> $localrc_path
 echo "TEMPEST_ALLOW_TENANT_ISOLATION=False" >> $localrc_path
-echo "TEMPEST_CONCURRENCY=8" >> $localrc_path
+echo "TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-8}" >> $localrc_path
 
 # Go to Tempest dir and checkout stable commit to avoid possible
 # incompatibilities for plugin stored in Manila repo.

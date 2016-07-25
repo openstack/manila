@@ -56,6 +56,15 @@ ShareGroup = [
                 help="This option used to determine backend driver type, "
                      "multitenant driver uses share-networks, but "
                      "single-tenant doesn't."),
+    cfg.BoolOpt("create_networks_when_multitenancy_enabled",
+                default=True,
+                help="This option is used only when other "
+                     "'multitenancy_enabled' option is set to 'True'. "
+                     "If this one is set to True, then tempest will create "
+                     "neutron networks for each new manila share-network "
+                     "it creates. Else it will use manila share-networks with "
+                     "empty values (case of StandAloneNetworkPlugin and "
+                     "NeutronSingleNetworkPlugin)."),
     cfg.ListOpt("enable_protocols",
                 default=["nfs", "cifs"],
                 help="First value of list is protocol by default, "
