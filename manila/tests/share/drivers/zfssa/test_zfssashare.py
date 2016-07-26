@@ -37,15 +37,15 @@ class ZFSSAShareDriverTestCase(test.TestCase):
         'name': 'fakename',
         'size': 1,
         'share_proto': 'NFS',
-        'export_location': '127.0.0.1:/mnt/nfs/volume-00002',
+        'export_location': '/mnt/nfs/volume-00002',
     }
 
     share2 = {
         'id': 'fakeid2',
         'name': 'fakename2',
         'size': 4,
-        'share_proto': 'NFS',
-        'export_location': '127.0.0.1:/mnt/nfs/volume-00003',
+        'share_proto': 'CIFS',
+        'export_location': '/mnt/nfs/volume-00003',
         'space_data': 3006477107
     }
 
@@ -78,6 +78,26 @@ class ZFSSAShareDriverTestCase(test.TestCase):
         self._driver = zfssashare.ZFSSAShareDriver(False, configuration=lcfg)
         self._driver.do_setup(self._context)
 
+        self.fake_proto_share = {
+            'id': self.share['id'],
+            'share_proto': 'fake_proto',
+            'export_locations': [{'path': self.share['export_location']}],
+        }
+
+        self.test_share = {
+            'id': self.share['id'],
+            'share_proto': 'NFS',
+            'export_locations': [{'path': self.share['export_location']}],
+        }
+
+        self.test_share2 = {
+            'id': self.share2['id'],
+            'share_proto': 'CIFS',
+            'export_locations': [{'path': self.share2['export_location']}],
+        }
+
+        self.driver_options = {'zfssa_name': self.share['name']}
+
     def _create_fake_config(self):
         def _safe_get(opt):
             return getattr(self.configuration, opt)
@@ -102,6 +122,7 @@ class ZFSSAShareDriverTestCase(test.TestCase):
         self.configuration.admin_network_config_group = (
             'fake_admin_network_config_group')
         self.configuration.driver_handles_share_servers = False
+        self.configuration.zfssa_manage_policy = 'strict'
 
     def test_create_share(self):
         self.mock_object(self._driver.zfssa, 'create_share')
@@ -283,3 +304,223 @@ class ZFSSAShareDriverTestCase(test.TestCase):
             lcfg.zfssa_project,
             self.share2['id'],
             arg)
+
+    def test_manage_invalid_option(self):
+        self.mock_object(self._driver, '_get_share_details')
+
+        # zfssa_name not in driver_options:
+        self.assertRaises(exception.ShareBackendException,
+                          self._driver.manage_existing,
+                          self.share,
+                          {})
+
+    def test_manage_no_share_details(self):
+        self.mock_object(self._driver, '_get_share_details')
+        self._driver._get_share_details.side_effect = (
+            exception.ShareResourceNotFound(share_id=self.share['name']))
+
+        self.assertRaises(exception.ShareResourceNotFound,
+                          self._driver.manage_existing,
+                          self.share,
+                          self.driver_options)
+
+    def test_manage_invalid_size(self):
+        details = {
+            'quota': 10,  # 10 bytes
+            'reservation': 10,
+        }
+        self.mock_object(self._driver, '_get_share_details')
+        self._driver._get_share_details.return_value = details
+
+        self.mock_object(self._driver.zfssa, 'get_project_stats')
+        self._driver.zfssa.get_project_stats.return_value = 900
+
+        # Share size is less than 1GB, but there is not enough free space
+        self.assertRaises(exception.ManageInvalidShare,
+                          self._driver.manage_existing,
+                          self.test_share,
+                          self.driver_options)
+
+    def test_manage_invalid_protocol(self):
+        self.mock_object(self._driver, '_get_share_details')
+        self._driver._get_share_details.return_value = {
+            'quota': self.share['size'] * units.Gi,
+            'reservation': self.share['size'] * units.Gi,
+            'custom:manila_managed': False,
+        }
+
+        self.assertRaises(exception.ManageInvalidShare,
+                          self._driver.manage_existing,
+                          self.fake_proto_share,
+                          self.driver_options)
+
+    def test_manage_unmanage_no_schema(self):
+        self.mock_object(self._driver, '_get_share_details')
+        self._driver._get_share_details.return_value = {}
+
+        # Share does not have custom:manila_managed property
+        # Test manage_existing():
+        self.assertRaises(exception.ManageInvalidShare,
+                          self._driver.manage_existing,
+                          self.test_share,
+                          self.driver_options)
+
+        # Test unmanage():
+        self.assertRaises(exception.UnmanageInvalidShare,
+                          self._driver.unmanage,
+                          self.test_share)
+
+    def test_manage_round_up_size(self):
+        details = {
+            'quota': 100,
+            'reservation': 50,
+            'custom:manila_managed': False,
+        }
+        self.mock_object(self._driver, '_get_share_details')
+        self._driver._get_share_details.return_value = details
+
+        self.mock_object(self._driver.zfssa, 'get_project_stats')
+        self._driver.zfssa.get_project_stats.return_value = 1 * units.Gi
+
+        ret = self._driver.manage_existing(self.test_share,
+                                           self.driver_options)
+
+        # Expect share size is 1GB
+        self.assertEqual(1, ret['size'])
+
+    def test_manage_not_enough_space(self):
+        details = {
+            'quota': 3.5 * units.Gi,
+            'reservation': 3.5 * units.Gi,
+            'custom:manila_managed': False,
+        }
+        self.mock_object(self._driver, '_get_share_details')
+        self._driver._get_share_details.return_value = details
+
+        self.mock_object(self._driver.zfssa, 'get_project_stats')
+        self._driver.zfssa.get_project_stats.return_value = 0.1 * units.Gi
+
+        self.assertRaises(exception.ManageInvalidShare,
+                          self._driver.manage_existing,
+                          self.test_share,
+                          self.driver_options)
+
+    def test_manage_unmanage_NFS(self):
+        lcfg = self.configuration
+        details = {
+            # Share size is 1GB
+            'quota': self.share['size'] * units.Gi,
+            'reservation': self.share['size'] * units.Gi,
+            'custom:manila_managed': False,
+        }
+        arg = {
+            'host': lcfg.zfssa_data_ip,
+            'mountpoint': self.share['export_location'],
+            'name': self.share['id'],
+        }
+        export_loc = "%(host)s:%(mountpoint)s/%(name)s" % arg
+        self.mock_object(self._driver, '_get_share_details')
+        self._driver._get_share_details.return_value = details
+
+        ret = self._driver.manage_existing(self.test_share,
+                                           self.driver_options)
+
+        self.assertEqual(export_loc, ret['export_locations'])
+        self.assertEqual(1, ret['size'])
+
+    def test_manage_unmanage_CIFS(self):
+        lcfg = self.configuration
+        details = {
+            # Share size is 1GB
+            'quota': self.share2['size'] * units.Gi,
+            'reservation': self.share2['size'] * units.Gi,
+            'custom:manila_managed': False,
+        }
+        arg = {
+            'host': lcfg.zfssa_data_ip,
+            'name': self.share2['id'],
+        }
+        export_loc = "\\\\%(host)s\\%(name)s" % arg
+        self.mock_object(self._driver, '_get_share_details')
+        self._driver._get_share_details.return_value = details
+
+        ret = self._driver.manage_existing(self.test_share2,
+                                           self.driver_options)
+
+        self.assertEqual(export_loc, ret['export_locations'])
+        self.assertEqual(4, ret['size'])
+
+    def test_unmanage_NFS(self):
+        self.mock_object(self._driver.zfssa, 'modify_share')
+        lcfg = self.configuration
+        details = {
+            'quota': self.share['size'] * units.Gi,
+            'reservation': self.share['size'] * units.Gi,
+            'custom:manila_managed': True,
+        }
+
+        arg = {
+            'custom:manila_managed': False,
+            'sharenfs': 'off',
+        }
+
+        self.mock_object(self._driver, '_get_share_details')
+        self._driver._get_share_details.return_value = details
+
+        self._driver.unmanage(self.test_share)
+
+        self._driver.zfssa.modify_share.assert_called_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_project,
+            self.test_share['id'],
+            arg)
+
+    def test_unmanage_CIFS(self):
+        self.mock_object(self._driver.zfssa, 'modify_share')
+        lcfg = self.configuration
+        details = {
+            'quota': self.share2['size'] * units.Gi,
+            'reservation': self.share2['size'] * units.Gi,
+            'custom:manila_managed': True,
+        }
+
+        arg = {
+            'custom:manila_managed': False,
+            'sharesmb': 'off',
+        }
+
+        self.mock_object(self._driver, '_get_share_details')
+        self._driver._get_share_details.return_value = details
+
+        self._driver.unmanage(self.test_share2)
+
+        self._driver.zfssa.modify_share.assert_called_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_project,
+            self.test_share2['id'],
+            arg)
+
+    def test_verify_share_to_manage_loose_policy(self):
+        # Temporarily change policy to loose
+        self.configuration.zfssa_manage_policy = 'loose'
+
+        ret = self._driver._verify_share_to_manage('sharename', {})
+
+        self.assertEqual(ret, None)
+        # Change it back to strict
+        self.configuration.zfssa_manage_policy = 'strict'
+
+    def test_verify_share_to_manage_no_property(self):
+        self.configuration.zfssa_manage_policy = 'strict'
+        self.assertRaises(exception.ManageInvalidShare,
+                          self._driver._verify_share_to_manage,
+                          'sharename',
+                          {})
+
+    def test_verify_share_to_manage_alredy_managed(self):
+        details = {'custom:manila_managed': True}
+
+        self.assertRaises(exception.ManageInvalidShare,
+                          self._driver._verify_share_to_manage,
+                          'sharename',
+                          details)

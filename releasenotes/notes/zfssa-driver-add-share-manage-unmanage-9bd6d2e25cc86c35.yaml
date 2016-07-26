@@ -1,0 +1,5 @@
+---
+features:
+ - Oracle ZFSSA driver now supports share manage/unmanage feature, where a
+   ZFSSA share can be brought under Manila's management, or can be released
+   from Manila's management.
