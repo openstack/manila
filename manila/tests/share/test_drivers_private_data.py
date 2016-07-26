@@ -147,7 +147,7 @@ class SqlStorageDriverTestCase(test.TestCase):
             "method_kwargs": create_arg_dict(
                 ["entity_id", "details", "delete_existing"]),
             "valid_args": create_arg_list(
-                ["context", "backend_host", "entity_id", "details",
+                ["context", "entity_id", "details",
                  "delete_existing"]
             )
         },
@@ -155,13 +155,13 @@ class SqlStorageDriverTestCase(test.TestCase):
             "method_name": 'get',
             "method_kwargs": create_arg_dict(["entity_id", "key", "default"]),
             "valid_args": create_arg_list(
-                ["context", "backend_host", "entity_id", "key", "default"]),
+                ["context", "entity_id", "key", "default"]),
         },
         {
             "method_name": 'delete',
             "method_kwargs": create_arg_dict(["entity_id", "key"]),
             "valid_args": create_arg_list(
-                ["context", "backend_host", "entity_id", "key"]),
+                ["context", "entity_id", "key"]),
         })
     @ddt.unpack
     def test_methods(self, method_kwargs, method_name, valid_args):

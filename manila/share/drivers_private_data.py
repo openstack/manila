@@ -83,18 +83,18 @@ class SqlStorageDriver(StorageDriver):
 
     def update(self, entity_id, details, delete_existing):
         return db_api.driver_private_data_update(
-            self.context, self.backend_host, entity_id, details,
+            self.context, entity_id, details,
             delete_existing
         )
 
     def get(self, entity_id, key, default):
         return db_api.driver_private_data_get(
-            self.context, self.backend_host, entity_id, key, default
+            self.context, entity_id, key, default
         )
 
     def delete(self, entity_id, key):
         return db_api.driver_private_data_delete(
-            self.context, self.backend_host, entity_id, key
+            self.context, entity_id, key
         )
 
 

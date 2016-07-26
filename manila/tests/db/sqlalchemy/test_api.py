@@ -1195,7 +1195,7 @@ class DriverPrivateDataDatabaseAPITestCase(test.TestCase):
         self.ctxt = context.get_admin_context()
 
     def _get_driver_test_data(self):
-        return ("fake@host", uuidutils.generate_uuid())
+        return uuidutils.generate_uuid()
 
     @ddt.data({"details": {"foo": "bar", "tee": "too"},
                "valid": {"foo": "bar", "tee": "too"}},
@@ -1203,93 +1203,83 @@ class DriverPrivateDataDatabaseAPITestCase(test.TestCase):
                "valid": {"foo": "bar", "tee": six.text_type(["test"])}})
     @ddt.unpack
     def test_update(self, details, valid):
-        test_host, test_id = self._get_driver_test_data()
+        test_id = self._get_driver_test_data()
 
-        initial_data = db_api.driver_private_data_get(
-            self.ctxt, test_host, test_id)
-        db_api.driver_private_data_update(self.ctxt, test_host, test_id,
-                                          details)
-        actual_data = db_api.driver_private_data_get(
-            self.ctxt, test_host, test_id)
+        initial_data = db_api.driver_private_data_get(self.ctxt, test_id)
+        db_api.driver_private_data_update(self.ctxt, test_id, details)
+        actual_data = db_api.driver_private_data_get(self.ctxt, test_id)
 
         self.assertEqual({}, initial_data)
         self.assertEqual(valid, actual_data)
 
     def test_update_with_duplicate(self):
-        test_host, test_id = self._get_driver_test_data()
+        test_id = self._get_driver_test_data()
         details = {"tee": "too"}
 
-        db_api.driver_private_data_update(self.ctxt, test_host, test_id,
-                                          details)
-        db_api.driver_private_data_update(self.ctxt, test_host, test_id,
-                                          details)
+        db_api.driver_private_data_update(self.ctxt, test_id, details)
+        db_api.driver_private_data_update(self.ctxt, test_id, details)
 
-        actual_result = db_api.driver_private_data_get(
-            self.ctxt, test_host, test_id)
+        actual_result = db_api.driver_private_data_get(self.ctxt,
+                                                       test_id)
 
         self.assertEqual(details, actual_result)
 
     def test_update_with_delete_existing(self):
-        test_host, test_id = self._get_driver_test_data()
+        test_id = self._get_driver_test_data()
         details = {"key1": "val1", "key2": "val2", "key3": "val3"}
         details_update = {"key1": "val1_upd", "key4": "new_val"}
 
         # Create new details
-        db_api.driver_private_data_update(self.ctxt, test_host, test_id,
-                                          details)
-        db_api.driver_private_data_update(self.ctxt, test_host, test_id,
+        db_api.driver_private_data_update(self.ctxt, test_id, details)
+        db_api.driver_private_data_update(self.ctxt, test_id,
                                           details_update, delete_existing=True)
 
         actual_result = db_api.driver_private_data_get(
-            self.ctxt, test_host, test_id)
+            self.ctxt, test_id)
 
         self.assertEqual(details_update, actual_result)
 
     def test_get(self):
-        test_host, test_id = self._get_driver_test_data()
+        test_id = self._get_driver_test_data()
         test_key = "foo"
         test_keys = [test_key, "tee"]
         details = {test_keys[0]: "val", test_keys[1]: "val", "mee": "foo"}
-        db_api.driver_private_data_update(self.ctxt, test_host, test_id,
-                                          details)
+        db_api.driver_private_data_update(self.ctxt, test_id, details)
 
         actual_result_all = db_api.driver_private_data_get(
-            self.ctxt, test_host, test_id)
+            self.ctxt, test_id)
         actual_result_single_key = db_api.driver_private_data_get(
-            self.ctxt, test_host, test_id, test_key)
+            self.ctxt, test_id, test_key)
         actual_result_list = db_api.driver_private_data_get(
-            self.ctxt, test_host, test_id, test_keys)
+            self.ctxt, test_id, test_keys)
 
         self.assertEqual(details, actual_result_all)
         self.assertEqual(details[test_key], actual_result_single_key)
         self.assertEqual(dict.fromkeys(test_keys, "val"), actual_result_list)
 
     def test_delete_single(self):
-        test_host, test_id = self._get_driver_test_data()
+        test_id = self._get_driver_test_data()
         test_key = "foo"
         details = {test_key: "bar", "tee": "too"}
         valid_result = {"tee": "too"}
-        db_api.driver_private_data_update(self.ctxt, test_host, test_id,
-                                          details)
+        db_api.driver_private_data_update(self.ctxt, test_id, details)
 
-        db_api.driver_private_data_delete(self.ctxt, test_host, test_id,
-                                          test_key)
+        db_api.driver_private_data_delete(self.ctxt, test_id, test_key)
 
         actual_result = db_api.driver_private_data_get(
-            self.ctxt, test_host, test_id)
+            self.ctxt, test_id)
 
         self.assertEqual(valid_result, actual_result)
 
     def test_delete_all(self):
-        test_host, test_id = self._get_driver_test_data()
+        test_id = self._get_driver_test_data()
         details = {"foo": "bar", "tee": "too"}
-        db_api.driver_private_data_update(self.ctxt, test_host, test_id,
-                                          details)
+        db_api.driver_private_data_update(self.ctxt, test_id, details)
 
-        db_api.driver_private_data_delete(self.ctxt, test_host, test_id)
+        db_api.driver_private_data_delete(self.ctxt, test_id)
 
         actual_result = db_api.driver_private_data_get(
-            self.ctxt, test_host, test_id)
+            self.ctxt, test_id)
 
         self.assertEqual({}, actual_result)
 
