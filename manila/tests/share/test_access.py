@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 
 from manila.common import constants
@@ -24,6 +25,7 @@ from manila import test
 from manila.tests import db_utils
 
 
+@ddt.ddt
 class ShareInstanceAccessTestCase(test.TestCase):
     def setUp(self):
         super(ShareInstanceAccessTestCase, self).setUp()
@@ -36,25 +38,52 @@ class ShareInstanceAccessTestCase(test.TestCase):
             share_id=self.share['id'],
             access_rules_status=constants.STATUS_ERROR)
 
-    def test_update_access_rules(self):
-        original_rules = []
+    @ddt.data(True, False)
+    def test_update_access_rules_maintenance_mode(self, maintenance_mode):
+        existing_rules = []
+        for i in range(2):
+            existing_rules.append(
+                db_utils.create_access(
+                    id='fakeid%s' % i,
+                    share_id=self.share['id'],
+                    access_to='fakeip%s' % i,
+                ))
+        delete_rules = [existing_rules[0], ]
+        rules = [existing_rules[1], ]
+        access_rules_status = (
+            constants.STATUS_ERROR if maintenance_mode
+            else constants.STATUS_ACTIVE)
+        share_instance = db_utils.create_share_instance(
+            id='fakeid',
+            share_id=self.share['id'],
+            access_rules_status=access_rules_status)
 
         self.mock_object(db, "share_instance_get", mock.Mock(
-            return_value=self.share_instance))
-        self.mock_object(db, "share_access_get_all_for_share",
-                         mock.Mock(return_value=original_rules))
+            return_value=share_instance))
+        self.mock_object(db, "share_access_get_all_for_instance",
+                         mock.Mock(return_value=existing_rules))
         self.mock_object(db, "share_instance_update_access_status",
                          mock.Mock())
         self.mock_object(self.driver, "update_access", mock.Mock())
+        self.mock_object(self.share_access_helper,
+                         "_remove_access_rules", mock.Mock())
+        self.mock_object(self.share_access_helper, "_check_needs_refresh",
+                         mock.Mock(return_value=False))
 
-        self.share_access_helper.update_access_rules(self.context,
-                                                     self.share_instance['id'])
+        self.share_access_helper.update_access_rules(
+            self.context, share_instance['id'],
+            delete_rules=delete_rules)
 
-        self.driver.update_access.assert_called_with(
-            self.context, self.share_instance, original_rules, add_rules=[],
-            delete_rules=[], share_server=None)
+        self.driver.update_access.assert_called_once_with(
+            self.context, share_instance, rules, add_rules=[],
+            delete_rules=([] if maintenance_mode else delete_rules),
+            share_server=None)
+        self.share_access_helper._remove_access_rules.assert_called_once_with(
+            self.context, delete_rules, share_instance['id'])
+        self.share_access_helper._check_needs_refresh.assert_called_once_with(
+            self.context, rules, share_instance)
         db.share_instance_update_access_status.assert_called_with(
-            self.context, self.share_instance['id'], constants.STATUS_ACTIVE)
+            self.context, share_instance['id'], constants.STATUS_ACTIVE)
 
     def test_update_access_rules_fallback(self):
         add_rules = [db_utils.create_access(share_id=self.share['id'])]

@@ -41,14 +41,15 @@ class ShareInstanceAccess(object):
         be deleted.
         :param share_server: Share server model or None
         """
-        self.db.share_instance_update_access_status(
-            context,
-            share_instance_id,
-            constants.STATUS_UPDATING
-        )
-
         share_instance = self.db.share_instance_get(
             context, share_instance_id, with_share_data=True)
+
+        # NOTE (rraja): preserve error state to trigger maintenance mode
+        if share_instance['access_rules_status'] != constants.STATUS_ERROR:
+            self.db.share_instance_update_access_status(
+                context,
+                share_instance_id,
+                constants.STATUS_UPDATING)
 
         add_rules = add_rules or []
         delete_rules = delete_rules or []
