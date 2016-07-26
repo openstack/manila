@@ -170,7 +170,7 @@ if [[ "$DRIVER" == "lvm" ]]; then
 elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     MANILA_TEMPEST_CONCURRENCY=8
     RUN_MANILA_CG_TESTS=False
-    RUN_MANILA_MANAGE_TESTS=False
+    RUN_MANILA_MANAGE_TESTS=True
     iniset $TEMPEST_CONFIG share run_migration_tests False
     iniset $TEMPEST_CONFIG share run_quota_tests True
     iniset $TEMPEST_CONFIG share run_replication_tests True

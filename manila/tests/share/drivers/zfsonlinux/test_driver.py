@@ -1043,6 +1043,149 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             share_server={'id': 'fake_server'},
         )
 
+    @ddt.data(
+        ({}, True),
+        ({"size": 5}, True),
+        ({"size": 5, "foo": "bar"}, False),
+        ({"size": "5", "foo": "bar"}, True),
+    )
+    @ddt.unpack
+    def test_manage_share_success_expected(self, driver_options, mount_exists):
+        old_dataset_name = "foopool/path/to/old/dataset/name"
+        new_dataset_name = "foopool/path/to/new/dataset/name"
+        share = {
+            "id": "fake_share_instance_id",
+            "share_id": "fake_share_id",
+            "export_locations": [{"path": "1.1.1.1:/%s" % old_dataset_name}],
+            "host": "foobackend@foohost#foopool",
+            "share_proto": "NFS",
+        }
+
+        mock_get_extra_specs_from_share = self.mock_object(
+            zfs_driver.share_types,
+            'get_extra_specs_from_share',
+            mock.Mock(return_value={}))
+        mock_sleep = self.mock_object(zfs_driver.time, "sleep")
+        mock__get_dataset_name = self.mock_object(
+            self.driver, "_get_dataset_name",
+            mock.Mock(return_value=new_dataset_name))
+        mock_helper = self.mock_object(self.driver, "_get_share_helper")
+        mock_zfs = self.mock_object(
+            self.driver, "zfs",
+            mock.Mock(return_value=("fake_out", "fake_error")))
+        mock_zfs_with_retry = self.mock_object(self.driver, "zfs_with_retry")
+
+        mock_execute = self.mock_object(self.driver, "execute")
+        if mount_exists:
+            mock_execute.return_value = "%s " % old_dataset_name, "fake_err"
+        else:
+            mock_execute.return_value = ("foo", "bar")
+        mock_parse_zfs_answer = self.mock_object(
+            self.driver,
+            "parse_zfs_answer",
+            mock.Mock(return_value=[
+                {"NAME": "some_other_dataset_1"},
+                {"NAME": old_dataset_name},
+                {"NAME": "some_other_dataset_2"},
+            ]))
+        mock_get_zfs_option = self.mock_object(
+            self.driver, 'get_zfs_option', mock.Mock(return_value="4G"))
+
+        result = self.driver.manage_existing(share, driver_options)
+
+        self.assertTrue(mock_helper.return_value.get_exports.called)
+        self.assertTrue(mock_zfs_with_retry.called)
+        self.assertEqual(2, len(result))
+        self.assertIn("size", result)
+        self.assertIn("export_locations", result)
+        self.assertEqual(5, result["size"])
+        self.assertEqual(
+            mock_helper.return_value.get_exports.return_value,
+            result["export_locations"])
+        if mount_exists:
+            mock_sleep.assert_called_once_with(1)
+        mock_execute.assert_called_once_with("sudo", "mount")
+        mock_parse_zfs_answer.assert_called_once_with(mock_zfs.return_value[0])
+        if driver_options.get("size"):
+            self.assertFalse(mock_get_zfs_option.called)
+        else:
+            mock_get_zfs_option.assert_called_once_with(
+                old_dataset_name, "used")
+        mock__get_dataset_name.assert_called_once_with(share)
+        mock_get_extra_specs_from_share.assert_called_once_with(share)
+
+    def test_manage_share_wrong_pool(self):
+        old_dataset_name = "foopool/path/to/old/dataset/name"
+        new_dataset_name = "foopool/path/to/new/dataset/name"
+        share = {
+            "id": "fake_share_instance_id",
+            "share_id": "fake_share_id",
+            "export_locations": [{"path": "1.1.1.1:/%s" % old_dataset_name}],
+            "host": "foobackend@foohost#barpool",
+            "share_proto": "NFS",
+        }
+
+        mock_get_extra_specs_from_share = self.mock_object(
+            zfs_driver.share_types,
+            'get_extra_specs_from_share',
+            mock.Mock(return_value={}))
+        mock__get_dataset_name = self.mock_object(
+            self.driver, "_get_dataset_name",
+            mock.Mock(return_value=new_dataset_name))
+        mock_get_zfs_option = self.mock_object(
+            self.driver, 'get_zfs_option', mock.Mock(return_value="4G"))
+
+        self.assertRaises(
+            exception.ZFSonLinuxException,
+            self.driver.manage_existing,
+            share, {}
+        )
+
+        mock__get_dataset_name.assert_called_once_with(share)
+        mock_get_zfs_option.assert_called_once_with(old_dataset_name, "used")
+        mock_get_extra_specs_from_share.assert_called_once_with(share)
+
+    def test_manage_share_dataset_not_found(self):
+        old_dataset_name = "foopool/path/to/old/dataset/name"
+        new_dataset_name = "foopool/path/to/new/dataset/name"
+        share = {
+            "id": "fake_share_instance_id",
+            "share_id": "fake_share_id",
+            "export_locations": [{"path": "1.1.1.1:/%s" % old_dataset_name}],
+            "host": "foobackend@foohost#foopool",
+            "share_proto": "NFS",
+        }
+
+        mock_get_extra_specs_from_share = self.mock_object(
+            zfs_driver.share_types,
+            'get_extra_specs_from_share',
+            mock.Mock(return_value={}))
+        mock__get_dataset_name = self.mock_object(
+            self.driver, "_get_dataset_name",
+            mock.Mock(return_value=new_dataset_name))
+        mock_get_zfs_option = self.mock_object(
+            self.driver, 'get_zfs_option', mock.Mock(return_value="4G"))
+        mock_zfs = self.mock_object(
+            self.driver, "zfs",
+            mock.Mock(return_value=("fake_out", "fake_error")))
+        mock_parse_zfs_answer = self.mock_object(
+            self.driver,
+            "parse_zfs_answer",
+            mock.Mock(return_value=[{"NAME": "some_other_dataset_1"}]))
+
+        self.assertRaises(
+            exception.ZFSonLinuxException,
+            self.driver.manage_existing,
+            share, {}
+        )
+
+        mock__get_dataset_name.assert_called_once_with(share)
+        mock_get_zfs_option.assert_called_once_with(old_dataset_name, "used")
+        mock_zfs.assert_called_once_with(
+            "list", "-r", old_dataset_name.split("/")[0])
+        mock_parse_zfs_answer.assert_called_once_with(mock_zfs.return_value[0])
+        mock_get_extra_specs_from_share.assert_called_once_with(share)
+
     def test_unmanage(self):
         share = {'id': 'fake_share_id'}
         self.mock_object(self.driver.private_storage, 'delete')
@@ -1080,8 +1223,6 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
 
         self.driver.get_zfs_option.assert_called_once_with(
             dataset_name, 'mountpoint')
-        self.assertEqual(31, zfs_driver.time.time.call_count)
-        self.assertEqual(29, zfs_driver.time.sleep.call_count)
         self.assertEqual(29, zfs_driver.LOG.debug.call_count)
 
     def test__delete_dataset_or_snapshot_with_retry_temp_of(self):
@@ -1102,7 +1243,6 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
 
         self.driver.get_zfs_option.assert_called_once_with(
             dataset_name, 'mountpoint')
-        self.assertEqual(3, zfs_driver.time.time.call_count)
         self.assertEqual(2, self.driver.execute.call_count)
         self.assertEqual(1, zfs_driver.LOG.debug.call_count)
         zfs_driver.LOG.debug.assert_called_once_with(
