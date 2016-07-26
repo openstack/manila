@@ -1,0 +1,4 @@
+{
+    "binary": "manila-share",
+    "host": "openstackhost@generic#pool_0"
+}

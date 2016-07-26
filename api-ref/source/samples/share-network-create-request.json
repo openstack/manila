@@ -1,0 +1,8 @@
+{
+    "share_network": {
+        "neutron_net_id": "998b42ee-2cee-4d36-8b95-67b5ca1f2109",
+        "neutron_subnet_id": "53482b62-2c84-4a53-b6ab-30d9d9800d06",
+        "name": "my_network",
+        "description": "This is my share network"
+    }
+}

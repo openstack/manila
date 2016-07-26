@@ -1,0 +1,8 @@
+{
+    "snapshot": {
+        "share_id": "406ea93b-32e9-4907-a117-148b3945749f",
+        "force": "True",
+        "name": "snapshot_share1",
+        "description": "Here is a snapshot of share Share1"
+    }
+}

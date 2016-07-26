@@ -1,0 +1,12 @@
+{
+    "details": {
+        "username": "manila",
+        "router_id": "4b62ce91-56c5-45c1-b0ef-8cbbe5dd34f4",
+        "pk_path": "/opt/stack/.ssh/id_rsa",
+        "subnet_id": "16e99ad6-5191-461c-9f34-ac84a39c3adb",
+        "ip": "10.254.0.3",
+        "instance_id": "75f2f282-af65-49ba-a7b1-525705b1bf1a",
+        "public_address": "10.254.0.3",
+        "service_port_id": "8ff21760-961e-4b83-a032-03fd559bb1d3"
+    }
+}

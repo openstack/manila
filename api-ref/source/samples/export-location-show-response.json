@@ -1,0 +1,11 @@
+{
+    "export_location": {
+        "created_at": "2016-03-24T14:20:47.000000",
+        "updated_at": "2016-03-24T14:20:47.000000",
+        "preferred": false,
+        "is_admin_only": true,
+        "share_instance_id": "e1c2d35e-fe67-4028-ad7a-45f668732b1d",
+        "path": "10.0.0.3:/shares/share-e1c2d35e-fe67-4028-ad7a-45f668732b1d",
+        "id": "6921e862-88bc-49a5-a2df-efeed9acd583"
+    }
+}

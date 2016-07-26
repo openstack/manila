@@ -1,0 +1,16 @@
+{
+    "share_networks": [
+        {
+            "id": "32763294-e3d4-456a-998d-60047677c2fb",
+            "name": "net_my1"
+        },
+        {
+            "id": "713df749-aac0-4a54-af52-10f6c991e80c",
+            "name": "net_my"
+        },
+        {
+            "id": "fa158a3d-6d9f-4187-9ca5-abbb82646eb2",
+            "name": null
+        }
+    ]
+}

@@ -1,0 +1,10 @@
+{
+    "consistency_group": {
+        "share_types": [
+            "d2ad4f9d-cae3-4660-b0b6-58c06b385203"
+        ],
+        "name": "my-cg1",
+        "share_network_id": "d8ae6799-2567-4a89-aafb-fa4424350d2b",
+        "description": "my first consistency group"
+    }
+}

@@ -1,0 +1,15 @@
+{
+    "share": {
+        "protocol": "nfs",
+        "name": "accounting_p8787",
+        "share_type": "gold",
+        "driver_options": {
+            "opt1": "opt1",
+            "opt2": "opt2"
+        },
+        "export_path": "192.162.10.6:/shares/share-accounting_p8787",
+        "service_host": "manila2@openstackstor01#accountingpool",
+        "is_public": true,
+        "description": "Common storage for spreadsheets and presentations. Please contact John Accessman to be added to the users of this drive."
+    }
+}

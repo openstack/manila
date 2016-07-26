@@ -1,0 +1,27 @@
+{
+    "pools": [
+        {
+            "host": "LONDON",
+            "capabilities": {
+                "qos": false,
+                "driver_version": "1.0",
+                "snapshot_support": true,
+                "timestamp": "2016-07-05T22:40:32.632330",
+                "share_backend_name": "GENERIC1",
+                "total_capacity_gb": "unknown",
+                "driver_handles_share_servers": true,
+                "consistency_group_support": "pool",
+                "server_pools_mapping": {},
+                "pools": null,
+                "vendor_name": "Open Source",
+                "reserved_percentage": 0,
+                "free_capacity_gb": "unknown",
+                "storage_protocol": "NFS_CIFS",
+                "replication_domain": null
+            },
+            "name": "openstack3@generic1#GENERIC1",
+            "pool": "GENERIC1",
+            "backend": "generic1"
+        }
+    ]
+}
