@@ -62,6 +62,7 @@ class NetAppCmodeFileStorageLibrary(object):
         'netapp:thin_provisioned': 'thin_provisioned',
         'netapp:dedup': 'dedup_enabled',
         'netapp:compression': 'compression_enabled',
+        'netapp:split_clone_on_create': 'split',
     }
     STRING_QUALIFIED_EXTRA_SPECS_MAP = {
         'netapp:snapshot_policy': 'snapshot_policy',
@@ -390,10 +391,8 @@ class NetAppCmodeFileStorageLibrary(object):
             msg = _("Pool is not available in the share host field.")
             raise exception.InvalidHost(reason=msg)
 
-        extra_specs = share_types.get_extra_specs_from_share(share)
-        extra_specs = self._remap_standard_boolean_extra_specs(extra_specs)
-        self._check_extra_specs_validity(share, extra_specs)
-        provisioning_options = self._get_provisioning_options(extra_specs)
+        provisioning_options = self._get_provisioning_options_for_share(share)
+
         if replica:
             # If this volume is intended to be a replication destination,
             # create it as the 'data-protection' type
@@ -528,6 +527,20 @@ class NetAppCmodeFileStorageLibrary(object):
         return dict(zip(provisioning_args, provisioning_values))
 
     @na_utils.trace
+    def _get_provisioning_options_for_share(self, share):
+        """Return provisioning options from a share.
+
+        Starting with a share, this method gets the extra specs, rationalizes
+        NetApp vs. standard extra spec values, ensures their validity, and
+        returns them in a form suitable for passing to various API client
+        methods.
+        """
+        extra_specs = share_types.get_extra_specs_from_share(share)
+        extra_specs = self._remap_standard_boolean_extra_specs(extra_specs)
+        self._check_extra_specs_validity(share, extra_specs)
+        return self._get_provisioning_options(extra_specs)
+
+    @na_utils.trace
     def _get_provisioning_options(self, specs):
         """Return a merged result of string and binary provisioning options."""
         boolean_args = self._get_boolean_provisioning_options(
@@ -567,9 +580,13 @@ class NetAppCmodeFileStorageLibrary(object):
             parent_snapshot_name = snapshot_name_func(self, snapshot['id'])
         else:
             parent_snapshot_name = snapshot['provider_location']
+
+        provisioning_options = self._get_provisioning_options_for_share(share)
+
         LOG.debug('Creating share from snapshot %s', snapshot['id'])
         vserver_client.create_volume_clone(share_name, parent_share_name,
-                                           parent_snapshot_name)
+                                           parent_snapshot_name,
+                                           **provisioning_options)
 
     @na_utils.trace
     def _share_exists(self, share_name, vserver_client):
