@@ -259,9 +259,9 @@ class BaseSharesTest(test.BaseTestCase):
 
     @classmethod
     def resource_cleanup(cls):
-        super(BaseSharesTest, cls).resource_cleanup()
         cls.clear_resources(cls.class_resources)
         cls.clear_isolated_creds(cls.class_isolated_creds)
+        super(BaseSharesTest, cls).resource_cleanup()
 
     @classmethod
     @network_synchronized
