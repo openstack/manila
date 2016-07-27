@@ -66,6 +66,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.features.add_feature('IPSPACES', supported=ontapi_1_30)
         self.features.add_feature('SUBNETS', supported=ontapi_1_30)
         self.features.add_feature('CLUSTER_PEER_POLICY', supported=ontapi_1_30)
+        self.features.add_feature('ADVANCED_DISK_PARTITIONING',
+                                  supported=ontapi_1_30)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -2429,76 +2431,116 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             LOG.warning(_LW('Failed to invoke EMS. %s') % e)
 
     @na_utils.trace
-    def get_aggregate_raid_types(self, aggregate_names):
-        """Get the RAID type of one or more aggregates."""
+    def get_aggregate(self, aggregate_name):
+        """Get aggregate attributes needed for the storage service catalog."""
+
+        if not aggregate_name:
+            return {}
 
         desired_attributes = {
             'aggr-attributes': {
                 'aggregate-name': None,
                 'aggr-raid-attributes': {
                     'raid-type': None,
+                    'is-hybrid': None,
                 },
             },
         }
-        aggr_list = self._get_aggregates(aggregate_names=aggregate_names,
+
+        try:
+            aggrs = self._get_aggregates(aggregate_names=[aggregate_name],
                                          desired_attributes=desired_attributes)
+        except netapp_api.NaApiError:
+            msg = _('Failed to get info for aggregate %s.')
+            LOG.exception(msg % aggregate_name)
+            return {}
 
-        aggr_raid_dict = {}
-        for aggr in aggr_list:
-            aggr_name = aggr.get_child_content('aggregate-name')
-            aggr_raid_attrs = aggr.get_child_by_name('aggr-raid-attributes')
+        if len(aggrs) < 1:
+            return {}
 
-            aggr_raid_dict[aggr_name] = aggr_raid_attrs.get_child_content(
-                'raid-type')
+        aggr_attributes = aggrs[0]
+        aggr_raid_attrs = aggr_attributes.get_child_by_name(
+            'aggr-raid-attributes') or netapp_api.NaElement('none')
 
-        return aggr_raid_dict
+        aggregate = {
+            'name': aggr_attributes.get_child_content('aggregate-name'),
+            'raid-type': aggr_raid_attrs.get_child_content('raid-type'),
+            'is-hybrid': strutils.bool_from_string(
+                aggr_raid_attrs.get_child_content('is-hybrid')),
+        }
+
+        return aggregate
 
     @na_utils.trace
-    def get_aggregate_disk_types(self, aggregate_names):
-        """Get the disk type of one or more aggregates."""
+    def get_aggregate_disk_types(self, aggregate_name):
+        """Get the disk type(s) of an aggregate."""
 
-        aggr_disk_type_dict = {}
+        disk_types = set()
+        disk_types.update(self._get_aggregate_disk_types(aggregate_name))
+        if self.features.ADVANCED_DISK_PARTITIONING:
+            disk_types.update(self._get_aggregate_disk_types(aggregate_name,
+                                                             shared=True))
 
-        for aggregate_name in aggregate_names:
+        return list(disk_types) if disk_types else None
 
-            # Only get 1 disk, since apart from hybrid aggregates all disks
-            # must be the same type.
-            api_args = {
-                'max-records': 1,
-                'query': {
-                    'storage-disk-info': {
-                        'disk-raid-info': {
-                            'disk-aggregate-info': {
-                                'aggregate-name': aggregate_name,
-                            },
-                        },
-                    },
-                },
-                'desired-attributes': {
-                    'storage-disk-info': {
-                        'disk-raid-info': {
-                            'effective-disk-type': None,
+    @na_utils.trace
+    def _get_aggregate_disk_types(self, aggregate_name, shared=False):
+        """Get the disk type(s) of an aggregate."""
+
+        disk_types = set()
+
+        if shared:
+            disk_raid_info = {
+                'disk-shared-info': {
+                    'aggregate-list': {
+                        'shared-aggregate-info': {
+                            'aggregate-name': aggregate_name,
                         },
                     },
                 },
             }
-            result = self.send_request('storage-disk-get-iter', api_args)
+        else:
+            disk_raid_info = {
+                'disk-aggregate-info': {
+                    'aggregate-name': aggregate_name,
+                },
+            }
 
-            attributes_list = result.get_child_by_name(
-                'attributes-list') or netapp_api.NaElement('none')
-            storage_disk_info_list = attributes_list.get_children()
+        api_args = {
+            'query': {
+                'storage-disk-info': {
+                    'disk-raid-info': disk_raid_info,
+                },
+            },
+            'desired-attributes': {
+                'storage-disk-info': {
+                    'disk-raid-info': {
+                        'effective-disk-type': None,
+                    },
+                },
+            },
+        }
 
-            if len(storage_disk_info_list) >= 1:
-                storage_disk_info = storage_disk_info_list[0]
+        try:
+            result = self.send_iter_request('storage-disk-get-iter', api_args)
+        except netapp_api.NaApiError:
+            msg = _('Failed to get disk info for aggregate %s.')
+            LOG.exception(msg % aggregate_name)
+            return disk_types
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        for storage_disk_info in attributes_list.get_children():
+
                 disk_raid_info = storage_disk_info.get_child_by_name(
-                    'disk-raid-info')
-                if disk_raid_info:
-                    disk_type = disk_raid_info.get_child_content(
-                        'effective-disk-type')
-                    if disk_type:
-                        aggr_disk_type_dict[aggregate_name] = disk_type
+                    'disk-raid-info') or netapp_api.NaElement('none')
+                disk_type = disk_raid_info.get_child_content(
+                    'effective-disk-type')
+                if disk_type:
+                    disk_types.add(disk_type)
 
-        return aggr_disk_type_dict
+        return disk_types
 
     @na_utils.trace
     def check_for_cluster_credentials(self):

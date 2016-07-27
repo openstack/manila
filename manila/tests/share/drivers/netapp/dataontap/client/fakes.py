@@ -43,6 +43,7 @@ SHARE_AGGREGATE_NAME = 'fake_aggr1'
 SHARE_AGGREGATE_NAMES = ('fake_aggr1', 'fake_aggr2')
 SHARE_AGGREGATE_RAID_TYPES = ('raid4', 'raid_dp')
 SHARE_AGGREGATE_DISK_TYPE = 'FCAL'
+SHARE_AGGREGATE_DISK_TYPES = ['SATA', 'SSD']
 SHARE_NAME = 'fake_share'
 SHARE_SIZE = '1000000000'
 SHARE_NAME_2 = 'fake_share_2'
@@ -1145,6 +1146,127 @@ AGGR_GET_ITER_RESPONSE = etree.XML("""
     'aggr2': SHARE_AGGREGATE_NAMES[1],
 })
 
+AGGR_GET_ITER_SSC_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <aggr-attributes>
+        <aggr-64bit-upgrade-attributes>
+          <aggr-status-attributes>
+            <is-64-bit-upgrade-in-progress>false</is-64-bit-upgrade-in-progress>
+          </aggr-status-attributes>
+        </aggr-64bit-upgrade-attributes>
+        <aggr-fs-attributes>
+          <block-type>64_bit</block-type>
+          <fsid>1758646411</fsid>
+          <type>aggr</type>
+        </aggr-fs-attributes>
+        <aggr-inode-attributes>
+          <files-private-used>512</files-private-used>
+          <files-total>30384</files-total>
+          <files-used>96</files-used>
+          <inodefile-private-capacity>30384</inodefile-private-capacity>
+          <inodefile-public-capacity>30384</inodefile-public-capacity>
+          <maxfiles-available>30384</maxfiles-available>
+          <maxfiles-possible>243191</maxfiles-possible>
+          <maxfiles-used>96</maxfiles-used>
+          <percent-inode-used-capacity>0</percent-inode-used-capacity>
+        </aggr-inode-attributes>
+        <aggr-ownership-attributes>
+          <home-id>4082368507</home-id>
+          <home-name>cluster3-01</home-name>
+          <owner-id>4082368507</owner-id>
+          <owner-name>cluster3-01</owner-name>
+        </aggr-ownership-attributes>
+        <aggr-performance-attributes>
+          <free-space-realloc>off</free-space-realloc>
+          <max-write-alloc-blocks>0</max-write-alloc-blocks>
+        </aggr-performance-attributes>
+        <aggr-raid-attributes>
+          <checksum-status>active</checksum-status>
+          <checksum-style>block</checksum-style>
+          <disk-count>3</disk-count>
+          <ha-policy>cfo</ha-policy>
+          <has-local-root>true</has-local-root>
+          <has-partner-root>false</has-partner-root>
+          <is-checksum-enabled>true</is-checksum-enabled>
+          <is-hybrid>false</is-hybrid>
+          <is-hybrid-enabled>false</is-hybrid-enabled>
+          <is-inconsistent>false</is-inconsistent>
+          <mirror-status>unmirrored</mirror-status>
+          <mount-state>online</mount-state>
+          <plex-count>1</plex-count>
+          <plexes>
+            <plex-attributes>
+              <is-online>true</is-online>
+              <is-resyncing>false</is-resyncing>
+              <plex-name>/%(aggr1)s/plex0</plex-name>
+              <plex-status>normal,active</plex-status>
+              <raidgroups>
+                <raidgroup-attributes>
+                  <checksum-style>block</checksum-style>
+                  <is-cache-tier>false</is-cache-tier>
+                  <is-recomputing-parity>false</is-recomputing-parity>
+                  <is-reconstructing>false</is-reconstructing>
+                  <raidgroup-name>/%(aggr1)s/plex0/rg0</raidgroup-name>
+                  <recomputing-parity-percentage>0</recomputing-parity-percentage>
+                  <reconstruction-percentage>0</reconstruction-percentage>
+                </raidgroup-attributes>
+              </raidgroups>
+              <resyncing-percentage>0</resyncing-percentage>
+            </plex-attributes>
+          </plexes>
+          <raid-lost-write-state>on</raid-lost-write-state>
+          <raid-size>16</raid-size>
+          <raid-status>raid_dp, normal</raid-status>
+          <raid-type>raid_dp</raid-type>
+          <state>online</state>
+        </aggr-raid-attributes>
+        <aggr-snaplock-attributes>
+          <is-snaplock>false</is-snaplock>
+        </aggr-snaplock-attributes>
+        <aggr-snapshot-attributes>
+          <files-total>0</files-total>
+          <files-used>0</files-used>
+          <is-snapshot-auto-create-enabled>true</is-snapshot-auto-create-enabled>
+          <is-snapshot-auto-delete-enabled>true</is-snapshot-auto-delete-enabled>
+          <maxfiles-available>0</maxfiles-available>
+          <maxfiles-possible>0</maxfiles-possible>
+          <maxfiles-used>0</maxfiles-used>
+          <percent-inode-used-capacity>0</percent-inode-used-capacity>
+          <percent-used-capacity>0</percent-used-capacity>
+          <size-available>0</size-available>
+          <size-total>0</size-total>
+          <size-used>0</size-used>
+          <snapshot-reserve-percent>0</snapshot-reserve-percent>
+        </aggr-snapshot-attributes>
+        <aggr-space-attributes>
+          <aggregate-metadata>245760</aggregate-metadata>
+          <hybrid-cache-size-total>0</hybrid-cache-size-total>
+          <percent-used-capacity>95</percent-used-capacity>
+          <size-available>45670400</size-available>
+          <size-total>943718400</size-total>
+          <size-used>898048000</size-used>
+          <total-reserved-space>0</total-reserved-space>
+          <used-including-snapshot-reserve>898048000</used-including-snapshot-reserve>
+          <volume-footprints>897802240</volume-footprints>
+        </aggr-space-attributes>
+        <aggr-volume-count-attributes>
+          <flexvol-count>1</flexvol-count>
+          <flexvol-count-collective>0</flexvol-count-collective>
+          <flexvol-count-striped>0</flexvol-count-striped>
+        </aggr-volume-count-attributes>
+        <aggregate-name>%(aggr1)s</aggregate-name>
+        <aggregate-uuid>15863632-ea49-49a8-9c88-2bd2d57c6d7a</aggregate-uuid>
+        <nodes>
+          <node-name>cluster3-01</node-name>
+        </nodes>
+        <striping-type>unknown</striping-type>
+      </aggr-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'aggr1': SHARE_AGGREGATE_NAMES[0]})
+
 VOLUME_GET_NAME_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
@@ -1476,13 +1598,34 @@ STORAGE_DISK_GET_ITER_RESPONSE = etree.XML("""
       <storage-disk-info>
         <disk-name>cluster3-01:v5.19</disk-name>
         <disk-raid-info>
-          <effective-disk-type>%s</effective-disk-type>
+          <effective-disk-type>%(type0)s</effective-disk-type>
+        </disk-raid-info>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.20</disk-name>
+        <disk-raid-info>
+          <effective-disk-type>%(type0)s</effective-disk-type>
+        </disk-raid-info>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.20</disk-name>
+        <disk-raid-info>
+          <effective-disk-type>%(type1)s</effective-disk-type>
+        </disk-raid-info>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.20</disk-name>
+        <disk-raid-info>
+          <effective-disk-type>%(type1)s</effective-disk-type>
         </disk-raid-info>
       </storage-disk-info>
     </attributes-list>
-    <num-records>1</num-records>
+    <num-records>4</num-records>
   </results>
-""" % SHARE_AGGREGATE_DISK_TYPE)
+""" % {
+    'type0': SHARE_AGGREGATE_DISK_TYPES[0],
+    'type1': SHARE_AGGREGATE_DISK_TYPES[1],
+})
 
 STORAGE_DISK_GET_ITER_RESPONSE_PAGE_1 = etree.XML("""
   <results status="passed">

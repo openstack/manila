@@ -378,27 +378,28 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertListEqual(fake.POOLS, result)
 
-    @ddt.data(
-        {
-            'capacities': fake.AGGREGATE_CAPACITIES,
-            'pools': fake.POOLS,
-        },
-        {
-            'capacities': fake.AGGREGATE_CAPACITIES_VSERVER_CREDS,
-            'pools': fake.POOLS_VSERVER_CREDS
-        }
-    )
-    @ddt.unpack
-    def test_get_pools(self, capacities, pools):
+    def test_get_pools(self):
 
-        self.mock_object(self.library,
-                         '_get_aggregate_space',
-                         mock.Mock(return_value=capacities))
+        self.mock_object(
+            self.library, '_get_aggregate_space',
+            mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
+        self.library._have_cluster_creds = True
         self.library._ssc_stats = fake.SSC_INFO
 
         result = self.library._get_pools()
 
-        self.assertListEqual(pools, result)
+        self.assertListEqual(fake.POOLS, result)
+
+    def test_get_pools_vserver_creds(self):
+
+        self.mock_object(
+            self.library, '_get_aggregate_space',
+            mock.Mock(return_value=fake.AGGREGATE_CAPACITIES_VSERVER_CREDS))
+        self.library._have_cluster_creds = False
+
+        result = self.library._get_pools()
+
+        self.assertListEqual(fake.POOLS_VSERVER_CREDS, result)
 
     def test_handle_ems_logging(self):
 
@@ -2140,35 +2141,58 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_update_ssc_aggr_info(self):
 
         self.library._have_cluster_creds = True
-        self.mock_object(self.client,
-                         'get_aggregate_raid_types',
-                         mock.Mock(return_value=fake.SSC_RAID_TYPES))
-        self.mock_object(self.client,
-                         'get_aggregate_disk_types',
-                         mock.Mock(return_value=fake.SSC_DISK_TYPES))
+        mock_get_aggregate = self.mock_object(
+            self.client, 'get_aggregate',
+            mock.Mock(side_effect=fake.SSC_AGGREGATES))
+        mock_get_aggregate_disk_types = self.mock_object(
+            self.client, 'get_aggregate_disk_types',
+            mock.Mock(side_effect=fake.SSC_DISK_TYPES))
         ssc_stats = {
             fake.AGGREGATES[0]: {},
-            fake.AGGREGATES[1]: {}
+            fake.AGGREGATES[1]: {},
         }
 
         self.library._update_ssc_aggr_info(fake.AGGREGATES, ssc_stats)
 
         self.assertDictEqual(fake.SSC_INFO, ssc_stats)
+        mock_get_aggregate.assert_has_calls([
+            mock.call(fake.AGGREGATES[0]),
+            mock.call(fake.AGGREGATES[1]),
+        ])
+        mock_get_aggregate_disk_types.assert_has_calls([
+            mock.call(fake.AGGREGATES[0]),
+            mock.call(fake.AGGREGATES[1]),
+        ])
 
     def test_update_ssc_aggr_info_not_found(self):
 
         self.library._have_cluster_creds = True
         self.mock_object(self.client,
-                         'get_aggregate_raid_types',
+                         'get_aggregate',
                          mock.Mock(return_value={}))
         self.mock_object(self.client,
                          'get_aggregate_disk_types',
-                         mock.Mock(return_value={}))
-        ssc_stats = {}
+                         mock.Mock(return_value=None))
+        ssc_stats = {
+            fake.AGGREGATES[0]: {},
+            fake.AGGREGATES[1]: {},
+        }
 
         self.library._update_ssc_aggr_info(fake.AGGREGATES, ssc_stats)
 
-        self.assertDictEqual({}, ssc_stats)
+        expected = {
+            fake.AGGREGATES[0]: {
+                'netapp_raid_type': None,
+                'netapp_disk_type': None,
+                'netapp_hybrid_aggregate': None,
+            },
+            fake.AGGREGATES[1]: {
+                'netapp_raid_type': None,
+                'netapp_disk_type': None,
+                'netapp_hybrid_aggregate': None,
+            }
+        }
+        self.assertDictEqual(expected, ssc_stats)
 
     def test_update_ssc_aggr_info_no_cluster_creds(self):
 
