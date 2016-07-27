@@ -1927,10 +1927,46 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_enable_nfs(self):
 
         self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, '_enable_nfs_protocols')
+        self.mock_object(self.client, '_create_default_nfs_export_rule')
 
-        self.client.enable_nfs()
+        self.client.enable_nfs(fake.NFS_VERSIONS)
 
-        nfs_service_modify_args = {'is-nfsv40-enabled': 'true'}
+        self.client.send_request.assert_called_once_with('nfs-enable')
+        self.client._enable_nfs_protocols.assert_called_once_with(
+            fake.NFS_VERSIONS)
+        self.client._create_default_nfs_export_rule.assert_called_once_with()
+
+    @ddt.data((True, True, True), (True, False, False), (False, True, True))
+    @ddt.unpack
+    def test_enable_nfs_protocols(self, v3, v40, v41):
+
+        self.mock_object(self.client, 'send_request')
+
+        versions = []
+        if v3:
+            versions.append('nfs3')
+        if v40:
+            versions.append('nfs4.0')
+        if v41:
+            versions.append('nfs4.1')
+
+        self.client._enable_nfs_protocols(versions)
+
+        nfs_service_modify_args = {
+            'is-nfsv3-enabled': 'true' if v3 else 'false',
+            'is-nfsv40-enabled': 'true' if v40 else 'false',
+            'is-nfsv41-enabled': 'true' if v41 else 'false',
+        }
+        self.client.send_request.assert_called_once_with(
+            'nfs-service-modify', nfs_service_modify_args)
+
+    def test_create_default_nfs_export_rule(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client._create_default_nfs_export_rule()
+
         export_rule_create_args = {
             'client-match': '0.0.0.0/0',
             'policy-name': 'default',
@@ -1941,11 +1977,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 'security-flavor': 'never'
             }
         }
-
-        self.client.send_request.assert_has_calls([
-            mock.call('nfs-enable'),
-            mock.call('nfs-service-modify', nfs_service_modify_args),
-            mock.call('export-rule-create', export_rule_create_args)])
+        self.client.send_request.assert_called_once_with(
+            'export-rule-create', export_rule_create_args)
 
     def test_configure_ldap(self):
 

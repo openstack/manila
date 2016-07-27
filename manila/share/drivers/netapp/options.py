@@ -58,6 +58,12 @@ netapp_basicauth_opts = [
                secret=True), ]
 
 netapp_provisioning_opts = [
+    cfg.ListOpt('netapp_enabled_share_protocols',
+                default=['nfs3', 'nfs4.0'],
+                help='The NFS protocol versions that will be enabled. '
+                     'Supported values include nfs3, nfs4.0, nfs4.1. This '
+                     'option only applies when the option '
+                     'driver_handles_share_servers is set to True. '),
     cfg.StrOpt('netapp_volume_name_template',
                deprecated_name='netapp_nas_volume_name_template',
                help='NetApp volume name template.',

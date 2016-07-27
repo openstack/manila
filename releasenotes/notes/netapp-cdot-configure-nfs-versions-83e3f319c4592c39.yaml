@@ -1,0 +1,10 @@
+---
+features:
+  - NFS Versions can be configured when using the NetApp cDOT driver with
+    driver mode ``driver_handles_share_servers = True``.
+upgrade:
+  - Added new configuration option ``netapp_enabled_share_protocols``
+    to configure NFS versions with the NetApp cDOT driver operating in
+    driver mode ``driver_handles_share_servers = True``. If this option is not
+    specified, new share servers (NetApp vServers) will be created supporting
+    NFS Version 3 and NFS Version 4.0.
