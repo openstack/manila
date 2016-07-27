@@ -247,6 +247,21 @@ class StorageObjectTestData(object):
             '</Fault> '
         )
 
+    @response
+    def resp_need_retry(self):
+        return ('<TaskResponse taskId="915525">'
+                '<Status maxSeverity = "error">'
+                '<Problem messageCode = "13421840537" component = "fake"'
+                '    message = "unable to acquire lock(s), try later"'
+                '    severity = "error" >'
+                '<Description> fake desp. </Description>'
+                '<Action>fake action </Action>'
+                '</Problem></Status></TaskResponse>')
+
+    @start_task
+    def req_fake_start_task(self):
+        return '<StartFake name="foo"></StartFake>'
+
 
 class FileSystemTestData(StorageObjectTestData):
     def __init__(self):
