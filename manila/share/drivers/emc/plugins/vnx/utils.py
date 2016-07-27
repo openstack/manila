@@ -17,6 +17,7 @@ import types
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_utils import fnmatch
 from oslo_utils import timeutils
 
 CONF = cfg.CONF
@@ -58,3 +59,25 @@ def log_enter_exit(func):
         return ret
 
     return inner
+
+
+def do_match_any(full, matcher_list):
+    """Finds items that match any of the matchers.
+
+    :param full: Full item list
+    :param matcher_list: The list of matchers. Each matcher supports
+                         Unix shell-style wildcards
+    :return: The matched items set and the unmatched items set
+    """
+    matched = set()
+    not_matched = set()
+
+    full = set([item.strip() for item in full])
+    matcher_list = set([item.strip() for item in matcher_list])
+
+    for matcher in matcher_list:
+        for item in full:
+            if fnmatch.fnmatchcase(item, matcher):
+                matched.add(item)
+    not_matched = full - matched
+    return matched, not_matched

@@ -150,3 +150,9 @@ class EMCNFSShareMock(mock.Mock):
                     return False
 
         return True
+
+
+def patch_get_managed_ports(*arg, **kwargs):
+    return mock.patch('manila.share.drivers.emc.plugins.vnx.connection.'
+                      'VNXStorageConnection.get_managed_ports',
+                      mock.Mock(*arg, **kwargs))

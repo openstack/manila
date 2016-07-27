@@ -53,6 +53,10 @@ EMC_NAS_OPTS = [
                help='EMC pool names.'),
     cfg.StrOpt('emc_nas_root_dir',
                help='The root directory where shares will be located.'),
+    cfg.ListOpt('emc_interface_ports',
+                help='Comma separated list specifying the ports that can be '
+                     'used for share server interfaces. Members of the list '
+                     'can be Unix-style glob expressions.'),
 ]
 
 CONF = cfg.CONF
