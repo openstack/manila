@@ -177,11 +177,11 @@ class BaseSharesTest(test.BaseTestCase):
             admin_role=CONF.identity.admin_role,
             admin_creds=common_creds.get_configured_admin_credentials())
         if "admin" in type_of_creds:
-            creds = ic.get_admin_creds()
+            creds = ic.get_admin_creds().credentials
         elif "alt" in type_of_creds:
-            creds = ic.get_alt_creds()
+            creds = ic.get_alt_creds().credentials
         else:
-            creds = ic.get_credentials(type_of_creds)
+            creds = ic.get_credentials(type_of_creds).credentials
         ic.type_of_creds = type_of_creds
 
         # create client with isolated creds
