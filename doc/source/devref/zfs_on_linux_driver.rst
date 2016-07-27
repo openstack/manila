@@ -48,6 +48,8 @@ The following operations are supported:
 * Deny NFS Share access
 * Create snapshot
 * Delete snapshot
+* Manage snapshot
+* Unmanage snapshot
 * Create share from snapshot
 * Extend share
 * Shrink share
