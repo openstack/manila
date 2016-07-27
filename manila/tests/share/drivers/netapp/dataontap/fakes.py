@@ -65,6 +65,8 @@ SHARE_TYPE_ID = '26e89a5b-960b-46bb-a8cf-0778e653098f'
 SHARE_TYPE_NAME = 'fake_share_type'
 IPSPACE = 'fake_ipspace'
 IPSPACE_ID = '27d38c27-3e8b-4d7d-9d91-fcf295e3ac8f'
+MTU = 1234
+DEFAULT_MTU = 1500
 
 CLIENT_KWARGS = {
     'username': 'admin',
@@ -219,6 +221,7 @@ USER_NETWORK_ALLOCATIONS = [
         'segmentation_id': '1000',
         'network_type': 'vlan',
         'label': 'user',
+        'mtu': MTU,
     },
     {
         'id': '7eabdeed-bad2-46ea-bd0f-a33884c869e0',
@@ -227,6 +230,7 @@ USER_NETWORK_ALLOCATIONS = [
         'segmentation_id': '1000',
         'network_type': 'vlan',
         'label': 'user',
+        'mtu': MTU,
     }
 ]
 
@@ -238,6 +242,7 @@ ADMIN_NETWORK_ALLOCATIONS = [
         'segmentation_id': None,
         'network_type': 'flat',
         'label': 'admin',
+        'mtu': MTU,
     },
 ]
 

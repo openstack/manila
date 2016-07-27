@@ -869,7 +869,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
                                              fake.PORT,
                                              fake.VSERVER_NAME,
                                              fake.LIF_NAME,
-                                             fake.IPSPACE_NAME)
+                                             fake.IPSPACE_NAME,
+                                             fake.MTU)
 
         if use_vlans:
             self.client._create_vlan.assert_called_with(
@@ -880,7 +881,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         if broadcast_domains_supported:
             self.client._ensure_broadcast_domain_for_port.assert_called_with(
                 fake.NODE_NAME, fake.VLAN_PORT if use_vlans else fake.PORT,
-                ipspace=fake.IPSPACE_NAME)
+                fake.MTU, ipspace=fake.IPSPACE_NAME)
         else:
             self.assertFalse(
                 self.client._ensure_broadcast_domain_for_port.called)
@@ -993,14 +994,17 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          '_broadcast_domain_exists',
                          mock.Mock(return_value=True))
         self.mock_object(self.client, '_create_broadcast_domain')
+        self.mock_object(self.client, '_modify_broadcast_domain')
         self.mock_object(self.client, '_add_port_to_broadcast_domain')
 
         self.client._ensure_broadcast_domain_for_port(
-            fake.NODE_NAME, fake.PORT, domain=fake.BROADCAST_DOMAIN,
+            fake.NODE_NAME, fake.PORT, fake.MTU, domain=fake.BROADCAST_DOMAIN,
             ipspace=fake.IPSPACE_NAME)
 
-        self.client._get_broadcast_domain_for_port.assert_has_calls([
-            mock.call(fake.NODE_NAME, fake.PORT)])
+        self.client._get_broadcast_domain_for_port.assert_called_once_with(
+            fake.NODE_NAME, fake.PORT)
+        self.client._modify_broadcast_domain.assert_called_once_with(
+            fake.BROADCAST_DOMAIN, fake.IPSPACE_NAME, fake.MTU)
         self.assertFalse(self.client._broadcast_domain_exists.called)
         self.assertFalse(self.client._create_broadcast_domain.called)
         self.assertFalse(self.client._add_port_to_broadcast_domain.called)
@@ -1018,24 +1022,26 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          '_broadcast_domain_exists',
                          mock.Mock(return_value=True))
         self.mock_object(self.client, '_create_broadcast_domain')
+        self.mock_object(self.client, '_modify_broadcast_domain')
         self.mock_object(self.client, '_remove_port_from_broadcast_domain')
         self.mock_object(self.client, '_add_port_to_broadcast_domain')
 
         self.client._ensure_broadcast_domain_for_port(
             fake.NODE_NAME, fake.PORT, domain=fake.BROADCAST_DOMAIN,
-            ipspace=fake.IPSPACE_NAME)
+            ipspace=fake.IPSPACE_NAME, mtu=fake.MTU)
 
-        self.client._get_broadcast_domain_for_port.assert_has_calls([
-            mock.call(fake.NODE_NAME, fake.PORT)])
-        self.client._remove_port_from_broadcast_domain.assert_has_calls([
-            mock.call(fake.NODE_NAME, fake.PORT, 'other_domain',
-                      fake.IPSPACE_NAME)])
-        self.client._broadcast_domain_exists.assert_has_calls([
-            mock.call(fake.BROADCAST_DOMAIN, fake.IPSPACE_NAME)])
+        self.client._get_broadcast_domain_for_port.assert_called_once_with(
+            fake.NODE_NAME, fake.PORT)
+        self.client._remove_port_from_broadcast_domain.assert_called_once_with(
+            fake.NODE_NAME, fake.PORT, 'other_domain', fake.IPSPACE_NAME)
+        self.client._broadcast_domain_exists.assert_called_once_with(
+            fake.BROADCAST_DOMAIN, fake.IPSPACE_NAME)
         self.assertFalse(self.client._create_broadcast_domain.called)
-        self.client._add_port_to_broadcast_domain.assert_has_calls([
-            mock.call(fake.NODE_NAME, fake.PORT, fake.BROADCAST_DOMAIN,
-                      fake.IPSPACE_NAME)])
+        self.client._modify_broadcast_domain.assert_called_once_with(
+            fake.BROADCAST_DOMAIN, fake.IPSPACE_NAME, fake.MTU)
+        self.client._add_port_to_broadcast_domain.assert_called_once_with(
+            fake.NODE_NAME, fake.PORT, fake.BROADCAST_DOMAIN,
+            fake.IPSPACE_NAME)
 
     def test_ensure_broadcast_domain_for_port_no_domain(self):
 
@@ -1050,23 +1056,25 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          '_broadcast_domain_exists',
                          mock.Mock(return_value=False))
         self.mock_object(self.client, '_create_broadcast_domain')
+        self.mock_object(self.client, '_modify_broadcast_domain')
         self.mock_object(self.client, '_remove_port_from_broadcast_domain')
         self.mock_object(self.client, '_add_port_to_broadcast_domain')
 
         self.client._ensure_broadcast_domain_for_port(
             fake.NODE_NAME, fake.PORT, domain=fake.BROADCAST_DOMAIN,
-            ipspace=fake.IPSPACE_NAME)
+            ipspace=fake.IPSPACE_NAME, mtu=fake.MTU)
 
-        self.client._get_broadcast_domain_for_port.assert_has_calls([
-            mock.call(fake.NODE_NAME, fake.PORT)])
+        self.client._get_broadcast_domain_for_port.assert_called_once_with(
+            fake.NODE_NAME, fake.PORT)
         self.assertFalse(self.client._remove_port_from_broadcast_domain.called)
-        self.client._broadcast_domain_exists.assert_has_calls([
-            mock.call(fake.BROADCAST_DOMAIN, fake.IPSPACE_NAME)])
-        self.client._create_broadcast_domain.assert_has_calls([
-            mock.call(fake.BROADCAST_DOMAIN, fake.IPSPACE_NAME)])
-        self.client._add_port_to_broadcast_domain.assert_has_calls([
-            mock.call(fake.NODE_NAME, fake.PORT, fake.BROADCAST_DOMAIN,
-                      fake.IPSPACE_NAME)])
+        self.client._broadcast_domain_exists.assert_called_once_with(
+            fake.BROADCAST_DOMAIN, fake.IPSPACE_NAME)
+        self.client._create_broadcast_domain.assert_called_once_with(
+            fake.BROADCAST_DOMAIN, fake.IPSPACE_NAME, fake.MTU)
+        self.assertFalse(self.client._modify_broadcast_domain.called)
+        self.client._add_port_to_broadcast_domain.assert_called_once_with(
+            fake.NODE_NAME, fake.PORT, fake.BROADCAST_DOMAIN,
+            fake.IPSPACE_NAME)
 
     def test_get_broadcast_domain_for_port(self):
 
@@ -1177,7 +1185,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         result = self.client._create_broadcast_domain(fake.BROADCAST_DOMAIN,
                                                       fake.IPSPACE_NAME,
-                                                      mtu=fake.MTU)
+                                                      fake.MTU)
 
         net_port_broadcast_domain_create_args = {
             'ipspace': fake.IPSPACE_NAME,
@@ -1188,6 +1196,24 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('net-port-broadcast-domain-create',
                       net_port_broadcast_domain_create_args)])
+
+    def test_modify_broadcast_domain(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        result = self.client._modify_broadcast_domain(fake.BROADCAST_DOMAIN,
+                                                      fake.IPSPACE_NAME,
+                                                      fake.MTU)
+
+        net_port_broadcast_domain_modify_args = {
+            'ipspace': fake.IPSPACE_NAME,
+            'broadcast-domain': fake.BROADCAST_DOMAIN,
+            'mtu': fake.MTU,
+        }
+        self.assertIsNone(result)
+        self.client.send_request.assert_called_once_with(
+            'net-port-broadcast-domain-modify',
+            net_port_broadcast_domain_modify_args)
 
     def test_delete_broadcast_domain(self):
 

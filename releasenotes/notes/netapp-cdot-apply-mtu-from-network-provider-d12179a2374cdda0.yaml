@@ -1,0 +1,6 @@
+---
+features:
+  - The NetApp cDOT driver operating in
+    ``driver_handles_share_servers = True`` mode applies the Maximum
+    Transmission Unit (MTU) from the network provider where available when
+    creating Logical Interfaces (LIFs) for newly created share servers.
