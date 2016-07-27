@@ -23,6 +23,7 @@ This driver simulates support of:
 - CIFS shares in DHSS=True driver mode
 - Creation and deletion of share snapshots
 - Share replication (readable)
+- Share migration
 - Consistency groups
 - Resize of a share (extend/shrink)
 
@@ -48,6 +49,7 @@ class DummyDriver(driver.ShareDriver):
         self.private_storage = kwargs.get('private_storage')
         self.backend_name = self.configuration.safe_get(
             "share_backend_name") or "DummyDriver"
+        self.migration_progress = {}
 
     def _get_share_name(self, share):
         return "share_%(s_id)s_%(si_id)s" % {
@@ -328,3 +330,90 @@ class DummyDriver(driver.ShareDriver):
         """Update the status of a snapshot instance that lives on a replica."""
         return {
             "id": replica_snapshot["id"], "status": constants.STATUS_AVAILABLE}
+
+    def migration_check_compatibility(
+            self, context, source_share, destination_share,
+            share_server=None, destination_share_server=None):
+        """Is called to test compatibility with destination backend."""
+        return {
+            'compatible': True,
+            'writable': True,
+            'preserve_metadata': True,
+            'nondisruptive': True,
+        }
+
+    def migration_start(
+            self, context, source_share, destination_share,
+            share_server=None, destination_share_server=None):
+        """Is called to perform 1st phase of driver migration of a given share.
+
+        """
+        LOG.debug(
+            "Migration of dummy share with ID '%s' has been started." %
+            source_share["id"])
+        self.migration_progress[source_share['share_id']] = 0
+
+    def migration_continue(
+            self, context, source_share, destination_share,
+            share_server=None, destination_share_server=None):
+
+        if source_share["id"] not in self.migration_progress:
+            self.migration_progress[source_share["id"]] = 0
+
+        self.migration_progress[source_share["id"]] += 25
+
+        LOG.debug(
+            "Migration of dummy share with ID '%s' is continuing, %s." %
+            (source_share["id"],
+             self.migration_progress[source_share["id"]]))
+
+        return self.migration_progress[source_share["id"]] == 100
+
+    def migration_complete(
+            self, context, source_share, destination_share,
+            share_server=None, destination_share_server=None):
+        """Is called to perform 2nd phase of driver migration of a given share.
+
+        """
+        return self._do_migration(source_share, share_server)
+
+    def _do_migration(self, share_ref, share_server):
+        share_name = self._get_share_name(share_ref)
+        mountpoint = "/path/to/fake/share/%s" % share_name
+        self.private_storage.update(
+            share_ref["id"], {
+                "fake_provider_share_name": share_name,
+                "fake_provider_location": mountpoint,
+            }
+        )
+        LOG.debug(
+            "Migration of dummy share with ID '%s' has been completed." %
+            share_ref["id"])
+        self.migration_progress.pop(share_ref["id"], None)
+
+        return self._generate_export_locations(
+            mountpoint, share_server=share_server)
+
+    def migration_cancel(
+            self, context, source_share, destination_share,
+            share_server=None, destination_share_server=None):
+        """Is called to cancel driver migration."""
+        LOG.debug(
+            "Migration of dummy share with ID '%s' has been canceled." %
+            source_share["id"])
+        self.migration_progress.pop(source_share["id"], None)
+
+    def migration_get_progress(
+            self, context, source_share, destination_share,
+            share_server=None, destination_share_server=None):
+        """Is called to get migration progress."""
+        # Simulate migration progress.
+        if source_share["id"] not in self.migration_progress:
+            self.migration_progress[source_share["id"]] = 0
+        total_progress = self.migration_progress[source_share["id"]]
+        LOG.debug("Progress of current dummy share migration "
+                  "with ID '%(id)s' is %(progress)s.", {
+                      "id": source_share["id"],
+                      "progress": total_progress
+                  })
+        return {"total_progress": total_progress}
