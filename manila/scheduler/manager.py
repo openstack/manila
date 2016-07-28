@@ -126,9 +126,12 @@ class SchedulerManager(manager.Manager):
         """Ensure that the host exists and can accept the share."""
 
         def _manage_share_set_error(self, context, ex, request_spec):
+            # NOTE(nidhimittalhada): set size as 1 because design expects size
+            # to be set, it also will allow us to handle delete/unmanage
+            # operations properly with this errored share according to quotas.
             self._set_share_state_and_notify(
                 'manage_share',
-                {'status': constants.STATUS_MANAGE_ERROR},
+                {'status': constants.STATUS_MANAGE_ERROR, 'size': 1},
                 context, ex, request_spec)
 
         share_ref = db.share_get(context, share_id)
