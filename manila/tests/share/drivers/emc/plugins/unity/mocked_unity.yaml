@@ -148,19 +148,12 @@ test_create_nfs_share:
       <<: *nfs_share_base_prop
       name: 'cb532599-8dc6-4c3e-bb21-74ea54be566c'
 
-  filesystem: &filesystem__test_create_nfs_share
-    _properties: &filesystem_prop__test_create_nfs_share
-      <<: *filesystem_base_prop
-      name: '716100cc-e0b4-416b-ac27-d38dd4587340'
-    _methods:
-      create_nfs_share: *nfs_share__test_create_nfs_share
-
   pool: &pool__test_create_nfs_share
     _properties:
       <<: *pool_base_prop
       name: 'Pool_2'
     _methods:
-      create_filesystem: *filesystem__test_create_nfs_share
+      create_nfs_share: None
 
   unity:
     _methods:
@@ -802,6 +795,29 @@ test_create_nfs_share__existed_expt:
   unity:
     _methods:
       get_nfs_share: *nfs_share__test_create_nfs_share__existed_expt
+
+test_create_nfs_share_batch:
+
+  nfs_share: &nfs_share__test_create_nfs_share_batch
+    _properties:
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+
+  unity:
+    _methods:
+      get_nfs_share: *nfs_share__test_create_nfs_share_batch
+
+  pool:
+    _methods:
+      create_nfs_share:
+
+  nas_server:
+    _properties:
+      <<: *nas_server_prop
+
+  nfs_share:
+    _properties:
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      size: 151081080
 
 test_get_share_with_invalid_proto:
   share:

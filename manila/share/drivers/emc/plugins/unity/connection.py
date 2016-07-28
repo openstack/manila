@@ -120,17 +120,18 @@ class UnityStorageConnection(driver.StorageConnection):
             LOG.error(message)
             raise exception.EMCUnityError(err=message)
 
-        filesystem = self.client.create_filesystem(
-            pool, nas_server, share_name, size, proto=proto_enum)
-
         locations = None
         if share_proto == 'CIFS':
+            filesystem = self.client.create_filesystem(
+                pool, nas_server, share_name,
+                size, proto=proto_enum)
             self.client.create_cifs_share(filesystem, share_name)
 
             locations = self._get_cifs_location(
                 nas_server.file_interface, share_name)
         elif share_proto == 'NFS':
-            self.client.create_nfs_share(filesystem, share_name)
+            self.client.create_nfs_filesystem_and_share(
+                pool, nas_server, share_name, size)
 
             locations = self._get_nfs_location(
                 nas_server.file_interface, share_name)

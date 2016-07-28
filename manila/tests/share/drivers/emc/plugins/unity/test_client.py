@@ -34,10 +34,20 @@ class TestClient(test.TestCase):
     def test_create_nfs_share__existed_expt(self, client, mocked_input):
         resource = mocked_input['filesystem']
         share = mocked_input['nfs_share']
-
         new_share = client.create_nfs_share(resource, share.name)
 
         self.assertEqual(share.name, new_share.name)
+
+    @res_mock.mock_client_input
+    @res_mock.patch_client
+    def test_create_nfs_filesystem_and_share(self, client, mocked_input):
+        pool = mocked_input['pool']
+        nas_server = mocked_input['nas_server']
+        share = mocked_input['nfs_share']
+
+        client.create_nfs_filesystem_and_share(
+            pool, nas_server, share.name,
+            share.size)
 
     @res_mock.mock_client_input
     @res_mock.patch_client
