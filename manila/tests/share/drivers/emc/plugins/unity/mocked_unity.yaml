@@ -1,0 +1,958 @@
+sp_a: &sp_a
+  _properties:
+      name: 'SPA'
+      id: 'SPA'
+      existed: true
+
+sp_b: &sp_b
+  _properties:
+      name: 'SPB'
+      id: 'SPB'
+      existed: true
+
+sp_c: &sp_invalid
+  _properties:
+      id: 'SPC'
+      existed: false
+
+interface_1: &interface_1
+  _properties:
+    ip_address: 'fake_ip_addr_1'
+
+interface_2: &interface_2
+  _properties:
+    ip_address: 'fake_ip_addr_2'
+
+nas_server: &nas_server
+    _properties: &nas_server_prop
+      name: '78fd845f-8e7d-487f-bfde-051d83e78103'
+      file_interface: [*interface_1, *interface_2]
+      current_sp: *sp_a
+
+filesystem_base: &filesystem_base
+  _properties: &filesystem_base_prop
+    name: 'fake_filesystem_name'
+    id: 'fake_filesystem_id'
+    size_total: 50000000000
+    is_thin_enabled: true
+    pool: null
+    nas_server: null
+    cifs_share: []
+    nfs_share: []
+  _methods:
+    has_snap: False
+
+snap_base:
+  _properties: &snap_base_prop
+    name: 'fake_snap_name'
+    id: 'fake_snap_id'
+    size: 50000000000
+    filesystem: *filesystem_base
+
+share_base:
+  _properties: &share_base_prop
+    name: 'fake_share_name'
+    id: 'fake_share_id'
+    filesystem: null
+    snap: null
+
+cifs_share_base: &cifs_share_base
+  _properties: &cifs_share_base_prop
+    <<: *share_base_prop
+
+nfs_share_base: &nfs_share_base
+  _properties: &nfs_share_base_prop
+    <<: *share_base_prop
+
+pool_base:
+  _properties: &pool_base_prop
+    name: 'fake_pool_name'
+    pool_id: 0
+    state: Ready
+    user_capacity_gbs: 1311
+    total_subscribed_capacity_gbs: 131
+    available_capacity_gbs: 132
+    percent_full_threshold: 70
+    fast_cache: True
+
+
+pool_1: &pool_1
+  _properties: &pool_1_prop
+    <<: *pool_base_prop
+    name: 'pool_1'
+    size_total: 500000
+    size_used: 10000
+    size_subscribed: 30000
+
+pool_2: &pool_2
+  _properties: &pool_2_prop
+    <<: *pool_base_prop
+    name: 'pool_2'
+    size_total: 600000
+    size_used: 20000
+    size_subscribed: 40000
+
+nas_server_pool: &nas_server_pool
+  _properties:
+    <<: *pool_base_prop
+    name: 'nas_server_pool'
+
+port_base:
+  _properties: &port_base_prop
+    is_link_up: true
+    id: 'fake_name'
+    sp: *sp_a
+
+port_1: &port_1
+  _properties:
+    <<: *port_base_prop
+    is_link_up: true
+    id: 'spa_eth1'
+    sp: *sp_a
+
+port_2: &port_2
+  _properties:
+    <<: *port_base_prop
+    is_link_up: true
+    id: 'spa_eth2'
+    sp: *sp_a
+
+port_3: &port_internal_port
+  _properties:
+    <<: *port_base_prop
+    is_link_up: true
+    id: 'internal_port'
+    sp: *sp_a
+
+unity_base: &unity_base
+  _methods: &unity_base_method
+      get_sp: *sp_a
+      get_pool:
+        _side_effect: [[*pool_1, *pool_2, *nas_server_pool], *nas_server_pool]
+      get_ip_port: [*port_1, *port_2]
+
+test_connect: &test_connect
+  unity: *unity_base
+
+test_connect__invalid_sp_configuration:
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_sp: *sp_invalid
+
+test_connect__invalid_pool_configuration: *test_connect
+
+test_create_nfs_share:
+  nfs_share: &nfs_share__test_create_nfs_share
+    _properties:
+      <<: *nfs_share_base_prop
+      name: 'cb532599-8dc6-4c3e-bb21-74ea54be566c'
+
+  filesystem: &filesystem__test_create_nfs_share
+    _properties: &filesystem_prop__test_create_nfs_share
+      <<: *filesystem_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd4587340'
+    _methods:
+      create_nfs_share: *nfs_share__test_create_nfs_share
+
+  pool: &pool__test_create_nfs_share
+    _properties:
+      <<: *pool_base_prop
+      name: 'Pool_2'
+    _methods:
+      create_filesystem: *filesystem__test_create_nfs_share
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_pool:
+        _side_effect: [[*pool_1, *pool_2, *nas_server_pool],
+        *nas_server_pool, *pool__test_create_nfs_share]
+      get_nas_server: *nas_server
+
+test_create_cifs_share:
+  cifs_share: &cifs_share__test_create_cifs_share
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      enable_ace:
+
+  filesystem: &filesystem__test_create_cifs_share
+    _properties: &filesystem_prop__test_create_cifs_share
+      <<: *filesystem_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd4587340'
+    _methods:
+      create_cifs_share: *cifs_share__test_create_cifs_share
+
+  pool: &pool__test_create_cifs_share
+    _properties:
+      <<: *pool_base_prop
+      name: 'Pool_2'
+    _methods:
+      create_filesystem: *filesystem__test_create_cifs_share
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_pool:
+        _side_effect: [[*pool_1, *pool_2, *nas_server_pool], *nas_server_pool,
+         *pool__test_create_cifs_share]
+      get_nas_server: *nas_server
+
+test_create_share_with_invalid_share_server:
+  pool: &pool__test_create_share_with_invalid_share_server
+    _properties:
+      <<: *pool_base_prop
+      name: 'Pool_2'
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_pool:
+        _side_effect: [[*pool_1, *pool_2, *nas_server_pool], *nas_server_pool,
+        *pool__test_create_share_with_invalid_share_server]
+      get_nas_server:
+        _raise:
+          UnityResourceNotFoundError: 'Failed to get NAS server.'
+
+
+test_delete_share:
+  filesystem: &filesystem__test_delete_share
+    _properties: &filesystem_prop__test_delete_share
+      <<: *filesystem_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      delete:
+      update:
+      has_snap: False
+
+  cifs_share: &cifs_share__test_delete_share
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      filesystem: *filesystem__test_delete_share
+    _methods:
+      delete:
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share__test_delete_share
+
+test_delete_share__with_invalid_share:
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share:
+        _raise:
+          UnityResourceNotFoundError: 'Failed to get CIFS share.'
+
+test_delete_share__create_from_snap:
+  filesystem: &filesystem__test_delete_share__create_from_snap
+    _properties: &filesystem_prop__test_delete_share__create_from_snap
+      <<: *filesystem_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd4587340'
+    _methods:
+      delete:
+      update:
+      has_snap: False
+
+  snap: &snap__test_delete_share__create_from_snap
+    _properties: &snap_prop__test_delete_share__create_from_snap
+      <<: *snap_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      filesystem: *filesystem__test_delete_share__create_from_snap
+    _methods:
+      delete:
+
+  cifs_share: &cifs_share__test_delete_share__create_from_snap
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      snap: *snap__test_delete_share__create_from_snap
+    _methods:
+      delete:
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share__test_delete_share__create_from_snap
+      get_snap: *snap__test_delete_share__create_from_snap
+
+test_delete_share__create_from_snap_but_not_isolated:
+  filesystem: &filesystem__test_delete_share__create_from_snap_but_not_isolated
+    _properties: &filesystem_prop__test_delete_share__create_from_snap_but_not_isolated
+      <<: *filesystem_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd4587340'
+      cifs_share: [*cifs_share_base]
+      nfs_share: [*nfs_share_base]
+    _methods:
+      delete:
+      update:
+      has_snap: True
+
+  snap: &snap__test_delete_share__create_from_snap_but_not_isolated
+    _properties: &snap_prop__test_delete_share__create_from_snap_but_not_isolated
+      <<: *snap_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      filesystem: *filesystem__test_delete_share__create_from_snap_but_not_isolated
+    _methods:
+      delete:
+
+  cifs_share: &cifs_share__test_delete_share__create_from_snap_but_not_isolated
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      snap: *snap__test_delete_share__create_from_snap_but_not_isolated
+    _methods:
+      delete:
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share__test_delete_share__create_from_snap_but_not_isolated
+
+test_delete_share__but_not_isolated:
+  filesystem: &filesystem__test_delete_share__but_not_isolated
+    _properties: &filesystem_prop__test_delete_share__but_not_isolated
+      <<: *filesystem_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd4587340'
+    _methods:
+      update:
+      has_snap: True
+
+  cifs_share: &cifs_share__test_delete_share__but_not_isolated
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      filesystem: *filesystem__test_delete_share__but_not_isolated
+    _methods:
+      delete:
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share__test_delete_share__but_not_isolated
+
+test_extend_cifs_share:
+  filesystem: &filesystem__test_extend_cifs_share
+    _properties: &filesystem_prop__test_extend_cifs_share
+      <<: *filesystem_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      extend:
+
+  cifs_share: &cifs_share__test_extend_cifs_share
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      filesystem: *filesystem__test_extend_cifs_share
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share__test_extend_cifs_share
+
+test_extend_nfs_share:
+  filesystem: &filesystem__test_extend_nfs_share
+    _properties: &filesystem_prop__test_extend_nfs_share
+      <<: *filesystem_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      extend:
+
+  cifs_share: &cifs_share__test_extend_nfs_share
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      filesystem: *filesystem__test_extend_nfs_share
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_nfs_share: *cifs_share__test_extend_nfs_share
+
+test_extend_share__create_from_snap:
+  snap: &snap__test_extend_share__create_from_snap
+    _properties: &snap_prop__test_extend_share__create_from_snap
+      <<: *snap_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+
+  cifs_share: &cifs_share__test_extend_share__create_from_snap
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      snap: *snap__test_extend_share__create_from_snap
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share__test_extend_share__create_from_snap
+
+test_create_snapshot_from_filesystem:
+  filesystem: &filesystem__test_create_snapshot_from_filesystem
+    _properties: &filesystem_prop__test_create_snapshot_from_filesystem
+      <<: *filesystem_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      create_snap:
+
+  cifs_share: &cifs_share__test_create_snapshot_from_filesystem
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      filesystem: *filesystem__test_create_snapshot_from_filesystem
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share__test_create_snapshot_from_filesystem
+
+test_create_snapshot_from_snapshot:
+  snap: &snap__test_create_snapshot_from_snapshot
+    _properties: &snap_prop__test_create_snapshot_from_snapshot
+      <<: *snap_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      create_snap:
+
+  cifs_share: &cifs_share__test_create_snapshot_from_snapshot
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      snap: *snap__test_create_snapshot_from_snapshot
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share__test_create_snapshot_from_snapshot
+      get_snap: *snap__test_create_snapshot_from_snapshot
+
+test_delete_snapshot:
+  snap: &snap__test_delete_snapshot
+    _properties: &snap_prop__test_delete_snapshot
+      <<: *snap_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      delete:
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_snap: *snap__test_delete_snapshot
+
+test_ensure_share_exists:
+  cifs_share: &cifs_share_ensure_share_exists
+    _properties:
+      existed: True
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share_ensure_share_exists
+
+test_ensure_share_not_exists:
+  cifs_share: &cifs_share_ensure_share_not_exists
+    _properties:
+      existed: False
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share_ensure_share_not_exists
+
+test_update_share_stats:
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_pool:
+        _side_effect: [[*pool_1, *pool_2], *pool_1, [*pool_1, *pool_2]]
+
+test_update_share_stats__nonexistent_pools:
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_pool:
+        _side_effect: [[*pool_1, *pool_2], *pool_1, []]
+
+test_get_pool:
+  filesystem: &filesystem__test_get_pool
+    _properties: &filesystem_prop__test_get_pool
+      <<: *filesystem_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      pool: *pool_1
+
+  cifs_share: &cifs_share__test_get_pool
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      filesystem: *filesystem__test_get_pool
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share__test_get_pool
+
+test_setup_server: &test_setup_server
+  nas_server_1: &nas_server_1__test_setup_server
+    _properties:
+      <<: *nas_server_prop
+      existed: false
+
+  nas_server_2: &nas_server_2__test_setup_server
+    _properties:
+      <<: *nas_server_prop
+    _methods: &nas_server_2__test_setup_server_mehtod
+      create_file_interface:
+      enable_nfs_service:
+
+  unity:
+    _methods: &unity_method__test_setup_server
+      <<: *unity_base_method
+      get_nas_server: *nas_server_1__test_setup_server
+      create_nas_server: *nas_server_2__test_setup_server
+
+test_setup_server__vlan_network:
+  <<: *test_setup_server
+  nas_server: &nas_server__test_setup_server_flat_network
+    _properties:
+      <<: *nas_server_prop
+      existed: true
+    _methods:
+      create_file_interface:
+      create_dns_server:
+      enable_nfs_service:
+
+  unity:
+    _methods:
+      <<: *unity_method__test_setup_server
+      get_nas_server: *nas_server__test_setup_server_flat_network
+
+test_setup_server__active_directory:
+  <<: *test_setup_server
+  nas_server_2: &nas_server_2__test_setup_server__active_directory
+    _properties:
+      <<: *nas_server_prop
+    _methods:
+      create_file_interface:
+      create_dns_server:
+      enable_cifs_service:
+      enable_nfs_service:
+
+  unity:
+    _methods: &unity_method__test_setup_server__active_directory
+      <<: *unity_method__test_setup_server
+      create_nas_server: *nas_server_2__test_setup_server__active_directory
+
+test_setup_server__kerberos: *test_setup_server
+
+test_setup_server__throw_exception:
+  <<: *test_setup_server
+  nas_server_1: &nas_server_1__test_setup_server__throw_exception
+    _properties:
+      <<: *nas_server_prop
+      existed: false
+
+  nas_server_2: &nas_server_2__test_setup_server__throw_exception
+    _properties:
+      <<: *nas_server_prop
+    _methods:
+      create_file_interface:
+      create_dns_server:
+      enable_cifs_service:
+      enable_nfs_service:
+        _raise:
+          UnityException: 'Failed to enable NFS service.'
+      delete:
+
+  unity:
+    _methods:
+      <<: *unity_method__test_setup_server
+      get_nas_server: *nas_server_2__test_setup_server__throw_exception
+      create_nas_server: *nas_server_2__test_setup_server__throw_exception
+
+test_teardown_server:
+  nas_server: &nas_server__test_teardown_server
+    _properties:
+      <<: *nas_server_prop
+    _methods:
+      delete:
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_nas_server: *nas_server__test_teardown_server
+
+test__get_managed_pools: &test__get_managed_pools
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_pool: [*pool_1, *pool_2, *nas_server_pool]
+
+test__get_managed_pools__invalid_pool_configuration: *test__get_managed_pools
+
+test__get_managed_ports: &test__get_managed_ports
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_pool: [*pool_1, *pool_2, *nas_server_pool]
+      get_ip_port: [*port_1, *port_2, *port_internal_port]
+
+test__get_managed_pools__invalid_port_configuration: *test__get_managed_ports
+
+
+test_create_cifs_share_from_snapshot:
+  cifs_share: &cifs_share__test_create_cifs_share_from_snapshot
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      enable_ace:
+
+  snapshot_1: &snapshot_1__test_create_cifs_share_from_snapshot
+    _properties: &snapshot_1_prop__test_create_cifs_share_from_snapshot
+      <<: *snap_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      create_cifs_share: *cifs_share__test_create_cifs_share_from_snapshot
+
+  snapshot_2: &snapshot_2__test_create_cifs_share_from_snapshot
+    _properties: &snapshot__prop__test_create_cifs_share_from_snapshot
+      <<: *snap_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd4587340'
+    _methods:
+      create_snap: *snapshot_1__test_create_cifs_share_from_snapshot
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_nas_server: *nas_server
+      get_snap: *snapshot_2__test_create_cifs_share_from_snapshot
+
+test_create_nfs_share_from_snapshot:
+  nfs_share: &nfs_share__test_create_nfs_share_from_snapshot
+    _properties:
+      <<: *nfs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      enable_ace:
+
+  snapshot_1: &snapshot_1__test_create_nfs_share_from_snapshot
+    _properties: &snapshot_1_prop__test_create_nfs_share_from_snapshot
+      <<: *snap_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      create_nfs_share: *nfs_share__test_create_nfs_share_from_snapshot
+
+  snapshot_2: &snapshot_2__test_create_nfs_share_from_snapshot
+    _properties: &snapshot__prop__test_create_nfs_share_from_snapshot
+      <<: *snap_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd4587340'
+    _methods:
+      create_snap: *snapshot_1__test_create_nfs_share_from_snapshot
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_nas_server: *nas_server
+      get_snap: *snapshot_2__test_create_nfs_share_from_snapshot
+
+test_create_share_from_snapshot_no_server_name:
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_nas_server:
+        _raise:
+          UnityResourceNotFoundError: 'NAS server is not found'
+
+test_clear_share_access_cifs:
+  cifs_share: &cifs_share__test_clear_share_access_cifs
+    _methods:
+      clear_access:
+        _raise:
+          UnityException: 'clear cifs access invoked'
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share__test_clear_share_access_cifs
+
+test_clear_share_access_nfs:
+  nfs_share: &nfs_share__test_clear_share_access_nfs
+    _methods:
+      clear_access:
+        _raise:
+          UnityException: 'clear nfs access invoked'
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_nfs_share: *nfs_share__test_clear_share_access_nfs
+
+test_allow_rw_cifs_share_access: &test_allow_rw_cifs_share_access
+  cifs_share: &cifs_share__test_allow_rw_cifs_share_access
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      add_ace:
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share__test_allow_rw_cifs_share_access
+
+test_update_access_allow_rw: *test_allow_rw_cifs_share_access
+
+test_update_access_recovery:
+  cifs_share: &cifs_share__test_update_access_recovery
+    _methods:
+      add_ace:
+      clear_access:
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share__test_update_access_recovery
+
+test_allow_ro_cifs_share_access: *test_allow_rw_cifs_share_access
+
+test_allow_rw_nfs_share_access:
+  nfs_share: &nfs_share__test_allow_rw_nfs_share_access
+    _properties:
+      <<: *nfs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      allow_read_write_access:
+      allow_root_access:
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_nfs_share: *nfs_share__test_allow_rw_nfs_share_access
+
+test_allow_ro_nfs_share_access:
+  nfs_share: &nfs_share__test_allow_ro_nfs_share_access
+    _properties:
+      <<: *nfs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      allow_read_only_access:
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_nfs_share: *nfs_share__test_allow_ro_nfs_share_access
+
+test_deny_cifs_share_access:
+  cifs_share: &cifs_share__test_deny_cifs_share_access
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      delete_ace:
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share__test_deny_cifs_share_access
+
+test_deny_nfs_share_access: &test_deny_nfs_share_access
+  nfs_share: &nfs_share__test_deny_nfs_share_access
+    _properties:
+      <<: *nfs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      delete_access:
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_nfs_share: *nfs_share__test_deny_nfs_share_access
+
+test_update_access_deny_nfs: *test_deny_nfs_share_access
+
+# The following test cases are for client.py
+
+test_create_cifs_share__existed_expt:
+  filesystem:
+    _methods:
+      create_cifs_share:
+        _raise:
+          UnitySmbShareNameExistedError: 'CIFS share already exists.'
+
+  cifs_share: &cifs_share__test_create_cifs_share__existed_expt
+    _properties:
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+
+  unity:
+    _methods:
+      get_cifs_share: *cifs_share__test_create_cifs_share__existed_expt
+
+test_create_nfs_share__existed_expt:
+  filesystem:
+    _methods:
+      create_nfs_share:
+        _raise:
+          UnityNfsShareNameExistedError: 'NFS share already exists.'
+
+  nfs_share: &nfs_share__test_create_nfs_share__existed_expt
+    _properties:
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+
+  unity:
+    _methods:
+      get_nfs_share: *nfs_share__test_create_nfs_share__existed_expt
+
+test_get_share_with_invalid_proto:
+  share:
+    _properties:
+      <<: *share_base_prop
+
+test_create_filesystem__existed_expt:
+  filesystem: &filesystem__test_create_filesystem__existed_expt
+    _properties:
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      size: 10
+      proto: 'CIFS'
+
+  pool:
+    _methods:
+      create_filesystem:
+        _raise:
+          UnityFileSystemNameAlreadyExisted: 'Pool already exists.'
+
+  nas_server:
+    _properties:
+      <<: *nas_server_prop
+
+  unity:
+    _methods:
+      get_filesystem: *filesystem__test_create_filesystem__existed_expt
+
+test_delete_filesystem__nonexistent_expt:
+  filesystem:
+    _properties:
+      name: already removed filsystem
+    _methods:
+      delete:
+        _raise:
+          UnityResourceNotFoundError: 'Filesystem is non-existent.'
+
+test_create_nas_server__existed_expt:
+  sp:
+    _properites:
+      name: 'SP'
+
+  pool:
+    _properites:
+      name: 'fake_pool'
+
+  nas_server: &nas_server__test_create_nas_server__existed_expt
+    _properties:
+      <<: *nas_server_prop
+
+  unity:
+    _methods:
+      create_nas_server:
+        _raise:
+          UnityNasServerNameUsedError: 'NAS Server already exists.'
+      get_nas_server: *nas_server__test_create_nas_server__existed_expt
+
+test_delete_nas_server__nonexistent_expt:
+  nas_server: &nas_server__test_delete_nas_server__nonexistent_expt
+    _properties:
+      <<: *nas_server_prop
+    _methods:
+      delete:
+        _raise:
+          UnityResourceNotFoundError: 'NAS server is non-existent.'
+
+  unity:
+    _methods:
+      get_nas_server: *nas_server__test_delete_nas_server__nonexistent_expt
+
+test_create_dns_server__existed_expt:
+  nas_server:
+    _methods:
+      create_dns_server:
+        _raise:
+          UnityOneDnsPerNasServerError: 'DNS server already exists.'
+
+test_create_interface__existed_expt:
+  nas_server:
+    _properties:
+      <<: *nas_server_prop
+    _methods:
+      create_file_interface:
+        _raise:
+          UnityIpAddressUsedError: 'IP address is already used.'
+
+test_enable_cifs_service__existed_expt:
+  nas_server:
+    _properties:
+      <<: *nas_server_prop
+    _methods:
+      enable_cifs_service:
+        _raise:
+          UnitySmbNameInUseError: 'CIFS server already exists.'
+
+test_enable_nfs_service__existed_expt:
+  nas_server:
+    _properties:
+      <<: *nas_server_prop
+    _methods:
+      enable_nfs_service:
+        _raise:
+          UnityNfsAlreadyEnabledError: 'NFS server already exists.'
+
+test_create_snapshot__existed_expt:
+  filesystem:
+    _properties:
+      <<: *filesystem_base_prop
+    _methods:
+      create_snap:
+        _raise:
+          UnitySnapNameInUseError: 'Snapshot already exists.'
+
+  snapshot:
+    _properties:
+      <<: *snap_base_prop
+
+test_create_snap_of_snap__existed_expt:
+  src_snapshot:
+    _methods:
+      create_snap:
+        _raise:
+          UnitySnapNameInUseError: 'Snapshot already exists.'
+
+  dest_snapshot: &dest_snapshot__test_create_snap_of_snap__existed_expt
+    _properties:
+      <<: *snap_base_prop
+
+  unity:
+    _methods:
+      get_snap: *dest_snapshot__test_create_snap_of_snap__existed_expt
+
+test_delete_snapshot__nonexistent_expt:
+  snapshot:
+    _properties:
+      <<: *snap_base_prop
+    _methods:
+      delete:
+        _raise:
+          UnityResourceNotFoundError: 'Snapshot is non-existent.'
+
+test_nfs_deny_access__nonexistent_expt:
+  nfs_share: &nfs_share__test_nfs_deny_access__nonexistent_expt
+    _methods:
+      delete_access:
+        _raise:
+          UnityHostNotFoundException: "Unity Host is non-existent"
+  unity:
+    _methods:
+      get_nfs_share: *nfs_share__test_nfs_deny_access__nonexistent_expt
+
+test_get_storage_processor:
+  unity:
+    _methods:
+      get_sp: *sp_a
