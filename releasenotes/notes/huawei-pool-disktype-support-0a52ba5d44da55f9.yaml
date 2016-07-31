@@ -1,0 +1,5 @@
+---
+features:
+  - Add support for reporting pool disk type in Huawei driver.
+    `huawei_disk_type` extra-spec in the share type. Valid values
+    for this extra-spec are 'ssd', 'sas', 'nl_sas' or 'mix'.

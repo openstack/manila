@@ -282,6 +282,7 @@ class V3StorageConnection(driver.HuaweiBase):
         for pool_name in pool_name_list:
             pool_name = pool_name.strip().strip('\n')
             capacity = self._get_capacity(pool_name, all_pool_info)
+            disk_type = self._get_disk_type(pool_name, all_pool_info)
             if capacity:
                 pool = dict(
                     pool_name=pool_name,
@@ -302,6 +303,9 @@ class V3StorageConnection(driver.HuaweiBase):
                     huawei_smartpartition=[True, False],
                     huawei_sectorsize=[True, False],
                 )
+                if disk_type:
+                    pool['huawei_disk_type'] = disk_type
+
                 stats_dict["pools"].append(pool)
 
         if not stats_dict["pools"]:
@@ -604,6 +608,22 @@ class V3StorageConnection(driver.HuaweiBase):
                 float(total) - float(free), 2)
 
         return poolinfo
+
+    def _get_disk_type(self, pool_name, result):
+        """Get disk type of the pool."""
+        pool_info = self.helper._find_pool_info(pool_name, result)
+        if not pool_info:
+            return None
+
+        pool_disk = []
+        for i, x in enumerate(['ssd', 'sas', 'nl_sas']):
+            if pool_info['TIER%dCAPACITY' % i] != '0':
+                pool_disk.append(x)
+
+        if len(pool_disk) > 1:
+            pool_disk = ['mix']
+
+        return pool_disk[0] if pool_disk else None
 
     def _init_filesys_para(self, share, poolinfo, extra_specs):
         """Init basic filesystem parameters."""

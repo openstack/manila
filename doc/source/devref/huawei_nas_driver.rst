@@ -157,6 +157,11 @@ extra-spec. This ensures that the share will be created on a backend that
 supports the requested driver_handles_share_servers (share networks) capability.
 For the Huawei driver, this must be set to False.
 
+To create a share on a backend with a specific type of disks, include the
+`huawei_disk_type` extra-spec in the share type. Valid values for this
+extra-spec are 'ssd', 'sas', 'nl_sas' or 'mix'. This share will be created
+on a backend with a matching disk type.
+
 Another common manila extra-spec used to determine where a share is created
 is `share_backend_name`. When this extra-spec is defined in the share type,
 the share will be created on a backend with a matching share_backend_name.
@@ -215,6 +220,8 @@ type uses one or more of the following extra-specs:
 
   * huawei_sectorsize:sectorsize=4
 
+- huawei_disk_type='ssd' or 'sas' or 'nl_sas' or 'mix'
+
 `thin_provisioning` will be reported as [True, False] for Huawei backends.
 
 `dedupe` will be reported as [True, False] for Huawei backends.
@@ -234,6 +241,9 @@ ensuring the quality of critical services.
 specification.
 
 `huawei_sectorsize` will be reported as [True, False] for Huawei backends.
+
+`huawei_disk_type` will be reported as "ssd", "sas", "nl_sas" or "mix" for
+Huawei backends.
 
 Restrictions
 ------------
