@@ -13,15 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import socket
-import ssl
+import requests
+from requests import auth
+from requests import exceptions
 import tempfile
 import time
 
 import mock
-from oslo_serialization import jsonutils
 import six
-from six.moves import http_client
 
 from manila import exception
 from manila.share.drivers.quobyte import jsonrpc
@@ -30,78 +29,13 @@ from manila import test
 
 class FakeResponse(object):
     def __init__(self, status, body):
-        self.status = status
+        self.status_code = status
         self.reason = "HTTP reason"
-        self._body = body
+        self.body = body
+        self.text = six.text_type(body)
 
-    def read(self):
-        return self._body
-
-
-class QuobyteBasicAuthCredentialsTestCase(test.TestCase):
-
-    def test_get_authorization_header(self):
-        creds = jsonrpc.BasicAuthCredentials('fakeuser', 'fakepwd')
-
-        self.assertEqual('BASIC ZmFrZXVzZXI6ZmFrZXB3ZA==',
-                         creds.get_authorization_header())
-
-
-class QuobyteHttpsConnectionWithCaVerificationTestCase(test.TestCase):
-
-    @mock.patch.object(socket, "create_connection",
-                       return_value="fake_socket")
-    @mock.patch.object(ssl, "wrap_socket")
-    def test_https_with_ca_connect(self, mock_ssl, mock_cc):
-        key_file = tempfile.TemporaryFile()
-        cert_file = tempfile.gettempdir()
-        ca_file = tempfile.gettempdir()
-        mycon = (jsonrpc.
-                 HTTPSConnectionWithCaVerification(host="localhost",
-                                                   key_file=key_file,
-                                                   cert_file=cert_file,
-                                                   ca_file=ca_file,
-                                                   port=1234,
-                                                   timeout=999))
-
-        mycon.connect()
-
-        mock_cc.assert_called_once_with(("localhost", 1234), 999)
-        mock_ssl.assert_called_once_with("fake_socket",
-                                         keyfile=key_file,
-                                         certfile=cert_file,
-                                         ca_certs=ca_file,
-                                         cert_reqs=mock.ANY)
-
-    @mock.patch.object(http_client.HTTPConnection, "_tunnel")
-    @mock.patch.object(socket, "create_connection",
-                       return_value="fake_socket")
-    @mock.patch.object(ssl, "wrap_socket")
-    def test_https_with_ca_connect_tunnel(self,
-                                          mock_ssl,
-                                          mock_cc,
-                                          mock_tunnel):
-        key_file = tempfile.TemporaryFile()
-        cert_file = tempfile.gettempdir()
-        ca_file = tempfile.gettempdir()
-        mycon = (jsonrpc.
-                 HTTPSConnectionWithCaVerification(host="localhost",
-                                                   key_file=key_file,
-                                                   cert_file=cert_file,
-                                                   ca_file=ca_file,
-                                                   port=1234,
-                                                   timeout=999))
-        mycon._tunnel_host = "fake_tunnel_host"
-
-        mycon.connect()
-
-        mock_tunnel.assert_called_once_with()
-        mock_cc.assert_called_once_with(("localhost", 1234), 999)
-        mock_ssl.assert_called_once_with("fake_socket",
-                                         keyfile=key_file,
-                                         certfile=cert_file,
-                                         ca_certs=ca_file,
-                                         cert_reqs=mock.ANY)
+    def json(self):
+        return self.body
 
 
 class QuobyteJsonRpcTestCase(test.TestCase):
@@ -110,38 +44,35 @@ class QuobyteJsonRpcTestCase(test.TestCase):
         super(QuobyteJsonRpcTestCase, self).setUp()
         self.rpc = jsonrpc.JsonRpc(url="http://test",
                                    user_credentials=("me", "team"))
-        self.mock_object(self.rpc, '_connection')
         self.mock_object(time, 'sleep')
 
-    def test_request_generation_and_basic_auth(self):
-        self.mock_object(
-            self.rpc._connection,
-            'getresponse',
-            mock.Mock(return_value=FakeResponse(200, '{"result":"yes"}')))
-
+    @mock.patch.object(requests, 'post',
+                       return_value=FakeResponse(200, {"result": "yes"}))
+    def test_request_generation_and_basic_auth(self, req_get_mock):
         self.rpc.call('method', {'param': 'value'})
 
-        self.rpc._connection.request.assert_called_once_with(
-            'POST', 'http://test/',
-            jsonutils.dumps({'jsonrpc': '2.0',
-                             'method': 'method',
-                             'params': {'retry': 'INFINITELY',
-                                        'param': 'value'},
-                             'id': '1'}),
-            dict(Authorization=jsonrpc.BasicAuthCredentials("me", "team")
-                 .get_authorization_header()))
+        req_get_mock.assert_called_once_with(
+            url='http://test',
+            auth=auth.HTTPBasicAuth("me", "team"),
+            json=mock.ANY)
 
-    @mock.patch.object(jsonrpc.HTTPSConnectionWithCaVerification,
-                       '__init__',
-                       return_value=None)
-    def test_jsonrpc_init_with_ca(self, mock_init):
+    def test_jsonrpc_init_with_ca(self):
         foofile = tempfile.TemporaryFile()
-        self.rpc = jsonrpc.JsonRpc("https://foo.bar/",
-                                   ('fakeuser', 'fakepwd'),
-                                   foofile)
+        fake_url = "https://foo.bar/"
+        fake_credentials = ('fakeuser', 'fakepwd')
+        fake_cert_file = tempfile.TemporaryFile()
+        fake_key_file = tempfile.TemporaryFile()
+        self.rpc = jsonrpc.JsonRpc(url=fake_url,
+                                   user_credentials=fake_credentials,
+                                   ca_file=foofile,
+                                   key_file=fake_key_file,
+                                   cert_file=fake_cert_file)
 
-        mock_init.assert_called_once_with("foo.bar",
-                                          ca_file=foofile.name)
+        self.assertEqual("https", self.rpc._url_scheme)
+        self.assertEqual(fake_url, self.rpc._url)
+        self.assertEqual(foofile, self.rpc._ca_file)
+        self.assertEqual(fake_cert_file, self.rpc._cert_file)
+        self.assertEqual(fake_key_file, self.rpc._key_file)
 
     @mock.patch.object(jsonrpc.LOG, "warning")
     def test_jsonrpc_init_without_ca(self, mock_warning):
@@ -153,190 +84,90 @@ class QuobyteJsonRpcTestCase(test.TestCase):
             "Will not verify the server certificate of the API service"
             " because the CA certificate is not available.")
 
-    @mock.patch.object(http_client.HTTPConnection,
-                       '__init__',
-                       return_value=None)
-    def test_jsonrpc_init_no_ssl(self, mock_init):
+    def test_jsonrpc_init_no_ssl(self):
         self.rpc = jsonrpc.JsonRpc("http://foo.bar/",
                                    ('fakeuser', 'fakepwd'))
 
-        mock_init.assert_called_once_with("foo.bar")
+        self.assertEqual("http", self.rpc._url_scheme)
 
-    def test_successful_call(self):
-        self.mock_object(
-            self.rpc._connection, 'getresponse',
-            mock.Mock(return_value=FakeResponse(
-                200, '{"result":"Sweet gorilla of Manila"}')))
+    @mock.patch.object(requests, "post",
+                       return_value=FakeResponse(
+                           200, {"result": "Sweet gorilla of Manila"}))
+    def test_successful_call(self, mock_req_get):
+        result = self.rpc.call('method', {'param': 'value'})
+
+        mock_req_get.assert_called_once_with(
+            url=self.rpc._url,
+            json=mock.ANY,  # not checking here as of undefined order in dict
+            auth=self.rpc._credentials)
+        self.assertEqual("Sweet gorilla of Manila", result)
+
+    @mock.patch.object(requests, "post",
+                       return_value=FakeResponse(
+                           200, {"result": "Sweet gorilla of Manila"}))
+    def test_https_call_with_cert(self, mock_req_get):
+        fake_cert_file = tempfile.TemporaryFile()
+        fake_key_file = tempfile.TemporaryFile()
+        self.rpc = jsonrpc.JsonRpc(url="https://test",
+                                   user_credentials=("me", "team"),
+                                   cert_file=fake_cert_file,
+                                   key_file=fake_key_file)
 
         result = self.rpc.call('method', {'param': 'value'})
 
-        self.rpc._connection.connect.assert_called_once_with()
+        mock_req_get.assert_called_once_with(
+            url=self.rpc._url,
+            json=mock.ANY,  # not checking here as of undefined order in dict
+            auth=self.rpc._credentials,
+            verify=False,
+            cert=(fake_cert_file, fake_key_file))
         self.assertEqual("Sweet gorilla of Manila", result)
 
-    @mock.patch('six.moves.http_client.HTTPSConnection')
-    def test_jsonrpc_call_ssl_disable(self, mock_connection):
-        mock_connection.return_value = self.rpc._connection
-        self.mock_object(
-            self.rpc._connection,
-            'request',
-            mock.Mock(side_effect=ssl.SSLError))
-        self.mock_object(
-            self.rpc._connection,
-            'getresponse',
-            mock.Mock(return_value=FakeResponse(
-                403, '{"error":{"code":28,"message":"text"}}')))
-        self.mock_object(jsonrpc.LOG, 'warning')
+    @mock.patch.object(requests, "post",
+                       return_value=FakeResponse(
+                           200, {"result": "Sweet gorilla of Manila"}))
+    def test_https_call_verify(self, mock_req_get):
+        fake_ca_file = tempfile.TemporaryFile()
+        self.rpc = jsonrpc.JsonRpc(url="https://test",
+                                   user_credentials=("me", "team"),
+                                   ca_file=fake_ca_file)
 
-        self.assertRaises(exception.QBException,
+        result = self.rpc.call('method', {'param': 'value'})
+
+        mock_req_get.assert_called_once_with(
+            url=self.rpc._url,
+            json=mock.ANY,  # not checking here as of undefined order in dict
+            auth=self.rpc._credentials,
+            verify=fake_ca_file)
+        self.assertEqual("Sweet gorilla of Manila", result)
+
+    @mock.patch.object(requests, "post", side_effect=exceptions.HTTPError)
+    def test_jsonrpc_call_http_exception(self, req_get_mock):
+        self.assertRaises(exceptions.HTTPError,
                           self.rpc.call,
                           'method', {'param': 'value'})
+        req_get_mock.assert_called_once_with(
+            url=self.rpc._url,
+            json=mock.ANY,  # not checking here as of undefined order in dict
+            auth=self.rpc._credentials)
 
-        self.assertTrue(self.rpc._disabled_cert_verification)
-        jsonrpc.LOG.warning.assert_called_once_with(
-            "Could not verify server certificate of "
-            "API service against CA.")
-
-    def test_jsonrpc_call_ssl_error(self):
-        """This test succeeds if a specific exception is thrown.
-
-        Throwing a different exception or none at all
-        is a failure in this specific test case.
-        """
-        self.mock_object(
-            self.rpc._connection,
-            'request',
-            mock.Mock(side_effect=ssl.SSLError))
-        self.rpc._disabled_cert_verification = True
-
-        try:
-            self.rpc.call('method', {'param': 'value'})
-        except exception.QBException as me:
-            self.rpc._connection.connect.assert_called_once_with()
-            (self.assertTrue(six.text_type(me).startswith
-                             ('Client SSL subsystem returned error:')))
-
-        except Exception as e:
-            self.fail('Unexpected exception thrown: %s' % e)
-        else:
-            self.fail('Expected exception not thrown')
-
-    def test_jsonrpc_call_bad_status_line(self):
-        self.mock_object(
-            self.rpc._connection,
-            'getresponse',
-            mock.Mock(side_effect=http_client.BadStatusLine("fake_line")))
-
-        self.assertRaises(exception.QBException,
-                          self.rpc.call,
-                          'method', {'param': 'value'})
-
-    def test_jsonrpc_call_http_exception(self):
-        self.mock_object(
-            self.rpc._connection,
-            'getresponse',
-            mock.Mock(side_effect=http_client.HTTPException))
-        self.mock_object(jsonrpc.LOG, 'warning')
-
-        self.assertRaises(http_client.HTTPException,
-                          self.rpc.call,
-                          'method', {'param': 'value'})
-        self.rpc._connection.connect.assert_called_once_with()
-        jsonrpc.LOG.warning.assert_has_calls([])
-
-    def test_jsonrpc_call_socket_error(self):
-        self.mock_object(
-            self.rpc._connection,
-            'getresponse',
-            mock.Mock(side_effect=socket.error(23, "Test")))
-        self.mock_object(jsonrpc.LOG, 'warning')
-
-        self.assertRaises(exception.QBException,
-                          self.rpc.call,
-                          'method', {'param': 'value'})
-        self.rpc._connection.connect.assert_called_once_with()
-        jsonrpc.LOG.warning.assert_has_calls([])
-
-    def test_jsonrpc_call_http_exception_retry(self):
-        self.mock_object(
-            self.rpc._connection,
-            'getresponse',
-            mock.Mock(side_effect=http_client.HTTPException))
-        self.mock_object(jsonrpc.LOG, 'warning')
-        self.rpc._fail_fast = False
-
-        self.assertRaises(exception.QBException,
-                          self.rpc.call,
-                          'method', {'param': 'value'})
-        self.rpc._connection.connect.assert_called_once_with()
-        jsonrpc.LOG.warning.assert_called_with(
-            "Encountered error, retrying: %s", "")
-
-    def test_jsonrpc_call_no_connect(self):
-        orig_retries = jsonrpc.CONNECTION_RETRIES
-        jsonrpc.CONNECTION_RETRIES = 0
-
-        try:
-            self.rpc.call('method', {'param': 'value'})
-        except exception.QBException as me:
-            self.rpc._connection.connect.assert_called_once_with()
-            self.assertEqual("Unable to connect to backend after 0 retries",
-                             six.text_type(me))
-        else:
-            self.fail('Expected exception not thrown')
-        finally:
-            jsonrpc.CONNECTION_RETRIES = orig_retries
-
-    def test_http_error_401(self):
-        self.mock_object(
-            self.rpc._connection,
-            'getresponse',
-            mock.Mock(return_value=FakeResponse(401, '')))
-
-        self.assertRaises(exception.QBException,
-                          self.rpc.call, 'method', {'param': 'value'})
-        self.rpc._connection.connect.assert_called_once_with()
-
-    def test_http_error_other(self):
-        self.mock_object(
-            self.rpc._connection,
-            'getresponse',
-            mock.Mock(return_value=FakeResponse(300, '')))
-
-        self.assertRaises(exception.QBException,
-                          self.rpc.call, 'method', {'param': 'value'})
-        self.rpc._connection.connect.assert_called_once_with()
-        self.assertTrue(self.rpc._connection.getresponse.called)
-
-    def test_application_error(self):
-        self.mock_object(
-            self.rpc._connection,
-            'getresponse',
-            mock.Mock(return_value=FakeResponse(
-                200, '{"error":{"code":28,"message":"text"}}')))
-
+    @mock.patch.object(requests, "post",
+                       return_value=FakeResponse(
+                           200,
+                           {"error": {"code": 28, "message": "text"}}))
+    def test_application_error(self, req_get_mock):
         self.assertRaises(exception.QBRpcException,
                           self.rpc.call, 'method', {'param': 'value'})
-        self.rpc._connection.connect.assert_called_once_with()
-        self.assertTrue(self.rpc._connection.getresponse.called)
-
-    def test_broken_application_error(self):
-        self.mock_object(
-            self.rpc._connection,
-            'getresponse',
-            mock.Mock(return_value=FakeResponse(
-                200, '{"error":{"code":28,"message":"text"}}')))
-
-        self.assertRaises(exception.QBRpcException,
-                          self.rpc.call, 'method', {'param': 'value'})
-        self.rpc._connection.connect.assert_called_once_with()
-        self.assertTrue(self.rpc._connection.getresponse.called)
+        req_get_mock.assert_called_once_with(
+            url=self.rpc._url,
+            json=mock.ANY,  # not checking here as of undefined order in dict
+            auth=self.rpc._credentials)
 
     def test_checked_for_application_error(self):
         resultdict = {"result": "Sweet gorilla of Manila"}
         self.assertEqual("Sweet gorilla of Manila",
-                         (self.rpc.
-                          _checked_for_application_error(result=resultdict))
-                         )
+                         (self.rpc._checked_for_application_error(
+                             result=resultdict)))
 
     def test_checked_for_application_error_no_entry(self):
         resultdict = {"result": "Sweet gorilla of Manila",
