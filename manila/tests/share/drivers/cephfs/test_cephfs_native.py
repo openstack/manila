@@ -87,6 +87,7 @@ class CephFSNativeDriverTestCase(test.TestCase):
         self._share = fake_share.fake_share(share_proto='CEPHFS')
 
         self.fake_conf.set_default('driver_handles_share_servers', False)
+        self.fake_conf.set_default('cephfs_auth_id', 'manila')
 
         self.mock_object(cephfs_native, "ceph_volume_client",
                          MockVolumeClientModule)
@@ -188,6 +189,15 @@ class CephFSNativeDriverTestCase(test.TestCase):
                               'access_level': constants.ACCESS_LEVEL_RO,
                               'access_type': 'cephx',
                               'access_to': 'alice'
+                          })
+
+    def test_allow_access_same_cephx_id_as_manila_service(self):
+        self.assertRaises(exception.InvalidInput,
+                          self._driver._allow_access,
+                          self._context, self._share, {
+                              'access_level': constants.ACCESS_LEVEL_RW,
+                              'access_type': 'cephx',
+                              'access_to': 'manila',
                           })
 
     def test_deny_access(self):

@@ -1,0 +1,5 @@
+---
+fixes:
+  - Check the Cephx ID used when granting access to a CephFS share to make
+    sure it's not the same as the one Manila uses to communicate with the
+    Ceph backend.
