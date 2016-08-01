@@ -1,0 +1,3 @@
+---
+features:
+  - Add list, show, and reset-status admin APIs for snapshot instances.

@@ -118,3 +118,7 @@ user documentation.
 2.18
 ----
   Add gateway in share network show API.
+
+2.19
+----
+  Add admin APIs(list/show/detail/reset-status) of snapshot instances.

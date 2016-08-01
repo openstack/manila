@@ -552,6 +552,68 @@ class SharesV2Client(shares_client.SharesClient):
 
 ###############
 
+    def get_snapshot_instance(self, instance_id, version=LATEST_MICROVERSION):
+        resp, body = self.get("snapshot-instances/%s" % instance_id,
+                              version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def list_snapshot_instances(self, detail=False, snapshot_id=None,
+                                version=LATEST_MICROVERSION):
+        """Get list of share snapshot instances."""
+        uri = "snapshot-instances%s" % ('/detail' if detail else '')
+        if snapshot_id is not None:
+            uri += '?snapshot_id=%s' % snapshot_id
+        resp, body = self.get(uri, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def reset_snapshot_instance_status(self, instance_id,
+                                       status=constants.STATUS_AVAILABLE,
+                                       version=LATEST_MICROVERSION):
+        """Reset the status."""
+        uri = 'snapshot-instances/%s/action' % instance_id
+        post_body = {
+            'reset_status': {
+                'status': status
+            }
+        }
+        body = json.dumps(post_body)
+        resp, body = self.post(uri, body, extra_headers=True, version=version)
+        self.expected_success(202, resp.status)
+        return self._parse_resp(body)
+
+    def wait_for_snapshot_instance_status(self, instance_id, expected_status):
+        """Waits for a snapshot instance status to reach a given status."""
+        body = self.get_snapshot_instance(instance_id)
+        instance_status = body['status']
+        start = int(time.time())
+
+        while instance_status != expected_status:
+            time.sleep(self.build_interval)
+            body = self.get_snapshot_instance(instance_id)
+            instance_status = body['status']
+            if instance_status == expected_status:
+                return
+            if 'error' in instance_status:
+                raise share_exceptions.SnapshotInstanceBuildErrorException(
+                    id=instance_id)
+
+            if int(time.time()) - start >= self.build_timeout:
+                message = ('The status of snapshot instance %(id)s failed to '
+                           'reach %(expected_status)s status within the '
+                           'required time (%(time)ss). Current '
+                           'status: %(current_status)s.' %
+                           {
+                               'expected_status': expected_status,
+                               'time': self.build_timeout,
+                               'id': instance_id,
+                               'current_status': instance_status,
+                           })
+                raise exceptions.TimeoutException(message)
+
+###############
+
     def _get_access_action_name(self, version, action):
         if utils.is_microversion_gt(version, "2.6"):
             return action.split('os-')[-1]
