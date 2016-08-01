@@ -498,7 +498,8 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
     @ensure_share_server_not_provided
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Is called to remove a snapshot."""
-        return self._delete_snapshot(context, snapshot)
+        self._delete_snapshot(context, snapshot)
+        self.private_storage.delete(snapshot['snapshot_id'])
 
     def _get_saved_snapshot_name(self, snapshot_instance):
         snapshot_tag = self.private_storage.get(
@@ -521,7 +522,6 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                 _LW("Snapshot with '%(id)s' ID and '%(name)s' NAME is "
                     "absent on backend. Nothing has been deleted."),
                 {'id': snapshot['id'], 'name': snapshot_name})
-        self.private_storage.delete(snapshot['snapshot_id'])
 
     @ensure_share_server_not_provided
     def create_share_from_snapshot(self, context, share, snapshot,
@@ -1252,6 +1252,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
             replica_snapshots_dict[replica_snapshot['id']]['status'] = (
                 constants.STATUS_DELETED)
 
+        self.private_storage.delete(replica_snapshot['snapshot_id'])
         return list(replica_snapshots_dict.values())
 
     @ensure_share_server_not_provided
