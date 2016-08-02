@@ -16,6 +16,7 @@
 from tempest import config
 from tempest.lib import exceptions as lib_exc
 from tempest import test
+import testtools
 
 from manila_tempest_tests.tests.api import base
 
@@ -70,6 +71,8 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
 
     @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @base.skip_if_microversion_lt("2.5")
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_migrate_share_with_snapshot_v2_5(self):
         snap = self.create_snapshot_wait_for_active(self.share['id'])
         self.assertRaises(
