@@ -38,6 +38,7 @@ from oslo_log import log
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import six
+from sqlalchemy import and_
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import true
@@ -1666,7 +1667,7 @@ def _share_access_get_query(context, session, values, read_deleted='no'):
 
 def _share_instance_access_query(context, session, access_id=None,
                                  instance_id=None):
-    filters = {}
+    filters = {'deleted': 'False'}
 
     if access_id is not None:
         filters.update({'access_id': access_id})
@@ -1765,9 +1766,10 @@ def share_access_get_all_for_instance(context, instance_id, session=None):
     return _share_access_get_query(context, session, {}).join(
         models.ShareInstanceAccessMapping,
         models.ShareInstanceAccessMapping.access_id ==
-        models.ShareAccessMapping.id).filter(
-        models.ShareInstanceAccessMapping.share_instance_id ==
-        instance_id).all()
+        models.ShareAccessMapping.id).filter(and_(
+            models.ShareInstanceAccessMapping.share_instance_id ==
+            instance_id, models.ShareInstanceAccessMapping.deleted ==
+            "False")).all()
 
 
 @require_context
