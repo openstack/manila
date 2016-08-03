@@ -213,6 +213,17 @@ class CephFSNativeDriver(driver.ShareDriver,):
 
         ceph_auth_id = access['access_to']
 
+        # We need to check here rather than the API or Manila Client to see
+        # if the ceph_auth_id is the same as the one specified for Manila's
+        # usage. This is due to the fact that the API and the Manila client
+        # cannot read the contents of the Manila configuration file. If it
+        # is the same, we need to error out.
+        if ceph_auth_id == CONF.cephfs_auth_id:
+            error_message = (_('Ceph authentication ID %s must be different '
+                             'than the one the Manila service uses.') %
+                             ceph_auth_id)
+            raise exception.InvalidInput(message=error_message)
+
         auth_result = self.volume_client.authorize(self._share_path(share),
                                                    ceph_auth_id)
 
