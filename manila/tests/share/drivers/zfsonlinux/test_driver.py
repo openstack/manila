@@ -673,7 +673,16 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         self.driver.private_storage.update(
             snapshot['share_instance_id'], {'dataset_name': dataset_name})
 
+        self.assertEqual(
+            snap_tag,
+            self.driver.private_storage.get(
+                snapshot['snapshot_id'], 'snapshot_tag'))
+
         self.driver.delete_snapshot(context, snapshot, share_server=None)
+
+        self.assertIsNone(
+            self.driver.private_storage.get(
+                snapshot['snapshot_id'], 'snapshot_tag'))
 
         self.assertEqual(0, zfs_driver.LOG.warning.call_count)
         self.driver.zfs.assert_called_once_with(
@@ -1924,6 +1933,8 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         old_repl_snapshot_tag = (
             self.driver._get_replication_snapshot_prefix(
                 active_replica) + 'foo')
+        new_repl_snapshot_tag = 'foo_snapshot_tag'
+        dataset_name = 'some_dataset_name'
         self.driver.private_storage.update(
             active_replica['id'],
             {'dataset_name': src_dataset_name,
@@ -1933,20 +1944,17 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         for replica in (replica, second_replica):
             self.driver.private_storage.update(
                 replica['id'],
-                {'dataset_name': 'some_dataset_name',
+                {'dataset_name': dataset_name,
                  'ssh_cmd': 'fake_ssh_cmd'}
             )
         self.driver.private_storage.update(
             snapshot_instances[0]['snapshot_id'],
-            {'snapshot_tag': 'foo_snapshot_tag'}
+            {'snapshot_tag': new_repl_snapshot_tag}
         )
 
         snap_name = 'fake_snap_name'
-        self.mock_object(self.driver, '_delete_snapshot')
         self.mock_object(
-            self.driver, '_get_saved_snapshot_name',
-            mock.Mock(return_value=snap_name))
-        self.mock_object(self.driver, 'execute_with_retry')
+            self.driver, 'zfs', mock.Mock(return_value=['out', 'err']))
         self.mock_object(
             self.driver, 'execute', mock.Mock(side_effect=[
                 ('a', 'b'),
@@ -1957,31 +1965,36 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             self.driver, 'parse_zfs_answer', mock.Mock(side_effect=[
                 ({'NAME': 'foo'}, {'NAME': snap_name}),
                 ({'NAME': 'bar'}, {'NAME': snap_name}),
+                [],
             ]))
         expected = sorted([
             {'id': si['id'], 'status': 'deleted'} for si in snapshot_instances
         ], key=lambda item: item['id'])
 
+        self.assertEqual(
+            new_repl_snapshot_tag,
+            self.driver.private_storage.get(
+                snapshot_instances[0]['snapshot_id'], 'snapshot_tag'))
+
         result = self.driver.delete_replicated_snapshot(
             'fake_context', replica_list, snapshot_instances)
 
-        self.driver._get_saved_snapshot_name.assert_has_calls([
-            mock.call(si) for si in snapshot_instances
-        ])
-        self.driver._delete_snapshot.assert_called_once_with(
-            'fake_context', active_snapshot_instance)
+        self.assertIsNone(
+            self.driver.private_storage.get(
+                snapshot_instances[0]['snapshot_id'], 'snapshot_tag'))
+
         self.driver.execute.assert_has_calls([
             mock.call('ssh', 'fake_ssh_cmd', 'sudo', 'zfs', 'list', '-r', '-t',
-                      'snapshot', snap_name) for i in (0, 1)
-        ])
-        self.driver.execute_with_retry.assert_has_calls([
-            mock.call('ssh', 'fake_ssh_cmd', 'sudo', 'zfs', 'destroy',
-                      '-f', snap_name) for i in (0, 1)
+                      'snapshot', dataset_name + '@' + new_repl_snapshot_tag)
+            for i in (0, 1)
         ])
 
         self.assertIsInstance(result, list)
         self.assertEqual(3, len(result))
         self.assertEqual(expected, sorted(result, key=lambda item: item['id']))
+        self.driver.parse_zfs_answer.assert_has_calls([
+            mock.call('out'),
+        ])
 
     @ddt.data(
         ({'NAME': 'fake'}, zfs_driver.constants.STATUS_ERROR),
