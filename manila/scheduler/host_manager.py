@@ -68,6 +68,7 @@ LOG = log.getLogger(__name__)
 
 class ReadOnlyDict(IterableUserDict):
     """A read-only dict."""
+
     def __init__(self, source=None):
         self.data = {}
         self.update(source)
@@ -147,7 +148,8 @@ class HostState(object):
             service = {}
         self.service = ReadOnlyDict(service)
 
-    def update_from_share_capability(self, capability, service=None):
+    def update_from_share_capability(
+            self, capability, service=None, context=None):
         """Update information about a host from its share_node info.
 
         'capability' is the status info reported by share backend, a typical
@@ -203,9 +205,9 @@ class HostState(object):
             self.update_backend(capability)
 
             # Update pool level info
-            self.update_pools(capability, service)
+            self.update_pools(capability, service, context=context)
 
-    def update_pools(self, capability, service):
+    def update_pools(self, capability, service, context=None):
         """Update storage pools information from backend reported info."""
         if not capability:
             return
@@ -223,7 +225,8 @@ class HostState(object):
                     # Add new pool
                     cur_pool = PoolState(self.host, pool_cap, pool_name)
                     self.pools[pool_name] = cur_pool
-                cur_pool.update_from_share_capability(pool_cap, service)
+                cur_pool.update_from_share_capability(
+                    pool_cap, service, context=context)
 
                 active_pools.add(pool_name)
         elif pools is None:
@@ -250,7 +253,8 @@ class HostState(object):
                     self._append_backend_info(capability)
                     self.pools[pool_name] = single_pool
 
-            single_pool.update_from_share_capability(capability, service)
+            single_pool.update_from_share_capability(
+                capability, service, context=context)
             active_pools.add(pool_name)
 
         # Remove non-active pools from self.pools
@@ -341,6 +345,7 @@ class HostState(object):
 
 
 class PoolState(HostState):
+
     def __init__(self, host, capabilities, pool_name):
         new_host = share_utils.append_host(host, pool_name)
         super(PoolState, self).__init__(new_host, capabilities)
@@ -348,7 +353,20 @@ class PoolState(HostState):
         # No pools in pool
         self.pools = None
 
-    def update_from_share_capability(self, capability, service=None):
+    def _estimate_provisioned_capacity(self, host_name, context=None):
+        """Estimate provisioned capacity from share sizes on backend."""
+        provisioned_capacity = 0
+
+        instances = db.share_instances_get_all_by_host(
+            context, host_name, with_share_data=True)
+
+        for instance in instances:
+            # Size of share instance that's still being created, will be None.
+            provisioned_capacity += instance['size'] or 0
+        return provisioned_capacity
+
+    def update_from_share_capability(
+            self, capability, service=None, context=None):
         """Update information about a pool from its share_node info."""
         self.update_capabilities(capability, service)
         if capability:
@@ -366,10 +384,15 @@ class PoolState(HostState):
             # capacity of all the shares created on a backend, which is
             # greater than or equal to allocated_capacity_gb, which is the
             # apparent total capacity of all the shares created on a backend
-            # in Manila. Using allocated_capacity_gb as the default of
-            # provisioned_capacity_gb if it is not set.
+            # in Manila.
+            # NOTE(nidhimittalhada): If 'provisioned_capacity_gb' is not set,
+            # then calculating 'provisioned_capacity_gb' from share sizes
+            # on host, as per information available in manila database.
             self.provisioned_capacity_gb = capability.get(
-                'provisioned_capacity_gb', self.allocated_capacity_gb)
+                'provisioned_capacity_gb') or (
+                self._estimate_provisioned_capacity(self.host,
+                                                    context=context))
+
             self.max_over_subscription_ratio = capability.get(
                 'max_over_subscription_ratio',
                 CONF.max_over_subscription_ratio)
@@ -526,7 +549,7 @@ class HostManager(object):
 
             # Update capabilities and attributes in host_state
             host_state.update_from_share_capability(
-                capabilities, service=dict(service.items()))
+                capabilities, service=dict(service.items()), context=context)
             active_hosts.add(host)
 
         # remove non-active hosts from host_state_map

@@ -305,9 +305,10 @@ def share_instances_get_all_by_share_server(context, share_server_id):
                                                         share_server_id)
 
 
-def share_instances_get_all_by_host(context, host):
+def share_instances_get_all_by_host(context, host, with_share_data=False):
     """Returns all share instances with given host."""
-    return IMPL.share_instances_get_all_by_host(context, host)
+    return IMPL.share_instances_get_all_by_host(
+        context, host, with_share_data=with_share_data)
 
 
 def share_instances_get_all_by_share_network(context, share_network_id):

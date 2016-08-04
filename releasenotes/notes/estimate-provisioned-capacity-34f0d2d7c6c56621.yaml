@@ -1,0 +1,5 @@
+---
+fixes:
+ - Improve max_over_subscription_ratio enforcement by providing a
+   reasonable estimate of backend provisioned-capacity when drivers
+   cannot supply it.

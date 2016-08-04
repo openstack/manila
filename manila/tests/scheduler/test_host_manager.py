@@ -25,6 +25,7 @@ from oslo_config import cfg
 from oslo_utils import timeutils
 from six import moves
 
+from manila import context
 from manila import db
 from manila import exception
 from manila.scheduler.filters import base_host
@@ -143,7 +144,7 @@ class HostManagerTestCase(test.TestCase):
         self.assertDictMatch(service_states, expected)
 
     def test_get_all_host_states_share(self):
-        context = 'fake_context'
+        fake_context = context.RequestContext('user', 'project')
         topic = CONF.share_topic
         tmp_pools = copy.deepcopy(fakes.SHARE_SERVICES_WITH_POOLS)
         tmp_enable_pools = tmp_pools[:-2]
@@ -155,7 +156,7 @@ class HostManagerTestCase(test.TestCase):
         with mock.patch.dict(self.host_manager.service_states,
                              fakes.SHARE_SERVICE_STATES_WITH_POOLS):
             # Get service
-            self.host_manager.get_all_host_states_share(context)
+            self.host_manager.get_all_host_states_share(fake_context)
 
             # Disabled one service
             tmp_enable_pools.pop()
@@ -164,7 +165,7 @@ class HostManagerTestCase(test.TestCase):
                 mock.Mock(return_value=tmp_enable_pools))
 
             # Get service again
-            self.host_manager.get_all_host_states_share(context)
+            self.host_manager.get_all_host_states_share(fake_context)
             host_state_map = self.host_manager.host_state_map
 
             self.assertEqual(3, len(host_state_map))
@@ -173,10 +174,11 @@ class HostManagerTestCase(test.TestCase):
                 share_node = fakes.SHARE_SERVICES_WITH_POOLS[i]
                 host = share_node['host']
                 self.assertEqual(share_node, host_state_map[host].service)
-            db.service_get_all_by_topic.assert_called_once_with(context, topic)
+            db.service_get_all_by_topic.assert_called_once_with(
+                fake_context, topic)
 
     def test_get_pools_no_pools(self):
-        context = 'fake_context'
+        fake_context = context.RequestContext('user', 'project')
         self.mock_object(utils, 'service_is_up', mock.Mock(return_value=True))
         self.mock_object(
             db, 'service_get_all_by_topic',
@@ -186,7 +188,7 @@ class HostManagerTestCase(test.TestCase):
         with mock.patch.dict(self.host_manager.service_states,
                              fakes.SERVICE_STATES_NO_POOLS):
 
-            res = self.host_manager.get_pools(context)
+            res = self.host_manager.get_pools(context=fake_context)
 
             expected = [
                 {
@@ -272,7 +274,7 @@ class HostManagerTestCase(test.TestCase):
                 self.assertIn(pool, res)
 
     def test_get_pools(self):
-        context = 'fake_context'
+        fake_context = context.RequestContext('user', 'project')
         self.mock_object(utils, 'service_is_up', mock.Mock(return_value=True))
         self.mock_object(
             db, 'service_get_all_by_topic',
@@ -282,7 +284,7 @@ class HostManagerTestCase(test.TestCase):
         with mock.patch.dict(self.host_manager.service_states,
                              fakes.SHARE_SERVICE_STATES_WITH_POOLS):
 
-            res = self.host_manager.get_pools(context)
+            res = self.host_manager.get_pools(fake_context)
 
             expected = [
                 {
@@ -424,7 +426,7 @@ class HostManagerTestCase(test.TestCase):
                 self.assertIn(pool, res)
 
     def test_get_pools_host_down(self):
-        context = 'fake_context'
+        fake_context = context.RequestContext('user', 'project')
         mock_service_is_up = self.mock_object(utils, 'service_is_up')
         self.mock_object(
             db, 'service_get_all_by_topic',
@@ -438,7 +440,7 @@ class HostManagerTestCase(test.TestCase):
             mock_service_is_up.side_effect = [True, True, True]
 
             # Call once to update the host state map
-            self.host_manager.get_pools(context)
+            self.host_manager.get_pools(fake_context)
 
             self.assertEqual(len(fakes.SHARE_SERVICES_NO_POOLS),
                              len(self.host_manager.host_state_map))
@@ -446,7 +448,7 @@ class HostManagerTestCase(test.TestCase):
             # Then mock one host as down
             mock_service_is_up.side_effect = [True, True, False]
 
-            res = self.host_manager.get_pools(context)
+            res = self.host_manager.get_pools(fake_context)
 
             expected = [
                 {
@@ -510,7 +512,7 @@ class HostManagerTestCase(test.TestCase):
                 self.assertIn(pool, res)
 
     def test_get_pools_with_filters(self):
-        context = 'fake_context'
+        fake_context = context.RequestContext('user', 'project')
         self.mock_object(utils, 'service_is_up', mock.Mock(return_value=True))
         self.mock_object(
             db, 'service_get_all_by_topic',
@@ -521,7 +523,8 @@ class HostManagerTestCase(test.TestCase):
                              fakes.SHARE_SERVICE_STATES_WITH_POOLS):
 
             res = self.host_manager.get_pools(
-                context, filters={'host': 'host2', 'pool': 'pool*'})
+                context=fake_context,
+                filters={'host': 'host2', 'pool': 'pool*'})
 
             expected = [
                 {
@@ -582,6 +585,7 @@ class HostStateTestCase(test.TestCase):
     """Test case for HostState class."""
 
     def test_update_from_share_capability_nopool(self):
+        fake_context = context.RequestContext('user', 'project', is_admin=True)
         share_capability = {'total_capacity_gb': 0,
                             'free_capacity_gb': 100,
                             'reserved_percentage': 0,
@@ -589,7 +593,8 @@ class HostStateTestCase(test.TestCase):
         fake_host = host_manager.HostState('host1', share_capability)
         self.assertIsNone(fake_host.free_capacity_gb)
 
-        fake_host.update_from_share_capability(share_capability)
+        fake_host.update_from_share_capability(share_capability,
+                                               context=fake_context)
         # Backend level stats remain uninitialized
         self.assertEqual(0, fake_host.total_capacity_gb)
         self.assertIsNone(fake_host.free_capacity_gb)
@@ -599,18 +604,21 @@ class HostStateTestCase(test.TestCase):
 
         # Test update for existing host state
         share_capability.update(dict(total_capacity_gb=1000))
-        fake_host.update_from_share_capability(share_capability)
+        fake_host.update_from_share_capability(share_capability,
+                                               context=fake_context)
         self.assertEqual(1000, fake_host.pools['_pool0'].total_capacity_gb)
 
         # Test update for existing host state with different backend name
         share_capability.update(dict(share_backend_name='magic'))
-        fake_host.update_from_share_capability(share_capability)
+        fake_host.update_from_share_capability(share_capability,
+                                               context=fake_context)
         self.assertEqual(1000, fake_host.pools['magic'].total_capacity_gb)
         self.assertEqual(100, fake_host.pools['magic'].free_capacity_gb)
         # 'pool0' becomes nonactive pool, and is deleted
         self.assertRaises(KeyError, lambda: fake_host.pools['pool0'])
 
     def test_update_from_share_capability_with_pools(self):
+        fake_context = context.RequestContext('user', 'project', is_admin=True)
         fake_host = host_manager.HostState('host1#pool1')
         self.assertIsNone(fake_host.free_capacity_gb)
         capability = {
@@ -644,7 +652,8 @@ class HostStateTestCase(test.TestCase):
             'timestamp': None,
         }
 
-        fake_host.update_from_share_capability(capability)
+        fake_host.update_from_share_capability(capability,
+                                               context=fake_context)
 
         self.assertEqual('Backend1', fake_host.share_backend_name)
         self.assertEqual('NFS_CIFS', fake_host.storage_protocol)
@@ -680,7 +689,8 @@ class HostStateTestCase(test.TestCase):
         }
 
         # test update HostState Record
-        fake_host.update_from_share_capability(capability)
+        fake_host.update_from_share_capability(capability,
+                                               context=fake_context)
 
         self.assertEqual('1.0', fake_host.driver_version)
 
@@ -697,13 +707,15 @@ class HostStateTestCase(test.TestCase):
         share_capability = {
             'total_capacity_gb': 'unknown',
             'free_capacity_gb': 'unknown',
+            'allocated_capacity_gb': 1,
             'reserved_percentage': 0,
             'timestamp': None
         }
+        fake_context = context.RequestContext('user', 'project', is_admin=True)
         fake_host = host_manager.HostState('host1#_pool0')
         self.assertIsNone(fake_host.free_capacity_gb)
-
-        fake_host.update_from_share_capability(share_capability)
+        fake_host.update_from_share_capability(share_capability,
+                                               context=fake_context)
         # Backend level stats remain uninitialized
         self.assertEqual(fake_host.total_capacity_gb, 0)
         self.assertIsNone(fake_host.free_capacity_gb)
@@ -714,6 +726,7 @@ class HostStateTestCase(test.TestCase):
                          'unknown')
 
     def test_consume_from_share_capability(self):
+        fake_context = context.RequestContext('user', 'project', is_admin=True)
         share_size = 10
         free_capacity = 100
         fake_share = {'id': 'foo', 'size': share_size}
@@ -725,7 +738,8 @@ class HostStateTestCase(test.TestCase):
         }
         fake_host = host_manager.PoolState('host1', share_capability, '_pool0')
 
-        fake_host.update_from_share_capability(share_capability)
+        fake_host.update_from_share_capability(share_capability,
+                                               context=fake_context)
         fake_host.consume_from_share(fake_share)
         self.assertEqual(fake_host.free_capacity_gb,
                          free_capacity - share_size)
@@ -737,11 +751,13 @@ class HostStateTestCase(test.TestCase):
             'reserved_percentage': 0,
             'timestamp': None
         }
+        fake_context = context.RequestContext('user', 'project', is_admin=True)
         fake_host = host_manager.PoolState('host1', share_capability, '_pool0')
         share_size = 1000
         fake_share = {'id': 'foo', 'size': share_size}
 
-        fake_host.update_from_share_capability(share_capability)
+        fake_host.update_from_share_capability(share_capability,
+                                               context=fake_context)
         fake_host.consume_from_share(fake_share)
         self.assertEqual(fake_host.total_capacity_gb, 'unknown')
         self.assertEqual(fake_host.free_capacity_gb, 'unknown')
@@ -766,8 +782,10 @@ class HostStateTestCase(test.TestCase):
             'timestamp': None,
             'reserved_percentage': 0,
         }
+        fake_context = context.RequestContext('user', 'project', is_admin=True)
         fake_host = host_manager.HostState('host1')
-        fake_host.update_from_share_capability(capability)
+        fake_host.update_from_share_capability(capability,
+                                               context=fake_context)
 
         result = fake_host.__repr__()
         expected = "host: 'host1', free_capacity_gb: None, " \
@@ -776,25 +794,137 @@ class HostStateTestCase(test.TestCase):
         self.assertEqual(expected, result)
 
 
+@ddt.ddt
 class PoolStateTestCase(test.TestCase):
     """Test case for HostState class."""
 
-    def test_update_from_share_capability(self):
-        share_capability = {
-            'total_capacity_gb': 1024,
-            'free_capacity_gb': 512,
-            'reserved_percentage': 0,
-            'timestamp': None,
-            'cap1': 'val1',
-            'cap2': 'val2'
-        }
+    @ddt.data(
+        {
+            'share_capability':
+                {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
+                 'reserved_percentage': 0, 'timestamp': None,
+                 'cap1': 'val1', 'cap2': 'val2'},
+            'instances':
+                [
+                    {
+                        'id': 1, 'host': 'host1',
+                        'status': 'available',
+                        'share_id': 11, 'size': 4,
+                        'updated_at': timeutils.utcnow()
+                    },
+                    {
+                        'id': 2, 'host': 'host1',
+                        'status': 'available',
+                        'share_id': 12, 'size': None,
+                        'updated_at': timeutils.utcnow()
+                    },
+                ]
+        },
+        {
+            'share_capability':
+                {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
+                 'reserved_percentage': 0, 'timestamp': None,
+                 'cap1': 'val1', 'cap2': 'val2'},
+            'instances': []
+        },
+        {
+            'share_capability':
+                {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
+                 'allocated_capacity_gb': 256, 'reserved_percentage': 0,
+                 'timestamp': None, 'cap1': 'val1', 'cap2': 'val2'},
+            'instances':
+                [
+                    {
+                        'id': 1, 'host': 'host1',
+                        'status': 'available',
+                        'share_id': 11, 'size': 4,
+                        'updated_at': timeutils.utcnow()
+                    },
+                ]
+        },
+        {
+            'share_capability':
+                {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
+                 'allocated_capacity_gb': 256, 'reserved_percentage': 0,
+                 'timestamp': None, 'cap1': 'val1', 'cap2': 'val2'},
+            'instances': []
+        },
+        {
+            'share_capability':
+                {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
+                 'provisioned_capacity_gb': 256, 'reserved_percentage': 0,
+                 'timestamp': None, 'cap1': 'val1', 'cap2': 'val2'},
+            'instances':
+                [
+                    {
+                        'id': 1, 'host': 'host1',
+                        'status': 'available',
+                        'share_id': 11, 'size': 1,
+                        'updated_at': timeutils.utcnow()
+                    },
+                ]
+        },
+        {
+            'share_capability':
+                {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
+                 'allocated_capacity_gb': 256, 'provisioned_capacity_gb': 256,
+                 'reserved_percentage': 0, 'timestamp': None, 'cap1': 'val1',
+                 'cap2': 'val2'},
+            'instances':
+                [
+                    {
+                        'id': 1, 'host': 'host1',
+                        'status': 'available',
+                        'share_id': 11, 'size': 1,
+                        'updated_at': timeutils.utcnow()
+                    },
+                ]
+        },
+    )
+    @ddt.unpack
+    def test_update_from_share_capability(self, share_capability, instances):
+        fake_context = context.RequestContext('user', 'project', is_admin=True)
+        self.mock_object(
+            db, 'share_instances_get_all_by_host',
+            mock.Mock(return_value=instances))
         fake_pool = host_manager.PoolState('host1', None, 'pool0')
         self.assertIsNone(fake_pool.free_capacity_gb)
 
-        fake_pool.update_from_share_capability(share_capability)
-        self.assertEqual(fake_pool.host, 'host1#pool0')
-        self.assertEqual(fake_pool.pool_name, 'pool0')
-        self.assertEqual(fake_pool.total_capacity_gb, 1024)
-        self.assertEqual(fake_pool.free_capacity_gb, 512)
+        fake_pool.update_from_share_capability(share_capability,
+                                               context=fake_context)
 
-        self.assertDictMatch(fake_pool.capabilities, share_capability)
+        self.assertEqual('host1#pool0', fake_pool.host)
+        self.assertEqual('pool0', fake_pool.pool_name)
+        self.assertEqual(1024, fake_pool.total_capacity_gb)
+        self.assertEqual(512, fake_pool.free_capacity_gb)
+        self.assertDictMatch(share_capability, fake_pool.capabilities)
+
+        if 'provisioned_capacity_gb' not in share_capability:
+            db.share_instances_get_all_by_host.assert_called_once_with(
+                fake_context, fake_pool.host, with_share_data=True)
+
+            if len(instances) > 0:
+                self.assertEqual(4, fake_pool.provisioned_capacity_gb)
+            else:
+                self.assertEqual(0, fake_pool.provisioned_capacity_gb)
+
+            if 'allocated_capacity_gb' in share_capability:
+                self.assertEqual(share_capability['allocated_capacity_gb'],
+                                 fake_pool.allocated_capacity_gb)
+            elif 'allocated_capacity_gb' not in share_capability:
+                self.assertEqual(0, fake_pool.allocated_capacity_gb)
+        elif 'provisioned_capacity_gb' in share_capability and (
+                'allocated_capacity_gb' not in share_capability):
+            self.assertFalse(db.share_instances_get_all_by_host.called)
+
+            self.assertEqual(0, fake_pool.allocated_capacity_gb)
+            self.assertEqual(share_capability['provisioned_capacity_gb'],
+                             fake_pool.provisioned_capacity_gb)
+        elif 'provisioned_capacity_gb' in share_capability and (
+                'allocated_capacity_gb' in share_capability):
+            self.assertFalse(db.share_instances_get_all_by_host.called)
+
+            self.assertEqual(share_capability['allocated_capacity_gb'],
+                             fake_pool.allocated_capacity_gb)
+            self.assertEqual(share_capability['provisioned_capacity_gb'],
+                             fake_pool.provisioned_capacity_gb)
