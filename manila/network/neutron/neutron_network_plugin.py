@@ -131,6 +131,7 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
             'segmentation_id': share_network['segmentation_id'],
             'ip_version': share_network['ip_version'],
             'cidr': share_network['cidr'],
+            'mtu': share_network['mtu'],
         }
         return self.db.network_allocation_create(context, port_dict)
 
@@ -154,7 +155,8 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
 
         provider_nw_dict = {
             'network_type': net_info['provider:network_type'],
-            'segmentation_id': net_info['provider:segmentation_id']
+            'segmentation_id': net_info['provider:segmentation_id'],
+            'mtu':  net_info['mtu'],
         }
         share_network.update(provider_nw_dict)
 

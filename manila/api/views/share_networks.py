@@ -20,7 +20,7 @@ class ViewBuilder(common.ViewBuilder):
     """Model a server API response as a python dictionary."""
 
     _collection_name = 'share_networks'
-    _detail_version_modifiers = ["add_gateway"]
+    _detail_version_modifiers = ["add_gateway", "add_mtu"]
 
     def build_share_network(self, request, share_network):
         """View of a share network."""
@@ -61,3 +61,7 @@ class ViewBuilder(common.ViewBuilder):
     @common.ViewBuilder.versioned_method("2.18")
     def add_gateway(self, context, network_dict, network):
         network_dict['gateway'] = network.get('gateway')
+
+    @common.ViewBuilder.versioned_method("2.20")
+    def add_mtu(self, context, network_dict, network):
+        network_dict['mtu'] = network.get('mtu')

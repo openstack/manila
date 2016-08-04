@@ -92,6 +92,7 @@ class NovaNetworkPlugin(network.NetworkBaseAPI):
                 'ip_version': share_network['ip_version'],
                 'segmentation_id': share_network['segmentation_id'],
                 'network_type': share_network['network_type'],
+                'mtu': share_network['mtu'],
             }
             self.nova_api.fixed_ip_reserve(self.admin_context, ip_address)
             allocations.append(
@@ -155,6 +156,7 @@ class NovaNetworkPlugin(network.NetworkBaseAPI):
             'ip_version': (4 if nova_net['cidr'] else 6),
             'segmentation_id': nova_net['vlan'],
             'network_type': ('vlan' if nova_net['vlan'] else 'flat'),
+            'mtu': nova_net['mtu'],
         }
         share_network.update(data)
         if self.label != 'admin':
