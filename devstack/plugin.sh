@@ -578,7 +578,15 @@ function install_manila {
                 # NOTE(vponomaryov): following installation is valid for Ubuntu 'trusty'.
                 sudo apt-get install -y software-properties-common
                 sudo apt-add-repository --yes ppa:zfs-native/stable
+
+                # Workaround for bug #1609696
+                sudo apt-mark hold grub*
+
                 sudo apt-get -y -q update && sudo apt-get -y -q upgrade
+
+                # Workaround for bug #1609696
+                sudo apt-mark unhold grub*
+
                 sudo apt-get install -y linux-headers-generic
                 sudo apt-get install -y build-essential
                 sudo apt-get install -y ubuntu-zfs
