@@ -124,28 +124,11 @@ class SmartX(object):
 
     def get_smartprovisioning_opts(self, opts):
         thin_provision = opts.get('thin_provisioning')
-        if thin_provision is None:
-            root = self.helper._read_xml()
-            fstype = root.findtext('Filesystem/AllocType')
-            if fstype:
-                fstype = fstype.strip().strip('\n')
-                if fstype == 'Thin':
-                    opts['LUNType'] = constants.ALLOC_TYPE_THIN_FLAG
-                elif fstype == 'Thick':
-                    opts['LUNType'] = constants.ALLOC_TYPE_THICK_FLAG
-                else:
-                    err_msg = (_(
-                        'Huawei config file is wrong. AllocType type must be '
-                        'set to "Thin" or "Thick". AllocType:%(fetchtype)s') %
-                        {'fetchtype': fstype})
-                    raise exception.InvalidShare(reason=err_msg)
-            else:
-                opts['LUNType'] = constants.ALLOC_TYPE_THICK_FLAG
+        if (thin_provision is None or
+                strutils.bool_from_string(thin_provision)):
+            opts['LUNType'] = constants.ALLOC_TYPE_THIN_FLAG
         else:
-            if strutils.bool_from_string(thin_provision):
-                opts['LUNType'] = constants.ALLOC_TYPE_THIN_FLAG
-            else:
-                opts['LUNType'] = constants.ALLOC_TYPE_THICK_FLAG
+            opts['LUNType'] = constants.ALLOC_TYPE_THICK_FLAG
 
         return opts
 

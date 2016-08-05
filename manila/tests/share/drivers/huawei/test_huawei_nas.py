@@ -1406,21 +1406,6 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           self.driver.get_backend_driver)
 
-    def test_create_share_alloctype_fail(self):
-        share_type = self.fake_type_not_extra['test_with_extra']
-        self.mock_object(db,
-                         'share_type_get',
-                         mock.Mock(return_value=share_type))
-        self.recreate_fake_conf_file(alloctype_value='alloctype_fail')
-        self.driver.plugin.configuration.manila_huawei_conf_file = (
-            self.fake_conf_file)
-        self.driver.plugin.helper.login()
-        self.assertRaises(exception.InvalidShare,
-                          self.driver.create_share,
-                          self._context,
-                          self.share_nfs,
-                          self.share_server)
-
     def test_create_share_storagepool_not_exist(self):
         self.driver.plugin.helper.login()
         self.assertRaises(exception.InvalidHost,
@@ -1488,52 +1473,15 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidShare,
                           self.driver.check_for_setup_error)
 
-    def test_create_share_alloctype_thin_success(self):
+    def test_create_share_no_extra(self):
         share_type = self.fake_type_not_extra['test_with_extra']
         self.mock_object(db,
                          'share_type_get',
                          mock.Mock(return_value=share_type))
-        self.driver.plugin.helper.login()
-        self.recreate_fake_conf_file(alloctype_value='Thin')
-        self.driver.plugin.configuration.manila_huawei_conf_file = (
-            self.fake_conf_file)
-        self.driver.plugin.helper.login()
         location = self.driver.create_share(self._context, self.share_nfs,
                                             self.share_server)
         self.assertEqual("100.115.10.68:/share_fake_uuid", location)
         self.assertEqual(constants.ALLOC_TYPE_THIN_FLAG,
-                         self.driver.plugin.helper.alloc_type)
-
-    def test_create_share_alloctype_thick_success(self):
-        share_type = self.fake_type_not_extra['test_with_extra']
-        self.mock_object(db,
-                         'share_type_get',
-                         mock.Mock(return_value=share_type))
-        self.driver.plugin.helper.login()
-        self.recreate_fake_conf_file(alloctype_value='Thick')
-        self.driver.plugin.configuration.manila_huawei_conf_file = (
-            self.fake_conf_file)
-        self.driver.plugin.helper.login()
-        location = self.driver.create_share(self._context, self.share_nfs,
-                                            self.share_server)
-        self.assertEqual("100.115.10.68:/share_fake_uuid", location)
-        self.assertEqual(constants.ALLOC_TYPE_THICK_FLAG,
-                         self.driver.plugin.helper.alloc_type)
-
-    def test_create_share_no_alloctype_no_extra(self):
-        share_type = self.fake_type_not_extra['test_with_extra']
-        self.mock_object(db,
-                         'share_type_get',
-                         mock.Mock(return_value=share_type))
-        self.driver.plugin.helper.login()
-        self.recreate_fake_conf_file(alloctype_value=None)
-        self.driver.plugin.configuration.manila_huawei_conf_file = (
-            self.fake_conf_file)
-        self.driver.plugin.helper.login()
-        location = self.driver.create_share(self._context, self.share_nfs,
-                                            self.share_server)
-        self.assertEqual("100.115.10.68:/share_fake_uuid", location)
-        self.assertEqual(constants.ALLOC_TYPE_THICK_FLAG,
                          self.driver.plugin.helper.alloc_type)
 
     def test_create_share_with_extra_thin(self):
@@ -1754,10 +1702,6 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.mock_object(db,
                          'share_type_get',
                          mock.Mock(return_value=share_type))
-        self.recreate_fake_conf_file(alloctype_value='Thin')
-        self.driver.plugin.configuration.manila_huawei_conf_file = (
-            self.fake_conf_file)
-        self.driver.plugin.helper.login()
         location = self.driver.create_share(self._context, self.share_nfs,
                                             self.share_server)
         self.assertEqual("100.115.10.68:/share_fake_uuid", location)
@@ -3905,7 +3849,6 @@ class HuaweiShareDriverTestCase(test.TestCase):
                               product_flag=True, username_flag=True,
                               pool_node_flag=True, timeout_flag=True,
                               wait_interval_flag=True,
-                              alloctype_value='Thick',
                               sectorsize_value='4',
                               multi_url=False,
                               logical_port='100.115.10.68',
@@ -4020,12 +3963,6 @@ class HuaweiShareDriverTestCase(test.TestCase):
         lun.appendChild(waitinterval)
         lun.appendChild(storagepool)
 
-        if alloctype_value:
-            alloctype = doc.createElement('AllocType')
-            alloctype_text = doc.createTextNode(alloctype_value)
-            alloctype.appendChild(alloctype_text)
-            lun.appendChild(alloctype)
-
         if sectorsize_value:
             sectorsize = doc.createElement('SectorSize')
             sectorsize_text = doc.createTextNode(sectorsize_value)
@@ -4044,7 +3981,6 @@ class HuaweiShareDriverTestCase(test.TestCase):
     def recreate_fake_conf_file(self, product_flag=True, username_flag=True,
                                 pool_node_flag=True, timeout_flag=True,
                                 wait_interval_flag=True,
-                                alloctype_value='Thick',
                                 sectorsize_value='4',
                                 multi_url=False,
                                 logical_port='100.115.10.68',
@@ -4056,7 +3992,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.create_fake_conf_file(self.fake_conf_file, product_flag,
                                    username_flag, pool_node_flag,
                                    timeout_flag, wait_interval_flag,
-                                   alloctype_value, sectorsize_value,
+                                   sectorsize_value,
                                    multi_url, logical_port,
                                    snapshot_support, replication_support)
         self.addCleanup(os.remove, self.fake_conf_file)
