@@ -48,6 +48,8 @@ class FakeConfig(object):
             "zfs_ssh_private_key_path", '/fake/path')
         self.zfs_replica_snapshot_prefix = kwargs.get(
             "zfs_replica_snapshot_prefix", "tmp_snapshot_for_replication_")
+        self.zfs_migration_snapshot_prefix = kwargs.get(
+            "zfs_migration_snapshot_prefix", "tmp_snapshot_for_migration_")
         self.zfs_dataset_creation_options = kwargs.get(
             "zfs_dataset_creation_options", ["fook=foov", "bark=barv"])
         self.network_config_group = kwargs.get(
@@ -1034,12 +1036,18 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
     def test_update_access(self):
         self.mock_object(self.driver, '_get_dataset_name')
         mock_helper = self.mock_object(self.driver, '_get_share_helper')
-        share = {'share_proto': 'NFS'}
+        mock_shell_executor = self.mock_object(
+            self.driver, '_get_shell_executor_by_host')
+        share = {
+            'share_proto': 'NFS',
+            'host': 'foo_host@bar_backend@quuz_pool',
+        }
 
         result = self.driver.update_access(
             'fake_context', share, [1], [2], [3])
 
         self.driver._get_dataset_name.assert_called_once_with(share)
+        mock_shell_executor.assert_called_once_with(share['host'])
         self.assertEqual(
             mock_helper.return_value.update_access.return_value,
             result,

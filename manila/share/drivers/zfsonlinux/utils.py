@@ -50,13 +50,27 @@ def zfs_dataset_synchronized(f):
     return wrapped_func
 
 
+def get_remote_shell_executor(
+        ip, port, conn_timeout, login=None, password=None, privatekey=None,
+        max_size=10):
+    return ganesha_utils.SSHExecutor(
+        ip=ip,
+        port=port,
+        conn_timeout=conn_timeout,
+        login=login,
+        password=password,
+        privatekey=privatekey,
+        max_size=max_size,
+    )
+
+
 class ExecuteMixin(driver.ExecuteMixin):
 
     def init_execute_mixin(self, *args, **kwargs):
         """Init method for mixin called in the end of driver's __init__()."""
         super(ExecuteMixin, self).init_execute_mixin(*args, **kwargs)
         if self.configuration.zfs_use_ssh:
-            self.ssh_executor = ganesha_utils.SSHExecutor(
+            self.ssh_executor = get_remote_shell_executor(
                 ip=self.configuration.zfs_service_ip,
                 port=22,
                 conn_timeout=self.configuration.ssh_conn_timeout,
@@ -70,9 +84,13 @@ class ExecuteMixin(driver.ExecuteMixin):
 
     def execute(self, *cmd, **kwargs):
         """Common interface for running shell commands."""
-        executor = self._execute
-        if self.ssh_executor:
+        if kwargs.get('executor'):
+            executor = kwargs.get('executor')
+        elif self.ssh_executor:
             executor = self.ssh_executor
+        else:
+            executor = self._execute
+        kwargs.pop('executor', None)
         if cmd[0] == 'sudo':
             kwargs['run_as_root'] = True
             cmd = cmd[1:]
@@ -88,11 +106,13 @@ class ExecuteMixin(driver.ExecuteMixin):
             LOG.warning(_LW("Failed to run command, got error: %s"), e)
             raise
 
-    def _get_option(self, resource_name, option_name, pool_level=False):
+    def _get_option(self, resource_name, option_name, pool_level=False,
+                    **kwargs):
         """Returns value of requested zpool or zfs dataset option."""
         app = 'zpool' if pool_level else 'zfs'
 
-        out, err = self.execute('sudo', app, 'get', option_name, resource_name)
+        out, err = self.execute(
+            'sudo', app, 'get', option_name, resource_name, **kwargs)
 
         data = self.parse_zfs_answer(out)
         option = data[0]['VALUE']
@@ -112,13 +132,13 @@ class ExecuteMixin(driver.ExecuteMixin):
             data.append(dict(zip(keys, values)))
         return data
 
-    def get_zpool_option(self, zpool_name, option_name):
+    def get_zpool_option(self, zpool_name, option_name, **kwargs):
         """Returns value of requested zpool option."""
-        return self._get_option(zpool_name, option_name, True)
+        return self._get_option(zpool_name, option_name, True, **kwargs)
 
-    def get_zfs_option(self, dataset_name, option_name):
+    def get_zfs_option(self, dataset_name, option_name, **kwargs):
         """Returns value of requested zfs dataset option."""
-        return self._get_option(dataset_name, option_name, False)
+        return self._get_option(dataset_name, option_name, False, **kwargs)
 
     def zfs(self, *cmd, **kwargs):
         """ZFS shell commands executor."""
@@ -148,20 +168,20 @@ class NASHelperBase(object):
         """Performs checks for required stuff."""
 
     @abc.abstractmethod
-    def create_exports(self, dataset_name):
+    def create_exports(self, dataset_name, executor):
         """Creates share exports."""
 
     @abc.abstractmethod
-    def get_exports(self, dataset_name, service):
+    def get_exports(self, dataset_name, service, executor):
         """Gets/reads share exports."""
 
     @abc.abstractmethod
-    def remove_exports(self, dataset_name):
+    def remove_exports(self, dataset_name, executor):
         """Removes share exports."""
 
     @abc.abstractmethod
     def update_access(self, dataset_name, access_rules, add_rules,
-                      delete_rules):
+                      delete_rules, executor):
         """Update access rules for specified ZFS dataset."""
 
 
@@ -199,13 +219,17 @@ class NFSviaZFSHelper(ExecuteMixin, NASHelperBase):
             LOG.exception(msg, e)
             raise
 
-    def create_exports(self, dataset_name):
-        """Creates NFS share exports for given ZFS dataset."""
-        return self.get_exports(dataset_name)
+        # Init that class instance attribute on start of manila-share service
+        self.is_kernel_version
 
-    def get_exports(self, dataset_name):
+    def create_exports(self, dataset_name, executor=None):
+        """Creates NFS share exports for given ZFS dataset."""
+        return self.get_exports(dataset_name, executor=executor)
+
+    def get_exports(self, dataset_name, executor=None):
         """Gets/reads NFS share export for given ZFS dataset."""
-        mountpoint = self.get_zfs_option(dataset_name, 'mountpoint')
+        mountpoint = self.get_zfs_option(
+            dataset_name, 'mountpoint', executor=executor)
         return [
             {
                 "path": "%(ip)s:%(mp)s" % {"ip": ip, "mp": mountpoint},
@@ -218,12 +242,13 @@ class NFSviaZFSHelper(ExecuteMixin, NASHelperBase):
         ]
 
     @zfs_dataset_synchronized
-    def remove_exports(self, dataset_name):
+    def remove_exports(self, dataset_name, executor=None):
         """Removes NFS share exports for given ZFS dataset."""
-        sharenfs = self.get_zfs_option(dataset_name, 'sharenfs')
+        sharenfs = self.get_zfs_option(
+            dataset_name, 'sharenfs', executor=executor)
         if sharenfs == 'off':
             return
-        self.zfs("set", "sharenfs=off", dataset_name)
+        self.zfs("set", "sharenfs=off", dataset_name, executor=executor)
 
     def _get_parsed_access_to(self, access_to):
         netmask = utils.cidr_to_netmask(access_to)
@@ -233,7 +258,7 @@ class NFSviaZFSHelper(ExecuteMixin, NASHelperBase):
 
     @zfs_dataset_synchronized
     def update_access(self, dataset_name, access_rules, add_rules,
-                      delete_rules, make_all_ro=False):
+                      delete_rules, make_all_ro=False, executor=None):
         """Update access rules for given ZFS dataset exported as NFS share."""
         rw_rules = []
         ro_rules = []
@@ -267,7 +292,8 @@ class NFSviaZFSHelper(ExecuteMixin, NASHelperBase):
                 rules.append("%s:ro,no_root_squash" % rule)
             rules_str = "sharenfs=" + (' '.join(rules) or 'off')
 
-        out, err = self.zfs('list', '-r', dataset_name.split('/')[0])
+        out, err = self.zfs(
+            'list', '-r', dataset_name.split('/')[0], executor=executor)
         data = self.parse_zfs_answer(out)
         for datum in data:
             if datum['NAME'] == dataset_name:
@@ -287,4 +313,7 @@ class NFSviaZFSHelper(ExecuteMixin, NASHelperBase):
                     continue
                 access_to = self._get_parsed_access_to(rule['access_to'])
                 export_location = access_to + ':' + mountpoint
-                self.execute('sudo', 'exportfs', '-u', export_location)
+                self.execute(
+                    'sudo', 'exportfs', '-u', export_location,
+                    executor=executor,
+                )
