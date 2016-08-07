@@ -61,14 +61,18 @@ def _check_volume_presence(f):
     return wrapper
 
 
-def volxml_get(xmlout, path, *default):
-    """Extract a value by a path from XML."""
-    value = xmlout.find(path)
+def volxml_get(xmlout, *paths, **kwargs):
+    """Attempt to extract a value by a set of Xpaths from XML."""
+    for path in paths:
+        value = xmlout.find(path)
+        if value is not None:
+            break
     if value is None:
-        if default:
-            return default[0]
+        if 'default' in kwargs:
+            return kwargs['default']
         raise exception.InvalidShare(
-            _('Xpath %s not found in volume query response XML') % path)
+            _("Volume query response XML has no value for any of "
+              "the following Xpaths: %s") % ", ".join(paths))
     return value.text
 
 
@@ -225,7 +229,7 @@ class GlusterManager(object):
             ) % {'volume': self.volume, 'command': command})
         if list(six.itervalues(ret)) != [0, 0]:
             errdct = {'volume': self.volume, 'command': commandstr,
-                      'opErrstr': volxml_get(xmlout, 'opErrstr', None)}
+                      'opErrstr': volxml_get(xmlout, 'opErrstr', default=None)}
             errdct.update(ret)
             raise exception.InvalidShare(_(
                 'GlusterFS command %(command)s on volume %(volume)s got '
@@ -289,7 +293,10 @@ class GlusterManager(object):
             return self._get_vol_option_via_info(option)
 
         self.xml_response_check(optxml, args[1:], './volGetopts/count')
-        return volxml_get(optxml, './volGetopts/Value')
+        # the Xpath has changed from first to second as of GlusterFS
+        # 3.7.14 (see http://review.gluster.org/14931).
+        return volxml_get(optxml, './volGetopts/Value',
+                          './volGetopts/Opt/Value')
 
     def get_vol_option(self, option, boolean=False):
         """Get the value of an option set on a GlusterFS volume."""

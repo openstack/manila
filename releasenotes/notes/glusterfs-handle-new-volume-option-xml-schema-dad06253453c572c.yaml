@@ -1,0 +1,4 @@
+---
+fixes:
+  - GlusterFS drivers now  handle the volume
+    option XML schema of GlusterFS >= 3.7.14.
