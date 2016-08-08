@@ -363,6 +363,15 @@ HNAS_RESULT_df_tb = """
 18.3 GB (25%)    No                       4 KB,WFS-2,128 DSBs
 """
 
+HNAS_RESULT_df_dedupe_on = """
+  ID          Label  EVS      Size            Used  Snapshots  Deduped  \
+          Avail  Thin  ThinSize  ThinAvail              FS Type
+----  -------------  ---  --------  --------------  ---------  -------  \
+-------------  ----  --------  ---------  -------------------
+1051  FS-ManilaDev1    3.00  7.00 TB  2 TB (75%)       NA     0 B (0%)  \
+18.3 GB (25%)    No                       4 KB,WFS-2,128 DSBs,dedupe enabled
+"""
+
 HNAS_RESULT_df_unmounted = """
   ID          Label  EVS      Size            Used  Snapshots  Deduped  \
           Avail  Thin  ThinSize  ThinAvail              FS Type
@@ -505,11 +514,26 @@ class HNASSSHTestCase(test.TestCase):
         self.mock_object(ssh.HNASSSHBackend, '_execute',
                          mock.Mock(return_value=(HNAS_RESULT_df_tb, "")))
 
-        total, free = self._driver_ssh.get_stats()
+        total, free, dedupe = self._driver_ssh.get_stats()
 
         ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
         self.assertEqual(7168.0, total)
         self.assertEqual(5120.0, free)
+        self.assertFalse(dedupe)
+
+    def test_get_stats_dedupe_on(self):
+        fake_list_command = ['df', '-a', '-f', self.fs_name]
+
+        self.mock_object(
+            ssh.HNASSSHBackend, '_execute',
+            mock.Mock(return_value=(HNAS_RESULT_df_dedupe_on, "")))
+
+        total, free, dedupe = self._driver_ssh.get_stats()
+
+        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
+        self.assertEqual(7168.0, total)
+        self.assertEqual(5120.0, free)
+        self.assertTrue(dedupe)
 
     def test_nfs_export_add(self):
         fake_nfs_command = ['nfs-export', 'add', '-S', 'disable', '-c',

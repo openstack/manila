@@ -547,7 +547,7 @@ class HDSHNASTestCase(test.TestCase):
 
     def test_extend_share(self):
         self.mock_object(ssh.HNASSSHBackend, "get_stats", mock.Mock(
-            return_value=(500, 200)))
+            return_value=(500, 200, True)))
         self.mock_object(ssh.HNASSSHBackend, "modify_quota", mock.Mock())
 
         self._driver.extend_share(share_nfs, 150)
@@ -558,7 +558,7 @@ class HDSHNASTestCase(test.TestCase):
 
     def test_extend_share_with_no_available_space_in_fs(self):
         self.mock_object(ssh.HNASSSHBackend, "get_stats", mock.Mock(
-            return_value=(500, 200)))
+            return_value=(500, 200, False)))
         self.mock_object(ssh.HNASSSHBackend, "modify_quota", mock.Mock())
 
         self.assertRaises(exception.HNASBackendException,
@@ -729,10 +729,11 @@ class HDSHNASTestCase(test.TestCase):
             'reserved_percentage': hds_hnas.CONF.reserved_share_percentage,
             'qos': False,
             'thin_provisioning': True,
+            'dedupe': True,
         }
 
         self.mock_object(ssh.HNASSSHBackend, 'get_stats', mock.Mock(
-            return_value=(1000, 200)))
+            return_value=(1000, 200, True)))
         self.mock_object(hds_hnas.HDSHNASDriver, "_check_fs_mounted",
                          mock.Mock())
         self.mock_object(manila.share.driver.ShareDriver,

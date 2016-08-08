@@ -53,6 +53,7 @@ class HNASSSHBackend(object):
         :returns:
         fs_capacity.size = Total size from filesystem.
         available_space = Free space currently on filesystem.
+        dedupe = True if dedupe is enabled on filesystem.
         """
         command = ['df', '-a', '-f', self.fs_name]
         output, err = self._execute(command)
@@ -60,7 +61,7 @@ class HNASSSHBackend(object):
         line = output.split('\n')
         fs = Filesystem(line[3])
         available_space = fs.size - fs.used
-        return fs.size, available_space
+        return fs.size, available_space, fs.dedupe
 
     def nfs_export_add(self, share_id):
         path = '/shares/' + share_id
@@ -612,6 +613,7 @@ class Filesystem(object):
                 self.used_measure = items[6]
                 if self.used_measure == 'TB':
                     self.used = self.used * units.Ki
+            self.dedupe = 'dedupe enabled' in data
 
 
 class Quota(object):
