@@ -347,7 +347,7 @@ class HDSHNASDriver(driver.ShareDriver):
 
         self._check_fs_mounted()
 
-        total_space, free_space = self.hnas.get_stats()
+        total_space, free_space, dedupe = self.hnas.get_stats()
 
         reserved = self.configuration.safe_get('reserved_share_percentage')
 
@@ -362,6 +362,7 @@ class HDSHNASDriver(driver.ShareDriver):
             'reserved_percentage': reserved,
             'qos': False,
             'thin_provisioning': True,
+            'dedupe': dedupe,
         }
 
         LOG.info(_LI("HNAS Capabilities: %(data)s."),
@@ -555,7 +556,7 @@ class HDSHNASDriver(driver.ShareDriver):
         self._ensure_share(hnas_share_id)
 
         old_size = share['size']
-        total, available_space = self.hnas.get_stats()
+        available_space = self.hnas.get_stats()[1]
 
         LOG.debug("Available space in filesystem: %(space)sG.",
                   {'space': available_space})

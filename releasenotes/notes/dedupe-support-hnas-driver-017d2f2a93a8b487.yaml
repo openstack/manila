@@ -1,0 +1,5 @@
+---
+fixes:
+  - Hitachi HNAS driver now reports ``dedupe`` capability and
+    it can be used in extra-specs to choose a HNAS file system
+    that has dedupe enabled when creating a manila share on HNAS.
