@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed issue with NetApp cDOT share server cleanup when LIF creation fails
+    while setting up a new vServer.

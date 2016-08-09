@@ -320,8 +320,10 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         vserver_client = self._get_api_client(vserver=vserver)
         network_interfaces = vserver_client.get_network_interfaces()
 
-        home_port = network_interfaces[0]['home-port']
-        vlan = home_port.split('-')[1]
+        vlan = None
+        if network_interfaces:
+            home_port = network_interfaces[0]['home-port']
+            vlan = home_port.split('-')[1]
 
         @utils.synchronized('netapp-VLAN-%s' % vlan, external=True)
         def _delete_vserver_with_lock():
