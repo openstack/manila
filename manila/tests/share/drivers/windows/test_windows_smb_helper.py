@@ -106,10 +106,7 @@ class WindowsSMBHelperTestCase(test.TestCase):
     @ddt.data('ip', 'user')
     @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
                        '_grant_share_access')
-    @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
-                       '_grant_share_path_access')
-    def test_allow_access(self, access_type, mock_grant_share_access,
-                          mock_grant_share_path_access):
+    def test_allow_access(self, access_type, mock_grant_share_access):
         mock_args = (mock.sentinel.server, mock.sentinel.share_name,
                      access_type, mock.sentinel.access_level,
                      mock.sentinel.username)
@@ -122,11 +119,6 @@ class WindowsSMBHelperTestCase(test.TestCase):
             self._win_smb_helper.allow_access(*mock_args)
 
             mock_grant_share_access.assert_called_once_with(
-                mock.sentinel.server,
-                mock.sentinel.share_name,
-                mock.sentinel.access_level,
-                mock.sentinel.username)
-            mock_grant_share_path_access.assert_called_once_with(
                 mock.sentinel.server,
                 mock.sentinel.share_name,
                 mock.sentinel.access_level,
@@ -146,24 +138,6 @@ class WindowsSMBHelperTestCase(test.TestCase):
         mock_refresh_acl.assert_called_once_with(mock.sentinel.server,
                                                  mock.sentinel.share_name)
 
-    @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
-                       '_get_volume_path_by_share_name')
-    def test_grant_share_path_access(self, mock_get_vol_path):
-        fake_vol_path = 'fake_vol_path'
-        mock_get_vol_path.return_value = fake_vol_path
-
-        self._win_smb_helper._grant_share_path_access(
-            mock.sentinel.server,
-            mock.sentinel.share_name,
-            constants.ACCESS_LEVEL_RW,
-            mock.sentinel.username)
-
-        expected_ace = '"%s:(OI)(CI)M"' % mock.sentinel.username
-        cmd = ["icacls", '"%s"' % fake_vol_path, "/grant",
-               expected_ace, "/t", "/c"]
-
-        self._remote_exec.assert_called_once_with(mock.sentinel.server, cmd)
-
     def test_refresh_acl(self):
         self._win_smb_helper._refresh_acl(mock.sentinel.server,
                                           mock.sentinel.share_name)
@@ -172,11 +146,8 @@ class WindowsSMBHelperTestCase(test.TestCase):
         self._remote_exec.assert_called_once_with(mock.sentinel.server, cmd)
 
     @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
-                       '_revoke_share_path_access')
-    @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
                        '_revoke_share_access')
-    def test_deny_access(self, mock_revoke_share_path_access,
-                         mock_revoke_share_access):
+    def test_deny_access(self, mock_revoke_share_access):
         mock_access = {'access_to': mock.sentinel.username}
 
         self._win_smb_helper.deny_access(mock.sentinel.server,
@@ -184,10 +155,6 @@ class WindowsSMBHelperTestCase(test.TestCase):
                                          mock_access)
 
         mock_revoke_share_access.assert_called_once_with(
-            mock.sentinel.server,
-            mock.sentinel.share_name,
-            mock.sentinel.username)
-        mock_revoke_share_path_access.assert_called_once_with(
             mock.sentinel.server,
             mock.sentinel.share_name,
             mock.sentinel.username)
@@ -203,21 +170,6 @@ class WindowsSMBHelperTestCase(test.TestCase):
         self._remote_exec.assert_called_once_with(mock.sentinel.server, cmd)
         mock_refresh_acl.assert_called_once_with(mock.sentinel.server,
                                                  mock.sentinel.share_name)
-
-    @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
-                       '_get_volume_path_by_share_name')
-    def test_revoke_share_path_access(self, mock_get_vol_path):
-        fake_vol_path = 'fake_vol_path'
-        mock_get_vol_path.return_value = fake_vol_path
-
-        self._win_smb_helper._revoke_share_path_access(
-            mock.sentinel.server,
-            mock.sentinel.share_name,
-            mock.sentinel.username)
-
-        cmd = ["icacls", '"%s"' % fake_vol_path,
-               "/remove", mock.sentinel.username, "/t", "/c"]
-        self._remote_exec.assert_called_once_with(mock.sentinel.server, cmd)
 
     def test_get_share_name(self):
         result = self._win_smb_helper._get_share_name(self._FAKE_SHARE)

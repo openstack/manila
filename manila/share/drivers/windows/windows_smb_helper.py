@@ -31,10 +31,6 @@ class WindowsSMBHelper(helpers.NASHelperBase):
         constants.ACCESS_LEVEL_RW: "Change",
         constants.ACCESS_LEVEL_RO: "Read"}
 
-    _ICACLS_ACCESS_RIGHT_MAP = {
-        constants.ACCESS_LEVEL_RW: 'M',
-        constants.ACCESS_LEVEL_RO: 'R'}
-
     _NULL_SID = "S-1-0-0"
 
     def __init__(self, remote_execute, configuration):
@@ -86,8 +82,6 @@ class WindowsSMBHelper(helpers.NASHelperBase):
             raise exception.InvalidShareAccess(reason=reason)
 
         self._grant_share_access(server, share_name, access_level, access_to)
-        self._grant_share_path_access(server, share_name,
-                                      access_level, access_to)
 
     def _grant_share_access(self, server, share_name, access_level, access_to):
         access_right = self._SHARE_ACCESS_RIGHT_MAP[access_level]
@@ -97,18 +91,6 @@ class WindowsSMBHelper(helpers.NASHelperBase):
         self._remote_exec(server, cmd)
         self._refresh_acl(server, share_name)
 
-    def _grant_share_path_access(self, server, share_name,
-                                 access_level, access_to):
-        # Set NTFS level permissions
-        access_right = self._ICACLS_ACCESS_RIGHT_MAP[access_level]
-        ace = '"%(access_to)s:(OI)(CI)%(access_right)s"' % dict(
-            access_to=access_to, access_right=access_right)
-        vol_path = self._get_volume_path_by_share_name(server, share_name)
-
-        cmd = ["icacls", self._windows_utils.quote_string(vol_path),
-               "/grant", ace, "/t", "/c"]
-        self._remote_exec(server, cmd)
-
     def _refresh_acl(self, server, share_name):
         cmd = ['Set-SmbPathAcl', '-ShareName', share_name]
         self._remote_exec(server, cmd)
@@ -116,20 +98,12 @@ class WindowsSMBHelper(helpers.NASHelperBase):
     def deny_access(self, server, share_name, access, force=False):
         access_to = access['access_to']
         self._revoke_share_access(server, share_name, access_to)
-        self._revoke_share_path_access(server, share_name, access_to)
 
     def _revoke_share_access(self, server, share_name, access_to):
         cmd = ['Revoke-SmbShareAccess', '-Name', share_name,
                '-AccountName', access_to, '-Force']
         self._remote_exec(server, cmd)
         self._refresh_acl(server, share_name)
-
-    def _revoke_share_path_access(self, server, share_name, access_to):
-        vol_path = self._get_volume_path_by_share_name(server, share_name)
-
-        cmd = ["icacls", self._windows_utils.quote_string(vol_path),
-               "/remove", access_to, "/t", "/c"]
-        self._remote_exec(server, cmd)
 
     def _get_share_name(self, export_location):
         return self._windows_utils.normalize_path(
