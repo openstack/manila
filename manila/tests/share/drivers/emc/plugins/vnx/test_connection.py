@@ -703,7 +703,8 @@ class StorageConnectionTestCase(test.TestCase):
                           network_info, None)
 
     @utils.patch_get_managed_ports(
-        side_effect=exception.EMCVnxXMLAPIError())
+        side_effect=exception.EMCVnxXMLAPIError(
+            err="Get managed ports fail."))
     def test_setup_server_without_valid_physical_device(self):
         hook = utils.RequestSideEffect()
         hook.append(self.vdm.resp_get_but_not_found())
