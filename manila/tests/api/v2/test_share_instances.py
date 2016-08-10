@@ -59,7 +59,7 @@ class ShareInstancesAPITest(test.TestCase):
     def _get_request(self, uri, context=None, version="2.3"):
         if context is None:
             context = self.admin_context
-        req = fakes.HTTPRequest.blank('/shares', version=version)
+        req = fakes.HTTPRequest.blank(uri, version=version)
         req.environ['manila.context'] = context
         return req
 
@@ -81,6 +81,33 @@ class ShareInstancesAPITest(test.TestCase):
 
         self._validate_ids_in_share_instances_list(
             test_instances, actual_result['share_instances'])
+        self.mock_policy_check.assert_called_once_with(
+            req_context, self.resource_name, 'index')
+
+    def test_index_with_limit(self):
+        req = self._get_request('/share_instances')
+        req_context = req.environ['manila.context']
+        share_instances_count = 3
+        test_instances = [
+            db_utils.create_share(size=s + 1).instance
+            for s in range(0, share_instances_count)
+        ]
+        expect_links = [
+            {
+                'href': (
+                    'http://localhost/v1/fake/share_instances?'
+                    'limit=3&marker=%s' % test_instances[2]['id']),
+                'rel': 'next',
+            }
+        ]
+
+        url = 'share_instances?limit=3'
+        req = self._get_request(url)
+        actual_result = self.controller.index(req)
+
+        self._validate_ids_in_share_instances_list(
+            test_instances, actual_result['share_instances'])
+        self.assertEqual(expect_links, actual_result['share_instances_links'])
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'index')
 
