@@ -382,6 +382,81 @@ HNAS_RESULT_unmounted_filesystem = """
 file_system        1055  fake_span          Umount   2        4        5    1
 """
 
+HNAS_RESULT_cifs_list = """
+           Share name: vvol_test
+           Share path: \\\\shares\\vvol_test
+          Share users: 2
+         Share online: Yes
+        Share comment:
+        Cache options: Manual local caching for documents
+            ABE enabled: Yes
+Continuous Availability: No
+       Access snapshots: No
+      Display snapshots: No
+     ShadowCopy enabled: Yes
+   Lower case on create: No
+        Follow symlinks: Yes
+ Follow global symlinks: No
+       Scan for viruses: Yes
+     File system label: file_system
+      File system size: 9.938 GB
+File system free space: 6.763 GB
+     File system state:
+                formatted = Yes
+                  mounted = Yes
+                   failed = No
+         thin provisioned = No
+Disaster recovery setting:
+                Recovered = No
+         Transfer setting = Use file system default
+     Home directories: Off
+  Mount point options:
+"""
+
+HNAS_RESULT_different_fs_cifs_list = """
+           Share name: vvol_test
+           Share path: \\\\shares\\vvol_test
+          Share users: 0
+         Share online: Yes
+        Share comment:
+        Cache options: Manual local caching for documents
+            ABE enabled: Yes
+Continuous Availability: No
+       Access snapshots: No
+      Display snapshots: No
+     ShadowCopy enabled: Yes
+   Lower case on create: No
+        Follow symlinks: Yes
+ Follow global symlinks: No
+       Scan for viruses: Yes
+     File system label: different_filesystem
+      File system size: 9.938 GB
+File system free space: 6.763 GB
+     File system state:
+                formatted = Yes
+                  mounted = Yes
+                   failed = No
+         thin provisioned = No
+Disaster recovery setting:
+                Recovered = No
+         Transfer setting = Use file system default
+     Home directories: Off
+  Mount point options:
+"""
+
+HNAS_RESULT_list_cifs_permissions = """ \
+Displaying the details of the share 'vvol_test' on file system 'filesystem' ...
+Maximum user count is unlimited
+Type Permission          User/Group
+U    Deny  Read          NFSv4 user\\user1@domain.com
+G    Deny  Change & Read Unix user\\1087
+U    Allow Full Control  Unix user\\1088
+U    Allow Read          Unix user\\1089
+?    Deny  Full Control  NFSv4 user\\user2@company.com
+X    Allow Change & Read Unix user\\1090
+
+"""
+
 
 @ddt.ddt
 class HNASSSHTestCase(test.TestCase):
@@ -425,7 +500,7 @@ class HNASSSHTestCase(test.TestCase):
         }
 
     def test_get_stats(self):
-        fake_list_command = ['df', '-a', '-f', 'file_system']
+        fake_list_command = ['df', '-a', '-f', self.fs_name]
 
         self.mock_object(ssh.HNASSSHBackend, '_execute',
                          mock.Mock(return_value=(HNAS_RESULT_df_tb, "")))
@@ -471,32 +546,191 @@ class HNASSSHTestCase(test.TestCase):
                           self._driver_ssh.nfs_export_del, 'vvol_test')
         self.assertTrue(self.mock_log.exception.called)
 
-    def test_get_host_list(self):
+    def test_cifs_share_add(self):
+        fake_cifs_add_command = ['cifs-share', 'add', '-S', 'disable',
+                                 '--enable-abe', '--nodefaultsaa',
+                                 'vvol_test', self.fs_name,
+                                 r'\\shares\\vvol_test']
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
+
+        self._driver_ssh.cifs_share_add('vvol_test')
+
+        self._driver_ssh._execute.assert_called_with(fake_cifs_add_command)
+
+    def test_cifs_share_del(self):
+        fake_cifs_del_command = ['cifs-share', 'del', '--target-label',
+                                 self.fs_name, 'vvol_test']
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
+
+        self._driver_ssh.cifs_share_del('vvol_test')
+
+        self._driver_ssh._execute.assert_called_with(fake_cifs_del_command)
+
+    def test_cifs_share_del_inexistent_share(self):
+        fake_cifs_del_command = ['cifs-share', 'del', '--target-label',
+                                 self.fs_name, 'vvol_test']
+        self.mock_object(ssh.HNASSSHBackend, '_execute',
+                         mock.Mock(side_effect=putils.ProcessExecutionError(
+                             exit_code=1)))
+
+        self._driver_ssh.cifs_share_del('vvol_test')
+
+        self._driver_ssh._execute.assert_called_with(fake_cifs_del_command)
+        self.assertTrue(self.mock_log.warning.called)
+
+    def test_cifs_share_del_exception(self):
+        fake_cifs_del_command = ['cifs-share', 'del', '--target-label',
+                                 self.fs_name, 'vvol_test']
+        self.mock_object(ssh.HNASSSHBackend, '_execute',
+                         mock.Mock(side_effect=putils.ProcessExecutionError))
+
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver_ssh.cifs_share_del, 'vvol_test')
+        self._driver_ssh._execute.assert_called_with(fake_cifs_del_command)
+
+    def test_get_nfs_host_list(self):
         self.mock_object(ssh.HNASSSHBackend, "_get_share_export", mock.Mock(
             return_value=[ssh.Export(HNAS_RESULT_export)]))
 
-        host_list = self._driver_ssh.get_host_list('fake_id')
+        host_list = self._driver_ssh.get_nfs_host_list('fake_id')
 
         self.assertEqual(['127.0.0.2'], host_list)
 
-    def test_update_access_rule_empty_host_list(self):
+    def test_update_nfs_access_rule_empty_host_list(self):
         fake_export_command = ['nfs-export', 'mod', '-c', '127.0.0.1',
                                '/shares/fake_id']
         self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock())
 
-        self._driver_ssh.update_access_rule("fake_id", [])
+        self._driver_ssh.update_nfs_access_rule("fake_id", [])
 
         self._driver_ssh._execute.assert_called_with(fake_export_command)
 
-    def test_update_access_rule(self):
+    def test_update_nfs_access_rule(self):
         fake_export_command = ['nfs-export', 'mod', '-c',
                                u'"127.0.0.1,127.0.0.2"', '/shares/fake_id']
         self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock())
 
-        self._driver_ssh.update_access_rule("fake_id", ['127.0.0.1',
-                                                        '127.0.0.2'])
+        self._driver_ssh.update_nfs_access_rule("fake_id", ['127.0.0.1',
+                                                            '127.0.0.2'])
 
         self._driver_ssh._execute.assert_called_with(fake_export_command)
+
+    def test_cifs_allow_access(self):
+        fake_cifs_allow_command = ['cifs-saa', 'add', '--target-label',
+                                   self.fs_name, 'vvol_test',
+                                   'fake_user', 'ar']
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
+
+        self._driver_ssh.cifs_allow_access('vvol_test', 'fake_user', 'ar')
+
+        self._driver_ssh._execute.assert_called_with(fake_cifs_allow_command)
+
+    def test_cifs_allow_access_already_allowed_user(self):
+        fake_cifs_allow_command = ['cifs-saa', 'add', '--target-label',
+                                   self.fs_name, 'vvol_test',
+                                   'fake_user', 'acr']
+        self.mock_object(ssh.HNASSSHBackend, '_execute',
+                         mock.Mock(side_effect=[putils.ProcessExecutionError(
+                             stderr='already listed as a user')]))
+
+        self._driver_ssh.cifs_allow_access('vvol_test', 'fake_user', 'acr')
+
+        self._driver_ssh._execute.assert_called_with(fake_cifs_allow_command)
+        self.assertTrue(self.mock_log.debug.called)
+
+    def test_cifs_allow_access_exception(self):
+        fake_cifs_allow_command = ['cifs-saa', 'add', '--target-label',
+                                   self.fs_name, 'vvol_test',
+                                   'fake_user', 'acr']
+        self.mock_object(ssh.HNASSSHBackend, '_execute',
+                         mock.Mock(side_effect=[putils.ProcessExecutionError(
+                             stderr='Could not add user/group fake_user to '
+                                    'share \'vvol_test\'')]))
+
+        self.assertRaises(exception.InvalidShareAccess,
+                          self._driver_ssh.cifs_allow_access, 'vvol_test',
+                          'fake_user', 'acr')
+
+        self._driver_ssh._execute.assert_called_with(fake_cifs_allow_command)
+
+    def test_cifs_deny_access(self):
+        fake_cifs_deny_command = ['cifs-saa', 'delete', '--target-label',
+                                  self.fs_name, 'vvol_test', 'fake_user']
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
+
+        self._driver_ssh.cifs_deny_access('vvol_test', 'fake_user')
+
+        self._driver_ssh._execute.assert_called_with(fake_cifs_deny_command)
+
+    def test_cifs_deny_access_already_deleted_user(self):
+        fake_cifs_deny_command = ['cifs-saa', 'delete', '--target-label',
+                                  self.fs_name, 'vvol_test', 'fake_user']
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            side_effect=[putils.ProcessExecutionError(
+                stderr='not listed as a user')]))
+
+        self._driver_ssh.cifs_deny_access('vvol_test', 'fake_user')
+
+        self._driver_ssh._execute.assert_called_with(fake_cifs_deny_command)
+        self.assertTrue(self.mock_log.debug.called)
+
+    def test_cifs_deny_access_backend_exception(self):
+        fake_cifs_deny_command = ['cifs-saa', 'delete', '--target-label',
+                                  self.fs_name, 'vvol_test', 'fake_user']
+        self.mock_object(ssh.HNASSSHBackend, '_execute',
+                         mock.Mock(side_effect=[putils.ProcessExecutionError(
+                             stderr='Unexpected error')]))
+
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver_ssh.cifs_deny_access, 'vvol_test',
+                          'fake_user')
+
+        self._driver_ssh._execute.assert_called_with(fake_cifs_deny_command)
+
+    def test_list_cifs_permission(self):
+        fake_cifs_list_command = ['cifs-saa', 'list', '--target-label',
+                                  self.fs_name, 'vvol_test']
+
+        expected_out = ssh.CIFSPermissions(HNAS_RESULT_list_cifs_permissions)
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            return_value=(HNAS_RESULT_list_cifs_permissions, '')))
+
+        out = self._driver_ssh.list_cifs_permissions('vvol_test')
+
+        for i in range(len(expected_out.permission_list)):
+            self.assertEqual(expected_out.permission_list[i], out[i])
+
+        self._driver_ssh._execute.assert_called_with(fake_cifs_list_command)
+
+    def test_list_cifs_no_permissions_added(self):
+        fake_cifs_list_command = ['cifs-saa', 'list', '--target-label',
+                                  self.fs_name, 'vvol_test']
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            side_effect=[putils.ProcessExecutionError(
+                stderr='No entries for this share')]))
+
+        out = self._driver_ssh.list_cifs_permissions('vvol_test')
+
+        self.assertEqual([], out)
+        self._driver_ssh._execute.assert_called_with(fake_cifs_list_command)
+        self.assertTrue(self.mock_log.debug.called)
+
+    def test_list_cifs_exception(self):
+        fake_cifs_list_command = ['cifs-saa', 'list', '--target-label',
+                                  self.fs_name, 'vvol_test']
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            side_effect=[putils.ProcessExecutionError(
+                stderr='Error.')]))
+
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver_ssh.list_cifs_permissions,
+                          "vvol_test")
+
+        self._driver_ssh._execute.assert_called_with(fake_cifs_list_command)
+        self.assertTrue(self.mock_log.exception.called)
 
     def test_tree_clone_nothing_to_clone(self):
         fake_tree_clone_command = ['tree-clone-job-submit', '-e', '-f',
@@ -722,6 +956,70 @@ class HNASSSHTestCase(test.TestCase):
         self.assertRaises(exception.HNASItemNotFoundException,
                           self._driver_ssh.check_export, "vvol_test")
 
+    def test_check_cifs(self):
+        check_cifs_share_command = ['cifs-share', 'list', 'vvol_test']
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            return_value=[HNAS_RESULT_cifs_list, '']))
+
+        self._driver_ssh.check_cifs('vvol_test')
+
+        self._driver_ssh._execute.assert_called_with(check_cifs_share_command)
+
+    def test_check_cifs_inexistent_share(self):
+        check_cifs_share_command = ['cifs-share', 'list', 'wrong_vvol']
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            side_effect=[putils.ProcessExecutionError(
+                stderr='Export wrong_vvol does not exist on backend '
+                       'anymore.')]))
+
+        self.assertRaises(exception.HNASItemNotFoundException,
+                          self._driver_ssh.check_cifs, 'wrong_vvol')
+        self._driver_ssh._execute.assert_called_with(check_cifs_share_command)
+
+    def test_check_cifs_exception(self):
+        check_cifs_share_command = ['cifs-share', 'list', 'wrong_vvol']
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            side_effect=[putils.ProcessExecutionError(stderr='Error.')]))
+
+        self.assertRaises(putils.ProcessExecutionError,
+                          self._driver_ssh.check_cifs, 'wrong_vvol')
+        self._driver_ssh._execute.assert_called_with(check_cifs_share_command)
+
+    def test_check_cifs_different_fs_exception(self):
+        check_cifs_share_command = ['cifs-share', 'list', 'vvol_test']
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            return_value=[HNAS_RESULT_different_fs_cifs_list, '']))
+
+        self.assertRaises(exception.HNASItemNotFoundException,
+                          self._driver_ssh.check_cifs, 'vvol_test')
+        self._driver_ssh._execute.assert_called_with(check_cifs_share_command)
+
+    def test_is_cifs_in_use(self):
+        check_cifs_share_command = ['cifs-share', 'list', 'vvol_test']
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            return_value=[HNAS_RESULT_cifs_list, '']))
+
+        out = self._driver_ssh.is_cifs_in_use('vvol_test')
+
+        self.assertTrue(out)
+        self._driver_ssh._execute.assert_called_with(check_cifs_share_command)
+
+    def test_is_cifs_without_use(self):
+        check_cifs_share_command = ['cifs-share', 'list', 'vvol_test']
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            return_value=[HNAS_RESULT_different_fs_cifs_list, '']))
+
+        out = self._driver_ssh.is_cifs_in_use('vvol_test')
+
+        self.assertFalse(out)
+        self._driver_ssh._execute.assert_called_with(check_cifs_share_command)
+
     def test_get_share_quota(self):
         self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
             return_value=(HNAS_RESULT_quota, '')))
@@ -795,8 +1093,7 @@ class HNASSSHTestCase(test.TestCase):
 
         self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
             side_effect=putils.ProcessExecutionError(
-                stderr="NFS Export List: Export 'id' does not exist.")
-        ))
+                stderr="NFS Export List: Export 'id' does not exist.")))
 
         self.assertRaises(exception.HNASItemNotFoundException,
                           self._driver_ssh._get_share_export, 'fake_id')

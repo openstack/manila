@@ -61,6 +61,13 @@ hds_hnas_opts = [
     cfg.StrOpt('hds_hnas_driver_helper',
                default='manila.share.drivers.hitachi.ssh.HNASSSHBackend',
                help="Python class to be used for driver helper."),
+    cfg.BoolOpt('hds_hnas_allow_cifs_snapshot_while_mounted',
+                default=False,
+                help="By default, CIFS snapshots are not allowed to be taken "
+                     "when the share has clients connected because consistent "
+                     "point-in-time replica cannot be guaranteed for all "
+                     "files. Enabling this might cause inconsistent snapshots "
+                     "on CIFS shares."),
 ]
 
 CONF = cfg.CONF
@@ -72,6 +79,7 @@ class HDSHNASDriver(driver.ShareDriver):
 
     1.0.0 - Initial Version.
     2.0.0 - Refactoring, bugfixes, implemented Share Shrink and Update Access.
+    3.0.0 - Implemented support for CIFS protocol.
     """
 
     def __init__(self, *args, **kwargs):
@@ -92,6 +100,8 @@ class HDSHNASDriver(driver.ShareDriver):
         hnas_evs_id = self.configuration.safe_get('hds_hnas_evs_id')
         self.hnas_evs_ip = self.configuration.safe_get('hds_hnas_evs_ip')
         self.fs_name = self.configuration.safe_get('hds_hnas_file_system_name')
+        self.cifs_snapshot = self.configuration.safe_get(
+            'hds_hnas_allow_cifs_snapshot_while_mounted')
         ssh_private_key = self.configuration.safe_get(
             'hds_hnas_ssh_private_key')
         cluster_admin_ip0 = self.configuration.safe_get(
@@ -141,14 +151,11 @@ class HDSHNASDriver(driver.ShareDriver):
 
         :param context: The `context.RequestContext` object for the request
         :param share: Share that will have its access rules updated.
-        :param access_rules: All access rules for given share. This list
-            is enough to update the access rules for given share.
+        :param access_rules: All access rules for given share.
         :param add_rules: Empty List or List of access rules which should be
-            added. access_rules already contains these rules. Not used by this
-            driver.
+            added. access_rules already contains these rules.
         :param delete_rules: Empty List or List of access rules which should be
-            removed. access_rules doesn't contain these rules. Not used by
-            this driver.
+            removed. access_rules doesn't contain these rules.
         :param share_server: Data structure with share server information.
             Not used by this driver.
         """
@@ -156,15 +163,32 @@ class HDSHNASDriver(driver.ShareDriver):
         hnas_share_id = self._get_hnas_share_id(share['id'])
 
         try:
-            self._ensure_share(hnas_share_id)
+            self._ensure_share(share, hnas_share_id)
         except exception.HNASItemNotFoundException:
             raise exception.ShareResourceNotFound(share_id=share['id'])
 
+        self._check_protocol(share['id'], share['share_proto'])
+
+        if share['share_proto'].lower() == 'nfs':
+            self._nfs_update_access(share, hnas_share_id, access_rules)
+        else:
+            if not (add_rules or delete_rules):
+                # recovery mode
+                self._clean_cifs_access_list(hnas_share_id)
+                self._cifs_allow_access(share, hnas_share_id, access_rules)
+            else:
+                self._cifs_deny_access(share, hnas_share_id, delete_rules)
+                self._cifs_allow_access(share, hnas_share_id, add_rules)
+
+    def _nfs_update_access(self, share, hnas_share_id, access_rules):
         host_list = []
 
         for rule in access_rules:
             if rule['access_type'].lower() != 'ip':
-                msg = _("Only IP access type currently supported.")
+                msg = _("Only IP access type currently supported for NFS. "
+                        "Share provided %(share)s with rule type "
+                        "%(type)s.") % {'share': share['id'],
+                                        'type': rule['access_type']}
                 raise exception.InvalidShareAccess(reason=msg)
 
             if rule['access_level'] == constants.ACCESS_LEVEL_RW:
@@ -175,13 +199,65 @@ class HDSHNASDriver(driver.ShareDriver):
                 host_list.append(rule['access_to'] + '(' +
                                  rule['access_level'] + ')')
 
-        self.hnas.update_access_rule(hnas_share_id, host_list)
+        self.hnas.update_nfs_access_rule(hnas_share_id, host_list)
 
         if host_list:
             LOG.debug("Share %(share)s has the rules: %(rules)s",
                       {'share': share['id'], 'rules': ', '.join(host_list)})
         else:
             LOG.debug("Share %(share)s has no rules.", {'share': share['id']})
+
+    def _cifs_allow_access(self, share, hnas_share_id, add_rules):
+        for rule in add_rules:
+            if rule['access_type'].lower() != 'user':
+                msg = _("Only USER access type currently supported for CIFS. "
+                        "Share provided %(share)s with rule %(r_id)s type "
+                        "%(type)s allowing permission to %(to)s.") % {
+                    'share': share['id'], 'type': rule['access_type'],
+                    'r_id': rule['id'], 'to': rule['access_to']}
+                raise exception.InvalidShareAccess(reason=msg)
+
+            if rule['access_level'] == constants.ACCESS_LEVEL_RW:
+                # Adding permission acr = Allow Change&Read
+                permission = 'acr'
+            else:
+                # Adding permission ar = Allow Read
+                permission = 'ar'
+
+            formatted_user = rule['access_to'].replace('\\', '\\\\')
+
+            self.hnas.cifs_allow_access(hnas_share_id, formatted_user,
+                                        permission)
+
+            LOG.debug("Added %(rule)s rule for user/group %(user)s to share "
+                      "%(share)s.", {'rule': rule['access_level'],
+                                     'user': rule['access_to'],
+                                     'share': share['id']})
+
+    def _cifs_deny_access(self, share, hnas_share_id, delete_rules):
+        for rule in delete_rules:
+            if rule['access_type'].lower() != 'user':
+                LOG.warning(_LW('Only USER access type is allowed for '
+                                'CIFS shares. Share provided %(share)s with '
+                                'protocol %(proto)s.'),
+                            {'share': share['id'],
+                             'proto': share['share_proto']})
+                continue
+
+            formatted_user = rule['access_to'].replace('\\', '\\\\')
+
+            self.hnas.cifs_deny_access(hnas_share_id, formatted_user)
+
+            LOG.debug("Access denied for user/group %(user)s to share "
+                      "%(share)s.", {'user': rule['access_to'],
+                                     'share': share['id']})
+
+    def _clean_cifs_access_list(self, hnas_share_id):
+        permission_list = self.hnas.list_cifs_permissions(hnas_share_id)
+
+        for permission in permission_list:
+            formatted_user = r'"\{1}{0}\{1}"'.format(permission[0], '"')
+            self.hnas.cifs_deny_access(hnas_share_id, formatted_user)
 
     def create_share(self, context, share, share_server=None):
         """Creates share.
@@ -191,17 +267,16 @@ class HDSHNASDriver(driver.ShareDriver):
         :param share_server: Data structure with share server information.
             Not used by this driver.
         :returns: Returns a path of EVS IP concatenate with the path
-            of share in the filesystem (e.g. ['172.24.44.10:/shares/id']).
+            of share in the filesystem (e.g. ['172.24.44.10:/shares/id'] for
+            NFS and ['\\172.24.44.10\id'] for CIFS).
         """
         LOG.debug("Creating share in HNAS: %(shr)s.",
                   {'shr': share['id']})
 
-        if share['share_proto'].lower() != 'nfs':
-            msg = _("Only NFS protocol is currently supported.")
-            raise exception.ShareBackendException(msg=msg)
+        self._check_protocol(share['id'], share['share_proto'])
 
-        path = self._create_share(share['id'], share['size'])
-        uri = self.hnas_evs_ip + ":" + path
+        uri = self._create_share(share['id'], share['size'],
+                                 share['share_proto'])
 
         LOG.debug("Share created successfully on path: %(uri)s.",
                   {'uri': uri})
@@ -220,7 +295,7 @@ class HDSHNASDriver(driver.ShareDriver):
         LOG.debug("Deleting share in HNAS: %(shr)s.",
                   {'shr': share['id']})
 
-        self._delete_share(hnas_share_id)
+        self._delete_share(hnas_share_id, share['share_proto'])
 
         LOG.debug("Export and share successfully deleted: %(shr)s.",
                   {'shr': share['id']})
@@ -239,7 +314,7 @@ class HDSHNASDriver(driver.ShareDriver):
                   "id %(ss_id)s.", {'ss_sid': snapshot['share_id'],
                                     'ss_id': snapshot['id']})
 
-        self._create_snapshot(hnas_share_id, snapshot['id'])
+        self._create_snapshot(hnas_share_id, snapshot)
         LOG.info(_LI("Snapshot %(id)s successfully created."),
                  {'id': snapshot['id']})
 
@@ -279,9 +354,8 @@ class HDSHNASDriver(driver.ShareDriver):
 
         hnas_src_share_id = self._get_hnas_share_id(snapshot['share_id'])
 
-        path = self._create_share_from_snapshot(share, hnas_src_share_id,
-                                                snapshot)
-        uri = self.hnas_evs_ip + ":" + path
+        uri = self._create_share_from_snapshot(share, hnas_src_share_id,
+                                               snapshot)
 
         LOG.debug("Share %(share)s created successfully on path: %(uri)s.",
                   {'uri': uri,
@@ -296,20 +370,19 @@ class HDSHNASDriver(driver.ShareDriver):
         :param share_server: Data structure with share server information.
             Not used by this driver.
         :returns: Returns a list of EVS IP concatenated with the path
-            of share in the filesystem (e.g. ['172.24.44.10:/shares/id']).
+            of share in the filesystem (e.g. ['172.24.44.10:/shares/id'] for
+            NFS and ['\\172.24.44.10\id'] for CIFS).
         """
-        LOG.debug("Ensuring share in HNAS: %(shr)s.",
-                  {'shr': share['id']})
+        LOG.debug("Ensuring share in HNAS: %(shr)s.", {'shr': share['id']})
 
         hnas_share_id = self._get_hnas_share_id(share['id'])
 
-        path = self._ensure_share(hnas_share_id)
+        export = self._ensure_share(share, hnas_share_id)
 
-        export = self.hnas_evs_ip + ":" + path
         export_list = [export]
 
-        LOG.debug("Share ensured in HNAS: %(shr)s.",
-                  {'shr': share['id']})
+        LOG.debug("Share ensured in HNAS: %(shr)s, protocol %(proto)s.",
+                  {'shr': share['id'], 'proto': share['share_proto']})
         return export_list
 
     def extend_share(self, share, new_size, share_server=None):
@@ -355,8 +428,8 @@ class HDSHNASDriver(driver.ShareDriver):
             'share_backend_name': self.backend_name,
             'driver_handles_share_servers': self.driver_handles_share_servers,
             'vendor_name': 'HDS',
-            'driver_version': '2.0.0',
-            'storage_protocol': 'NFS',
+            'driver_version': '3.0.0',
+            'storage_protocol': 'NFS_CIFS',
             'total_capacity_gb': total_space,
             'free_capacity_gb': free_space,
             'reserved_percentage': reserved,
@@ -375,7 +448,7 @@ class HDSHNASDriver(driver.ShareDriver):
         :param share: Share that will be managed.
         :param driver_options: Empty dict or dict with 'volume_id' option.
         :returns: Returns a dict with size of share managed
-            and its location (your path in file-system).
+            and its export location.
         """
         hnas_share_id = self._get_hnas_share_id(share['id'])
 
@@ -385,20 +458,36 @@ class HDSHNASDriver(driver.ShareDriver):
             msg = _("Share ID %s already exists, cannot manage.") % share['id']
             raise exception.HNASBackendException(msg=msg)
 
-        LOG.info(_LI("Share %(shr_path)s will be managed with ID %(shr_id)s."),
-                 {'shr_path': share['export_locations'][0]['path'],
-                  'shr_id': share['id']})
+        self._check_protocol(share['id'], share['share_proto'])
 
-        old_path_info = share['export_locations'][0]['path'].split(':')
-        old_path = old_path_info[1].split('/')
+        if share['share_proto'].lower() == 'nfs':
+            # 10.0.0.1:/shares/example
+            LOG.info(_LI("Share %(shr_path)s will be managed with ID "
+                         "%(shr_id)s."),
+                     {'shr_path': share['export_locations'][0]['path'],
+                      'shr_id': share['id']})
 
-        if len(old_path) == 3:
-            evs_ip = old_path_info[0]
-            hnas_share_id = old_path[2]
-        else:
-            msg = _("Incorrect path. It should have the following format: "
-                    "IP:/shares/share_id.")
-            raise exception.ShareBackendException(msg=msg)
+            old_path_info = share['export_locations'][0]['path'].split(':')
+            old_path = old_path_info[1].split('/')
+
+            if len(old_path) == 3:
+                evs_ip = old_path_info[0]
+                hnas_share_id = old_path[2]
+            else:
+                msg = _("Incorrect path. It should have the following format: "
+                        "IP:/shares/share_id.")
+                raise exception.ShareBackendException(msg=msg)
+        else:  # then its CIFS
+            # \\10.0.0.1\example
+            old_path = share['export_locations'][0]['path'].split('\\')
+
+            if len(old_path) == 4:
+                evs_ip = old_path[2]
+                hnas_share_id = old_path[3]
+            else:
+                msg = _("Incorrect path. It should have the following format: "
+                        "\\\\IP\\share_id.")
+                raise exception.ShareBackendException(msg=msg)
 
         if evs_ip != self.hnas_evs_ip:
             msg = _("The EVS IP %(evs)s is not "
@@ -410,7 +499,7 @@ class HDSHNASDriver(driver.ShareDriver):
                     "not configured.") % {'shr': share['host']}
             raise exception.ShareBackendException(msg=msg)
 
-        output = self._manage_existing(share['id'], hnas_share_id)
+        output = self._manage_existing(share, hnas_share_id)
         self.private_storage.update(
             share['id'], {'hnas_id': hnas_share_id})
 
@@ -472,17 +561,17 @@ class HDSHNASDriver(driver.ShareDriver):
 
         return hnas_id
 
-    def _create_share(self, share_id, share_size):
+    def _create_share(self, share_id, share_size, share_proto):
         """Creates share.
 
         Creates a virtual-volume, adds a quota limit and exports it.
         :param share_id: manila's database ID of share that will be created.
         :param share_size: Size limit of share.
-        :returns: Returns a path of /shares/share_id if the export was
-            created successfully.
+        :param share_proto: Protocol of share that will be created
+            (NFS or CIFS)
+        :returns: Returns a path IP:/shares/share_id for NFS or \\IP\share_id
+            for CIFS if the export was created successfully.
         """
-        path = os.path.join('/shares', share_id)
-
         self._check_fs_mounted()
 
         self.hnas.vvol_create(share_id)
@@ -493,11 +582,19 @@ class HDSHNASDriver(driver.ShareDriver):
                   {'shr': share_id, 'size': share_size})
 
         try:
-            # Create NFS export
-            self.hnas.nfs_export_add(share_id)
-            LOG.debug("NFS Export created to %(shr)s.",
-                      {'shr': share_id})
-            return path
+            if share_proto.lower() == 'nfs':
+                # Create NFS export
+                self.hnas.nfs_export_add(share_id)
+                LOG.debug("NFS Export created to %(shr)s.",
+                          {'shr': share_id})
+                uri = self.hnas_evs_ip + ":/shares/" + share_id
+            else:
+                # Create CIFS share with vvol path
+                self.hnas.cifs_share_add(share_id)
+                LOG.debug("CIFS share created to %(shr)s.",
+                          {'shr': share_id})
+                uri = r'\\%s\%s' % (self.hnas_evs_ip, share_id)
+            return uri
         except exception.HNASBackendException as e:
             with excutils.save_and_reraise_exception():
                 self.hnas.vvol_delete(share_id)
@@ -510,20 +607,29 @@ class HDSHNASDriver(driver.ShareDriver):
             msg = _("Filesystem %s is not mounted.") % self.fs_name
             raise exception.HNASBackendException(msg=msg)
 
-    def _ensure_share(self, hnas_share_id):
+    def _ensure_share(self, share, hnas_share_id):
         """Ensure that share is exported.
 
+        :param share: Share that will be checked.
         :param hnas_share_id: HNAS ID of share that will be checked.
-        :returns: Returns a path of /shares/share_id if the export is ok.
+        :returns: Returns a path IP:/shares/share_id for NFS or \\IP\share_id
+            for CIFS if the export is ok.
         """
+        self._check_protocol(share['id'], share['share_proto'])
+
         path = os.path.join('/shares', hnas_share_id)
 
         self._check_fs_mounted()
 
         self.hnas.check_vvol(hnas_share_id)
         self.hnas.check_quota(hnas_share_id)
-        self.hnas.check_export(hnas_share_id)
-        return path
+        if share['share_proto'].lower() == 'nfs':
+            self.hnas.check_export(hnas_share_id)
+            export = self.hnas_evs_ip + ":" + path
+        else:
+            self.hnas.check_cifs(hnas_share_id)
+            export = r'\\%s\%s' % (self.hnas_evs_ip, hnas_share_id)
+        return export
 
     def _shrink_share(self, hnas_share_id, share, new_size):
         """Shrinks a share to new size.
@@ -532,7 +638,7 @@ class HDSHNASDriver(driver.ShareDriver):
         :param share: model of share that will be shrunk.
         :param new_size: New size of share after shrink operation.
         """
-        self._ensure_share(hnas_share_id)
+        self._ensure_share(share, hnas_share_id)
 
         usage = self.hnas.get_share_usage(hnas_share_id)
 
@@ -552,7 +658,7 @@ class HDSHNASDriver(driver.ShareDriver):
         :param share: model of share that will be extended.
         :param new_size: New size of share after extend operation.
         """
-        self._ensure_share(hnas_share_id)
+        self._ensure_share(share, hnas_share_id)
 
         old_size = share['size']
         total, available_space = self.hnas.get_stats()
@@ -567,56 +673,76 @@ class HDSHNASDriver(driver.ShareDriver):
                    % share['id'])
             raise exception.HNASBackendException(msg=msg)
 
-    def _delete_share(self, hnas_share_id):
+    def _delete_share(self, hnas_share_id, share_proto):
         """Deletes share.
 
         It uses tree-delete-job-submit to format and delete virtual-volumes.
         Quota is deleted with virtual-volume.
         :param hnas_share_id: HNAS ID of share that will be deleted.
+        :param share_proto: Protocol of share that will be deleted.
         """
         self._check_fs_mounted()
 
-        self.hnas.nfs_export_del(hnas_share_id)
+        if share_proto.lower() == 'nfs':
+            self.hnas.nfs_export_del(hnas_share_id)
+        elif share_proto.lower() == 'cifs':
+            self.hnas.cifs_share_del(hnas_share_id)
         self.hnas.vvol_delete(hnas_share_id)
 
-    def _manage_existing(self, share_id, hnas_share_id):
+    def _manage_existing(self, share, hnas_share_id):
         """Manages a share that exists on backend.
 
-        :param share_id: manila's database ID of share that will be managed.
+        :param share: share that will be managed.
         :param hnas_share_id: HNAS ID of share that will be managed.
         :returns: Returns a dict with size of share managed
-            and its location (your path in file-system).
+            and its export location.
         """
-        self._ensure_share(hnas_share_id)
+        self._ensure_share(share, hnas_share_id)
 
         share_size = self.hnas.get_share_quota(hnas_share_id)
         if share_size is None:
             msg = (_("The share %s trying to be managed does not have a "
-                     "quota limit, please set it before manage.") % share_id)
+                     "quota limit, please set it before manage.")
+                   % share['id'])
             raise exception.ManageInvalidShare(reason=msg)
 
-        path = self.hnas_evs_ip + os.path.join(':/shares', hnas_share_id)
+        if share['share_proto'].lower() == 'nfs':
+            path = self.hnas_evs_ip + os.path.join(':/shares', hnas_share_id)
+        else:
+            path = r'\\%s\%s' % (self.hnas_evs_ip, hnas_share_id)
 
         return {'size': share_size, 'export_locations': [path]}
 
-    def _create_snapshot(self, hnas_share_id, snapshot_id):
+    def _create_snapshot(self, hnas_share_id, snapshot):
         """Creates a snapshot of share.
 
         It copies the directory and all files to a new directory inside
         /snapshots/share_id/.
         :param hnas_share_id: HNAS ID of share for snapshot.
-        :param snapshot_id: ID of new snapshot.
+        :param snapshot: Snapshot that will be created.
         """
-        self._ensure_share(hnas_share_id)
+        self._ensure_share(snapshot['share'], hnas_share_id)
+        saved_list = []
 
-        saved_list = self.hnas.get_host_list(hnas_share_id)
-        new_list = []
-        for access in saved_list:
-            new_list.append(access.replace('(rw)', '(ro)'))
-        self.hnas.update_access_rule(hnas_share_id, new_list)
+        self._check_protocol(snapshot['share_id'],
+                             snapshot['share']['share_proto'])
+
+        if snapshot['share']['share_proto'].lower() == 'nfs':
+            saved_list = self.hnas.get_nfs_host_list(hnas_share_id)
+            new_list = []
+            for access in saved_list:
+                new_list.append(access.replace('(rw)', '(ro)'))
+            self.hnas.update_nfs_access_rule(hnas_share_id, new_list)
+        else:  # CIFS
+            if (self.hnas.is_cifs_in_use(hnas_share_id) and
+                    not self.cifs_snapshot):
+                msg = _("CIFS snapshot when share is mounted is disabled. "
+                        "Set hds_hnas_allow_cifs_snapshot_while_mounted to "
+                        "True or unmount the share to take a snapshot.")
+                raise exception.ShareBackendException(msg=msg)
 
         src_path = os.path.join('/shares', hnas_share_id)
-        dest_path = os.path.join('/snapshots', hnas_share_id, snapshot_id)
+        dest_path = os.path.join('/snapshots', hnas_share_id, snapshot['id'])
         try:
             self.hnas.tree_clone(src_path, dest_path)
         except exception.HNASNothingToCloneException:
@@ -624,7 +750,8 @@ class HDSHNASDriver(driver.ShareDriver):
                             "directory."))
             self.hnas.create_directory(dest_path)
         finally:
-            self.hnas.update_access_rule(hnas_share_id, saved_list)
+            if snapshot['share']['share_proto'].lower() == 'nfs':
+                self.hnas.update_nfs_access_rule(hnas_share_id, saved_list)
 
     def _delete_snapshot(self, hnas_share_id, snapshot_id):
         """Deletes snapshot.
@@ -670,5 +797,21 @@ class HDSHNASDriver(driver.ShareDriver):
         except exception.HNASNothingToCloneException:
             LOG.warning(_LW("Source directory is empty, exporting "
                             "directory."))
-        self.hnas.nfs_export_add(share['id'])
-        return dest_path
+
+        self._check_protocol(share['id'], share['share_proto'])
+
+        if share['share_proto'].lower() == 'nfs':
+            self.hnas.nfs_export_add(share['id'])
+            uri = self.hnas_evs_ip + ":" + dest_path
+        else:
+            self.hnas.cifs_share_add(share['id'])
+            uri = r'\\%s\%s' % (self.hnas_evs_ip, share['id'])
+        return uri
+
+    def _check_protocol(self, share_id, protocol):
+        if protocol.lower() not in ('nfs', 'cifs'):
+            msg = _("Only NFS or CIFS protocol are currently supported. "
+                    "Share provided %(share)s with protocol "
+                    "%(proto)s.") % {'share': share_id,
+                                     'proto': protocol}
+            raise exception.ShareBackendException(msg=msg)
