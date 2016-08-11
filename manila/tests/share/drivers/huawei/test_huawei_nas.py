@@ -2815,9 +2815,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.mock_object(db,
                          'share_type_get',
                          mock.Mock(return_value=share_type))
-        self.driver.plugin.configuration.manila_huawei_conf_file = (
-            self.fake_conf_file)
-        self.driver.plugin.helper.login()
+
         self.assertRaises(exception.InvalidInput,
                           self.driver.manage_existing,
                           share,
@@ -2831,9 +2829,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.mock_object(db,
                          'share_type_get',
                          mock.Mock(return_value=share_type))
-        self.driver.plugin.configuration.manila_huawei_conf_file = (
-            self.fake_conf_file)
-        self.driver.plugin.helper.login()
+
         self.assertRaises(exception.InvalidHost,
                           self.driver.manage_existing,
                           share,
@@ -3074,7 +3070,6 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.recreate_fake_conf_file(multi_url=True)
         self.driver.plugin.configuration.manila_huawei_conf_file = (
             self.fake_conf_file)
-        self.driver.plugin.helper.login()
         self.driver.plugin.helper.test_multi_url_flag = 2
         location = self.driver.create_share(self._context, self.share_nfs,
                                             self.share_server)
@@ -3084,7 +3079,6 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.recreate_fake_conf_file(multi_url=True)
         self.driver.plugin.configuration.manila_huawei_conf_file = (
             self.fake_conf_file)
-        self.driver.plugin.helper.login()
         self.driver.plugin.helper.test_multi_url_flag = 1
         self.assertRaises(exception.InvalidShare,
                           self.driver.create_share,
@@ -3716,7 +3710,6 @@ class HuaweiShareDriverTestCase(test.TestCase):
         backend_details = self.driver.setup_server(self.fake_network_info)
         fake_share_server = {'backend_details': backend_details}
 
-        self.driver.plugin.helper.login()
         location = self.driver.ensure_share(self._context,
                                             share,
                                             fake_share_server)
