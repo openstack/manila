@@ -18,8 +18,6 @@ import mock
 
 import os
 
-from manila.common import constants as const
-from manila import exception
 from manila.share import configuration
 from manila.share.drivers import generic
 from manila.share.drivers.windows import service_instance
@@ -281,41 +279,3 @@ class WindowsSMBDriverTestCase(test.TestCase):
             mock.sentinel.server,
             mock.sentinel.mount_path)
         self.assertEqual(expected_result, is_mounted)
-
-    @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
-    def test_allow_access(self, access_level):
-        access = {
-            'access_type': 'ip',
-            'access_to': 'fake_dest',
-            'access_level': access_level,
-        }
-        self._drv.allow_access(
-            mock.sentinel.context, self._share, access,
-            share_server=self._share_server)
-
-        self._smb_helper.allow_access.assert_called_once_with(
-            self._share_server['backend_details'],
-            self._share['name'],
-            access['access_type'], access['access_level'],
-            access['access_to'])
-
-    def test_allow_access_unsupported(self):
-        access = {
-            'access_type': 'ip',
-            'access_to': 'fake_dest',
-            'access_level': 'fakefoobar',
-        }
-        self.assertRaises(
-            exception.InvalidShareAccessLevel,
-            self._drv.allow_access,
-            mock.sentinel.context, self._share, access,
-            share_server=self._share_server)
-
-    def test_deny_access(self):
-        access = 'fake_access'
-        self._drv.deny_access(
-            mock.sentinel.context, self._share, access,
-            share_server=self._share_server)
-        self._smb_helper.deny_access.assert_called_once_with(
-            self._share_server['backend_details'],
-            self._share['name'], access)

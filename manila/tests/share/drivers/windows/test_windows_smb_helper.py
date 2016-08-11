@@ -41,6 +41,12 @@ class WindowsSMBHelperTestCase(test.TestCase):
     _FAKE_SHARE_LOCATION = os.path.join(
         configuration.Configuration(None).share_mount_path,
         _FAKE_SHARE_NAME)
+    _FAKE_ACCOUNT_NAME = 'FakeDomain\\FakeUser'
+    _FAKE_RW_ACC_RULE = {
+        'access_to': _FAKE_ACCOUNT_NAME,
+        'access_level': constants.ACCESS_LEVEL_RW,
+        'access_type': 'user',
+    }
 
     def setUp(self):
         self._remote_exec = mock.Mock()
@@ -103,26 +109,62 @@ class WindowsSMBHelperTestCase(test.TestCase):
 
         self.assertEqual(mock_get_vol_path.return_value, volume_path)
 
-    @ddt.data('ip', 'user')
+    @ddt.data({'raw_out': '', 'expected': []},
+              {'raw_out': '{"key": "val"}',
+               'expected': [{"key": "val"}]},
+              {'raw_out': '[{"key": "val"}, {"key2": "val2"}]',
+               'expected': [{"key": "val"}, {"key2": "val2"}]})
+    @ddt.unpack
+    def test_get_acls_helper(self, raw_out, expected):
+        self._remote_exec.return_value = (raw_out, mock.sentinel.err)
+
+        rules = self._win_smb_helper._get_acls(mock.sentinel.server,
+                                               self._FAKE_SHARE_NAME)
+
+        self.assertEqual(expected, rules)
+        expected_cmd = (
+            'Get-SmbShareAccess -Name %s | '
+            'Select-Object @("Name", "AccountName", '
+            '"AccessControlType", "AccessRight") | '
+            'ConvertTo-JSON -Compress') % self._FAKE_SHARE_NAME
+        self._remote_exec.assert_called_once_with(mock.sentinel.server,
+                                                  expected_cmd)
+
     @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
-                       '_grant_share_access')
-    def test_allow_access(self, access_type, mock_grant_share_access):
-        mock_args = (mock.sentinel.server, mock.sentinel.share_name,
-                     access_type, mock.sentinel.access_level,
-                     mock.sentinel.username)
+                       '_get_acls')
+    def test_get_access_rules(self, mock_get_acls):
+        helper = self._win_smb_helper
+        valid_acl = {
+            'AccountName': self._FAKE_ACCOUNT_NAME,
+            'AccessRight': helper._WIN_ACCESS_RIGHT_FULL,
+            'AccessControlType': helper._WIN_ACL_ALLOW,
+        }
 
-        if access_type != 'user':
-            self.assertRaises(exception.InvalidShareAccess,
-                              self._win_smb_helper.allow_access,
-                              *mock_args)
-        else:
-            self._win_smb_helper.allow_access(*mock_args)
+        valid_acls = [valid_acl,
+                      dict(valid_acl,
+                           AccessRight=helper._WIN_ACCESS_RIGHT_CHANGE),
+                      dict(valid_acl,
+                           AccessRight=helper._WIN_ACCESS_RIGHT_READ)]
+        # Those are rules that were not added by us and are expected to
+        # be ignored. When encountering such a rule, a warning message
+        # will be logged.
+        ignored_acls = [
+            dict(valid_acl, AccessRight=helper._WIN_ACCESS_RIGHT_CUSTOM),
+            dict(valid_acl, AccessControlType=helper._WIN_ACL_DENY)]
 
-            mock_grant_share_access.assert_called_once_with(
-                mock.sentinel.server,
-                mock.sentinel.share_name,
-                mock.sentinel.access_level,
-                mock.sentinel.username)
+        mock_get_acls.return_value = valid_acls + ignored_acls
+        # There won't be multiple access rules for the same account,
+        # but we'll ignore this fact for the sake of this test.
+        expected_rules = [self._FAKE_RW_ACC_RULE, self._FAKE_RW_ACC_RULE,
+                          dict(self._FAKE_RW_ACC_RULE,
+                               access_level=constants.ACCESS_LEVEL_RO)]
+
+        rules = helper.get_access_rules(mock.sentinel.server,
+                                        mock.sentinel.share_name)
+        self.assertEqual(expected_rules, rules)
+
+        mock_get_acls.assert_called_once_with(mock.sentinel.server,
+                                              mock.sentinel.share_name)
 
     @mock.patch.object(windows_smb_helper.WindowsSMBHelper, '_refresh_acl')
     def test_grant_share_access(self, mock_refresh_acl):
@@ -133,7 +175,7 @@ class WindowsSMBHelperTestCase(test.TestCase):
 
         cmd = ["Grant-SmbShareAccess", "-Name", mock.sentinel.share_name,
                "-AccessRight", "Change",
-               "-AccountName", mock.sentinel.username, "-Force"]
+               "-AccountName", "'%s'" % mock.sentinel.username, "-Force"]
         self._remote_exec.assert_called_once_with(mock.sentinel.server, cmd)
         mock_refresh_acl.assert_called_once_with(mock.sentinel.server,
                                                  mock.sentinel.share_name)
@@ -145,20 +187,6 @@ class WindowsSMBHelperTestCase(test.TestCase):
         cmd = ['Set-SmbPathAcl', '-ShareName', mock.sentinel.share_name]
         self._remote_exec.assert_called_once_with(mock.sentinel.server, cmd)
 
-    @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
-                       '_revoke_share_access')
-    def test_deny_access(self, mock_revoke_share_access):
-        mock_access = {'access_to': mock.sentinel.username}
-
-        self._win_smb_helper.deny_access(mock.sentinel.server,
-                                         mock.sentinel.share_name,
-                                         mock_access)
-
-        mock_revoke_share_access.assert_called_once_with(
-            mock.sentinel.server,
-            mock.sentinel.share_name,
-            mock.sentinel.username)
-
     @mock.patch.object(windows_smb_helper.WindowsSMBHelper, '_refresh_acl')
     def test_revoke_share_access(self, mock_refresh_acl):
         self._win_smb_helper._revoke_share_access(mock.sentinel.server,
@@ -166,10 +194,137 @@ class WindowsSMBHelperTestCase(test.TestCase):
                                                   mock.sentinel.username)
 
         cmd = ["Revoke-SmbShareAccess", "-Name", mock.sentinel.share_name,
-               "-AccountName", mock.sentinel.username, "-Force"]
+               "-AccountName", '"%s"' % mock.sentinel.username, "-Force"]
         self._remote_exec.assert_called_once_with(mock.sentinel.server, cmd)
         mock_refresh_acl.assert_called_once_with(mock.sentinel.server,
                                                  mock.sentinel.share_name)
+
+    def test_update_access_invalid_type(self):
+        invalid_access_rule = dict(self._FAKE_RW_ACC_RULE,
+                                   access_type='ip')
+        self.assertRaises(
+            exception.InvalidShareAccess,
+            self._win_smb_helper.update_access,
+            mock.sentinel.server, mock.sentinel.share_name,
+            [invalid_access_rule], [], [])
+
+    def test_update_access_invalid_level(self):
+        invalid_access_rule = dict(self._FAKE_RW_ACC_RULE,
+                                   access_level='fake_level')
+        self.assertRaises(
+            exception.InvalidShareAccessLevel,
+            self._win_smb_helper.update_access,
+            mock.sentinel.server, mock.sentinel.share_name,
+            [], [invalid_access_rule], [])
+
+    @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
+                       '_revoke_share_access')
+    def test_update_access_deleting_invalid_rule(self, mock_revoke):
+        # We want to make sure that we allow deleting invalid rules.
+        invalid_access_rule = dict(self._FAKE_RW_ACC_RULE,
+                                   access_level='fake_level')
+        delete_rules = [invalid_access_rule, self._FAKE_RW_ACC_RULE]
+
+        self._win_smb_helper.update_access(
+            mock.sentinel.server, mock.sentinel.share_name,
+            [], [], delete_rules)
+
+        mock_revoke.assert_called_once_with(
+            mock.sentinel.server, mock.sentinel.share_name,
+            self._FAKE_RW_ACC_RULE['access_to'])
+
+    @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
+                       'validate_access_rules')
+    @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
+                       'get_access_rules')
+    @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
+                       '_grant_share_access')
+    @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
+                       '_revoke_share_access')
+    def test_update_access(self, mock_revoke, mock_grant,
+                           mock_get_access_rules, mock_validate):
+        added_rules = [mock.MagicMock(), mock.MagicMock()]
+        deleted_rules = [mock.MagicMock(), mock.MagicMock()]
+
+        self._win_smb_helper.update_access(
+            mock.sentinel.server, mock.sentinel.share_name,
+            [], added_rules, deleted_rules)
+
+        mock_revoke.assert_has_calls(
+            [mock.call(mock.sentinel.server, mock.sentinel.share_name,
+                       deleted_rule['access_to'])
+             for deleted_rule in deleted_rules])
+
+        mock_grant.assert_has_calls(
+            [mock.call(mock.sentinel.server, mock.sentinel.share_name,
+                       added_rule['access_level'], added_rule['access_to'])
+             for added_rule in added_rules])
+
+    @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
+                       '_get_rule_updates')
+    @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
+                       'validate_access_rules')
+    @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
+                       'get_access_rules')
+    @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
+                       '_grant_share_access')
+    @mock.patch.object(windows_smb_helper.WindowsSMBHelper,
+                       '_revoke_share_access')
+    def test_update_access_maintenance(
+            self, mock_revoke, mock_grant,
+            mock_get_access_rules, mock_validate,
+            mock_get_rule_updates):
+        all_rules = mock.MagicMock()
+        added_rules = [mock.MagicMock(), mock.MagicMock()]
+        deleted_rules = [mock.MagicMock(), mock.MagicMock()]
+
+        mock_get_rule_updates.return_value = [
+            added_rules, deleted_rules]
+
+        self._win_smb_helper.update_access(
+            mock.sentinel.server, mock.sentinel.share_name,
+            all_rules, [], [])
+
+        mock_get_access_rules.assert_called_once_with(
+            mock.sentinel.server, mock.sentinel.share_name)
+        mock_get_rule_updates.assert_called_once_with(
+            existing_rules=mock_get_access_rules.return_value,
+            requested_rules=all_rules)
+        mock_revoke.assert_has_calls(
+            [mock.call(mock.sentinel.server, mock.sentinel.share_name,
+                       deleted_rule['access_to'])
+             for deleted_rule in deleted_rules])
+
+        mock_grant.assert_has_calls(
+            [mock.call(mock.sentinel.server, mock.sentinel.share_name,
+                       added_rule['access_level'], added_rule['access_to'])
+             for added_rule in added_rules])
+
+    def test_get_rule_updates(self):
+        req_rule_0 = self._FAKE_RW_ACC_RULE
+        req_rule_1 = dict(self._FAKE_RW_ACC_RULE,
+                          access_to='fake_acc')
+
+        curr_rule_0 = dict(self._FAKE_RW_ACC_RULE,
+                           access_to=self._FAKE_RW_ACC_RULE[
+                               'access_to'].upper())
+        curr_rule_1 = dict(self._FAKE_RW_ACC_RULE,
+                           access_to='fake_acc2')
+        curr_rule_2 = dict(req_rule_1,
+                           access_level=constants.ACCESS_LEVEL_RO)
+
+        expected_added_rules = [req_rule_1]
+        expected_deleted_rules = [curr_rule_1, curr_rule_2]
+
+        existing_rules = [curr_rule_0, curr_rule_1, curr_rule_2]
+        requested_rules = [req_rule_0, req_rule_1]
+
+        (added_rules,
+         deleted_rules) = self._win_smb_helper._get_rule_updates(
+            existing_rules, requested_rules)
+
+        self.assertEqual(expected_added_rules, added_rules)
+        self.assertEqual(expected_deleted_rules, deleted_rules)
 
     def test_get_share_name(self):
         result = self._win_smb_helper._get_share_name(self._FAKE_SHARE)
