@@ -270,28 +270,6 @@ class HPE3ParShareDriver(driver.ShareDriver):
             self.share_ip_address)
 
     @staticmethod
-    def _build_export_location(protocol, ip, path):
-
-        if not ip:
-            message = _('Failed to build export location due to missing IP.')
-            raise exception.InvalidInput(message)
-
-        if not path:
-            message = _('Failed to build export location due to missing path.')
-            raise exception.InvalidInput(message)
-
-        if protocol == 'NFS':
-            location = ':'.join((ip, path))
-        elif protocol == 'CIFS':
-            location = '\\\\%s\%s' % (ip, path)
-        else:
-            message = _('Invalid protocol. Expected NFS or CIFS. '
-                        'Got %s.') % protocol
-            raise exception.InvalidInput(message)
-
-        return location
-
-    @staticmethod
     def build_share_comment(share):
         """Create an informational only comment to help admins and testers."""
 
@@ -325,7 +303,7 @@ class HPE3ParShareDriver(driver.ShareDriver):
             comment=self.build_share_comment(share)
         )
 
-        return self._build_export_location(protocol, ip, path)
+        return self._hpe3par.build_export_location(protocol, ip, path)
 
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None):
@@ -345,10 +323,11 @@ class HPE3ParShareDriver(driver.ShareDriver):
             snapshot['id'],
             self.fpg,
             self.vfs,
+            size=share['size'],
             comment=self.build_share_comment(share)
         )
 
-        return self._build_export_location(protocol, ip, path)
+        return self._hpe3par.build_export_location(protocol, ip, path)
 
     def delete_share(self, context, share, share_server=None):
         """Deletes share and its fstore."""

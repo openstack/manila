@@ -36,20 +36,14 @@ The following operations are supported with HPE 3PAR File Persona:
 - Allow/deny NFS share access
 
   * IP access rules are required for NFS share access
-  * Shares created from snapshots are always read-only
-  * Shares not created from snapshots are read-write (and subject to ACLs)
 
 - Allow/deny CIFS share access
 
   * CIFS shares require user access rules.
   * User access requires a 3PAR local user (LDAP and AD is not yet supported)
-  * Shares created from snapshots are always read-only
-  * Shares not created from snapshots are read-write (and subject to ACLs)
 
 - Create/delete snapshots
 - Create shares from snapshots
-
-  * Shares created from snapshots are always read-only
 
 Share networks are not supported. Shares are created directly on the 3PAR
 without the use of a share server or service VM. Network connectivity is
