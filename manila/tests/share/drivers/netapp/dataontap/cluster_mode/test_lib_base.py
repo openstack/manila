@@ -597,14 +597,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             return_value=fake.SHARE_NAME))
         self.mock_object(share_utils, 'extract_host', mock.Mock(
             return_value=fake.POOL_NAME))
-        self.mock_object(share_types, 'get_extra_specs_from_share',
-                         mock.Mock(return_value=fake.EXTRA_SPEC))
-        mock_remap_standard_boolean_extra_specs = self.mock_object(
-            self.library, '_remap_standard_boolean_extra_specs',
-            mock.Mock(return_value=fake.EXTRA_SPEC))
-        self.mock_object(self.library, '_check_boolean_extra_specs_validity')
-        self.mock_object(self.library, '_get_boolean_provisioning_options',
-                         mock.Mock(return_value=fake.PROVISIONING_OPTIONS))
+        self.mock_object(
+            self.library, '_get_provisioning_options_for_share',
+            mock.Mock(return_value=copy.deepcopy(fake.PROVISIONING_OPTIONS)))
         vserver_client = mock.Mock()
 
         self.library._allocate_container(fake.EXTRA_SPEC_SHARE,
@@ -613,10 +608,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client.create_volume.assert_called_once_with(
             fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
             thin_provisioned=True, snapshot_policy='default',
-            language='en-US', dedup_enabled=True,
+            language='en-US', dedup_enabled=True, split=True,
             compression_enabled=False, max_files=5000, snapshot_reserve=8)
-        mock_remap_standard_boolean_extra_specs.assert_called_once_with(
-            fake.EXTRA_SPEC)
 
     def test_remap_standard_boolean_extra_specs(self):
 
@@ -631,12 +624,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             return_value=fake.SHARE_NAME))
         self.mock_object(share_utils, 'extract_host', mock.Mock(
             return_value=fake.POOL_NAME))
-        self.mock_object(share_types, 'get_extra_specs_from_share',
-                         mock.Mock(return_value=fake.EXTRA_SPEC))
-
-        self.mock_object(self.library, '_check_boolean_extra_specs_validity')
-        self.mock_object(self.library, '_get_boolean_provisioning_options',
-                         mock.Mock(return_value=fake.PROVISIONING_OPTIONS))
+        self.mock_object(
+            self.library, '_get_provisioning_options_for_share',
+            mock.Mock(return_value=copy.deepcopy(fake.PROVISIONING_OPTIONS)))
         vserver_client = mock.Mock()
 
         self.library._allocate_container(fake.EXTRA_SPEC_SHARE,
@@ -645,7 +635,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client.create_volume.assert_called_once_with(
             fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
             thin_provisioned=True, snapshot_policy='default',
-            language='en-US', dedup_enabled=True,
+            language='en-US', dedup_enabled=True, split=True,
             compression_enabled=False, max_files=5000,
             snapshot_reserve=8, volume_type='dp')
 
@@ -729,6 +719,32 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.EXTRA_SPEC_SHARE, fake.INVALID_EXTRA_SPEC_COMBO,
             list(self.library.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP))
 
+    def test_get_provisioning_options_for_share(self):
+
+        mock_get_extra_specs_from_share = self.mock_object(
+            share_types, 'get_extra_specs_from_share',
+            mock.Mock(return_value=fake.EXTRA_SPEC))
+        mock_remap_standard_boolean_extra_specs = self.mock_object(
+            self.library, '_remap_standard_boolean_extra_specs',
+            mock.Mock(return_value=fake.EXTRA_SPEC))
+        mock_check_extra_specs_validity = self.mock_object(
+            self.library, '_check_extra_specs_validity')
+        mock_get_provisioning_options = self.mock_object(
+            self.library, '_get_provisioning_options',
+            mock.Mock(return_value=fake.PROVISIONING_OPTIONS))
+
+        result = self.library._get_provisioning_options_for_share(
+            fake.EXTRA_SPEC_SHARE)
+
+        self.assertEqual(fake.PROVISIONING_OPTIONS, result)
+        mock_get_extra_specs_from_share.assert_called_once_with(
+            fake.EXTRA_SPEC_SHARE)
+        mock_remap_standard_boolean_extra_specs.assert_called_once_with(
+            fake.EXTRA_SPEC)
+        mock_check_extra_specs_validity.assert_called_once_with(
+            fake.EXTRA_SPEC_SHARE, fake.EXTRA_SPEC)
+        mock_get_provisioning_options.assert_called_once_with(fake.EXTRA_SPEC)
+
     def test_get_provisioning_options(self):
         result = self.library._get_provisioning_options(fake.EXTRA_SPEC)
 
@@ -752,6 +768,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'thin_provisioned': False,
             'compression_enabled': False,
             'dedup_enabled': False,
+            'split': False,
         }
 
         self.assertEqual(expected, result)
@@ -775,6 +792,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'thin_provisioned': False,
             'dedup_enabled': False,
             'compression_enabled': False,
+            'split': False,
         }
 
         result = self.library._get_boolean_provisioning_options(
@@ -846,23 +864,31 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           fake.AGGREGATES[1],
                           fake.EXTRA_SPEC)
 
-    def test_allocate_container_from_snapshot(self):
+    @ddt.data(None, 'fake_location')
+    def test_allocate_container_from_snapshot(self, provider_location):
 
+        self.mock_object(
+            self.library, '_get_provisioning_options_for_share',
+            mock.Mock(return_value=copy.deepcopy(fake.PROVISIONING_OPTIONS)))
         vserver_client = mock.Mock()
 
+        fake_snapshot = copy.deepcopy(fake.SNAPSHOT)
+        fake_snapshot['provider_location'] = provider_location
+
         self.library._allocate_container_from_snapshot(fake.SHARE,
-                                                       fake.SNAPSHOT,
+                                                       fake_snapshot,
                                                        vserver_client)
 
         share_name = self.library._get_backend_share_name(fake.SHARE['id'])
         parent_share_name = self.library._get_backend_share_name(
             fake.SNAPSHOT['share_id'])
         parent_snapshot_name = self.library._get_backend_snapshot_name(
-            fake.SNAPSHOT['id'])
+            fake.SNAPSHOT['id']) if not provider_location else 'fake_location'
         vserver_client.create_volume_clone.assert_called_once_with(
-            share_name,
-            parent_share_name,
-            parent_snapshot_name)
+            share_name, parent_share_name, parent_snapshot_name,
+            thin_provisioned=True, snapshot_policy='default',
+            language='en-US', dedup_enabled=True, split=True,
+            compression_enabled=False, max_files=5000)
 
     def test_share_exists(self):
 

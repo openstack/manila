@@ -109,6 +109,7 @@ EXTRA_SPEC = {
     'netapp:dedup': 'True',
     'netapp:compression': 'false',
     'netapp:max_files': 5000,
+    'netapp:split_clone_on_create': 'true',
     'netapp_disk_type': 'FCAL',
     'netapp_raid_type': 'raid4',
 }
@@ -120,12 +121,14 @@ PROVISIONING_OPTIONS = {
     'dedup_enabled': True,
     'compression_enabled': False,
     'max_files': 5000,
+    'split': True,
 }
 
 PROVISIONING_OPTIONS_BOOLEAN = {
     'thin_provisioned': True,
     'dedup_enabled': False,
     'compression_enabled': False,
+    'split': False,
 }
 
 PROVISIONING_OPTIONS_BOOLEAN_THIN_PROVISIONED_TRUE = {
@@ -135,6 +138,7 @@ PROVISIONING_OPTIONS_BOOLEAN_THIN_PROVISIONED_TRUE = {
     'dedup_enabled': False,
     'compression_enabled': False,
     'max_files': None,
+    'split': False,
 }
 
 PROVISIONING_OPTIONS_STRING = {

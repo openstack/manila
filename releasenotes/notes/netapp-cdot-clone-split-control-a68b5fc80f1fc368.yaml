@@ -1,0 +1,7 @@
+---
+features:
+  - NetApp cDOT driver now supports a scoped extra-spec
+    ``netapp:split_clone_on_create`` to be used in share types when creating
+    shares (NetApp FlexClone) from snapshots. If this extra-spec is not
+    included, or set to ``false``, the cDOT driver will perform the clone-split
+    only if/when the parent snapshot is being deleted.

@@ -1226,7 +1226,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                       thin_provisioned=False, snapshot_policy=None,
                       language=None, dedup_enabled=False,
                       compression_enabled=False, max_files=None,
-                      snapshot_reserve=None, volume_type='rw'):
+                      snapshot_reserve=None, volume_type='rw', **options):
 
         """Creates a volume."""
         api_args = {
@@ -1380,7 +1380,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def manage_volume(self, aggregate_name, volume_name,
                       thin_provisioned=False, snapshot_policy=None,
                       language=None, dedup_enabled=False,
-                      compression_enabled=False, max_files=None):
+                      compression_enabled=False, max_files=None, **options):
         """Update volume as needed to bring under management as a share."""
         api_args = {
             'query': {
@@ -1722,7 +1722,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def create_volume_clone(self, volume_name, parent_volume_name,
-                            parent_snapshot_name=None):
+                            parent_snapshot_name=None, split=False, **options):
         """Clones a volume."""
         api_args = {
             'volume': volume_name,
@@ -1731,6 +1731,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'junction-path': '/%s' % volume_name,
         }
         self.send_request('volume-clone-create', api_args)
+
+        if split:
+            self.split_volume_clone(volume_name)
 
     @na_utils.trace
     def split_volume_clone(self, volume_name):
