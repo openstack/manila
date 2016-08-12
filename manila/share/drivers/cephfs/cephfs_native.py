@@ -231,7 +231,8 @@ class CephFSNativeDriver(driver.ShareDriver,):
         else:
             readonly = access['access_level'] == constants.ACCESS_LEVEL_RO
             auth_result = self.volume_client.authorize(
-                self._share_path(share), ceph_auth_id, readonly=readonly)
+                self._share_path(share), ceph_auth_id, readonly=readonly,
+                tenant_id=share['project_id'])
 
         return auth_result['auth_key']
 
@@ -250,25 +251,45 @@ class CephFSNativeDriver(driver.ShareDriver,):
 
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
-        # The interface to Ceph just provides add/remove methods, since it
-        # was created at start of mitaka cycle when there was no requirement
-        # to be able to list access rules or set them en masse.  Therefore
-        # we implement update_access as best we can.  In future ceph's
-        # interface should be extended to enable a full implementation
-        # of update_access.
+        access_keys = {}
 
+        if not (add_rules or delete_rules):  # recovery/maintenance mode
+            add_rules = access_rules
+
+            existing_auths = None
+
+            # The unversioned volume client cannot fetch from the Ceph backend,
+            # the list of auth IDs that have share access.
+            if getattr(self.volume_client, 'version', None):
+                existing_auths = self.volume_client.get_authorized_ids(
+                    self._share_path(share))
+
+            if existing_auths:
+                existing_auth_ids = set(
+                    [auth[0] for auth in existing_auths])
+                want_auth_ids = set(
+                    [rule['access_to'] for rule in add_rules])
+                delete_auth_ids = existing_auth_ids.difference(
+                    want_auth_ids)
+                for delete_auth_id in delete_auth_ids:
+                    delete_rules.append(
+                        {
+                            'access_to': delete_auth_id,
+                            'access_type': CEPHX_ACCESS_TYPE,
+                        })
+
+        # During recovery mode, re-authorize share access for auth IDs that
+        # were already granted access by the backend. Do this to fetch their
+        # access keys and ensure that after recovery, manila and the Ceph
+        # backend are in sync.
         for rule in add_rules:
-            self._allow_access(context, share, rule)
+            access_key = self._allow_access(context, share, rule)
+            access_keys.update({rule['id']: access_key})
 
         for rule in delete_rules:
             self._deny_access(context, share, rule)
 
-        # This is where we would list all permitted clients and remove
-        # those that are not in `access_rules` if the ceph interface
-        # enabled it.
-        if not (add_rules or delete_rules):
-            for rule in access_rules:
-                self._allow_access(context, share, rule)
+        return access_keys
 
     def delete_share(self, context, share, share_server=None):
         extra_specs = share_types.get_extra_specs_from_share(share)

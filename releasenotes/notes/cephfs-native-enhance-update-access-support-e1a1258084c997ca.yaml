@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Enhanced ``cephfs_native`` driver's update_access() to,
+
+    - remove undesired rules existing in the backend during recovery mode.
+    - return ``access_keys`` of ceph auth IDs that are allowed access.
