@@ -273,6 +273,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_create_vserver(self):
 
+        versions = ['fake_v1', 'fake_v2']
+        self.library.configuration.netapp_enabled_share_protocols = versions
         vserver_id = fake.NETWORK_INFO['server_id']
         vserver_name = fake.VSERVER_NAME_TEMPLATE % vserver_id
         vserver_client = mock.Mock()
@@ -306,7 +308,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             vserver_name, vserver_client, fake.NETWORK_INFO, fake.IPSPACE)
         self.library._create_vserver_admin_lif.assert_called_with(
             vserver_name, vserver_client, fake.NETWORK_INFO, fake.IPSPACE)
-        self.assertTrue(vserver_client.enable_nfs.called)
+        vserver_client.enable_nfs.assert_called_once_with(versions)
         self.library._client.setup_security_services.assert_called_with(
             fake.NETWORK_INFO['security_services'], vserver_client,
             vserver_name)

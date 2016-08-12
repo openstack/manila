@@ -37,6 +37,7 @@ VSERVER_NAME = 'fake_vserver'
 VSERVER_NAME_2 = 'fake_vserver_2'
 ADMIN_VSERVER_NAME = 'fake_admin_vserver'
 NODE_VSERVER_NAME = 'fake_node_vserver'
+NFS_VERSIONS = ['nfs3', 'nfs4.0']
 ROOT_VOLUME_AGGREGATE_NAME = 'fake_root_aggr'
 ROOT_VOLUME_NAME = 'fake_root_volume'
 SHARE_AGGREGATE_NAME = 'fake_aggr1'

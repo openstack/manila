@@ -1069,12 +1069,31 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 raise exception.NetAppException(msg % security_service['type'])
 
     @na_utils.trace
-    def enable_nfs(self):
+    def enable_nfs(self, versions):
         """Enables NFS on Vserver."""
         self.send_request('nfs-enable')
-        self.send_request('nfs-service-modify', {'is-nfsv40-enabled': 'true'})
+        self._enable_nfs_protocols(versions)
+        self._create_default_nfs_export_rule()
 
-        api_args = {
+    @na_utils.trace
+    def _enable_nfs_protocols(self, versions):
+        """Set the enabled NFS protocol versions."""
+        nfs3 = 'true' if 'nfs3' in versions else 'false'
+        nfs40 = 'true' if 'nfs4.0' in versions else 'false'
+        nfs41 = 'true' if 'nfs4.1' in versions else 'false'
+
+        nfs_service_modify_args = {
+            'is-nfsv3-enabled': nfs3,
+            'is-nfsv40-enabled': nfs40,
+            'is-nfsv41-enabled': nfs41,
+        }
+        self.send_request('nfs-service-modify', nfs_service_modify_args)
+
+    @na_utils.trace
+    def _create_default_nfs_export_rule(self):
+        """Create the default export rule for the NFS service."""
+
+        export_rule_create_args = {
             'client-match': '0.0.0.0/0',
             'policy-name': 'default',
             'ro-rule': {
@@ -1084,7 +1103,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 'security-flavor': 'never',
             },
         }
-        self.send_request('export-rule-create', api_args)
+        self.send_request('export-rule-create', export_rule_create_args)
 
     @na_utils.trace
     def configure_ldap(self, security_service):

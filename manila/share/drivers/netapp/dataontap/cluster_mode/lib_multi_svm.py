@@ -172,7 +172,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                                            network_info,
                                            ipspace_name)
 
-            vserver_client.enable_nfs()
+            vserver_client.enable_nfs(
+                self.configuration.netapp_enabled_share_protocols)
 
             security_services = network_info.get('security_services')
             if security_services:
