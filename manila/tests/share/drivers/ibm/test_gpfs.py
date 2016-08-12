@@ -24,8 +24,8 @@ from oslo_config import cfg
 from manila import context
 from manila import exception
 import manila.share.configuration as config
-import manila.share.drivers.ibm.ganesha_utils as ganesha_utils
 import manila.share.drivers.ibm.gpfs as gpfs
+from manila.share import share_types
 from manila import test
 from manila.tests import fake_share
 from manila import utils
@@ -50,8 +50,8 @@ class GPFSShareDriverTestCase(test.TestCase):
                                             configuration=self.fake_conf)
         self._knfs_helper = gpfs.KNFSHelper(self._gpfs_execute,
                                             self.fake_conf)
-        self._gnfs_helper = gpfs.GNFSHelper(self._gpfs_execute,
-                                            self.fake_conf)
+        self._ces_helper = gpfs.CESHelper(self._gpfs_execute,
+                                          self.fake_conf)
         self.fakedev = "/dev/gpfs0"
         self.fakefspath = "/gpfs0"
         self.fakesharepath = "/gpfs0/share-fakeid"
@@ -74,16 +74,16 @@ class GPFSShareDriverTestCase(test.TestCase):
         gpfs_nfs_server_list = [self.local_ip, self.remote_ip]
         self._knfs_helper.configuration.gpfs_nfs_server_list = \
             gpfs_nfs_server_list
-        self._gnfs_helper.configuration.gpfs_nfs_server_list = \
+        self._ces_helper.configuration.gpfs_nfs_server_list = \
             gpfs_nfs_server_list
-        self._gnfs_helper.configuration.ganesha_config_path = \
+        self._ces_helper.configuration.ganesha_config_path = \
             "fake_ganesha_config_path"
         self.sshlogin = "fake_login"
         self.sshkey = "fake_sshkey"
         self.gservice = "fake_ganesha_service"
-        self._gnfs_helper.configuration.gpfs_ssh_login = self.sshlogin
-        self._gnfs_helper.configuration.gpfs_ssh_private_key = self.sshkey
-        self._gnfs_helper.configuration.ganesha_service_name = self.gservice
+        self._ces_helper.configuration.gpfs_ssh_login = self.sshlogin
+        self._ces_helper.configuration.gpfs_ssh_private_key = self.sshkey
+        self._ces_helper.configuration.ganesha_service_name = self.gservice
         self.mock_object(socket, 'gethostname',
                          mock.Mock(return_value="testserver"))
         self.mock_object(socket, 'gethostbyname_ex', mock.Mock(
@@ -105,7 +105,8 @@ class GPFSShareDriverTestCase(test.TestCase):
         self._driver._run_ssh(self.local_ip, cmd_list)
 
         self._driver._gpfs_ssh_execute.assert_called_once_with(
-            mock.ANY, expected_cmd, check_exit_code=True)
+            mock.ANY, expected_cmd, check_exit_code=True,
+            ignore_exit_code=None)
 
     def test__run_ssh_exception(self):
         cmd_list = ['fake', 'cmd']
@@ -181,6 +182,16 @@ class GPFSShareDriverTestCase(test.TestCase):
     def test_do_setup(self):
         self.mock_object(self._driver, '_setup_helpers')
         self._driver.do_setup(self._context)
+        self.assertEqual(self._driver._gpfs_execute,
+                         self._driver._gpfs_remote_execute)
+        self._driver._setup_helpers.assert_called_once_with()
+
+    def test_do_setup_gpfs_local_execute(self):
+        self.mock_object(self._driver, '_setup_helpers')
+        self._driver.configuration.is_gpfs_node = True
+        self._driver.do_setup(self._context)
+        self.assertEqual(self._driver._gpfs_execute,
+                         self._driver._gpfs_local_execute)
         self._driver._setup_helpers.assert_called_once_with()
 
     def test_setup_helpers(self):
@@ -395,10 +406,11 @@ class GPFSShareDriverTestCase(test.TestCase):
         self._driver._get_gpfs_device = mock.Mock(return_value=self.fakedev)
         self._driver._gpfs_execute = mock.Mock(return_value=True)
         self._driver._extend_share(self.share, 10)
-        self._driver._gpfs_execute.assert_called_once_with('mmsetquota', '-j',
-                                                           self.share['name'],
-                                                           '-h', '10G',
-                                                           self.fakedev)
+        self._driver._gpfs_execute.assert_called_once_with(
+            'mmsetquota',
+            self.fakedev + ':' + self.share['name'],
+            '--block',
+            '0:10G')
         self._driver._get_gpfs_device.assert_called_once_with()
 
     def test__extend_share_exception(self):
@@ -408,10 +420,12 @@ class GPFSShareDriverTestCase(test.TestCase):
         )
         self.assertRaises(exception.GPFSException,
                           self._driver._extend_share, self.share, 10)
-        self._driver._gpfs_execute.assert_called_once_with('mmsetquota', '-j',
+        self._driver._gpfs_execute.assert_called_once_with('mmsetquota',
+                                                           self.fakedev +
+                                                           ':' +
                                                            self.share['name'],
-                                                           '-h', '10G',
-                                                           self.fakedev)
+                                                           '--block',
+                                                           '0:10G')
         self._driver._get_gpfs_device.assert_called_once_with()
 
     def test_allow_access(self):
@@ -422,10 +436,7 @@ class GPFSShareDriverTestCase(test.TestCase):
         self._driver.allow_access(self._context, self.share,
                                   self.access, share_server=None)
         self._helper_fake.allow_access.assert_called_once_with(
-            self.fakesharepath, self.share,
-            self.access['access_type'],
-            self.access['access_to']
-        )
+            self.fakesharepath, self.share, self.access)
         self._driver._get_share_path.assert_called_once_with(self.share)
 
     def test_deny_access(self):
@@ -435,10 +446,7 @@ class GPFSShareDriverTestCase(test.TestCase):
         self._driver.deny_access(self._context, self.share,
                                  self.access, share_server=None)
         self._helper_fake.deny_access.assert_called_once_with(
-            self.fakesharepath, self.share,
-            self.access['access_type'],
-            self.access['access_to']
-        )
+            self.fakesharepath, self.share, self.access)
         self._driver._get_share_path.assert_called_once_with(self.share)
 
     def test__check_gpfs_state_active(self):
@@ -546,10 +554,9 @@ class GPFSShareDriverTestCase(test.TestCase):
                                                    self.fakedev,
                                                    self.share['name'],
                                                    '-J', self.fakesharepath)
-        self._driver._gpfs_execute.assert_any_call('mmsetquota', '-j',
-                                                   self.share['name'], '-h',
-                                                   sizestr,
-                                                   self.fakedev)
+        self._driver._gpfs_execute.assert_any_call('mmsetquota', self.fakedev +
+                                                   ':' + self.share['name'],
+                                                   '--block', '0:' + sizestr)
         self._driver._gpfs_execute.assert_any_call('chmod',
                                                    '777',
                                                    self.fakesharepath)
@@ -579,10 +586,10 @@ class GPFSShareDriverTestCase(test.TestCase):
         self._driver._delete_share(self.share)
         self._driver._gpfs_execute.assert_any_call(
             'mmunlinkfileset', self.fakedev, self.share['name'],
-            '-f')
+            '-f', ignore_exit_code=[2])
         self._driver._gpfs_execute.assert_any_call(
             'mmdelfileset', self.fakedev, self.share['name'],
-            '-f')
+            '-f', ignore_exit_code=[2])
         self._driver._get_gpfs_device.assert_called_once_with()
 
     def test__delete_share_exception(self):
@@ -595,7 +602,7 @@ class GPFSShareDriverTestCase(test.TestCase):
         self._driver._get_gpfs_device.assert_called_once_with()
         self._driver._gpfs_execute.assert_called_once_with(
             'mmunlinkfileset', self.fakedev, self.share['name'],
-            '-f')
+            '-f', ignore_exit_code=[2])
 
     def test__create_share_snapshot(self):
         self._driver._gpfs_execute = mock.Mock(return_value=True)
@@ -652,8 +659,9 @@ class GPFSShareDriverTestCase(test.TestCase):
     def test__gpfs_local_execute(self):
         self.mock_object(utils, 'execute', mock.Mock(return_value=True))
         cmd = "testcmd"
-        self._driver._gpfs_local_execute(cmd)
-        utils.execute.assert_called_once_with(cmd, run_as_root=True)
+        self._driver._gpfs_local_execute(cmd, ignore_exit_code=[2])
+        utils.execute.assert_called_once_with(cmd, run_as_root=True,
+                                              check_exit_code=[2, 0])
 
     def test__gpfs_remote_execute(self):
         self._driver._run_ssh = mock.Mock(return_value=True)
@@ -662,9 +670,50 @@ class GPFSShareDriverTestCase(test.TestCase):
         self._driver.configuration.gpfs_share_export_ip = self.local_ip
         self._driver._gpfs_remote_execute(cmd, check_exit_code=True)
         self._driver._run_ssh.assert_called_once_with(
-            self.local_ip, tuple([cmd]), True
+            self.local_ip, tuple([cmd]), None, True
         )
         self._driver.configuration.gpfs_share_export_ip = orig_value
+
+    def test_knfs_get_export_options(self):
+        mock_out = {"knfs:export_options": "no_root_squash"}
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value=mock_out))
+        access = self.access
+        options_not_allowed = ['rw', 'ro']
+        out = self._knfs_helper.get_export_options(self.share, access,
+                                                   'KNFS', options_not_allowed)
+        self.assertEqual("no_root_squash,rw", out)
+
+    def test_knfs_get_export_options_default(self):
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value={}))
+        access = self.access
+        options_not_allowed = ['rw', 'ro']
+        out = self._knfs_helper.get_export_options(self.share, access,
+                                                   'KNFS', options_not_allowed)
+        self.assertEqual("rw", out)
+
+    def test_knfs_get_export_options_invalid_option_ro(self):
+        mock_out = {"knfs:export_options": "ro"}
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value=mock_out))
+        access = self.access
+        options_not_allowed = ['rw', 'ro']
+        share = fake_share.fake_share(share_type="fake_share_type")
+        self.assertRaises(exception.InvalidInput,
+                          self._knfs_helper.get_export_options,
+                          share, access, 'KNFS', options_not_allowed)
+
+    def test_knfs_get_export_options_invalid_option_rw(self):
+        mock_out = {"knfs:export_options": "rw"}
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value=mock_out))
+        access = self.access
+        options_not_allowed = ['rw', 'ro']
+        share = fake_share.fake_share(share_type="fake_share_type")
+        self.assertRaises(exception.InvalidInput,
+                          self._knfs_helper.get_export_options,
+                          share, access, 'KNFS', options_not_allowed)
 
     def test_knfs_allow_access(self):
         self._knfs_helper._execute = mock.Mock(
@@ -672,82 +721,77 @@ class GPFSShareDriverTestCase(test.TestCase):
         )
         self.mock_object(re, 'search', mock.Mock(return_value=None))
         export_opts = None
-        self._knfs_helper._get_export_options = mock.Mock(
+        self._knfs_helper.get_export_options = mock.Mock(
             return_value=export_opts
         )
         self._knfs_helper._publish_access = mock.Mock()
-        access_type = self.access['access_type']
-        access = self.access['access_to']
+        access = self.access
+        options_not_allowed = ['rw', 'ro']
         local_path = self.fakesharepath
-        self._knfs_helper.allow_access(local_path, self.share,
-                                       access_type, access)
+        self._knfs_helper.allow_access(local_path, self.share, access)
         self._knfs_helper._execute.assert_called_once_with('exportfs',
                                                            run_as_root=True)
         self.assertTrue(re.search.called)
-        self._knfs_helper._get_export_options.assert_any_call(self.share)
-        cmd = ['exportfs', '-o', export_opts, ':'.join([access, local_path])]
+        self._knfs_helper.get_export_options.assert_any_call(
+            self.share, access, 'KNFS',
+            options_not_allowed)
+        cmd = ['exportfs', '-o', export_opts, ':'.join([access['access_to'],
+                                                       local_path])]
         self._knfs_helper._publish_access.assert_called_once_with(*cmd)
 
     def test_knfs_allow_access_access_exists(self):
         out = ['/fs0 <world>', 0]
         self._knfs_helper._execute = mock.Mock(return_value=out)
         self.mock_object(re, 'search', mock.Mock(return_value="fake"))
-        self._knfs_helper._get_export_options = mock.Mock()
-        access_type = self.access['access_type']
-        access = self.access['access_to']
+        self._knfs_helper.get_export_options = mock.Mock()
+        access = self.access
         local_path = self.fakesharepath
         self.assertRaises(exception.ShareAccessExists,
                           self._knfs_helper.allow_access,
-                          local_path, self.share,
-                          access_type, access)
+                          local_path, self.share, access)
         self._knfs_helper._execute.assert_any_call('exportfs',
                                                    run_as_root=True)
         self.assertTrue(re.search.called)
-        self.assertFalse(self._knfs_helper._get_export_options.called)
+        self.assertFalse(self._knfs_helper.get_export_options.called)
 
     def test_knfs_allow_access_invalid_access(self):
-        access_type = 'invalid_access_type'
+        access = fake_share.fake_access(access_type='test')
         self.assertRaises(exception.InvalidShareAccess,
                           self._knfs_helper.allow_access,
                           self.fakesharepath, self.share,
-                          access_type,
-                          self.access['access_to'])
+                          access)
 
     def test_knfs_allow_access_exception(self):
         self._knfs_helper._execute = mock.Mock(
             side_effect=exception.ProcessExecutionError
         )
-        access_type = self.access['access_type']
-        access = self.access['access_to']
+        access = self.access
         local_path = self.fakesharepath
         self.assertRaises(exception.GPFSException,
                           self._knfs_helper.allow_access,
                           local_path, self.share,
-                          access_type, access)
+                          access)
         self._knfs_helper._execute.assert_called_once_with('exportfs',
                                                            run_as_root=True)
 
     def test_knfs_deny_access(self):
         self._knfs_helper._publish_access = mock.Mock()
-        access = self.access['access_to']
-        access_type = self.access['access_type']
+        access = self.access
         local_path = self.fakesharepath
-        self._knfs_helper.deny_access(local_path, self.share,
-                                      access_type, access)
-        cmd = ['exportfs', '-u', ':'.join([access, local_path])]
+        self._knfs_helper.deny_access(local_path, self.share, access)
+        cmd = ['exportfs', '-u', ':'.join([access['access_to'], local_path])]
         self._knfs_helper._publish_access.assert_called_once_with(*cmd)
 
     def test_knfs_deny_access_exception(self):
         self._knfs_helper._publish_access = mock.Mock(
             side_effect=exception.ProcessExecutionError
         )
-        access = self.access['access_to']
-        access_type = self.access['access_type']
+        access = self.access
         local_path = self.fakesharepath
-        cmd = ['exportfs', '-u', ':'.join([access, local_path])]
+        cmd = ['exportfs', '-u', ':'.join([access['access_to'], local_path])]
         self.assertRaises(exception.GPFSException,
                           self._knfs_helper.deny_access, local_path,
-                          self.share, access_type, access)
+                          self.share, access)
         self._knfs_helper._publish_access.assert_called_once_with(*cmd)
 
     def test_knfs__publish_access(self):
@@ -775,142 +819,164 @@ class GPFSShareDriverTestCase(test.TestCase):
         utils.execute.assert_called_once_with(*cmd, run_as_root=True,
                                               check_exit_code=True)
 
-    def test_gnfs_allow_access(self):
-        self._gnfs_helper._ganesha_process_request = mock.Mock()
-        access = self.access['access_to']
-        access_type = self.access['access_type']
-        local_path = self.fakesharepath
-        self._gnfs_helper.allow_access(local_path, self.share,
-                                       access_type, access)
-        self._gnfs_helper._ganesha_process_request.assert_called_once_with(
-            "allow_access", local_path, self.share, access_type, access
-        )
+    def test_ces_get_export_options(self):
+        mock_out = {"ces:export_options": "squash=no_root_squash"}
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value=mock_out))
+        access = self.access
+        options_not_allowed = ['access_type=ro', 'access_type=rw']
+        out = self._ces_helper.get_export_options(self.share, access,
+                                                  'CES', options_not_allowed)
+        self.assertEqual("squash=no_root_squash,access_type=rw", out)
 
-    def test_gnfs_allow_access_invalid_access(self):
-        access_type = 'invalid_access_type'
+    def test_ces_get_export_options_default(self):
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value={}))
+        access = self.access
+        options_not_allowed = ['access_type=ro', 'access_type=rw']
+        out = self._ces_helper.get_export_options(self.share, access,
+                                                  'CES', options_not_allowed)
+        self.assertEqual("access_type=rw", out)
+
+    def test_ces_get_export_options_invalid_option_ro(self):
+        mock_out = {"ces:export_options": "access_type=ro"}
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value=mock_out))
+        access = self.access
+        options_not_allowed = ['access_type=ro', 'access_type=rw']
+        share = fake_share.fake_share(share_type="fake_share_type")
+        self.assertRaises(exception.InvalidInput,
+                          self._ces_helper.get_export_options,
+                          share, access, 'CES', options_not_allowed)
+
+    def test_ces_get_export_options_invalid_option_rw(self):
+        mock_out = {"ces:export_options": "access_type=rw"}
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value=mock_out))
+        access = self.access
+        options_not_allowed = ['access_type=ro', 'access_type=rw']
+        share = fake_share.fake_share(share_type="fake_share_type")
+        self.assertRaises(exception.InvalidInput,
+                          self._ces_helper.get_export_options,
+                          share, access, 'CES', options_not_allowed)
+
+    def test_ces_remove_export(self):
+        mock_out = "Path Delegations Clients\n\
+                    ------------------------\n\
+                    /gpfs0/share-fakeid none *"
+        self._ces_helper._execute = mock.Mock(
+            return_value=[mock_out, 0])
+
+        mock_search_out = "/gpfs0/share-fakeid"
+        self.mock_object(re, 'search', mock.Mock(return_value=mock_search_out))
+
+        local_path = self.fakesharepath
+
+        self._ces_helper.remove_export(local_path, self.share)
+
+        self._ces_helper._execute.assert_any_call('mmnfs', 'export', 'list',
+                                                  '-n', local_path)
+        self._ces_helper._execute.assert_any_call('mmnfs', 'export', 'remove',
+                                                  local_path)
+
+    def test_ces_remove_export_exception(self):
+        local_path = self.fakesharepath
+        self._ces_helper._execute = mock.Mock(
+            side_effect=exception.ProcessExecutionError)
+        self.assertRaises(exception.GPFSException,
+                          self._ces_helper.remove_export,
+                          local_path, self.share)
+
+    def test_ces_allow_access(self):
+        mock_out = "Path Delegations Clients\n\
+                    ------------------------"
+        self._ces_helper._execute = mock.Mock(
+            return_value=[mock_out, 0])
+
+        export_opts = "access_type=rw"
+        self._ces_helper.get_export_options = mock.Mock(
+            return_value=export_opts)
+        self.mock_object(re, 'search', mock.Mock(return_value=None))
+
+        access = self.access
+        local_path = self.fakesharepath
+
+        self._ces_helper.allow_access(local_path, self.share, access)
+
+        self._ces_helper._execute.assert_any_call('mmnfs', 'export', 'list',
+                                                  '-n', local_path)
+        self._ces_helper._execute.assert_any_call('mmnfs', 'export', 'add',
+                                                  local_path, '-c',
+                                                  access['access_to']
+                                                  + '(' + export_opts + ')')
+
+    def test_ces_allow_access_existing_export(self):
+        mock_out = "Path Delegations Clients\n\
+                    ------------------------\n\
+                    /gpfs0/share-fakeid none *"
+        self._ces_helper._execute = mock.Mock(
+            return_value=[mock_out, 0])
+
+        export_opts = "access_type=rw"
+        self._ces_helper.get_export_options = mock.Mock(
+            return_value=export_opts)
+        mock_search_out = "/gpfs0/share-fakeid"
+        self.mock_object(re, 'search', mock.Mock(return_value=mock_search_out))
+
+        access = self.access
+        local_path = self.fakesharepath
+
+        self._ces_helper.allow_access(local_path, self.share, access)
+
+        self._ces_helper._execute.assert_any_call('mmnfs', 'export', 'list',
+                                                  '-n', local_path)
+        self._ces_helper._execute.assert_any_call('mmnfs', 'export', 'change',
+                                                  local_path, '--nfsadd',
+                                                  access['access_to']
+                                                  + '(' + export_opts + ')')
+
+    def test_ces_allow_access_invalid_access_type(self):
+        access = fake_share.fake_access(access_type='test')
         self.assertRaises(exception.InvalidShareAccess,
-                          self._gnfs_helper.allow_access,
+                          self._ces_helper.allow_access,
                           self.fakesharepath, self.share,
-                          access_type,
-                          self.access['access_to'])
+                          access)
 
-    def test_gnfs_deny_access(self):
-        self._gnfs_helper._ganesha_process_request = mock.Mock()
-        access = self.access['access_to']
-        access_type = self.access['access_type']
+    def test_ces_allow_access_exception(self):
+        access = self.access
         local_path = self.fakesharepath
-        self._gnfs_helper.deny_access(local_path, self.share,
-                                      access_type, access)
-        self._gnfs_helper._ganesha_process_request.assert_called_once_with(
-            "deny_access", local_path, self.share, access_type, access, False
-        )
+        self._ces_helper._execute = mock.Mock(
+            side_effect=exception.ProcessExecutionError)
+        self.assertRaises(exception.GPFSException,
+                          self._ces_helper.allow_access, local_path,
+                          self.share, access)
 
-    def test_gnfs_remove_export(self):
-        self._gnfs_helper._ganesha_process_request = mock.Mock()
-        local_path = self.fakesharepath
-        self._gnfs_helper.remove_export(local_path, self.share)
-        self._gnfs_helper._ganesha_process_request.assert_called_once_with(
-            "remove_export", local_path, self.share
-        )
+    def test_ces_deny_access(self):
+        mock_out = "Path Delegations Clients\n\
+                    ------------------------\n\
+                    /gpfs0/share-fakeid none *"
+        self._ces_helper._execute = mock.Mock(
+            return_value=[mock_out, 0])
 
-    def test_gnfs__ganesha_process_request_allow_access(self):
-        access = self.access['access_to']
-        access_type = self.access['access_type']
-        local_path = self.fakesharepath
-        cfgpath = self._gnfs_helper.configuration.ganesha_config_path
-        gservers = self._gnfs_helper.configuration.gpfs_nfs_server_list
-        export_opts = []
-        pre_lines = []
-        exports = {}
-        self._gnfs_helper._get_export_options = mock.Mock(
-            return_value=export_opts
-        )
-        self.mock_object(ganesha_utils, 'parse_ganesha_config', mock.Mock(
-            return_value=(pre_lines, exports)
-        ))
-        self.mock_object(ganesha_utils, 'export_exists', mock.Mock(
-            return_value=False
-        ))
-        self.mock_object(ganesha_utils, 'get_next_id', mock.Mock(
-            return_value=101
-        ))
-        self.mock_object(ganesha_utils, 'get_export_template', mock.Mock(
-            return_value={}
-        ))
-        self.mock_object(ganesha_utils, 'publish_ganesha_config')
-        self.mock_object(ganesha_utils, 'reload_ganesha_config')
-        self._gnfs_helper._ganesha_process_request(
-            "allow_access", local_path, self.share, access_type, access
-        )
-        self._gnfs_helper._get_export_options.assert_called_once_with(
-            self.share
-        )
-        ganesha_utils.export_exists.assert_called_once_with(exports,
-                                                            local_path)
-        ganesha_utils.parse_ganesha_config.assert_called_once_with(cfgpath)
-        ganesha_utils.publish_ganesha_config.assert_called_once_with(
-            gservers, self.sshlogin, self.sshkey, cfgpath, pre_lines, exports
-        )
-        ganesha_utils.reload_ganesha_config.assert_called_once_with(
-            gservers, self.sshlogin, self.gservice
-        )
+        mock_search_out = "/gpfs0/share-fakeid"
+        self.mock_object(re, 'search', mock.Mock(return_value=mock_search_out))
 
-    def test_gnfs__ganesha_process_request_deny_access(self):
-        access = self.access['access_to']
-        access_type = self.access['access_type']
+        access = self.access
         local_path = self.fakesharepath
-        cfgpath = self._gnfs_helper.configuration.ganesha_config_path
-        gservers = self._gnfs_helper.configuration.gpfs_nfs_server_list
-        pre_lines = []
-        initial_access = "10.0.0.1,10.0.0.2"
-        export = {"rw_access": initial_access}
-        exports = {}
-        self.mock_object(ganesha_utils, 'parse_ganesha_config', mock.Mock(
-            return_value=(pre_lines, exports)
-        ))
-        self.mock_object(ganesha_utils, 'get_export_by_path', mock.Mock(
-            return_value=export
-        ))
-        self.mock_object(ganesha_utils, 'format_access_list', mock.Mock(
-            return_value="10.0.0.1"
-        ))
-        self.mock_object(ganesha_utils, 'publish_ganesha_config')
-        self.mock_object(ganesha_utils, 'reload_ganesha_config')
-        self._gnfs_helper._ganesha_process_request(
-            "deny_access", local_path, self.share, access_type, access
-        )
-        ganesha_utils.parse_ganesha_config.assert_called_once_with(cfgpath)
-        ganesha_utils.get_export_by_path.assert_called_once_with(exports,
-                                                                 local_path)
-        ganesha_utils.format_access_list.assert_called_once_with(
-            initial_access, deny_access=access
-        )
-        ganesha_utils.publish_ganesha_config.assert_called_once_with(
-            gservers, self.sshlogin, self.sshkey, cfgpath, pre_lines, exports
-        )
-        ganesha_utils.reload_ganesha_config.assert_called_once_with(
-            gservers, self.sshlogin, self.gservice
-        )
 
-    def test_gnfs__ganesha_process_request_remove_export(self):
+        self._ces_helper.deny_access(local_path, self.share, access)
+
+        self._ces_helper._execute.assert_any_call('mmnfs', 'export', 'list',
+                                                  '-n', local_path)
+        self._ces_helper._execute.assert_any_call('mmnfs', 'export', 'change',
+                                                  local_path, '--nfsremove',
+                                                  access['access_to'])
+
+    def test_ces_deny_access_exception(self):
+        access = self.access
         local_path = self.fakesharepath
-        cfgpath = self._gnfs_helper.configuration.ganesha_config_path
-        pre_lines = []
-        exports = {}
-        export = {}
-        self.mock_object(ganesha_utils, 'parse_ganesha_config', mock.Mock(
-            return_value=(pre_lines, exports)
-        ))
-        self.mock_object(ganesha_utils, 'get_export_by_path', mock.Mock(
-            return_value=export
-        ))
-        self.mock_object(ganesha_utils, 'publish_ganesha_config')
-        self.mock_object(ganesha_utils, 'reload_ganesha_config')
-        self._gnfs_helper._ganesha_process_request(
-            "remove_export", local_path, self.share
-        )
-        ganesha_utils.parse_ganesha_config.assert_called_once_with(cfgpath)
-        ganesha_utils.get_export_by_path.assert_called_once_with(exports,
-                                                                 local_path)
-        self.assertFalse(ganesha_utils.publish_ganesha_config.called)
-        self.assertFalse(ganesha_utils.reload_ganesha_config.called)
+        self._ces_helper._execute = mock.Mock(
+            side_effect=exception.ProcessExecutionError)
+        self.assertRaises(exception.GPFSException,
+                          self._ces_helper.deny_access, local_path,
+                          self.share, access)
