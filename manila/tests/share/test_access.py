@@ -116,10 +116,7 @@ class ShareInstanceAccessTestCase(test.TestCase):
                                                     self.share_instance,
                                                     add_rules[0],
                                                     share_server=None)
-        self.driver.deny_access.assert_called_with(self.context,
-                                                   self.share_instance,
-                                                   delete_rules[0],
-                                                   share_server=None)
+        self.assertFalse(self.driver.deny_access.called)
         db.share_instance_update_access_status.assert_called_with(
             self.context, self.share_instance['id'], constants.STATUS_ACTIVE)
 
