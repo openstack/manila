@@ -14,6 +14,7 @@
 #    under the License.
 
 
+import ddt
 import mock
 from oslo_utils import units
 
@@ -47,6 +48,7 @@ class MockVolumeClientModule(object):
 
     class CephFSVolumeClient(mock.Mock):
         mock_used_bytes = 0
+        version = 1
 
         def __init__(self, *args, **kwargs):
             mock.Mock.__init__(self, spec=[
@@ -71,6 +73,7 @@ class MockVolumeClientModule(object):
             })
 
 
+@ddt.ddt
 class CephFSNativeDriverTestCase(test.TestCase):
     """Test the CephFS native driver.
 
@@ -160,18 +163,51 @@ class CephFSNativeDriverTestCase(test.TestCase):
             self._driver._share_path(self._share),
             data_isolated=True)
 
-    def test_allow_access(self):
-        access_rule = {
+    @ddt.data(None, 1)
+    def test_allow_access_rw(self, volume_client_version):
+        rule = {
             'access_level': constants.ACCESS_LEVEL_RW,
+            'access_to': 'alice',
             'access_type': 'cephx',
-            'access_to': 'alice'
         }
+        self._driver.volume_client.version = volume_client_version
 
-        self._driver._allow_access(self._context, self._share, access_rule)
+        auth_key = self._driver._allow_access(
+            self._context, self._share, rule)
 
-        self._driver._volume_client.authorize.assert_called_once_with(
-            self._driver._share_path(self._share),
-            "alice")
+        self.assertEqual("abc123", auth_key)
+        if not volume_client_version:
+            self._driver._volume_client.authorize.assert_called_once_with(
+                self._driver._share_path(self._share),
+                "alice")
+        else:
+            self._driver._volume_client.authorize.assert_called_once_with(
+                self._driver._share_path(self._share),
+                "alice",
+                readonly=False)
+
+    @ddt.data(None, 1)
+    def test_allow_access_ro(self, volume_client_version):
+        rule = {
+            'access_level': constants.ACCESS_LEVEL_RO,
+            'access_to': 'alice',
+            'access_type': 'cephx',
+        }
+        self._driver.volume_client.version = volume_client_version
+
+        if not volume_client_version:
+            self.assertRaises(exception.InvalidShareAccessLevel,
+                              self._driver._allow_access,
+                              self._context, self._share, rule)
+        else:
+            auth_key = self._driver._allow_access(self._context, self._share,
+                                                  rule)
+
+            self.assertEqual("abc123", auth_key)
+            self._driver._volume_client.authorize.assert_called_once_with(
+                self._driver._share_path(self._share),
+                "alice",
+                readonly=True)
 
     def test_allow_access_wrong_type(self):
         self.assertRaises(exception.InvalidShareAccess,
@@ -179,15 +215,6 @@ class CephFSNativeDriverTestCase(test.TestCase):
                           self._context, self._share, {
                               'access_level': constants.ACCESS_LEVEL_RW,
                               'access_type': 'RHUBARB',
-                              'access_to': 'alice'
-                          })
-
-    def test_allow_access_ro(self):
-        self.assertRaises(exception.InvalidShareAccessLevel,
-                          self._driver._allow_access,
-                          self._context, self._share, {
-                              'access_level': constants.ACCESS_LEVEL_RO,
-                              'access_type': 'cephx',
                               'access_to': 'alice'
                           })
 
@@ -232,7 +259,8 @@ class CephFSNativeDriverTestCase(test.TestCase):
 
         self._driver._volume_client.authorize.assert_called_once_with(
             self._driver._share_path(self._share),
-            "alice")
+            "alice",
+            readonly=False)
         self._driver._volume_client.deauthorize.assert_called_once_with(
             self._driver._share_path(self._share),
             "bob")
@@ -250,7 +278,8 @@ class CephFSNativeDriverTestCase(test.TestCase):
 
         self._driver._volume_client.authorize.assert_called_once_with(
             self._driver._share_path(self._share),
-            "alice")
+            "alice",
+            readonly=False)
 
     def test_extend_share(self):
         new_size_gb = self._share['size'] * 2

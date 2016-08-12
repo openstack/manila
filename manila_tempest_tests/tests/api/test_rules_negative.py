@@ -19,7 +19,6 @@ from tempest.lib import exceptions as lib_exc
 from tempest import test
 import testtools
 
-from manila_tempest_tests import share_exceptions
 from manila_tempest_tests.tests.api import base
 from manila_tempest_tests import utils
 
@@ -347,16 +346,6 @@ class ShareCephxRulesForCephFSNegativeTest(base.BaseSharesTest):
                           self.shares_v2_client.create_access_rule,
                           self.share["id"], self.access_type, self.access_to,
                           access_level="su")
-
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
-    def test_create_access_rule_cephx_with_unsupported_access_level_ro(self):
-        rule = self.shares_v2_client.create_access_rule(
-            self.share["id"], self.access_type, self.access_to,
-            access_level="ro")
-        self.assertRaises(
-            share_exceptions.AccessRuleBuildErrorException,
-            self.shares_client.wait_for_access_rule_status,
-            self.share['id'], rule['id'], "active")
 
 
 def skip_if_cephx_access_type_not_supported_by_client(self, client):

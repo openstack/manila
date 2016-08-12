@@ -1,0 +1,4 @@
+---
+features:
+  - For cephfs_native driver, added read-only shares
+    support.
