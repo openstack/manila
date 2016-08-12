@@ -35,6 +35,8 @@ class WindowsSMBHelper(helpers.NASHelperBase):
         constants.ACCESS_LEVEL_RW: 'M',
         constants.ACCESS_LEVEL_RO: 'R'}
 
+    _NULL_SID = "S-1-0-0"
+
     def __init__(self, remote_execute, configuration):
         self._remote_exec = remote_execute
         self.configuration = configuration
@@ -51,7 +53,11 @@ class WindowsSMBHelper(helpers.NASHelperBase):
             share_path = self._windows_utils.normalize_path(
                 os.path.join(self.configuration.share_mount_path,
                              share_name))
-            cmd = ['New-SmbShare', '-Name', share_name, '-Path', share_path]
+            # If no access rules are requested, 'Everyone' will have read
+            # access, by default. We set read access for the 'NULL SID' in
+            # order to avoid this.
+            cmd = ['New-SmbShare', '-Name', share_name, '-Path', share_path,
+                   '-ReadAccess', "*%s" % self._NULL_SID]
             self._remote_exec(server, cmd)
         else:
             LOG.info(_LI("Skipping creating export %s as it already exists."),
