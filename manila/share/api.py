@@ -1045,8 +1045,8 @@ class API(base.Base):
                 context, snapshot, share['instance']['host'],
                 share_id=share['id'], force=force)
         else:
-            self.share_rpcapi.delete_snapshot(context, snapshot,
-                                              share['instance']['host'])
+            self.share_rpcapi.delete_snapshot(
+                context, snapshot, share['instance']['host'], force=force)
 
     @policy.wrap_check_policy('share')
     def update(self, context, share, fields):
