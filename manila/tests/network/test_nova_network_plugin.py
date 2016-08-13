@@ -61,7 +61,7 @@ class NovaNetworkPluginTest(test.TestCase):
             gateway='20.0.0.1', gateway_v6=None,
             dhcp_server='20.0.0.2', broadcast='20.0.0.255',
             vpn_private_address='20.0.0.3', vpn_public_address='20.0.0.4',
-            dns1='20.0.0.5', dns2='20.0.0.6', vlan=None)
+            dns1='20.0.0.5', dns2='20.0.0.6', vlan=None, mtu=1509)
         if net_type == 'vlan':
             nova_net['vlan'] = 100
         self.mock_object(self.instance.nova_api, 'fixed_ip_reserve')
@@ -92,7 +92,7 @@ class NovaNetworkPluginTest(test.TestCase):
             self.fake_context, share_network['id'],
             dict(cidr=nova_net['cidr'], gateway=nova_net['gateway'],
                  ip_version=4, segmentation_id=nova_net['vlan'],
-                 network_type=net_type))
+                 network_type=net_type, mtu=1509))
         self.instance.db.network_allocations_get_by_ip_address.\
             assert_has_calls([
                 mock.call(self.fake_context, '20.0.0.7'),
@@ -117,7 +117,7 @@ class NovaNetworkPluginTest(test.TestCase):
             gateway='20.0.0.1', gateway_v6=None,
             dhcp_server='20.0.0.254', broadcast='20.0.0.255',
             vpn_private_address='20.0.0.3', vpn_public_address='20.0.0.4',
-            dns1='20.0.0.5', dns2='20.0.0.6', vlan=None)
+            dns1='20.0.0.5', dns2='20.0.0.6', vlan=None, mtu=1509)
         if net_type == 'vlan':
             nova_net['vlan'] = 100
         self.mock_object(self.instance.nova_api, 'fixed_ip_reserve')
@@ -152,7 +152,7 @@ class NovaNetworkPluginTest(test.TestCase):
             self.fake_context, self.share_network['id'],
             dict(cidr=nova_net['cidr'], gateway=nova_net['gateway'],
                  ip_version=4, segmentation_id=nova_net['vlan'],
-                 network_type=net_type))
+                 network_type=net_type, mtu=1509))
         self.instance.db.network_allocations_get_by_ip_address.\
             assert_has_calls([
                 mock.call(self.fake_context, '20.0.0.2'),
@@ -170,7 +170,7 @@ class NovaNetworkPluginTest(test.TestCase):
             gateway='20.0.0.1', gateway_v6=None,
             dhcp_server='20.0.0.2', broadcast='20.0.0.255',
             vpn_private_address='20.0.0.3', vpn_public_address='20.0.0.4',
-            dns1='20.0.0.5', dns2='20.0.0.6', vlan=100)
+            dns1='20.0.0.5', dns2='20.0.0.6', vlan=100, mtu=1509)
         self.mock_object(
             self.instance.nova_api, 'network_get',
             mock.Mock(return_value=nova_net))
@@ -190,7 +190,7 @@ class NovaNetworkPluginTest(test.TestCase):
             self.fake_context, self.share_network['id'],
             dict(cidr=nova_net['cidr'], gateway=nova_net['gateway'],
                  ip_version=4, segmentation_id=nova_net['vlan'],
-                 network_type='vlan'))
+                 network_type='vlan', mtu=1509))
         self.assertEqual(
             248,
             self.instance.db.network_allocations_get_by_ip_address.call_count)

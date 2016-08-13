@@ -62,6 +62,7 @@ fake_share_network = {
     'ip_version': 4,
     'cidr': 'fake_cidr',
     'gateway': 'fake_gateway',
+    'mtu': 1509,
 }
 
 fake_share_server = {
@@ -84,6 +85,7 @@ fake_network_allocation = {
     'ip_version': fake_share_network['ip_version'],
     'cidr': fake_share_network['cidr'],
     'gateway': fake_share_network['gateway'],
+    'mtu': 1509,
 }
 
 
@@ -252,10 +254,16 @@ class NeutronNetworkPluginTest(test.TestCase):
 
     @mock.patch.object(db_api, 'share_network_update', mock.Mock())
     def test_save_neutron_network_data(self):
-        neutron_nw_info = {'provider:network_type': 'vlan',
-                           'provider:segmentation_id': 1000}
-        share_nw_update_dict = {'network_type': 'vlan',
-                                'segmentation_id': 1000}
+        neutron_nw_info = {
+            'provider:network_type': 'vlan',
+            'provider:segmentation_id': 1000,
+            'mtu': 1509,
+        }
+        share_nw_update_dict = {
+            'network_type': 'vlan',
+            'segmentation_id': 1000,
+            'mtu': 1509,
+        }
 
         with mock.patch.object(self.plugin.neutron_api,
                                'get_network',

@@ -71,6 +71,7 @@ REST_API_VERSION_HISTORY = """
     * 2.18 - Add gateway to the JSON response of share network show API.
     * 2.19 - Share snapshot instances admin APIs
             (list/show/detail/reset-status).
+    * 2.20 - Add MTU to the JSON response of share network show API.
 
 """
 
@@ -78,7 +79,7 @@ REST_API_VERSION_HISTORY = """
 # The default api version request is defined to be the
 # the minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.19"
+_MAX_API_VERSION = "2.20"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

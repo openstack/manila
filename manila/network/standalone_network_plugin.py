@@ -65,6 +65,12 @@ standalone_network_plugin_opts = [
         help="IP version of network. Optional."
              "Allowed values are '4' and '6'. Default value is '4'.",
         deprecated_group='DEFAULT'),
+    cfg.IntOpt(
+        'standalone_network_plugin_mtu',
+        default=1500,
+        help="Maximum Transmission Unit (MTU) value of the network. Default "
+             "value is 1500.",
+        deprecated_group='DEFAULT'),
 ]
 
 CONF = cfg.CONF
@@ -135,6 +141,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
             six.text_type(self.net.network),
             self.gateway,
             six.text_type(self.net.broadcast))
+        self.mtu = self.configuration.standalone_network_plugin_mtu
 
     def _get_network(self):
         """Returns IPNetwork object calculated from gateway and netmask."""
@@ -251,6 +258,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
             'cidr': six.text_type(self.net.cidr),
             'gateway': six.text_type(self.gateway),
             'ip_version': self.ip_version,
+            'mtu': self.mtu,
         }
         share_network.update(data)
         if self.label != 'admin':
@@ -284,6 +292,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
                 'cidr': share_network['cidr'],
                 'gateway': share_network['gateway'],
                 'ip_version': share_network['ip_version'],
+                'mtu': share_network['mtu'],
             }
             allocations.append(
                 self.db.network_allocation_create(context, data))

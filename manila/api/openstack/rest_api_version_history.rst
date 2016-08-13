@@ -122,3 +122,7 @@ user documentation.
 2.19
 ----
   Add admin APIs(list/show/detail/reset-status) of snapshot instances.
+
+2.20
+----
+  Add MTU in share network show API.

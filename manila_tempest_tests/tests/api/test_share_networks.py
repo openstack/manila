@@ -53,6 +53,10 @@ class ShareNetworkListMixin(object):
         if utils.is_microversion_supported('2.18'):
             keys.append('gateway')
 
+        # In v2.20 and beyond, we expect mtu.
+        if utils.is_microversion_supported('2.20'):
+            keys.append('mtu')
+
         [self.assertIn(key, sn.keys()) for sn in listed for key in keys]
 
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])

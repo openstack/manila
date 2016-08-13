@@ -793,3 +793,130 @@ class RemoveHostFromDriverPrivateDataChecks(BaseMigrationChecks):
         for row in rows:
             self.test_case.assertTrue(hasattr(row, self.host_column_name))
             self.test_case.assertEqual('unknown', row[self.host_column_name])
+
+
+@map_to_migration('493eaffd79e1')
+class NewMTUColumnChecks(BaseMigrationChecks):
+    na_table_name = 'network_allocations'
+    sn_table_name = 'share_networks'
+    na_ids = ['network_allocation_id_fake_3_%d' % i for i in (1, 2, 3)]
+    sn_ids = ['share_network_id_fake_3_%d' % i for i in (1, 2)]
+
+    def setup_upgrade_data(self, engine):
+        user_id = 'user_id'
+        project_id = 'project_id'
+        share_server_id = 'share_server_id_foo_2'
+
+        # Create share network
+        share_network_data = {
+            'id': self.sn_ids[0],
+            'user_id': user_id,
+            'project_id': project_id,
+        }
+        sn_table = utils.load_table(self.sn_table_name, engine)
+        engine.execute(sn_table.insert(share_network_data))
+
+        # Create share server
+        share_server_data = {
+            'id': share_server_id,
+            'share_network_id': share_network_data['id'],
+            'host': 'fake_host',
+            'status': 'active',
+        }
+        ss_table = utils.load_table('share_servers', engine)
+        engine.execute(ss_table.insert(share_server_data))
+
+        # Create network allocations
+        network_allocations = [
+            {
+                'id': self.na_ids[0],
+                'share_server_id': share_server_id,
+                'ip_address': '1.1.1.1',
+            },
+            {
+                'id': self.na_ids[1],
+                'share_server_id': share_server_id,
+                'ip_address': '2.2.2.2',
+            },
+        ]
+        na_table = utils.load_table(self.na_table_name, engine)
+        engine.execute(na_table.insert(network_allocations))
+
+    def check_upgrade(self, engine, data):
+        na_table = utils.load_table(self.na_table_name, engine)
+        for na in engine.execute(na_table.select()):
+            self.test_case.assertTrue(hasattr(na, 'mtu'))
+
+        # Create network allocation
+        network_allocations = [
+            {
+                'id': self.na_ids[2],
+                'share_server_id': na.share_server_id,
+                'ip_address': '3.3.3.3',
+                'gateway': '3.3.3.1',
+                'network_type': 'vlan',
+                'segmentation_id': 1005,
+                'ip_version': 4,
+                'cidr': '240.0.0.0/16',
+                'mtu': 1509,
+            },
+        ]
+        engine.execute(na_table.insert(network_allocations))
+
+        # Select network allocations with mtu info
+        for na in engine.execute(
+                na_table.select().where(na_table.c.mtu == '1509')):
+            self.test_case.assertTrue(hasattr(na, 'mtu'))
+            self.test_case.assertEqual(network_allocations[0]['mtu'],
+                                       getattr(na, 'mtu'))
+
+        # Select all entries and check for the value
+        for na in engine.execute(na_table.select()):
+            self.test_case.assertTrue(hasattr(na, 'mtu'))
+            if na['id'] == self.na_ids[2]:
+                self.test_case.assertEqual(network_allocations[0]['mtu'],
+                                           getattr(na, 'mtu'))
+            else:
+                self.test_case.assertIsNone(na['mtu'])
+
+        sn_table = utils.load_table(self.sn_table_name, engine)
+        for sn in engine.execute(sn_table.select()):
+            self.test_case.assertTrue(hasattr(sn, 'mtu'))
+
+        # Create share network
+        share_networks = [
+            {
+                'id': self.sn_ids[1],
+                'user_id': sn.user_id,
+                'project_id': sn.project_id,
+                'gateway': '1.1.1.1',
+                'name': 'name_foo_2',
+                'mtu': 1509,
+            },
+        ]
+        engine.execute(sn_table.insert(share_networks))
+
+        # Select share network with MTU set
+        for sn in engine.execute(
+                sn_table.select().where(sn_table.c.name == 'name_foo_2')):
+            self.test_case.assertTrue(hasattr(sn, 'mtu'))
+            self.test_case.assertEqual(share_networks[0]['mtu'],
+                                       getattr(sn, 'mtu'))
+
+        # Select all entries and check for the value
+        for sn in engine.execute(sn_table.select()):
+            self.test_case.assertTrue(hasattr(sn, 'mtu'))
+            if sn['id'] == self.sn_ids[1]:
+                self.test_case.assertEqual(network_allocations[0]['mtu'],
+                                           getattr(sn, 'mtu'))
+            else:
+                self.test_case.assertIsNone(sn['mtu'])
+
+    def check_downgrade(self, engine):
+        for table_name, ids in ((self.na_table_name, self.na_ids),
+                                (self.sn_table_name, self.sn_ids)):
+            table = utils.load_table(table_name, engine)
+            db_result = engine.execute(table.select())
+            self.test_case.assertTrue(db_result.rowcount >= len(ids))
+            for record in db_result:
+                self.test_case.assertFalse(hasattr(record, 'mtu'))

@@ -1,0 +1,4 @@
+---
+features:
+  - Store network MTU value into DB to make it possible for drivers with share
+    server support to support different values than 1500.
