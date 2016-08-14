@@ -153,7 +153,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
         """Update access rules, authorize SSL CNs (Common Names)."""
 
         # Fetch existing authorized CNs, the value of Gluster option
-        # 'auth.ssl-allow' that is available as a comma seperated string.
+        # 'auth.ssl-allow' that is available as a comma separated string.
         # wrt. GlusterFS' parsing of auth.ssl-allow, please see code from
         # https://github.com/gluster/glusterfs/blob/v3.6.2/
         # xlators/protocol/auth/login/src/login.c#L80
