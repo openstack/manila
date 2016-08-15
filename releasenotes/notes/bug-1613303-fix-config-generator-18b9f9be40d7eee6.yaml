@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixed the generation of options in the correct option groups. Using the
+    config generator (``tox -e genconfig``), [cinder], [nova] and [neutron]
+    options are now generated in the right groups instead of [default].
