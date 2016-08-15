@@ -473,7 +473,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def create_network_interface(self, ip, netmask, vlan, node, port,
-                                 vserver_name, lif_name, ipspace_name):
+                                 vserver_name, lif_name, ipspace_name, mtu):
         """Creates LIF on VLAN port."""
 
         home_port_name = port
@@ -482,8 +482,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             home_port_name = '%(port)s-%(tag)s' % {'port': port, 'tag': vlan}
 
         if self.features.BROADCAST_DOMAINS:
-            self._ensure_broadcast_domain_for_port(node, home_port_name,
-                                                   ipspace=ipspace_name)
+            self._ensure_broadcast_domain_for_port(
+                node, home_port_name, mtu, ipspace=ipspace_name)
 
         LOG.debug('Creating LIF %(lif)s for Vserver %(vserver)s ',
                   {'lif': lif_name, 'vserver': vserver_name})
@@ -554,7 +554,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 raise exception.NetAppException(msg % msg_args)
 
     @na_utils.trace
-    def _ensure_broadcast_domain_for_port(self, node, port,
+    def _ensure_broadcast_domain_for_port(self, node, port, mtu,
                                           domain=DEFAULT_BROADCAST_DOMAIN,
                                           ipspace=DEFAULT_IPSPACE):
         """Ensure a port is in a broadcast domain.  Create one if necessary.
@@ -572,6 +572,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         # Port already in desired ipspace and broadcast domain.
         if (port_info['ipspace'] == ipspace
                 and port_info['broadcast-domain'] == domain):
+            self._modify_broadcast_domain(domain, ipspace, mtu)
             return
 
         # If in another broadcast domain, remove port from it.
@@ -582,7 +583,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         # If desired broadcast domain doesn't exist, create it.
         if not self._broadcast_domain_exists(domain, ipspace):
-            self._create_broadcast_domain(domain, ipspace)
+            self._create_broadcast_domain(domain, ipspace, mtu)
+        else:
+            self._modify_broadcast_domain(domain, ipspace, mtu)
 
         # Move the port into the broadcast domain where it is needed.
         self._add_port_to_broadcast_domain(node, port, domain, ipspace)
@@ -640,7 +643,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return self._has_records(result)
 
     @na_utils.trace
-    def _create_broadcast_domain(self, domain, ipspace, mtu=1500):
+    def _create_broadcast_domain(self, domain, ipspace, mtu):
         """Create a broadcast domain."""
         api_args = {
             'ipspace': ipspace,
@@ -648,6 +651,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'mtu': mtu,
         }
         self.send_request('net-port-broadcast-domain-create', api_args)
+
+    @na_utils.trace
+    def _modify_broadcast_domain(self, domain, ipspace, mtu):
+        """Modify a broadcast domain."""
+        api_args = {
+            'ipspace': ipspace,
+            'broadcast-domain': domain,
+            'mtu': mtu,
+        }
+        self.send_request('net-port-broadcast-domain-modify', api_args)
 
     @na_utils.trace
     def _delete_broadcast_domain(self, domain, ipspace):
@@ -658,6 +671,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         }
         self.send_request('net-port-broadcast-domain-destroy', api_args)
 
+    @na_utils.trace
     def _delete_broadcast_domains_for_ipspace(self, ipspace_name):
         """Deletes all broadcast domains in an IPspace."""
         ipspaces = self.get_ipspaces(ipspace_name=ipspace_name)
