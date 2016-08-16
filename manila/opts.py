@@ -63,6 +63,7 @@ import manila.share.drivers.glusterfs.layout_directory
 import manila.share.drivers.glusterfs.layout_volume
 import manila.share.drivers.hdfs.hdfs_native
 import manila.share.drivers.hitachi.hds_hnas
+import manila.share.drivers.hitachi.hsp.driver
 import manila.share.drivers.hpe.hpe_3par_driver
 import manila.share.drivers.huawei.huawei_nas
 import manila.share.drivers.ibm.gpfs
@@ -133,6 +134,7 @@ _global_opt_lists = [
     manila.share.drivers.glusterfs.layout_volume.glusterfs_volume_mapped_opts,
     manila.share.drivers.hdfs.hdfs_native.hdfs_native_share_opts,
     manila.share.drivers.hitachi.hds_hnas.hds_hnas_opts,
+    manila.share.drivers.hitachi.hsp.driver.hitachi_hsp_opts,
     manila.share.drivers.hpe.hpe_3par_driver.HPE3PAR_OPTS,
     manila.share.drivers.huawei.huawei_nas.huawei_opts,
     manila.share.drivers.ibm.gpfs.gpfs_share_opts,

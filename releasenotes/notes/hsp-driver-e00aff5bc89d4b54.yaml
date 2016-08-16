@@ -1,0 +1,7 @@
+---
+prelude: >
+    Add Hitachi HSP driver.
+features:
+  - Added new Hitachi HSP driver, that supports manage/unmanage and
+    shrinking of shares, along with all the minimum driver features. Does
+    not support snapshots.
