@@ -433,8 +433,8 @@ class ShareRulesTest(base.BaseSharesTest):
     def test_list_access_rules(self, version):
         if (utils.is_microversion_lt(version, '2.13') and
                 CONF.share.enable_cephx_rules_for_protocols):
-            msg = ("API version %s does not support cephx access type, "
-                   "need version greater than 2.13." % version)
+            msg = ("API version %s does not support cephx access type, need "
+                   "version >= 2.13." % version)
             raise self.skipException(msg)
 
         # create rule
@@ -495,8 +495,8 @@ class ShareRulesTest(base.BaseSharesTest):
     def test_access_rules_deleted_if_share_deleted(self, version):
         if (utils.is_microversion_lt(version, '2.13') and
                 CONF.share.enable_cephx_rules_for_protocols):
-            msg = ("API version %s does not support cephx access type, "
-                   "need version greater than 2.13." % version)
+            msg = ("API version %s does not support cephx access type, need "
+                   "version >= 2.13." % version)
             raise self.skipException(msg)
 
         # create share

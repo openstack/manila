@@ -355,8 +355,8 @@ def skip_if_cephx_access_type_not_supported_by_client(self, client):
         version = LATEST_MICROVERSION
     if (CONF.share.enable_cephx_rules_for_protocols and
             utils.is_microversion_lt(version, '2.13')):
-        msg = ("API version %s does not support cephx access type, "
-               "need version greater than 2.13." % version)
+        msg = ("API version %s does not support cephx access type, need "
+               "version >= 2.13." % version)
         raise self.skipException(msg)
 
 
