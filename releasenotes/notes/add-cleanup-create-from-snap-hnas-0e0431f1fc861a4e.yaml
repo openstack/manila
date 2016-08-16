@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed Hitachi HNAS driver not cleaning up data in backend when failing
+    to create a share from snapshot.

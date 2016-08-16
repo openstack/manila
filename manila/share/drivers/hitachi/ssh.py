@@ -67,7 +67,12 @@ class HNASSSHBackend(object):
         path = '/shares/' + share_id
         command = ['nfs-export', 'add', '-S', 'disable', '-c', '127.0.0.1',
                    path, self.fs_name, path]
-        self._execute(command)
+        try:
+            self._execute(command)
+        except processutils.ProcessExecutionError:
+            msg = _("Could not create NFS export %s.") % share_id
+            LOG.exception(msg)
+            raise exception.HNASBackendException(msg=msg)
 
     def nfs_export_del(self, share_id):
         path = '/shares/' + share_id

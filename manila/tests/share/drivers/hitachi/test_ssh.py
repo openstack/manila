@@ -470,6 +470,14 @@ class HNASSSHTestCase(test.TestCase):
 
         self._driver_ssh._execute.assert_called_with(fake_nfs_command)
 
+    def test_nfs_export_add_error(self):
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            side_effect=[putils.ProcessExecutionError(stderr='')]))
+
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver_ssh.nfs_export_add, 'vvol_test')
+        self.assertTrue(self.mock_log.exception.called)
+
     def test_nfs_export_del(self):
         fake_nfs_command = ['nfs-export', 'del', '/shares/vvol_test']
         self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())

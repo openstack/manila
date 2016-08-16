@@ -501,6 +501,35 @@ class HDSHNASTestCase(test.TestCase):
             '/shares/' + share['id'])
         ssh.HNASSSHBackend.nfs_export_add.assert_called_once_with(share['id'])
 
+    def test_create_share_from_snapshot_cleanup(self):
+        dest_path = '/snapshots/' + share['id'] + '/' + snapshot['id']
+        src_path = '/shares/' + share['id']
+
+        self.mock_object(hds_hnas.HDSHNASDriver, "_check_fs_mounted",
+                         mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "vvol_create")
+        self.mock_object(ssh.HNASSSHBackend, "quota_add")
+        self.mock_object(ssh.HNASSSHBackend, "tree_clone")
+        self.mock_object(ssh.HNASSSHBackend, "vvol_delete")
+        self.mock_object(ssh.HNASSSHBackend, "nfs_export_add", mock.Mock(
+            side_effect=exception.HNASBackendException(
+                msg='Error adding nfs export.')))
+
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver.create_share_from_snapshot,
+                          'context', share, snapshot)
+
+        ssh.HNASSSHBackend.vvol_create.assert_called_once_with(
+            share['id'])
+        ssh.HNASSSHBackend.quota_add.assert_called_once_with(
+            share['id'], share['size'])
+        ssh.HNASSSHBackend.tree_clone.assert_called_once_with(
+            dest_path, src_path)
+        ssh.HNASSSHBackend.nfs_export_add.assert_called_once_with(
+            share['id'])
+        ssh.HNASSSHBackend.vvol_delete.assert_called_once_with(
+            share['id'])
+
     def test__check_fs_mounted(self):
         self.mock_object(ssh.HNASSSHBackend, 'check_fs_mounted', mock.Mock(
             return_value=True))

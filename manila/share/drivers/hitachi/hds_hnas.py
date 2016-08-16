@@ -23,9 +23,7 @@ import six
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LI
-from manila.i18n import _LW
+from manila.i18n import _, _LE, _LI, _LW
 from manila.share import driver
 
 LOG = log.getLogger(__name__)
@@ -671,5 +669,14 @@ class HDSHNASDriver(driver.ShareDriver):
         except exception.HNASNothingToCloneException:
             LOG.warning(_LW("Source directory is empty, exporting "
                             "directory."))
-        self.hnas.nfs_export_add(share['id'])
+
+        try:
+            self.hnas.nfs_export_add(share['id'])
+        except exception.HNASBackendException:
+            with excutils.save_and_reraise_exception():
+                msg = _LE('Failed to create share %(share_id)s from snapshot '
+                          '%(snap)s.')
+                LOG.exception(msg, {'share_id': share['id'],
+                                    'snap': snapshot['id']})
+                self.hnas.vvol_delete(share['id'])
         return dest_path
