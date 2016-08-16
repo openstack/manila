@@ -45,6 +45,7 @@ class CopyClassTestCase(test.TestCase):
                          mock.Mock(return_value=("100", "")))
 
         # run
+        self._copy.initialized = True
         out = self._copy.get_progress()
 
         # asserts
@@ -53,11 +54,34 @@ class CopyClassTestCase(test.TestCase):
         utils.execute.assert_called_once_with("stat", "-c", "%s", "/fake/path",
                                               run_as_root=True)
 
-    def test_get_progress_current_copy_none(self):
-        self._copy.current_copy = None
+    def test_get_progress_not_initialized(self):
+        expected = {'total_progress': 0}
+
+        # run
+        self._copy.initialized = False
+        out = self._copy.get_progress()
+
+        # asserts
+        self.assertEqual(expected, out)
+
+    def test_get_progress_completed_empty(self):
         expected = {'total_progress': 100}
 
         # run
+        self._copy.initialized = True
+        self._copy.completed = True
+        self._copy.total_size = 0
+        out = self._copy.get_progress()
+
+        # asserts
+        self.assertEqual(expected, out)
+
+    def test_get_progress_current_copy_none(self):
+        self._copy.current_copy = None
+        expected = {'total_progress': 0}
+
+        # run
+        self._copy.initialized = True
         out = self._copy.get_progress()
 
         # asserts
@@ -74,6 +98,7 @@ class CopyClassTestCase(test.TestCase):
             mock.Mock(side_effect=utils.processutils.ProcessExecutionError()))
 
         # run
+        self._copy.initialized = True
         out = self._copy.get_progress()
 
         # asserts

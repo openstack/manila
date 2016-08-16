@@ -34,36 +34,45 @@ class Copy(object):
         self.current_copy = None
         self.ignore_list = ignore_list
         self.cancelled = False
+        self.initialized = False
+        self.completed = False
 
     def get_progress(self):
 
-        if self.current_copy is not None:
-
-            try:
-                size, err = utils.execute("stat", "-c", "%s",
-                                          self.current_copy['file_path'],
-                                          run_as_root=True)
-                size = int(size)
-            except utils.processutils.ProcessExecutionError:
-                size = 0
-
-            total_progress = 0
-            if self.total_size > 0:
-                total_progress = self.current_size * 100 / self.total_size
-            current_file_progress = 0
-            if self.current_copy['size'] > 0:
-                current_file_progress = size * 100 / self.current_copy['size']
-            current_file_path = self.current_copy['file_path']
-
-            progress = {
-                'total_progress': total_progress,
-                'current_file_path': current_file_path,
-                'current_file_progress': current_file_progress
-            }
-
-            return progress
-        else:
+        # Empty share or empty contents
+        if self.completed and self.total_size == 0:
             return {'total_progress': 100}
+
+        if not self.initialized or self.current_copy is None:
+            return {'total_progress': 0}
+
+        try:
+            size, err = utils.execute("stat", "-c", "%s",
+                                      self.current_copy['file_path'],
+                                      run_as_root=True)
+            size = int(size)
+        except utils.processutils.ProcessExecutionError:
+            size = 0
+
+        current_file_progress = 0
+        if self.current_copy['size'] > 0:
+            current_file_progress = size * 100 / self.current_copy['size']
+        current_file_path = self.current_copy['file_path']
+
+        total_progress = 0
+        if self.total_size > 0:
+            if current_file_progress == 100:
+                size = 0
+            total_progress = int((self.current_size + size) *
+                                 100 / self.total_size)
+
+        progress = {
+            'total_progress': total_progress,
+            'current_file_path': current_file_path,
+            'current_file_progress': current_file_progress
+        }
+
+        return progress
 
     def cancel(self):
 
@@ -72,8 +81,10 @@ class Copy(object):
     def run(self):
 
         self.get_total_size(self.src)
+        self.initialized = True
         self.copy_data(self.src)
         self.copy_stats(self.src)
+        self.completed = True
 
         LOG.info(six.text_type(self.get_progress()))
 
