@@ -596,14 +596,19 @@ class HitachiHNASTestCase(test.TestCase):
         self.assertRaises(exception.HNASBackendException,
                           self._driver.manage_existing, share_nfs, 'option')
 
-    @ddt.data(share_nfs, share_cifs)
-    def test_manage_existing_wrong_path_format(self, share):
-        share_copy = share.copy()
-        share_copy['export_locations'] = [{'path': ':/'}]
+    @ddt.data(':/', '1.1.1.1:/share_id', '1.1.1.1:/shares',
+              '1.1.1.1:shares/share_id', ':/share_id')
+    def test_manage_existing_wrong_path_format(self, wrong_location):
+        expected_exception = ("Share backend error: Incorrect path. It "
+                              "should have the following format: "
+                              "IP:/shares/share_id.")
+        share_copy = share_nfs.copy()
+        share_copy['export_locations'] = [{'path': wrong_location}]
 
-        self.assertRaises(exception.ShareBackendException,
-                          self._driver.manage_existing, share_copy,
-                          'option')
+        ex = self.assertRaises(exception.ShareBackendException,
+                               self._driver.manage_existing, share_copy,
+                               'option')
+        self.assertEqual(expected_exception, ex.msg)
 
     def test_manage_existing_wrong_evs_ip(self):
         share_nfs['export_locations'] = [{'path': '172.24.44.189:/shares/'
