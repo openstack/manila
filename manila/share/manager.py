@@ -112,6 +112,8 @@ MAPPING = {
     'manila.share.drivers.netapp.common.NetAppDriver',
     'manila.share.drivers.hp.hp_3par_driver.HP3ParShareDriver':
     'manila.share.drivers.hpe.hpe_3par_driver.HPE3ParShareDriver',
+    'manila.share.drivers.hitachi.hds_hnas.HDSHNASDriver':
+    'manila.share.drivers.hitachi.hnas.driver.HitachiHNASDriver',
     'manila.share.drivers.glusterfs_native.GlusterfsNativeShareDriver':
     'manila.share.drivers.glusterfs.glusterfs_native.'
     'GlusterfsNativeShareDriver',

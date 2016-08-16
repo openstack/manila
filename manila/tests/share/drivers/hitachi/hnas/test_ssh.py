@@ -23,7 +23,7 @@ import paramiko
 import six
 
 from manila import exception
-from manila.share.drivers.hitachi import ssh
+from manila.share.drivers.hitachi.hnas import ssh
 from manila import test
 from manila import utils as mutils
 
@@ -505,7 +505,7 @@ class HNASSSHTestCase(test.TestCase):
             'share_proto': 'nfs',
             'size': 4,
             'share_id': 'vvol_test',
-            'host': 'ubuntu@hds2#HDS2',
+            'host': 'ubuntu@hitachi2#HITACHI2',
         }
 
     def test_get_stats(self):

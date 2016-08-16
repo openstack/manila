@@ -30,38 +30,49 @@ from manila.share import driver
 
 LOG = log.getLogger(__name__)
 
-hds_hnas_opts = [
-    cfg.StrOpt('hds_hnas_ip',
+hitachi_hnas_opts = [
+    cfg.StrOpt('hitachi_hnas_ip',
+               deprecated_name='hds_hnas_ip',
                help="HNAS management interface IP for communication "
                     "between Manila controller and HNAS."),
-    cfg.StrOpt('hds_hnas_user',
+    cfg.StrOpt('hitachi_hnas_user',
+               deprecated_name='hds_hnas_user',
                help="HNAS username Base64 String in order to perform tasks "
                     "such as create file-systems and network interfaces."),
-    cfg.StrOpt('hds_hnas_password',
+    cfg.StrOpt('hitachi_hnas_password',
+               deprecated_name='hds_hnas_password',
                secret=True,
                help="HNAS user password. Required only if private key is not "
                     "provided."),
-    cfg.IntOpt('hds_hnas_evs_id',
+    cfg.IntOpt('hitachi_hnas_evs_id',
+               deprecated_name='hds_hnas_evs_id',
                help="Specify which EVS this backend is assigned to."),
-    cfg.StrOpt('hds_hnas_evs_ip',
+    cfg.StrOpt('hitachi_hnas_evs_ip',
+               deprecated_name='hds_hnas_evs_ip',
                help="Specify IP for mounting shares."),
-    cfg.StrOpt('hds_hnas_file_system_name',
+    cfg.StrOpt('hitachi_hnas_file_system_name',
+               deprecated_name='hds_hnas_file_system_name',
                help="Specify file-system name for creating shares."),
-    cfg.StrOpt('hds_hnas_ssh_private_key',
+    cfg.StrOpt('hitachi_hnas_ssh_private_key',
+               deprecated_name='hds_hnas_ssh_private_key',
                secret=True,
                help="RSA/DSA private key value used to connect into HNAS. "
                     "Required only if password is not provided."),
-    cfg.StrOpt('hds_hnas_cluster_admin_ip0',
+    cfg.StrOpt('hitachi_hnas_cluster_admin_ip0',
+               deprecated_name='hds_hnas_cluster_admin_ip0',
                help="The IP of the clusters admin node. Only set in HNAS "
                     "multinode clusters."),
-    cfg.IntOpt('hds_hnas_stalled_job_timeout',
+    cfg.IntOpt('hitachi_hnas_stalled_job_timeout',
+               deprecated_name='hds_hnas_stalled_job_timeout',
                default=30,
                help="The time (in seconds) to wait for stalled HNAS jobs "
                     "before aborting."),
-    cfg.StrOpt('hds_hnas_driver_helper',
-               default='manila.share.drivers.hitachi.ssh.HNASSSHBackend',
+    cfg.StrOpt('hitachi_hnas_driver_helper',
+               deprecated_name='hds_hnas_driver_helper',
+               default='manila.share.drivers.hitachi.hnas.ssh.HNASSSHBackend',
                help="Python class to be used for driver helper."),
-    cfg.BoolOpt('hds_hnas_allow_cifs_snapshot_while_mounted',
+    cfg.BoolOpt('hitachi_hnas_allow_cifs_snapshot_while_mounted',
+                deprecated_name='hds_hnas_allow_cifs_snapshot_while_mounted',
                 default=False,
                 help="By default, CIFS snapshots are not allowed to be taken "
                      "when the share has clients connected because consistent "
@@ -71,69 +82,71 @@ hds_hnas_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(hds_hnas_opts)
+CONF.register_opts(hitachi_hnas_opts)
 
 
-class HDSHNASDriver(driver.ShareDriver):
+class HitachiHNASDriver(driver.ShareDriver):
     """Manila HNAS Driver implementation.
 
     1.0.0 - Initial Version.
     2.0.0 - Refactoring, bugfixes, implemented Share Shrink and Update Access.
-    3.0.0 - Implemented support for CIFS protocol.
+    3.0.0 - New driver location, implemented support for CIFS protocol.
     """
 
     def __init__(self, *args, **kwargs):
         """Do initialization."""
 
-        LOG.debug("Invoking base constructor for Manila HDS HNAS Driver.")
-        super(HDSHNASDriver, self).__init__(False, *args, **kwargs)
+        LOG.debug("Invoking base constructor for Manila Hitachi HNAS Driver.")
+        super(HitachiHNASDriver, self).__init__(False, *args, **kwargs)
 
-        LOG.debug("Setting up attributes for Manila HDS HNAS Driver.")
-        self.configuration.append_config_values(hds_hnas_opts)
+        LOG.debug("Setting up attributes for Manila Hitachi HNAS Driver.")
+        self.configuration.append_config_values(hitachi_hnas_opts)
 
-        LOG.debug("Reading config parameters for Manila HDS HNAS Driver.")
+        LOG.debug("Reading config parameters for Manila Hitachi HNAS Driver.")
         self.backend_name = self.configuration.safe_get('share_backend_name')
-        hnas_helper = self.configuration.safe_get('hds_hnas_driver_helper')
-        hnas_ip = self.configuration.safe_get('hds_hnas_ip')
-        hnas_username = self.configuration.safe_get('hds_hnas_user')
-        hnas_password = self.configuration.safe_get('hds_hnas_password')
-        hnas_evs_id = self.configuration.safe_get('hds_hnas_evs_id')
-        self.hnas_evs_ip = self.configuration.safe_get('hds_hnas_evs_ip')
-        self.fs_name = self.configuration.safe_get('hds_hnas_file_system_name')
+        hnas_helper = self.configuration.safe_get('hitachi_hnas_driver_helper')
+        hnas_ip = self.configuration.safe_get('hitachi_hnas_ip')
+        hnas_username = self.configuration.safe_get('hitachi_hnas_user')
+        hnas_password = self.configuration.safe_get('hitachi_hnas_password')
+        hnas_evs_id = self.configuration.safe_get('hitachi_hnas_evs_id')
+        self.hnas_evs_ip = self.configuration.safe_get('hitachi_hnas_evs_ip')
+        self.fs_name = self.configuration.safe_get(
+            'hitachi_hnas_file_system_name')
         self.cifs_snapshot = self.configuration.safe_get(
-            'hds_hnas_allow_cifs_snapshot_while_mounted')
+            'hitachi_hnas_allow_cifs_snapshot_while_mounted')
         ssh_private_key = self.configuration.safe_get(
-            'hds_hnas_ssh_private_key')
+            'hitachi_hnas_ssh_private_key')
         cluster_admin_ip0 = self.configuration.safe_get(
-            'hds_hnas_cluster_admin_ip0')
+            'hitachi_hnas_cluster_admin_ip0')
         self.private_storage = kwargs.get('private_storage')
         job_timeout = self.configuration.safe_get(
-            'hds_hnas_stalled_job_timeout')
+            'hitachi_hnas_stalled_job_timeout')
 
         if hnas_helper is None:
-            msg = _("The config parameter hds_hnas_driver_helper is not set.")
+            msg = _("The config parameter hitachi_hnas_driver_helper is not "
+                    "set.")
             raise exception.InvalidParameterValue(err=msg)
 
         if hnas_evs_id is None:
-            msg = _("The config parameter hds_hnas_evs_id is not set.")
+            msg = _("The config parameter hitachi_hnas_evs_id is not set.")
             raise exception.InvalidParameterValue(err=msg)
 
         if self.hnas_evs_ip is None:
-            msg = _("The config parameter hds_hnas_evs_ip is not set.")
+            msg = _("The config parameter hitachi_hnas_evs_ip is not set.")
             raise exception.InvalidParameterValue(err=msg)
 
         if hnas_ip is None:
-            msg = _("The config parameter hds_hnas_ip is not set.")
+            msg = _("The config parameter hitachi_hnas_ip is not set.")
             raise exception.InvalidParameterValue(err=msg)
 
         if hnas_username is None:
-            msg = _("The config parameter hds_hnas_user is not set.")
+            msg = _("The config parameter hitachi_hnas_user is not set.")
             raise exception.InvalidParameterValue(err=msg)
 
         if hnas_password is None and ssh_private_key is None:
             msg = _("Credentials configuration parameters missing: "
-                    "you need to set hds_hnas_password or "
-                    "hds_hnas_ssh_private_key.")
+                    "you need to set hitachi_hnas_password or "
+                    "hitachi_hnas_ssh_private_key.")
             raise exception.InvalidParameterValue(err=msg)
 
         LOG.debug("Initializing HNAS Layer.")
@@ -416,7 +429,7 @@ class HDSHNASDriver(driver.ShareDriver):
 
     def _update_share_stats(self, data=None):
         """Updates the Capability of Backend."""
-        LOG.debug("Updating Backend Capability Information - HDS HNAS.")
+        LOG.debug("Updating Backend Capability Information - Hitachi HNAS.")
 
         self._check_fs_mounted()
 
@@ -427,7 +440,7 @@ class HDSHNASDriver(driver.ShareDriver):
         data = {
             'share_backend_name': self.backend_name,
             'driver_handles_share_servers': self.driver_handles_share_servers,
-            'vendor_name': 'HDS',
+            'vendor_name': 'Hitachi',
             'driver_version': '3.0.0',
             'storage_protocol': 'NFS_CIFS',
             'total_capacity_gb': total_space,
@@ -441,7 +454,7 @@ class HDSHNASDriver(driver.ShareDriver):
         LOG.info(_LI("HNAS Capabilities: %(data)s."),
                  {'data': six.text_type(data)})
 
-        super(HDSHNASDriver, self)._update_share_stats(data)
+        super(HitachiHNASDriver, self)._update_share_stats(data)
 
     def manage_existing(self, share, driver_options):
         """Manages a share that exists on backend.
@@ -738,8 +751,8 @@ class HDSHNASDriver(driver.ShareDriver):
             if (self.hnas.is_cifs_in_use(hnas_share_id) and
                     not self.cifs_snapshot):
                 msg = _("CIFS snapshot when share is mounted is disabled. "
-                        "Set hds_hnas_allow_cifs_snapshot_while_mounted to "
-                        "True or unmount the share to take a snapshot.")
+                        "Set hitachi_hnas_allow_cifs_snapshot_while_mounted to"
+                        " True or unmount the share to take a snapshot.")
                 raise exception.ShareBackendException(msg=msg)
 
         src_path = os.path.join('/shares', hnas_share_id)

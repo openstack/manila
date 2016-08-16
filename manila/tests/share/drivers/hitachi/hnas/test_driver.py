@@ -20,8 +20,8 @@ from oslo_config import cfg
 from manila import exception
 import manila.share.configuration
 import manila.share.driver
-from manila.share.drivers.hitachi import hds_hnas
-from manila.share.drivers.hitachi import ssh
+from manila.share.drivers.hitachi.hnas import driver
+from manila.share.drivers.hitachi.hnas import ssh
 from manila import test
 
 CONF = cfg.CONF
@@ -139,22 +139,22 @@ invalid_protocol_msg = ("Share backend error: Only NFS or CIFS protocol are "
 
 
 @ddt.ddt
-class HDSHNASTestCase(test.TestCase):
+class HitachiHNASTestCase(test.TestCase):
     def setUp(self):
-        super(HDSHNASTestCase, self).setUp()
+        super(HitachiHNASTestCase, self).setUp()
         CONF.set_default('driver_handles_share_servers', False)
-        CONF.hds_hnas_evs_id = '2'
-        CONF.hds_hnas_evs_ip = '172.24.44.10'
-        CONF.hds_hnas_ip = '172.24.44.1'
-        CONF.hds_hnas_ip_port = 'hds_hnas_ip_port'
-        CONF.hds_hnas_user = 'hds_hnas_user'
-        CONF.hds_hnas_password = 'hds_hnas_password'
-        CONF.hds_hnas_file_system_name = 'file_system'
-        CONF.hds_hnas_ssh_private_key = 'private_key'
-        CONF.hds_hnas_cluster_admin_ip0 = None
-        CONF.hds_hnas_stalled_job_timeout = 10
-        CONF.hds_hnas_driver_helper = ('manila.share.drivers.hitachi.ssh.'
-                                       'HNASSSHBackend')
+        CONF.hitachi_hnas_evs_id = '2'
+        CONF.hitachi_hnas_evs_ip = '172.24.44.10'
+        CONF.hitachi_hnas_ip = '172.24.44.1'
+        CONF.hitachi_hnas_ip_port = 'hitachi_hnas_ip_port'
+        CONF.hitachi_hnas_user = 'hitachi_hnas_user'
+        CONF.hitachi_hnas_password = 'hitachi_hnas_password'
+        CONF.hitachi_hnas_file_system_name = 'file_system'
+        CONF.hitachi_hnas_ssh_private_key = 'private_key'
+        CONF.hitachi_hnas_cluster_admin_ip0 = None
+        CONF.hitachi_hnas_stalled_job_timeout = 10
+        CONF.hitachi_hnas_driver_helper = ('manila.share.drivers.hitachi.hnas.'
+                                           'ssh.HNASSSHBackend')
         self.fake_conf = manila.share.configuration.Configuration(None)
 
         self.fake_private_storage = mock.Mock()
@@ -163,11 +163,11 @@ class HDSHNASTestCase(test.TestCase):
         self.mock_object(self.fake_private_storage, 'delete',
                          mock.Mock(return_value=None))
 
-        self._driver = hds_hnas.HDSHNASDriver(
+        self._driver = driver.HitachiHNASDriver(
             private_storage=self.fake_private_storage,
             configuration=self.fake_conf)
         self._driver.backend_name = "hnas"
-        self.mock_log = self.mock_object(hds_hnas, 'LOG')
+        self.mock_log = self.mock_object(driver, 'LOG')
 
         # mocking common backend calls
         self.mock_object(ssh.HNASSSHBackend, "check_fs_mounted", mock.Mock(
@@ -177,8 +177,8 @@ class HDSHNASTestCase(test.TestCase):
         self.mock_object(ssh.HNASSSHBackend, "check_cifs", mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "check_export", mock.Mock())
 
-    @ddt.data('hds_hnas_driver_helper', 'hds_hnas_evs_id', 'hds_hnas_evs_ip',
-              'hds_hnas_ip', 'hds_hnas_user')
+    @ddt.data('hitachi_hnas_driver_helper', 'hitachi_hnas_evs_id',
+              'hitachi_hnas_evs_ip', 'hitachi_hnas_ip', 'hitachi_hnas_user')
     def test_init_invalid_conf_parameters(self, attr_name):
         self.mock_object(manila.share.driver.ShareDriver, '__init__')
         setattr(CONF, attr_name, None)
@@ -189,8 +189,8 @@ class HDSHNASTestCase(test.TestCase):
     def test_init_invalid_credentials(self):
         self.mock_object(manila.share.driver.ShareDriver,
                          '__init__')
-        CONF.hds_hnas_password = None
-        CONF.hds_hnas_ssh_private_key = None
+        CONF.hitachi_hnas_password = None
+        CONF.hitachi_hnas_ssh_private_key = None
 
         self.assertRaises(exception.InvalidParameterValue,
                           self._driver.__init__)
@@ -336,7 +336,7 @@ class HDSHNASTestCase(test.TestCase):
 
     @ddt.data(share_nfs, share_cifs)
     def test_create_share(self, share):
-        self.mock_object(hds_hnas.HDSHNASDriver, "_check_fs_mounted",
+        self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted",
                          mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "vvol_create", mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "quota_add", mock.Mock())
@@ -364,7 +364,7 @@ class HDSHNASTestCase(test.TestCase):
             self.assertFalse(ssh.HNASSSHBackend.nfs_export_add.called)
 
     def test_create_share_export_error(self):
-        self.mock_object(hds_hnas.HDSHNASDriver, "_check_fs_mounted",
+        self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted",
                          mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "vvol_create", mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "quota_add", mock.Mock())
@@ -384,7 +384,7 @@ class HDSHNASTestCase(test.TestCase):
         ssh.HNASSSHBackend.vvol_delete.assert_called_once_with(share_nfs['id'])
 
     def test_create_share_invalid_share_protocol(self):
-        self.mock_object(hds_hnas.HDSHNASDriver, "_create_share",
+        self.mock_object(driver.HitachiHNASDriver, "_create_share",
                          mock.Mock(return_value="path"))
 
         ex = self.assertRaises(exception.ShareBackendException,
@@ -394,7 +394,7 @@ class HDSHNASTestCase(test.TestCase):
 
     @ddt.data(share_nfs, share_cifs)
     def test_delete_share(self, share):
-        self.mock_object(hds_hnas.HDSHNASDriver, "_check_fs_mounted",
+        self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted",
                          mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "nfs_export_del", mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "cifs_share_del", mock.Mock())
@@ -452,8 +452,8 @@ class HDSHNASTestCase(test.TestCase):
     def test_create_snapshot_cifs_exception(self):
         cifs_excep_msg = ("Share backend error: CIFS snapshot when share is "
                           "mounted is disabled. Set "
-                          "hds_hnas_allow_cifs_snapshot_while_mounted to True "
-                          "or unmount the share to take a snapshot.")
+                          "hitachi_hnas_allow_cifs_snapshot_while_mounted to "
+                          "True or unmount the share to take a snapshot.")
 
         self.mock_object(ssh.HNASSSHBackend, "is_cifs_in_use", mock.Mock(
             return_value=True))
@@ -486,7 +486,7 @@ class HDSHNASTestCase(test.TestCase):
 
     def test_delete_snapshot(self):
         hnas_id = snapshot_nfs['share_id']
-        self.mock_object(hds_hnas.HDSHNASDriver, "_check_fs_mounted")
+        self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted")
         self.mock_object(ssh.HNASSSHBackend, "tree_delete", mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "delete_directory", mock.Mock())
 
@@ -494,7 +494,7 @@ class HDSHNASTestCase(test.TestCase):
 
         self.assertTrue(self.mock_log.debug.called)
         self.assertTrue(self.mock_log.info.called)
-        hds_hnas.HDSHNASDriver._check_fs_mounted.assert_called_once_with()
+        driver.HitachiHNASDriver._check_fs_mounted.assert_called_once_with()
         ssh.HNASSSHBackend.tree_delete.assert_called_once_with(
             '/snapshots/' + hnas_id + '/' + snapshot_nfs['id'])
         ssh.HNASSSHBackend.delete_directory.assert_called_once_with(
@@ -637,7 +637,7 @@ class HDSHNASTestCase(test.TestCase):
     @ddt.data([share_nfs, snapshot_nfs], [share_cifs, snapshot_cifs])
     @ddt.unpack
     def test_create_share_from_snapshot(self, share, snapshot):
-        self.mock_object(hds_hnas.HDSHNASDriver, "_check_fs_mounted",
+        self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted",
                          mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "vvol_create", mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "quota_add", mock.Mock())
@@ -668,7 +668,7 @@ class HDSHNASTestCase(test.TestCase):
             self.assertFalse(ssh.HNASSSHBackend.nfs_export_add.called)
 
     def test_create_share_from_snapshot_empty_snapshot(self):
-        self.mock_object(hds_hnas.HDSHNASDriver, "_check_fs_mounted",
+        self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted",
                          mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "vvol_create", mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "quota_add", mock.Mock())
@@ -691,7 +691,7 @@ class HDSHNASTestCase(test.TestCase):
             share_nfs['id'])
 
     def test_create_share_from_snapshot_invalid_protocol(self):
-        self.mock_object(hds_hnas.HDSHNASDriver, "_check_fs_mounted",
+        self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted",
                          mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "vvol_create", mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "quota_add", mock.Mock())
@@ -721,12 +721,12 @@ class HDSHNASTestCase(test.TestCase):
             'share_backend_name': self._driver.backend_name,
             'driver_handles_share_servers':
                 self._driver.driver_handles_share_servers,
-            'vendor_name': 'HDS',
+            'vendor_name': 'Hitachi',
             'driver_version': '3.0.0',
             'storage_protocol': 'NFS_CIFS',
             'total_capacity_gb': 1000,
             'free_capacity_gb': 200,
-            'reserved_percentage': hds_hnas.CONF.reserved_share_percentage,
+            'reserved_percentage': driver.CONF.reserved_share_percentage,
             'qos': False,
             'thin_provisioning': True,
             'dedupe': True,
@@ -734,7 +734,7 @@ class HDSHNASTestCase(test.TestCase):
 
         self.mock_object(ssh.HNASSSHBackend, 'get_stats', mock.Mock(
             return_value=(1000, 200, True)))
-        self.mock_object(hds_hnas.HDSHNASDriver, "_check_fs_mounted",
+        self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted",
                          mock.Mock())
         self.mock_object(manila.share.driver.ShareDriver,
                          '_update_share_stats', mock.Mock())
