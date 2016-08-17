@@ -48,7 +48,7 @@ class ShareMultiBackendTest(base.BaseSharesAdminTest):
             }
             st = cls.create_share_type(
                 name=st_name,
-                extra_specs=cls.add_required_extra_specs_to_dict(extra_specs))
+                extra_specs=cls.add_extra_specs_to_dict(extra_specs))
             cls.sts.append(st["share_type"])
             st_id = st["share_type"]["id"]
             share_data_list.append({"kwargs": {"share_type_id": st_id}})

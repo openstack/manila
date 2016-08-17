@@ -35,8 +35,7 @@ class SchedulerStatsAdminTest(base.BaseSharesAdminTest):
                 'share_backend_name': data_utils.rand_name("fake_name"),
             }
 
-        extra_specs = cls.add_required_extra_specs_to_dict(
-            extra_specs=extra_specs)
+        extra_specs = cls.add_extra_specs_to_dict(extra_specs=extra_specs)
         return cls.create_share_type(
             name, extra_specs=extra_specs,
             client=cls.admin_client)

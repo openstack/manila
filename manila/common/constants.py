@@ -160,19 +160,36 @@ class ExtraSpecs(object):
     DRIVER_HANDLES_SHARE_SERVERS = "driver_handles_share_servers"
     SNAPSHOT_SUPPORT = "snapshot_support"
     REPLICATION_TYPE_SPEC = "replication_type"
+    CREATE_SHARE_FROM_SNAPSHOT_SUPPORT = "create_share_from_snapshot_support"
 
     # Extra specs containers
     REQUIRED = (
         DRIVER_HANDLES_SHARE_SERVERS,
     )
-    UNDELETABLE = (
-        DRIVER_HANDLES_SHARE_SERVERS,
+
+    OPTIONAL = (
         SNAPSHOT_SUPPORT,
+        CREATE_SHARE_FROM_SNAPSHOT_SUPPORT,
+        REPLICATION_TYPE_SPEC,
     )
+
     # NOTE(cknight): Some extra specs are necessary parts of the Manila API and
-    # should be visible to non-admin users. UNDELETABLE specs are user-visible.
-    TENANT_VISIBLE = UNDELETABLE + (REPLICATION_TYPE_SPEC, )
+    # should be visible to non-admin users. REQUIRED specs are user-visible, as
+    # are a handful of community-agreed standardized OPTIONAL ones.
+    TENANT_VISIBLE = REQUIRED + OPTIONAL
+
     BOOLEAN = (
         DRIVER_HANDLES_SHARE_SERVERS,
         SNAPSHOT_SUPPORT,
+        CREATE_SHARE_FROM_SNAPSHOT_SUPPORT,
     )
+
+    # NOTE(cknight): Some extra specs are optional, but a nominal (typically
+    # False, but may be non-boolean) default value for each is still needed
+    # when creating shares.
+    INFERRED_OPTIONAL_MAP = {
+        SNAPSHOT_SUPPORT: False,
+        CREATE_SHARE_FROM_SNAPSHOT_SUPPORT: False,
+    }
+
+    REPLICATION_TYPES = ('writable', 'readable', 'dr')

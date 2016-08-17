@@ -41,6 +41,7 @@ def stub_share(id, **kwargs):
         'share_type_id': '1',
         'is_public': False,
         'snapshot_support': True,
+        'create_share_from_snapshot_support': True,
         'replication_type': None,
         'has_replicas': False,
     }

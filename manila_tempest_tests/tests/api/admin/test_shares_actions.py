@@ -34,7 +34,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
 
         # create share type for share filtering purposes
         cls.st_name = data_utils.rand_name("tempest-st-name")
-        cls.extra_specs = cls.add_required_extra_specs_to_dict(
+        cls.extra_specs = cls.add_extra_specs_to_dict(
             {'storage_protocol': CONF.share.capability_storage_protocol})
         cls.st = cls.create_share_type(
             name=cls.st_name,
@@ -64,20 +64,23 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
             cls.snap = cls.create_snapshot_wait_for_active(
                 cls.shares[0]["id"], cls.snap_name, cls.snap_desc)
 
-            # create second share from snapshot for purposes of sorting and
-            # snapshot filtering
-            cls.share_name2 = data_utils.rand_name("tempest-share-name")
-            cls.share_desc2 = data_utils.rand_name("tempest-share-description")
-            cls.metadata2 = {
-                'foo_key_share_2': 'foo_value_share_2',
-                'bar_key_share_2': 'foo_value_share_2',
-            }
-            cls.shares.append(cls.create_share(
-                name=cls.share_name2,
-                description=cls.share_desc2,
-                metadata=cls.metadata2,
-                snapshot_id=cls.snap['id'],
-            ))
+            if CONF.share.capability_create_share_from_snapshot_support:
+
+                # create second share from snapshot for purposes of sorting and
+                # snapshot filtering
+                cls.share_name2 = data_utils.rand_name("tempest-share-name")
+                cls.share_desc2 = data_utils.rand_name(
+                    "tempest-share-description")
+                cls.metadata2 = {
+                    'foo_key_share_2': 'foo_value_share_2',
+                    'bar_key_share_2': 'foo_value_share_2',
+                }
+                cls.shares.append(cls.create_share(
+                    name=cls.share_name2,
+                    description=cls.share_desc2,
+                    metadata=cls.metadata2,
+                    snapshot_id=cls.snap['id'],
+                ))
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_get_share(self):
@@ -154,7 +157,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         for share in shares:
             self.assertDictContainsSubset(
                 filters['metadata'], share['metadata'])
-        if CONF.share.run_snapshot_tests:
+        if CONF.share.capability_create_share_from_snapshot_support:
             self.assertFalse(self.shares[1]['id'] in [s['id'] for s in shares])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
@@ -250,8 +253,9 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
                 filters['share_network_id'], share['share_network_id'])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
-    @testtools.skipUnless(CONF.share.run_snapshot_tests,
-                          "Snapshot tests are disabled.")
+    @testtools.skipUnless(
+        CONF.share.capability_create_share_from_snapshot_support,
+        "Create share from snapshot tests are disabled.")
     def test_list_shares_with_detail_filter_by_snapshot_id(self):
         filters = {'snapshot_id': self.snap['id']}
 

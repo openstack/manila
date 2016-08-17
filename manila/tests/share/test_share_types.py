@@ -18,9 +18,11 @@
 """Test of Share Type methods for Manila."""
 import copy
 import datetime
+import itertools
 
 import ddt
 import mock
+from oslo_utils import strutils
 
 from manila.common import constants
 from manila import context
@@ -69,17 +71,22 @@ class ShareTypesTestCase(test.TestCase):
         }
     }
 
+    fake_required_extra_specs = {
+        constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true',
+    }
+
+    fake_optional_extra_specs = {
+        constants.ExtraSpecs.SNAPSHOT_SUPPORT: 'true',
+        constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT: 'false',
+    }
+
     fake_type_w_valid_extra = {
         'test_with_extra': {
             'created_at': datetime.datetime(2015, 1, 22, 11, 45, 31),
             'deleted': '0',
             'deleted_at': None,
-            'extra_specs': {
-                constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true'
-            },
-            'required_extra_specs': {
-                constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true'
-            },
+            'extra_specs': fake_required_extra_specs,
+            'required_extra_specs': fake_required_extra_specs,
             'id': u'fooid-2',
             'name': u'test_with_extra',
             'updated_at': None
@@ -131,29 +138,6 @@ class ShareTypesTestCase(test.TestCase):
         extra_spec = share_types.get_share_type_extra_specs(id)
         self.assertEqual(share_type['extra_specs'], extra_spec)
 
-    def test_share_types_diff(self):
-        share_type1 = self.fake_type['test']
-        share_type2 = self.fake_type_w_extra['test_with_extra']
-        expeted_diff = {'extra_specs': {u'gold': (None, u'True')}}
-        self.mock_object(db,
-                         'share_type_get',
-                         mock.Mock(side_effect=[share_type1, share_type2]))
-        (diff, equal) = share_types.share_types_diff(self.context,
-                                                     share_type1['id'],
-                                                     share_type2['id'])
-        self.assertFalse(equal)
-        self.assertEqual(expeted_diff, diff)
-
-    def test_share_types_diff_equal(self):
-        share_type = self.fake_type['test']
-        self.mock_object(db,
-                         'share_type_get',
-                         mock.Mock(return_value=share_type))
-        (diff, equal) = share_types.share_types_diff(self.context,
-                                                     share_type['id'],
-                                                     share_type['id'])
-        self.assertTrue(equal)
-
     def test_get_extra_specs_from_share(self):
         expected = self.fake_extra_specs
         self.mock_object(share_types, 'get_share_type_extra_specs',
@@ -165,63 +149,143 @@ class ShareTypesTestCase(test.TestCase):
         share_types.get_share_type_extra_specs.assert_called_once_with(
             self.fake_share_type_id)
 
-    @ddt.data({},
-              {"fake": "fake"},
-              {constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: None})
-    def test_create_without_required_extra_spec(self, extra_specs):
-        name = "fake_share_type"
+    @ddt.data({}, {"fake": "fake"})
+    def test_create_without_required_extra_spec(self, optional_specs):
+
+        specs = copy.copy(self.fake_required_extra_specs)
+        del specs['driver_handles_share_servers']
+        specs.update(optional_specs)
 
         self.assertRaises(exception.InvalidShareType, share_types.create,
-                          self.context, name, extra_specs)
+                          self.context, "fake_share_type", specs)
 
-    def test_get_share_type_required_extra_specs(self):
-        valid_required_extra_specs = (
-            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS,)
+    @ddt.data({"snapshot_support": "fake"})
+    def test_create_with_invalid_optional_extra_spec(self, optional_specs):
 
-        actual_result = share_types.get_required_extra_specs()
+        specs = copy.copy(self.fake_required_extra_specs)
+        specs.update(optional_specs)
 
-        self.assertEqual(valid_required_extra_specs, actual_result)
+        self.assertRaises(exception.InvalidShareType, share_types.create,
+                          self.context, "fake_share_type", specs)
 
-    def test_validate_required_extra_spec_other(self):
+    def test_get_required_extra_specs(self):
+
+        result = share_types.get_required_extra_specs()
+
+        self.assertEqual(constants.ExtraSpecs.REQUIRED, result)
+
+    def test_get_optional_extra_specs(self):
+
+        result = share_types.get_optional_extra_specs()
+
+        self.assertEqual(constants.ExtraSpecs.OPTIONAL, result)
+
+    def test_get_tenant_visible_extra_specs(self):
+
+        result = share_types.get_tenant_visible_extra_specs()
+
+        self.assertEqual(constants.ExtraSpecs.TENANT_VISIBLE, result)
+
+    def test_get_boolean_extra_specs(self):
+
+        result = share_types.get_boolean_extra_specs()
+
+        self.assertEqual(constants.ExtraSpecs.BOOLEAN, result)
+
+    def test_is_valid_required_extra_spec_other(self):
         actual_result = share_types.is_valid_required_extra_spec(
             'fake', 'fake')
 
         self.assertIsNone(actual_result)
 
-    @ddt.data('1', 'True', 'false', '0', True, False)
-    def test_validate_required_extra_spec_valid(self, value):
-        key = constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
+    @ddt.data(*itertools.product(
+        constants.ExtraSpecs.REQUIRED,
+        strutils.TRUE_STRINGS + strutils.FALSE_STRINGS))
+    @ddt.unpack
+    def test_is_valid_required_extra_spec_valid(self, key, value):
         actual_result = share_types.is_valid_required_extra_spec(key, value)
 
         self.assertTrue(actual_result)
 
     @ddt.data('invalid', {}, '0000000000')
-    def test_validate_required_extra_spec_invalid(self, value):
+    def test_is_valid_required_extra_spec_invalid(self, value):
         key = constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
         actual_result = share_types.is_valid_required_extra_spec(key, value)
 
         self.assertFalse(actual_result)
 
-    @ddt.data({constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true'},
-              {constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true',
-               'another_key': True})
-    def test_get_valid_required_extra_specs_valid(self, specs):
+    @ddt.data({},
+              {'another_key': True})
+    def test_get_valid_required_extra_specs_valid(self, optional_specs):
+
+        specs = copy.copy(self.fake_required_extra_specs)
+        specs.update(optional_specs)
+
         actual_result = share_types.get_valid_required_extra_specs(specs)
 
-        valid_result = {
-            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true'
-        }
-        self.assertEqual(valid_result, actual_result)
+        self.assertEqual(self.fake_required_extra_specs, actual_result)
 
-    @ddt.data(None, {})
-    def test_get_valid_required_extra_specs_invalid(self, specs):
+    @ddt.data(None,
+              {},
+              {constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'fake'})
+    def test_get_valid_required_extra_specs_invalid(self, extra_specs):
+
         self.assertRaises(exception.InvalidExtraSpec,
-                          share_types.get_valid_required_extra_specs, specs)
+                          share_types.get_valid_required_extra_specs,
+                          extra_specs)
+
+    @ddt.data(*(
+        list(itertools.product(
+             (constants.ExtraSpecs.SNAPSHOT_SUPPORT,
+              constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT),
+             strutils.TRUE_STRINGS + strutils.FALSE_STRINGS))) +
+        list(itertools.product(
+             (constants.ExtraSpecs.REPLICATION_TYPE_SPEC,),
+             constants.ExtraSpecs.REPLICATION_TYPES))
+    )
+    @ddt.unpack
+    def test_is_valid_optional_extra_spec_valid(self, key, value):
+
+        result = share_types.is_valid_optional_extra_spec(key, value)
+
+        self.assertTrue(result)
+
+    def test_is_valid_optional_extra_spec_valid_unknown_key(self):
+
+        result = share_types.is_valid_optional_extra_spec('fake', 'fake')
+
+        self.assertIsNone(result)
+
+    def test_get_valid_optional_extra_specs(self):
+
+        extra_specs = copy.copy(self.fake_required_extra_specs)
+        extra_specs.update(self.fake_optional_extra_specs)
+        extra_specs.update({'fake': 'fake'})
+
+        result = share_types.get_valid_optional_extra_specs(extra_specs)
+
+        self.assertEqual(self.fake_optional_extra_specs, result)
+
+    def test_get_valid_optional_extra_specs_empty(self):
+
+        result = share_types.get_valid_optional_extra_specs({})
+
+        self.assertEqual({}, result)
+
+    def test_get_valid_optional_extra_specs_invalid(self):
+
+        extra_specs = {constants.ExtraSpecs.SNAPSHOT_SUPPORT: 'fake'}
+
+        self.assertRaises(exception.InvalidExtraSpec,
+                          share_types.get_valid_optional_extra_specs,
+                          extra_specs)
 
     def test_add_access(self):
         project_id = '456'
         extra_specs = {
-            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true'
+            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true',
+            constants.ExtraSpecs.SNAPSHOT_SUPPORT: 'true',
+            constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT: 'false',
         }
         share_type = share_types.create(self.context, 'type1', extra_specs)
         share_type_id = share_type.get('id')
@@ -240,7 +304,9 @@ class ShareTypesTestCase(test.TestCase):
     def test_remove_access(self):
         project_id = '456'
         extra_specs = {
-            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true'
+            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true',
+            constants.ExtraSpecs.SNAPSHOT_SUPPORT: 'true',
+            constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT: 'false',
         }
         share_type = share_types.create(
             self.context, 'type1', projects=['456'], extra_specs=extra_specs)
@@ -269,7 +335,7 @@ class ShareTypesTestCase(test.TestCase):
 
         self.assertEqual(expected, result)
 
-    @ddt.data('True', 'False', '<isnt> True', '<is> Wrong', None, 5)
+    @ddt.data('<isnt> True', '<is> Wrong', None, 5)
     def test_parse_boolean_extra_spec_invalid(self, spec_value):
 
         self.assertRaises(exception.InvalidExtraSpec,

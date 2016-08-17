@@ -166,12 +166,6 @@ class API(base.Base):
 
         try:
             is_public = strutils.bool_from_string(is_public, strict=True)
-            snapshot_support = strutils.bool_from_string(
-                share_type.get('extra_specs', {}).get(
-                    'snapshot_support', True) if share_type else True,
-                strict=True)
-            replication_type = share_type.get('extra_specs', {}).get(
-                'replication_type') if share_type else None
         except ValueError as e:
             raise exception.InvalidParameterValue(six.text_type(e))
 
@@ -218,19 +212,20 @@ class API(base.Base):
                         "(%(cg)s).") % params
                 raise exception.InvalidParameterValue(msg)
 
-        options = {'size': size,
-                   'user_id': context.user_id,
-                   'project_id': context.project_id,
-                   'snapshot_id': snapshot_id,
-                   'snapshot_support': snapshot_support,
-                   'replication_type': replication_type,
-                   'metadata': metadata,
-                   'display_name': name,
-                   'display_description': description,
-                   'share_proto': share_proto,
-                   'is_public': is_public,
-                   'consistency_group_id': consistency_group_id,
-                   }
+        options = {
+            'size': size,
+            'user_id': context.user_id,
+            'project_id': context.project_id,
+            'snapshot_id': snapshot_id,
+            'metadata': metadata,
+            'display_name': name,
+            'display_description': description,
+            'share_proto': share_proto,
+            'is_public': is_public,
+            'consistency_group_id': consistency_group_id,
+        }
+        options.update(self._get_share_attributes_from_share_type(share_type))
+
         if cgsnapshot_member:
             options['source_cgsnapshot_member_id'] = cgsnapshot_member['id']
 
@@ -261,6 +256,52 @@ class API(base.Base):
         share = self.db.share_get(context, share['id'])
 
         return share
+
+    def _get_share_attributes_from_share_type(self, share_type):
+        """Determine share attributes from the share type.
+
+        The share type can change any time after shares of that type are
+        created, so we copy some share type attributes to the share to
+        consistently govern the behavior of that share over its lifespan.
+        """
+
+        inferred_map = constants.ExtraSpecs.INFERRED_OPTIONAL_MAP
+        snapshot_support_default = inferred_map.get(
+            constants.ExtraSpecs.SNAPSHOT_SUPPORT)
+        create_share_from_snapshot_support_default = inferred_map.get(
+            constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT)
+        create_share_from_snapshot_key = (
+            constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT)
+
+        try:
+            if share_type:
+                snapshot_support = share_types.parse_boolean_extra_spec(
+                    constants.ExtraSpecs.SNAPSHOT_SUPPORT,
+                    share_type.get('extra_specs', {}).get(
+                        constants.ExtraSpecs.SNAPSHOT_SUPPORT,
+                        snapshot_support_default))
+                create_share_from_snapshot_support = (
+                    share_types.parse_boolean_extra_spec(
+                        create_share_from_snapshot_key, share_type.get(
+                            'extra_specs', {}).get(
+                            create_share_from_snapshot_key,
+                            create_share_from_snapshot_support_default)))
+                replication_type = share_type.get('extra_specs', {}).get(
+                    'replication_type')
+            else:
+                snapshot_support = snapshot_support_default
+                create_share_from_snapshot_support = (
+                    create_share_from_snapshot_support_default)
+                replication_type = None
+        except Exception as e:
+            raise exception.InvalidParameterValue(six.text_type(e))
+
+        return {
+            'snapshot_support': snapshot_support,
+            'create_share_from_snapshot_support':
+                create_share_from_snapshot_support,
+            'replication_type': replication_type,
+        }
 
     def create_instance(self, context, share, share_network_id=None,
                         host=None, availability_zone=None,
@@ -339,6 +380,8 @@ class API(base.Base):
             'metadata': self.db.share_metadata_get(context, share['id']),
             'share_server_id': share_instance['share_server_id'],
             'snapshot_support': share['snapshot_support'],
+            'create_share_from_snapshot_support':
+                share['create_share_from_snapshot_support'],
             'share_proto': share['share_proto'],
             'share_type_id': share_type_id,
             'is_public': share['is_public'],
@@ -517,21 +560,14 @@ class API(base.Base):
         share_type_id = share_data['share_type_id']
         share_type = share_types.get_share_type(context, share_type_id)
 
-        snapshot_support = strutils.bool_from_string(
-            share_type.get('extra_specs', {}).get(
-                'snapshot_support', True) if share_type else True,
-            strict=True)
-        replication_type = share_type.get('extra_specs', {}).get(
-            'replication_type')
-
         share_data.update({
             'user_id': context.user_id,
             'project_id': context.project_id,
             'status': constants.STATUS_MANAGING,
             'scheduled_at': timeutils.utcnow(),
-            'snapshot_support': snapshot_support,
-            'replication_type': replication_type,
         })
+        share_data.update(
+            self._get_share_attributes_from_share_type(share_type))
 
         LOG.debug("Manage: Found shares %s.", len(shares))
 
@@ -571,7 +607,13 @@ class API(base.Base):
             'project_id': kwargs.get('project_id', share.get('project_id')),
             'snapshot_support': kwargs.get(
                 'snapshot_support',
-                share_type['extra_specs']['snapshot_support']),
+                share_type.get('extra_specs', {}).get('snapshot_support')
+            ),
+            'create_share_from_snapshot_support': kwargs.get(
+                'create_share_from_snapshot_support',
+                share_type.get('extra_specs', {}).get(
+                    'create_share_from_snapshot_support')
+            ),
             'share_proto': kwargs.get('share_proto', share.get('share_proto')),
             'share_type_id': share_type['id'],
             'is_public': kwargs.get('is_public', share.get('is_public')),

@@ -18,6 +18,7 @@ import webob
 
 from manila.api import common
 from manila.api.openstack import wsgi
+from manila.common import constants
 from manila import db
 from manila import exception
 from manila.i18n import _
@@ -58,13 +59,17 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
             valid_type = is_valid_string(v) or isinstance(v, bool)
             valid_required_extra_spec = (
                 share_types.is_valid_required_extra_spec(k, v) in (None, True))
+            valid_optional_extra_spec = (
+                share_types.is_valid_optional_extra_spec(k, v) in (None, True))
             return (valid_extra_spec_key
                     and valid_type
-                    and valid_required_extra_spec)
+                    and valid_required_extra_spec
+                    and valid_optional_extra_spec)
 
         for k, v in extra_specs.items():
             if is_valid_string(k) and isinstance(v, dict):
-                self._verify_extra_specs(v)
+                self._verify_extra_specs(
+                    v, verify_all_required=verify_all_required)
             elif not is_valid_extra_spec(k, v):
                 expl = _('Invalid extra_spec: %(key)s: %(value)s') % {
                     'key': k, 'value': v
@@ -87,7 +92,11 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
 
         self._check_type(context, type_id)
         specs = body['extra_specs']
-        self._verify_extra_specs(specs, False)
+        try:
+            self._verify_extra_specs(specs, False)
+        except exception.InvalidExtraSpec as e:
+            raise webob.exc.HTTPBadRequest(e.message)
+
         self._check_key_names(specs.keys())
         db.share_type_extra_specs_update_or_create(context, type_id, specs)
         notifier_info = dict(type_id=type_id, specs=specs)
@@ -126,13 +135,33 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
         else:
             raise webob.exc.HTTPNotFound()
 
+    @wsgi.Controller.api_version('1.0', '2.23')
     @wsgi.Controller.authorize
     def delete(self, req, type_id, id):
         """Deletes an existing extra spec."""
         context = req.environ['manila.context']
         self._check_type(context, type_id)
 
-        if id in share_types.get_undeletable_extra_specs():
+        if id == constants.ExtraSpecs.SNAPSHOT_SUPPORT:
+            msg = _("Extra spec '%s' can't be deleted.") % id
+            raise webob.exc.HTTPForbidden(explanation=msg)
+
+        return self._delete(req, type_id, id)
+
+    @wsgi.Controller.api_version('2.24')  # noqa
+    @wsgi.Controller.authorize
+    def delete(self, req, type_id, id):  # pylint: disable=E0102
+        """Deletes an existing extra spec."""
+        context = req.environ['manila.context']
+        self._check_type(context, type_id)
+
+        return self._delete(req, type_id, id)
+
+    def _delete(self, req, type_id, id):
+        """Deletes an existing extra spec."""
+        context = req.environ['manila.context']
+
+        if id in share_types.get_required_extra_specs():
             msg = _("Extra spec '%s' can't be deleted.") % id
             raise webob.exc.HTTPForbidden(explanation=msg)
 

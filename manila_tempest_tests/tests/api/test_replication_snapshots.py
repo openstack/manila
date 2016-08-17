@@ -49,7 +49,7 @@ class ReplicationSnapshotTest(base.BaseSharesMixedTest):
         cls.share_zone = cls.zones[0]
         cls.replica_zone = cls.zones[-1]
 
-        cls.extra_specs = cls.add_required_extra_specs_to_dict(
+        cls.extra_specs = cls.add_extra_specs_to_dict(
             {"replication_type": cls.replication_type})
         share_type = cls.create_share_type(
             name,
@@ -86,7 +86,12 @@ class ReplicationSnapshotTest(base.BaseSharesMixedTest):
         snapshot = self.create_snapshot_wait_for_active(share["id"])
         self.promote_share_replica(share_replica['id'])
         self.delete_share_replica(original_replica['id'])
-        self.create_share(snapshot_id=snapshot['id'])
+
+        snapshot = self.shares_v2_client.get_snapshot(snapshot['id'])
+        self.assertEqual(constants.STATUS_AVAILABLE, snapshot['status'])
+
+        if CONF.share.capability_create_share_from_snapshot_support:
+            self.create_share(snapshot_id=snapshot['id'])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_snapshot_before_share_replica(self):
@@ -116,7 +121,12 @@ class ReplicationSnapshotTest(base.BaseSharesMixedTest):
 
         self.promote_share_replica(share_replica['id'])
         self.delete_share_replica(original_replica['id'])
-        self.create_share(snapshot_id=snapshot['id'])
+
+        snapshot = self.shares_v2_client.get_snapshot(snapshot['id'])
+        self.assertEqual(constants.STATUS_AVAILABLE, snapshot['status'])
+
+        if CONF.share.capability_create_share_from_snapshot_support:
+            self.create_share(snapshot_id=snapshot['id'])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_snapshot_before_and_after_share_replica(self):
@@ -152,8 +162,15 @@ class ReplicationSnapshotTest(base.BaseSharesMixedTest):
         # still being created successfully.
         self.delete_share_replica(original_replica['id'])
 
-        self.create_share(snapshot_id=snapshot1['id'])
-        self.create_share(snapshot_id=snapshot2['id'])
+        snapshot1 = self.shares_v2_client.get_snapshot(snapshot1['id'])
+        self.assertEqual(constants.STATUS_AVAILABLE, snapshot1['status'])
+
+        snapshot2 = self.shares_v2_client.get_snapshot(snapshot2['id'])
+        self.assertEqual(constants.STATUS_AVAILABLE, snapshot2['status'])
+
+        if CONF.share.capability_create_share_from_snapshot_support:
+            self.create_share(snapshot_id=snapshot1['id'])
+            self.create_share(snapshot_id=snapshot2['id'])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_delete_snapshot_after_adding_replica(self):
@@ -176,6 +193,9 @@ class ReplicationSnapshotTest(base.BaseSharesMixedTest):
             snapshot_id=snapshot["id"])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
+    @testtools.skipUnless(
+        CONF.share.capability_create_share_from_snapshot_support,
+        "Create share from snapshot tests are disabled.")
     def test_create_replica_from_snapshot_share(self):
         """Test replica for a share that was created from snapshot."""
 

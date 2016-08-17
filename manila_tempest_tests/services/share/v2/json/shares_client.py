@@ -726,6 +726,13 @@ class SharesV2Client(shares_client.SharesClient):
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
+    def delete_share_type_extra_spec(self, share_type_id, extra_spec_name,
+                                     version=LATEST_MICROVERSION):
+        uri = "types/%s/extra_specs/%s" % (share_type_id, extra_spec_name)
+        resp, body = self.delete(uri, version=version)
+        self.expected_success(202, resp.status)
+        return body
+
     def list_access_to_share_type(self, share_type_id,
                                   version=LATEST_MICROVERSION,
                                   action_name=None):

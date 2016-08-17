@@ -86,6 +86,8 @@ save_configuration "MANILA_DATA_COPY_CHECK_HASH" "${MANILA_DATA_COPY_CHECK_HASH:
 save_configuration "MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL" "${MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL:=5}"
 
 MANILA_SERVICE_IMAGE_ENABLED=${MANILA_SERVICE_IMAGE_ENABLED:-False}
+DEFAULT_EXTRA_SPECS=${DEFAULT_EXTRA_SPECS:-"'snapshot_support=True create_share_from_snapshot_support=True'"}
+
 if [[ "$DRIVER" == "generic" ]]; then
     MANILA_SERVICE_IMAGE_ENABLED=True
     save_configuration "SHARE_DRIVER" "manila.share.drivers.generic.GenericShareDriver"
@@ -161,12 +163,13 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     save_configuration "MANILA_ZFSONLINUX_SHARE_EXPORT_IP" "$HOST"
     save_configuration "MANILA_ZFSONLINUX_SERVICE_IP" "127.0.0.1"
 elif [[ "$DRIVER" == "container" ]]; then
+    DEFAULT_EXTRA_SPECS="'snapshot_support=false'"
     save_configuration "SHARE_DRIVER" "manila.share.drivers.container.driver.ContainerShareDriver"
     save_configuration "SHARE_BACKING_FILE_SIZE" "64000M"
-    save_configuration "MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS" "'snapshot_support=false'"
 fi
 
 save_configuration "MANILA_SERVICE_IMAGE_ENABLED" "$MANILA_SERVICE_IMAGE_ENABLED"
+save_configuration "MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS" "$DEFAULT_EXTRA_SPECS"
 
 # Enabling isolated metadata in Neutron is required because
 # Tempest creates isolated networks and created vm's in scenario tests don't

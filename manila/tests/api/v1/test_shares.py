@@ -289,9 +289,11 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'create', create_mock)
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get)
+        parent_share = stubs.stub_share(
+            '1', instance={'share_network_id': parent_share_net},
+            create_share_from_snapshot_support=True)
         self.mock_object(share_api.API, 'get', mock.Mock(
-            return_value=mock.Mock(
-                instance={'share_network_id': parent_share_net})))
+            return_value=parent_share))
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
             return_value={'id': parent_share_net}))
 
@@ -327,9 +329,11 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'create', create_mock)
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get)
+        parent_share = stubs.stub_share(
+            '1', instance={'share_network_id': parent_share_net},
+            create_share_from_snapshot_support=True)
         self.mock_object(share_api.API, 'get', mock.Mock(
-            return_value=mock.Mock(
-                instance={'share_network_id': parent_share_net})))
+            return_value=parent_share))
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
             return_value={'id': parent_share_net}))
 
@@ -359,6 +363,52 @@ class ShareAPITest(test.TestCase):
                           self.controller.create,
                           req,
                           body)
+
+    @ddt.data("1.0", "2.0")
+    def test_share_create_from_snapshot_not_supported(self, microversion):
+        # This create operation should work, because the 1.0 API doesn't check
+        # create_share_from_snapshot_support.
+
+        parent_share_net = 444
+        shr = {
+            "size": 100,
+            "name": "Share Test Name",
+            "description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
+            "snapshot_id": 333,
+            "share_network_id": parent_share_net
+        }
+        create_mock = mock.Mock(return_value=stubs.stub_share('1',
+                                display_name=shr['name'],
+                                display_description=shr['description'],
+                                size=shr['size'],
+                                share_proto=shr['share_proto'].upper(),
+                                snapshot_id=shr['snapshot_id'],
+                                instance=dict(
+                                    availability_zone=shr['availability_zone'],
+                                    share_network_id=shr['share_network_id'])))
+        self.mock_object(share_api.API, 'create', create_mock)
+        self.mock_object(share_api.API, 'get_snapshot',
+                         stubs.stub_snapshot_get)
+        parent_share = stubs.stub_share(
+            '1', instance={'share_network_id': parent_share_net},
+            create_share_from_snapshot_support=False)
+        self.mock_object(share_api.API, 'get', mock.Mock(
+            return_value=parent_share))
+        self.mock_object(share_api.API, 'get_share_network', mock.Mock(
+            return_value={'id': parent_share_net}))
+
+        body = {"share": copy.deepcopy(shr)}
+        req = fakes.HTTPRequest.blank('/shares', version=microversion)
+
+        res_dict = self.controller.create(req, body)
+
+        expected = self._get_expected_share_detailed_response(shr)
+        expected['share'].pop('snapshot_support')
+        self.assertDictEqual(expected, res_dict)
+        self.assertEqual(parent_share_net,
+                         create_mock.call_args[1]['share_network_id'])
 
     def test_share_creation_fails_with_bad_size(self):
         shr = {"size": '',

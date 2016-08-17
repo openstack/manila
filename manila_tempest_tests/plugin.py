@@ -35,11 +35,18 @@ class ManilaTempestPlugin(plugins.TempestPlugin):
         conf.register_group(config_share.share_group)
         conf.register_opts(config_share.ShareGroup, group='share')
 
-        # NOTE(vponomaryov): set opt 'capability_snapshot_support' by
-        # default equal to opt 'run_snapshot_tests'.
+        # NOTE(vponomaryov): Set options 'capability_snapshot_support' and
+        # 'capability_create_share_from_snapshot_support' to opt
+        # 'run_snapshot_tests' if not configured.
         if conf.share.capability_snapshot_support is None:
             conf.set_default(
                 "capability_snapshot_support",
+                conf.share.run_snapshot_tests,
+                group="share",
+            )
+        if conf.share.capability_create_share_from_snapshot_support is None:
+            conf.set_default(
+                "capability_create_share_from_snapshot_support",
                 conf.share.run_snapshot_tests,
                 group="share",
             )

@@ -142,3 +142,8 @@ user documentation.
 2.23
 ----
   Added share_type to filter results of scheduler-stats/pools API.
+
+2.24
+----
+  Added optional create_share_from_snapshot_support extra spec. Made
+  snapshot_support extra spec optional.

@@ -54,12 +54,16 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
             'driver_handles_share_servers': False,
             'snapshot_support': six.text_type(
                 CONF.share.capability_snapshot_support),
+            'create_share_from_snapshot_support': six.text_type(
+                CONF.share.capability_create_share_from_snapshot_support)
         }
         cls.extra_specs_invalid = {
             'storage_protocol': CONF.share.capability_storage_protocol,
             'driver_handles_share_servers': True,
             'snapshot_support': six.text_type(
                 CONF.share.capability_snapshot_support),
+            'create_share_from_snapshot_support': six.text_type(
+                CONF.share.capability_create_share_from_snapshot_support),
         }
 
         cls.st = cls.create_share_type(

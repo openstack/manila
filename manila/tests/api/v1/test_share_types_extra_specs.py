@@ -32,6 +32,7 @@ import manila.wsgi
 
 DRIVER_HANDLES_SHARE_SERVERS = (
     constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS)
+SNAPSHOT_SUPPORT = constants.ExtraSpecs.SNAPSHOT_SUPPORT
 
 
 def return_create_share_type_extra_specs(context, share_type_id, extra_specs):
@@ -149,15 +150,23 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'show')
 
-    def test_delete(self):
+    @ddt.data(
+        ('1.0', 'key5'),
+        ('2.23', 'key5'),
+        ('2.24', 'key5'),
+        ('2.24', SNAPSHOT_SUPPORT),
+    )
+    @ddt.unpack
+    def test_delete(self, version, key):
         self.mock_object(manila.db, 'share_type_extra_specs_delete',
                          delete_share_type_extra_specs)
 
         self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
-        req = fakes.HTTPRequest.blank(self.api_path + '/key5')
+        req = fakes.HTTPRequest.blank(self.api_path + '/' + key,
+                                      version=version)
         req_context = req.environ['manila.context']
 
-        self.controller.delete(req, 1, 'key5')
+        self.controller.delete(req, 1, key)
         self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'delete')
@@ -174,13 +183,22 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'delete')
 
-    def test_delete_forbidden(self):
+    @ddt.data(
+        ('1.0', DRIVER_HANDLES_SHARE_SERVERS),
+        ('1.0', SNAPSHOT_SUPPORT),
+        ('2.23', DRIVER_HANDLES_SHARE_SERVERS),
+        ('2.23', SNAPSHOT_SUPPORT),
+        ('2.24', DRIVER_HANDLES_SHARE_SERVERS),
+    )
+    @ddt.unpack
+    def test_delete_forbidden(self, version, key):
         req = fakes.HTTPRequest.blank(
-            self.api_path + '/' + DRIVER_HANDLES_SHARE_SERVERS)
+            self.api_path + '/' + key, version=version)
         req_context = req.environ['manila.context']
 
-        self.assertRaises(webob.exc.HTTPForbidden, self.controller.delete,
-                          req, 1, DRIVER_HANDLES_SHARE_SERVERS)
+        self.assertRaises(webob.exc.HTTPForbidden,
+                          self.controller.delete,
+                          req, 1, key)
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'delete')
 
@@ -213,12 +231,18 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'create')
 
-    def test_create_with_too_small_key(self):
+    @ddt.data(
+        {"": "value"},
+        {"k" * 256: "value"},
+        {"key": ""},
+        {"key": "v" * 256},
+        {constants.ExtraSpecs.SNAPSHOT_SUPPORT: "non_boolean"},
+    )
+    def test_create_with_invalid_extra_specs(self, extra_specs):
         self.mock_object(
             manila.db, 'share_type_extra_specs_update_or_create',
             mock.Mock(return_value=return_create_share_type_extra_specs))
-        too_small_key = ""
-        body = {"extra_specs": {too_small_key: "value"}}
+        body = {"extra_specs": extra_specs}
         self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
         req = fakes.HTTPRequest.blank(self.api_path)
         req_context = req.environ['manila.context']
@@ -230,58 +254,6 @@ class ShareTypesExtraSpecsTest(test.TestCase):
             manila.db.share_type_extra_specs_update_or_create.called)
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'create')
-
-    def test_create_with_too_big_key(self):
-        self.mock_object(
-            manila.db, 'share_type_extra_specs_update_or_create',
-            mock.Mock(return_value=return_create_share_type_extra_specs))
-        too_big_key = "k" * 256
-        body = {"extra_specs": {too_big_key: "value"}}
-        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
-        req = fakes.HTTPRequest.blank(self.api_path)
-        req_context = req.environ['manila.context']
-
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, 1, body)
-
-        self.assertFalse(
-            manila.db.share_type_extra_specs_update_or_create.called)
-        self.mock_policy_check.assert_called_once_with(
-            req_context, self.resource_name, 'create')
-
-    def test_create_with_too_small_value(self):
-        self.mock_object(
-            manila.db, 'share_type_extra_specs_update_or_create',
-            mock.Mock(return_value=return_create_share_type_extra_specs))
-        too_small_value = ""
-        body = {"extra_specs": {"key": too_small_value}}
-        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
-        req = fakes.HTTPRequest.blank(self.api_path)
-        req_context = req.environ['manila.context']
-
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, 1, body)
-        self.mock_policy_check.assert_called_once_with(
-            req_context, self.resource_name, 'create')
-        self.assertFalse(
-            manila.db.share_type_extra_specs_update_or_create.called)
-
-    def test_create_with_too_big_value(self):
-        self.mock_object(
-            manila.db, 'share_type_extra_specs_update_or_create',
-            mock.Mock(return_value=return_create_share_type_extra_specs))
-        too_big_value = "v" * 256
-        body = {"extra_specs": {"key": too_big_value}}
-        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
-        req = fakes.HTTPRequest.blank(self.api_path)
-        req_context = req.environ['manila.context']
-
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, 1, body)
-        self.mock_policy_check.assert_called_once_with(
-            req_context, self.resource_name, 'create')
-        self.assertFalse(
-            manila.db.share_type_extra_specs_update_or_create.called)
 
     def test_create_key_allowed_chars(self):
         mock_return_value = {"key1": "value1",

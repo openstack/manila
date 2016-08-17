@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions as lib_exc
 from testtools import testcase as tc
@@ -20,11 +21,12 @@ from testtools import testcase as tc
 from manila_tempest_tests.tests.api import base
 
 
+@ddt.ddt
 class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
 
     def _create_share_type(self):
         name = data_utils.rand_name("unique_st_name")
-        extra_specs = self.add_required_extra_specs_to_dict({"key": "value"})
+        extra_specs = self.add_extra_specs_to_dict({"key": "value"})
         return self.create_share_type(
             name, extra_specs=extra_specs, client=self.admin_shares_v2_client)
 
@@ -35,7 +37,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             lib_exc.Forbidden,
             self.shares_v2_client.create_share_type_extra_specs,
             st["share_type"]["id"],
-            self.add_required_extra_specs_to_dict({"key": "new_value"}))
+            self.add_extra_specs_to_dict({"key": "new_value"}))
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_list_extra_specs_with_user(self):
@@ -67,7 +69,8 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
         share_type = self.shares_v2_client.get_share_type(
             st['share_type']['id'])
         # Verify a non-admin can only read the required extra-specs
-        expected_keys = ['driver_handles_share_servers', 'snapshot_support']
+        expected_keys = ['driver_handles_share_servers', 'snapshot_support',
+                         'create_share_from_snapshot_support']
         actual_keys = share_type['share_type']['extra_specs'].keys()
         self.assertEqual(sorted(expected_keys), sorted(actual_keys),
                          'Incorrect extra specs visible to non-admin user; '
@@ -105,7 +108,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             lib_exc.BadRequest,
             self.admin_shares_v2_client.create_share_type_extra_specs,
             st["share_type"]["id"],
-            self.add_required_extra_specs_to_dict({too_big_key: "value"}))
+            self.add_extra_specs_to_dict({too_big_key: "value"}))
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_set_too_long_value_with_creation(self):
@@ -115,7 +118,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             lib_exc.BadRequest,
             self.admin_shares_v2_client.create_share_type_extra_specs,
             st["share_type"]["id"],
-            self.add_required_extra_specs_to_dict({"key": too_big_value}))
+            self.add_extra_specs_to_dict({"key": too_big_value}))
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_set_too_long_value_with_update(self):
@@ -123,12 +126,12 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
         st = self._create_share_type()
         self.admin_shares_v2_client.create_share_type_extra_specs(
             st["share_type"]["id"],
-            self.add_required_extra_specs_to_dict({"key": "value"}))
+            self.add_extra_specs_to_dict({"key": "value"}))
         self.assertRaises(
             lib_exc.BadRequest,
             self.admin_shares_v2_client.update_share_type_extra_specs,
             st["share_type"]["id"],
-            self.add_required_extra_specs_to_dict({"key": too_big_value}))
+            self.add_extra_specs_to_dict({"key": too_big_value}))
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_set_too_long_value_with_update_of_one_key(self):
@@ -136,7 +139,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
         st = self._create_share_type()
         self.admin_shares_v2_client.create_share_type_extra_specs(
             st["share_type"]["id"],
-            self.add_required_extra_specs_to_dict({"key": "value"}))
+            self.add_extra_specs_to_dict({"key": "value"}))
         self.assertRaises(
             lib_exc.BadRequest,
             self.admin_shares_v2_client.update_share_type_extra_spec,
@@ -286,12 +289,12 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             "driver_handles_share_servers")
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
-    def test_try_delete_spec_snapshot_support(self):
+    @ddt.data('2.0', '2.23')
+    def test_try_delete_required_spec_snapshot_support_version(self, version):
+        self.skip_if_microversion_not_supported(version)
         st = self._create_share_type()
-
         # Try delete extra spec 'snapshot_support'
         self.assertRaises(
             lib_exc.Forbidden,
             self.admin_shares_v2_client.delete_share_type_extra_spec,
-            st["share_type"]["id"],
-            "snapshot_support")
+            st["share_type"]["id"], "snapshot_support", version=version)

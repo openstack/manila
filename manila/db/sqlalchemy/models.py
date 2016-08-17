@@ -302,6 +302,7 @@ class Share(BASE, ManilaBase):
     display_description = Column(String(255))
     snapshot_id = Column(String(36))
     snapshot_support = Column(Boolean, default=True)
+    create_share_from_snapshot_support = Column(Boolean, default=True)
     replication_type = Column(String(255), nullable=True)
     share_proto = Column(String(255))
     is_public = Column(Boolean, default=False)

@@ -196,7 +196,8 @@ class ShareMixin(object):
         share = self._create(req, body)
         return share
 
-    def _create(self, req, body):
+    def _create(self, req, body,
+                check_create_share_from_snapshot_support=False):
         """Creates a new share."""
         context = req.environ['manila.context']
 
@@ -262,6 +263,14 @@ class ShareMixin(object):
                     raise exc.HTTPBadRequest(explanation=msg)
             elif parent_share_net_id:
                 share_network_id = parent_share_net_id
+
+            # Verify that share can be created from a snapshot
+            if (check_create_share_from_snapshot_support and
+                    not parent_share['create_share_from_snapshot_support']):
+                msg = _("Share cannot be created from snapshot '%s', because "
+                        "share back end does not support it.") % snapshot_id
+                LOG.error(msg)
+                raise exc.HTTPBadRequest(explanation=msg)
 
         if share_network_id:
             try:

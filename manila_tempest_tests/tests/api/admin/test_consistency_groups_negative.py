@@ -33,7 +33,7 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesAdminTest):
         super(ConsistencyGroupsNegativeTest, cls).resource_setup()
         # Create share_type
         name = data_utils.rand_name("tempest-manila")
-        extra_specs = cls.add_required_extra_specs_to_dict()
+        extra_specs = cls.add_extra_specs_to_dict()
         share_type = cls.create_share_type(name, extra_specs=extra_specs)
         cls.share_type = share_type['share_type']
 

@@ -31,7 +31,7 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_share_type_create_delete(self):
         name = data_utils.rand_name("tempest-manila")
-        extra_specs = self.add_required_extra_specs_to_dict()
+        extra_specs = self.add_extra_specs_to_dict()
 
         # Create share type
         st_create = self.shares_v2_client.create_share_type(
@@ -64,7 +64,7 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         self.skip_if_microversion_not_supported(version)
 
         name = data_utils.rand_name("tempest-manila")
-        extra_specs = self.add_required_extra_specs_to_dict({"key": "value", })
+        extra_specs = self.add_extra_specs_to_dict({"key": "value", })
 
         # Create share type
         st_create = self.create_share_type(
@@ -89,7 +89,7 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         self.skip_if_microversion_not_supported(version)
 
         name = data_utils.rand_name("tempest-manila")
-        extra_specs = self.add_required_extra_specs_to_dict()
+        extra_specs = self.add_extra_specs_to_dict()
 
         # Create share type
         st_create = self.create_share_type(
@@ -117,7 +117,7 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         # Data
         share_name = data_utils.rand_name("share")
         shr_type_name = data_utils.rand_name("share-type")
-        extra_specs = self.add_required_extra_specs_to_dict({
+        extra_specs = self.add_extra_specs_to_dict({
             "storage_protocol": CONF.share.capability_storage_protocol,
         })
 
@@ -144,7 +144,7 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_private_share_type_access(self):
         name = data_utils.rand_name("tempest-manila")
-        extra_specs = self.add_required_extra_specs_to_dict({"key": "value", })
+        extra_specs = self.add_extra_specs_to_dict({"key": "value", })
         project_id = self.shares_client.tenant_id
 
         # Create private share type

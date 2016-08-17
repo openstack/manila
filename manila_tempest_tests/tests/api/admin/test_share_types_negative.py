@@ -24,7 +24,7 @@ class ShareTypesAdminNegativeTest(base.BaseSharesMixedTest):
 
     def _create_share_type(self):
         name = data_utils.rand_name("unique_st_name")
-        extra_specs = self.add_required_extra_specs_to_dict({"key": "value"})
+        extra_specs = self.add_extra_specs_to_dict({"key": "value"})
         return self.create_share_type(
             name, extra_specs=extra_specs, client=self.admin_shares_v2_client)
 
@@ -66,7 +66,7 @@ class ShareTypesAdminNegativeTest(base.BaseSharesMixedTest):
         self.assertRaises(lib_exc.Conflict,
                           self.create_share_type,
                           st["share_type"]["name"],
-                          extra_specs=self.add_required_extra_specs_to_dict(),
+                          extra_specs=self.add_extra_specs_to_dict(),
                           client=self.admin_shares_v2_client)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)

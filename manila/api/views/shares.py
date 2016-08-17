@@ -29,6 +29,7 @@ class ViewBuilder(common.ViewBuilder):
         "add_access_rules_status_field",
         "add_replication_fields",
         "add_user_id",
+        "add_create_share_from_snapshot_support_field",
     ]
 
     def summary_list(self, request, shares):
@@ -140,6 +141,12 @@ class ViewBuilder(common.ViewBuilder):
     @common.ViewBuilder.versioned_method("2.16")
     def add_user_id(self, context, share_dict, share):
         share_dict['user_id'] = share.get('user_id')
+
+    @common.ViewBuilder.versioned_method("2.24")
+    def add_create_share_from_snapshot_support_field(self, context,
+                                                     share_dict, share):
+        share_dict['create_share_from_snapshot_support'] = share.get(
+            'create_share_from_snapshot_support')
 
     def _list_view(self, func, request, shares):
         """Provide a view for a list of shares."""

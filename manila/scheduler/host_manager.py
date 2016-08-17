@@ -130,6 +130,7 @@ class HostState(object):
         self.thin_provisioning = False
         self.driver_handles_share_servers = False
         self.snapshot_support = True
+        self.create_share_from_snapshot_support = True
         self.consistency_group_support = False
         self.dedupe = False
         self.compression = False
@@ -294,6 +295,10 @@ class HostState(object):
         if 'snapshot_support' not in pool_cap:
             pool_cap['snapshot_support'] = self.snapshot_support
 
+        if 'create_share_from_snapshot_support' not in pool_cap:
+            pool_cap['create_share_from_snapshot_support'] = (
+                self.create_share_from_snapshot_support)
+
         if not pool_cap.get('consistency_group_support'):
             pool_cap['consistency_group_support'] = \
                 self.consistency_group_support
@@ -318,6 +323,8 @@ class HostState(object):
         self.driver_handles_share_servers = capability.get(
             'driver_handles_share_servers')
         self.snapshot_support = capability.get('snapshot_support')
+        self.create_share_from_snapshot_support = capability.get(
+            'create_share_from_snapshot_support')
         self.consistency_group_support = capability.get(
             'consistency_group_support', False)
         self.updated = capability['timestamp']

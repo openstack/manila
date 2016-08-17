@@ -123,14 +123,18 @@ class ShareTypesAPITest(test.TestCase):
                          mock.Mock(return_value=True))
         fake_notifier.reset()
         self.addCleanup(fake_notifier.reset)
-        self.mock_object(share_types, 'create',
-                         return_share_types_create)
-        self.mock_object(share_types, 'get_share_type_by_name',
-                         return_share_types_get_by_name)
-        self.mock_object(share_types, 'get_share_type',
-                         return_share_types_get_share_type)
-        self.mock_object(share_types, 'destroy',
-                         return_share_types_destroy)
+        self.mock_object(
+            share_types, 'create',
+            mock.Mock(side_effect=return_share_types_create))
+        self.mock_object(
+            share_types, 'get_share_type_by_name',
+            mock.Mock(side_effect=return_share_types_get_by_name))
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(side_effect=return_share_types_get_share_type))
+        self.mock_object(
+            share_types, 'destroy',
+            mock.Mock(side_effect=return_share_types_destroy))
 
     @ddt.data(True, False)
     def test_share_types_index(self, admin):
@@ -217,13 +221,21 @@ class ShareTypesAPITest(test.TestCase):
             req.environ['manila.context'], self.resource_name, 'default')
 
     @ddt.data(
-        ('1.0', 'os-share-type-access'),
-        ('2.0', 'os-share-type-access'),
-        ('2.6', 'os-share-type-access'),
-        ('2.7', 'share_type_access'),
+        ('1.0', 'os-share-type-access', True),
+        ('1.0', 'os-share-type-access', False),
+        ('2.0', 'os-share-type-access', True),
+        ('2.0', 'os-share-type-access', False),
+        ('2.6', 'os-share-type-access', True),
+        ('2.6', 'os-share-type-access', False),
+        ('2.7', 'share_type_access', True),
+        ('2.7', 'share_type_access', False),
+        ('2.23', 'share_type_access', True),
+        ('2.23', 'share_type_access', False),
+        ('2.24', 'share_type_access', True),
+        ('2.24', 'share_type_access', False),
     )
     @ddt.unpack
-    def test_view_builder_show(self, version, prefix):
+    def test_view_builder_show(self, version, prefix, admin):
         view_builder = views_types.ViewBuilder()
 
         now = timeutils.utcnow().isoformat()
@@ -238,7 +250,8 @@ class ShareTypesAPITest(test.TestCase):
             id=42,
         )
 
-        request = fakes.HTTPRequest.blank("/v%s" % version[0], version=version)
+        request = fakes.HTTPRequest.blank("/v%s" % version[0], version=version,
+                                          use_admin_context=admin)
         request.headers['X-Openstack-Manila-Api-Version'] = version
 
         output = view_builder.show(request, raw_share_type)
@@ -251,10 +264,35 @@ class ShareTypesAPITest(test.TestCase):
             'required_extra_specs': {},
             'id': 42,
         }
+        if self.is_microversion_ge(version, '2.24') and not admin:
+            for extra_spec in constants.ExtraSpecs.INFERRED_OPTIONAL_MAP:
+                expected_share_type['extra_specs'][extra_spec] = (
+                    constants.ExtraSpecs.INFERRED_OPTIONAL_MAP[extra_spec])
+
         self.assertDictMatch(output['share_type'], expected_share_type)
 
-    def test_view_builder_list(self):
+    @ddt.data(
+        ('1.0', 'os-share-type-access', True),
+        ('1.0', 'os-share-type-access', False),
+        ('2.0', 'os-share-type-access', True),
+        ('2.0', 'os-share-type-access', False),
+        ('2.6', 'os-share-type-access', True),
+        ('2.6', 'os-share-type-access', False),
+        ('2.7', 'share_type_access', True),
+        ('2.7', 'share_type_access', False),
+        ('2.23', 'share_type_access', True),
+        ('2.23', 'share_type_access', False),
+        ('2.24', 'share_type_access', True),
+        ('2.24', 'share_type_access', False),
+    )
+    @ddt.unpack
+    def test_view_builder_list(self, version, prefix, admin):
         view_builder = views_types.ViewBuilder()
+
+        extra_specs = {
+            constants.ExtraSpecs.SNAPSHOT_SUPPORT: True,
+            constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT: False,
+        }
 
         now = timeutils.utcnow().isoformat()
         raw_share_types = []
@@ -265,22 +303,23 @@ class ShareTypesAPITest(test.TestCase):
                     deleted=False,
                     created_at=now,
                     updated_at=now,
-                    extra_specs={},
+                    extra_specs=extra_specs,
                     required_extra_specs={},
                     deleted_at=None,
                     id=42 + i
                 )
             )
 
-        request = fakes.HTTPRequest.blank("/v2")
+        request = fakes.HTTPRequest.blank("/v%s" % version[0], version=version,
+                                          use_admin_context=admin)
         output = view_builder.index(request, raw_share_types)
 
         self.assertIn('share_types', output)
         for i in range(0, 10):
             expected_share_type = {
                 'name': 'new_type',
-                'extra_specs': {},
-                'os-share-type-access:is_public': True,
+                'extra_specs': extra_specs,
+                '%s:is_public' % prefix: True,
                 'required_extra_specs': {},
                 'id': 42 + i,
             }
@@ -310,6 +349,18 @@ class ShareTypesAPITest(test.TestCase):
                           req, '777')
         self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
 
+    def test_share_types_delete_in_use(self):
+
+        req = fakes.HTTPRequest.blank('/v2/fake/types/1')
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        side_effect = exception.ShareTypeInUse(share_type_id='fake_id')
+        self.mock_object(share_types, 'destroy',
+                         mock.Mock(side_effect=side_effect))
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._delete,
+                          req, 1)
+
     def test_share_types_with_volumes_destroy(self):
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')
         self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
@@ -317,21 +368,53 @@ class ShareTypesAPITest(test.TestCase):
         self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
 
     @ddt.data(make_create_body("share_type_1"),
-              make_create_body(spec_driver_handles_share_servers="false"),
-              make_create_body(spec_driver_handles_share_servers="true"),
-              make_create_body(spec_driver_handles_share_servers="1"),
-              make_create_body(spec_driver_handles_share_servers="0"),
-              make_create_body(spec_driver_handles_share_servers="True"),
-              make_create_body(spec_driver_handles_share_servers="False"),
-              make_create_body(spec_driver_handles_share_servers="FalsE"))
-    def test_create(self, body):
-        req = fakes.HTTPRequest.blank('/v2/fake/types')
+              make_create_body(spec_driver_handles_share_servers=True),
+              make_create_body(spec_driver_handles_share_servers=False))
+    def test_create_2_23(self, body):
+
+        req = fakes.HTTPRequest.blank('/v2/fake/types', version="2.23")
         self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
-        res_dict = self.controller._create(req, body)
+
+        res_dict = self.controller.create(req, body)
+
         self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
         self.assertEqual(2, len(res_dict))
         self.assertEqual('share_type_1', res_dict['share_type']['name'])
         self.assertEqual('share_type_1', res_dict['volume_type']['name'])
+        for extra_spec in constants.ExtraSpecs.REQUIRED:
+            self.assertIn(extra_spec,
+                          res_dict['share_type']['required_extra_specs'])
+        expected_extra_specs = {
+            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: True,
+            constants.ExtraSpecs.SNAPSHOT_SUPPORT: True,
+        }
+        expected_extra_specs.update(body['share_type']['extra_specs'])
+        share_types.create.assert_called_once_with(
+            mock.ANY, body['share_type']['name'], expected_extra_specs, True)
+
+    @ddt.data(make_create_body("share_type_1"),
+              make_create_body(spec_driver_handles_share_servers=True),
+              make_create_body(spec_driver_handles_share_servers=False))
+    def test_create_2_24(self, body):
+
+        req = fakes.HTTPRequest.blank('/v2/fake/types', version="2.24")
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+
+        res_dict = self.controller.create(req, body)
+
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(2, len(res_dict))
+        self.assertEqual('share_type_1', res_dict['share_type']['name'])
+        self.assertEqual('share_type_1', res_dict['volume_type']['name'])
+        for extra_spec in constants.ExtraSpecs.REQUIRED:
+            self.assertIn(extra_spec,
+                          res_dict['share_type']['required_extra_specs'])
+        expected_extra_specs = {
+            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: True,
+        }
+        expected_extra_specs.update(body['share_type']['extra_specs'])
+        share_types.create.assert_called_once_with(
+            mock.ANY, body['share_type']['name'], expected_extra_specs, True)
 
     @ddt.data(None,
               make_create_body(""),
@@ -342,12 +425,51 @@ class ShareTypesAPITest(test.TestCase):
               make_create_body(spec_driver_handles_share_servers=""),
               make_create_body(spec_driver_handles_share_servers=[]),
               )
-    def test_create_invalid_request(self, body):
-        req = fakes.HTTPRequest.blank('/v2/fake/types')
+    def test_create_invalid_request_1_0(self, body):
+        req = fakes.HTTPRequest.blank('/v2/fake/types', version="1.0")
         self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller._create, req, body)
+                          self.controller.create, req, body)
         self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+
+    @ddt.data(*constants.ExtraSpecs.REQUIRED)
+    def test_create_invalid_request_2_23(self, required_extra_spec):
+
+        req = fakes.HTTPRequest.blank('/v2/fake/types', version="2.24")
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        body = make_create_body("share_type_1")
+        del body['share_type']['extra_specs'][required_extra_spec]
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create, req, body)
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+
+    def test_create_already_exists(self):
+
+        side_effect = exception.ShareTypeExists(id='fake_id')
+        self.mock_object(share_types, 'create',
+                         mock.Mock(side_effect=side_effect))
+
+        req = fakes.HTTPRequest.blank('/v2/fake/types', version="2.24")
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        body = make_create_body('share_type_1')
+
+        self.assertRaises(webob.exc.HTTPConflict,
+                          self.controller.create, req, body)
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+
+    def test_create_not_found(self):
+
+        self.mock_object(share_types, 'create',
+                         mock.Mock(side_effect=exception.NotFound))
+
+        req = fakes.HTTPRequest.blank('/v2/fake/types', version="2.24")
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        body = make_create_body('share_type_1')
+
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.create, req, body)
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
 
     def assert_share_type_list_equal(self, expected, observed):
         self.assertEqual(len(expected), len(observed))
@@ -429,6 +551,7 @@ class FakeRequest(object):
         return SHARE_TYPES[resource_id]
 
 
+@ddt.ddt
 class ShareTypeAccessTest(test.TestCase):
 
     def setUp(self):
@@ -466,14 +589,22 @@ class ShareTypeAccessTest(test.TestCase):
         self.assertEqual(expected, result)
 
     def test_list_with_no_context(self):
-        req = fakes.HTTPRequest.blank('/v1/types/fake/types')
 
-        def fake_authorize(context, target=None, action=None):
-            raise exception.PolicyNotAuthorized(action='index')
+        req = fakes.HTTPRequest.blank('/v1/types/fake/types')
 
         self.assertRaises(webob.exc.HTTPForbidden,
                           self.controller.share_type_access,
                           req, 'fake')
+
+    def test_list_not_found(self):
+
+        side_effect = exception.ShareTypeNotFound(share_type_id='fake_id')
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(side_effect=side_effect))
+
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.share_type_access,
+                          self.req, 'fake')
 
     def test_list_type_with_admin_default_proj1(self):
         expected = {'share_types': [{'id': '0'}, {'id': '1'}]}
@@ -592,6 +723,17 @@ class ShareTypeAccessTest(test.TestCase):
 
         self.assertEqual(202, result.status_code)
 
+    @ddt.data({'addProjectAccess': {'project': 'fake_project'}},
+              {'invalid': {'project': PROJ2_UUID}})
+    def test_add_project_access_bad_request(self, body):
+
+        req = fakes.HTTPRequest.blank('/v2/fake/types/2/action',
+                                      use_admin_context=True)
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._add_project_access,
+                          req, '2', body)
+
     def test_add_project_access_with_no_admin_user(self):
         req = fakes.HTTPRequest.blank('/v2/fake/types/2/action',
                                       use_admin_context=False)
@@ -629,6 +771,32 @@ class ShareTypeAccessTest(test.TestCase):
 
         share_types.get_share_type.assert_called_once_with(
             mock.ANY, share_type_id)
+
+    def test_remove_project_access(self):
+
+        share_type = stub_share_type(2)
+        share_type['is_public'] = False
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=share_type))
+        self.mock_object(share_types, 'remove_share_type_access')
+        body = {'removeProjectAccess': {'project': PROJ2_UUID}}
+        req = fakes.HTTPRequest.blank('/v2/fake/types/2/action',
+                                      use_admin_context=True)
+
+        result = self.controller._remove_project_access(req, '2', body)
+
+        self.assertEqual(202, result.status_code)
+
+    @ddt.data({'removeProjectAccess': {'project': 'fake_project'}},
+              {'invalid': {'project': PROJ2_UUID}})
+    def test_remove_project_access_bad_request(self, body):
+
+        req = fakes.HTTPRequest.blank('/v2/fake/types/2/action',
+                                      use_admin_context=True)
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._remove_project_access,
+                          req, '2', body)
 
     def test_remove_project_access_with_bad_access(self):
         def stub_remove_share_type_access(context, type_id, project_id):

@@ -29,6 +29,7 @@ Here is a configuration example:
     # Capabilities
     capability_storage_protocol = NFS
     capability_snapshot_support = True
+    capability_create_share_from_snapshot_support = True
     backend_names = Backendname1,BackendName2
     backend_replication_type = readable
 

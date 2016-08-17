@@ -34,6 +34,7 @@ from oslo_messaging import conffixture as messaging_conffixture
 from oslo_utils import uuidutils
 import oslotest.base as base_test
 
+from manila.api.openstack import api_version_request as api_version
 from manila.db import migration
 from manila.db.sqlalchemy import api as db_api
 from manila.db.sqlalchemy import models as db_models
@@ -351,3 +352,7 @@ class TestCase(base_test.BaseTestCase):
         conv_and_sort = lambda obj: sorted(map(obj_to_dict, obj), key=sort_key)
 
         self.assertEqual(conv_and_sort(objs1), conv_and_sort(objs2))
+
+    def is_microversion_ge(self, left, right):
+        return (api_version.APIVersionRequest(left) >=
+                api_version.APIVersionRequest(right))

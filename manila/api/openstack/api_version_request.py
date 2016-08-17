@@ -79,13 +79,17 @@ REST_API_VERSION_HISTORY = """
             'notify' parameter and removed previous migrate_share API support.
             Updated reset_task_state API to accept 'None' value.
     * 2.23 - Added share_type to filter results of scheduler-stats/pools API.
+    * 2.24 - Added optional create_share_from_snapshot_support extra spec,
+             which was previously inferred from the 'snapshot_support' extra
+             spec. Also made the 'snapshot_support' extra spec optional.
+
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.23"
+_MAX_API_VERSION = "2.24"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

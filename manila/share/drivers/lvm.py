@@ -187,6 +187,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
                 self.configuration.reserved_share_percentage,
             'consistency_group_support': None,
             'snapshot_support': True,
+            'create_share_from_snapshot_support': True,
             'driver_name': 'LVMShareDriver',
             'pools': self.get_share_server_pools()
         }
