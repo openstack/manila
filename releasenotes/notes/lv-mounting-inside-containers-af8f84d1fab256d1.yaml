@@ -1,0 +1,3 @@
+---
+fixes:
+  - Makes docker containers actually mount logical volumes.

@@ -58,6 +58,14 @@ class ContainerShareDriverTestCase(test.TestCase):
         # Used only to test compatibility with share manager
         self.share_server = "fake_share_server"
 
+    def fake_exec_sync(self, *args, **kwargs):
+        kwargs['execute_arguments'].append(args)
+        try:
+            ret_val = kwargs['ret_val']
+        except KeyError:
+            ret_val = None
+        return ret_val
+
     def test__get_helper_ok(self):
         share = cont_fakes.fake_share(share_proto='CIFS')
         expected = protocol_helper.DockerCIFSHelper(None)
@@ -125,9 +133,21 @@ class ContainerShareDriverTestCase(test.TestCase):
 
     def test_extend_share(self):
         share = cont_fakes.fake_share()
+        actual_arguments = []
+        expected_arguments = [
+            ('manila_fake_server', ['umount', '/shares/fakeshareid']),
+            ('manila_fake_server',
+             ['mount', '/dev/manila_docker_volumes/fakeshareid',
+              '/shares/fakeshareid'])
+        ]
         self.mock_object(self._driver.storage, "extend_share")
+        self._driver.container.execute = functools.partial(
+            self.fake_exec_sync, execute_arguments=actual_arguments,
+            ret_val='')
 
-        self._driver.extend_share(share, 2, 'fake-server')
+        self._driver.extend_share(share, 2, {'id': 'fake-server'})
+
+        self.assertEqual(expected_arguments, actual_arguments)
 
     def test_ensure_share(self):
         # Does effectively nothing by design.
