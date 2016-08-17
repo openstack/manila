@@ -94,13 +94,11 @@ _global_opt_lists = [
     manila.common.config.debug_opts,
     manila.common.config.global_opts,
     manila.compute._compute_opts,
-    manila.compute.nova.nova_opts,
     manila.db.api.db_opts,
     [manila.db.base.db_driver_opt],
     manila.exception.exc_log_opts,
     manila.network.linux.interface.OPTS,
     manila.network.network_opts,
-    manila.network.neutron.api.neutron_opts,
     manila.network.neutron.neutron_network_plugin.
     neutron_network_plugin_opts,
     manila.network.neutron.neutron_network_plugin.
@@ -157,13 +155,18 @@ _global_opt_lists = [
     manila.share.hook.hook_options,
     manila.share.manager.share_manager_opts,
     manila.volume._volume_opts,
-    manila.volume.cinder.cinder_opts,
     manila.wsgi.eventlet_opts,
     manila.wsgi.socket_opts,
 ]
 
 _opts = [
     (None, list(itertools.chain(*_global_opt_lists))),
+    (manila.volume.cinder.CINDER_GROUP,
+     list(itertools.chain(manila.volume.cinder.cinder_opts))),
+    (manila.compute.nova.NOVA_GROUP,
+     list(itertools.chain(manila.compute.nova.nova_opts))),
+    (manila.network.neutron.api.NEUTRON_GROUP,
+     list(itertools.chain(manila.network.neutron.api.neutron_opts))),
 ]
 
 _opts.extend(oslo_concurrency.opts.list_opts())
