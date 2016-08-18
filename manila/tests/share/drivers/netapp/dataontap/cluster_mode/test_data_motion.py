@@ -350,6 +350,22 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
         self.mock_dest_client.mount_volume.assert_called_once_with(
             self.fake_dest_vol_name)
 
+    def test_break_snapmirror_no_mount(self):
+        self.mock_object(self.dm_session, 'quiesce_then_abort')
+
+        self.dm_session.break_snapmirror(self.fake_src_share,
+                                         self.fake_dest_share,
+                                         mount=False)
+
+        self.mock_dest_client.break_snapmirror.assert_called_once_with(
+            self.source_vserver, self.fake_src_vol_name,
+            self.dest_vserver, self.fake_dest_vol_name)
+
+        self.dm_session.quiesce_then_abort.assert_called_once_with(
+            self.fake_src_share, self.fake_dest_share)
+
+        self.assertFalse(self.mock_dest_client.mount_volume.called)
+
     def test_break_snapmirror_wait_for_quiesced(self):
         self.mock_object(self.dm_session, 'quiesce_then_abort')
 

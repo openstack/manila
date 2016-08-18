@@ -3570,6 +3570,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
     @ddt.data({
         'mock_return': fake.SNAPSHOT_GET_ITER_NOT_BUSY_RESPONSE,
         'expected': {
+            'access-time': fake.SNAPSHOT_ACCESS_TIME,
             'name': fake.SNAPSHOT_NAME,
             'volume': fake.SHARE_NAME,
             'busy': False,
@@ -3578,6 +3579,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
     }, {
         'mock_return': fake.SNAPSHOT_GET_ITER_BUSY_RESPONSE,
         'expected': {
+            'access-time': fake.SNAPSHOT_ACCESS_TIME,
             'name': fake.SNAPSHOT_NAME,
             'volume': fake.SHARE_NAME,
             'busy': True,
@@ -3603,6 +3605,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             },
             'desired-attributes': {
                 'snapshot-info': {
+                    'access-time': None,
                     'name': None,
                     'volume': None,
                     'busy': None,
@@ -3658,15 +3661,32 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('snapshot-rename', snapshot_rename_args)])
 
-    def test_delete_snapshot(self):
+    def test_restore_snapshot(self):
 
         self.mock_object(self.client, 'send_request')
 
-        self.client.delete_snapshot(fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+        self.client.restore_snapshot(fake.SHARE_NAME,
+                                     fake.SNAPSHOT_NAME)
+
+        snapshot_restore_args = {
+            'volume': fake.SHARE_NAME,
+            'snapshot': fake.SNAPSHOT_NAME,
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('snapshot-restore-volume', snapshot_restore_args)])
+
+    @ddt.data(True, False)
+    def test_delete_snapshot(self, ignore_owners):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.delete_snapshot(
+            fake.SHARE_NAME, fake.SNAPSHOT_NAME, ignore_owners=ignore_owners)
 
         snapshot_delete_args = {
             'volume': fake.SHARE_NAME,
-            'snapshot': fake.SNAPSHOT_NAME
+            'snapshot': fake.SNAPSHOT_NAME,
+            'ignore-owners': 'true' if ignore_owners else 'false',
         }
 
         self.client.send_request.assert_has_calls([
@@ -5538,6 +5558,35 @@ class NetAppClientCmodeTestCase(test.TestCase):
         mock_get_snapmirrors_call.assert_has_calls(
             expected_get_snapmirrors_calls)
         self.assertTrue(mock_exc_log.called)
+
+    @ddt.data(None, '12345')
+    def test_list_snapmirror_snapshots(self, newer_than):
+
+        api_response = netapp_api.NaElement(
+            fake.SNAPSHOT_GET_ITER_SNAPMIRROR_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.list_snapmirror_snapshots(fake.SHARE_NAME,
+                                                       newer_than=newer_than)
+
+        snapshot_get_iter_args = {
+            'query': {
+                'snapshot-info': {
+                    'dependency': 'snapmirror',
+                    'volume': fake.SHARE_NAME,
+                },
+            },
+        }
+        if newer_than:
+            snapshot_get_iter_args['query']['snapshot-info']['access-time'] = (
+                '>' + newer_than)
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('snapshot-get-iter', snapshot_get_iter_args)])
+
+        expected = [fake.SNAPSHOT_NAME]
+        self.assertEqual(expected, result)
 
     @ddt.data('start_volume_move', 'check_volume_move')
     def test_volume_move_method(self, method_name):

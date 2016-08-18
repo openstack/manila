@@ -278,7 +278,7 @@ class DataMotionSession(object):
                                          dest_volume_name,
                                          clear_checkpoint=False)
 
-    def break_snapmirror(self, source_share_obj, dest_share_obj):
+    def break_snapmirror(self, source_share_obj, dest_share_obj, mount=True):
         """Breaks SnapMirror relationship.
 
         1. Quiesce any ongoing snapmirror transfers
@@ -304,7 +304,8 @@ class DataMotionSession(object):
                                      dest_volume_name)
 
         # 3. Mount the destination volume and create a junction path
-        dest_client.mount_volume(dest_volume_name)
+        if mount:
+            dest_client.mount_volume(dest_volume_name)
 
     def resync_snapmirror(self, source_share_obj, dest_share_obj):
         """Resync SnapMirror relationship. """

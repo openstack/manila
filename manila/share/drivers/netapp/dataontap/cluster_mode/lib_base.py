@@ -304,6 +304,9 @@ class NetAppCmodeFileStorageLibrary(object):
                 'dedupe': [True, False],
                 'compression': [True, False],
                 'thin_provisioning': [True, False],
+                'snapshot_support': True,
+                'create_share_from_snapshot_support': True,
+                'revert_to_snapshot_support': True,
             }
 
             # Add storage service catalog data.
@@ -792,6 +795,14 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver_client.create_snapshot(share_name, snapshot_name)
         return {'provider_location': snapshot_name}
 
+    def revert_to_snapshot(self, context, snapshot, share_server=None):
+        """Reverts a share (in place) to the specified snapshot."""
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
+        share_name = self._get_backend_share_name(snapshot['share_id'])
+        snapshot_name = self._get_backend_snapshot_name(snapshot['id'])
+        LOG.debug('Restoring snapshot %s', snapshot_name)
+        vserver_client.restore_snapshot(share_name, snapshot_name)
+
     @na_utils.trace
     def delete_snapshot(self, context, snapshot, share_server=None,
                         snapshot_name=None):
@@ -1257,6 +1268,11 @@ class NetAppCmodeFileStorageLibrary(object):
             if r['replica_state'] == constants.REPLICA_STATE_ACTIVE:
                 return r
 
+    def _find_nonactive_replicas(self, replica_list):
+        """Returns a list of all except the active replica."""
+        return [replica for replica in replica_list
+                if replica['replica_state'] != constants.REPLICA_STATE_ACTIVE]
+
     def create_replica(self, context, replica_list, new_replica,
                        access_rules, share_snapshots, share_server=None):
         """Creates the new replica on this backend and sets up SnapMirror."""
@@ -1323,6 +1339,12 @@ class NetAppCmodeFileStorageLibrary(object):
                     "%(vserver)s.")
             msg_args = {'share_name': share_name, 'vserver': vserver}
             raise exception.ShareResourceNotFound(msg % msg_args)
+
+        # NOTE(cknight): The SnapMirror may have been intentionally broken by
+        # a revert-to-snapshot operation, in which case this method should not
+        # attempt to change anything.
+        if active_replica['status'] == constants.STATUS_REVERTING:
+            return None
 
         dm_session = data_motion.DataMotionSession()
         try:
@@ -1622,6 +1644,50 @@ class NetAppCmodeFileStorageLibrary(object):
         except netapp_api.NaApiError as e:
             if e.code != netapp_api.EOBJECTNOTFOUND:
                 raise
+
+    def revert_to_replicated_snapshot(self, context, active_replica,
+                                      replica_list, active_replica_snapshot,
+                                      replica_snapshots, share_server=None):
+        """Reverts a replicated share (in place) to the specified snapshot."""
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
+        share_name = self._get_backend_share_name(
+            active_replica_snapshot['share_id'])
+        snapshot_name = self._get_backend_snapshot_name(
+            active_replica_snapshot['id'])
+        LOG.debug('Restoring snapshot %s', snapshot_name)
+
+        dm_session = data_motion.DataMotionSession()
+        non_active_replica_list = self._find_nonactive_replicas(replica_list)
+
+        # Ensure source snapshot exists
+        vserver_client.get_snapshot(share_name, snapshot_name)
+
+        # Break all mirrors
+        for replica in non_active_replica_list:
+            try:
+                dm_session.break_snapmirror(
+                    active_replica, replica, mount=False)
+            except netapp_api.NaApiError as e:
+                if e.code != netapp_api.EOBJECTNOTFOUND:
+                    raise
+
+        # Delete source SnapMirror snapshots that will prevent a snap restore
+        snapmirror_snapshot_names = vserver_client.list_snapmirror_snapshots(
+            share_name)
+        for snapmirror_snapshot_name in snapmirror_snapshot_names:
+            vserver_client.delete_snapshot(
+                share_name, snapmirror_snapshot_name, ignore_owners=True)
+
+        # Restore source snapshot of interest
+        vserver_client.restore_snapshot(share_name, snapshot_name)
+
+        # Reestablish mirrors
+        for replica in non_active_replica_list:
+            try:
+                dm_session.resync_snapmirror(active_replica, replica)
+            except netapp_api.NaApiError as e:
+                if e.code != netapp_api.EOBJECTNOTFOUND:
+                    raise
 
     def _check_destination_vserver_for_vol_move(self, source_share,
                                                 source_vserver,

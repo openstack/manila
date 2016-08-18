@@ -2114,6 +2114,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             },
             'desired-attributes': {
                 'snapshot-info': {
+                    'access-time': None,
                     'name': None,
                     'volume': None,
                     'busy': None,
@@ -2159,6 +2160,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         snapshot_info = snapshot_info_list[0]
         snapshot = {
+            'access-time': snapshot_info.get_child_content('access-time'),
             'name': snapshot_info.get_child_content('name'),
             'volume': snapshot_info.get_child_content('volume'),
             'busy': strutils.bool_from_string(
@@ -2184,9 +2186,26 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('snapshot-rename', api_args)
 
     @na_utils.trace
-    def delete_snapshot(self, volume_name, snapshot_name):
+    def restore_snapshot(self, volume_name, snapshot_name):
+        """Reverts a volume to the specified snapshot."""
+        api_args = {
+            'volume': volume_name,
+            'snapshot': snapshot_name,
+        }
+        self.send_request('snapshot-restore-volume', api_args)
+
+    @na_utils.trace
+    def delete_snapshot(self, volume_name, snapshot_name, ignore_owners=False):
         """Deletes a volume snapshot."""
-        api_args = {'volume': volume_name, 'snapshot': snapshot_name}
+
+        ignore_owners = ('true' if strutils.bool_from_string(ignore_owners)
+                         else 'false')
+
+        api_args = {
+            'volume': volume_name,
+            'snapshot': snapshot_name,
+            'ignore-owners': ignore_owners,
+        }
         self.send_request('snapshot-delete', api_args)
 
     @na_utils.trace
@@ -3263,6 +3282,28 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             has_snapmirrors = False
 
         return has_snapmirrors
+
+    def list_snapmirror_snapshots(self, volume_name, newer_than=None):
+        """Gets SnapMirror snapshots on a volume."""
+        api_args = {
+            'query': {
+                'snapshot-info': {
+                    'dependency': 'snapmirror',
+                    'volume': volume_name,
+                },
+            },
+        }
+        if newer_than:
+            api_args['query']['snapshot-info'][
+                'access-time'] = '>' + newer_than
+
+        result = self.send_iter_request('snapshot-get-iter', api_args)
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        return [snapshot_info.get_child_content('name')
+                for snapshot_info in attributes_list.get_children()]
 
     @na_utils.trace
     def start_volume_move(self, volume_name, vserver, destination_aggregate,

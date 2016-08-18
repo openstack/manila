@@ -1,0 +1,8 @@
+---
+features:
+  - Added support for share revert-to-snapshot to NetApp Data ONTAP drivers.
+upgrades:
+  - If using existing share types with Data ONTAP, set the
+    'revert_to_snapshot_support' extra spec to allow creating shares that
+    support in-place revert-to-snapshot functionality. This modification will
+    not affect existing shares of such types.

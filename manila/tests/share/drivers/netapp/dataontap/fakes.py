@@ -36,6 +36,7 @@ FLEXVOL_NAME = 'fake_volume'
 JUNCTION_PATH = '/%s' % FLEXVOL_NAME
 EXPORT_LOCATION = '%s:%s' % (HOST_NAME, JUNCTION_PATH)
 SNAPSHOT_NAME = 'fake_snapshot'
+SNAPSHOT_ACCESS_TIME = '1466455782'
 CONSISTENCY_GROUP_NAME = 'fake_consistency_group'
 SHARE_SIZE = 10
 TENANT_ID = '24cb2448-13d8-4f41-afd9-eff5c4fd2a57'
@@ -95,6 +96,7 @@ SHARE = {
         'network_allocations': [{'ip_address': 'ip'}]
     },
     'replica_state': constants.REPLICA_STATE_ACTIVE,
+    'status': constants.STATUS_AVAILABLE,
 }
 
 FLEXVOL_TO_MANAGE = {
@@ -292,6 +294,7 @@ CDOT_SNAPSHOT = {
     'volume': SHARE_NAME,
     'busy': False,
     'owners': set(),
+    'access-time': SNAPSHOT_ACCESS_TIME,
 }
 
 CDOT_SNAPSHOT_BUSY_VOLUME_CLONE = {
@@ -299,6 +302,7 @@ CDOT_SNAPSHOT_BUSY_VOLUME_CLONE = {
     'volume': SHARE_NAME,
     'busy': True,
     'owners': {'volume clone'},
+    'access-time': SNAPSHOT_ACCESS_TIME,
 }
 
 CDOT_SNAPSHOT_BUSY_SNAPMIRROR = {
@@ -306,6 +310,7 @@ CDOT_SNAPSHOT_BUSY_SNAPMIRROR = {
     'volume': SHARE_NAME,
     'busy': True,
     'owners': {'snapmirror'},
+    'access-time': SNAPSHOT_ACCESS_TIME,
 }
 
 CDOT_CLONE_CHILD_1 = 'fake_child_1'
@@ -545,71 +550,87 @@ SSC_INFO_VSERVER_CREDS = {
 }
 
 POOLS = [
-    {'pool_name': AGGREGATES[0],
-     'netapp_aggregate': AGGREGATES[0],
-     'total_capacity_gb': 3.3,
-     'free_capacity_gb': 1.1,
-     'allocated_capacity_gb': 2.2,
-     'qos': 'False',
-     'reserved_percentage': 5,
-     'dedupe': [True, False],
-     'compression': [True, False],
-     'thin_provisioning': [True, False],
-     'netapp_raid_type': 'raid4',
-     'netapp_disk_type': 'FCAL',
-     'netapp_hybrid_aggregate': 'false',
-     'utilization': 30.0,
-     'filter_function': 'filter',
-     'goodness_function': 'goodness',
-     },
-    {'pool_name': AGGREGATES[1],
-     'netapp_aggregate': AGGREGATES[1],
-     'total_capacity_gb': 6.0,
-     'free_capacity_gb': 2.0,
-     'allocated_capacity_gb': 4.0,
-     'qos': 'False',
-     'reserved_percentage': 5,
-     'dedupe': [True, False],
-     'compression': [True, False],
-     'thin_provisioning': [True, False],
-     'netapp_raid_type': 'raid_dp',
-     'netapp_disk_type': ['SATA', 'SSD'],
-     'netapp_hybrid_aggregate': 'true',
-     'utilization': 42.0,
-     'filter_function': 'filter',
-     'goodness_function': 'goodness',
-     },
+    {
+        'pool_name': AGGREGATES[0],
+        'netapp_aggregate': AGGREGATES[0],
+        'total_capacity_gb': 3.3,
+        'free_capacity_gb': 1.1,
+        'allocated_capacity_gb': 2.2,
+        'qos': 'False',
+        'reserved_percentage': 5,
+        'dedupe': [True, False],
+        'compression': [True, False],
+        'thin_provisioning': [True, False],
+        'netapp_raid_type': 'raid4',
+        'netapp_disk_type': 'FCAL',
+        'netapp_hybrid_aggregate': 'false',
+        'utilization': 30.0,
+        'filter_function': 'filter',
+        'goodness_function': 'goodness',
+        'snapshot_support': True,
+        'create_share_from_snapshot_support': True,
+        'revert_to_snapshot_support': True,
+    },
+    {
+        'pool_name': AGGREGATES[1],
+        'netapp_aggregate': AGGREGATES[1],
+        'total_capacity_gb': 6.0,
+        'free_capacity_gb': 2.0,
+        'allocated_capacity_gb': 4.0,
+        'qos': 'False',
+        'reserved_percentage': 5,
+        'dedupe': [True, False],
+        'compression': [True, False],
+        'thin_provisioning': [True, False],
+        'netapp_raid_type': 'raid_dp',
+        'netapp_disk_type': ['SATA', 'SSD'],
+        'netapp_hybrid_aggregate': 'true',
+        'utilization': 42.0,
+        'filter_function': 'filter',
+        'goodness_function': 'goodness',
+        'snapshot_support': True,
+        'create_share_from_snapshot_support': True,
+        'revert_to_snapshot_support': True,
+    },
 ]
 
 POOLS_VSERVER_CREDS = [
-    {'pool_name': AGGREGATES[0],
-     'netapp_aggregate': AGGREGATES[0],
-     'total_capacity_gb': 'unknown',
-     'free_capacity_gb': 1.1,
-     'allocated_capacity_gb': 0.0,
-     'qos': 'False',
-     'reserved_percentage': 5,
-     'dedupe': [True, False],
-     'compression': [True, False],
-     'thin_provisioning': [True, False],
-     'utilization': 50.0,
-     'filter_function': None,
-     'goodness_function': None,
-     },
-    {'pool_name': AGGREGATES[1],
-     'netapp_aggregate': AGGREGATES[1],
-     'total_capacity_gb': 'unknown',
-     'free_capacity_gb': 2.0,
-     'allocated_capacity_gb': 0.0,
-     'qos': 'False',
-     'reserved_percentage': 5,
-     'dedupe': [True, False],
-     'compression': [True, False],
-     'thin_provisioning': [True, False],
-     'utilization': 50.0,
-     'filter_function': None,
-     'goodness_function': None,
-     },
+    {
+        'pool_name': AGGREGATES[0],
+        'netapp_aggregate': AGGREGATES[0],
+        'total_capacity_gb': 'unknown',
+        'free_capacity_gb': 1.1,
+        'allocated_capacity_gb': 0.0,
+        'qos': 'False',
+        'reserved_percentage': 5,
+        'dedupe': [True, False],
+        'compression': [True, False],
+        'thin_provisioning': [True, False],
+        'utilization': 50.0,
+        'filter_function': None,
+        'goodness_function': None,
+        'snapshot_support': True,
+        'create_share_from_snapshot_support': True,
+        'revert_to_snapshot_support': True,
+    },
+    {
+        'pool_name': AGGREGATES[1],
+        'netapp_aggregate': AGGREGATES[1],
+        'total_capacity_gb': 'unknown',
+        'free_capacity_gb': 2.0,
+        'allocated_capacity_gb': 0.0,
+        'qos': 'False',
+        'reserved_percentage': 5,
+        'dedupe': [True, False],
+        'compression': [True, False],
+        'thin_provisioning': [True, False],
+        'utilization': 50.0,
+        'filter_function': None,
+        'goodness_function': None,
+        'snapshot_support': True,
+        'create_share_from_snapshot_support': True,
+        'revert_to_snapshot_support': True,
+    },
 ]
 
 SSC_AGGREGATES = [
