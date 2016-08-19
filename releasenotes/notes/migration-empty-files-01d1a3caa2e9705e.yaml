@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed share migration error using Data Service when there are
+    only empty files.
