@@ -2115,6 +2115,27 @@ SNAPMIRROR_INITIALIZE_RESULT = etree.XML("""
   </results>
 """)
 
+VOLUME_MOVE_GET_ITER_RESULT = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-move-info>
+        <cutover-action>retry_on_failure</cutover-action>
+        <details>Cutover Completed::Volume move job finishing move</details>
+        <estimated-completion-time>1481919246</estimated-completion-time>
+        <percent-complete>82</percent-complete>
+        <phase>finishing</phase>
+        <state>healthy</state>
+        <volume>%(volume)s</volume>
+        <vserver>%(vserver)s</vserver>
+      </volume-move-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'volume': SHARE_NAME,
+    'vserver': VSERVER_NAME,
+})
+
 PERF_OBJECT_COUNTER_TOTAL_CP_MSECS_LABELS = [
     'SETUP', 'PRE_P0', 'P0_SNAP_DEL', 'P1_CLEAN', 'P1_QUOTA', 'IPU_DISK_ADD',
     'P2V_INOFILE', 'P2V_INO_PUB', 'P2V_INO_PRI', 'P2V_FSINFO', 'P2V_DLOG1',

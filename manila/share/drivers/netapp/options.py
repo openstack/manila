@@ -113,13 +113,19 @@ netapp_support_opts = [
                      'trace info is written to the debug logs.  Values '
                      'include method and api.')), ]
 
-netapp_replication_opts = [
+netapp_data_motion_opts = [
     cfg.IntOpt('netapp_snapmirror_quiesce_timeout',
                min=0,
                default=3600,  # One Hour
                help='The maximum time in seconds to wait for existing '
                     'snapmirror transfers to complete before aborting when '
-                    'promoting a replica.'), ]
+                    'promoting a replica.'),
+    cfg.IntOpt('netapp_volume_move_cutover_timeout',
+               min=0,
+               default=3600,  # One Hour,
+               help='The maximum time in seconds to wait for the completion '
+                    'of a volume move operation after the cutover '
+                    'was triggered.'), ]
 
 CONF = cfg.CONF
 CONF.register_opts(netapp_proxy_opts)
@@ -128,4 +134,4 @@ CONF.register_opts(netapp_transport_opts)
 CONF.register_opts(netapp_basicauth_opts)
 CONF.register_opts(netapp_provisioning_opts)
 CONF.register_opts(netapp_support_opts)
-CONF.register_opts(netapp_replication_opts)
+CONF.register_opts(netapp_data_motion_opts)

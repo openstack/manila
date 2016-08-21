@@ -44,8 +44,9 @@ def get_backend_configuration(backend_name):
     config_stanzas = CONF.list_all_sections()
     if backend_name not in config_stanzas:
         msg = _("Could not find backend stanza %(backend_name)s in "
-                "configuration which is required for replication with "
-                "the backend. Available stanzas are %(stanzas)s")
+                "configuration which is required for replication or migration "
+                "workflows with the source backend. Available stanzas are "
+                "%(stanzas)s")
         params = {
             "stanzas": config_stanzas,
             "backend_name": backend_name,
@@ -60,7 +61,7 @@ def get_backend_configuration(backend_name):
     config.append_config_values(na_opts.netapp_transport_opts)
     config.append_config_values(na_opts.netapp_support_opts)
     config.append_config_values(na_opts.netapp_provisioning_opts)
-    config.append_config_values(na_opts.netapp_replication_opts)
+    config.append_config_values(na_opts.netapp_data_motion_opts)
 
     return config
 

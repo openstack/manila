@@ -164,3 +164,53 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
                                    share_replica, replica_snapshots,
                                    replica_snapshot, share_server=None):
         raise NotImplementedError()
+
+    def migration_check_compatibility(self, context, source_share,
+                                      destination_share, share_server=None,
+                                      destination_share_server=None):
+        return self.library.migration_check_compatibility(
+            context, source_share, destination_share,
+            share_server=share_server,
+            destination_share_server=destination_share_server)
+
+    def migration_start(self, context, source_share, destination_share,
+                        source_snapshots, snapshot_mappings,
+                        share_server=None, destination_share_server=None):
+        return self.library.migration_start(
+            context, source_share, destination_share,
+            source_snapshots, snapshot_mappings,
+            share_server=share_server,
+            destination_share_server=destination_share_server)
+
+    def migration_continue(self, context, source_share, destination_share,
+                           source_snapshots, snapshot_mappings,
+                           share_server=None, destination_share_server=None):
+        return self.library.migration_continue(
+            context, source_share, destination_share,
+            source_snapshots, snapshot_mappings, share_server=share_server,
+            destination_share_server=destination_share_server)
+
+    def migration_get_progress(self, context, source_share,
+                               destination_share, source_snapshots,
+                               snapshot_mappings, share_server=None,
+                               destination_share_server=None):
+        return self.library.migration_get_progress(
+            context, source_share, destination_share,
+            source_snapshots, snapshot_mappings, share_server=share_server,
+            destination_share_server=destination_share_server)
+
+    def migration_cancel(self, context, source_share, destination_share,
+                         source_snapshots, snapshot_mappings,
+                         share_server=None, destination_share_server=None):
+        return self.library.migration_cancel(
+            context, source_share, destination_share,
+            source_snapshots, snapshot_mappings, share_server=share_server,
+            destination_share_server=destination_share_server)
+
+    def migration_complete(self, context, source_share, destination_share,
+                           source_snapshots, snapshot_mappings,
+                           share_server=None, destination_share_server=None):
+        return self.library.migration_complete(
+            context, source_share, destination_share,
+            source_snapshots, snapshot_mappings, share_server=share_server,
+            destination_share_server=destination_share_server)

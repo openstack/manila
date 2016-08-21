@@ -5538,3 +5538,124 @@ class NetAppClientCmodeTestCase(test.TestCase):
         mock_get_snapmirrors_call.assert_has_calls(
             expected_get_snapmirrors_calls)
         self.assertTrue(mock_exc_log.called)
+
+    @ddt.data('start_volume_move', 'check_volume_move')
+    def test_volume_move_method(self, method_name):
+
+        method = getattr(self.client, method_name)
+        self.mock_object(self.client, 'send_request')
+
+        retval = method(fake.SHARE_NAME, fake.VSERVER_NAME,
+                        fake.SHARE_AGGREGATE_NAME)
+
+        expected_api_args = {
+            'source-volume': fake.SHARE_NAME,
+            'vserver': fake.VSERVER_NAME,
+            'dest-aggr': fake.SHARE_AGGREGATE_NAME,
+            'cutover-action': 'wait',
+        }
+        if method_name.startswith('check'):
+            expected_api_args['perform-validation-only'] = 'true'
+
+        self.assertIsNone(retval)
+        self.client.send_request.assert_called_once_with(
+            'volume-move-start', expected_api_args)
+
+    def test_abort_volume_move(self):
+        self.mock_object(self.client, 'send_request')
+
+        retval = self.client.abort_volume_move(
+            fake.SHARE_NAME, fake.VSERVER_NAME)
+
+        expected_api_args = {
+            'source-volume': fake.SHARE_NAME,
+            'vserver': fake.VSERVER_NAME,
+        }
+        self.assertIsNone(retval)
+        self.client.send_request.assert_called_once_with(
+            'volume-move-trigger-abort', expected_api_args)
+
+    @ddt.data(True, False)
+    def test_trigger_volume_move_cutover_force(self, forced):
+        self.mock_object(self.client, 'send_request')
+
+        retval = self.client.trigger_volume_move_cutover(
+            fake.SHARE_NAME, fake.VSERVER_NAME, force=forced)
+
+        expected_api_args = {
+            'source-volume': fake.SHARE_NAME,
+            'vserver': fake.VSERVER_NAME,
+            'force': 'true' if forced else 'false',
+        }
+        self.assertIsNone(retval)
+        self.client.send_request.assert_called_once_with(
+            'volume-move-trigger-cutover', expected_api_args)
+
+    def test_get_volume_move_status_no_records(self):
+        self.mock_object(self.client, 'send_iter_request')
+        self.mock_object(self.client, '_has_records',
+                         mock.Mock(return_value=False))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.get_volume_move_status,
+                          fake.SHARE_NAME, fake.VSERVER_NAME)
+
+        expected_api_args = {
+            'query': {
+                'volume-move-info': {
+                    'volume': fake.SHARE_NAME,
+                    'vserver': fake.VSERVER_NAME,
+                },
+            },
+            'desired-attributes': {
+                'volume-move-info': {
+                    'percent-complete': None,
+                    'estimated-completion-time': None,
+                    'state': None,
+                    'details': None,
+                    'cutover-action': None,
+                    'phase': None,
+                },
+            },
+        }
+        self.client.send_iter_request.assert_called_once_with(
+            'volume-move-get-iter', expected_api_args)
+
+    def test_get_volume_move_status(self):
+        move_status = netapp_api.NaElement(fake.VOLUME_MOVE_GET_ITER_RESULT)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=move_status))
+
+        actual_status_info = self.client.get_volume_move_status(
+            fake.SHARE_NAME, fake.VSERVER_NAME)
+
+        expected_api_args = {
+            'query': {
+                'volume-move-info': {
+                    'volume': fake.SHARE_NAME,
+                    'vserver': fake.VSERVER_NAME,
+                },
+            },
+            'desired-attributes': {
+                'volume-move-info': {
+                    'percent-complete': None,
+                    'estimated-completion-time': None,
+                    'state': None,
+                    'details': None,
+                    'cutover-action': None,
+                    'phase': None,
+                },
+            },
+        }
+        expected_status_info = {
+            'percent-complete': '82',
+            'estimated-completion-time': '1481919246',
+            'state': 'healthy',
+            'details': 'Cutover Completed::Volume move job finishing move',
+            'cutover-action': 'retry_on_failure',
+            'phase': 'finishing',
+        }
+
+        self.assertDictMatch(expected_status_info, actual_status_info)
+        self.client.send_iter_request.assert_called_once_with(
+            'volume-move-get-iter', expected_api_args)

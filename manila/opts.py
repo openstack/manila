@@ -141,7 +141,7 @@ _global_opt_lists = [
     manila.share.drivers.netapp.options.netapp_transport_opts,
     manila.share.drivers.netapp.options.netapp_basicauth_opts,
     manila.share.drivers.netapp.options.netapp_provisioning_opts,
-    manila.share.drivers.netapp.options.netapp_replication_opts,
+    manila.share.drivers.netapp.options.netapp_data_motion_opts,
     manila.share.drivers.nexenta.options.nexenta_connection_opts,
     manila.share.drivers.nexenta.options.nexenta_dataset_opts,
     manila.share.drivers.nexenta.options.nexenta_nfs_opts,

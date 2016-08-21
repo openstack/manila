@@ -35,9 +35,11 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
     """NetApp cDOT NFS protocol helper class."""
 
     @na_utils.trace
-    def create_share(self, share, share_name):
+    def create_share(self, share, share_name,
+                     clear_current_export_policy=True):
         """Creates NFS share."""
-        self._client.clear_nfs_export_policy_for_volume(share_name)
+        if clear_current_export_policy:
+            self._client.clear_nfs_export_policy_for_volume(share_name)
         self._ensure_export_policy(share, share_name)
         export_path = self._client.get_volume_junction_path(share_name)
 
