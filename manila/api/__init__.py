@@ -14,22 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_config import cfg
-from oslo_log import log
 import paste.urlmap
-
-from manila.i18n import _LW
-
-
-LOG = log.getLogger(__name__)
-CONF = cfg.CONF
 
 
 def root_app_factory(loader, global_conf, **local_conf):
-    if CONF.enable_v1_api:
-        LOG.warning(_LW('The config option enable_v1_api is deprecated, is '
-                        'not used, and will be removed in a future release.'))
-    if CONF.enable_v2_api:
-        LOG.warning(_LW('The config option enable_v2_api is deprecated, is '
-                        'not used, and will be removed in a future release.'))
     return paste.urlmap.urlmap_factory(loader, global_conf, **local_conf)
