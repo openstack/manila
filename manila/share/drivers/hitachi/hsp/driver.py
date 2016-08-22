@@ -319,3 +319,6 @@ class HitachiHSPDriver(driver.ShareDriver):
                      "%(shr_id)s is no longer being managed."),
                  {'shr_path': share['export_locations'][0]['path'],
                   'shr_id': share['id']})
+
+    def get_default_filter_function(self):
+        return "share.size >= 128"
