@@ -318,21 +318,23 @@ function create_service_share_servers {
                 iniset $MANILA_CONF $BE tenant_net_name_or_ip private
             else
                 if is_service_enabled neutron; then
-                    if [ $created_admin_network == false ]; then
-                        project_id=$(openstack project show $SERVICE_PROJECT_NAME -c id -f value)
-                        local admin_net_id=$( neutron net-list --all-tenants | grep " admin_net " | get_field 1 )
-                        if [[ -z $admin_net_id ]]; then
-                            admin_net_id=$(neutron net-create --tenant-id $project_id admin_net | grep ' id ' | get_field 2)
-                        fi
+                    if ! [[ -z $MANILA_ADMIN_NET_RANGE ]]; then
+                        if [ $created_admin_network == false ]; then
+                            project_id=$(openstack project show $SERVICE_PROJECT_NAME -c id -f value)
+                            local admin_net_id=$( neutron net-list --all-tenants | grep " admin_net " | get_field 1 )
+                            if [[ -z $admin_net_id ]]; then
+                                admin_net_id=$(neutron net-create --tenant-id $project_id admin_net | grep ' id ' | get_field 2)
+                            fi
 
-                        local admin_subnet_id=$( neutron subnet-list --all-tenants | grep " admin_subnet " | get_field 1 )
-                        if [[ -z $admin_subnet_id ]]; then
-                            admin_subnet_id=$(neutron subnet-create --tenant-id $project_id --ip_version 4 --no-gateway --name admin_subnet --subnetpool None $admin_net_id $FIXED_RANGE | grep ' id ' | get_field 2)
+                            local admin_subnet_id=$( neutron subnet-list --all-tenants | grep " admin_subnet " | get_field 1 )
+                            if [[ -z $admin_subnet_id ]]; then
+                                admin_subnet_id=$(neutron subnet-create --tenant-id $project_id --ip_version 4 --no-gateway --name admin_subnet --subnetpool None $admin_net_id $MANILA_ADMIN_NET_RANGE | grep ' id ' | get_field 2)
+                            fi
+                            created_admin_network=true
                         fi
-                        created_admin_network=true
+                        iniset $MANILA_CONF $BE admin_network_id $admin_net_id
+                        iniset $MANILA_CONF $BE admin_subnet_id $admin_subnet_id
                     fi
-                    iniset $MANILA_CONF $BE admin_network_id $admin_net_id
-                    iniset $MANILA_CONF $BE admin_subnet_id $admin_subnet_id
                 fi
             fi
         fi
@@ -349,7 +351,9 @@ function configure_data_service_generic_driver {
         if [[ $(trueorfalse False driver_handles_share_servers) == False ]]; then
             iniset $MANILA_CONF DEFAULT data_node_access_ip $PUBLIC_NETWORK_GATEWAY
         else
-            iniset $MANILA_CONF DEFAULT data_node_access_ip $FIXED_RANGE
+            if ! [[ -z $MANILA_DATA_NODE_IP ]]; then
+                iniset $MANILA_CONF DEFAULT data_node_access_ip $MANILA_DATA_NODE_IP
+            fi
         fi
     fi
 }
