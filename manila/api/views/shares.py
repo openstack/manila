@@ -14,6 +14,7 @@
 #    under the License.
 
 from manila.api import common
+from manila.common import constants
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -31,6 +32,7 @@ class ViewBuilder(common.ViewBuilder):
         "add_user_id",
         "add_create_share_from_snapshot_support_field",
         "add_revert_to_snapshot_support_field",
+        "translate_access_rules_status",
     ]
 
     def summary_list(self, request, shares):
@@ -153,6 +155,12 @@ class ViewBuilder(common.ViewBuilder):
     def add_revert_to_snapshot_support_field(self, context, share_dict, share):
         share_dict['revert_to_snapshot_support'] = share.get(
             'revert_to_snapshot_support')
+
+    @common.ViewBuilder.versioned_method("2.10", "2.27")
+    def translate_access_rules_status(self, context, share_dict, share):
+        if (share['access_rules_status'] ==
+                constants.SHARE_INSTANCE_RULES_SYNCING):
+            share_dict['access_rules_status'] = constants.STATUS_OUT_OF_SYNC
 
     def _list_view(self, func, request, shares):
         """Provide a view for a list of shares."""

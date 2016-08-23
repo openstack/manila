@@ -691,8 +691,14 @@ class ShareMigrationHelperTestCase(test.TestCase):
     def test_wait_for_access_update(self):
         sid = 1
         fake_share_instances = [
-            {'id': sid, 'access_rules_status': constants.STATUS_OUT_OF_SYNC},
-            {'id': sid, 'access_rules_status': constants.STATUS_ACTIVE},
+            {
+                'id': sid,
+                'access_rules_status': constants.SHARE_INSTANCE_RULES_SYNCING,
+            },
+            {
+                'id': sid,
+                'access_rules_status': constants.STATUS_ACTIVE,
+            },
         ]
 
         self.mock_object(time, 'sleep')
@@ -709,11 +715,17 @@ class ShareMigrationHelperTestCase(test.TestCase):
 
     @ddt.data(
         (
-            {'id': '1', 'access_rules_status': constants.STATUS_ERROR},
+            {
+                'id': '1',
+                'access_rules_status': constants.SHARE_INSTANCE_RULES_ERROR,
+            },
             exception.ShareMigrationFailed
         ),
         (
-            {'id': '1', 'access_rules_status': constants.STATUS_OUT_OF_SYNC},
+            {
+                'id': '1',
+                'access_rules_status': constants.SHARE_INSTANCE_RULES_SYNCING,
+            },
             exception.ShareMigrationFailed
         ),
     )

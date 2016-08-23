@@ -47,11 +47,12 @@ CONF.register_opts(migration_opts)
 
 class ShareMigrationHelper(object):
 
-    def __init__(self, context, db, share):
+    def __init__(self, context, db, share, access_helper):
 
         self.db = db
         self.share = share
         self.context = context
+        self.access_helper = access_helper
         self.api = share_api.API()
 
         self.migration_create_delete_share_timeout = (
@@ -131,7 +132,7 @@ class ShareMigrationHelper(object):
             LOG.warning(_LW("Failed to cleanup new instance during generic"
                         " migration for share %s."), self.share['id'])
 
-    def cleanup_access_rules(self, share_instance, share_server, driver):
+    def cleanup_access_rules(self, share_instance, share_server):
 
         # NOTE(ganso): For the purpose of restoring the access rules, the share
         # instance status must not be "MIGRATING", else they would be cast to
@@ -142,45 +143,36 @@ class ShareMigrationHelper(object):
                                       {'status': constants.STATUS_INACTIVE})
 
         try:
-            self.revert_access_rules(share_instance, share_server, driver)
+            self.revert_access_rules(share_instance, share_server)
         except Exception:
             LOG.warning(_LW("Failed to cleanup access rules during generic"
                         " migration for share %s."), self.share['id'])
 
-    def revert_access_rules(self, share_instance, share_server, driver):
+    def revert_access_rules(self, share_instance, share_server):
 
-        rules = self.db.share_access_get_all_for_instance(
-            self.context, share_instance['id'])
+        # Cast all rules to 'queued_to_apply' so that they can be re-applied.
+        updates = {'state': constants.ACCESS_STATE_QUEUED_TO_APPLY}
+        self.access_helper.get_and_update_share_instance_access_rules(
+            self.context, updates=updates,
+            share_instance_id=share_instance['id'])
 
-        if len(rules) > 0:
-            LOG.debug("Restoring all of share %s access rules according to "
-                      "DB.", self.share['id'])
+        self.access_helper.update_access_rules(
+            self.context, share_instance['id'], share_server=share_server)
 
-            driver.update_access(self.context, share_instance, rules,
-                                 add_rules=[], delete_rules=[],
-                                 share_server=share_server)
+        utils.wait_for_access_update(
+            self.context, self.db, share_instance,
+            self.migration_wait_access_rules_timeout)
 
     def apply_new_access_rules(self, new_share_instance):
 
         self.db.share_instance_access_copy(self.context, self.share['id'],
                                            new_share_instance['id'])
 
-        rules = self.db.share_access_get_all_for_instance(
-            self.context, new_share_instance['id'])
+        self.api.allow_access_to_instance(self.context, new_share_instance)
 
-        if len(rules) > 0:
-            LOG.debug("Restoring all of share %s access rules according to "
-                      "DB.", self.share['id'])
-
-            # refresh share instance
-            new_share_instance = self.db.share_instance_get(
-                self.context, new_share_instance['id'], with_share_data=True)
-
-            self.api.allow_access_to_instance(self.context, new_share_instance,
-                                              rules)
-            utils.wait_for_access_update(
-                self.context, self.db, new_share_instance,
-                self.migration_wait_access_rules_timeout)
+        utils.wait_for_access_update(
+            self.context, self.db, new_share_instance,
+            self.migration_wait_access_rules_timeout)
 
     @utils.retry(exception.ShareServerNotReady, retries=8)
     def wait_for_share_server(self, share_server_id):

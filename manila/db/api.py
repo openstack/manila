@@ -392,6 +392,31 @@ def share_access_create(context, values):
     return IMPL.share_access_create(context, values)
 
 
+def share_access_get(context, access_id):
+    """Get share access rule."""
+    return IMPL.share_access_get(context, access_id)
+
+
+def share_access_get_all_for_share(context, share_id):
+    """Get all access rules for given share."""
+    return IMPL.share_access_get_all_for_share(context, share_id)
+
+
+def share_access_get_all_for_instance(context, instance_id, filters=None,
+                                      with_share_access_data=True):
+    """Get all access rules related to a certain share instance."""
+    return IMPL.share_access_get_all_for_instance(
+        context, instance_id, filters=filters,
+        with_share_access_data=with_share_access_data)
+
+
+def share_access_get_all_by_type_and_access(context, share_id, access_type,
+                                            access):
+    """Returns share access by given type and access."""
+    return IMPL.share_access_get_all_by_type_and_access(
+        context, share_id, access_type, access)
+
+
 def share_instance_access_create(context, values, share_instance_id):
     """Allow access to share instance."""
     return IMPL.share_instance_access_create(
@@ -407,54 +432,23 @@ def share_instance_access_copy(context, share_id, instance_id):
     return IMPL.share_instance_access_copy(context, share_id, instance_id)
 
 
-def share_access_get(context, access_id):
-    """Get share access rule."""
-    return IMPL.share_access_get(context, access_id)
-
-
-def share_instance_access_get(context, access_id, instance_id):
+def share_instance_access_get(context, access_id, instance_id,
+                              with_share_access_data=True):
     """Get access rule mapping for share instance."""
-    return IMPL.share_instance_access_get(context, access_id, instance_id)
+    return IMPL.share_instance_access_get(
+        context, access_id, instance_id,
+        with_share_access_data=with_share_access_data)
 
 
-def share_access_get_all_for_share(context, share_id):
-    """Get all access rules for given share."""
-    return IMPL.share_access_get_all_for_share(context, share_id)
-
-
-def share_access_update_access_key(context, access_id, access_key):
-    """Update the access_key field of a share access mapping."""
-    return IMPL.share_access_update_access_key(context, access_id, access_key)
-
-
-def share_access_get_all_for_instance(context, instance_id, session=None):
-    """Get all access rules related to a certain share instance."""
-    return IMPL.share_access_get_all_for_instance(
-        context, instance_id, session=None)
-
-
-def share_access_get_all_by_type_and_access(context, share_id, access_type,
-                                            access):
-    """Returns share access by given type and access."""
-    return IMPL.share_access_get_all_by_type_and_access(
-        context, share_id, access_type, access)
-
-
-def share_access_delete(context, access_id):
-    """Deny access to share."""
-    return IMPL.share_access_delete(context, access_id)
+def share_instance_access_update(context, access_id, instance_id, updates):
+    """Update the access mapping row for a given share instance and access."""
+    return IMPL.share_instance_access_update(
+        context, access_id, instance_id, updates)
 
 
 def share_instance_access_delete(context, mapping_id):
     """Deny access to share instance."""
     return IMPL.share_instance_access_delete(context, mapping_id)
-
-
-def share_instance_update_access_status(context, share_instance_id, status):
-    """Update access rules status of share instance."""
-    return IMPL.share_instance_update_access_status(context, share_instance_id,
-                                                    status)
-
 
 ####################
 

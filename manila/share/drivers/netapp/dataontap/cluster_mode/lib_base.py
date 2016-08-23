@@ -1469,7 +1469,7 @@ class NetAppCmodeFileStorageLibrary(object):
             helper.update_access(replica, share_name, access_rules)
         except Exception:
             new_active_replica['access_rules_status'] = (
-                constants.STATUS_OUT_OF_SYNC)
+                constants.SHARE_INSTANCE_RULES_SYNCING)
         else:
             new_active_replica['access_rules_status'] = constants.STATUS_ACTIVE
 

@@ -30,6 +30,7 @@ from manila.api import common
 from manila.api.openstack import wsgi
 from manila.api.views import share_accesses as share_access_views
 from manila.api.views import shares as share_views
+from manila.common import constants
 from manila import db
 from manila import exception
 from manila.i18n import _, _LI
@@ -401,11 +402,33 @@ class ShareMixin(object):
             raise webob.exc.HTTPBadRequest(explanation=_(
                 'Ceph IDs may not contain periods'))
 
-    def _allow_access(self, req, id, body, enable_ceph=False):
+    @staticmethod
+    def _any_instance_has_errored_rules(share):
+        for instance in share['instances']:
+            access_rules_status = instance['access_rules_status']
+            if access_rules_status == constants.SHARE_INSTANCE_RULES_ERROR:
+                return True
+        return False
+
+    @wsgi.Controller.authorize('allow_access')
+    def _allow_access(self, req, id, body, enable_ceph=False,
+                      allow_on_error_status=False):
         """Add share access rule."""
         context = req.environ['manila.context']
         access_data = body.get('allow_access', body.get('os-allow_access'))
         share = self.share_api.get(context, id)
+
+        if (not allow_on_error_status and
+                self._any_instance_has_errored_rules(share)):
+            msg = _("Access rules cannot be added while the share or any of "
+                    "its replicas or migration copies has its "
+                    "access_rules_status set to %(instance_rules_status)s. "
+                    "Deny any rules in %(rule_state) state and try "
+                    "again.") % {
+                'instance_rules_status': constants.SHARE_INSTANCE_RULES_ERROR,
+                'rule_state': constants.ACCESS_STATE_ERROR,
+            }
+            raise webob.exc.HTTPBadRequest(explanation=msg)
 
         access_type = access_data['access_type']
         access_to = access_data['access_to']
@@ -435,6 +458,7 @@ class ShareMixin(object):
 
         return self._access_view_builder.view(req, access)
 
+    @wsgi.Controller.authorize('deny_access')
     def _deny_access(self, req, id, body):
         """Remove share access rule."""
         context = req.environ['manila.context']

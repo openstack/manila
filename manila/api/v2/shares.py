@@ -323,10 +323,14 @@ class ShareController(shares.ShareMixin,
     @wsgi.action('allow_access')
     def allow_access(self, req, id, body):
         """Add share access rule."""
-        if req.api_version_request < api_version.APIVersionRequest("2.13"):
-            return self._allow_access(req, id, body)
-        else:
-            return self._allow_access(req, id, body, enable_ceph=True)
+        args = (req, id, body)
+        kwargs = {}
+        if req.api_version_request >= api_version.APIVersionRequest("2.13"):
+            kwargs['enable_ceph'] = True
+        if req.api_version_request >= api_version.APIVersionRequest("2.28"):
+            kwargs['allow_on_error_status'] = True
+
+        return self._allow_access(*args, **kwargs)
 
     @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.action('os-deny_access')

@@ -607,16 +607,22 @@ class ShareDriver(object):
                       delete_rules, share_server=None):
         """Update access rules for given share.
 
-        Drivers should support 2 different cases in this method:
-        1. Recovery after error - 'access_rules' contains all access_rules,
-        'add_rules' and 'delete_rules' shall be empty. Driver should clear any
-        existent access rules and apply all access rules for given share.
-        This recovery is made at driver start up.
+        ``access_rules`` contains all access_rules that need to be on the
+        share. If the driver can make bulk access rule updates, it can
+        safely ignore the ``add_rules`` and ``delete_rules`` parameters.
 
-        2. Adding/Deleting of several access rules - 'access_rules' contains
-        all access_rules, 'add_rules' and 'delete_rules' contain rules which
-        should be added/deleted. Driver can ignore rules in 'access_rules' and
-        apply only rules from 'add_rules' and 'delete_rules'.
+        If the driver cannot make bulk access rule changes, it can rely on
+        new rules to be present in ``add_rules`` and rules that need to be
+        removed to be present in ``delete_rules``.
+
+        When a rule in ``delete_rules`` was never applied, drivers must not
+        raise an exception, or attempt to set the rule to ``error`` state.
+
+        ``add_rules`` and ``delete_rules`` can be empty lists, in this
+        situation, drivers should ensure that the rules present in
+        ``access_rules`` are the same as those on the back end. One scenario
+        where this situation is forced is when the access_level is changed for
+        all existing rules (share migration and for readable replicas).
 
         Drivers must be mindful of this call for share replicas. When
         'update_access' is called on one of the replicas, the call is likely
@@ -634,20 +640,51 @@ class ShareDriver(object):
 
         :param context: Current context
         :param share: Share model with share data.
-        :param access_rules: All access rules for given share
+        :param access_rules: A list of access rules for given share
         :param add_rules: Empty List or List of access rules which should be
                added. access_rules already contains these rules.
         :param delete_rules: Empty List or List of access rules which should be
                removed. access_rules doesn't contain these rules.
         :param share_server: None or Share server model
-        :returns: None, or a dictionary of ``access_id``, ``access_key`` as
-                  key: value pairs for the rules added, where, ``access_id``
-                  is the UUID (string) of the access rule, and ``access_key``
-                  is the credential (string) of the entity granted access.
-                  During recovery after error, the returned dictionary must
-                  contain ``access_id``, ``access_key`` for all the rules that
-                  the driver is ordered to resync, i.e. rules in the
-                  ``access_rules`` parameter.
+        :returns: None, or a dictionary of updates in the format:
+
+            {
+                '09960614-8574-4e03-89cf-7cf267b0bd08': {
+                        'access_key': 'alice31493e5441b8171d2310d80e37e',
+                        'state': 'error',
+                    },
+                '28f6eabb-4342-486a-a7f4-45688f0c0295': {
+                        'access_key': 'bob0078aa042d5a7325480fd13228b',
+                        'state': 'active',
+                    },
+            }
+
+        The top level keys are 'access_id' fields of the access rules that
+        need to be updated. ``access_key``s are credentials (str) of the
+        entities granted access. Any rule in the ``access_rules`` parameter
+        can be updated.
+
+        .. important::
+
+            Raising an exception in this method will force *all* rules in
+            'applying' and 'denying' states to 'error'.
+
+            An access rule can be set to 'error' state, either explicitly
+            via this return parameter or because of an exception raised in
+            this method. Such an access rule will no longer be sent to the
+            driver on subsequent access rule updates. When users deny that
+            rule however, the driver will be asked to deny access to the
+            client/s represented by the rule. We expect that a
+            rule that was error-ed at the driver should never exist on the
+            back end. So, do not fail the deletion request.
+
+            Also, it is possible that the driver may receive a request to
+            add a rule that is already present on the back end.
+            This can happen if the share manager service goes down
+            while the driver is committing access rule changes. Since we
+            cannot determine if the rule was applied successfully by the driver
+            before the disruption, we will treat all 'applying' transitional
+            rules as new rules and repeat the request.
         """
         raise NotImplementedError()
 

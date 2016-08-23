@@ -85,7 +85,6 @@ class GenericDatabaseAPITestCase(test.TestCase):
 
         db_api.share_instance_access_delete(
             self.ctxt, share_access.instance_mappings[0].id)
-        db_api.share_access_delete(self.ctxt, share_access.id)
         self.assertRaises(exception.NotFound, db_api.share_access_get,
                           self.ctxt, share_access.id)
 
@@ -98,44 +97,126 @@ class ShareAccessDatabaseAPITestCase(test.TestCase):
         super(ShareAccessDatabaseAPITestCase, self).setUp()
         self.ctxt = context.get_admin_context()
 
-    def test_share_instance_update_access_status(self):
+    @ddt.data(0, 3)
+    def test_share_access_get_all_for_share(self, len_rules):
         share = db_utils.create_share()
-        share_instance = db_utils.create_share_instance(share_id=share['id'])
-        db_utils.create_access(share_id=share_instance['share_id'])
+        rules = [db_utils.create_access(share_id=share['id'])
+                 for i in range(0, len_rules)]
+        rule_ids = [r['id'] for r in rules]
 
-        db_api.share_instance_update_access_status(
-            self.ctxt,
-            share_instance['id'],
-            constants.STATUS_ACTIVE
-        )
+        result = db_api.share_access_get_all_for_share(self.ctxt, share['id'])
 
-        result = db_api.share_instance_get(self.ctxt, share_instance['id'])
+        self.assertEqual(len_rules, len(result))
+        result_ids = [r['id'] for r in result]
+        self.assertEqual(rule_ids, result_ids)
 
-        self.assertEqual(constants.STATUS_ACTIVE,
-                         result['access_rules_status'])
-
-    def test_share_instance_update_access_status_invalid(self):
+    def test_share_access_get_all_for_share_no_instance_mappings(self):
         share = db_utils.create_share()
-        share_instance = db_utils.create_share_instance(share_id=share['id'])
-        db_utils.create_access(share_id=share_instance['share_id'])
+        share_instance = share['instance']
+        rule = db_utils.create_access(share_id=share['id'])
+        # Mark instance mapping soft deleted
+        db_api.share_instance_access_update(
+            self.ctxt, rule['id'], share_instance['id'], {'deleted': "True"})
 
-        self.assertRaises(
-            db_exception.DBError,
-            db_api.share_instance_update_access_status,
-            self.ctxt, share_instance['id'],
-            "fake_status"
-        )
+        result = db_api.share_access_get_all_for_share(self.ctxt, share['id'])
 
-    @ddt.data(None, 'rhubarb')
-    def test_share_access_update_access_key(self, key_value):
+        self.assertEqual([], result)
+
+    def test_share_instance_access_update(self):
         share = db_utils.create_share()
         access = db_utils.create_access(share_id=share['id'])
 
-        db_api.share_access_update_access_key(self.ctxt, access['id'],
-                                              key_value)
+        instance_access_mapping = db_api.share_instance_access_get(
+            self.ctxt, access['id'], share.instance['id'])
+        self.assertEqual(constants.ACCESS_STATE_QUEUED_TO_APPLY,
+                         access['state'])
+        self.assertIsNone(access['access_key'])
 
+        db_api.share_instance_access_update(
+            self.ctxt, access['id'], share.instance['id'],
+            {'state': constants.STATUS_ERROR, 'access_key': 'watson4heisman'})
+
+        instance_access_mapping = db_api.share_instance_access_get(
+            self.ctxt, access['id'], share.instance['id'])
         access = db_api.share_access_get(self.ctxt, access['id'])
-        self.assertEqual(key_value, access['access_key'])
+        self.assertEqual(constants.STATUS_ERROR,
+                         instance_access_mapping['state'])
+        self.assertEqual('watson4heisman', access['access_key'])
+
+    @ddt.data(True, False)
+    def test_share_access_get_all_for_instance_with_share_access_data(
+            self, with_share_access_data):
+        share = db_utils.create_share()
+        access_1 = db_utils.create_access(share_id=share['id'])
+        access_2 = db_utils.create_access(share_id=share['id'])
+        share_access_keys = ('access_to', 'access_type', 'access_level',
+                             'share_id')
+
+        rules = db_api.share_access_get_all_for_instance(
+            self.ctxt, share.instance['id'],
+            with_share_access_data=with_share_access_data)
+
+        share_access_keys_present = True if with_share_access_data else False
+        actual_access_ids = [r['access_id'] for r in rules]
+        self.assertEqual(sorted([access_1['id'], access_2['id']]),
+                         sorted(actual_access_ids))
+        for rule in rules:
+            for key in share_access_keys:
+                self.assertEqual(share_access_keys_present, key in rule)
+            self.assertTrue('state' in rule)
+
+    def test_share_access_get_all_for_instance_with_filters(self):
+        share = db_utils.create_share()
+        new_share_instance = db_utils.create_share_instance(
+            share_id=share['id'])
+        access_1 = db_utils.create_access(share_id=share['id'])
+        access_2 = db_utils.create_access(share_id=share['id'])
+        share_access_keys = ('access_to', 'access_type', 'access_level',
+                             'share_id')
+        db_api.share_instance_access_update(
+            self.ctxt, access_1['id'], new_share_instance['id'],
+            {'state': constants.STATUS_ACTIVE})
+
+        rules = db_api.share_access_get_all_for_instance(
+            self.ctxt, new_share_instance['id'],
+            filters={'state': constants.ACCESS_STATE_QUEUED_TO_APPLY})
+
+        self.assertEqual(1, len(rules))
+        self.assertEqual(access_2['id'], rules[0]['access_id'])
+
+        for rule in rules:
+            for key in share_access_keys:
+                self.assertTrue(key in rule)
+
+    def test_share_instance_access_delete(self):
+        share = db_utils.create_share()
+        access = db_utils.create_access(share_id=share['id'])
+        instance_access_mapping = db_api.share_instance_access_get(
+            self.ctxt, access['id'], share.instance['id'])
+
+        db_api.share_instance_access_delete(
+            self.ctxt, instance_access_mapping['id'])
+
+        rules = db_api.share_access_get_all_for_instance(
+            self.ctxt, share.instance['id'])
+        self.assertEqual([], rules)
+
+        self.assertRaises(exception.NotFound, db_api.share_instance_access_get,
+                          self.ctxt, access['id'], share['instance']['id'])
+
+    @ddt.data(True, False)
+    def test_share_instance_access_get_with_share_access_data(
+            self, with_share_access_data):
+        share = db_utils.create_share()
+        access = db_utils.create_access(share_id=share['id'])
+
+        instance_access = db_api.share_instance_access_get(
+            self.ctxt, access['id'], share['instance']['id'],
+            with_share_access_data=with_share_access_data)
+
+        for key in ('share_id', 'access_type', 'access_to', 'access_level',
+                    'access_key'):
+            self.assertEqual(with_share_access_data, key in instance_access)
 
 
 @ddt.ddt

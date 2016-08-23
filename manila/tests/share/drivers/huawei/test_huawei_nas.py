@@ -4284,16 +4284,20 @@ class HuaweiShareDriverTestCase(test.TestCase):
              'access_rules_status': common_constants.STATUS_ACTIVE},
             {'id': self.active_replica['id'],
              'replica_state': common_constants.REPLICA_STATE_IN_SYNC,
-             'access_rules_status': common_constants.STATUS_OUT_OF_SYNC},
+             'access_rules_status':
+                 common_constants.SHARE_INSTANCE_RULES_SYNCING},
         ]
 
         self.assertEqual(expected, result)
 
     @ddt.data({'mock_method': 'update_access',
-               'new_access_status': common_constants.STATUS_OUT_OF_SYNC,
-               'old_access_status': common_constants.STATUS_OUT_OF_SYNC},
+               'new_access_status':
+                   common_constants.SHARE_INSTANCE_RULES_SYNCING,
+               'old_access_status':
+                   common_constants.SHARE_INSTANCE_RULES_SYNCING},
               {'mock_method': 'clear_access',
-               'new_access_status': common_constants.STATUS_OUT_OF_SYNC,
+               'new_access_status':
+                   common_constants.SHARE_INSTANCE_RULES_SYNCING,
                'old_access_status': common_constants.STATUS_ACTIVE},)
     @ddt.unpack
     def test_promote_replica_with_access_update_error(
@@ -4372,7 +4376,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
              'access_rules_status': common_constants.STATUS_ACTIVE},
             {'id': self.active_replica['id'],
              'replica_state': common_constants.STATUS_ERROR,
-             'access_rules_status': common_constants.STATUS_OUT_OF_SYNC},
+             'access_rules_status':
+                 common_constants.SHARE_INSTANCE_RULES_SYNCING},
         ]
 
         self.assertEqual(expected, result)

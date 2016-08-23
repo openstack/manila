@@ -14,9 +14,11 @@
 #    under the License.
 
 import ddt
+import mock
 
 from manila.api.openstack import api_version_request as api_version
 from manila.api.views import share_accesses
+from manila.share import api
 from manila import test
 from manila.tests.api import fakes
 
@@ -36,6 +38,9 @@ class ViewBuilderTestCase(test.TestCase):
             'state': 'fakeaccessstate',
             'access_key': 'fakeaccesskey',
         }
+        self.fake_share = {
+            'access_rules_status': self.fake_access['state'],
+        }
 
     def test_collection_name(self):
         self.assertEqual('share_accesses', self.builder._collection_name)
@@ -43,6 +48,8 @@ class ViewBuilderTestCase(test.TestCase):
     @ddt.data("2.20", "2.21")
     def test_view(self, version):
         req = fakes.HTTPRequest.blank('/shares', version=version)
+        self.mock_object(api.API, 'get',
+                         mock.Mock(return_value=self.fake_share))
 
         result = self.builder.view(req, self.fake_access)
 
@@ -55,6 +62,8 @@ class ViewBuilderTestCase(test.TestCase):
     @ddt.data("2.20", "2.21")
     def test_summary_view(self, version):
         req = fakes.HTTPRequest.blank('/shares', version=version)
+        self.mock_object(api.API, 'get',
+                         mock.Mock(return_value=self.fake_share))
 
         result = self.builder.summary_view(req, self.fake_access)
 
@@ -68,6 +77,8 @@ class ViewBuilderTestCase(test.TestCase):
     @ddt.data("2.20", "2.21")
     def test_list_view(self, version):
         req = fakes.HTTPRequest.blank('/shares', version=version)
+        self.mock_object(api.API, 'get',
+                         mock.Mock(return_value=self.fake_share))
         accesses = [self.fake_access, ]
 
         result = self.builder.list_view(req, accesses)

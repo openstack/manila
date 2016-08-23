@@ -506,19 +506,13 @@ access_rule_updated_at:
   type: string
 access_rules_status:
   description: |
-    The share instance access rules status. Valid value are ``active``,
-    ``error``, and ``out_of_sync``.
+    The share instance access rules status. A valid value is ``active``,
+    ``error``, or ``syncing``. In versions prior to 2.28, ``syncing`` was
+    represented with status ``out_of_sync``.
   in: body
   required: true
   type: string
   min_version: 2.10
-access_rules_status_1:
-  description: |
-    (Since API v2.10) The share access rules status.
-    Valid values are ``active``, ``error``, and ``out_of_sync``.
-  in: body
-  required: true
-  type: string
 access_share_id:
   description: |
     The UUID of the share to which you are granted
@@ -3088,8 +3082,13 @@ source_cgsnapshot_member_id:
   type: string
 state:
   description: |
-    The access rule state. A valid value is
-    ``active`` or ``error``.
+    Prior to versions 2.28, the state of all access rules of a given share
+    is the same at all times. This could be ``new``, ``active`` or
+    ``error``. Since 2.28, the state of each access rule of a share is
+    independent of the others and can be ``queued_to_apply``,
+    ``applying``, ``active``, ``error``, ``queued_to_deny`` or ``denying``.
+    A new rule starts out in ``queued_to_apply`` state and is successfully
+    applied if it transitions to ``active`` state.
   in: body
   required: true
   type: string

@@ -22,6 +22,7 @@ from oslo_log import log
 from manila.common import constants
 from manila import exception
 from manila.i18n import _, _LW
+from manila.share import access as access_manager
 from manila.share import rpcapi as share_rpc
 from manila import utils
 
@@ -66,14 +67,13 @@ class DataServiceHelper(object):
         self.share = share
         self.context = context
         self.share_rpc = share_rpc.ShareAPI()
+        self.access_helper = access_manager.ShareInstanceAccess(self.db, None)
         self.wait_access_rules_timeout = (
             CONF.data_access_wait_access_rules_timeout)
 
     def deny_access_to_data_service(self, access_ref_list, share_instance):
-
-        for access_ref in access_ref_list:
-            self._change_data_access_to_instance(
-                share_instance, access_ref, allow=False)
+        self._change_data_access_to_instance(
+            share_instance, access_ref_list, deny=True)
 
     # NOTE(ganso): Cleanup methods do not throw exceptions, since the
     # exceptions that should be thrown are the ones that call the cleanup
@@ -114,16 +114,22 @@ class DataServiceHelper(object):
                                 'instance_id': share_instance_id,
                                 'share_id': self.share['id']})
 
-    def _change_data_access_to_instance(
-            self, instance, access_ref, allow=False):
+    def _change_data_access_to_instance(self, instance, accesses, deny=False):
+        if not isinstance(accesses, list):
+            accesses = [accesses]
 
-        self.db.share_instance_update_access_status(
-            self.context, instance['id'], constants.STATUS_OUT_OF_SYNC)
+        self.access_helper.get_and_update_share_instance_access_rules_status(
+            self.context, status=constants.SHARE_INSTANCE_RULES_SYNCING,
+            share_instance_id=instance['id'])
 
-        if allow:
-            self.share_rpc.allow_access(self.context, instance, access_ref)
-        else:
-            self.share_rpc.deny_access(self.context, instance, access_ref)
+        if deny:
+            access_filters = {'access_id': [a['id'] for a in accesses]}
+            updates = {'state': constants.ACCESS_STATE_QUEUED_TO_DENY}
+            self.access_helper.get_and_update_share_instance_access_rules(
+                self.context, filters=access_filters, updates=updates,
+                share_instance_id=instance['id'])
+
+        self.share_rpc.update_access(self.context, instance)
 
         utils.wait_for_access_update(
             self.context, self.db, instance, self.wait_access_rules_timeout)
@@ -166,20 +172,19 @@ class DataServiceHelper(object):
                 self.context, self.share['id'], access['access_type'],
                 access['access_to'])
 
-            for old_access in old_access_list:
-                self._change_data_access_to_instance(
-                    share_instance, old_access, allow=False)
-
+            # Create new access rule and deny all old ones corresponding to
+            # the mapping. Since this is a bulk update, all access changes
+            # are made in one go.
             access_ref = self.db.share_instance_access_create(
                 self.context, values, share_instance['id'])
             self._change_data_access_to_instance(
-                share_instance, access_ref, allow=True)
+                share_instance, old_access_list, deny=True)
 
             if allow_access_to_destination_instance:
                 access_ref = self.db.share_instance_access_create(
                     self.context, values, dest_share_instance['id'])
                 self._change_data_access_to_instance(
-                    dest_share_instance, access_ref, allow=True)
+                    dest_share_instance, access_ref)
 
             access_ref_list.append(access_ref)
 

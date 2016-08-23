@@ -289,7 +289,7 @@ class CephFSNativeDriver(driver.ShareDriver,):
         # backend are in sync.
         for rule in add_rules:
             access_key = self._allow_access(context, share, rule)
-            access_keys.update({rule['id']: access_key})
+            access_keys.update({rule['access_id']: {'access_key': access_key}})
 
         for rule in delete_rules:
             self._deny_access(context, share, rule)

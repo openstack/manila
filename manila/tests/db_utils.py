@@ -168,12 +168,21 @@ def create_snapshot_instance(snapshot_id, **kwargs):
 
 def create_access(**kwargs):
     """Create a access rule object."""
+    state = kwargs.pop('state', constants.ACCESS_STATE_QUEUED_TO_APPLY)
     access = {
         'access_type': 'fake_type',
         'access_to': 'fake_IP',
-        'share_id': None,
+        'share_id': kwargs.pop('share_id', None) or create_share()['id'],
     }
-    return _create_db_row(db.share_access_create, access, kwargs)
+    access.update(kwargs)
+    share_access_rule = _create_db_row(db.share_access_create, access, kwargs)
+
+    for mapping in share_access_rule.instance_mappings:
+        db.share_instance_access_update(
+            context.get_admin_context(), share_access_rule['id'],
+            mapping.share_instance_id, {'state': state})
+
+    return share_access_rule
 
 
 def create_share_server(**kwargs):

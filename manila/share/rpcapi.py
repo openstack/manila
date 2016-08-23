@@ -45,7 +45,8 @@ class ShareAPI(object):
             migrate_share()
             get_migration_info()
             get_driver_migration_info()
-        1.7  - Update target call API in allow/deny access methods
+        1.7  - Update target call API in allow/deny access methods (Removed
+            in 1.14)
         1.8  - Introduce Share Replication:
             create_share_replica()
             delete_share_replica()
@@ -65,6 +66,7 @@ class ShareAPI(object):
             migration_get_progress method signature, rename
             migration_get_info() to connection_get_info()
         1.13 - Introduce share revert to snapshot: revert_to_snapshot()
+        1.14 - Add update_access() and remove allow_access() and deny_access().
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -73,7 +75,7 @@ class ShareAPI(object):
         super(ShareAPI, self).__init__()
         target = messaging.Target(topic=CONF.share_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.13')
+        self.client = rpc.get_client(target, version_cap='1.14')
 
     def create_share_instance(self, context, share_instance, host,
                               request_spec, filter_properties,
@@ -200,28 +202,11 @@ class ShareAPI(object):
                           share_id=share_id,
                           force=force)
 
-    @staticmethod
-    def _get_access_rules(access):
-        if isinstance(access, list):
-            return [rule['id'] for rule in access]
-        else:
-            return [access['id']]
-
-    def allow_access(self, context, share_instance, access):
+    def update_access(self, context, share_instance):
         host = utils.extract_host(share_instance['host'])
-        call_context = self.client.prepare(server=host, version='1.7')
-        call_context.cast(context,
-                          'allow_access',
-                          share_instance_id=share_instance['id'],
-                          access_rules=self._get_access_rules(access))
-
-    def deny_access(self, context, share_instance, access):
-        host = utils.extract_host(share_instance['host'])
-        call_context = self.client.prepare(server=host, version='1.7')
-        call_context.cast(context,
-                          'deny_access',
-                          share_instance_id=share_instance['id'],
-                          access_rules=self._get_access_rules(access))
+        call_context = self.client.prepare(server=host, version='1.14')
+        call_context.cast(context, 'update_access',
+                          share_instance_id=share_instance['id'])
 
     def publish_service_capabilities(self, context):
         call_context = self.client.prepare(fanout=True, version='1.0')

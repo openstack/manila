@@ -242,7 +242,7 @@ def fake_replica(id=None, as_primitive=True, for_manager=False, **kwargs):
         'export_locations': [{'path': 'path1'}, {'path': 'path2'}],
         'share_network_id': '4ccd5318-65f1-11e5-9d70-feff819cdc9f',
         'share_server_id': '53099868-65f1-11e5-9d70-feff819cdc9f',
-        'access_rules_status': 'out_of_sync',
+        'access_rules_status': constants.SHARE_INSTANCE_RULES_SYNCING,
     }
     if for_manager:
         replica.update({

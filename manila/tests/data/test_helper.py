@@ -82,7 +82,8 @@ class DataServiceHelperTestCase(test.TestCase):
         self.mock_object(
             self.helper.db, 'share_access_get_all_by_type_and_access',
             mock.Mock(return_value=[access]))
-        self.mock_object(self.helper, '_change_data_access_to_instance')
+        change_data_access_call = self.mock_object(
+            self.helper, '_change_data_access_to_instance')
         self.mock_object(self.helper.db, 'share_instance_access_create',
                          mock.Mock(return_value=access))
 
@@ -110,14 +111,14 @@ class DataServiceHelperTestCase(test.TestCase):
         self.helper.db.share_instance_access_create.assert_has_calls(
             access_create_calls)
         change_access_calls = [
-            mock.call(self.share_instance, access, allow=False),
-            mock.call(self.share_instance, access, allow=True),
+            mock.call(self.share_instance, [access], deny=True),
         ]
         if allow_dest_instance:
             change_access_calls.append(
-                mock.call(self.share_instance, access, allow=True))
-        self.helper._change_data_access_to_instance.assert_has_calls(
-            change_access_calls)
+                mock.call(self.share_instance, access))
+        self.assertEqual(len(change_access_calls),
+                         change_data_access_call.call_count)
+        change_data_access_call.assert_has_calls(change_access_calls)
 
     @ddt.data({'ip': []}, {'cert': []}, {'user': []}, {'cephx': []}, {'x': []})
     def test__get_access_entries_according_to_mapping(self, mapping):
@@ -154,9 +155,8 @@ class DataServiceHelperTestCase(test.TestCase):
             [self.access], self.share_instance['id'])
 
         # asserts
-        self.helper._change_data_access_to_instance.\
-            assert_called_once_with(
-                self.share_instance['id'], self.access, allow=False)
+        self.helper._change_data_access_to_instance.assert_called_once_with(
+            self.share_instance['id'], [self.access], deny=True)
 
     @ddt.data(None, Exception('fake'))
     def test_cleanup_data_access(self, exc):
@@ -225,34 +225,39 @@ class DataServiceHelperTestCase(test.TestCase):
             self.assertTrue(data_copy_helper.LOG.warning.called)
 
     @ddt.data(True, False)
-    def test__change_data_access_to_instance(self, allow):
+    def test__change_data_access_to_instance(self, deny):
+        access_rule = db_utils.create_access(share_id=self.share['id'])
+        access_rule = db.share_instance_access_get(
+            self.context, access_rule['id'], self.share_instance['id'])
 
         # mocks
-        self.mock_object(self.helper.db, 'share_instance_update_access_status')
-
-        if allow:
-            self.mock_object(share_rpc.ShareAPI, 'allow_access')
-        else:
-            self.mock_object(share_rpc.ShareAPI, 'deny_access')
-
+        self.mock_object(share_rpc.ShareAPI, 'update_access')
         self.mock_object(utils, 'wait_for_access_update')
+        mock_access_rules_status_update = self.mock_object(
+            self.helper.access_helper,
+            'get_and_update_share_instance_access_rules_status')
+        mock_rules_update = self.mock_object(
+            self.helper.access_helper,
+            'get_and_update_share_instance_access_rules')
 
         # run
         self.helper._change_data_access_to_instance(
-            self.share_instance, self.access, allow=allow)
+            self.share_instance, access_rule, deny=deny)
 
         # asserts
-        self.helper.db.share_instance_update_access_status.\
-            assert_called_once_with(self.context, self.share_instance['id'],
-                                    constants.STATUS_OUT_OF_SYNC)
+        if deny:
+            mock_rules_update.assert_called_once_with(
+                self.context, share_instance_id=self.share_instance['id'],
+                filters={'access_id': [access_rule['id']]},
+                updates={'state': constants.ACCESS_STATE_QUEUED_TO_DENY})
 
-        if allow:
-            share_rpc.ShareAPI.allow_access.assert_called_once_with(
-                self.context, self.share_instance, self.access)
         else:
-            share_rpc.ShareAPI.deny_access.assert_called_once_with(
-                self.context, self.share_instance, self.access)
-
+            self.assertFalse(mock_rules_update.called)
+        share_rpc.ShareAPI.update_access.assert_called_once_with(
+            self.context, self.share_instance)
+        mock_access_rules_status_update.assert_called_once_with(
+            self.context, status=constants.SHARE_INSTANCE_RULES_SYNCING,
+            share_instance_id=self.share_instance['id'])
         utils.wait_for_access_update.assert_called_once_with(
             self.context, self.helper.db, self.share_instance,
             data_copy_helper.CONF.data_access_wait_access_rules_timeout)

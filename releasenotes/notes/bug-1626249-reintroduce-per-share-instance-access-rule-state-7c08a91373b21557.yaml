@@ -1,0 +1,24 @@
+---
+features:
+  - New micro-states ('applying', 'denying'), appear in the 'state' field
+    of access rules list API. These transitional states signify the state of
+    an access rule while its application or denial is being processed
+    asynchronously.
+  - Access rules can be added regardless of the 'access_rules_status'
+    of the share or any of its replicas.
+fixes:
+  - Fixed a bug with the share manager losing access rule updates when
+    multiple access rules are added to a given share simultaneously.
+  - Instead of all existing access rules transitioning to 'error' state
+    when some error occurs while applying or denying access rules to a given
+    share, only the rules that were in transitional statuses ('applying',
+    'denying') during an update will transition to 'error' state. This
+    change is expected to aid in identifying any 'bad' rules that require a
+    resolution by the user.
+  - Share action APIs dealing with allowing and denying access to shares now
+    perform the policy check for authorization to invoke those APIs as a
+    preliminary step.
+  - As before, when a share is replicated (or being migrated), all replicas
+    (or migration instances) of the share must be in a valid state in order
+    to allow or deny access to the share (where such actions are otherwise
+    allowed). The check enforcing this in the API is fixed.

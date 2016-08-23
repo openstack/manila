@@ -14,6 +14,8 @@
 #    under the License.
 
 from manila.api import common
+from manila.common import constants
+from manila.share import api as share_api
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -22,6 +24,7 @@ class ViewBuilder(common.ViewBuilder):
     _collection_name = 'share_accesses'
     _detail_version_modifiers = [
         "add_access_key",
+        "translate_transitional_statuses",
     ]
 
     def list_view(self, request, accesses):
@@ -59,3 +62,15 @@ class ViewBuilder(common.ViewBuilder):
     @common.ViewBuilder.versioned_method("2.21")
     def add_access_key(self, context, access_dict, access):
         access_dict['access_key'] = access.get('access_key')
+
+    @common.ViewBuilder.versioned_method("1.0", "2.27")
+    def translate_transitional_statuses(self, context, access_dict, access):
+        """In 2.28, the per access rule status was (re)introduced."""
+        api = share_api.API()
+        share = api.get(context, access['share_id'])
+
+        if (share['access_rules_status'] ==
+                constants.SHARE_INSTANCE_RULES_SYNCING):
+            access_dict['state'] = constants.STATUS_NEW
+        else:
+            access_dict['state'] = share['access_rules_status']

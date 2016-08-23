@@ -30,6 +30,7 @@ from manila.common import constants
 from manila import context
 from manila import db
 from manila import exception
+from manila import policy
 from manila.share import api as share_api
 from manila.share import share_types
 from manila import test
@@ -862,6 +863,7 @@ class ShareActionsTest(test.TestCase):
         super(self.__class__, self).setUp()
         self.controller = shares.ShareController()
         self.mock_object(share_api.API, 'get', stubs.stub_share_get)
+        self.mock_policy_check = self.mock_object(policy, 'check_policy')
 
     @ddt.data(
         {'access_type': 'ip', 'access_to': '127.0.0.1'},
@@ -885,8 +887,12 @@ class ShareActionsTest(test.TestCase):
         body = {'os-allow_access': access}
         expected = {'access': {'fake': 'fake'}}
         req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+
         res = self.controller._allow_access(req, id, body)
+
         self.assertEqual(expected, res)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], 'share', 'allow_access')
 
     @ddt.data(
         {'access_type': 'error_type', 'access_to': '127.0.0.1'},
@@ -907,8 +913,11 @@ class ShareActionsTest(test.TestCase):
         id = 'fake_share_id'
         body = {'os-allow_access': access}
         req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._allow_access, req, id, body)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], 'share', 'allow_access')
 
     def test_deny_access(self):
         def _stub_deny_access(*args, **kwargs):
@@ -920,8 +929,12 @@ class ShareActionsTest(test.TestCase):
         id = 'fake_share_id'
         body = {"os-deny_access": {"access_id": 'fake_acces_id'}}
         req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+
         res = self.controller._deny_access(req, id, body)
+
         self.assertEqual(202, res.status_int)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], 'share', 'deny_access')
 
     def test_deny_access_not_found(self):
         def _stub_deny_access(*args, **kwargs):
@@ -933,11 +946,29 @@ class ShareActionsTest(test.TestCase):
         id = 'super_fake_share_id'
         body = {"os-deny_access": {"access_id": 'fake_acces_id'}}
         req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller._deny_access,
                           req,
                           id,
                           body)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], 'share', 'deny_access')
+
+    @ddt.data('_allow_access', '_deny_access')
+    def test_allow_access_deny_access_policy_not_authorized(self, method):
+        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/someuuid/action')
+        action = method[1:]
+        body = {action: None}
+        noauthexc = exception.PolicyNotAuthorized(action=action)
+        with mock.patch.object(
+                policy, 'check_policy', mock.Mock(side_effect=noauthexc)):
+            method = getattr(self.controller, method)
+
+            self.assertRaises(
+                webob.exc.HTTPForbidden, method, req, body, 'someuuid')
+            policy.check_policy.assert_called_once_with(
+                req.environ['manila.context'], 'share', action)
 
     def test_access_list(self):
         fake_access_list = [

@@ -38,7 +38,6 @@ from oslo_log import log
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import six
-from sqlalchemy import and_
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
@@ -1084,25 +1083,25 @@ def reservation_expire(context):
 
 ################
 
-def _extract_instance_values(values_to_extract, fields):
-    values = copy.deepcopy(values_to_extract)
-    instance_values = {}
+def _extract_subdict_by_fields(source_dict, fields):
+    dict_to_extract_from = copy.deepcopy(source_dict)
+    sub_dict = {}
     for field in fields:
-        field_value = values.pop(field, None)
+        field_value = dict_to_extract_from.pop(field, None)
         if field_value:
-            instance_values.update({field: field_value})
+            sub_dict.update({field: field_value})
 
-    return instance_values, values
+    return sub_dict, dict_to_extract_from
 
 
 def _extract_share_instance_values(values):
     share_instance_model_fields = [
         'status', 'host', 'scheduled_at', 'launched_at', 'terminated_at',
         'share_server_id', 'share_network_id', 'availability_zone',
-        'replica_state', 'share_type_id', 'share_type',
+        'replica_state', 'share_type_id', 'share_type', 'access_rules_status',
     ]
     share_instance_values, share_values = (
-        _extract_instance_values(values, share_instance_model_fields)
+        _extract_subdict_by_fields(values, share_instance_model_fields)
     )
     return share_instance_values, share_values
 
@@ -1110,7 +1109,7 @@ def _extract_share_instance_values(values):
 def _extract_snapshot_instance_values(values):
     fields = ['status', 'progress', 'provider_location']
     snapshot_instance_values, snapshot_values = (
-        _extract_instance_values(values, fields)
+        _extract_subdict_by_fields(values, fields)
     )
     return snapshot_instance_values, snapshot_values
 
@@ -1756,8 +1755,9 @@ def share_instance_access_copy(context, share_id, instance_id, session=None):
     """Copy access rules from share to share instance."""
     session = session or get_session()
 
-    share_access_rules = share_access_get_all_for_share(
-        context, share_id, session=session)
+    share_access_rules = _share_access_get_query(
+        context, session, {'share_id': share_id}).all()
+
     for access_rule in share_access_rules:
         values = {
             'share_instance_id': instance_id,
@@ -1777,9 +1777,9 @@ def _share_instance_access_create(values, session):
 
 
 @require_context
-def share_access_get(context, access_id):
+def share_access_get(context, access_id, session=None):
     """Get access record."""
-    session = get_session()
+    session = session or get_session()
 
     access = _share_access_get_query(
         context, session, {'id': access_id}).first()
@@ -1790,43 +1790,63 @@ def share_access_get(context, access_id):
 
 
 @require_context
-def share_instance_access_get(context, access_id, instance_id):
+def share_instance_access_get(context, access_id, instance_id,
+                              with_share_access_data=True):
     """Get access record."""
     session = get_session()
 
     access = _share_instance_access_query(context, session, access_id,
                                           instance_id).first()
-    if access:
-        return access
-    else:
+    if access is None:
         raise exception.NotFound()
+
+    if with_share_access_data:
+        access = _set_instances_share_access_data(context, access, session)[0]
+
+    return access
 
 
 @require_context
 def share_access_get_all_for_share(context, share_id, session=None):
     session = session or get_session()
-    return _share_access_get_query(context, session,
-                                   {'share_id': share_id}).all()
+    return _share_access_get_query(
+        context, session, {'share_id': share_id}).filter(
+        models.ShareAccessMapping.instance_mappings.any()).all()
 
 
 @require_context
-def share_access_get_all_for_instance(context, instance_id, session=None):
+def share_access_get_all_for_instance(context, instance_id, filters=None,
+                                      with_share_access_data=True,
+                                      session=None):
     """Get all access rules related to a certain share instance."""
-    session = get_session()
-    return _share_access_get_query(context, session, {}).join(
-        models.ShareInstanceAccessMapping,
-        models.ShareInstanceAccessMapping.access_id ==
-        models.ShareAccessMapping.id).filter(and_(
-            models.ShareInstanceAccessMapping.share_instance_id ==
-            instance_id, models.ShareInstanceAccessMapping.deleted ==
-            "False")).all()
+    session = session or get_session()
+    filters = copy.deepcopy(filters) if filters else {}
+    filters.update({'share_instance_id': instance_id})
+    legal_filter_keys = ('id', 'share_instance_id', 'access_id', 'state')
+    query = _share_instance_access_query(context, session)
+
+    query = exact_filter(
+        query, models.ShareInstanceAccessMapping, filters, legal_filter_keys)
+
+    instance_accesses = query.all()
+
+    if with_share_access_data:
+        instance_accesses = _set_instances_share_access_data(
+            context, instance_accesses, session)
+
+    return instance_accesses
 
 
-@require_context
-def share_instance_access_get_all(context, access_id, session=None):
-    if not session:
-        session = get_session()
-    return _share_instance_access_query(context, session, access_id).all()
+def _set_instances_share_access_data(context, instance_accesses, session):
+    if instance_accesses and not isinstance(instance_accesses, list):
+        instance_accesses = [instance_accesses]
+
+    for instance_access in instance_accesses:
+        share_access = share_access_get(
+            context, instance_access['access_id'], session=session)
+        instance_access.set_share_access_data(share_access)
+
+    return instance_accesses
 
 
 @require_context
@@ -1840,38 +1860,11 @@ def share_access_get_all_by_type_and_access(context, share_id, access_type,
 
 
 @require_context
-def share_access_delete(context, access_id):
-    session = get_session()
-
-    with session.begin():
-        mappings = share_instance_access_get_all(context, access_id, session)
-
-        if len(mappings) > 0:
-            msg = (_("Access rule %s has mappings"
-                     " to share instances.") % access_id)
-            raise exception.InvalidShareAccess(msg)
-
-        session.query(models.ShareAccessMapping).\
-            filter_by(id=access_id).soft_delete()
-
-
-@require_context
 def share_access_delete_all_by_share(context, share_id):
     session = get_session()
     with session.begin():
         session.query(models.ShareAccessMapping). \
             filter_by(share_id=share_id).soft_delete()
-
-
-@require_context
-def share_access_update_access_key(context, access_id, access_key):
-    session = get_session()
-    with session.begin():
-        mapping = (session.query(models.ShareAccessMapping).
-                   filter_by(id=access_id).first())
-        mapping.update({'access_key': access_key})
-        mapping.save(session=session)
-        return mapping
 
 
 @require_context
@@ -1885,10 +1878,11 @@ def share_instance_access_delete(context, mapping_id):
         if not mapping:
             exception.NotFound()
 
-        mapping.soft_delete(session)
+        mapping.soft_delete(session, update_status=True,
+                            status_field_name='state')
 
-        other_mappings = share_instance_access_get_all(
-            context, mapping['access_id'], session)
+        other_mappings = _share_instance_access_query(
+            context, session, mapping['access_id']).all()
 
         # NOTE(u_glide): Remove access rule if all mappings were removed.
         if len(other_mappings) == 0:
@@ -1901,15 +1895,27 @@ def share_instance_access_delete(context, mapping_id):
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def share_instance_update_access_status(context, share_instance_id, status):
+def share_instance_access_update(context, access_id, instance_id, updates):
     session = get_session()
-    with session.begin():
-        mapping = session.query(models.ShareInstance).\
-            filter_by(id=share_instance_id).first()
-        mapping.update({'access_rules_status': status})
-        mapping.save(session=session)
-        return mapping
+    share_access_fields = ('access_type', 'access_to', 'access_key',
+                           'access_level')
 
+    share_access_map_updates, share_instance_access_map_updates = (
+        _extract_subdict_by_fields(updates, share_access_fields)
+    )
+
+    with session.begin():
+        share_access = _share_access_get_query(
+            context, session, {'id': access_id}).first()
+        share_access.update(share_access_map_updates)
+        share_access.save(session=session)
+
+        access = _share_instance_access_query(
+            context, session, access_id, instance_id).first()
+        access.update(share_instance_access_map_updates)
+        access.save(session=session)
+
+        return access
 
 ###################
 

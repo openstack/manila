@@ -17,6 +17,8 @@
 import ddt
 
 from manila.common import constants
+from manila import context
+from manila.db.sqlalchemy import api as db_api
 from manila import test
 from manila.tests import db_utils
 
@@ -152,8 +154,8 @@ class ShareTestCase(test.TestCase):
 
         self.assertEqual(constants.STATUS_ACTIVE, share.access_rules_status)
 
-    @ddt.data(constants.STATUS_ACTIVE, constants.STATUS_OUT_OF_SYNC,
-              constants.STATUS_ERROR)
+    @ddt.data(constants.STATUS_ACTIVE, constants.SHARE_INSTANCE_RULES_SYNCING,
+              constants.SHARE_INSTANCE_RULES_ERROR)
     def test_access_rules_status(self, access_status):
         instances = [
             db_utils.create_share_instance(
@@ -173,6 +175,43 @@ class ShareTestCase(test.TestCase):
 
 
 @ddt.ddt
+class ShareAccessTestCase(test.TestCase):
+    """Testing of SQLAlchemy Share Access related model classes."""
+
+    @ddt.data(constants.ACCESS_STATE_QUEUED_TO_APPLY,
+              constants.ACCESS_STATE_ACTIVE, constants.ACCESS_STATE_ERROR,
+              constants.ACCESS_STATE_APPLYING)
+    def test_share_access_mapping_state(self, expected_status):
+        ctxt = context.get_admin_context()
+
+        share = db_utils.create_share()
+        share_instances = [
+            share.instance,
+            db_utils.create_share_instance(share_id=share['id']),
+            db_utils.create_share_instance(share_id=share['id']),
+            db_utils.create_share_instance(share_id=share['id']),
+        ]
+        access_rule = db_utils.create_access(share_id=share['id'])
+
+        # Update the access mapping states
+        db_api.share_instance_access_update(
+            ctxt, access_rule['id'], share_instances[0]['id'],
+            {'state': constants.ACCESS_STATE_ACTIVE})
+        db_api.share_instance_access_update(
+            ctxt, access_rule['id'], share_instances[1]['id'],
+            {'state': expected_status})
+        db_api.share_instance_access_update(
+            ctxt, access_rule['id'], share_instances[2]['id'],
+            {'state': constants.ACCESS_STATE_ACTIVE})
+        db_api.share_instance_access_update(
+            ctxt, access_rule['id'], share_instances[3]['id'],
+            {'deleted': 'True', 'state': constants.STATUS_DELETED})
+
+        access_rule = db_api.share_access_get(ctxt, access_rule['id'])
+
+        self.assertEqual(expected_status, access_rule['state'])
+
+
 class ShareSnapshotTestCase(test.TestCase):
     """Testing of SQLAlchemy ShareSnapshot model class."""
 

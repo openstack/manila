@@ -84,15 +84,19 @@ REST_API_VERSION_HISTORY = """
              spec. Also made the 'snapshot_support' extra spec optional.
     * 2.25 - Added quota-show detail API.
     * 2.26 - Removed 'nova_net_id' parameter from share_network API.
-
     * 2.27 - Added share revert to snapshot API.
+    * 2.28 - Added transitional states to access rules and replaced all
+             transitional access_rules_status values of
+             shares (share_instances) with 'syncing'. Share action API
+             'access_allow' now accepts rules even when a share or any of
+             its instances may have an access_rules_status set to 'error'.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.27"
+_MAX_API_VERSION = "2.28"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 
