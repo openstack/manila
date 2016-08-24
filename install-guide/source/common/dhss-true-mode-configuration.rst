@@ -4,15 +4,15 @@ Configure components
 #. Edit the ``/etc/manila/manila.conf`` file and complete the following
    actions:
 
-   * In the ``[DEFAULT]`` section, enable the generic driver and the NFS/CIFS
-     protocols:
+   * In the ``[DEFAULT]`` section, enable the generic driver and the NFS
+     protocol:
 
      .. code-block:: ini
 
         [DEFAULT]
         ...
         enabled_share_backends = generic
-        enabled_share_protocols = NFS,CIFS
+        enabled_share_protocols = NFS
 
      .. note::
 
@@ -82,3 +82,13 @@ Configure components
 
         You can also use SSH keys instead of password authentication for
         service instance credentials.
+
+     .. important::
+
+        The ``service_image_name``, ``service_instance_flavor_id``,
+        ``service_instance_user`` and ``service_instance_password`` are with
+        reference to the service image that is used by the driver to create
+        share servers. A sample service image for use with the ``generic``
+        driver is available in the ``manila-image-elements`` project. Its
+        creation is explained in the post installation steps (See:
+        :ref:`post-install`).

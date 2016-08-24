@@ -61,15 +61,15 @@ Configure components
 #. Edit the ``/etc/manila/manila.conf`` file and complete the following
    actions:
 
-   * In the ``[DEFAULT]`` section, enable the LVM driver and the NFS/CIFS
-     protocols:
+   * In the ``[DEFAULT]`` section, enable the LVM driver and the NFS
+     protocol:
 
      .. code-block:: ini
 
         [DEFAULT]
         ...
         enabled_share_backends = lvm
-        enabled_share_protocols = NFS,CIFS
+        enabled_share_protocols = NFS
 
      .. note::
 
