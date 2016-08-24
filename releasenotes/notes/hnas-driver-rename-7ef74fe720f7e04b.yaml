@@ -1,0 +1,20 @@
+---
+features:
+  - Renamed all HDS mentions on HNAS driver to Hitachi and moved driver to
+    another folder.
+upgrade:
+  - HNAS driver vendor changed from HDS to Hitachi.
+  - New HNAS driver location.
+  - New HNAS config options hitachi_hnas_ip, hitachi_hnas_user,
+    hitachi_hnas_password, hitachi_hnas_evs_id, hitachi_hnas_evs_ip,
+    hitachi_hnas_file_system_name, hitachi_hnas_ssh_private_key,
+    hitachi_hnas_cluster_admin_ip0, hitachi_hnas_stalled_job_timeout,
+    hitachi_hnas_driver_helper and
+    hitachi_hnas_allow_cifs_snapshot_while_mounted.
+deprecations:
+  - HNAS driver location was deprecated.
+  - All HNAS driver config options were deprecated hds_hnas_ip,
+    hds_hnas_user, hds_hnas_password, hds_hnas_evs_id, hds_hnas_evs_ip,
+    hds_hnas_file_system_name, hds_hnas_ssh_private_key,
+    hds_hnas_cluster_admin_ip0, hds_hnas_stalled_job_timeout,
+    hds_hnas_driver_helper and hds_hnas_allow_cifs_snapshot_while_mounted.

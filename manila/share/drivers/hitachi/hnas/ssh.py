@@ -480,7 +480,7 @@ class HNASSSHBackend(object):
                     LOG.error(_LE("Error running SSH command."))
                     raise
 
-    @mutils.synchronized("hds_hnas_select_fs", external=True)
+    @mutils.synchronized("hitachi_hnas_select_fs", external=True)
     def _locked_selectfs(self, op, path):
         if op == 'create':
             command = ['selectfs', self.fs_name, '\n',
