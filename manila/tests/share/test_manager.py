@@ -2420,6 +2420,10 @@ class ShareManagerTestCase(test.TestCase):
                     share_id=share['id'])))
         if side_effect == 'delete_share':
             self.mock_object(
+                self.share_manager.access_helper.driver, 'update_access',
+                mock.Mock(return_value=None)
+            )
+            self.mock_object(
                 self.share_manager.driver, 'delete_share',
                 mock.Mock(side_effect=exception.ShareResourceNotFound(
                     share_id=share['id'])))

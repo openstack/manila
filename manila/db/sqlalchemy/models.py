@@ -538,6 +538,7 @@ class ShareAccessMapping(BASE, ManilaBase):
     share_id = Column(String(36), ForeignKey('shares.id'))
     access_type = Column(String(255))
     access_to = Column(String(255))
+    access_key = Column(String(255), nullable=True)
 
     access_level = Column(Enum(*constants.ACCESS_LEVELS),
                           default=constants.ACCESS_LEVEL_RW)

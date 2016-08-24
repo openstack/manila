@@ -1,0 +1,5 @@
+---
+features:
+  - Driver may return ``access_key``, an access credential, for client
+    identities granted share access.
+  - Added ``access_key`` to the JSON response of ``access_list`` API.

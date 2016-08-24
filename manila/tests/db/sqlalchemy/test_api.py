@@ -120,6 +120,17 @@ class ShareAccessDatabaseAPITestCase(test.TestCase):
             "fake_status"
         )
 
+    @ddt.data(None, 'rhubarb')
+    def test_share_access_update_access_key(self, key_value):
+        share = db_utils.create_share()
+        access = db_utils.create_access(share_id=share['id'])
+
+        db_api.share_access_update_access_key(self.ctxt, access['id'],
+                                              key_value)
+
+        access = db_api.share_access_get(self.ctxt, access['id'])
+        self.assertEqual(key_value, access['access_key'])
+
 
 @ddt.ddt
 class ShareDatabaseAPITestCase(test.TestCase):

@@ -920,3 +920,67 @@ class NewMTUColumnChecks(BaseMigrationChecks):
             self.test_case.assertTrue(db_result.rowcount >= len(ids))
             for record in db_result:
                 self.test_case.assertFalse(hasattr(record, 'mtu'))
+
+
+@map_to_migration('63809d875e32')
+class AddAccessKeyToShareAccessMapping(BaseMigrationChecks):
+    table_name = 'share_access_map'
+    access_key_column_name = 'access_key'
+
+    def setup_upgrade_data(self, engine):
+        share_data = {
+            'id': uuidutils.generate_uuid(),
+            'share_proto': "CEPHFS",
+            'size': 1,
+            'snapshot_id': None,
+            'user_id': 'fake',
+            'project_id': 'fake'
+        }
+        share_table = utils.load_table('shares', engine)
+        engine.execute(share_table.insert(share_data))
+
+        share_instance_data = {
+            'id': uuidutils.generate_uuid(),
+            'deleted': 'False',
+            'host': 'fake',
+            'share_id': share_data['id'],
+            'status': 'available',
+            'access_rules_status': 'active'
+        }
+        share_instance_table = utils.load_table('share_instances', engine)
+        engine.execute(share_instance_table.insert(share_instance_data))
+
+        share_access_data = {
+            'id': uuidutils.generate_uuid(),
+            'share_id': share_data['id'],
+            'access_type': 'cephx',
+            'access_to': 'alice',
+            'deleted': 'False'
+        }
+        share_access_table = utils.load_table(self.table_name, engine)
+        engine.execute(share_access_table.insert(share_access_data))
+
+        share_instance_access_data = {
+            'id': uuidutils.generate_uuid(),
+            'share_instance_id': share_instance_data['id'],
+            'access_id': share_access_data['id'],
+            'deleted': 'False'
+        }
+        share_instance_access_table = utils.load_table(
+            'share_instance_access_map', engine)
+        engine.execute(share_instance_access_table.insert(
+            share_instance_access_data))
+
+    def check_upgrade(self, engine, data):
+        share_access_table = utils.load_table(self.table_name, engine)
+        rows = engine.execute(share_access_table.select())
+        for row in rows:
+            self.test_case.assertTrue(hasattr(row,
+                                              self.access_key_column_name))
+
+    def check_downgrade(self, engine):
+        share_access_table = utils.load_table(self.table_name, engine)
+        rows = engine.execute(share_access_table.select())
+        for row in rows:
+            self.test_case.assertFalse(hasattr(row,
+                                               self.access_key_column_name))

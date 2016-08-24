@@ -373,6 +373,13 @@ access_id:
   in: body
   required: true
   type: string
+access_key:
+  description: |
+    The access credential of the entity granted share access.
+  in: body
+  required: true
+  type: string
+  min_version: 2.21
 access_level:
   description: |
     The access level to the share.  To grant or deny

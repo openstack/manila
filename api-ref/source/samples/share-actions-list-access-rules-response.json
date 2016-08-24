@@ -5,14 +5,16 @@
             "state": "error",
             "id": "507bf114-36f2-4f56-8cf4-857985ca87c1",
             "access_type": "cert",
-            "access_to": "example.com"
+            "access_to": "example.com",
+            "access_key": null
         },
         {
             "access_level": "rw",
             "state": "active",
             "id": "a25b2df3-90bd-4add-afa6-5f0dbbd50452",
             "access_type": "ip",
-            "access_to": "0.0.0.0/0"
+            "access_to": "0.0.0.0/0",
+            "access_key": null
         }
     ]
 }
