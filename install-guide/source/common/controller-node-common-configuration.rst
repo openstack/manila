@@ -29,6 +29,17 @@
         rootwrap_config = /etc/manila/rootwrap.conf
         api_paste_config = /etc/manila/api-paste.ini
 
+     .. important::
+
+        The ``default_share_type`` option specifies the default share type to
+        be used when shares are created without specifying the share type in
+        the request. The default share type that is specified in the
+        configuration file has to be created with the necessary required
+        extra-specs (such as ``driver_handles_share_servers``) set
+        appropriately with reference to the driver mode used. This is further
+        explained in the section discussing the setup and configuration of the
+        share node.
+
    * In the ``[DEFAULT]`` and ``[keystone_authtoken]`` sections, configure
      Identity service access:
 
