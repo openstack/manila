@@ -117,7 +117,7 @@ Share backends
    gpfs_driver
    huawei_nas_driver
    hdfs_native_driver
-   hds_hnas_driver
+   hitachi_hnas_driver
    hpe_3par_driver
    tegile_driver
 
