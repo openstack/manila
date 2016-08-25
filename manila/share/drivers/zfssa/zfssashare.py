@@ -302,9 +302,9 @@ class ZFSSAShareDriver(driver.ShareDriver):
         name = driver_options['zfssa_name']
         try:
             details = self._get_share_details(name)
-        except Exception as e:
+        except Exception:
             LOG.error(_LE('Cannot manage share %s'), name)
-            raise e
+            raise
 
         lcfg = self.configuration
         input_export_loc = share['export_locations'][0]['path']

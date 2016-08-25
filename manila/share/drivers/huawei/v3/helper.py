@@ -216,7 +216,7 @@ class RestHelper(object):
 
         except Exception as err:
             LOG.error(_LE('Bad response from change file: %s.') % err)
-            raise err
+            raise
 
     def _create_share(self, share_name, fs_id, share_proto):
         """Create a share."""

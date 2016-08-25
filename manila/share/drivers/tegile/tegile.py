@@ -461,11 +461,11 @@ class TegileShareDriver(driver.ShareDriver):
             data['qos'] = False
 
             super(TegileShareDriver, self)._update_share_stats(data)
-        except Exception as e:
+        except Exception:
             msg = _('Unexpected error while trying to get the '
                     'usage stats from array.')
             LOG.exception(msg)
-            raise e
+            raise
 
     @debugger
     def get_pool(self, share):
