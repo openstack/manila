@@ -14,6 +14,7 @@
 #    under the License.
 
 import json
+import six
 import time
 
 from six.moves.urllib import parse as urlparse
@@ -688,8 +689,11 @@ class SharesV2Client(shares_client.SharesClient):
 
 ###############
 
-    def list_share_types(self, params=None, version=LATEST_MICROVERSION):
+    def list_share_types(self, params=None, default=False,
+                         version=LATEST_MICROVERSION):
         uri = 'types'
+        if default:
+            uri += '/default'
         if params is not None:
             uri += '?%s' % urlparse.urlencode(params)
         resp, body = self.get(uri, version=version)
@@ -1076,22 +1080,25 @@ class SharesV2Client(shares_client.SharesClient):
                          headers=EXPERIMENTAL, extra_headers=True,
                          version=version)
 
-    def wait_for_migration_status(self, share_id, dest_host, status,
+    def wait_for_migration_status(self, share_id, dest_host, status_to_wait,
                                   version=LATEST_MICROVERSION):
         """Waits for a share to migrate to a certain host."""
+        statuses = ((status_to_wait,)
+                    if not isinstance(status_to_wait, (tuple, list, set))
+                    else status_to_wait)
         share = self.get_share(share_id, version=version)
         migration_timeout = CONF.share.migration_timeout
         start = int(time.time())
-        while share['task_state'] != status:
+        while share['task_state'] not in statuses:
             time.sleep(self.build_interval)
             share = self.get_share(share_id, version=version)
-            if share['task_state'] == status:
-                return share
+            if share['task_state'] in statuses:
+                break
             elif share['task_state'] == 'migration_error':
                 raise share_exceptions.ShareMigrationException(
                     share_id=share['id'], src=share['host'], dest=dest_host)
             elif int(time.time()) - start >= migration_timeout:
-                message = ('Share %(share_id)s failed to reach status '
+                message = ('Share %(share_id)s failed to reach a status in'
                            '%(status)s when migrating from host %(src)s to '
                            'host %(dest)s within the required time '
                            '%(timeout)s.' % {
@@ -1099,9 +1106,10 @@ class SharesV2Client(shares_client.SharesClient):
                                'dest': dest_host,
                                'share_id': share['id'],
                                'timeout': self.build_timeout,
-                               'status': status,
+                               'status': six.text_type(statuses),
                            })
                 raise exceptions.TimeoutException(message)
+        return share
 
 ################
 

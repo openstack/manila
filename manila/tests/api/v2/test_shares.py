@@ -599,10 +599,7 @@ class ShareAPITest(test.TestCase):
         req.api_version_request.experimental = True
 
         body = {'migration_get_progress': None}
-        expected = {'total_progress': 'fake',
-                    'current_file_progress': 'fake',
-                    'current_file_path': 'fake',
-                    }
+        expected = {'total_progress': 'fake'}
 
         self.mock_object(share_api.API, 'get',
                          mock.Mock(return_value=share))

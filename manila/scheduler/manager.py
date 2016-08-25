@@ -159,9 +159,6 @@ class SchedulerManager(manager.Manager):
                                                        request_spec,
                                                        filter_properties)
 
-        except exception.NoValidHost as ex:
-            with excutils.save_and_reraise_exception():
-                _migrate_share_set_error(self, context, ex, request_spec)
         except Exception as ex:
             with excutils.save_and_reraise_exception():
                 _migrate_share_set_error(self, context, ex, request_spec)
@@ -169,7 +166,8 @@ class SchedulerManager(manager.Manager):
             share_ref = db.share_get(context, share_id)
             try:
                 share_rpcapi.ShareAPI().migration_start(
-                    context, share_ref, tgt_host, force_host_copy, notify)
+                    context, share_ref, tgt_host.host, force_host_copy,
+                    notify)
             except Exception as ex:
                 with excutils.save_and_reraise_exception():
                     _migrate_share_set_error(self, context, ex, request_spec)

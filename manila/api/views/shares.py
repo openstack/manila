@@ -96,11 +96,9 @@ class ViewBuilder(common.ViewBuilder):
         return {'share': share_dict}
 
     def migration_get_progress(self, progress):
-        result = {
-            'total_progress': progress['total_progress'],
-            'current_file_path': progress['current_file_path'],
-            'current_file_progress': progress['current_file_progress']
-        }
+
+        result = {'total_progress': progress['total_progress']}
+
         return result
 
     @common.ViewBuilder.versioned_method("2.2")

@@ -18,7 +18,10 @@ from tempest.lib import exceptions as lib_exc
 from tempest import test
 import testtools
 
+from manila_tempest_tests.common import constants
+from manila_tempest_tests import share_exceptions
 from manila_tempest_tests.tests.api import base
+from manila_tempest_tests import utils
 
 CONF = config.CONF
 
@@ -26,7 +29,7 @@ CONF = config.CONF
 class MigrationNFSTest(base.BaseSharesAdminTest):
     """Tests Share Migration.
 
-    Tests migration in multi-backend environment.
+    Tests share migration in multi-backend environment.
     """
 
     protocol = "nfs"
@@ -35,18 +38,28 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
     def resource_setup(cls):
         super(MigrationNFSTest, cls).resource_setup()
         if not CONF.share.run_migration_tests:
-            raise cls.skipException("Migration tests disabled. Skipping.")
+            raise cls.skipException("Share migration tests are disabled.")
 
-        cls.share = cls.create_share(cls.protocol)
-        cls.share = cls.shares_client.get_share(cls.share['id'])
-        pools = cls.shares_client.list_pools()['pools']
+        pools = cls.shares_client.list_pools(detail=True)['pools']
 
         if len(pools) < 2:
             raise cls.skipException("At least two different pool entries "
-                                    "are needed to run migration tests. "
-                                    "Skipping.")
-        cls.dest_pool = next((x for x in pools
-                              if x['name'] != cls.share['host']), None)
+                                    "are needed to run share migration tests.")
+
+        cls.share = cls.create_share(cls.protocol)
+        cls.share = cls.shares_client.get_share(cls.share['id'])
+
+        default_type = cls.shares_v2_client.list_share_types(
+            default=True)['share_type']
+
+        dest_pool = utils.choose_matching_backend(
+            cls.share, pools, default_type)
+
+        if not dest_pool or dest_pool.get('name') is None:
+            raise share_exceptions.ShareMigrationException(
+                "No valid pool entries to run share migration tests.")
+
+        cls.dest_pool = dest_pool['name']
 
     @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @base.skip_if_microversion_lt("2.15")
@@ -91,10 +104,14 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
     @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @base.skip_if_microversion_lt("2.5")
     def test_migrate_share_not_available_v2_5(self):
-        self.shares_client.reset_state(self.share['id'], 'error')
-        self.shares_client.wait_for_share_status(self.share['id'], 'error')
+        self.shares_client.reset_state(
+            self.share['id'], constants.STATUS_ERROR)
+        self.shares_client.wait_for_share_status(self.share['id'],
+                                                 constants.STATUS_ERROR)
         self.assertRaises(
             lib_exc.BadRequest, self.shares_v2_client.migrate_share,
             self.share['id'], self.dest_pool, True, version='2.5')
-        self.shares_client.reset_state(self.share['id'], 'available')
-        self.shares_client.wait_for_share_status(self.share['id'], 'available')
+        self.shares_client.reset_state(self.share['id'],
+                                       constants.STATUS_AVAILABLE)
+        self.shares_client.wait_for_share_status(self.share['id'],
+                                                 constants.STATUS_AVAILABLE)

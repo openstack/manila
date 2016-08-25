@@ -82,6 +82,8 @@ class DataManagerTestCase(test.TestCase):
 
         # mocks
         self.mock_object(db, 'share_get', mock.Mock(return_value=self.share))
+        self.mock_object(db, 'share_instance_get', mock.Mock(
+            return_value=self.share.instance))
 
         self.mock_object(data_utils, 'Copy',
                          mock.Mock(return_value='fake_copy'))
@@ -122,7 +124,7 @@ class DataManagerTestCase(test.TestCase):
 
         if notify or exc:
             share_rpc.ShareAPI.migration_complete.assert_called_once_with(
-                self.context, self.share, 'ins1_id', 'ins2_id')
+                self.context, self.share.instance, 'ins2_id')
 
     @ddt.data({'cancelled': False, 'exc': None},
               {'cancelled': False, 'exc': Exception('fake')},

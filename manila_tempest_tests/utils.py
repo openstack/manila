@@ -100,3 +100,18 @@ def rand_ip():
     TEST_NET_3 = '203.0.113.'
     final_octet = six.text_type(random.randint(0, 255))
     return TEST_NET_3 + final_octet
+
+
+def choose_matching_backend(share, pools, share_type):
+    extra_specs = {}
+    # fix extra specs with string values instead of boolean
+    for k, v in share_type['extra_specs'].items():
+        extra_specs[k] = (True if six.text_type(v).lower() == 'true'
+                          else False if six.text_type(v).lower() == 'false'
+                          else v)
+    selected_pool = next(
+        (x for x in pools if (x['name'] != share['host'] and all(
+            y in x['capabilities'].items() for y in extra_specs.items()))),
+        None)
+
+    return selected_pool

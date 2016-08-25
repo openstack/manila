@@ -113,7 +113,7 @@ class ShareMigrationHelperTestCase(test.TestCase):
 
     def test_create_instance_and_wait(self):
 
-        host = {'host': 'fake_host'}
+        host = 'fake_host'
 
         share_instance_creating = db_utils.create_share_instance(
             share_id=self.share['id'], status=constants.STATUS_CREATING,
@@ -131,13 +131,13 @@ class ShareMigrationHelperTestCase(test.TestCase):
         self.mock_object(time, 'sleep')
 
         # run
-        self.helper.create_instance_and_wait(self.share,
-                                             share_instance_creating, host)
+        self.helper.create_instance_and_wait(
+            self.share, share_instance_creating, host, 'fake_az_id')
 
         # asserts
         share_api.API.create_instance.assert_called_once_with(
             self.context, self.share, self.share_instance['share_network_id'],
-            'fake_host')
+            'fake_host', 'fake_az_id')
 
         db.share_instance_get.assert_has_calls([
             mock.call(self.context, share_instance_creating['id'],
@@ -149,7 +149,7 @@ class ShareMigrationHelperTestCase(test.TestCase):
 
     def test_create_instance_and_wait_status_error(self):
 
-        host = {'host': 'fake_host'}
+        host = 'fake_host'
 
         share_instance_error = db_utils.create_share_instance(
             share_id=self.share['id'], status=constants.STATUS_ERROR,
@@ -165,12 +165,12 @@ class ShareMigrationHelperTestCase(test.TestCase):
         # run
         self.assertRaises(exception.ShareMigrationFailed,
                           self.helper.create_instance_and_wait,
-                          self.share, self.share_instance, host)
+                          self.share, self.share_instance, host, 'fake_az_id')
 
         # asserts
         share_api.API.create_instance.assert_called_once_with(
             self.context, self.share, self.share_instance['share_network_id'],
-            'fake_host')
+            'fake_host', 'fake_az_id')
 
         db.share_instance_get.assert_called_once_with(
             self.context, share_instance_error['id'], with_share_data=True)
@@ -180,7 +180,7 @@ class ShareMigrationHelperTestCase(test.TestCase):
 
     def test_create_instance_and_wait_timeout(self):
 
-        host = {'host': 'fake_host'}
+        host = 'fake_host'
 
         share_instance_creating = db_utils.create_share_instance(
             share_id=self.share['id'], status=constants.STATUS_CREATING,
@@ -204,12 +204,12 @@ class ShareMigrationHelperTestCase(test.TestCase):
         # run
         self.assertRaises(exception.ShareMigrationFailed,
                           self.helper.create_instance_and_wait,
-                          self.share, self.share_instance, host)
+                          self.share, self.share_instance, host, 'fake_az_id')
 
         # asserts
         share_api.API.create_instance.assert_called_once_with(
             self.context, self.share, self.share_instance['share_network_id'],
-            'fake_host')
+            'fake_host', 'fake_az_id')
 
         db.share_instance_get.assert_called_once_with(
             self.context, share_instance_creating['id'], with_share_data=True)
@@ -218,6 +218,33 @@ class ShareMigrationHelperTestCase(test.TestCase):
 
         self.helper.cleanup_new_instance.assert_called_once_with(
             share_instance_creating)
+
+    @ddt.data(constants.STATUS_ACTIVE, constants.STATUS_ERROR,
+              constants.STATUS_CREATING)
+    def test_wait_for_share_server(self, status):
+
+        server = db_utils.create_share_server(status=status)
+
+        # mocks
+        self.mock_object(db, 'share_server_get',
+                         mock.Mock(return_value=server))
+
+        # run
+        if status == constants.STATUS_ACTIVE:
+            result = self.helper.wait_for_share_server('fake_server_id')
+            self.assertEqual(server, result)
+        elif status == constants.STATUS_ERROR:
+            self.assertRaises(
+                exception.ShareServerNotCreated,
+                self.helper.wait_for_share_server, 'fake_server_id')
+        else:
+            self.mock_object(time, 'sleep')
+            self.assertRaises(
+                exception.ShareServerNotReady,
+                self.helper.wait_for_share_server, 'fake_server_id')
+
+        # asserts
+        db.share_server_get.assert_called_with(self.context, 'fake_server_id')
 
     def test_change_to_read_only_with_ro_support(self):
 

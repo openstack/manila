@@ -242,6 +242,10 @@ class InvalidShareServer(Invalid):
     message = _("Share server %(share_server_id)s is not valid.")
 
 
+class ShareMigrationError(ManilaException):
+    message = _("Error in share migration: %(reason)s")
+
+
 class ShareMigrationFailed(ManilaException):
     message = _("Share migration failed: %(reason)s")
 
@@ -265,6 +269,11 @@ class AdminIPNotFound(ManilaException):
 
 class ShareServerNotCreated(ManilaException):
     message = _("Share server %(share_server_id)s failed on creation.")
+
+
+class ShareServerNotReady(ManilaException):
+    message = _("Share server %(share_server_id)s failed to reach '%(state)s' "
+                "within %(time)s seconds.")
 
 
 class ServiceNotFound(NotFound):

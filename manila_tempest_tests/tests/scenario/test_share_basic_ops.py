@@ -20,7 +20,9 @@ from tempest.lib.common.utils import data_utils
 from tempest.lib.common.utils import test_utils
 from tempest.lib import exceptions
 from tempest import test
+import testtools
 
+from manila_tempest_tests.common import constants
 from manila_tempest_tests.tests.api import base
 from manila_tempest_tests.tests.scenario import manager_share as manager
 from manila_tempest_tests import utils
@@ -244,29 +246,30 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
     @test.services('compute', 'network')
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @testtools.skipUnless(CONF.share.run_migration_tests,
+                          "Share migration tests are disabled.")
     def test_migration_files(self):
 
         if self.protocol == "CIFS":
             raise self.skipException("Test for CIFS protocol not supported "
-                                     "at this moment. Skipping.")
+                                     "at this moment.")
 
-        if not CONF.share.run_migration_tests:
-            raise self.skipException("Migration tests disabled. Skipping.")
-
-        pools = self.shares_admin_client.list_pools()['pools']
+        pools = self.shares_admin_v2_client.list_pools(detail=True)['pools']
 
         if len(pools) < 2:
-            raise self.skipException("At least two different pool entries "
-                                     "are needed to run migration tests. "
-                                     "Skipping.")
+            raise self.skipException("At least two different pool entries are "
+                                     "needed to run share migration tests.")
 
         instance = self.boot_instance(wait_until="BUILD")
         self.create_share()
         instance = self.wait_for_active_instance(instance["id"])
-        share = self.shares_client.get_share(self.share['id'])
+        self.share = self.shares_client.get_share(self.share['id'])
 
-        dest_pool = next((x for x in pools if x['name'] != share['host']),
-                         None)
+        default_type = self.shares_v2_client.list_share_types(
+            default=True)['share_type']
+
+        dest_pool = utils.choose_matching_backend(
+            self.share, pools, default_type)
 
         self.assertIsNotNone(dest_pool)
         self.assertIsNotNone(dest_pool.get('name'))
@@ -307,7 +310,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
         self.umount_share(ssh_client)
 
-        share = self.migrate_share(share['id'], dest_pool)
+        self.share = self.migrate_share(self.share['id'], dest_pool)
         if utils.is_microversion_lt(CONF.share.max_api_microversion, "2.9"):
             new_locations = self.share['export_locations']
         else:
@@ -315,11 +318,12 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
                 self.share['id'])
             new_locations = [x['path'] for x in new_exports]
 
-        self.assertEqual(dest_pool, share['host'])
+        self.assertEqual(dest_pool, self.share['host'])
         locations.sort()
         new_locations.sort()
         self.assertNotEqual(locations, new_locations)
-        self.assertEqual('migration_success', share['task_state'])
+        self.assertEqual(constants.TASK_STATE_MIGRATION_SUCCESS,
+                         self.share['task_state'])
 
         self.mount_share(new_locations[0], ssh_client)
 

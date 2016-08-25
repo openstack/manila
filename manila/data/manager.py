@@ -73,6 +73,8 @@ class DataManager(manager.Manager):
              'dest_instance_id': dest_share_instance_id})
 
         share_ref = self.db.share_get(context, share_id)
+        share_instance_ref = self.db.share_instance_get(
+            context, share_instance_id, with_share_data=True)
 
         share_rpcapi = share_rpc.ShareAPI()
 
@@ -90,7 +92,7 @@ class DataManager(manager.Manager):
                 migration_info_dest)
         except exception.ShareDataCopyCancelled:
             share_rpcapi.migration_complete(
-                context, share_ref, share_instance_id, dest_share_instance_id)
+                context, share_instance_ref, dest_share_instance_id)
             return
         except Exception:
             self.db.share_update(
@@ -101,7 +103,7 @@ class DataManager(manager.Manager):
                                              'dest': dest_share_instance_id}
             LOG.exception(msg)
             share_rpcapi.migration_complete(
-                context, share_ref, share_instance_id, dest_share_instance_id)
+                context, share_instance_ref, dest_share_instance_id)
             raise exception.ShareDataCopyFailed(reason=msg)
         finally:
             self.busy_tasks_shares.pop(share_id, None)
@@ -121,7 +123,7 @@ class DataManager(manager.Manager):
                  'dest_instance_id': dest_share_instance_id})
 
             share_rpcapi.migration_complete(
-                context, share_ref, share_instance_id, dest_share_instance_id)
+                context, share_instance_ref, dest_share_instance_id)
 
     def data_copy_cancel(self, context, share_id):
         LOG.info(_LI("Received request to cancel share migration "
