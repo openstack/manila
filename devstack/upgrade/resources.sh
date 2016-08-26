@@ -92,7 +92,7 @@ function scenario_1_do_share_with_rules_and_metadata {
             ((wait_timeout-=$MANILA_GRENADE_WAIT_STEP))
             sleep $MANILA_GRENADE_WAIT_STEP
         elif [[ $current_status == 'error' ]]; then
-            die $LINENO "Share failed to reach 'available' status."
+            die $LINENO "Share is in 'error' state."
         else
             die $LINENO "Should never reach this line."
         fi
