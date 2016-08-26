@@ -22,7 +22,7 @@ import six
 from manila.common import constants as const
 from manila import exception
 from manila.share.drivers.emc.plugins.isilon import isilon
-from manila.share.drivers.emc.plugins.isilon.isilon_api import SmbPermission
+from manila.share.drivers.emc.plugins.isilon import isilon_api
 from manila import test
 
 LOG = log.getLogger(__name__)
@@ -398,8 +398,8 @@ class IsilonTest(test.TestCase):
             'PUT', expected_url, data=expected_data)
 
     @ddt.data(
-        ('foo', const.ACCESS_LEVEL_RW, SmbPermission.rw),
-        ('testuser', const.ACCESS_LEVEL_RO, SmbPermission.ro),
+        ('foo', const.ACCESS_LEVEL_RW, isilon_api.SmbPermission.rw),
+        ('testuser', const.ACCESS_LEVEL_RO, isilon_api.SmbPermission.ro),
     )
     def test_allow_access_with_cifs_user(self, data):
         # setup
