@@ -21,8 +21,7 @@ from oslo_config import cfg
 from oslo_log import log
 
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LW
+from manila.i18n import _, _LW
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)

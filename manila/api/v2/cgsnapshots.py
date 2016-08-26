@@ -27,8 +27,7 @@ import manila.api.views.cgsnapshots as cg_views
 import manila.consistency_group.api as cg_api
 from manila import db
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LI
+from manila.i18n import _, _LI
 
 LOG = log.getLogger(__name__)
 

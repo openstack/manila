@@ -47,9 +47,7 @@ from sqlalchemy.sql import func
 from manila.common import constants
 from manila.db.sqlalchemy import models
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LE
-from manila.i18n import _LW
+from manila.i18n import _, _LE, _LW
 
 CONF = cfg.CONF
 

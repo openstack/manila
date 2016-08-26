@@ -21,8 +21,7 @@ import math
 
 from oslo_log import log
 
-from manila.i18n import _LE
-from manila.i18n import _LW
+from manila.i18n import _LE, _LW
 from manila.scheduler.filters import base_host
 
 LOG = log.getLogger(__name__)

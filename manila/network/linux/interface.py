@@ -21,9 +21,7 @@ from oslo_log import log
 import six
 
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LE
-from manila.i18n import _LW
+from manila.i18n import _, _LE, _LW
 from manila.network.linux import ip_lib
 from manila.network.linux import ovs_lib
 from manila import utils

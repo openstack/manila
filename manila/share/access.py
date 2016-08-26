@@ -18,8 +18,7 @@ import six
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LI
+from manila.i18n import _, _LI
 from manila import utils
 
 LOG = log.getLogger(__name__)

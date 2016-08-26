@@ -20,8 +20,7 @@ import webob.dec
 import webob.exc
 
 from manila.api.openstack import wsgi
-from manila.i18n import _LE
-from manila.i18n import _LI
+from manila.i18n import _LE, _LI
 from manila import utils
 from manila import wsgi as base_wsgi
 

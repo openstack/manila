@@ -26,9 +26,7 @@ import webob.exc
 import manila.api.openstack
 from manila.api.openstack import wsgi
 from manila import exception
-from manila.i18n import _LE
-from manila.i18n import _LI
-from manila.i18n import _LW
+from manila.i18n import _LE, _LI, _LW
 import manila.policy
 
 CONF = cfg.CONF

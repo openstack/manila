@@ -17,8 +17,7 @@ import six
 
 from oslo_log import log as logging
 
-from manila.i18n import _LI
-from manila.i18n import _LW
+from manila.i18n import _LI, _LW
 from manila.scheduler.evaluator import evaluator
 from manila.scheduler.filters import base_host
 from manila.scheduler import utils

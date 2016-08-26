@@ -27,9 +27,7 @@ from manila.api.openstack import wsgi
 from manila.api.views import share_networks as share_networks_views
 from manila.db import api as db_api
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LE
-from manila.i18n import _LW
+from manila.i18n import _, _LE, _LW
 from manila import policy
 from manila import quota
 from manila.share import rpcapi as share_rpcapi

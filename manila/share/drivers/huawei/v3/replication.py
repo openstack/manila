@@ -18,9 +18,7 @@ from oslo_utils import strutils
 
 from manila.common import constants as common_constants
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LE
-from manila.i18n import _LW
+from manila.i18n import _, _LE, _LW
 from manila.share.drivers.huawei import constants
 
 

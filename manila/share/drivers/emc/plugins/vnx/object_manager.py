@@ -24,9 +24,7 @@ import six
 
 from manila.common import constants as const
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LI
-from manila.i18n import _LW
+from manila.i18n import _, _LI, _LW
 from manila.share.drivers.emc.plugins.vnx import connector
 from manila.share.drivers.emc.plugins.vnx import constants
 from manila.share.drivers.emc.plugins.vnx import utils as vnx_utils

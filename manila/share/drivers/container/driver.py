@@ -27,9 +27,7 @@ from oslo_log import log
 from oslo_utils import importutils
 
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LI
-from manila.i18n import _LW
+from manila.i18n import _, _LI, _LW
 from manila.share import driver
 from manila import utils
 

@@ -20,9 +20,7 @@ from oslo_utils import units
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LE
-from manila.i18n import _LI
+from manila.i18n import _, _LE, _LI
 from manila.share import driver
 from manila.share.drivers.hitachi.hsp import rest
 

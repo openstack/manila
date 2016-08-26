@@ -29,9 +29,7 @@ from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import versioned_method
 from manila.common import constants
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LE
-from manila.i18n import _LI
+from manila.i18n import _, _LE, _LI
 from manila import policy
 from manila import wsgi
 

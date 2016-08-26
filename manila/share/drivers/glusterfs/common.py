@@ -24,9 +24,7 @@ from oslo_log import log
 import six
 
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LE
-from manila.i18n import _LW
+from manila.i18n import _, _LE, _LW
 from manila.share.drivers.ganesha import utils as ganesha_utils
 
 LOG = log.getLogger(__name__)

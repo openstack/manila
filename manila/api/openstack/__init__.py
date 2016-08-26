@@ -22,8 +22,7 @@ from oslo_log import log
 import routes
 
 from manila.api.openstack import wsgi
-from manila.i18n import _
-from manila.i18n import _LW
+from manila.i18n import _, _LW
 from manila import wsgi as base_wsgi
 
 LOG = log.getLogger(__name__)
