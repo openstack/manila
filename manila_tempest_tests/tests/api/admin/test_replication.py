@@ -86,6 +86,10 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
         replica = self.create_share_replica(
             share["id"], self.replica_zone, cleanup=False,
             client=self.admin_client)
+        # Wait for replica state to update after creation
+        self.admin_client.wait_for_share_replica_status(
+            replica['id'], constants.REPLICATION_STATE_IN_SYNC,
+            status_attr='replica_state')
 
         # List replicas
         replica_list = self.admin_client.list_share_replicas(
