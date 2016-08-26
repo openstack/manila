@@ -349,8 +349,8 @@ class IpRouteCommand(IpDeviceCommandBase):
                 subnet = device_route_line.split()[0]
             except Exception:
                 continue
-            subnet_route_list_lines = self._run('list', 'proto', 'kernel',
-                                                'match', subnet).split('\n')
+            subnet_route_list_lines = self._run(
+                'list', 'proto', 'kernel', 'exact', subnet).split('\n')
             for subnet_route_line in subnet_route_list_lines:
                 i = iter(subnet_route_line.split())
                 while(next(i) != 'dev'):
