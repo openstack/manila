@@ -14,14 +14,20 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import socket
+
 from oslo_config import cfg
+from oslo_log import log
 
 from manila.common import constants
 from manila import exception
+from manila.i18n import _
 from manila import network
 from manila.network.neutron import api as neutron_api
 from manila.network.neutron import constants as neutron_constants
 from manila import utils
+
+LOG = log.getLogger(__name__)
 
 neutron_single_network_plugin_opts = [
     cfg.StrOpt(
@@ -39,12 +45,18 @@ neutron_single_network_plugin_opts = [
         deprecated_group='DEFAULT'),
 ]
 
-neutron_network_plugin_opts = [
+neutron_bind_network_plugin_opts = [
+    cfg.StrOpt(
+        'neutron_vnic_type',
+        help="vNIC type used for binding.",
+        choices=['baremetal', 'normal', 'direct',
+                 'direct-physical', 'macvtap'],
+        default='baremetal'),
     cfg.StrOpt(
         "neutron_host_id",
-        help="Host ID to be used when creating neutron port. Hostname of "
-        "a controller running Neutron should be used in a general case.",
-        deprecated_group='DEFAULT'),
+        help="Host ID to be used when creating neutron port. If not set "
+             "host is set to manila-share host by default.",
+        default=socket.gethostname()),
 ]
 
 CONF = cfg.CONF
@@ -59,9 +71,6 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
         self._neutron_api_args = args
         self._neutron_api_kwargs = kwargs
         self._label = kwargs.pop('label', 'user')
-        CONF.register_opts(
-            neutron_network_plugin_opts,
-            group=self.neutron_api.config_group_name)
 
     @property
     def label(self):
@@ -124,13 +133,22 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
         for port in ports:
             self._delete_port(context, port)
 
+    def _get_port_create_args(self, share_server, share_network,
+                              device_owner):
+        return {
+            "network_id": share_network['neutron_net_id'],
+            "subnet_id": share_network['neutron_subnet_id'],
+            "device_owner": 'manila:' + device_owner,
+            "device_id": share_server.get('id'),
+        }
+
     def _create_port(self, context, share_server, share_network, device_owner):
-        host_id = self.neutron_api.configuration.neutron_host_id
+        create_args = self._get_port_create_args(share_server, share_network,
+                                                 device_owner)
+
         port = self.neutron_api.create_port(
-            share_network['project_id'],
-            network_id=share_network['neutron_net_id'],
-            subnet_id=share_network['neutron_subnet_id'],
-            device_owner='manila:' + device_owner, host_id=host_id)
+            share_network['project_id'], **create_args)
+
         port_dict = {
             'id': port['id'],
             'share_server_id': share_server['id'],
@@ -214,7 +232,7 @@ class NeutronSingleNetworkPlugin(NeutronNetworkPlugin):
                 'neutron_net_id': self.net,
                 'neutron_subnet_id': self.subnet,
             }
-        super(NeutronSingleNetworkPlugin, self).allocate_network(
+        return super(NeutronSingleNetworkPlugin, self).allocate_network(
             context, share_server, share_network, **kwargs)
 
     def _verify_net_and_subnet(self):
@@ -261,3 +279,73 @@ class NeutronSingleNetworkPlugin(NeutronNetworkPlugin):
             share_network = self.db.share_network_update(
                 context, share_network['id'], upd)
         return share_network
+
+
+class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
+    def __init__(self, *args, **kwargs):
+        super(NeutronBindNetworkPlugin, self).__init__(*args, **kwargs)
+        CONF.register_opts(
+            neutron_bind_network_plugin_opts,
+            group=self.neutron_api.config_group_name)
+        self.config = self.neutron_api.configuration
+
+    def update_network_allocation(self, context, share_server):
+        if self.config.neutron_vnic_type == 'normal':
+            ports = self.db.network_allocations_get_for_share_server(
+                context,
+                share_server['id'])
+            self._wait_for_ports_bind(ports, share_server)
+            return ports
+
+    @utils.retry(exception.NetworkBindException, retries=20)
+    def _wait_for_ports_bind(self, ports, share_server):
+        inactive_ports = []
+        for port in ports:
+            port = self._neutron_api.show_port(port['id'])
+            if (port['status'] == neutron_constants.PORT_STATUS_ERROR or
+                    ('binding:vif_type' in port and
+                     port['binding:vif_type'] ==
+                     neutron_constants.VIF_TYPE_BINDING_FAILED)):
+                msg = _("Port binding %s failed.") % port['id']
+                raise exception.NetworkException(msg)
+            elif port['status'] != neutron_constants.PORT_STATUS_ACTIVE:
+                LOG.debug("The port %(id)s is in state %(state)s. "
+                          "Wait for active state.", {
+                              "id": port['id'],
+                              "state": port['status']})
+                inactive_ports.append(port['id'])
+        if len(inactive_ports) == 0:
+            return
+        msg = _("Ports are not fully bound for share server "
+                "'%(s_id)s' (inactive ports: %(ports)s)") % {
+            "s_id": share_server['id'],
+            "ports": inactive_ports}
+        raise exception.NetworkBindException(msg)
+
+    def _get_port_create_args(self, share_server, share_network,
+                              device_owner):
+        arguments = super(
+            NeutronBindNetworkPlugin, self)._get_port_create_args(
+                share_network, share_network, device_owner)
+        arguments['host_id'] = self.config.neutron_host_id
+        arguments['binding:vnic_type'] = self.config.neutron_vnic_type
+        return arguments
+
+    def allocate_network(self, context, share_server, share_network=None,
+                         **kwargs):
+        ports = super(NeutronBindNetworkPlugin, self).allocate_network(
+            context, share_server, share_network, **kwargs)
+        # If vnic type is 'normal' we expect a neutron agent to bind the
+        # ports. This action requires a vnic to be spawned by the driver.
+        # Therefore we do not wait for the port binding here, but
+        # return the unbound ports and expect the share manager to call
+        # update_network_allocation after the share server was created, in
+        # order to update the ports with the correct binding.
+        if self.config.neutron_vnic_type != 'normal':
+            self._wait_for_ports_bind(ports, share_server)
+        return ports
+
+
+class NeutronBindSingleNetworkPlugin(NeutronSingleNetworkPlugin,
+                                     NeutronBindNetworkPlugin):
+    pass

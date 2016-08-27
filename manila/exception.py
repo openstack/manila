@@ -114,6 +114,10 @@ class NetworkException(ManilaException):
     message = _("Exception due to network failure.")
 
 
+class NetworkBindException(ManilaException):
+    message = _("Exception due to failed port status in binding.")
+
+
 class NetworkBadConfigurationException(NetworkException):
     message = _("Bad network configuration: %(reason)s.")
 

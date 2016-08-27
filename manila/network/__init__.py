@@ -65,6 +65,17 @@ class NetworkBaseAPI(db_base.Base):
                     "'%s'.") % share_server_id
             raise exception.NetworkBadConfigurationException(reason=msg)
 
+    def update_network_allocation(self, context, share_server):
+        """Update network allocation.
+
+        Optional method to be called by the manager after share server creation
+        which can be overloaded in case the port state has to be updated.
+
+        :param context: RequestContext object
+        :param share_server: share server object
+        :return: list of updated ports or None if nothing was updated
+        """
+
     @abc.abstractmethod
     def allocate_network(self, context, share_server, share_network=None,
                          **kwargs):
