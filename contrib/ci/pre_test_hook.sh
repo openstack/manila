@@ -65,6 +65,10 @@ else
     echo "MANILA_MULTI_BACKEND=False" >> $localrc_path
 fi
 
+# Set MANILA_ADMIN_NET_RANGE for admin_network and data_service IP
+echo "MANILA_ADMIN_NET_RANGE=${MANILA_ADMIN_NET_RANGE:=10.2.5.0/24}" >> $localrc_path
+echo "MANILA_DATA_NODE_IP=${MANILA_DATA_NODE_IP:=$MANILA_ADMIN_NET_RANGE}" >> $localrc_path
+
 MANILA_SERVICE_IMAGE_ENABLED=False
 if [[ "$DRIVER" == "generic" ]]; then
     MANILA_SERVICE_IMAGE_ENABLED=True

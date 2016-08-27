@@ -170,6 +170,12 @@ MANILA_DOCKER_IMAGE_URL=${MANILA_DOCKER_IMAGE_URL:-"https://github.com/a-ovchinn
 MANILA_NETWORK_API_CLASS=${MANILA_NETWORK_API_CLASS:-"manila.network.neutron.neutron_network_plugin.NeutronBindNetworkPlugin"}
 MANILA_NEUTRON_VNIC_TYPE=${MANILA_NEUTRON_VNIC_TYPE:-"normal"}
 
+# Admin Network setup
+MANILA_ADMIN_NET_RANGE=${MANILA_ADMIN_NET_RANGE:=10.2.5.0/24}
+
+# Data Service IP configuration
+MANILA_DATA_NODE_IP=${MANILA_DATA_NODE_IP:=$MANILA_ADMIN_NET_RANGE}
+
 # Enable manila services
 # ----------------------
 # We have to add Manila to enabled services for screen_it to work
