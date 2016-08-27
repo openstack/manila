@@ -125,10 +125,11 @@ class HPE3ParShareDriver(driver.ShareDriver):
         2.0.3 - Remove file tree on delete when using nested shares #1538800
         2.0.4 - Reduce the fsquota by share size
                 when a share is deleted #1582931
+        2.0.5 - Add update_access support
 
     """
 
-    VERSION = "2.0.4"
+    VERSION = "2.0.5"
 
     def __init__(self, *args, **kwargs):
         super(HPE3ParShareDriver, self).__init__((True, False),
@@ -362,33 +363,22 @@ class HPE3ParShareDriver(driver.ShareDriver):
     def ensure_share(self, context, share, share_server=None):
         pass
 
-    def allow_access(self, context, share, access, share_server=None):
-        """Allow access to the share."""
-
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
+        """Update access to the share."""
         extra_specs = None
         if 'NFS' == share['share_proto']:  # Avoiding DB call otherwise
             extra_specs = share_types.get_extra_specs_from_share(share)
 
-        self._hpe3par.allow_access(share['project_id'],
-                                   share['id'],
-                                   share['share_proto'],
-                                   extra_specs,
-                                   access['access_type'],
-                                   access['access_to'],
-                                   access['access_level'],
-                                   self.fpg,
-                                   self.vfs)
-
-    def deny_access(self, context, share, access, share_server=None):
-        """Deny access to the share."""
-        self._hpe3par.deny_access(share['project_id'],
-                                  share['id'],
-                                  share['share_proto'],
-                                  access['access_type'],
-                                  access['access_to'],
-                                  access['access_level'],
-                                  self.fpg,
-                                  self.vfs)
+        self._hpe3par.update_access(share['project_id'],
+                                    share['id'],
+                                    share['share_proto'],
+                                    extra_specs,
+                                    access_rules,
+                                    add_rules,
+                                    delete_rules,
+                                    self.fpg,
+                                    self.vfs)
 
     def extend_share(self, share, new_size, share_server=None):
         """Extends size of existing share."""

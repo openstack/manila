@@ -478,44 +478,53 @@ class HPE3ParDriverTestCase(test.TestCase):
         ]
         self.mock_mediator.assert_has_calls(expected_calls)
 
-    def test_driver_allow_access(self):
+    def test_driver_update_access_add_rule(self):
         self.init_driver()
 
         context = None
-        self.driver.allow_access(context,
-                                 constants.NFS_SHARE_INFO,
-                                 constants.ACCESS_INFO)
+
+        self.driver.update_access(context,
+                                  constants.NFS_SHARE_INFO,
+                                  [constants.ACCESS_RULE_NFS],
+                                  [constants.ADD_RULE_IP],
+                                  [],
+                                  constants.ACCESS_INFO)
 
         expected_calls = [
-            mock.call.allow_access(constants.EXPECTED_PROJECT_ID,
-                                   constants.EXPECTED_SHARE_ID,
-                                   constants.NFS,
-                                   constants.EXPECTED_EXTRA_SPECS,
-                                   constants.IP,
-                                   constants.EXPECTED_IP_1234,
-                                   constants.ACCESS_INFO['access_level'],
-                                   constants.EXPECTED_FPG,
-                                   constants.EXPECTED_VFS)
+            mock.call.update_access(constants.EXPECTED_PROJECT_ID,
+                                    constants.EXPECTED_SHARE_ID,
+                                    constants.NFS,
+                                    constants.EXPECTED_EXTRA_SPECS,
+                                    [constants.ACCESS_RULE_NFS],
+                                    [constants.ADD_RULE_IP],
+                                    [],
+                                    constants.EXPECTED_FPG,
+                                    constants.EXPECTED_VFS)
         ]
         self.mock_mediator.assert_has_calls(expected_calls)
 
-    def test_driver_deny_access(self):
+    def test_driver_update_access_delete_rule(self):
         self.init_driver()
 
         context = None
-        self.driver.deny_access(context,
-                                constants.NFS_SHARE_INFO,
-                                constants.ACCESS_INFO)
+
+        self.driver.update_access(context,
+                                  constants.NFS_SHARE_INFO,
+                                  [constants.ACCESS_RULE_NFS],
+                                  [],
+                                  [constants.DELETE_RULE_IP],
+                                  constants.ACCESS_INFO)
 
         expected_calls = [
-            mock.call.deny_access(constants.EXPECTED_PROJECT_ID,
-                                  constants.EXPECTED_SHARE_ID,
-                                  constants.NFS,
-                                  constants.IP,
-                                  constants.EXPECTED_IP_1234,
-                                  constants.READ_WRITE,
-                                  constants.EXPECTED_FPG,
-                                  constants.EXPECTED_VFS)
+            mock.call.update_access(constants.EXPECTED_PROJECT_ID,
+                                    constants.EXPECTED_SHARE_ID,
+                                    constants.NFS,
+                                    constants.EXPECTED_EXTRA_SPECS,
+                                    [constants.ACCESS_RULE_NFS],
+                                    [],
+                                    [constants.DELETE_RULE_IP],
+                                    constants.EXPECTED_FPG,
+                                    constants.EXPECTED_VFS)
         ]
         self.mock_mediator.assert_has_calls(expected_calls)
 
