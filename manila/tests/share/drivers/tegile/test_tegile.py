@@ -25,15 +25,14 @@ import six
 from manila.common import constants as const
 from manila import context
 from manila import exception
-from manila.exception import TegileAPIException
-from manila.share.configuration import Configuration
+from manila.share import configuration
 from manila.share.drivers.tegile import tegile
 from manila import test
 
 
 CONF = cfg.CONF
 
-test_config = Configuration(None)
+test_config = configuration.Configuration(None)
 test_config.tegile_nas_server = 'some-ip'
 test_config.tegile_nas_login = 'some-user'
 test_config.tegile_nas_password = 'some-password'
@@ -103,7 +102,7 @@ array_stats = {
 
 
 fake_tegile_backend_fail = mock.Mock(
-    side_effect=TegileAPIException(response="Fake Exception"))
+    side_effect=exception.TegileAPIException(response="Fake Exception"))
 
 
 class FakeResponse(object):
@@ -162,10 +161,11 @@ class TegileShareDriverTestCase(test.TestCase):
     def test_create_share_fail(self):
         mock_api = self.mock_object(self._driver, '_api',
                                     mock.Mock(
-                                        side_effect=TegileAPIException(
-                                            response="Fake Exception")))
+                                        side_effect=(
+                                            exception.TegileAPIException(
+                                                response="Fake Exception"))))
 
-        self.assertRaises(TegileAPIException,
+        self.assertRaises(exception.TegileAPIException,
                           self._driver.create_share,
                           self._ctxt,
                           test_share)
@@ -196,10 +196,11 @@ class TegileShareDriverTestCase(test.TestCase):
     def test_delete_share_fail(self):
         mock_api = self.mock_object(self._driver, '_api',
                                     mock.Mock(
-                                        side_effect=TegileAPIException(
-                                            response="Fake Exception")))
+                                        side_effect=(
+                                            exception.TegileAPIException(
+                                                response="Fake Exception"))))
 
-        self.assertRaises(TegileAPIException,
+        self.assertRaises(exception.TegileAPIException,
                           self._driver.delete_share,
                           self._ctxt,
                           test_share)
@@ -239,10 +240,11 @@ class TegileShareDriverTestCase(test.TestCase):
     def test_create_snapshot_fail(self):
         mock_api = self.mock_object(self._driver, '_api',
                                     mock.Mock(
-                                        side_effect=TegileAPIException(
-                                            response="Fake Exception")))
+                                        side_effect=(
+                                            exception.TegileAPIException(
+                                                response="Fake Exception"))))
 
-        self.assertRaises(TegileAPIException,
+        self.assertRaises(exception.TegileAPIException,
                           self._driver.create_snapshot,
                           self._ctxt,
                           test_snapshot)
@@ -289,10 +291,11 @@ class TegileShareDriverTestCase(test.TestCase):
     def test_delete_snapshot_fail(self):
         mock_api = self.mock_object(self._driver, '_api',
                                     mock.Mock(
-                                        side_effect=TegileAPIException(
-                                            response="Fake Exception")))
+                                        side_effect=(
+                                            exception.TegileAPIException(
+                                                response="Fake Exception"))))
 
-        self.assertRaises(TegileAPIException,
+        self.assertRaises(exception.TegileAPIException,
                           self._driver.delete_snapshot,
                           self._ctxt,
                           test_snapshot)
@@ -350,10 +353,11 @@ class TegileShareDriverTestCase(test.TestCase):
     def test_create_share_from_snapshot_fail(self):
         mock_api = self.mock_object(self._driver, '_api',
                                     mock.Mock(
-                                        side_effect=TegileAPIException(
-                                            response="Fake Exception")))
+                                        side_effect=(
+                                            exception.TegileAPIException(
+                                                response="Fake Exception"))))
 
-        self.assertRaises(TegileAPIException,
+        self.assertRaises(exception.TegileAPIException,
                           self._driver.create_share_from_snapshot,
                           self._ctxt,
                           test_share,
@@ -408,9 +412,10 @@ class TegileShareDriverTestCase(test.TestCase):
     def test_ensure_share_fail(self):
         mock_api = self.mock_object(self._driver, '_api',
                                     mock.Mock(
-                                        side_effect=TegileAPIException(
-                                            response="Fake Exception")))
-        self.assertRaises(TegileAPIException,
+                                        side_effect=(
+                                            exception.TegileAPIException(
+                                                response="Fake Exception"))))
+        self.assertRaises(exception.TegileAPIException,
                           self._driver.ensure_share,
                           self._ctxt,
                           test_share)
@@ -485,10 +490,11 @@ class TegileShareDriverTestCase(test.TestCase):
     def test_get_share_stats_fail(self):
         mock_api = self.mock_object(self._driver, '_api',
                                     mock.Mock(
-                                        side_effect=TegileAPIException(
-                                            response="Fake Exception")))
+                                        side_effect=(
+                                            exception.TegileAPIException(
+                                                response="Fake Exception"))))
 
-        self.assertRaises(TegileAPIException,
+        self.assertRaises(exception.TegileAPIException,
                           self._driver.get_share_stats,
                           True)
 
@@ -520,10 +526,11 @@ class TegileShareDriverTestCase(test.TestCase):
     def test_extend_share_fail(self):
         mock_api = self.mock_object(self._driver, '_api',
                                     mock.Mock(
-                                        side_effect=TegileAPIException(
-                                            response="Fake Exception")))
+                                        side_effect=(
+                                            exception.TegileAPIException(
+                                                response="Fake Exception"))))
 
-        self.assertRaises(TegileAPIException,
+        self.assertRaises(exception.TegileAPIException,
                           self._driver.extend_share,
                           test_share, 30)
 
@@ -550,10 +557,11 @@ class TegileShareDriverTestCase(test.TestCase):
     def test_shrink_share_fail(self):
         mock_api = self.mock_object(self._driver, '_api',
                                     mock.Mock(
-                                        side_effect=TegileAPIException(
-                                            response="Fake Exception")))
+                                        side_effect=(
+                                            exception.TegileAPIException(
+                                                response="Fake Exception"))))
 
-        self.assertRaises(TegileAPIException,
+        self.assertRaises(exception.TegileAPIException,
                           self._driver.shrink_share,
                           test_share, 30)
 
@@ -605,7 +613,7 @@ class TegileShareDriverTestCase(test.TestCase):
     def test_allow_access_fail(self, access_type, to, share, exception_type):
         self.mock_object(self._driver, '_api',
                          mock.Mock(
-                             side_effect=TegileAPIException(
+                             side_effect=exception.TegileAPIException(
                                  response="Fake Exception")))
 
         access = {
@@ -663,7 +671,7 @@ class TegileShareDriverTestCase(test.TestCase):
     def test_deny_access_fail(self, access_type, to, share, exception_type):
         self.mock_object(self._driver, '_api',
                          mock.Mock(
-                             side_effect=TegileAPIException(
+                             side_effect=exception.TegileAPIException(
                                  response="Fake Exception")))
 
         access = {
@@ -811,7 +819,7 @@ class TegileAPIExecutorTestCase(test.TestCase):
         self.mock_object(requests, 'get',
                          mock.Mock(return_value=FakeResponse(404, [])))
 
-        self.assertRaises(TegileAPIException,
+        self.assertRaises(exception.TegileAPIException,
                           self._api,
                           method="Test",
                           request_type='get',
