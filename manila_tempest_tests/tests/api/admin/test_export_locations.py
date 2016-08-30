@@ -80,8 +80,8 @@ class ExportLocationsTest(base.BaseSharesMixedTest):
 
             # Check the format of ever-present summary keys
             self.assertTrue(uuidutils.is_uuid_like(export_location['id']))
-            self.assertTrue(isinstance(export_location['path'],
-                                       six.string_types))
+            self.assertIsInstance(export_location['path'],
+                                  six.string_types)
 
             if utils.is_microversion_ge(version, '2.14'):
                 self.assertIn(export_location['preferred'], (True, False))
