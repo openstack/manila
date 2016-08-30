@@ -16,6 +16,9 @@
 
 """Share-related Utilities and helpers."""
 
+from manila.common import constants
+
+
 DEFAULT_POOL_NAME = '_pool0'
 
 
@@ -76,3 +79,10 @@ def append_host(host, pool):
 
     new_host = "#".join([host, pool])
     return new_host
+
+
+def get_active_replica(replica_list):
+    """Returns the first 'active' replica in the list of replicas provided."""
+    for replica in replica_list:
+        if replica['replica_state'] == constants.REPLICA_STATE_ACTIVE:
+            return replica

@@ -99,3 +99,24 @@ class HuaweiBase(object):
     @abc.abstractmethod
     def teardown_server(self, server_details, security_services=None):
         """Teardown share server."""
+
+    @abc.abstractmethod
+    def create_replica(self, context, replica_list, new_replica,
+                       access_rules, replica_snapshots, share_server=None):
+        """Replicate the active replica to a new replica on this backend."""
+
+    @abc.abstractmethod
+    def update_replica_state(self, context, replica_list, replica,
+                             access_rules, replica_snapshots,
+                             share_server=None):
+        """Update the replica_state of a replica."""
+
+    @abc.abstractmethod
+    def promote_replica(self, context, replica_list, replica, access_rules,
+                        share_server=None):
+        """Promote a replica to 'active' replica state."""
+
+    @abc.abstractmethod
+    def delete_replica(self, context, replica_list, replica_snapshots,
+                       replica, share_server=None):
+        """Delete a replica."""

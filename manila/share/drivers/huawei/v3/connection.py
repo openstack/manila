@@ -19,7 +19,9 @@ import string
 import tempfile
 import time
 
+from oslo_config import cfg
 from oslo_log import log
+import oslo_messaging as messaging
 from oslo_serialization import jsonutils
 from oslo_utils import excutils
 from oslo_utils import strutils
@@ -33,14 +35,20 @@ from manila.i18n import _
 from manila.i18n import _LE
 from manila.i18n import _LI
 from manila.i18n import _LW
+from manila import rpc
 from manila.share.drivers.huawei import base as driver
 from manila.share.drivers.huawei import constants
 from manila.share.drivers.huawei import huawei_utils
 from manila.share.drivers.huawei.v3 import helper
+from manila.share.drivers.huawei.v3 import replication
+from manila.share.drivers.huawei.v3 import rpcapi as v3_rpcapi
 from manila.share.drivers.huawei.v3 import smartx
 from manila.share import share_types
 from manila.share import utils as share_utils
 from manila import utils
+
+
+CONF = cfg.CONF
 
 LOG = log.getLogger(__name__)
 
@@ -48,17 +56,40 @@ LOG = log.getLogger(__name__)
 class V3StorageConnection(driver.HuaweiBase):
     """Helper class for Huawei OceanStor V3 storage system."""
 
-    def __init__(self, configuration):
+    def __init__(self, configuration, **kwargs):
         super(V3StorageConnection, self).__init__(configuration)
+        self.helper = helper.RestHelper(self.configuration)
+        self.replica_mgr = replication.ReplicaPairManager(self.helper)
+        self.rpc_client = v3_rpcapi.HuaweiV3API()
+        self.private_storage = kwargs.get('private_storage')
         self.qos_support = False
+        self.snapshot_support = False
+        self.replication_support = False
+
+    def _setup_rpc_server(self, endpoints):
+        host = "%s@%s" % (CONF.host, self.configuration.config_group)
+        target = messaging.Target(topic=self.rpc_client.topic, server=host)
+        self.rpc_server = rpc.get_server(target, endpoints)
+        self.rpc_server.start()
 
     def connect(self):
         """Try to connect to V3 server."""
-        if self.configuration:
-            self.helper = helper.RestHelper(self.configuration)
-        else:
-            raise exception.InvalidInput(_("Huawei configuration missing."))
         self.helper.login()
+        self._setup_rpc_server([self.replica_mgr])
+        self._setup_conf()
+
+    def _setup_conf(self):
+        root = self.helper._read_xml()
+
+        snapshot_support = root.findtext('Storage/SnapshotSupport')
+        if snapshot_support:
+            self.snapshot_support = strutils.bool_from_string(
+                snapshot_support, strict=True)
+
+        replication_support = root.findtext('Storage/ReplicationSupport')
+        if replication_support:
+            self.replication_support = strutils.bool_from_string(
+                replication_support, strict=True)
 
     def create_share(self, share, share_server=None):
         """Create a share."""
@@ -107,14 +138,14 @@ class V3StorageConnection(driver.HuaweiBase):
                 if qos_id:
                     self.remove_qos_fs(fs_id, qos_id)
                 self.helper._delete_fs(fs_id)
-            message = (_('Failed to create share %(name)s.'
+            message = (_('Failed to create share %(name)s. '
                          'Reason: %(err)s.')
                        % {'name': share_name,
                           'err': err})
             raise exception.InvalidShare(reason=message)
 
         try:
-            self.helper._create_share(share_name, fs_id, share_proto)
+            self.helper.create_share(share_name, fs_id, share_proto)
         except Exception as err:
             if fs_id is not None:
                 qos_id = self.helper.get_qosid_by_fsid(fs_id)
@@ -255,7 +286,7 @@ class V3StorageConnection(driver.HuaweiBase):
         LOG.debug("Delete a snapshot.")
         snap_name = snapshot['id']
 
-        sharefsid = self.helper._get_fsid_by_name(snapshot['share_name'])
+        sharefsid = self.helper.get_fsid_by_name(snapshot['share_name'])
 
         if sharefsid is None:
             LOG.warning(_LW('Delete snapshot share id %s fs has been '
@@ -283,6 +314,7 @@ class V3StorageConnection(driver.HuaweiBase):
             pool_name = pool_name.strip().strip('\n')
             capacity = self._get_capacity(pool_name, all_pool_info)
             disk_type = self._get_disk_type(pool_name, all_pool_info)
+
             if capacity:
                 pool = dict(
                     pool_name=pool_name,
@@ -303,6 +335,7 @@ class V3StorageConnection(driver.HuaweiBase):
                     huawei_smartpartition=[True, False],
                     huawei_sectorsize=[True, False],
                 )
+
                 if disk_type:
                     pool['huawei_disk_type'] = disk_type
 
@@ -330,7 +363,7 @@ class V3StorageConnection(driver.HuaweiBase):
         if not share:
             LOG.warning(_LW('The share was not found. Share name:%s'),
                         share_name)
-            fsid = self.helper._get_fsid_by_name(share_name)
+            fsid = self.helper.get_fsid_by_name(share_name)
             if fsid:
                 self.helper._delete_fs(fsid)
                 return
@@ -355,7 +388,7 @@ class V3StorageConnection(driver.HuaweiBase):
     def create_share_from_snapshot(self, share, snapshot,
                                    share_server=None):
         """Create a share from snapshot."""
-        share_fs_id = self.helper._get_fsid_by_name(snapshot['share_name'])
+        share_fs_id = self.helper.get_fsid_by_name(snapshot['share_name'])
         if not share_fs_id:
             err_msg = (_("The source filesystem of snapshot %s "
                          "does not exist.")
@@ -1229,6 +1262,12 @@ class V3StorageConnection(driver.HuaweiBase):
             LOG.error(err_msg)
             raise exception.InvalidInput(reason=err_msg)
 
+        if self.snapshot_support and self.replication_support:
+            err_msg = _('Config file invalid. SnapshotSupport and '
+                        'ReplicationSupport can not both be set to True.')
+            LOG.error(err_msg)
+            raise exception.BadConfigurationException(reason=err_msg)
+
     def check_service(self):
         running_status = self.helper._get_cifs_service_status()
         if running_status != constants.STATUS_SERVICE_RUNNING:
@@ -1668,3 +1707,147 @@ class V3StorageConnection(driver.HuaweiBase):
         ip = self._get_share_ip(share_server)
         location = self._get_location_path(share_name, share_proto, ip)
         return [location]
+
+    def create_replica(self, context, replica_list, new_replica,
+                       access_rules, replica_snapshots, share_server=None):
+        """Create a new share, and create a remote replication pair."""
+
+        active_replica = share_utils.get_active_replica(replica_list)
+
+        if (self.private_storage.get(active_replica['share_id'],
+                                     'replica_pair_id')):
+            # for huawei array, only one replication can be created for
+            # each active replica, so if a replica pair id is recorded for
+            # this share, it means active replica already has a replication,
+            # can not create anymore.
+            msg = _('Cannot create more than one replica for share %s.')
+            LOG.error(msg, active_replica['share_id'])
+            raise exception.ReplicationException(
+                reason=msg % active_replica['share_id'])
+
+        # Create a new share
+        new_share_name = new_replica['name']
+        location = self.create_share(new_replica, share_server)
+
+        # create a replication pair.
+        # replication pair only can be created by master node,
+        # so here is a remote call to trigger master node to
+        # start the creating progress.
+        try:
+            replica_pair_id = self.rpc_client.create_replica_pair(
+                context,
+                active_replica['host'],
+                local_share_info=active_replica,
+                remote_device_wwn=self.helper.get_array_wwn(),
+                remote_fs_id=self.helper.get_fsid_by_name(new_share_name)
+            )
+        except Exception:
+            LOG.exception(_LE('Failed to create a replication pair '
+                              'with host %s.'),
+                          active_replica['host'])
+            raise
+
+        self.private_storage.update(new_replica['share_id'],
+                                    {'replica_pair_id': replica_pair_id})
+
+        # Get the state of the new created replica
+        replica_state = self.replica_mgr.get_replica_state(replica_pair_id)
+        replica_ref = {
+            'export_locations': [location],
+            'replica_state': replica_state,
+            'access_rules_status': common_constants.STATUS_ACTIVE,
+        }
+
+        return replica_ref
+
+    def update_replica_state(self, context, replica_list, replica,
+                             access_rules, replica_snapshots,
+                             share_server=None):
+        replica_pair_id = self.private_storage.get(replica['share_id'],
+                                                   'replica_pair_id')
+        if replica_pair_id is None:
+            msg = _LE("No replication pair ID recorded for share %s.")
+            LOG.error(msg, replica['share_id'])
+            return common_constants.STATUS_ERROR
+
+        self.replica_mgr.update_replication_pair_state(replica_pair_id)
+        return self.replica_mgr.get_replica_state(replica_pair_id)
+
+    def promote_replica(self, context, replica_list, replica, access_rules,
+                        share_server=None):
+        replica_pair_id = self.private_storage.get(replica['share_id'],
+                                                   'replica_pair_id')
+        if replica_pair_id is None:
+            msg = _("No replication pair ID recorded for share %s.")
+            LOG.error(msg, replica['share_id'])
+            raise exception.ReplicationException(
+                reason=msg % replica['share_id'])
+
+        try:
+            self.replica_mgr.switch_over(replica_pair_id)
+        except Exception:
+            LOG.exception(_LE('Failed to promote replica %s.'),
+                          replica['id'])
+            raise
+
+        updated_new_active_access = True
+        cleared_old_active_access = True
+
+        try:
+            self.update_access(replica, access_rules, [], [], share_server)
+        except Exception:
+            LOG.warning(_LW('Failed to set access rules to '
+                            'new active replica %s.'),
+                        replica['id'])
+            updated_new_active_access = False
+
+        old_active_replica = share_utils.get_active_replica(replica_list)
+
+        try:
+            self.clear_access(old_active_replica, share_server)
+        except Exception:
+            LOG.warning(_LW("Failed to clear access rules from "
+                            "old active replica %s."),
+                        old_active_replica['id'])
+            cleared_old_active_access = False
+
+        new_active_update = {
+            'id': replica['id'],
+            'replica_state': common_constants.REPLICA_STATE_ACTIVE,
+        }
+        new_active_update['access_rules_status'] = (
+            common_constants.STATUS_ACTIVE if updated_new_active_access
+            else common_constants.STATUS_OUT_OF_SYNC)
+
+        # get replica state for new secondary after switch over
+        replica_state = self.replica_mgr.get_replica_state(replica_pair_id)
+
+        old_active_update = {
+            'id': old_active_replica['id'],
+            'replica_state': replica_state,
+        }
+        old_active_update['access_rules_status'] = (
+            common_constants.STATUS_OUT_OF_SYNC if cleared_old_active_access
+            else common_constants.STATUS_ACTIVE)
+
+        return [new_active_update, old_active_update]
+
+    def delete_replica(self, context, replica_list, replica_snapshots,
+                       replica, share_server=None):
+        replica_pair_id = self.private_storage.get(replica['share_id'],
+                                                   'replica_pair_id')
+        if replica_pair_id is None:
+            msg = _LW("No replication pair ID recorded for share %(share)s. "
+                      "Continue to delete replica %(replica)s.")
+            LOG.warning(msg, {'share': replica['share_id'],
+                              'replica': replica['id']})
+        else:
+            self.replica_mgr.delete_replication_pair(replica_pair_id)
+            self.private_storage.delete(replica['share_id'])
+
+        try:
+            self.delete_share(replica, share_server)
+        except Exception:
+            LOG.exception(_LE('Failed to delete replica %s.'),
+                          replica['id'])
+            raise

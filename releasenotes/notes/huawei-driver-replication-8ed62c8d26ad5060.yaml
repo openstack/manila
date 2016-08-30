@@ -1,0 +1,10 @@
+---
+features:
+  - Huawei driver now supports replication. It reports a replication type
+    'dr'(Disaster Recovery), so "replication_type=dr" can be used in the
+    share type extra specs to schedule shares to the Huawei driver when
+    configured for replication.
+  - The huawei driver now supports turning off snapshot support.
+issues:
+  - When snapshot support is turned on in the Huawei driver, replication
+    cannot be used.
