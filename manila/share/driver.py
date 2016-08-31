@@ -18,6 +18,7 @@ Drivers for shares.
 
 """
 
+import six
 import time
 
 from oslo_config import cfg
@@ -77,7 +78,7 @@ share_opts = [
              "Items should be names (not including any path)."),
     cfg.StrOpt(
         'share_mount_template',
-        default='mount -vt %(proto)s %(export)s %(path)s',
+        default='mount -vt %(proto)s %(options)s %(export)s %(path)s',
         help="The template for mounting shares for this backend. Must specify "
              "the executable with all necessary parameters for the protocol "
              "supported. 'proto' template element may not be required if "
@@ -91,6 +92,16 @@ share_opts = [
              "specify the executable with all necessary parameters for the "
              "protocol supported. 'path' template element is required. It is "
              "advisable to separate different commands per backend."),
+    cfg.DictOpt(
+        'protocol_access_mapping',
+        default={
+            'ip': ['nfs'],
+            'user': ['cifs'],
+        },
+        help="Protocol access mapping for this backend. Should be a "
+             "dictionary comprised of "
+             "{'access_type1': ['share_proto1', 'share_proto2'],"
+             " 'access_type2': ['share_proto2', 'share_proto3']}."),
     cfg.BoolOpt(
         'migration_readonly_rules_support',
         default=True,
@@ -324,9 +335,8 @@ class ShareDriver(object):
         .. note::
             Is called to test compatibility with destination backend.
 
-        Based on destination_driver_migration_info, driver should check if it
-        is compatible with destination backend so optimized migration can
-        proceed.
+        Driver should check if it is compatible with destination backend so
+        driver-assisted migration can proceed.
 
         :param context: The 'context.RequestContext' object for the request.
         :param source_share: Reference to the share to be migrated.
@@ -336,19 +346,24 @@ class ShareDriver(object):
         :param destination_share_server: Destination Share server model or
             None.
         :return: A dictionary containing values indicating if destination
-            backend is compatible and if share can remain writable during
-            migration.
+            backend is compatible, if share can remain writable during
+            migration, if it can preserve all file metadata and if it can
+            perform migration of given share non-disruptively.
 
             Example::
 
             {
                 'compatible': True,
                 'writable': True,
+                'preserve_metadata': True,
+                'nondisruptive': True,
             }
         """
         return {
             'compatible': False,
             'writable': False,
+            'preserve_metadata': False,
+            'nondisruptive': False,
         }
 
     def migration_start(
@@ -360,7 +375,7 @@ class ShareDriver(object):
            Is called in source share's backend to start migration.
 
         Driver should implement this method if willing to perform migration
-        in an optimized way, useful for when source share's backend driver
+        in a driver-assisted way, useful for when source share's backend driver
         is compatible with destination backend driver. This method should
         start the migration procedure in the backend and end. Following steps
         should be done in 'migration_continue'.
@@ -465,7 +480,7 @@ class ShareDriver(object):
         """
         raise NotImplementedError()
 
-    def migration_get_info(self, context, share, share_server=None):
+    def connection_get_info(self, context, share, share_server=None):
         """Is called to provide necessary generic migration logic.
 
         :param context: The 'context.RequestContext' object for the request.
@@ -478,8 +493,29 @@ class ShareDriver(object):
         unmount_template = self._get_unmount_command(context, share,
                                                      share_server)
 
-        return {'mount': mount_template,
-                'unmount': unmount_template}
+        access_mapping = self._get_access_mapping(context, share, share_server)
+
+        info = {
+            'mount': mount_template,
+            'unmount': unmount_template,
+            'access_mapping': access_mapping,
+        }
+
+        LOG.debug("Migration info obtained for share %(share_id)s: %(info)s.",
+                  {'share_id': share['id'], 'info': six.text_type(info)})
+
+        return info
+
+    def _get_access_mapping(self, context, share, share_server):
+
+        mapping = self.configuration.safe_get('protocol_access_mapping') or {}
+        result = {}
+        share_proto = share['share_proto'].lower()
+        for access_type, protocols in mapping.items():
+            if share_proto in [y.lower() for y in protocols]:
+                result[access_type] = result.get(access_type, [])
+                result[access_type].append(share_proto)
+        return result
 
     def _get_mount_command(self, context, share_instance, share_server=None):
         """Is called to delegate mounting share logic."""
@@ -488,9 +524,12 @@ class ShareDriver(object):
 
         mount_export = self._get_mount_export(share_instance, share_server)
 
-        format_template = {'proto': share_instance['share_proto'].lower(),
-                           'export': mount_export,
-                           'path': '%(path)s'}
+        format_template = {
+            'proto': share_instance['share_proto'].lower(),
+            'export': mount_export,
+            'path': '%(path)s',
+            'options': '%(options)s',
+        }
 
         return mount_template % format_template
 

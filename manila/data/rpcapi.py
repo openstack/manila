@@ -45,7 +45,7 @@ class DataAPI(object):
 
     def migration_start(self, context, share_id, ignore_list,
                         share_instance_id, dest_share_instance_id,
-                        migration_info_src, migration_info_dest, notify):
+                        connection_info_src, connection_info_dest):
         call_context = self.client.prepare(version='1.0')
         call_context.cast(
             context,
@@ -54,9 +54,8 @@ class DataAPI(object):
             ignore_list=ignore_list,
             share_instance_id=share_instance_id,
             dest_share_instance_id=dest_share_instance_id,
-            migration_info_src=migration_info_src,
-            migration_info_dest=migration_info_dest,
-            notify=notify)
+            connection_info_src=connection_info_src,
+            connection_info_dest=connection_info_dest)
 
     def data_copy_cancel(self, context, share_id):
         call_context = self.client.prepare(version='1.0')

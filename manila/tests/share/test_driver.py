@@ -503,23 +503,33 @@ class ShareDriverTestCase(test.TestCase):
                           None, None, None, None, None)
 
     @ddt.data(True, False)
-    def test_migration_get_info(self, admin):
+    def test_connection_get_info(self, admin):
 
-        expected = {'mount': 'mount -vt fake_proto /fake/fake_id %(path)s',
-                    'unmount': 'umount -v %(path)s'}
-        fake_share = {'id': 'fake_id',
-                      'share_proto': 'fake_proto',
-                      'export_locations': [{'path': '/fake/fake_id',
-                                            'is_admin_only': admin}]}
+        expected = {
+            'mount': 'mount -vt nfs %(options)s /fake/fake_id %(path)s',
+            'unmount': 'umount -v %(path)s',
+            'access_mapping': {
+                'ip': ['nfs']
+            }
+        }
+
+        fake_share = {
+            'id': 'fake_id',
+            'share_proto': 'nfs',
+            'export_locations': [{
+                'path': '/fake/fake_id',
+                'is_admin_only': admin
+            }]
+        }
 
         driver.CONF.set_default('driver_handles_share_servers', False)
         share_driver = driver.ShareDriver(False)
         share_driver.configuration = configuration.Configuration(None)
 
-        migration_info = share_driver.migration_get_info(
+        connection_info = share_driver.connection_get_info(
             None, fake_share, "fake_server")
 
-        self.assertEqual(expected, migration_info)
+        self.assertEqual(expected, connection_info)
 
     def test_migration_check_compatibility(self):
 
@@ -529,6 +539,8 @@ class ShareDriverTestCase(test.TestCase):
         expected = {
             'compatible': False,
             'writable': False,
+            'preserve_metadata': False,
+            'nondisruptive': False,
         }
 
         result = share_driver.migration_check_compatibility(

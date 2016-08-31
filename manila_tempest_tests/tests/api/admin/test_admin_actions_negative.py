@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 from tempest import config
 from tempest.lib import exceptions as lib_exc
 from tempest import test
@@ -124,20 +125,14 @@ class AdminActionsNegativeTest(base.BaseSharesMixedTest):
                           self.sh['id'])
 
     @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
-    @base.skip_if_microversion_lt("2.15")
-    def test_reset_task_state_empty(self):
-        self.assertRaises(
-            lib_exc.BadRequest, self.admin_client.reset_task_state,
-            self.sh['id'], None)
-
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
-    @base.skip_if_microversion_lt("2.15")
+    @base.skip_if_microversion_lt("2.22")
     def test_reset_task_state_invalid_state(self):
         self.assertRaises(
             lib_exc.BadRequest, self.admin_client.reset_task_state,
             self.sh['id'], 'fake_state')
 
 
+@ddt.ddt
 class AdminActionsAPIOnlyNegativeTest(base.BaseSharesMixedTest):
 
     @classmethod
@@ -153,7 +148,7 @@ class AdminActionsAPIOnlyNegativeTest(base.BaseSharesMixedTest):
                           self.member_client.list_share_instances)
 
     @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
-    @base.skip_if_microversion_lt("2.15")
+    @base.skip_if_microversion_lt("2.22")
     def test_reset_task_state_share_not_found(self):
         self.assertRaises(
             lib_exc.NotFound, self.admin_client.reset_task_state,
@@ -196,3 +191,20 @@ class AdminActionsAPIOnlyNegativeTest(base.BaseSharesMixedTest):
     def test_reset_nonexistent_snapshot_state(self):
         self.assertRaises(lib_exc.NotFound, self.admin_client.reset_state,
                           "fake", s_type="snapshots")
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @ddt.data('migrate_share', 'migration_complete', 'reset_task_state',
+              'migration_get_progress', 'migration_cancel')
+    def test_migration_API_invalid_microversion(self, method_name):
+        if method_name == 'migrate_share':
+            self.assertRaises(
+                lib_exc.NotFound, getattr(self.shares_v2_client, method_name),
+                'fake_share', 'fake_host', version='2.21')
+        elif method_name == 'reset_task_state':
+            self.assertRaises(
+                lib_exc.NotFound, getattr(self.shares_v2_client, method_name),
+                'fake_share', 'fake_task_state', version='2.21')
+        else:
+            self.assertRaises(
+                lib_exc.NotFound, getattr(self.shares_v2_client, method_name),
+                'fake_share', version='2.21')

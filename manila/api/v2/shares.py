@@ -13,13 +13,22 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_utils import strutils
+import six
+import webob
+from webob import exc
+
 from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila.api.v1 import share_manage
 from manila.api.v1 import share_unmanage
 from manila.api.v1 import shares
 from manila.api.views import share_accesses as share_access_views
+from manila.api.views import share_migration as share_migration_views
 from manila.api.views import shares as share_views
+from manila import db
+from manila import exception
+from manila.i18n import _
 from manila import share
 
 
@@ -36,6 +45,7 @@ class ShareController(shares.ShareMixin,
         super(self.__class__, self).__init__()
         self.share_api = share.API()
         self._access_view_builder = share_access_views.ViewBuilder()
+        self._migration_view_builder = share_migration_views.ViewBuilder()
 
     @wsgi.Controller.api_version("2.4")
     def create(self, req, body):
@@ -68,43 +78,132 @@ class ShareController(shares.ShareMixin,
     def share_force_delete(self, req, id, body):
         return self._force_delete(req, id, body)
 
-    @wsgi.Controller.api_version('2.5', '2.6', experimental=True)
-    @wsgi.action("os-migrate_share")
-    @wsgi.Controller.authorize("migration_start")
-    def migrate_share_legacy(self, req, id, body):
-        return self._migration_start(req, id, body)
-
-    @wsgi.Controller.api_version('2.7', '2.14', experimental=True)
-    @wsgi.action("migrate_share")
-    @wsgi.Controller.authorize("migration_start")
-    def migrate_share(self, req, id, body):
-        return self._migration_start(req, id, body)
-
-    @wsgi.Controller.api_version('2.15', experimental=True)
+    @wsgi.Controller.api_version('2.22', experimental=True)
     @wsgi.action("migration_start")
     @wsgi.Controller.authorize
     def migration_start(self, req, id, body):
-        return self._migration_start(req, id, body, check_notify=True)
+        """Migrate a share to the specified host."""
+        context = req.environ['manila.context']
+        try:
+            share = self.share_api.get(context, id)
+        except exception.NotFound:
+            msg = _("Share %s not found.") % id
+            raise exc.HTTPNotFound(explanation=msg)
+        params = body.get('migration_start')
 
-    @wsgi.Controller.api_version('2.15', experimental=True)
+        if not params:
+            raise exc.HTTPBadRequest(explanation=_("Request is missing body."))
+
+        try:
+            host = params['host']
+        except KeyError:
+            raise exc.HTTPBadRequest(explanation=_("Must specify 'host'."))
+
+        force_host_assisted_migration = params.get(
+            'force_host_assisted_migration', False)
+        try:
+            force_host_assisted_migration = strutils.bool_from_string(
+                force_host_assisted_migration, strict=True)
+        except ValueError:
+            msg = _("Invalid value %s for 'force_host_assisted_migration'. "
+                    "Expecting a boolean.") % force_host_assisted_migration
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        new_share_network = None
+
+        preserve_metadata = params.get('preserve_metadata', True)
+        try:
+            preserve_metadata = strutils.bool_from_string(
+                preserve_metadata, strict=True)
+        except ValueError:
+            msg = _("Invalid value %s for 'preserve_metadata'. "
+                    "Expecting a boolean.") % preserve_metadata
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        writable = params.get('writable', True)
+        try:
+            writable = strutils.bool_from_string(writable, strict=True)
+        except ValueError:
+            msg = _("Invalid value %s for 'writable'. "
+                    "Expecting a boolean.") % writable
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        nondisruptive = params.get('nondisruptive', False)
+        try:
+            nondisruptive = strutils.bool_from_string(
+                nondisruptive, strict=True)
+        except ValueError:
+            msg = _("Invalid value %s for 'nondisruptive'. "
+                    "Expecting a boolean.") % nondisruptive
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        new_share_network_id = params.get('new_share_network_id', None)
+        if new_share_network_id:
+            try:
+                new_share_network = db.share_network_get(
+                    context, new_share_network_id)
+            except exception.NotFound:
+                msg = _("Share network %s not "
+                        "found.") % new_share_network_id
+                raise exc.HTTPNotFound(explanation=msg)
+
+        try:
+            self.share_api.migration_start(
+                context, share, host, force_host_assisted_migration,
+                preserve_metadata, writable, nondisruptive,
+                new_share_network=new_share_network)
+        except exception.Conflict as e:
+            raise exc.HTTPConflict(explanation=six.text_type(e))
+
+        return webob.Response(status_int=202)
+
+    @wsgi.Controller.api_version('2.22', experimental=True)
     @wsgi.action("migration_complete")
     @wsgi.Controller.authorize
     def migration_complete(self, req, id, body):
-        return self._migration_complete(req, id, body)
+        """Invokes 2nd phase of share migration."""
+        context = req.environ['manila.context']
+        try:
+            share = self.share_api.get(context, id)
+        except exception.NotFound:
+            msg = _("Share %s not found.") % id
+            raise exc.HTTPNotFound(explanation=msg)
+        self.share_api.migration_complete(context, share)
+        return webob.Response(status_int=202)
 
-    @wsgi.Controller.api_version('2.15', experimental=True)
+    @wsgi.Controller.api_version('2.22', experimental=True)
     @wsgi.action("migration_cancel")
     @wsgi.Controller.authorize
     def migration_cancel(self, req, id, body):
-        return self._migration_cancel(req, id, body)
+        """Attempts to cancel share migration."""
+        context = req.environ['manila.context']
+        try:
+            share = self.share_api.get(context, id)
+        except exception.NotFound:
+            msg = _("Share %s not found.") % id
+            raise exc.HTTPNotFound(explanation=msg)
+        self.share_api.migration_cancel(context, share)
+        return webob.Response(status_int=202)
 
-    @wsgi.Controller.api_version('2.15', experimental=True)
+    @wsgi.Controller.api_version('2.22', experimental=True)
     @wsgi.action("migration_get_progress")
     @wsgi.Controller.authorize
     def migration_get_progress(self, req, id, body):
-        return self._migration_get_progress(req, id, body)
+        """Retrieve share migration progress for a given share."""
+        context = req.environ['manila.context']
+        try:
+            share = self.share_api.get(context, id)
+        except exception.NotFound:
+            msg = _("Share %s not found.") % id
+            raise exc.HTTPNotFound(explanation=msg)
+        result = self.share_api.migration_get_progress(context, share)
 
-    @wsgi.Controller.api_version('2.15', experimental=True)
+        # refresh share model
+        share = self.share_api.get(context, id)
+
+        return self._migration_view_builder.get_progress(req, share, result)
+
+    @wsgi.Controller.api_version('2.22', experimental=True)
     @wsgi.action("reset_task_state")
     @wsgi.Controller.authorize
     def reset_task_state(self, req, id, body):

@@ -570,8 +570,7 @@ class API(base.Base):
                 'snapshot_support',
                 share_type['extra_specs']['snapshot_support']),
             'share_proto': kwargs.get('share_proto', share.get('share_proto')),
-            'share_type_id': kwargs.get('share_type_id',
-                                        share.get('share_type_id')),
+            'share_type_id': share_type['id'],
             'is_public': kwargs.get('is_public', share.get('is_public')),
             'consistency_group_id': kwargs.get(
                 'consistency_group_id', share.get('consistency_group_id')),
@@ -874,8 +873,10 @@ class API(base.Base):
 
         return snapshot
 
-    def migration_start(self, context, share, dest_host, force_host_copy,
-                        notify=True):
+    def migration_start(self, context, share, dest_host,
+                        force_host_assisted_migration, preserve_metadata=True,
+                        writable=True, nondisruptive=False,
+                        new_share_network=None):
         """Migrates share to a new host."""
 
         share_instance = share.instance
@@ -925,31 +926,26 @@ class API(base.Base):
         if share_type_id:
             share_type = share_types.get_share_type(context, share_type_id)
 
+        new_share_network_id = (new_share_network['id'] if new_share_network
+                                else share_instance['share_network_id'])
+
         request_spec = self._get_request_spec_dict(
             share,
             share_type,
-            availability_zone_id=service['availability_zone_id'])
+            availability_zone_id=service['availability_zone_id'],
+            share_network_id=new_share_network_id)
 
-        # NOTE(ganso): there is the possibility of an error between here and
-        # manager code, which will cause the share to be stuck in
-        # MIGRATION_STARTING status. According to Liberty Midcycle discussion,
-        # this kind of scenario should not be cleaned up, the administrator
-        # should be issued to clear this status before a new migration request
-        # is made
-        self.update(
-            context, share,
+        self.db.share_update(
+            context, share['id'],
             {'task_state': constants.TASK_STATE_MIGRATION_STARTING})
 
-        try:
-            self.scheduler_rpcapi.migrate_share_to_host(
-                context, share['id'], dest_host, force_host_copy, notify,
-                request_spec)
-        except Exception:
-            msg = _('Destination host %(dest_host)s did not pass validation '
-                    'for migration of share %(share)s.') % {
-                'dest_host': dest_host,
-                'share': share['id']}
-            raise exception.InvalidHost(reason=msg)
+        self.db.share_instance_update(context, share_instance['id'],
+                                      {'status': constants.STATUS_MIGRATING})
+
+        self.scheduler_rpcapi.migrate_share_to_host(
+            context, share['id'], dest_host, force_host_assisted_migration,
+            preserve_metadata, writable, nondisruptive, new_share_network_id,
+            request_spec)
 
     def migration_complete(self, context, share):
 
@@ -1042,9 +1038,8 @@ class API(base.Base):
                     raise exception.ShareMigrationError(reason=msg)
             else:
                 result = None
-
         else:
-            result = None
+            result = self._migration_get_progress_state(share)
 
         if not (result and result.get('total_progress') is not None):
             msg = self._migration_validate_error_message(share)
@@ -1055,6 +1050,27 @@ class API(base.Base):
             raise exception.InvalidShare(reason=msg)
 
         return result
+
+    def _migration_get_progress_state(self, share):
+
+        task_state = share['task_state']
+        if task_state in (constants.TASK_STATE_MIGRATION_SUCCESS,
+                          constants.TASK_STATE_DATA_COPYING_ERROR,
+                          constants.TASK_STATE_MIGRATION_CANCELLED,
+                          constants.TASK_STATE_MIGRATION_COMPLETING,
+                          constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE,
+                          constants.TASK_STATE_DATA_COPYING_COMPLETED,
+                          constants.TASK_STATE_DATA_COPYING_COMPLETING,
+                          constants.TASK_STATE_DATA_COPYING_CANCELLED,
+                          constants.TASK_STATE_MIGRATION_ERROR):
+            return {'total_progress': 100}
+        elif task_state in (constants.TASK_STATE_MIGRATION_STARTING,
+                            constants.TASK_STATE_MIGRATION_DRIVER_STARTING,
+                            constants.TASK_STATE_DATA_COPYING_STARTING,
+                            constants.TASK_STATE_MIGRATION_IN_PROGRESS):
+            return {'total_progress': 0}
+        else:
+            return None
 
     def _migration_validate_error_message(self, share):
 

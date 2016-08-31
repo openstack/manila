@@ -125,9 +125,10 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         data = ssh_client.exec_command("sudo cat /mnt/t1")
         return data.rstrip()
 
-    def migrate_share(self, share_id, dest_host):
-        share = self._migrate_share(share_id, dest_host,
+    def migrate_share(self, share_id, dest_host, status):
+        share = self._migrate_share(share_id, dest_host, status,
                                     self.shares_admin_v2_client)
+        share = self._migration_complete(share['id'], dest_host)
         return share
 
     def create_share_network(self):
@@ -246,12 +247,13 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
     @test.services('compute', 'network')
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
-    @testtools.skipUnless(CONF.share.run_migration_tests,
+    @testtools.skipUnless(CONF.share.run_host_assisted_migration_tests or
+                          CONF.share.run_driver_assisted_migration_tests,
                           "Share migration tests are disabled.")
     def test_migration_files(self):
 
-        if self.protocol == "CIFS":
-            raise self.skipException("Test for CIFS protocol not supported "
+        if self.protocol != "NFS":
+            raise self.skipException("Only NFS protocol supported "
                                      "at this moment.")
 
         pools = self.shares_admin_v2_client.list_pools(detail=True)['pools']
@@ -276,18 +278,20 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
         dest_pool = dest_pool['name']
 
-        self.allow_access_ip(self.share['id'], instance=instance,
-                             cleanup=False)
+        self.allow_access_ip(
+            self.share['id'], instance=instance, cleanup=False)
         ssh_client = self.init_ssh(instance)
 
         if utils.is_microversion_lt(CONF.share.max_api_microversion, "2.9"):
-            locations = self.share['export_locations']
+            exports = self.share['export_locations']
         else:
             exports = self.shares_v2_client.list_share_export_locations(
                 self.share['id'])
-            locations = [x['path'] for x in exports]
+            self.assertNotEmpty(exports)
+            exports = [x['path'] for x in exports]
+            self.assertNotEmpty(exports)
 
-        self.mount_share(locations[0], ssh_client)
+        self.mount_share(exports[0], ssh_client)
 
         ssh_client.exec_command("mkdir -p /mnt/f1")
         ssh_client.exec_command("mkdir -p /mnt/f2")
@@ -310,22 +314,27 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
         self.umount_share(ssh_client)
 
-        self.share = self.migrate_share(self.share['id'], dest_pool)
+        task_state = (constants.TASK_STATE_DATA_COPYING_COMPLETED,
+                      constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE)
+
+        self.share = self.migrate_share(
+            self.share['id'], dest_pool, task_state)
+
         if utils.is_microversion_lt(CONF.share.max_api_microversion, "2.9"):
-            new_locations = self.share['export_locations']
+            new_exports = self.share['export_locations']
+            self.assertNotEmpty(new_exports)
         else:
             new_exports = self.shares_v2_client.list_share_export_locations(
                 self.share['id'])
-            new_locations = [x['path'] for x in new_exports]
+            self.assertNotEmpty(new_exports)
+            new_exports = [x['path'] for x in new_exports]
+            self.assertNotEmpty(new_exports)
 
         self.assertEqual(dest_pool, self.share['host'])
-        locations.sort()
-        new_locations.sort()
-        self.assertNotEqual(locations, new_locations)
         self.assertEqual(constants.TASK_STATE_MIGRATION_SUCCESS,
                          self.share['task_state'])
 
-        self.mount_share(new_locations[0], ssh_client)
+        self.mount_share(new_exports[0], ssh_client)
 
         output = ssh_client.exec_command("ls -lRA --ignore=lost+found /mnt")
 

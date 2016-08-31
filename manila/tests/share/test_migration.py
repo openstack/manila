@@ -132,12 +132,11 @@ class ShareMigrationHelperTestCase(test.TestCase):
 
         # run
         self.helper.create_instance_and_wait(
-            self.share, share_instance_creating, host, 'fake_az_id')
+            self.share, host, 'fake_net_id', 'fake_az_id')
 
         # asserts
         share_api.API.create_instance.assert_called_once_with(
-            self.context, self.share, self.share_instance['share_network_id'],
-            'fake_host', 'fake_az_id')
+            self.context, self.share, 'fake_net_id', 'fake_host', 'fake_az_id')
 
         db.share_instance_get.assert_has_calls([
             mock.call(self.context, share_instance_creating['id'],
@@ -163,14 +162,14 @@ class ShareMigrationHelperTestCase(test.TestCase):
                          mock.Mock(return_value=share_instance_error))
 
         # run
-        self.assertRaises(exception.ShareMigrationFailed,
-                          self.helper.create_instance_and_wait,
-                          self.share, self.share_instance, host, 'fake_az_id')
+        self.assertRaises(
+            exception.ShareMigrationFailed,
+            self.helper.create_instance_and_wait, self.share,
+            host, 'fake_net_id', 'fake_az_id')
 
         # asserts
         share_api.API.create_instance.assert_called_once_with(
-            self.context, self.share, self.share_instance['share_network_id'],
-            'fake_host', 'fake_az_id')
+            self.context, self.share, 'fake_net_id', 'fake_host', 'fake_az_id')
 
         db.share_instance_get.assert_called_once_with(
             self.context, share_instance_error['id'], with_share_data=True)
@@ -202,14 +201,14 @@ class ShareMigrationHelperTestCase(test.TestCase):
         self.mock_object(time, 'time', mock.Mock(side_effect=[now, timeout]))
 
         # run
-        self.assertRaises(exception.ShareMigrationFailed,
-                          self.helper.create_instance_and_wait,
-                          self.share, self.share_instance, host, 'fake_az_id')
+        self.assertRaises(
+            exception.ShareMigrationFailed,
+            self.helper.create_instance_and_wait, self.share,
+            host, 'fake_net_id', 'fake_az_id')
 
         # asserts
         share_api.API.create_instance.assert_called_once_with(
-            self.context, self.share, self.share_instance['share_network_id'],
-            'fake_host', 'fake_az_id')
+            self.context, self.share, 'fake_net_id', 'fake_host', 'fake_az_id')
 
         db.share_instance_get.assert_called_once_with(
             self.context, share_instance_creating['id'], with_share_data=True)

@@ -26,7 +26,7 @@ from manila_tempest_tests import utils
 CONF = config.CONF
 
 
-class MigrationNFSTest(base.BaseSharesAdminTest):
+class MigrationTest(base.BaseSharesAdminTest):
     """Tests Share Migration.
 
     Tests share migration in multi-backend environment.
@@ -36,8 +36,12 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
 
     @classmethod
     def resource_setup(cls):
-        super(MigrationNFSTest, cls).resource_setup()
-        if not CONF.share.run_migration_tests:
+        super(MigrationTest, cls).resource_setup()
+        if cls.protocol not in CONF.share.enable_protocols:
+            message = "%s tests are disabled." % cls.protocol
+            raise cls.skipException(message)
+        if not (CONF.share.run_host_assisted_migration_tests or
+                CONF.share.run_driver_assisted_migration_tests):
             raise cls.skipException("Share migration tests are disabled.")
 
         pools = cls.shares_client.list_pools(detail=True)['pools']
@@ -62,56 +66,112 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
         cls.dest_pool = dest_pool['name']
 
     @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
-    @base.skip_if_microversion_lt("2.15")
+    @base.skip_if_microversion_lt("2.22")
     def test_migration_cancel_invalid(self):
         self.assertRaises(
             lib_exc.BadRequest, self.shares_v2_client.migration_cancel,
             self.share['id'])
 
     @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
-    @base.skip_if_microversion_lt("2.15")
-    def test_migration_get_progress_invalid(self):
+    @base.skip_if_microversion_lt("2.22")
+    def test_migration_get_progress_None(self):
+        self.shares_v2_client.reset_task_state(self.share["id"], None)
+        self.shares_v2_client.wait_for_share_status(
+            self.share["id"], None, 'task_state')
         self.assertRaises(
             lib_exc.BadRequest, self.shares_v2_client.migration_get_progress,
             self.share['id'])
 
     @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
-    @base.skip_if_microversion_lt("2.15")
+    @base.skip_if_microversion_lt("2.22")
     def test_migration_complete_invalid(self):
         self.assertRaises(
             lib_exc.BadRequest, self.shares_v2_client.migration_complete,
             self.share['id'])
 
     @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
-    @base.skip_if_microversion_lt("2.5")
+    @base.skip_if_microversion_lt("2.22")
+    def test_migration_cancel_not_found(self):
+        self.assertRaises(
+            lib_exc.NotFound, self.shares_v2_client.migration_cancel,
+            'invalid_share_id')
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @base.skip_if_microversion_lt("2.22")
+    def test_migration_get_progress_not_found(self):
+        self.assertRaises(
+            lib_exc.NotFound, self.shares_v2_client.migration_get_progress,
+            'invalid_share_id')
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @base.skip_if_microversion_lt("2.22")
+    def test_migration_complete_not_found(self):
+        self.assertRaises(
+            lib_exc.NotFound, self.shares_v2_client.migration_complete,
+            'invalid_share_id')
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @base.skip_if_microversion_lt("2.22")
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
-    def test_migrate_share_with_snapshot_v2_5(self):
+    def test_migrate_share_with_snapshot(self):
         snap = self.create_snapshot_wait_for_active(self.share['id'])
         self.assertRaises(
             lib_exc.BadRequest, self.shares_v2_client.migrate_share,
-            self.share['id'], self.dest_pool, True, version='2.5')
+            self.share['id'], self.dest_pool)
         self.shares_client.delete_snapshot(snap['id'])
         self.shares_client.wait_for_resource_deletion(snapshot_id=snap["id"])
 
     @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
-    @base.skip_if_microversion_lt("2.5")
-    def test_migrate_share_same_host_v2_5(self):
+    @base.skip_if_microversion_lt("2.22")
+    def test_migrate_share_same_host(self):
         self.assertRaises(
             lib_exc.BadRequest, self.shares_v2_client.migrate_share,
-            self.share['id'], self.share['host'], True, version='2.5')
+            self.share['id'], self.share['host'])
 
     @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
-    @base.skip_if_microversion_lt("2.5")
-    def test_migrate_share_not_available_v2_5(self):
-        self.shares_client.reset_state(
-            self.share['id'], constants.STATUS_ERROR)
+    @base.skip_if_microversion_lt("2.22")
+    def test_migrate_share_host_invalid(self):
+        self.assertRaises(
+            lib_exc.NotFound, self.shares_v2_client.migrate_share,
+            self.share['id'], 'invalid_host')
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @base.skip_if_microversion_lt("2.22")
+    def test_migrate_share_host_assisted_not_allowed(self):
+        self.shares_v2_client.migrate_share(
+            self.share['id'], self.dest_pool,
+            force_host_assisted_migration=True, writable=True,
+            preserve_metadata=True)
+        self.shares_v2_client.wait_for_migration_status(
+            self.share['id'], self.dest_pool, 'migration_error')
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @base.skip_if_microversion_lt("2.22")
+    def test_migrate_share_not_found(self):
+        self.assertRaises(
+            lib_exc.NotFound, self.shares_v2_client.migrate_share,
+            'invalid_share_id', self.dest_pool)
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @base.skip_if_microversion_lt("2.22")
+    def test_migrate_share_not_available(self):
+        self.shares_client.reset_state(self.share['id'],
+                                       constants.STATUS_ERROR)
         self.shares_client.wait_for_share_status(self.share['id'],
                                                  constants.STATUS_ERROR)
         self.assertRaises(
             lib_exc.BadRequest, self.shares_v2_client.migrate_share,
-            self.share['id'], self.dest_pool, True, version='2.5')
+            self.share['id'], self.dest_pool)
         self.shares_client.reset_state(self.share['id'],
                                        constants.STATUS_AVAILABLE)
         self.shares_client.wait_for_share_status(self.share['id'],
                                                  constants.STATUS_AVAILABLE)
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @base.skip_if_microversion_lt("2.22")
+    def test_migrate_share_invalid_share_network(self):
+        self.assertRaises(
+            lib_exc.NotFound, self.shares_v2_client.migrate_share,
+            self.share['id'], self.dest_pool,
+            new_share_network_id='invalid_net_id')

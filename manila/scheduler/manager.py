@@ -144,30 +144,40 @@ class SchedulerManager(manager.Manager):
                                                  driver_options)
 
     def migrate_share_to_host(self, context, share_id, host,
-                              force_host_copy, notify, request_spec,
-                              filter_properties=None):
+                              force_host_assisted_migration, preserve_metadata,
+                              writable, nondisruptive, new_share_network_id,
+                              request_spec, filter_properties=None):
         """Ensure that the host exists and can accept the share."""
 
+        share_ref = db.share_get(context, share_id)
+
         def _migrate_share_set_error(self, context, ex, request_spec):
+            instance = next((x for x in share_ref.instances
+                             if x['status'] == constants.STATUS_MIGRATING),
+                            None)
+            if instance:
+                db.share_instance_update(
+                    context, instance['id'],
+                    {'status': constants.STATUS_AVAILABLE})
             self._set_share_state_and_notify(
                 'migrate_share_to_host',
                 {'task_state': constants.TASK_STATE_MIGRATION_ERROR},
                 context, ex, request_spec)
 
         try:
-            tgt_host = self.driver.host_passes_filters(context, host,
-                                                       request_spec,
-                                                       filter_properties)
+            tgt_host = self.driver.host_passes_filters(
+                context, host, request_spec, filter_properties)
 
         except Exception as ex:
             with excutils.save_and_reraise_exception():
                 _migrate_share_set_error(self, context, ex, request_spec)
         else:
-            share_ref = db.share_get(context, share_id)
+
             try:
                 share_rpcapi.ShareAPI().migration_start(
-                    context, share_ref, tgt_host.host, force_host_copy,
-                    notify)
+                    context, share_ref, tgt_host.host,
+                    force_host_assisted_migration, preserve_metadata, writable,
+                    nondisruptive, new_share_network_id)
             except Exception as ex:
                 with excutils.save_and_reraise_exception():
                     _migrate_share_set_error(self, context, ex, request_spec)

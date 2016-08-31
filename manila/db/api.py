@@ -391,6 +391,12 @@ def share_access_create(context, values):
     return IMPL.share_access_create(context, values)
 
 
+def share_instance_access_create(context, values, share_instance_id):
+    """Allow access to share instance."""
+    return IMPL.share_instance_access_create(
+        context, values, share_instance_id)
+
+
 def share_instance_access_copy(context, share_id, instance_id):
     """Maps the existing access rules for the share to the instance in the DB.
 

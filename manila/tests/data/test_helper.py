@@ -14,6 +14,7 @@
 #    under the License.
 
 import os
+import six
 
 import ddt
 import mock
@@ -40,44 +41,108 @@ class DataServiceHelperTestCase(test.TestCase):
             share_id=self.share['id'],
             status=constants.STATUS_AVAILABLE)
         self.context = context.get_admin_context()
+        self.share_instance = db.share_instance_get(
+            self.context, self.share_instance['id'], with_share_data=True)
         self.access = db_utils.create_access(share_id=self.share['id'])
         self.helper = data_copy_helper.DataServiceHelper(
             self.context, db, self.share)
 
-    def test_allow_data_access(self):
+    @ddt.data(True, False)
+    def test_allow_access_to_data_service(self, allow_dest_instance):
 
-        access_create = {'access_type': self.access['access_type'],
-                         'access_to': self.access['access_to'],
-                         'access_level': self.access['access_level'],
-                         'share_id': self.access['share_id']}
+        access = db_utils.create_access(share_id=self.share['id'])
+        info_src = {
+            'access_mapping': {
+                'ip': ['nfs'],
+                'user': ['cifs', 'nfs'],
+            }
+        }
+        info_dest = {
+            'access_mapping': {
+                'ip': ['nfs', 'cifs'],
+                'user': ['cifs'],
+            }
+        }
+        if allow_dest_instance:
+            mapping = {'ip': ['nfs'], 'user': ['cifs']}
+        else:
+            mapping = info_src['access_mapping']
 
-        # mocks
+        fake_access = {
+            'access_to': 'fake_ip',
+            'access_level': constants.ACCESS_LEVEL_RW,
+            'access_type': 'ip',
+        }
+        access_values = fake_access
+        access_values['share_id'] = self.share['id']
+
+        self.mock_object(
+            self.helper, '_get_access_entries_according_to_mapping',
+            mock.Mock(return_value=[fake_access]))
         self.mock_object(
             self.helper.db, 'share_access_get_all_by_type_and_access',
-            mock.Mock(return_value=[self.access]))
-
+            mock.Mock(return_value=[access]))
         self.mock_object(self.helper, '_change_data_access_to_instance')
+        self.mock_object(self.helper.db, 'share_instance_access_create',
+                         mock.Mock(return_value=access))
 
-        self.mock_object(self.helper.db, 'share_access_create',
-                         mock.Mock(return_value=self.access))
+        if allow_dest_instance:
+            result = self.helper.allow_access_to_data_service(
+                self.share_instance, info_src, self.share_instance, info_dest)
+        else:
+            result = self.helper.allow_access_to_data_service(
+                self.share_instance, info_src)
 
-        # run
-        self.helper._allow_data_access(
-            self.access, self.share_instance['id'], self.share_instance['id'])
+        self.assertEqual([access], result)
 
-        # asserts
-        self.helper.db.share_access_get_all_by_type_and_access.\
+        (self.helper._get_access_entries_according_to_mapping.
+         assert_called_once_with(mapping))
+        (self.helper.db.share_access_get_all_by_type_and_access.
             assert_called_once_with(
-                self.context, self.share['id'], self.access['access_type'],
-                self.access['access_to'])
-
-        self.helper.db.share_access_create.assert_called_once_with(
-            self.context, access_create)
-
+                self.context, self.share['id'], fake_access['access_type'],
+                fake_access['access_to']))
+        access_create_calls = [
+            mock.call(self.context, access_values, self.share_instance['id'])
+        ]
+        if allow_dest_instance:
+            access_create_calls.append(mock.call(
+                self.context, access_values, self.share_instance['id']))
+        self.helper.db.share_instance_access_create.assert_has_calls(
+            access_create_calls)
+        change_access_calls = [
+            mock.call(self.share_instance, access, allow=False),
+            mock.call(self.share_instance, access, allow=True),
+        ]
+        if allow_dest_instance:
+            change_access_calls.append(
+                mock.call(self.share_instance, access, allow=True))
         self.helper._change_data_access_to_instance.assert_has_calls(
-            [mock.call(self.share_instance['id'], self.access, allow=False),
-             mock.call(self.share_instance['id'], self.access, allow=True),
-             mock.call(self.share_instance['id'], self.access, allow=True)])
+            change_access_calls)
+
+    @ddt.data({'ip': []}, {'cert': []}, {'user': []}, {'cephx': []}, {'x': []})
+    def test__get_access_entries_according_to_mapping(self, mapping):
+
+        data_copy_helper.CONF.data_node_access_cert = None
+        data_copy_helper.CONF.data_node_access_ip = 'fake'
+        data_copy_helper.CONF.data_node_access_admin_user = 'fake'
+        expected = [{
+            'access_type': six.next(six.iteritems(mapping))[0],
+            'access_level': constants.ACCESS_LEVEL_RW,
+            'access_to': 'fake',
+        }]
+
+        exists = [x for x in mapping if x in ('ip', 'user')]
+
+        if exists:
+            result = self.helper._get_access_entries_according_to_mapping(
+                mapping)
+        else:
+            self.assertRaises(
+                exception.ShareDataCopyFailed,
+                self.helper._get_access_entries_according_to_mapping, mapping)
+
+        if exists:
+            self.assertEqual(expected, result)
 
     def test_deny_access_to_data_service(self):
 
@@ -86,7 +151,7 @@ class DataServiceHelperTestCase(test.TestCase):
 
         # run
         self.helper.deny_access_to_data_service(
-            self.access, self.share_instance['id'])
+            [self.access], self.share_instance['id'])
 
         # asserts
         self.helper._change_data_access_to_instance.\
@@ -103,11 +168,12 @@ class DataServiceHelperTestCase(test.TestCase):
         self.mock_object(data_copy_helper.LOG, 'warning')
 
         # run
-        self.helper.cleanup_data_access(self.access, self.share_instance['id'])
+        self.helper.cleanup_data_access([self.access],
+                                        self.share_instance['id'])
 
         # asserts
         self.helper.deny_access_to_data_service.assert_called_once_with(
-            self.access, self.share_instance['id'])
+            [self.access], self.share_instance['id'])
 
         if exc:
             self.assertTrue(data_copy_helper.LOG.warning.called)
@@ -164,9 +230,6 @@ class DataServiceHelperTestCase(test.TestCase):
         # mocks
         self.mock_object(self.helper.db, 'share_instance_update_access_status')
 
-        self.mock_object(self.helper.db, 'share_instance_get',
-                         mock.Mock(return_value=self.share_instance))
-
         if allow:
             self.mock_object(share_rpc.ShareAPI, 'allow_access')
         else:
@@ -176,15 +239,12 @@ class DataServiceHelperTestCase(test.TestCase):
 
         # run
         self.helper._change_data_access_to_instance(
-            self.share_instance['id'], self.access, allow=allow)
+            self.share_instance, self.access, allow=allow)
 
         # asserts
         self.helper.db.share_instance_update_access_status.\
             assert_called_once_with(self.context, self.share_instance['id'],
                                     constants.STATUS_OUT_OF_SYNC)
-
-        self.helper.db.share_instance_get.assert_called_once_with(
-            self.context, self.share_instance['id'], with_share_data=True)
 
         if allow:
             share_rpc.ShareAPI.allow_access.assert_called_once_with(
@@ -196,38 +256,6 @@ class DataServiceHelperTestCase(test.TestCase):
         utils.wait_for_access_update.assert_called_once_with(
             self.context, self.helper.db, self.share_instance,
             data_copy_helper.CONF.data_access_wait_access_rules_timeout)
-
-    @ddt.data({'proto': 'GLUSTERFS', 'conf': None},
-              {'proto': 'GLUSTERFS', 'conf': 'cert'},
-              {'proto': 'OTHERS', 'conf': None},
-              {'proto': 'OTHERS', 'conf': 'ip'})
-    @ddt.unpack
-    def test_allow_access_to_data_service(self, proto, conf):
-
-        share = db_utils.create_share(share_proto=proto)
-
-        access_allow = {'access_type': conf,
-                        'access_to': conf,
-                        'access_level': constants.ACCESS_LEVEL_RW}
-
-        data_copy_helper.CONF.set_default('data_node_access_cert', conf)
-        data_copy_helper.CONF.set_default('data_node_access_ip', conf)
-
-        # mocks
-        self.mock_object(self.helper, '_allow_data_access',
-                         mock.Mock(return_value=self.access))
-
-        # run and asserts
-        if conf:
-            result = self.helper.allow_access_to_data_service(
-                share, 'ins1_id', 'ins2_id')
-            self.assertEqual(self.access, result)
-            self.helper._allow_data_access.assert_called_once_with(
-                access_allow, 'ins1_id', 'ins2_id')
-        else:
-            self.assertRaises(exception.ShareDataCopyFailed,
-                              self.helper.allow_access_to_data_service, share,
-                              'ins1_id', 'ins2_id')
 
     def test_mount_share_instance(self):
 
@@ -241,7 +269,7 @@ class DataServiceHelperTestCase(test.TestCase):
 
         # run
         self.helper.mount_share_instance(
-            'mount %(path)s', '/fake_path', self.share_instance['id'])
+            'mount %(path)s', '/fake_path', self.share_instance)
 
         # asserts
         utils.execute.assert_called_once_with('mount', fake_path,
@@ -254,15 +282,17 @@ class DataServiceHelperTestCase(test.TestCase):
             mock.call(fake_path)
         ])
 
-    def test_unmount_share_instance(self):
+    @ddt.data([True, True, False], [True, True, Exception('fake')])
+    def test_unmount_share_instance(self, side_effect):
 
         fake_path = ''.join(('/fake_path/', self.share_instance['id']))
 
         # mocks
         self.mock_object(utils, 'execute')
         self.mock_object(os.path, 'exists', mock.Mock(
-            side_effect=[True, True, False]))
+            side_effect=side_effect))
         self.mock_object(os, 'rmdir')
+        self.mock_object(data_copy_helper.LOG, 'warning')
 
         # run
         self.helper.unmount_share_instance(
@@ -277,3 +307,6 @@ class DataServiceHelperTestCase(test.TestCase):
             mock.call(fake_path),
             mock.call(fake_path)
         ])
+
+        if any(isinstance(x, Exception) for x in side_effect):
+            self.assertTrue(data_copy_helper.LOG.warning.called)

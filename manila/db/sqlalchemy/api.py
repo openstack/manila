@@ -1702,6 +1702,34 @@ def share_access_create(context, values):
 
 
 @require_context
+def share_instance_access_create(context, values, share_instance_id):
+    values = ensure_model_dict_has_id(values)
+    session = get_session()
+    with session.begin():
+        access_list = _share_access_get_query(
+            context, session, {
+                'share_id': values['share_id'],
+                'access_type': values['access_type'],
+                'access_to': values['access_to'],
+            }).all()
+        if len(access_list) > 0:
+            access_ref = access_list[0]
+        else:
+            access_ref = models.ShareAccessMapping()
+        access_ref.update(values)
+        access_ref.save(session=session)
+
+        vals = {
+            'share_instance_id': share_instance_id,
+            'access_id': access_ref['id'],
+        }
+
+        _share_instance_access_create(vals, session)
+
+    return share_access_get(context, access_ref['id'])
+
+
+@require_context
 def share_instance_access_copy(context, share_id, instance_id, session=None):
     """Copy access rules from share to share instance."""
     session = session or get_session()

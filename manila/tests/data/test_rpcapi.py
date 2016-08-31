@@ -89,9 +89,8 @@ class DataRpcAPITestCase(test.TestCase):
                             ignore_list=[],
                             share_instance_id='fake_ins_id',
                             dest_share_instance_id='dest_fake_ins_id',
-                            migration_info_src={},
-                            migration_info_dest={},
-                            notify=True)
+                            connection_info_src={},
+                            connection_info_dest={})
 
     def test_data_copy_cancel(self):
         self._test_data_api('data_copy_cancel',

@@ -47,7 +47,8 @@ if [[ "$DRIVER" == "dummy" ]]; then
     export BACKENDS_NAMES="ALPHA,BETA"
 elif [[ "$BACK_END_TYPE" == "multibackend" ]]; then
     iniset $TEMPEST_CONFIG share multi_backend True
-    iniset $TEMPEST_CONFIG share run_migration_tests $(trueorfalse True RUN_MANILA_MIGRATION_TESTS)
+    iniset $TEMPEST_CONFIG share run_host_assisted_migration_tests $(trueorfalse True RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS)
+    iniset $TEMPEST_CONFIG share run_driver_assisted_migration_tests $(trueorfalse False RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS)
 
     # Set share backends names, they are defined within pre_test_hook
     export BACKENDS_NAMES="LONDON,PARIS"
@@ -172,7 +173,7 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     RUN_MANILA_CG_TESTS=False
     RUN_MANILA_MANAGE_TESTS=True
     RUN_MANILA_MANAGE_SNAPSHOT_TESTS=True
-    iniset $TEMPEST_CONFIG share run_migration_tests False
+    iniset $TEMPEST_CONFIG share run_host_assisted_migration_tests False
     iniset $TEMPEST_CONFIG share run_quota_tests True
     iniset $TEMPEST_CONFIG share run_replication_tests True
     iniset $TEMPEST_CONFIG share run_shrink_tests True
@@ -192,7 +193,7 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     MANILA_TEMPEST_CONCURRENCY=24
     RUN_MANILA_CG_TESTS=True
     RUN_MANILA_MANAGE_TESTS=False
-    iniset $TEMPEST_CONFIG share run_migration_tests False
+    iniset $TEMPEST_CONFIG share run_host_assisted_migration_tests False
     iniset $TEMPEST_CONFIG share run_quota_tests True
     iniset $TEMPEST_CONFIG share run_replication_tests False
     iniset $TEMPEST_CONFIG share run_shrink_tests True
@@ -212,7 +213,7 @@ elif [[ "$DRIVER" == "container" ]]; then
     MANILA_TEMPEST_CONCURRENCY=1
     RUN_MANILA_CG_TESTS=False
     RUN_MANILA_MANAGE_TESTS=False
-    iniset $TEMPEST_CONFIG share run_migration_tests False
+    iniset $TEMPEST_CONFIG share run_host_assisted_migration_tests False
     iniset $TEMPEST_CONFIG share run_quota_tests False
     iniset $TEMPEST_CONFIG share run_replication_tests False
     iniset $TEMPEST_CONFIG share run_shrink_tests False
@@ -258,7 +259,7 @@ if [[ "$DRIVER" == "dummy" ]]; then
 
     # NOTE(vponomaryov): enable migration tests when its support added to
     # dummy driver.
-    iniset $TEMPEST_CONFIG share run_migration_tests False
+    iniset $TEMPEST_CONFIG share run_host_assisted_migration_tests False
     iniset $TEMPEST_CONFIG share run_manage_unmanage_tests True
     iniset $TEMPEST_CONFIG share run_manage_unmanage_snapshot_tests True
     iniset $TEMPEST_CONFIG share run_replication_tests True

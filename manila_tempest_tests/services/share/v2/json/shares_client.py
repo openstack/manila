@@ -1017,22 +1017,24 @@ class SharesV2Client(shares_client.SharesClient):
 
 ###############
 
-    def migrate_share(self, share_id, host, notify,
-                      version=LATEST_MICROVERSION, action_name=None):
-        if action_name is None:
-            if utils.is_microversion_lt(version, "2.7"):
-                action_name = 'os-migrate_share'
-            elif utils.is_microversion_lt(version, "2.15"):
-                action_name = 'migrate_share'
-            else:
-                action_name = 'migration_start'
-        post_body = {
-            action_name: {
+    def migrate_share(self, share_id, host,
+                      force_host_assisted_migration=False,
+                      new_share_network_id=None, writable=False,
+                      preserve_metadata=False, nondisruptive=False,
+                      version=LATEST_MICROVERSION):
+
+        body = {
+            'migration_start': {
                 'host': host,
-                'notify': notify,
+                'force_host_assisted_migration': force_host_assisted_migration,
+                'new_share_network_id': new_share_network_id,
+                'writable': writable,
+                'preserve_metadata': preserve_metadata,
+                'nondisruptive': nondisruptive,
             }
         }
-        body = json.dumps(post_body)
+
+        body = json.dumps(body)
         return self.post('shares/%s/action' % share_id, body,
                          headers=EXPERIMENTAL, extra_headers=True,
                          version=version)
@@ -1063,9 +1065,10 @@ class SharesV2Client(shares_client.SharesClient):
             action_name: None,
         }
         body = json.dumps(post_body)
-        return self.post('shares/%s/action' % share_id, body,
-                         headers=EXPERIMENTAL, extra_headers=True,
-                         version=version)
+        result = self.post('shares/%s/action' % share_id, body,
+                           headers=EXPERIMENTAL, extra_headers=True,
+                           version=version)
+        return json.loads(result[1])
 
     def reset_task_state(
             self, share_id, task_state, version=LATEST_MICROVERSION,

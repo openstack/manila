@@ -182,6 +182,10 @@ function configure_manila {
     iniset $MANILA_CONF DEFAULT state_path $MANILA_STATE_PATH
     iniset $MANILA_CONF DEFAULT default_share_type $MANILA_DEFAULT_SHARE_TYPE
 
+    if ! [[ -z $MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL ]]; then
+        iniset $MANILA_CONF DEFAULT migration_driver_continue_update_interval $MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL
+    fi
+
     iniset $MANILA_CONF DEFAULT enabled_share_protocols $MANILA_ENABLED_SHARE_PROTOCOLS
 
     iniset $MANILA_CONF oslo_concurrency lock_path $MANILA_LOCK_PATH
@@ -804,7 +808,7 @@ function remove_docker_service_image {
 
 function install_libraries {
     if [ $(trueorfalse False MANILA_MULTI_BACKEND) == True ]; then
-        if [ $(trueorfalse True RUN_MANILA_MIGRATION_TESTS) == True ]; then
+        if [ $(trueorfalse True RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS) == True ]; then
             if is_ubuntu; then
                 install_package nfs-common
             else
