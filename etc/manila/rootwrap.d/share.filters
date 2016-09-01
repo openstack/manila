@@ -144,6 +144,9 @@ zpool: CommandFilter, zpool, root
 # manila/share/drivers/zfsonlinux/utils.py
 zfs: CommandFilter, zfs, root
 
+# manila/share/drivers/zfsonlinux/driver.py
+kill: CommandFilter, kill, root
+
 # manila/data/utils.py: 'ls', '-pA1', '--group-directories-first', '%s'
 ls: CommandFilter, ls, root
 

@@ -174,6 +174,7 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     RUN_MANILA_MANAGE_TESTS=True
     RUN_MANILA_MANAGE_SNAPSHOT_TESTS=True
     iniset $TEMPEST_CONFIG share run_host_assisted_migration_tests False
+    iniset $TEMPEST_CONFIG share run_driver_assisted_migration_tests True
     iniset $TEMPEST_CONFIG share run_quota_tests True
     iniset $TEMPEST_CONFIG share run_replication_tests True
     iniset $TEMPEST_CONFIG share run_shrink_tests True
