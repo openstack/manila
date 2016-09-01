@@ -69,6 +69,19 @@ class UnityClient(object):
         except storops_ex.UnityNfsShareNameExistedError:
             return self.get_share(share_name, 'NFS')
 
+    @staticmethod
+    def create_nfs_filesystem_and_share(
+            pool, nas_server, share_name, size):
+        """Create filesystem and share from pool/NAS server.
+
+        :param pool: pool for file system creation
+        :param nas_server: nas server for file system creation
+        :param share_name: file system and share name
+        :param size: file system size
+        """
+        pool.create_nfs_share(
+            nas_server, share_name, size)
+
     def get_share(self, name, share_proto):
         # Validate the share protocol
         proto = share_proto.upper()
