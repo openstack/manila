@@ -820,3 +820,7 @@ class HSPTimeoutException(ShareBackendException):
 
 class HSPItemNotFoundException(ShareBackendException):
     message = _("HSP Item Not Found Exception: %(msg)s")
+
+
+class NexentaException(ShareBackendException):
+    message = _("Exception due to Nexenta failure. %(reason)s")

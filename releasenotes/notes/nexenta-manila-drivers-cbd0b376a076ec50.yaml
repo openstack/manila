@@ -1,0 +1,3 @@
+features:
+  - Added share backend drivers for NexentaStor4 and NexentaStor5 appliances.
+
