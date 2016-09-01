@@ -77,10 +77,11 @@ class HPE3ParMediator(object):
                 when a share is deleted #1582931
         2.0.6 - Read-write share from snapshot (using driver mount and copy)
         2.0.7 - Add update_access support
+        2.0.8 - Multi pools support per backend
 
     """
 
-    VERSION = "2.0.7"
+    VERSION = "2.0.8"
 
     def __init__(self, **kwargs):
 
@@ -95,7 +96,6 @@ class HPE3ParMediator(object):
         self.hpe3par_san_private_key = kwargs.get('hpe3par_san_private_key')
         self.hpe3par_fstore_per_share = kwargs.get('hpe3par_fstore_per_share')
         self.hpe3par_require_cifs_ip = kwargs.get('hpe3par_require_cifs_ip')
-        self.hpe3par_share_ip_address = kwargs.get('hpe3par_share_ip_address')
         self.hpe3par_cifs_admin_access_username = (
             kwargs.get('hpe3par_cifs_admin_access_username'))
         self.hpe3par_cifs_admin_access_password = (
@@ -204,9 +204,9 @@ class HPE3ParMediator(object):
             # don't raise exception on logout()
 
     @staticmethod
-    def build_export_location(protocol, ip, path):
+    def build_export_locations(protocol, ips, path):
 
-        if not ip:
+        if not ips:
             message = _('Failed to build export location due to missing IP.')
             raise exception.InvalidInput(reason=message)
 
@@ -216,11 +216,9 @@ class HPE3ParMediator(object):
 
         share_proto = HPE3ParMediator.ensure_supported_protocol(protocol)
         if share_proto == 'nfs':
-            location = ':'.join((ip, path))
+            return ['%s:%s' % (ip, path) for ip in ips]
         else:
-            location = r'\\%s\%s' % (ip, path)
-
-        return location
+            return [r'\\%s\%s' % (ip, path) for ip in ips]
 
     def get_provisioned_gb(self, fpg):
         total_mb = 0
@@ -288,6 +286,7 @@ class HPE3ParMediator(object):
         hpe3par_flash_cache = flash_cache_policy == ENABLED
 
         status = {
+            'pool_name': fpg,
             'total_capacity_gb': total_capacity_gb,
             'free_capacity_gb': free_capacity_gb,
             'thin_provisioning': thin_provisioning,
@@ -310,7 +309,7 @@ class HPE3ParMediator(object):
             message = (_('Invalid protocol. Expected nfs or smb. Got %s.') %
                        protocol)
             LOG.error(message)
-            raise exception.InvalidInput(message)
+            raise exception.InvalidShareAccess(reason=message)
         return protocol
 
     @staticmethod
@@ -523,7 +522,7 @@ class HPE3ParMediator(object):
                 msg = (_('Failed to create fstore %(fstore)s: %(e)s') %
                        {'fstore': fstore, 'e': six.text_type(e)})
                 LOG.exception(msg)
-                raise exception.ShareBackendException(msg)
+                raise exception.ShareBackendException(msg=msg)
 
             if size:
                 self._update_capacity_quotas(fstore, size, 0, fpg, vfs)
@@ -545,7 +544,7 @@ class HPE3ParMediator(object):
             msg = (_('Failed to create share %(share_name)s: %(e)s') %
                    {'share_name': share_name, 'e': six.text_type(e)})
             LOG.exception(msg)
-            raise exception.ShareBackendException(msg)
+            raise exception.ShareBackendException(msg=msg)
 
         try:
             result = self._client.getfshare(
@@ -558,14 +557,14 @@ class HPE3ParMediator(object):
                      '%(e)s') % {'share_name': share_name,
                                  'e': six.text_type(e)})
             LOG.exception(msg)
-            raise exception.ShareBackendException(msg)
+            raise exception.ShareBackendException(msg=msg)
 
         if result['total'] != 1:
             msg = (_('Failed to get fshare %(share_name)s after creating it. '
                      'Expected to get 1 fshare.  Got %(total)s.') %
                    {'share_name': share_name, 'total': result['total']})
             LOG.error(msg)
-            raise exception.ShareBackendException(msg)
+            raise exception.ShareBackendException(msg=msg)
         return result['members'][0]
 
     def create_share(self, project_id, share_id, share_proto, extra_specs,
@@ -616,7 +615,7 @@ class HPE3ParMediator(object):
 
     def create_share_from_snapshot(self, share_id, share_proto, extra_specs,
                                    orig_project_id, orig_share_id,
-                                   snapshot_id, fpg, vfs,
+                                   snapshot_id, fpg, vfs, ips,
                                    size=None,
                                    comment=OPEN_STACK_MANILA):
 
@@ -710,14 +709,13 @@ class HPE3ParMediator(object):
                     self._grant_admin_smb_access(
                         protocol, fpg, vfs, fstore, temp, share=ro_share_name)
 
-                ip = self.hpe3par_share_ip_address
-                source_location = self.build_export_location(
-                    protocol, ip, source_path)
-                dest_location = self.build_export_location(
-                    protocol, ip, dest_path)
+                source_locations = self.build_export_locations(
+                    protocol, ips, source_path)
+                dest_locations = self.build_export_locations(
+                    protocol, ips, dest_path)
 
                 self._copy_share_data(
-                    share_id, source_location, dest_location,  protocol)
+                    share_id, source_locations[0], dest_locations[0], protocol)
 
                 # Revoke the admin access that was needed to copy to the dest.
                 if protocol == 'nfs':
@@ -821,7 +819,7 @@ class HPE3ParMediator(object):
         return fstore
 
     def delete_share(self, project_id, share_id, share_size, share_proto,
-                     fpg, vfs):
+                     fpg, vfs, share_ip):
 
         protocol = self.ensure_supported_protocol(share_proto)
         share_name = self.ensure_prefix(share_id)
@@ -857,7 +855,7 @@ class HPE3ParMediator(object):
                 # reason, we will not treat this as an error_deleting
                 # issue. We will allow the delete to continue as requested.
                 self._delete_file_tree(
-                    share_name, protocol, fpg, vfs, fstore)
+                    share_name, protocol, fpg, vfs, fstore, share_ip)
                 # reduce the fsquota by share size when a tree is deleted.
                 self._update_capacity_quotas(
                     fstore, 0, share_size, fpg, vfs)
@@ -871,7 +869,8 @@ class HPE3ParMediator(object):
                 }
                 LOG.warning(msg, data)
 
-    def _delete_file_tree(self, share_name, protocol, fpg, vfs, fstore):
+    def _delete_file_tree(self, share_name, protocol, fpg, vfs, fstore,
+                          share_ip):
         # If the share protocol is CIFS, we need to make sure the admin
         # provided the proper config values. If they have not, we can simply
         # return out and log a warning.
@@ -893,7 +892,8 @@ class HPE3ParMediator(object):
         self._create_mount_directory(mount_location)
 
         # Mount the super share.
-        self._mount_super_share(protocol, mount_location, fpg, vfs, fstore)
+        self._mount_super_share(protocol, mount_location, fpg, vfs, fstore,
+                                share_ip)
 
         # Delete the share from the super share.
         self._delete_share_directory(share_dir)
@@ -995,10 +995,11 @@ class HPE3ParMediator(object):
                    '-o', cred)
             utils.execute(*cmd, run_as_root=True)
 
-    def _mount_super_share(self, protocol, mount_dir, fpg, vfs, fstore):
+    def _mount_super_share(self, protocol, mount_dir, fpg, vfs, fstore,
+                           share_ip):
         try:
             mount_location = self._generate_mount_path(
-                protocol, fpg, vfs, fstore)
+                protocol, fpg, vfs, fstore, share_ip)
             self._mount_share(protocol, mount_location, mount_dir)
         except Exception as err:
             message = (_LW("There was an error mounting the super share: "
@@ -1027,17 +1028,17 @@ class HPE3ParMediator(object):
                        six.text_type(err))
             LOG.warning(message)
 
-    def _generate_mount_path(self, protocol, fpg, vfs, fstore):
+    def _generate_mount_path(self, protocol, fpg, vfs, fstore, share_ip):
         path = None
         if protocol == 'nfs':
             path = (("%(share_ip)s:/%(fpg)s/%(vfs)s/%(fstore)s/") %
-                    {'share_ip': self.hpe3par_share_ip_address,
+                    {'share_ip': share_ip,
                      'fpg': fpg,
                      'vfs': vfs,
                      'fstore': fstore})
         else:
             path = (("//%(share_ip)s/%(share_name)s/") %
-                    {'share_ip': self.hpe3par_share_ip_address,
+                    {'share_ip': share_ip,
                      'share_name': SUPER_SHARE})
         return path
 
@@ -1053,7 +1054,7 @@ class HPE3ParMediator(object):
             msg = (_('Exception during getvfs %(vfs)s: %(e)s') %
                    {'vfs': vfs, 'e': six.text_type(e)})
             LOG.exception(msg)
-            raise exception.ShareBackendException(msg)
+            raise exception.ShareBackendException(msg=msg)
 
         if result['total'] != 1:
             error_msg = result.get('message')
@@ -1062,7 +1063,7 @@ class HPE3ParMediator(object):
                              '(%(fpg)s/%(vfs)s): %(msg)s') %
                            {'fpg': fpg, 'vfs': vfs, 'msg': error_msg})
                 LOG.error(message)
-                raise exception.ShareBackendException(message)
+                raise exception.ShareBackendException(msg=message)
             else:
                 message = (_('Error while validating FPG/VFS '
                              '(%(fpg)s/%(vfs)s): Expected 1, '
@@ -1071,7 +1072,7 @@ class HPE3ParMediator(object):
                             'total': result['total']})
 
                 LOG.error(message)
-                raise exception.ShareBackendException(message)
+                raise exception.ShareBackendException(msg=message)
 
         return result['members'][0]
 
@@ -1151,7 +1152,7 @@ class HPE3ParMediator(object):
                          'Cannot delete snapshot without checking for '
                          'dependent shares first: %s') % six.text_type(e))
                 LOG.exception(msg)
-                raise exception.ShareBackendException(msg)
+                raise exception.ShareBackendException(msg=msg)
 
             for share in shares['members']:
                 if protocol == 'nfs':
@@ -1189,7 +1190,7 @@ class HPE3ParMediator(object):
                        'snapname': snapname,
                        'e': six.text_type(e)})
             LOG.exception(msg)
-            raise exception.ShareBackendException(msg)
+            raise exception.ShareBackendException(msg=msg)
 
         # Try to reclaim the space
         try:
@@ -1207,13 +1208,13 @@ class HPE3ParMediator(object):
             msg = (_("Invalid access type.  Expected 'ip' or 'user'.  "
                      "Actual '%s'.") % access_type)
             LOG.error(msg)
-            raise exception.InvalidInput(msg)
+            raise exception.InvalidInput(reason=msg)
 
         if protocol == 'nfs' and access_type != 'ip':
             msg = (_("Invalid NFS access type.  HPE 3PAR NFS supports 'ip'. "
                      "Actual '%s'.") % access_type)
             LOG.error(msg)
-            raise exception.HPE3ParInvalid(msg)
+            raise exception.HPE3ParInvalid(err=msg)
 
         return protocol
 
@@ -1496,7 +1497,7 @@ class HPE3ParMediator(object):
         except Exception as e:
             msg = (_('Unexpected exception while getting snapshots: %s') %
                    six.text_type(e))
-            raise exception.ShareBackendException(msg)
+            raise exception.ShareBackendException(msg=msg)
 
     def update_access(self, project_id, share_id, share_proto, extra_specs,
                       access_rules, add_rules, delete_rules, fpg, vfs):

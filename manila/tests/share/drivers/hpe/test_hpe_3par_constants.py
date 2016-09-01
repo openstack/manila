@@ -40,6 +40,7 @@ EXPECTED_IP_127_2 = '127.0.0.2'
 EXPECTED_ACCESS_LEVEL = 'foo_access'
 EXPECTED_SUBNET = '255.255.255.0'  # based on CIDR_PREFIX above
 EXPECTED_VLAN_TYPE = 'vlan'
+EXPECTED_VXLAN_TYPE = 'vxlan'
 EXPECTED_VLAN_TAG = '101'
 EXPECTED_SERVER_ID = '1a1a1a1a-2b2b-3c3c-4d4d-5e5e5e5e5e5e'
 EXPECTED_PROJECT_ID = 'osf-nfs-project-id'
@@ -47,16 +48,25 @@ SHARE_ID = 'share-id'
 EXPECTED_SHARE_ID = 'osf-share-id'
 EXPECTED_SHARE_ID_RO = 'osf-ro-share-id'
 EXPECTED_SHARE_NAME = 'share-name'
-EXPECTED_HOST = 'hostname@backend#pool'
+EXPECTED_FPG = 'pool'
+EXPECTED_HOST = 'hostname@backend#' + EXPECTED_FPG
+UNEXPECTED_FPG = 'not_a_pool'
+UNEXPECTED_HOST = 'hostname@backend#' + UNEXPECTED_FPG
+HOST_WITHOUT_POOL_1 = 'hostname@backend'
+HOST_WITHOUT_POOL_2 = 'hostname@backend#'
 EXPECTED_SHARE_PATH = '/anyfpg/anyvfs/anyfstore'
 EXPECTED_SIZE_1 = 1
 EXPECTED_SIZE_2 = 2
 EXPECTED_SNAP_NAME = 'osf-snap-name'
 EXPECTED_SNAP_ID = 'osf-snap-id'
 EXPECTED_STATS = {'test': 'stats'}
-EXPECTED_FPG = 'FPG_1'
+EXPECTED_FPG_CONF = [{EXPECTED_FPG: [EXPECTED_IP_10203040]}]
 EXPECTED_FSTORE = EXPECTED_PROJECT_ID
 EXPECTED_VFS = 'test_vfs'
+EXPECTED_GET_VFS = {'vfsname': EXPECTED_VFS,
+                    'vfsip': {'address': EXPECTED_IP_10203040}}
+EXPECTED_FPG_MAP = {EXPECTED_FPG: {EXPECTED_VFS: [EXPECTED_IP_10203040]}}
+EXPECTED_SHARE_IP = '10.50.3.8'
 EXPECTED_HPE_DEBUG = True
 EXPECTED_COMMENT = "OpenStack Manila - foo-comment"
 EXPECTED_EXTRA_SPECS = {}
@@ -66,6 +76,14 @@ EXPECTED_SUPER_SHARE_COMMENT = ('OpenStack super share used to delete nested '
                                 'shares.')
 EXPECTED_CIFS_DOMAIN = 'LOCAL_CLUSTER'
 EXPECTED_MOUNT_PATH = '/mnt/'
+
+SHARE_SERVER = {
+    'backend_details': {
+        'ip': EXPECTED_IP_10203040,
+        'fpg': EXPECTED_FPG,
+        'vfs': EXPECTED_VFS,
+        },
+}
 
 # Access rules. Allow for overwrites.
 ACCESS_RULE_NFS = {
@@ -148,12 +166,7 @@ NFS_SHARE_INFO = {
     'share_proto': NFS,
     'export_location': EXPECTED_LOCATION,
     'size': 1234,
-}
-
-ACCESS_INFO = {
-    'access_type': IP,
-    'access_to': EXPECTED_IP_1234,
-    'access_level': READ_WRITE,
+    'host': EXPECTED_HOST,
 }
 
 SNAPSHOT_INFO = {
@@ -164,6 +177,7 @@ SNAPSHOT_INFO = {
         'id': EXPECTED_SHARE_ID,
         'share_proto': NFS,
         'export_location': EXPECTED_LOCATION,
+        'host': EXPECTED_HOST,
     },
 }
 
