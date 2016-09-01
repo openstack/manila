@@ -1,0 +1,5 @@
+---
+security:
+  - Ensure we don't grant read access to 'Everyone'
+    by default when creating CIFS shares and the
+    Windows SMB backend is used.

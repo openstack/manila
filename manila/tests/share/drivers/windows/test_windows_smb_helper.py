@@ -67,7 +67,8 @@ class WindowsSMBHelperTestCase(test.TestCase):
         if not share_exists:
             cmd = ['New-SmbShare', '-Name', self._FAKE_SHARE_NAME, '-Path',
                    self._win_smb_helper._windows_utils.normalize_path(
-                       self._FAKE_SHARE_LOCATION)]
+                       self._FAKE_SHARE_LOCATION),
+                   '-ReadAccess', "*%s" % self._win_smb_helper._NULL_SID]
             self._remote_exec.assert_called_once_with(self._FAKE_SERVER, cmd)
         else:
             self.assertFalse(self._remote_exec.called)
