@@ -71,16 +71,6 @@ global_opts = [
     cfg.StrOpt('data_topic',
                default='manila-data',
                help='The topic data nodes listen on.'),
-    cfg.BoolOpt('enable_v1_api',
-                default=False,
-                help=_('Deploy v1 of the Manila API. This option is '
-                       'deprecated, is not used, and will be removed '
-                       'in a future release.')),
-    cfg.BoolOpt('enable_v2_api',
-                default=False,
-                help=_('Deploy v2 of the Manila API. This option is '
-                       'deprecated, is not used, and will be removed '
-                       'in a future release.')),
     cfg.BoolOpt('api_rate_limit',
                 default=True,
                 help='Whether to rate limit the API.'),
