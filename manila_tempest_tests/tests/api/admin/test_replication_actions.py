@@ -58,7 +58,7 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
             client=cls.admin_client)
         cls.share_type = share_type["share_type"]
         # Create share with above share_type
-        cls.share = cls.create_share(size=2,
+        cls.share = cls.create_share(size=CONF.share.share_size+1,
                                      share_type_id=cls.share_type["id"],
                                      availability_zone=cls.share_zone,
                                      client=cls.admin_client)
