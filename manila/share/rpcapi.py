@@ -126,7 +126,8 @@ class ShareAPI(object):
 
     def migration_start(self, context, share, dest_host,
                         force_host_assisted_migration, preserve_metadata,
-                        writable, nondisruptive, new_share_network_id):
+                        writable, nondisruptive, new_share_network_id,
+                        new_share_type_id):
         new_host = utils.extract_host(share['instance']['host'])
         call_context = self.client.prepare(server=new_host, version='1.12')
         call_context.cast(
@@ -138,7 +139,8 @@ class ShareAPI(object):
             preserve_metadata=preserve_metadata,
             writable=writable,
             nondisruptive=nondisruptive,
-            new_share_network_id=new_share_network_id)
+            new_share_network_id=new_share_network_id,
+            new_share_type_id=new_share_type_id)
 
     def connection_get_info(self, context, share_instance):
         new_host = utils.extract_host(share_instance['host'])

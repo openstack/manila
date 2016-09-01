@@ -84,11 +84,12 @@ class ShareMigrationHelper(object):
             else:
                 time.sleep(tries ** 2)
 
-    def create_instance_and_wait(
-            self, share, dest_host, new_share_network_id, new_az_id):
+    def create_instance_and_wait(self, share, dest_host, new_share_network_id,
+                                 new_az_id, new_share_type_id):
 
         new_share_instance = self.api.create_instance(
-            self.context, share, new_share_network_id, dest_host, new_az_id)
+            self.context, share, new_share_network_id, dest_host,
+            new_az_id, share_type_id=new_share_type_id)
 
         # Wait for new_share_instance to become ready
         starttime = time.time()

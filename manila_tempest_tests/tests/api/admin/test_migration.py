@@ -13,8 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
+
 import ddt
 from tempest import config
+from tempest.lib.common.utils import data_utils
 from tempest import test
 
 from manila_tempest_tests.common import constants
@@ -58,6 +61,18 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
         if not (CONF.share.run_host_assisted_migration_tests or
                 CONF.share.run_driver_assisted_migration_tests):
             raise cls.skipException("Share migration tests are disabled.")
+
+        extra_specs = {
+            'storage_protocol': CONF.share.capability_storage_protocol,
+            'driver_handles_share_servers': (
+                CONF.share.multitenancy_enabled),
+            'snapshot_support': six.text_type(
+                CONF.share.capability_snapshot_support),
+        }
+        cls.new_type = cls.create_share_type(
+            name=data_utils.rand_name('new_share_type_for_migration'),
+            cleanup_in_class=True,
+            extra_specs=extra_specs)
 
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     @base.skip_if_microversion_lt("2.22")
@@ -115,16 +130,19 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
         old_share_network_id = share['share_network_id']
         new_share_network_id = self._create_secondary_share_network(
             old_share_network_id)
+        old_share_type_id = share['share_type']
+        new_share_type_id = self.new_type['share_type']['id']
 
         share = self.migrate_share(
             share['id'], dest_pool,
             force_host_assisted_migration=force_host_assisted,
-            wait_for_status=task_state,
+            wait_for_status=task_state, new_share_type_id=new_share_type_id,
             new_share_network_id=new_share_network_id)
 
         self._validate_migration_successful(
-            dest_pool, share, task_state,
-            complete=False, share_network_id=old_share_network_id)
+            dest_pool, share, task_state, complete=False,
+            share_network_id=old_share_network_id,
+            share_type_id=old_share_type_id)
 
         progress = self.shares_v2_client.migration_get_progress(share['id'])
 
@@ -135,7 +153,8 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
 
         self._validate_migration_successful(
             dest_pool, share, constants.TASK_STATE_MIGRATION_SUCCESS,
-            complete=True, share_network_id=new_share_network_id)
+            complete=True, share_network_id=new_share_network_id,
+            share_type_id=new_share_type_id)
 
     def _setup_migration(self):
 
@@ -146,7 +165,7 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
                                      "needed to run share migration tests.")
 
         share = self.create_share(self.protocol)
-        share = self.shares_client.get_share(share['id'])
+        share = self.shares_v2_client.get_share(share['id'])
 
         self.shares_v2_client.create_access_rule(
             share['id'], access_to="50.50.50.50", access_level="rw")
@@ -174,7 +193,8 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
 
     def _validate_migration_successful(self, dest_pool, share, status_to_wait,
                                        version=CONF.share.max_api_microversion,
-                                       complete=True, share_network_id=None):
+                                       complete=True, share_network_id=None,
+                                       share_type_id=None):
 
         statuses = ((status_to_wait,)
                     if not isinstance(status_to_wait, (tuple, list, set))
@@ -190,6 +210,8 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
         self.assertIn(share['task_state'], statuses)
         if share_network_id:
             self.assertEqual(share_network_id, share['share_network_id'])
+        if share_type_id:
+            self.assertEqual(share_type_id, share['share_type'])
 
         # Share migrated
         if complete:

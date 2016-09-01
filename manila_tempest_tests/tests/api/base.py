@@ -404,14 +404,14 @@ class BaseSharesTest(test.BaseTestCase):
     def migrate_share(
             cls, share_id, dest_host, wait_for_status, client=None,
             force_host_assisted_migration=False, new_share_network_id=None,
-            **kwargs):
+            new_share_type_id=None, **kwargs):
         client = client or cls.shares_v2_client
         client.migrate_share(
             share_id, dest_host,
             force_host_assisted_migration=force_host_assisted_migration,
             new_share_network_id=new_share_network_id,
             writable=False, preserve_metadata=False, nondisruptive=False,
-            **kwargs)
+            new_share_type_id=new_share_type_id, **kwargs)
         share = client.wait_for_migration_status(
             share_id, dest_host, wait_for_status, **kwargs)
         return share

@@ -22,6 +22,7 @@ class ViewBuilder(common.ViewBuilder):
         "remove_export_locations",
         "add_access_rules_status_field",
         "add_replication_fields",
+        "add_share_type_field",
     ]
 
     def detail_list(self, request, instances):
@@ -78,3 +79,7 @@ class ViewBuilder(common.ViewBuilder):
     @common.ViewBuilder.versioned_method("2.11")
     def add_replication_fields(self, context, instance_dict, share_instance):
         instance_dict['replica_state'] = share_instance.get('replica_state')
+
+    @common.ViewBuilder.versioned_method("2.22")
+    def add_share_type_field(self, context, instance_dict, share_instance):
+        instance_dict['share_type_id'] = share_instance.get('share_type_id')

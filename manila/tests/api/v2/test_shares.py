@@ -287,6 +287,7 @@ class ShareAPITest(test.TestCase):
     def test_migration_start(self):
         share = db_utils.create_share()
         share_network = db_utils.create_share_network()
+        share_type = {'share_type_id': 'fake_type_id'}
         req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
                                       use_admin_context=True, version='2.22')
         req.method = 'POST'
@@ -296,10 +297,14 @@ class ShareAPITest(test.TestCase):
 
         self.mock_object(db, 'share_network_get', mock.Mock(
             return_value=share_network))
+        self.mock_object(db, 'share_type_get', mock.Mock(
+            return_value=share_type))
+
         body = {
             'migration_start': {
                 'host': 'fake_host',
                 'new_share_network_id': 'fake_net_id',
+                'new_share_type_id': 'fake_type_id',
             }
         }
         method = 'migration_start'
@@ -310,12 +315,15 @@ class ShareAPITest(test.TestCase):
         response = getattr(self.controller, method)(req, share['id'], body)
 
         self.assertEqual(202, response.status_int)
+
         share_api.API.get.assert_called_once_with(context, share['id'])
         share_api.API.migration_start.assert_called_once_with(
             context, share, 'fake_host', False, True, True, False,
-            new_share_network=share_network)
+            new_share_network=share_network, new_share_type=share_type)
         db.share_network_get.assert_called_once_with(
             context, 'fake_net_id')
+        db.share_type_get.assert_called_once_with(
+            context, 'fake_type_id')
 
     def test_migration_start_has_replicas(self):
         share = db_utils.create_share()
@@ -378,10 +386,29 @@ class ShareAPITest(test.TestCase):
 
         self.mock_object(db, 'share_network_get',
                          mock.Mock(side_effect=exception.NotFound()))
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.migration_start,
                           req, share['id'], body)
         db.share_network_get.assert_called_once_with(context, 'nonexistent')
+
+    def test_migration_start_new_share_type_not_found(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True, version='2.22')
+        context = req.environ['manila.context']
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request.experimental = True
+
+        body = {'migration_start': {'host': 'fake_host',
+                                    'new_share_type_id': 'nonexistent'}}
+
+        self.mock_object(db, 'share_type_get',
+                         mock.Mock(side_effect=exception.NotFound()))
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.migration_start,
+                          req, share['id'], body)
+        db.share_type_get.assert_called_once_with(context, 'nonexistent')
 
     def test_migration_start_invalid_force_host_assisted_migration(self):
         share = db_utils.create_share()

@@ -189,7 +189,7 @@ class Share(BASE, ManilaBase):
     __tablename__ = 'shares'
     _extra_keys = ['name', 'export_location', 'export_locations', 'status',
                    'host', 'share_server_id', 'share_network_id',
-                   'availability_zone', 'access_rules_status']
+                   'availability_zone', 'access_rules_status', 'share_type_id']
 
     @property
     def name(self):
@@ -227,7 +227,8 @@ class Share(BASE, ManilaBase):
 
     def __getattr__(self, item):
         deprecated_properties = ('host', 'share_server_id', 'share_network_id',
-                                 'availability_zone')
+                                 'availability_zone', 'share_type_id',
+                                 'share_type')
         proxified_properties = ('status',) + deprecated_properties
 
         if item in deprecated_properties:
@@ -303,8 +304,6 @@ class Share(BASE, ManilaBase):
     snapshot_support = Column(Boolean, default=True)
     replication_type = Column(String(255), nullable=True)
     share_proto = Column(String(255))
-    share_type_id = Column(String(36), ForeignKey('share_types.id'),
-                           nullable=True)
     is_public = Column(Boolean, default=False)
     consistency_group_id = Column(String(36),
                                   ForeignKey('consistency_groups.id'),
@@ -323,13 +322,6 @@ class Share(BASE, ManilaBase):
         viewonly=True,
         join_depth=2,
     )
-    share_type = orm.relationship(
-        "ShareTypes",
-        lazy=True,
-        foreign_keys=share_type_id,
-        primaryjoin='and_('
-                    'Share.share_type_id == ShareTypes.id, '
-                    'ShareTypes.deleted == "False")')
 
 
 class ShareInstance(BASE, ManilaBase):
@@ -339,8 +331,8 @@ class ShareInstance(BASE, ManilaBase):
                    'replica_state']
     _proxified_properties = ('user_id', 'project_id', 'size',
                              'display_name', 'display_description',
-                             'snapshot_id', 'share_proto', 'share_type_id',
-                             'is_public', 'consistency_group_id',
+                             'snapshot_id', 'share_proto', 'is_public',
+                             'consistency_group_id',
                              'source_cgsnapshot_member_id')
 
     def set_share_data(self, share):
@@ -386,7 +378,8 @@ class ShareInstance(BASE, ManilaBase):
     launched_at = Column(DateTime)
     terminated_at = Column(DateTime)
     replica_state = Column(String(255), nullable=True)
-
+    share_type_id = Column(String(36), ForeignKey('share_types.id'),
+                           nullable=True)
     availability_zone_id = Column(String(36),
                                   ForeignKey('availability_zones.id'),
                                   nullable=True)
@@ -416,6 +409,13 @@ class ShareInstance(BASE, ManilaBase):
                               nullable=True)
     share_server_id = Column(String(36), ForeignKey('share_servers.id'),
                              nullable=True)
+    share_type = orm.relationship(
+        "ShareTypes",
+        lazy='immediate',
+        foreign_keys=share_type_id,
+        primaryjoin='and_('
+                    'ShareInstance.share_type_id == ShareTypes.id, '
+                    'ShareTypes.deleted == "False")')
 
 
 class ShareInstanceExportLocations(BASE, ManilaBase):

@@ -261,7 +261,8 @@ class ShareRpcAPITestCase(test.TestCase):
                              preserve_metadata=True,
                              writable=True,
                              nondisruptive=False,
-                             new_share_network_id='fake_id')
+                             new_share_network_id='fake_net_id',
+                             new_share_type_id='fake_type_id')
 
     def test_connection_get_info(self):
         self._test_share_api('connection_get_info',
