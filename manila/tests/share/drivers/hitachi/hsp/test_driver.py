@@ -413,3 +413,10 @@ class HitachiHSPTestCase(test.TestCase):
         rest.HSPRestBackend.get_cluster.assert_called_once_with()
         mock__update_share_stats.assert_called_once_with(fakes.stats_data)
         self.assertTrue(self.mock_log.info.called)
+
+    def test_get_default_filter_function(self):
+        expected = "share.size >= 128"
+
+        actual = self._driver.get_default_filter_function()
+
+        self.assertEqual(expected, actual)
