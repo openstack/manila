@@ -14,6 +14,7 @@
       License for the specific language governing permissions and limitations
       under the License.
 
+
 Unity Driver
 ============
 
@@ -36,6 +37,7 @@ Requirements
 - Unity OE 4.0.1 or higher.
 - StorOps 0.2.17 or higher is installed on Manila node.
 - Following licenses are activated on Unity:
+
   * CIFS/SMB Support
   * Network File System (NFS)
   * Thin Provisioning
@@ -61,7 +63,8 @@ Storage Systems.
 Supported Network Topologies
 ----------------------------
 
-flat, VLAN
+* flat
+* VLAN
 
 
 Pre-Configurations
@@ -79,17 +82,71 @@ You may need root privilege to install python libraries.
     pip install storops
 
 
+On Unity System
+```````````````
+
+1. Configure System level NTP Server
+
+Configure the NTP server for your Unity at:
+
+.. code-block:: console
+
+    Unisphere -> Settings -> Management -> System Time and NTP
+
+Select "Enable NTP synchronization" and add your NTP server(s).
+
+2. Configure System level DNS Server
+
+Configure the DNS server for your Unity at:
+
+.. code-block:: console
+
+    Unisphere -> Settings -> Management -> DNS Server
+
+Select "Configure DNS server address manually" and add your DNS server(s).
+
+
 Configurations
 --------------
 
-Following configurations are introduced for the Unity plugin.
+Following configurations need to be configured in `/etc/manila/manila.conf`
+for the Unity driver.
 
-* emc_interface_ports: White list of the ports to be used for connection.
+.. code-block:: ini
+
+    share_driver = manila.share.drivers.emc.driver.EMCShareDriver
+    emc_share_backend = unity
+    emc_nas_server = <management IP address of the Unity system>
+    emc_nas_login = <user with administrator privilege>
+    emc_nas_password = <password>
+    emc_nas_server_container = [SPA|SPB]
+    emc_nas_pool_names = <Comma separated pool names>
+    emc_interface_ports = <Comma separated ports list>
+
+- `emc_share_backend` is the plugin name. Set it to `unity` for the Unity
+  driver.
+- `emc_nas_server` is the management IP for Unity.
+- `emc_nas_server_container` is the SP that will be used as share server.
+- `emc_nas_pool_names` is the name of the pools to be used by this backend.
+  If no name is specified, all storage pools on the system will be managed.
   Wild card character is supported.
-  Examples: spa_eth1, spa_*, *
-* emc_nas_server_pool: The pool used to persist the meta-data of created
-  NAS servers.  Wild card character is supported.
   Examples: pool_1, pool_*, *
+- `emc_interface_ports` is the white list of the ports to be used for
+  connection. Wild card character is supported.
+  Examples: spa_eth1, spa_*, *
+
+Restart of :term:`manila-share` service is needed for the configuration changes to take
+effect.
+
+
+Restrictions
+------------
+
+The Unity driver has following restrictions.
+
+- EMC Unity does not support the same IP in different VLANs.
+- Only IP access type is supported for NFS.
+- Only user access type is supported for CIFS.
 
 
 API Implementations
@@ -120,7 +177,21 @@ Following driver features are implemented in the plugin.
   parameters.
 * teardown_server: Tear down the share server.
 
-Restrictions
-------------
 
-* EMC Unity does not support the same IP in different VLANs.
+The :mod:`manila.share.drivers.emc.driver` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: manila.share.drivers.emc.driver
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+The :mod:`manila.share.drivers.emc.plugins.unity.connection` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: manila.share.drivers.emc.plugins.unity.connection
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
