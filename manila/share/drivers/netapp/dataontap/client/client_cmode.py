@@ -332,7 +332,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                     LOG.error(_LE("Volume %s is already offline."),
                               root_volume_name)
                 else:
-                    raise e
+                    raise
             vserver_client.delete_volume(root_volume_name)
 
         elif volumes_count > 1:
@@ -925,7 +925,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             if e.code == netapp_api.EAPINOTFOUND:
                 return None
             else:
-                raise e
+                raise
 
         if len(aggrs) < 1:
             return None
@@ -2589,7 +2589,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 LOG.debug('Not connected to cluster management LIF.')
                 return False
             else:
-                raise e
+                raise
 
     @na_utils.trace
     def create_cluster_peer(self, addresses, username=None, password=None,

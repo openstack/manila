@@ -89,7 +89,7 @@ class ManilaException(Exception):
             try:
                 message = self.message % kwargs
 
-            except Exception as e:
+            except Exception:
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
                 LOG.exception(_LE('Exception in string format operation.'))
@@ -97,7 +97,7 @@ class ManilaException(Exception):
                     LOG.error(_LE("%(name)s: %(value)s"), {
                         'name': name, 'value': value})
                 if CONF.fatal_exception_format_errors:
-                    raise e
+                    raise
                 else:
                     # at least get the core message out if something happened
                     message = self.message

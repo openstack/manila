@@ -192,9 +192,9 @@ class RestClientURL(object):  # pylint: disable=R0902
                                       message=("REST Not Available:"
                                                "Please Upgrade"))
 
-        except RestClientError as err:
+        except RestClientError:
             del self.headers['authorization']
-            raise err
+            raise
 
     def login(self, auth_str):
         """Login to an appliance using a user name and password.

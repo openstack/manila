@@ -511,7 +511,7 @@ class BaseSharesTest(test.BaseTestCase):
                         d["share"] = cls._create_share(
                             *d["args"], **d["kwargs"])
                     else:
-                        raise e
+                        raise
 
         return [d["share"] for d in data]
 

@@ -254,7 +254,7 @@ class HNASSSHBackend(object):
             else:
                 msg = six.text_type(e)
                 LOG.exception(msg)
-                raise e
+                raise
 
     def create_directory(self, dest_path):
         self._locked_selectfs('create', dest_path)
@@ -282,7 +282,7 @@ class HNASSSHBackend(object):
             if 'file system is already mounted' not in e.stderr:
                 msg = six.text_type(e)
                 LOG.exception(msg)
-                raise e
+                raise
 
     def vvol_create(self, vvol_name):
         # create a virtual-volume inside directory
@@ -504,7 +504,7 @@ class HNASSSHBackend(object):
                 else:
                     msg = six.text_type(e)
                     LOG.exception(msg)
-                    raise e
+                    raise
 
 
 class Export(object):
