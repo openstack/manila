@@ -14,10 +14,12 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
+from oslo_log import log
 from oslo_utils import strutils
 
 from manila.scheduler.filters import extra_specs_ops
+
+LOG = log.getLogger(__name__)
 
 
 def generate_stats(host_state, properties):
@@ -111,3 +113,45 @@ def thin_provisioning(host_state_thin_provisioning):
     thin_capability = [host_state_thin_provisioning] if not isinstance(
         host_state_thin_provisioning, list) else host_state_thin_provisioning
     return True in thin_capability
+
+
+def capabilities_satisfied(capabilities, extra_specs):
+
+    for key, req in extra_specs.items():
+        # Either not scoped format, or in capabilities scope
+        scope = key.split(':')
+
+        # Ignore scoped (such as vendor-specific) capabilities
+        if len(scope) > 1 and scope[0] != "capabilities":
+            continue
+        # Strip off prefix if spec started with 'capabilities:'
+        elif scope[0] == "capabilities":
+            del scope[0]
+
+        cap = capabilities
+        for index in range(len(scope)):
+            try:
+                cap = cap.get(scope[index])
+            except AttributeError:
+                cap = None
+            if cap is None:
+                LOG.debug("Host doesn't provide capability '%(cap)s' "
+                          "listed in the extra specs",
+                          {'cap': scope[index]})
+                return False
+
+        # Make all capability values a list so we can handle lists
+        cap_list = [cap] if not isinstance(cap, list) else cap
+
+        # Loop through capability values looking for any match
+        for cap_value in cap_list:
+            if extra_specs_ops.match(cap_value, req):
+                break
+        else:
+            # Nothing matched, so bail out
+            LOG.debug('Share type extra spec requirement '
+                      '"%(key)s=%(req)s" does not match reported '
+                      'capability "%(cap)s"',
+                      {'key': key, 'req': req, 'cap': cap})
+            return False
+    return True

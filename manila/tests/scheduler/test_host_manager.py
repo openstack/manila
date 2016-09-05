@@ -524,7 +524,8 @@ class HostManagerTestCase(test.TestCase):
 
             res = self.host_manager.get_pools(
                 context=fake_context,
-                filters={'host': 'host2', 'pool': 'pool*'})
+                filters={'host': 'host2', 'pool': 'pool*',
+                         'capabilities': {'dedupe': 'False'}})
 
             expected = [
                 {
@@ -562,22 +563,36 @@ class HostManagerTestCase(test.TestCase):
         None,
         {},
         {'key1': 'value1'},
+        {'capabilities': {'dedupe': 'False'}},
+        {'capabilities': {'dedupe': '<is> False'}},
         {'key1': 'value1', 'key2': 'value*'},
         {'key1': '.*', 'key2': '.*'},
     )
     def test_passes_filters_true(self, filter):
 
-        data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+        data = {
+            'key1': 'value1',
+            'key2': 'value2',
+            'key3': 'value3',
+            'capabilities': {'dedupe': False},
+        }
         self.assertTrue(self.host_manager._passes_filters(data, filter))
 
     @ddt.data(
         {'key1': 'value$'},
         {'key4': 'value'},
+        {'capabilities': {'dedupe': 'True'}},
+        {'capabilities': {'dedupe': '<is> True'}},
         {'key1': 'value1.+', 'key2': 'value*'},
     )
     def test_passes_filters_false(self, filter):
 
-        data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+        data = {
+            'key1': 'value1',
+            'key2': 'value2',
+            'key3': 'value3',
+            'capabilities': {'dedupe': False},
+        }
         self.assertFalse(self.host_manager._passes_filters(data, filter))
 
 

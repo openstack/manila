@@ -138,3 +138,7 @@ user documentation.
   'force_host_copy' to 'force_host_assisted_migration', removed 'notify'
   parameter and removed previous migrate_share API support. Updated
   reset_task_state API to accept 'None' value.
+
+2.23
+----
+  Added share_type to filter results of scheduler-stats/pools API.

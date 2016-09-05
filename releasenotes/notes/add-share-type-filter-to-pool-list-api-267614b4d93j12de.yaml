@@ -1,0 +1,3 @@
+---
+features:
+  - Added share_type to filter results of scheduler-stats/pools API.
