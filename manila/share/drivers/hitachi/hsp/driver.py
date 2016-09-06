@@ -139,6 +139,19 @@ class HitachiHSPDriver(driver.ShareDriver):
                      {'shr': share['id']})
 
         if hsp_share_id:
+            # Clean all rules from share before deleting it
+            current_rules = self.hsp.get_access_rules(hsp_share_id)
+            for rule in current_rules:
+                try:
+                    self.hsp.delete_access_rule(hsp_share_id,
+                                                rule['name'])
+                except exception.HSPBackendException as e:
+                    if 'No matching access rule found.' in e.msg:
+                        LOG.debug("Rule %(rule)s already deleted in "
+                                  "backend.", {'rule': rule['name']})
+                    else:
+                        raise
+
             self.hsp.delete_share(hsp_share_id)
 
         if filesystem_id:
@@ -188,7 +201,8 @@ class HitachiHSPDriver(driver.ShareDriver):
             add_rules = self._get_complement(manila_rules_dict, hsp_rules_dict)
 
             for rule in remove_rules:
-                self.hsp.delete_access_rule(hsp_share_id, rule[0])
+                rule_name = self._get_hsp_rule_name(hsp_share_id, rule[0])
+                self.hsp.delete_access_rule(hsp_share_id, rule_name)
 
             for rule in add_rules:
                 self.hsp.add_access_rule(hsp_share_id, rule[0], rule[1])
@@ -196,19 +210,49 @@ class HitachiHSPDriver(driver.ShareDriver):
             for rule in delete_rules:
                 if rule['access_type'].lower() != 'ip':
                     continue
-                self.hsp.delete_access_rule(hsp_share_id, rule['access_to'])
+
+                # get the real rule name in HSP
+                rule_name = self._get_hsp_rule_name(hsp_share_id,
+                                                    rule['access_to'])
+                try:
+                    self.hsp.delete_access_rule(hsp_share_id,
+                                                rule_name)
+                except exception.HSPBackendException as e:
+                    if 'No matching access rule found.' in e.msg:
+                        LOG.debug("Rule %(rule)s already deleted in "
+                                  "backend.", {'rule': rule['access_to']})
+                    else:
+                        raise
 
             for rule in add_rules:
                 if rule['access_type'].lower() != 'ip':
                     msg = _("Only IP access type currently supported.")
                     raise exception.InvalidShareAccess(reason=msg)
 
-                self.hsp.add_access_rule(
-                    hsp_share_id, rule['access_to'],
-                    (rule['access_level'] == constants.ACCESS_LEVEL_RW))
+                try:
+                    self.hsp.add_access_rule(
+                        hsp_share_id, rule['access_to'],
+                        (rule['access_level'] == constants.ACCESS_LEVEL_RW))
+                except exception.HSPBackendException as e:
+                    if 'Duplicate NFS access rule exists' in e.msg:
+                        LOG.debug("Rule %(rule)s already exists in "
+                                  "backend.", {'rule': rule['access_to']})
+                    else:
+                        raise
 
         LOG.debug("Successfully updated share %(shr)s rules.",
                   {'shr': share['id']})
+
+    def _get_hsp_rule_name(self, share_id, host_to):
+        rule_name = share_id + host_to
+        all_rules = self.hsp.get_access_rules(share_id)
+        for rule in all_rules:
+            # check if this rule has other name in HSP
+            if rule['host-specification'] == host_to:
+                rule_name = rule['name']
+                break
+
+        return rule_name
 
     def _get_complement(self, rules_a, rules_b):
         """Returns the rules of list A that are not on list B"""

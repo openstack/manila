@@ -161,11 +161,11 @@ class HSPRestBackend(object):
 
         self._send_post(url, payload=json.dumps(payload))
 
-    def delete_access_rule(self, share_id, host_to):
+    def delete_access_rule(self, share_id, rule_name):
         url = "https://%s/hspapi/shares/%s/" % (self.host, share_id)
         payload = {
             "action": "delete-access-rule",
-            "name": share_id + host_to,
+            "name": rule_name,
         }
 
         self._send_post(url, payload=json.dumps(payload))
@@ -198,9 +198,11 @@ class HSPRestBackend(object):
         status = resp_json['properties']['completion-status']
 
         if status == 'ERROR':
-            msg = _("HSP job %s failed.")
-            args = resp_json['id']
-            raise exception.HSPBackendException(msg=msg % args)
+            msg = _("HSP job %(id)s failed. %(reason)s")
+            job_id = resp_json['id']
+            reason = resp_json['properties']['completion-details']
+            raise exception.HSPBackendException(msg=msg % {'id': job_id,
+                                                           'reason': reason})
         elif status != target_status:
             msg = _("Timeout while waiting for job %s to complete.")
             args = resp_json['id']

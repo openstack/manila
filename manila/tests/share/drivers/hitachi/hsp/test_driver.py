@@ -61,7 +61,9 @@ class HitachiHSPTestCase(test.TestCase):
         self._driver.backend_name = "HSP"
         self.mock_log = self.mock_object(driver, 'LOG')
 
-    def test_update_access_add(self):
+    @ddt.data(None, exception.HSPBackendException(
+        message="Duplicate NFS access rule exists."))
+    def test_update_access_add(self, add_rule):
         access = {
             'access_type': 'ip',
             'access_to': '172.24.10.10',
@@ -74,12 +76,43 @@ class HitachiHSPTestCase(test.TestCase):
                          mock.Mock(return_value=fakes.file_system))
         self.mock_object(rest.HSPRestBackend, "get_share",
                          mock.Mock(return_value=fakes.share))
-        self.mock_object(rest.HSPRestBackend, "add_access_rule", mock.Mock())
+        self.mock_object(rest.HSPRestBackend, "add_access_rule", mock.Mock(
+            side_effect=add_rule))
 
         self._driver.update_access('context', self.fake_share_instance, [],
                                    access_list, [])
 
         self.assertTrue(self.mock_log.debug.called)
+
+        rest.HSPRestBackend.get_file_system.assert_called_once_with(
+            self.fake_share_instance['id'])
+        rest.HSPRestBackend.get_share.assert_called_once_with(
+            fakes.file_system['id'])
+        rest.HSPRestBackend.add_access_rule.assert_called_once_with(
+            fakes.share['id'], access['access_to'],
+            (access['access_level'] == constants.ACCESS_LEVEL_RW))
+
+    def test_update_access_add_exception(self):
+        access = {
+            'access_type': 'ip',
+            'access_to': '172.24.10.10',
+            'access_level': 'rw',
+        }
+
+        access_list = [access]
+
+        self.mock_object(rest.HSPRestBackend, "get_file_system",
+                         mock.Mock(return_value=fakes.file_system))
+        self.mock_object(rest.HSPRestBackend, "get_share",
+                         mock.Mock(return_value=fakes.share))
+        self.mock_object(rest.HSPRestBackend, "add_access_rule",
+                         mock.Mock(side_effect=exception.HSPBackendException(
+                             message="HSP Backend Exception: error adding "
+                                     "rule.")))
+
+        self.assertRaises(exception.HSPBackendException,
+                          self._driver.update_access, 'context',
+                          self.fake_share_instance, [], access_list, [])
 
         rest.HSPRestBackend.get_file_system.assert_called_once_with(
             self.fake_share_instance['id'])
@@ -108,7 +141,7 @@ class HitachiHSPTestCase(test.TestCase):
         self.mock_object(rest.HSPRestBackend, "get_share",
                          mock.Mock(return_value=fakes.share))
         self.mock_object(rest.HSPRestBackend, "get_access_rules",
-                         mock.Mock(return_value=fakes.hsp_rules))
+                         mock.Mock(side_effect=[fakes.hsp_rules, []]))
         self.mock_object(rest.HSPRestBackend, "delete_access_rule")
         self.mock_object(rest.HSPRestBackend, "add_access_rule")
 
@@ -121,16 +154,56 @@ class HitachiHSPTestCase(test.TestCase):
             self.fake_share_instance['id'])
         rest.HSPRestBackend.get_share.assert_called_once_with(
             fakes.file_system['id'])
-        rest.HSPRestBackend.get_access_rules.assert_called_once_with(
-            fakes.share['id'])
+        rest.HSPRestBackend.get_access_rules.assert_has_calls([
+            mock.call(fakes.share['id'])])
         rest.HSPRestBackend.delete_access_rule.assert_called_once_with(
-            fakes.share['id'], fakes.hsp_rules[0]['host-specification'])
+            fakes.share['id'],
+            fakes.share['id'] + fakes.hsp_rules[0]['host-specification'])
         rest.HSPRestBackend.add_access_rule.assert_has_calls([
             mock.call(fakes.share['id'], access1['access_to'], True),
             mock.call(fakes.share['id'], access2['access_to'], False)
         ], any_order=True)
 
-    def test_update_access_delete(self):
+    @ddt.data(None, exception.HSPBackendException(
+        message="No matching access rule found."))
+    def test_update_access_delete(self, delete_rule):
+        access1 = {
+            'access_type': 'ip',
+            'access_to': '172.24.44.200',
+            'access_level': 'rw',
+        }
+        access2 = {
+            'access_type': 'something',
+            'access_to': '188.100.20.10',
+            'access_level': 'ro',
+        }
+
+        delete_rules = [access1, access2]
+
+        self.mock_object(rest.HSPRestBackend, "get_file_system",
+                         mock.Mock(return_value=fakes.file_system))
+        self.mock_object(rest.HSPRestBackend, "get_share",
+                         mock.Mock(return_value=fakes.share))
+        self.mock_object(rest.HSPRestBackend, "delete_access_rule",
+                         mock.Mock(side_effect=delete_rule))
+        self.mock_object(rest.HSPRestBackend, "get_access_rules",
+                         mock.Mock(return_value=fakes.hsp_rules))
+
+        self._driver.update_access('context', self.fake_share_instance, [], [],
+                                   delete_rules)
+
+        self.assertTrue(self.mock_log.debug.called)
+
+        rest.HSPRestBackend.get_file_system.assert_called_once_with(
+            self.fake_share_instance['id'])
+        rest.HSPRestBackend.get_share.assert_called_once_with(
+            fakes.file_system['id'])
+        rest.HSPRestBackend.delete_access_rule.assert_called_once_with(
+            fakes.share['id'], fakes.hsp_rules[0]['name'])
+        rest.HSPRestBackend.get_access_rules.assert_called_once_with(
+            fakes.share['id'])
+
+    def test_update_access_delete_exception(self):
         access1 = {
             'access_type': 'ip',
             'access_to': '172.24.10.10',
@@ -149,10 +222,15 @@ class HitachiHSPTestCase(test.TestCase):
         self.mock_object(rest.HSPRestBackend, "get_share",
                          mock.Mock(return_value=fakes.share))
         self.mock_object(rest.HSPRestBackend, "delete_access_rule",
-                         mock.Mock())
+                         mock.Mock(side_effect=exception.HSPBackendException(
+                             message="HSP Backend Exception: error deleting "
+                                     "rule.")))
+        self.mock_object(rest.HSPRestBackend, 'get_access_rules',
+                         mock.Mock(return_value=[]))
 
-        self._driver.update_access('context', self.fake_share_instance, [], [],
-                                   delete_rules)
+        self.assertRaises(exception.HSPBackendException,
+                          self._driver.update_access, 'context',
+                          self.fake_share_instance, [], [], delete_rules)
 
         self.assertTrue(self.mock_log.debug.called)
 
@@ -161,7 +239,9 @@ class HitachiHSPTestCase(test.TestCase):
         rest.HSPRestBackend.get_share.assert_called_once_with(
             fakes.file_system['id'])
         rest.HSPRestBackend.delete_access_rule.assert_called_once_with(
-            fakes.share['id'], delete_rules[0]['access_to'])
+            fakes.share['id'], fakes.share['id'] + access1['access_to'])
+        rest.HSPRestBackend.get_access_rules.assert_called_once_with(
+            fakes.share['id'])
 
     @ddt.data(True, False)
     def test_update_access_ip_exception(self, is_recovery):
@@ -260,14 +340,20 @@ class HitachiHSPTestCase(test.TestCase):
                           self._driver.create_share, 'context',
                           fakes.invalid_share)
 
-    def test_delete_share(self):
+    @ddt.data(None, exception.HSPBackendException(
+        message="No matching access rule found."))
+    def test_delete_share(self, delete_rule):
         self.mock_object(rest.HSPRestBackend, "get_file_system",
                          mock.Mock(return_value=fakes.file_system))
         self.mock_object(rest.HSPRestBackend, "get_share",
                          mock.Mock(return_value=fakes.share))
-        self.mock_object(rest.HSPRestBackend, "delete_share", mock.Mock())
-        self.mock_object(rest.HSPRestBackend, "delete_file_system",
-                         mock.Mock())
+        self.mock_object(rest.HSPRestBackend, "delete_share")
+        self.mock_object(rest.HSPRestBackend, "delete_file_system")
+        self.mock_object(rest.HSPRestBackend, "get_access_rules",
+                         mock.Mock(return_value=[fakes.hsp_rules[0]]))
+        self.mock_object(rest.HSPRestBackend, "delete_access_rule", mock.Mock(
+            side_effect=[exception.HSPBackendException(
+                message="No matching access rule found."), delete_rule]))
 
         self._driver.delete_share('context', self.fake_share_instance)
 
@@ -281,6 +367,36 @@ class HitachiHSPTestCase(test.TestCase):
             fakes.share['id'])
         rest.HSPRestBackend.delete_file_system.assert_called_once_with(
             fakes.file_system['id'])
+        rest.HSPRestBackend.get_access_rules.assert_called_once_with(
+            fakes.share['id'])
+        rest.HSPRestBackend.delete_access_rule.assert_called_once_with(
+            fakes.share['id'], fakes.hsp_rules[0]['name'])
+
+    def test_delete_share_rule_exception(self):
+        self.mock_object(rest.HSPRestBackend, "get_file_system",
+                         mock.Mock(return_value=fakes.file_system))
+        self.mock_object(rest.HSPRestBackend, "get_share",
+                         mock.Mock(return_value=fakes.share))
+        self.mock_object(rest.HSPRestBackend, "get_access_rules",
+                         mock.Mock(return_value=[fakes.hsp_rules[0]]))
+        self.mock_object(rest.HSPRestBackend, "delete_access_rule",
+                         mock.Mock(side_effect=exception.HSPBackendException(
+                             message="Internal Server Error.")))
+
+        self.assertRaises(exception.HSPBackendException,
+                          self._driver.delete_share, 'context',
+                          self.fake_share_instance)
+
+        self.assertTrue(self.mock_log.debug.called)
+
+        rest.HSPRestBackend.get_file_system.assert_called_once_with(
+            self.fake_share_instance['id'])
+        rest.HSPRestBackend.get_share.assert_called_once_with(
+            fakes.file_system['id'])
+        rest.HSPRestBackend.get_access_rules.assert_called_once_with(
+            fakes.share['id'])
+        rest.HSPRestBackend.delete_access_rule.assert_called_once_with(
+            fakes.share['id'], fakes.hsp_rules[0]['name'])
 
     def test_delete_share_already_deleted(self):
         self.mock_object(rest.HSPRestBackend, "get_file_system", mock.Mock(
