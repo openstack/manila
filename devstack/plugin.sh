@@ -186,6 +186,10 @@ function configure_manila {
         iniset $MANILA_CONF DEFAULT migration_driver_continue_update_interval $MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL
     fi
 
+    if ! [[ -z $MANILA_DATA_COPY_CHECK_HASH ]]; then
+        iniset $MANILA_CONF DEFAULT check_hash $MANILA_DATA_COPY_CHECK_HASH
+    fi
+
     iniset $MANILA_CONF DEFAULT enabled_share_protocols $MANILA_ENABLED_SHARE_PROTOCOLS
 
     iniset $MANILA_CONF oslo_concurrency lock_path $MANILA_LOCK_PATH

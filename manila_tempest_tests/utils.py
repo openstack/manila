@@ -115,3 +115,36 @@ def choose_matching_backend(share, pools, share_type):
         None)
 
     return selected_pool
+
+
+def get_configured_extra_specs(variation=None):
+    """Retrieve essential extra specs according to configuration in tempest.
+
+    :param variation: can assume possible values: None to be as configured in
+        tempest; 'opposite_driver_modes' for as configured in tempest but
+        inverse driver mode; 'invalid' for inverse as configured in tempest,
+        ideal for negative tests.
+    :return: dict containing essential extra specs.
+    """
+
+    extra_specs = {'storage_protocol': CONF.share.capability_storage_protocol}
+
+    if variation == 'invalid':
+        extra_specs['driver_handles_share_servers'] = (
+            not CONF.share.multitenancy_enabled)
+        extra_specs['snapshot_support'] = (
+            not CONF.share.capability_snapshot_support)
+
+    elif variation == 'opposite_driver_modes':
+        extra_specs['driver_handles_share_servers'] = (
+            not CONF.share.multitenancy_enabled)
+        extra_specs['snapshot_support'] = (
+            CONF.share.capability_snapshot_support)
+
+    else:
+        extra_specs['driver_handles_share_servers'] = (
+            CONF.share.multitenancy_enabled)
+        extra_specs['snapshot_support'] = (
+            CONF.share.capability_snapshot_support)
+
+    return extra_specs

@@ -176,6 +176,9 @@ MANILA_ADMIN_NET_RANGE=${MANILA_ADMIN_NET_RANGE:=10.2.5.0/24}
 # Data Service IP configuration
 MANILA_DATA_NODE_IP=${MANILA_DATA_NODE_IP:=$MANILA_ADMIN_NET_RANGE}
 
+# Data Service copy validation
+MANILA_DATA_COPY_CHECK_HASH=${MANILA_DATA_COPY_CHECK_HASH:=True}
+
 # Enable manila services
 # ----------------------
 # We have to add Manila to enabled services for screen_it to work

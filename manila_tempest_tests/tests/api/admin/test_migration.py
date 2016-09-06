@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import six
 
 import ddt
 from tempest import config
@@ -39,6 +38,8 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
     2) Host-assisted migration: force_host_assisted_migration is True,
     nondisruptive, writable and preserve-metadata are False.
     3) 2-phase migration of both Host-assisted and Driver-assisted.
+    4) Cancelling migration past first phase.
+    5) Changing driver modes through migration.
 
     No need to test with writable, preserve-metadata and non-disruptive as
     True, values are supplied to the driver which decides what to do. Test
@@ -62,17 +63,16 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
                 CONF.share.run_driver_assisted_migration_tests):
             raise cls.skipException("Share migration tests are disabled.")
 
-        extra_specs = {
-            'storage_protocol': CONF.share.capability_storage_protocol,
-            'driver_handles_share_servers': (
-                CONF.share.multitenancy_enabled),
-            'snapshot_support': six.text_type(
-                CONF.share.capability_snapshot_support),
-        }
         cls.new_type = cls.create_share_type(
             name=data_utils.rand_name('new_share_type_for_migration'),
             cleanup_in_class=True,
-            extra_specs=extra_specs)
+            extra_specs=utils.get_configured_extra_specs())
+
+        cls.new_type_opposite = cls.create_share_type(
+            name=data_utils.rand_name('new_share_type_for_migration_opposite'),
+            cleanup_in_class=True,
+            extra_specs=utils.get_configured_extra_specs(
+                variation='opposite_driver_modes'))
 
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     @base.skip_if_microversion_lt("2.22")
@@ -82,13 +82,6 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
         self._check_migration_enabled(force_host_assisted)
 
         share, dest_pool = self._setup_migration()
-
-        old_exports = self.shares_v2_client.list_share_export_locations(
-            share['id'])
-        self.assertNotEmpty(old_exports)
-        old_exports = [x['path'] for x in old_exports
-                       if x['is_admin_only'] is False]
-        self.assertNotEmpty(old_exports)
 
         task_state = (constants.TASK_STATE_DATA_COPYING_COMPLETED
                       if force_host_assisted
@@ -101,11 +94,82 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
         self._validate_migration_successful(
             dest_pool, share, task_state, complete=False)
 
+        progress = self.shares_v2_client.migration_get_progress(share['id'])
+
+        self.assertEqual(task_state, progress['task_state'])
+        self.assertEqual(100, progress['total_progress'])
+
         share = self.migration_cancel(share['id'], dest_pool)
+
+        progress = self.shares_v2_client.migration_get_progress(share['id'])
+
+        self.assertEqual(
+            constants.TASK_STATE_MIGRATION_CANCELLED, progress['task_state'])
+        self.assertEqual(100, progress['total_progress'])
 
         self._validate_migration_successful(
             dest_pool, share, constants.TASK_STATE_MIGRATION_CANCELLED,
             complete=False)
+
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @base.skip_if_microversion_lt("2.22")
+    @ddt.data(True, False)
+    def test_migration_opposite_driver_modes(self, force_host_assisted):
+
+        self._check_migration_enabled(force_host_assisted)
+
+        share, dest_pool = self._setup_migration(opposite=True)
+
+        old_share_network_id = share['share_network_id']
+
+        # If currently configured is DHSS=False,
+        # then we need it for DHSS=True
+        if not CONF.share.multitenancy_enabled:
+
+            new_share_network_id = self.provide_share_network(
+                self.shares_v2_client, self.os_admin.networks_client,
+                isolated_creds_client=None, ignore_multitenancy_config=True)
+
+        # If currently configured is DHSS=True,
+        # then we must pass None for DHSS=False
+        else:
+            new_share_network_id = None
+
+        old_share_type_id = share['share_type']
+        new_share_type_id = self.new_type_opposite['share_type']['id']
+
+        task_state = (constants.TASK_STATE_DATA_COPYING_COMPLETED
+                      if force_host_assisted
+                      else constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE)
+
+        share = self.migrate_share(
+            share['id'], dest_pool,
+            force_host_assisted_migration=force_host_assisted,
+            wait_for_status=task_state, new_share_type_id=new_share_type_id,
+            new_share_network_id=new_share_network_id)
+
+        self._validate_migration_successful(
+            dest_pool, share, task_state, complete=False,
+            share_network_id=old_share_network_id,
+            share_type_id=old_share_type_id)
+
+        progress = self.shares_v2_client.migration_get_progress(share['id'])
+
+        self.assertEqual(task_state, progress['task_state'])
+        self.assertEqual(100, progress['total_progress'])
+
+        share = self.migration_complete(share['id'], dest_pool)
+
+        progress = self.shares_v2_client.migration_get_progress(share['id'])
+
+        self.assertEqual(
+            constants.TASK_STATE_MIGRATION_SUCCESS, progress['task_state'])
+        self.assertEqual(100, progress['total_progress'])
+
+        self._validate_migration_successful(
+            dest_pool, share, constants.TASK_STATE_MIGRATION_SUCCESS,
+            complete=True, share_network_id=new_share_network_id,
+            share_type_id=new_share_type_id)
 
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
     @base.skip_if_microversion_lt("2.22")
@@ -116,20 +180,18 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
 
         share, dest_pool = self._setup_migration()
 
-        old_exports = self.shares_v2_client.list_share_export_locations(
-            share['id'])
-        self.assertNotEmpty(old_exports)
-        old_exports = [x['path'] for x in old_exports
-                       if x['is_admin_only'] is False]
-        self.assertNotEmpty(old_exports)
-
         task_state = (constants.TASK_STATE_DATA_COPYING_COMPLETED
                       if force_host_assisted
                       else constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE)
 
         old_share_network_id = share['share_network_id']
-        new_share_network_id = self._create_secondary_share_network(
-            old_share_network_id)
+
+        if CONF.share.multitenancy_enabled:
+            new_share_network_id = self._create_secondary_share_network(
+                old_share_network_id)
+        else:
+            new_share_network_id = None
+
         old_share_type_id = share['share_type']
         new_share_type_id = self.new_type['share_type']['id']
 
@@ -151,12 +213,18 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
 
         share = self.migration_complete(share['id'], dest_pool)
 
+        progress = self.shares_v2_client.migration_get_progress(share['id'])
+
+        self.assertEqual(
+            constants.TASK_STATE_MIGRATION_SUCCESS, progress['task_state'])
+        self.assertEqual(100, progress['total_progress'])
+
         self._validate_migration_successful(
             dest_pool, share, constants.TASK_STATE_MIGRATION_SUCCESS,
             complete=True, share_network_id=new_share_network_id,
             share_type_id=new_share_type_id)
 
-    def _setup_migration(self):
+    def _setup_migration(self, opposite=False):
 
         pools = self.shares_v2_client.list_pools(detail=True)['pools']
 
@@ -167,25 +235,42 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
         share = self.create_share(self.protocol)
         share = self.shares_v2_client.get_share(share['id'])
 
+        old_exports = self.shares_v2_client.list_share_export_locations(
+            share['id'])
+        self.assertNotEmpty(old_exports)
+        old_exports = [x['path'] for x in old_exports
+                       if x['is_admin_only'] is False]
+        self.assertNotEmpty(old_exports)
+
         self.shares_v2_client.create_access_rule(
             share['id'], access_to="50.50.50.50", access_level="rw")
 
         self.shares_v2_client.wait_for_share_status(
-            share['id'], 'active', status_attr='access_rules_status')
+            share['id'], constants.RULE_STATE_ACTIVE,
+            status_attr='access_rules_status')
 
         self.shares_v2_client.create_access_rule(
             share['id'], access_to="51.51.51.51", access_level="ro")
 
         self.shares_v2_client.wait_for_share_status(
-            share['id'], 'active', status_attr='access_rules_status')
+            share['id'], constants.RULE_STATE_ACTIVE,
+            status_attr='access_rules_status')
 
-        default_type = self.shares_v2_client.list_share_types(
-            default=True)['share_type']
+        if opposite:
+            dest_type = self.new_type_opposite['share_type']
+        else:
+            dest_type = self.new_type['share_type']
 
-        dest_pool = utils.choose_matching_backend(share, pools, default_type)
+        dest_pool = utils.choose_matching_backend(share, pools, dest_type)
 
-        self.assertIsNotNone(dest_pool)
-        self.assertIsNotNone(dest_pool.get('name'))
+        if opposite:
+            if not dest_pool:
+                raise self.skipException(
+                    "This test requires two pools enabled with different "
+                    "driver modes.")
+        else:
+            self.assertIsNotNone(dest_pool)
+            self.assertIsNotNone(dest_pool.get('name'))
 
         dest_pool = dest_pool['name']
 
@@ -216,9 +301,33 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
         # Share migrated
         if complete:
             self.assertEqual(dest_pool, share['host'])
+
+            rules = self.shares_v2_client.list_access_rules(share['id'])
+            expected_rules = [{
+                'state': constants.RULE_STATE_ACTIVE,
+                'access_to': '50.50.50.50',
+                'access_type': 'ip',
+                'access_level': 'rw',
+            }, {
+                'state': constants.RULE_STATE_ACTIVE,
+                'access_to': '51.51.51.51',
+                'access_type': 'ip',
+                'access_level': 'ro',
+            }]
+            filtered_rules = [{'state': rule['state'],
+                               'access_to': rule['access_to'],
+                               'access_level': rule['access_level'],
+                               'access_type': rule['access_type']}
+                              for rule in rules]
+
+            for r in expected_rules:
+                self.assertIn(r, filtered_rules)
+            self.assertEqual(len(expected_rules), len(filtered_rules))
+
             self.shares_v2_client.delete_share(share['id'])
             self.shares_v2_client.wait_for_resource_deletion(
                 share_id=share['id'])
+
         # Share not migrated yet
         else:
             self.assertNotEqual(dest_pool, share['host'])
@@ -235,18 +344,13 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
                     "Driver-assisted migration tests are disabled.")
 
     def _create_secondary_share_network(self, old_share_network_id):
-        if (utils.is_microversion_ge(
-                CONF.share.max_api_microversion, "2.22") and
-                CONF.share.multitenancy_enabled):
 
-            old_share_network = self.shares_v2_client.get_share_network(
-                old_share_network_id)
+        old_share_network = self.shares_v2_client.get_share_network(
+            old_share_network_id)
 
-            new_share_network = self.create_share_network(
-                cleanup_in_class=True,
-                neutron_net_id=old_share_network['neutron_net_id'],
-                neutron_subnet_id=old_share_network['neutron_subnet_id'])
+        new_share_network = self.create_share_network(
+            cleanup_in_class=True,
+            neutron_net_id=old_share_network['neutron_net_id'],
+            neutron_subnet_id=old_share_network['neutron_subnet_id'])
 
-            return new_share_network['id']
-        else:
-            return None
+        return new_share_network['id']

@@ -68,6 +68,7 @@ fi
 # Set MANILA_ADMIN_NET_RANGE for admin_network and data_service IP
 echo "MANILA_ADMIN_NET_RANGE=${MANILA_ADMIN_NET_RANGE:=10.2.5.0/24}" >> $localrc_path
 echo "MANILA_DATA_NODE_IP=${MANILA_DATA_NODE_IP:=$MANILA_ADMIN_NET_RANGE}" >> $localrc_path
+echo "MANILA_DATA_COPY_CHECK_HASH=${MANILA_DATA_COPY_CHECK_HASH:=True}" >> $localrc_path
 
 # Share Migration CI tests migration_continue period task interval
 echo "MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL=${MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL:=5}" >> $localrc_path
