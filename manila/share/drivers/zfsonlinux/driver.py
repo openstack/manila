@@ -19,6 +19,7 @@ and exports them as shares.
 """
 
 import math
+import os
 import time
 
 from oslo_config import cfg
@@ -1377,9 +1378,12 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
         src_dataset_name = self.private_storage.get(
             source_share['id'], 'dataset_name')
         dst_dataset_name = self._get_dataset_name(destination_share)
-        ssh_cmd = '%(username)s@%(host)s' % {
-            'username': self.configuration.zfs_ssh_username,
-            'host': self.service_ip,
+        backend_name = share_utils.extract_host(
+            destination_share['host'], level='backend_name')
+        config = get_backend_configuration(backend_name)
+        remote_ssh_cmd = '%(username)s@%(host)s' % {
+            'username': config.zfs_ssh_username,
+            'host': config.zfs_service_ip,
         }
         snapshot_tag = self._get_migration_snapshot_tag(destination_share)
         src_snapshot_name = (
@@ -1396,7 +1400,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
         self.private_storage.update(destination_share['id'], {
             'entity_type': 'share',
             'dataset_name': dst_dataset_name,
-            'ssh_cmd': ssh_cmd,
+            'ssh_cmd': remote_ssh_cmd,
             'pool_name': share_utils.extract_host(
                 destination_share['host'], level='pool'),
             'migr_snapshot_tag': snapshot_tag,
@@ -1407,17 +1411,17 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
 
         # Send/receive temporary snapshot
         cmd = (
-            'nohup '
             'sudo zfs send -vDR ' + src_snapshot_name + ' '
-            '| ssh ' + ssh_cmd + ' '
-            'sudo zfs receive -v ' + dst_dataset_name + ' '
-            '& exit 0'
+            '| ssh ' + remote_ssh_cmd + ' '
+            'sudo zfs receive -v ' + dst_dataset_name
         )
-        # TODO(vponomaryov): following works only
-        # when config option zfs_use_ssh is set to "False". Because
-        # SSH coneector does not support that "shell=True" feature that is
-        # required in current situation.
-        self.execute(cmd, shell=True)
+        filename = dst_dataset_name.replace('/', '_')
+        with utils.tempdir() as tmpdir:
+            tmpfilename = os.path.join(tmpdir, '%s.sh' % filename)
+            with open(tmpfilename, "w") as migr_script:
+                migr_script.write(cmd)
+            self.execute('sudo', 'chmod', '755', tmpfilename)
+            self.execute('nohup', tmpfilename, '&')
 
     @ensure_share_server_not_provided
     def migration_continue(

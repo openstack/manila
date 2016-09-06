@@ -15,6 +15,7 @@
 
 import ddt
 import mock
+
 from oslo_config import cfg
 
 from manila import context
@@ -29,6 +30,7 @@ CONF = cfg.CONF
 class FakeConfig(object):
     def __init__(self, *args, **kwargs):
         self.driver_handles_share_servers = False
+        self.share_driver = 'fake_share_driver_name'
         self.share_backend_name = 'FAKE_BACKEND_NAME'
         self.zfs_share_export_ip = kwargs.get(
             "zfs_share_export_ip", "1.1.1.1")
@@ -2044,3 +2046,63 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         self.assertIn('id', result)
         self.assertEqual(expected_status, result['status'])
         self.assertEqual(snapshot_instance['id'], result['id'])
+
+    def test_migration_start(self):
+        src_share = {
+            'id': 'fake_src_share_id',
+            'host': 'foohost@foobackend#foopool',
+        }
+        src_dataset_name = 'foo_dataset_name'
+        dst_share = {
+            'id': 'fake_dst_share_id',
+            'host': 'barhost@barbackend#barpool',
+        }
+        dst_dataset_name = 'bar_dataset_name'
+        snapshot_tag = 'fake_migration_snapshot_tag'
+        self.mock_object(
+            self.driver,
+            '_get_dataset_name',
+            mock.Mock(return_value=dst_dataset_name))
+        self.mock_object(
+            self.driver,
+            '_get_migration_snapshot_tag',
+            mock.Mock(return_value=snapshot_tag))
+        self.mock_object(
+            zfs_driver,
+            'get_backend_configuration',
+            mock.Mock(return_value=type(
+                'FakeConfig', (object,), {
+                    'zfs_ssh_username': (
+                        self.driver.configuration.zfs_ssh_username),
+                    'zfs_service_ip': self.driver.configuration.zfs_service_ip,
+                })))
+        self.mock_object(self.driver, 'execute')
+        self.driver.private_storage.update(
+            src_share['id'], {'dataset_name': src_dataset_name})
+
+        self.driver.migration_start(
+            self._context, src_share, dst_share)
+
+        src_snapshot_name = (
+            '%(dataset_name)s@%(snapshot_tag)s' % {
+                'snapshot_tag': snapshot_tag,
+                'dataset_name': src_dataset_name,
+            }
+        )
+        self.driver.execute.assert_has_calls([
+            mock.call('sudo', 'zfs', 'snapshot', src_snapshot_name),
+            mock.call('sudo', 'chmod', '755', mock.ANY),
+            mock.call('nohup', mock.ANY, '&'),
+        ])
+        self.driver._get_migration_snapshot_tag.assert_called_once_with(
+            dst_share)
+        self.driver._get_dataset_name.assert_called_once_with(
+            dst_share)
+        for k, v in (('dataset_name', dst_dataset_name),
+                     ('migr_snapshot_tag', snapshot_tag),
+                     ('pool_name', 'barpool'),
+                     ('ssh_cmd',
+                      self.driver.configuration.zfs_ssh_username + '@' +
+                      self.driver.configuration.zfs_service_ip)):
+            self.assertEqual(
+                v, self.driver.private_storage.get(dst_share['id'], k))
