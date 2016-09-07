@@ -2456,7 +2456,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def send_ems_log_message(self, message_dict):
         """Sends a message to the Data ONTAP EMS log."""
 
-        node_client = copy.deepcopy(self)
+        # NOTE(cknight): Cannot use deepcopy on the connection context
+        node_client = copy.copy(self)
+        node_client.connection = copy.copy(self.connection)
         node_client.connection.set_timeout(25)
 
         try:
