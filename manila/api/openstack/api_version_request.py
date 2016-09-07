@@ -82,6 +82,7 @@ REST_API_VERSION_HISTORY = """
     * 2.24 - Added optional create_share_from_snapshot_support extra spec,
              which was previously inferred from the 'snapshot_support' extra
              spec. Also made the 'snapshot_support' extra spec optional.
+    * 2.25 - Added quota-show detail API.
 
 """
 
@@ -89,7 +90,7 @@ REST_API_VERSION_HISTORY = """
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.24"
+_MAX_API_VERSION = "2.25"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

@@ -66,14 +66,18 @@ class QuotaSetsMixin(object):
         return {k: v['limit'] for k, v in values.items()}
 
     @wsgi.Controller.authorize("show")
-    def _show(self, req, id):
+    def _show(self, req, id, detail=False):
         context = req.environ['manila.context']
         params = parse.parse_qs(req.environ.get('QUERY_STRING', ''))
         user_id = params.get('user_id', [None])[0]
+
         try:
             db.authorize_project_context(context, id)
+            # _get_quotas use 'usages' to indicate whether retrieve additional
+            # attributes, so pass detail to the argument.
             return self._view_builder.detail_list(
-                self._get_quotas(context, id, user_id=user_id), id)
+                self._get_quotas(context, id, user_id=user_id,
+                                 usages=detail), id)
         except exception.NotAuthorized:
             raise webob.exc.HTTPForbidden()
 
@@ -220,6 +224,10 @@ class QuotaSetsController(QuotaSetsMixin, wsgi.Controller):
     @wsgi.Controller.api_version('2.7')
     def show(self, req, id):
         return self._show(req, id)
+
+    @wsgi.Controller.api_version('2.25')
+    def detail(self, req, id):
+        return self._show(req, id, True)
 
     @wsgi.Controller.api_version('2.7')
     def defaults(self, req, id):

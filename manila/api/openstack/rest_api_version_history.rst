@@ -147,3 +147,7 @@ user documentation.
 ----
   Added optional create_share_from_snapshot_support extra spec. Made
   snapshot_support extra spec optional.
+
+2.25
+----
+  Added quota-show detail API.

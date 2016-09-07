@@ -26,6 +26,7 @@ from oslo_config import cfg
 import webob.exc
 import webob.response
 
+from manila.api.openstack import api_version_request as api_version
 from manila.api.v2 import quota_sets
 from manila import context
 from manila import exception
@@ -120,6 +121,48 @@ class QuotaSetsControllerTest(test.TestCase):
         result = getattr(controller(), method_name)(req, self.project_id)
 
         self.assertEqual(expected, result)
+
+    @ddt.data(REQ, REQ_WITH_USER)
+    def test_quota_detail(self, request):
+        request.api_version_request = api_version.APIVersionRequest('2.25')
+        quotas = {
+            "shares": 23,
+            "snapshots": 34,
+            "gigabytes": 45,
+            "snapshot_gigabytes": 56,
+            "share_networks": 67,
+        }
+        expected = {
+            'quota_set': {
+                'id': self.project_id,
+                'shares': {'in_use': 0,
+                           'limit': quotas['shares'],
+                           'reserved': 0},
+                'gigabytes': {'in_use': 0,
+                              'limit': quotas['gigabytes'], 'reserved': 0},
+                'snapshots': {'in_use': 0,
+                              'limit': quotas['snapshots'], 'reserved': 0},
+                'snapshot_gigabytes': {
+                    'in_use': 0,
+                    'limit': quotas['snapshot_gigabytes'],
+                    'reserved': 0,
+                },
+                'share_networks': {
+                    'in_use': 0,
+                    'limit': quotas['share_networks'],
+                    'reserved': 0
+                },
+            }
+        }
+
+        for k, v in quotas.items():
+            CONF.set_default('quota_' + k, v)
+
+        result = self.controller.detail(request, self.project_id)
+
+        self.assertEqual(expected, result)
+        self.mock_policy_check.assert_called_once_with(
+            request.environ['manila.context'], self.resource_name, 'show')
 
     @ddt.data(REQ, REQ_WITH_USER)
     def test_show_quota(self, request):

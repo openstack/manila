@@ -106,7 +106,8 @@ class APIRouter(manila.api.openstack.APIRouter):
         mapper.resource("quota-set",
                         "quota-sets",
                         controller=self.resources["quota_sets"],
-                        member={"defaults": "GET"})
+                        member={"defaults": "GET",
+                                "detail": "GET"})
 
         self.resources["quota_class_sets_legacy"] = (
             quota_class_sets.create_resource_legacy())
