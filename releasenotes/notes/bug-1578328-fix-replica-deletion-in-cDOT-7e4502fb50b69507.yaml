@@ -1,0 +1,5 @@
+---
+fixes:
+  - Changed share replica deletion logic in the NetApp cDOT driver
+    to disregard invalid replication relationships from among those recorded
+    by the driver to clean up.

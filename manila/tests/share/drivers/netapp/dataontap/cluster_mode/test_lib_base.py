@@ -41,7 +41,12 @@ from manila.share.drivers.netapp import utils as na_utils
 from manila.share import share_types
 from manila.share import utils as share_utils
 from manila import test
+from manila.tests import fake_share
 from manila.tests.share.drivers.netapp.dataontap import fakes as fake
+
+
+def fake_replica(**kwargs):
+    return fake_share.fake_replica(for_manager=True, **kwargs)
 
 
 @ddt.ddt
@@ -2283,6 +2288,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.BACKEND_NAME, vserver_name=fake.VSERVER1)
 
     def test_delete_replica(self):
+
+        active_replica = fake_replica(
+            replica_state=constants.REPLICA_STATE_ACTIVE)
+        replica_1 = fake_replica(
+            replica_state=constants.REPLICA_STATE_IN_SYNC,
+            host=fake.MANILA_HOST_NAME)
+        replica_2 = fake_replica(
+            replica_state=constants.REPLICA_STATE_OUT_OF_SYNC)
+        replica_list = [active_replica, replica_1, replica_2]
+
         self.mock_object(self.library,
                          '_deallocate_container',
                          mock.Mock())
@@ -2297,19 +2312,30 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=fake.VSERVER1))
 
         result = self.library.delete_replica(None,
-                                             [fake.SHARE],
-                                             fake.SHARE,
+                                             replica_list,
+                                             replica_1,
                                              [],
                                              share_server=None)
         self.assertIsNone(result)
-        mock_dm_session.delete_snapmirror.assert_called_with(fake.SHARE,
-                                                             fake.SHARE)
-        self.assertEqual(2, mock_dm_session.delete_snapmirror.call_count)
+        mock_dm_session.delete_snapmirror.assert_has_calls([
+            mock.call(active_replica, replica_1),
+            mock.call(replica_2, replica_1),
+            mock.call(replica_1, replica_2),
+            mock.call(replica_1, active_replica)],
+            any_order=True)
+        self.assertEqual(4, mock_dm_session.delete_snapmirror.call_count)
         data_motion.get_client_for_backend.assert_called_with(
             fake.BACKEND_NAME, vserver_name=mock.ANY)
         self.assertEqual(1, data_motion.get_client_for_backend.call_count)
 
     def test_delete_replica_with_share_server(self):
+
+        active_replica = fake_replica(
+            replica_state=constants.REPLICA_STATE_ACTIVE)
+        replica = fake_replica(replica_state=constants.REPLICA_STATE_IN_SYNC,
+                               host=fake.MANILA_HOST_NAME)
+        replica_list = [active_replica, replica]
+
         self.mock_object(self.library,
                          '_deallocate_container',
                          mock.Mock())
@@ -2324,18 +2350,25 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=fake.VSERVER1))
 
         result = self.library.delete_replica(None,
-                                             [fake.SHARE],
-                                             fake.SHARE,
+                                             replica_list,
+                                             replica,
                                              [],
                                              share_server=fake.SHARE_SERVER)
         self.assertIsNone(result)
-        mock_dm_session.delete_snapmirror.assert_called_with(fake.SHARE,
-                                                             fake.SHARE)
-        self.assertEqual(2, mock_dm_session.delete_snapmirror.call_count)
+        mock_dm_session.delete_snapmirror.assert_has_calls([
+            mock.call(active_replica, replica),
+            mock.call(replica, active_replica)],
+            any_order=True)
         data_motion.get_client_for_backend.assert_called_once_with(
             fake.BACKEND_NAME, vserver_name=fake.VSERVER1)
 
     def test_delete_replica_share_absent_on_backend(self):
+        active_replica = fake_replica(
+            replica_state=constants.REPLICA_STATE_ACTIVE)
+        replica = fake_replica(replica_state=constants.REPLICA_STATE_IN_SYNC,
+                               host=fake.MANILA_HOST_NAME)
+        replica_list = [active_replica, replica]
+
         self.mock_object(self.library,
                          '_deallocate_container',
                          mock.Mock())
@@ -2352,16 +2385,17 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=fake.VSERVER1))
 
         result = self.library.delete_replica(None,
-                                             [fake.SHARE],
-                                             fake.SHARE,
+                                             replica_list,
+                                             replica,
                                              [],
                                              share_server=None)
 
         self.assertIsNone(result)
         self.assertFalse(self.library._deallocate_container.called)
-        mock_dm_session.delete_snapmirror.assert_called_with(fake.SHARE,
-                                                             fake.SHARE)
-        self.assertEqual(2, mock_dm_session.delete_snapmirror.call_count)
+        mock_dm_session.delete_snapmirror.assert_has_calls([
+            mock.call(active_replica, replica),
+            mock.call(replica, active_replica)],
+            any_order=True)
         data_motion.get_client_for_backend.assert_called_with(
             fake.BACKEND_NAME, vserver_name=mock.ANY)
         self.assertEqual(1, data_motion.get_client_for_backend.call_count)

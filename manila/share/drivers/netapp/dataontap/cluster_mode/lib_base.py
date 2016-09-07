@@ -1240,8 +1240,9 @@ class NetAppCmodeFileStorageLibrary(object):
         # Ensure that all potential snapmirror relationships and their metadata
         # involving the replica are destroyed.
         for other_replica in replica_list:
-            dm_session.delete_snapmirror(other_replica, replica)
-            dm_session.delete_snapmirror(replica, other_replica)
+            if other_replica['id'] != replica['id']:
+                dm_session.delete_snapmirror(other_replica, replica)
+                dm_session.delete_snapmirror(replica, other_replica)
 
         # 2. Delete share
         vserver_client = data_motion.get_client_for_backend(

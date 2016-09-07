@@ -67,6 +67,8 @@ IPSPACE = 'fake_ipspace'
 IPSPACE_ID = '27d38c27-3e8b-4d7d-9d91-fcf295e3ac8f'
 MTU = 1234
 DEFAULT_MTU = 1500
+MANILA_HOST_NAME = '%(host)s@%(backend)s#%(pool)s' % {
+    'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME}
 
 CLIENT_KWARGS = {
     'username': 'admin',
@@ -80,8 +82,7 @@ CLIENT_KWARGS = {
 
 SHARE = {
     'id': SHARE_ID,
-    'host': '%(host)s@%(backend)s#%(pool)s' % {
-        'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME},
+    'host': MANILA_HOST_NAME,
     'project_id': TENANT_ID,
     'name': SHARE_NAME,
     'size': SHARE_SIZE,
