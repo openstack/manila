@@ -90,6 +90,45 @@ class FakeDriverPrivateStorage(object):
         self.storage.pop(entity_id, None)
 
 
+class GetBackendConfigurationTestCase(test.TestCase):
+
+    def test_get_backend_configuration_success(self):
+        backend_name = 'fake_backend_name'
+        self.mock_object(
+            zfs_driver.CONF, 'list_all_sections',
+            mock.Mock(return_value=['fake1', backend_name, 'fake2']))
+        mock_config = self.mock_object(
+            zfs_driver.configuration, 'Configuration')
+
+        result = zfs_driver.get_backend_configuration(backend_name)
+
+        self.assertEqual(mock_config.return_value, result)
+        mock_config.assert_called_once_with(
+            zfs_driver.driver.share_opts, config_group=backend_name)
+        mock_config.return_value.append_config_values.assert_has_calls([
+            mock.call(zfs_driver.zfsonlinux_opts),
+            mock.call(zfs_driver.share_manager_opts),
+            mock.call(zfs_driver.driver.ssh_opts),
+        ])
+
+    def test_get_backend_configuration_error(self):
+        backend_name = 'fake_backend_name'
+        self.mock_object(
+            zfs_driver.CONF, 'list_all_sections',
+            mock.Mock(return_value=['fake1', 'fake2']))
+        mock_config = self.mock_object(
+            zfs_driver.configuration, 'Configuration')
+
+        self.assertRaises(
+            exception.BadConfigurationException,
+            zfs_driver.get_backend_configuration,
+            backend_name,
+        )
+
+        self.assertFalse(mock_config.called)
+        self.assertFalse(mock_config.return_value.append_config_values.called)
+
+
 @ddt.ddt
 class ZFSonLinuxShareDriverTestCase(test.TestCase):
 
@@ -2047,6 +2086,81 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         self.assertEqual(expected_status, result['status'])
         self.assertEqual(snapshot_instance['id'], result['id'])
 
+    def test__get_shell_executor_by_host_local(self):
+        backend_name = 'foobackend'
+        host = 'foohost@%s#foopool' % backend_name
+        CONF.set_default(
+            'enabled_share_backends', 'fake1,%s,fake2,fake3' % backend_name)
+
+        self.assertIsNone(self.driver._shell_executors.get(backend_name))
+
+        result = self.driver._get_shell_executor_by_host(host)
+
+        self.assertEqual(self.driver.execute, result)
+
+    def test__get_shell_executor_by_host_remote(self):
+        backend_name = 'foobackend'
+        host = 'foohost@%s#foopool' % backend_name
+        CONF.set_default('enabled_share_backends', 'fake1,fake2,fake3')
+        mock_get_remote_shell_executor = self.mock_object(
+            zfs_driver.zfs_utils, 'get_remote_shell_executor')
+        mock_config = self.mock_object(zfs_driver, 'get_backend_configuration')
+        self.assertIsNone(self.driver._shell_executors.get(backend_name))
+
+        for i in (1, 2):
+            result = self.driver._get_shell_executor_by_host(host)
+
+            self.assertEqual(
+                mock_get_remote_shell_executor.return_value, result)
+            mock_get_remote_shell_executor.assert_called_once_with(
+                ip=mock_config.return_value.zfs_service_ip,
+                port=22,
+                conn_timeout=mock_config.return_value.ssh_conn_timeout,
+                login=mock_config.return_value.zfs_ssh_username,
+                password=mock_config.return_value.zfs_ssh_user_password,
+                privatekey=mock_config.return_value.zfs_ssh_private_key_path,
+                max_size=10,
+            )
+            zfs_driver.get_backend_configuration.assert_called_once_with(
+                backend_name)
+
+    def test__get_migration_snapshot_tag(self):
+        share_instance = {'id': 'fake-share_instance_id'}
+        current_time = 'fake_current_time'
+        mock_utcnow = self.mock_object(zfs_driver.timeutils, 'utcnow')
+        mock_utcnow.return_value.isoformat.return_value = current_time
+        expected_value = (
+            self.driver.migration_snapshot_prefix +
+            '_fake_share_instance_id_time_' + current_time)
+
+        result = self.driver._get_migration_snapshot_tag(share_instance)
+
+        self.assertEqual(expected_value, result)
+
+    def test_migration_check_compatibility(self):
+        src_share = {'host': 'foohost@foobackend#foopool'}
+        dst_backend_name = 'barbackend'
+        dst_share = {'host': 'barhost@%s#barpool' % dst_backend_name}
+        expected = {
+            'compatible': True,
+            'writable': False,
+            'preserve_metadata': True,
+            'nondisruptive': True,
+        }
+        self.mock_object(
+            zfs_driver,
+            'get_backend_configuration',
+            mock.Mock(return_value=type(
+                'FakeConfig', (object,), {
+                    'share_driver': self.driver.configuration.share_driver})))
+
+        actual = self.driver.migration_check_compatibility(
+            'fake_context', src_share, dst_share)
+
+        self.assertEqual(expected, actual)
+        zfs_driver.get_backend_configuration.assert_called_once_with(
+            dst_backend_name)
+
     def test_migration_start(self):
         src_share = {
             'id': 'fake_src_share_id',
@@ -2106,3 +2220,224 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
                       self.driver.configuration.zfs_service_ip)):
             self.assertEqual(
                 v, self.driver.private_storage.get(dst_share['id'], k))
+
+    def test_migration_continue_success(self):
+        dst_share = {
+            'id': 'fake_dst_share_id',
+            'host': 'barhost@barbackend#barpool',
+        }
+        dst_dataset_name = 'bar_dataset_name'
+        snapshot_tag = 'fake_migration_snapshot_tag'
+        self.driver.private_storage.update(
+            dst_share['id'], {
+                'migr_snapshot_tag': snapshot_tag,
+                'dataset_name': dst_dataset_name,
+            })
+        mock_executor = self.mock_object(
+            self.driver, '_get_shell_executor_by_host')
+        self.mock_object(
+            self.driver, 'execute',
+            mock.Mock(return_value=('fake_out', 'fake_err')))
+
+        result = self.driver.migration_continue(
+            self._context, 'fake_src_share', dst_share)
+
+        self.assertTrue(result)
+        mock_executor.assert_called_once_with(dst_share['host'])
+        self.driver.execute.assert_has_calls([
+            mock.call('ps', 'aux'),
+            mock.call('sudo', 'zfs', 'get', 'quota', dst_dataset_name,
+                      executor=mock_executor.return_value),
+        ])
+
+    def test_migration_continue_pending(self):
+        dst_share = {
+            'id': 'fake_dst_share_id',
+            'host': 'barhost@barbackend#barpool',
+        }
+        dst_dataset_name = 'bar_dataset_name'
+        snapshot_tag = 'fake_migration_snapshot_tag'
+        self.driver.private_storage.update(
+            dst_share['id'], {
+                'migr_snapshot_tag': snapshot_tag,
+                'dataset_name': dst_dataset_name,
+            })
+        mock_executor = self.mock_object(
+            self.driver, '_get_shell_executor_by_host')
+        self.mock_object(
+            self.driver, 'execute',
+            mock.Mock(return_value=('foo@%s' % snapshot_tag, 'fake_err')))
+
+        result = self.driver.migration_continue(
+            self._context, 'fake_src_share', dst_share)
+
+        self.assertIsNone(result)
+        self.assertFalse(mock_executor.called)
+        self.driver.execute.assert_called_once_with('ps', 'aux')
+
+    def test_migration_continue_exception(self):
+        dst_share = {
+            'id': 'fake_dst_share_id',
+            'host': 'barhost@barbackend#barpool',
+        }
+        dst_dataset_name = 'bar_dataset_name'
+        snapshot_tag = 'fake_migration_snapshot_tag'
+        self.driver.private_storage.update(
+            dst_share['id'], {
+                'migr_snapshot_tag': snapshot_tag,
+                'dataset_name': dst_dataset_name,
+            })
+        mock_executor = self.mock_object(
+            self.driver, '_get_shell_executor_by_host')
+        self.mock_object(
+            self.driver, 'execute',
+            mock.Mock(side_effect=[
+                ('fake_out', 'fake_err'),
+                exception.ProcessExecutionError('fake'),
+            ]))
+
+        self.assertRaises(
+            exception.ZFSonLinuxException,
+            self.driver.migration_continue,
+            self._context, 'fake_src_share', dst_share,
+        )
+
+        mock_executor.assert_called_once_with(dst_share['host'])
+        self.driver.execute.assert_has_calls([
+            mock.call('ps', 'aux'),
+            mock.call('sudo', 'zfs', 'get', 'quota', dst_dataset_name,
+                      executor=mock_executor.return_value),
+        ])
+
+    def test_migration_complete(self):
+        src_share = {'id': 'fake_src_share_id'}
+        dst_share = {
+            'id': 'fake_dst_share_id',
+            'host': 'barhost@barbackend#barpool',
+            'share_proto': 'fake_share_proto',
+        }
+        dst_dataset_name = 'bar_dataset_name'
+        snapshot_tag = 'fake_migration_snapshot_tag'
+        self.driver.private_storage.update(
+            dst_share['id'], {
+                'migr_snapshot_tag': snapshot_tag,
+                'dataset_name': dst_dataset_name,
+            })
+        dst_snapshot_name = (
+            '%(dataset_name)s@%(snapshot_tag)s' % {
+                'snapshot_tag': snapshot_tag,
+                'dataset_name': dst_dataset_name,
+            }
+        )
+        mock_helper = self.mock_object(self.driver, '_get_share_helper')
+        mock_executor = self.mock_object(
+            self.driver, '_get_shell_executor_by_host')
+        self.mock_object(
+            self.driver, 'execute',
+            mock.Mock(return_value=('fake_out', 'fake_err')))
+        self.mock_object(self.driver, 'delete_share')
+
+        result = self.driver.migration_complete(
+            self._context, src_share, dst_share)
+
+        self.assertEqual(
+            mock_helper.return_value.create_exports.return_value, result)
+        mock_executor.assert_called_once_with(dst_share['host'])
+        self.driver.execute.assert_called_once_with(
+            'sudo', 'zfs', 'destroy', dst_snapshot_name,
+            executor=mock_executor.return_value,
+        )
+        self.driver.delete_share.assert_called_once_with(
+            self._context, src_share)
+        mock_helper.assert_called_once_with(dst_share['share_proto'])
+        mock_helper.return_value.create_exports.assert_called_once_with(
+            dst_dataset_name,
+            executor=self.driver._get_shell_executor_by_host.return_value)
+
+    def test_migration_cancel_success(self):
+        src_dataset_name = 'fake_src_dataset_name'
+        src_share = {
+            'id': 'fake_src_share_id',
+            'dataset_name': src_dataset_name,
+        }
+        dst_share = {
+            'id': 'fake_dst_share_id',
+            'host': 'barhost@barbackend#barpool',
+            'share_proto': 'fake_share_proto',
+        }
+        dst_dataset_name = 'fake_dst_dataset_name'
+        snapshot_tag = 'fake_migration_snapshot_tag'
+        dst_ssh_cmd = 'fake_dst_ssh_cmd'
+        self.driver.private_storage.update(
+            src_share['id'], {'dataset_name': src_dataset_name})
+        self.driver.private_storage.update(
+            dst_share['id'], {
+                'dataset_name': dst_dataset_name,
+                'migr_snapshot_tag': snapshot_tag,
+                'dataset_name': dst_dataset_name,
+                'ssh_cmd': dst_ssh_cmd,
+            })
+        self.mock_object(zfs_driver.time, 'sleep')
+        mock_delete_dataset = self.mock_object(
+            self.driver, '_delete_dataset_or_snapshot_with_retry')
+        ps_output = (
+            "fake_line1\nfoo_user   12345   foo_dataset_name@%s\n"
+            "fake_line2") % snapshot_tag
+        self.mock_object(
+            self.driver, 'execute',
+            mock.Mock(return_value=(ps_output, 'fake_err'))
+        )
+
+        self.driver.migration_cancel(self._context, src_share, dst_share)
+
+        self.driver.execute.assert_has_calls([
+            mock.call('ps', 'aux'),
+            mock.call('sudo', 'kill', '-9', '12345'),
+            mock.call('ssh', dst_ssh_cmd, 'sudo', 'zfs', 'destroy', '-r',
+                      dst_dataset_name),
+        ])
+        zfs_driver.time.sleep.assert_called_once_with(2)
+        mock_delete_dataset.assert_called_once_with(
+            src_dataset_name + '@' + snapshot_tag)
+
+    def test_migration_cancel_error(self):
+        src_dataset_name = 'fake_src_dataset_name'
+        src_share = {
+            'id': 'fake_src_share_id',
+            'dataset_name': src_dataset_name,
+        }
+        dst_share = {
+            'id': 'fake_dst_share_id',
+            'host': 'barhost@barbackend#barpool',
+            'share_proto': 'fake_share_proto',
+        }
+        dst_dataset_name = 'fake_dst_dataset_name'
+        snapshot_tag = 'fake_migration_snapshot_tag'
+        dst_ssh_cmd = 'fake_dst_ssh_cmd'
+        self.driver.private_storage.update(
+            src_share['id'], {'dataset_name': src_dataset_name})
+        self.driver.private_storage.update(
+            dst_share['id'], {
+                'dataset_name': dst_dataset_name,
+                'migr_snapshot_tag': snapshot_tag,
+                'dataset_name': dst_dataset_name,
+                'ssh_cmd': dst_ssh_cmd,
+            })
+        self.mock_object(zfs_driver.time, 'sleep')
+        mock_delete_dataset = self.mock_object(
+            self.driver, '_delete_dataset_or_snapshot_with_retry')
+        self.mock_object(
+            self.driver, 'execute',
+            mock.Mock(side_effect=exception.ProcessExecutionError),
+        )
+
+        self.driver.migration_cancel(self._context, src_share, dst_share)
+
+        self.driver.execute.assert_has_calls([
+            mock.call('ps', 'aux'),
+            mock.call('ssh', dst_ssh_cmd, 'sudo', 'zfs', 'destroy', '-r',
+                      dst_dataset_name),
+        ])
+        zfs_driver.time.sleep.assert_called_once_with(2)
+        mock_delete_dataset.assert_called_once_with(
+            src_dataset_name + '@' + snapshot_tag)
