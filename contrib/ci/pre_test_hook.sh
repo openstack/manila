@@ -157,7 +157,7 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     save_configuration "MANILA_ZFSONLINUX_USE_SSH" "True"
 elif [[ "$DRIVER" == "container" ]]; then
     save_configuration "SHARE_DRIVER" "manila.share.drivers.container.driver.ContainerShareDriver"
-    save_configuration "SHARE_BACKING_FILE_SIZE" "32000M"
+    save_configuration "SHARE_BACKING_FILE_SIZE" "64000M"
     save_configuration "MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS" "'snapshot_support=false'"
 fi
 

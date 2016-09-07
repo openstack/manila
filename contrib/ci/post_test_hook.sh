@@ -212,7 +212,8 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     iniset $TEMPEST_CONFIG share create_networks_when_multitenancy_enabled False
     iniset $TEMPEST_CONFIG share multi_backend True
 elif [[ "$DRIVER" == "container" ]]; then
-    MANILA_TEMPEST_CONCURRENCY=1
+    MANILA_TESTS="(^manila_tempest_tests.tests.api)(?=.*\[.*\bbackend\b.*\])"
+    MANILA_TEMPEST_CONCURRENCY=8
     RUN_MANILA_CG_TESTS=False
     RUN_MANILA_MANAGE_TESTS=False
     iniset $TEMPEST_CONFIG share run_host_assisted_migration_tests False

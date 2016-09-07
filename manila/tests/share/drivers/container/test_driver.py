@@ -119,7 +119,7 @@ class ContainerShareDriverTestCase(test.TestCase):
                          self._driver.create_share(self._context, self.share,
                                                    {'id': 'fake'}))
 
-    def test_delete_share(self):
+    def test_delete_share_ok(self):
         helper = mock.Mock()
         self.mock_object(self._driver, "_get_helper",
                          mock.Mock(return_value=helper))
@@ -132,6 +132,19 @@ class ContainerShareDriverTestCase(test.TestCase):
             'manila_fake',
             ['rm', '-fR', '/shares/fakeshareid']
             )
+
+    def test_delete_share_rm_fails(self):
+        def fake_execute(*args):
+            if 'rm' in args[1]:
+                raise exception.ProcessExecutionError()
+        self.mock_object(driver.LOG, "warning")
+        self.mock_object(self._driver, "_get_helper")
+        self.mock_object(self._driver.container, "execute", fake_execute)
+        self.mock_object(self._driver.storage, 'remove_storage')
+
+        self._driver.delete_share(self._context, self.share, {'id': 'fake'})
+
+        self.assertTrue(driver.LOG.warning.called)
 
     def test_extend_share(self):
         share = cont_fakes.fake_share()
@@ -193,7 +206,7 @@ class ContainerShareDriverTestCase(test.TestCase):
         setattr(self._driver.configuration.local_conf,
                 'network_api_class',
                 'manila.share.drivers.container.driver.ContainerShareDriver')
-        driver.LOG.warning = mock.Mock()
+        self.mock_object(driver.LOG, "warning")
 
         self._driver.check_for_setup_error()
 
@@ -238,6 +251,26 @@ class ContainerShareDriverTestCase(test.TestCase):
             server_details={"id": "b5afb5c1-6011-43c4-8a37-29820e6951a7"})
 
         self.assertEqual(expected_arguments.sort(), actual_arguments.sort())
+
+    @ddt.data(['veth0000000'], ['veth0000000' * 2])
+    def test__teardown_server_veth_disappeared_mysteriously(self,
+                                                            list_of_veths):
+        def fake_ovs_execute(*args, **kwargs):
+            if len(args) == 3:
+                return list_of_veths
+            if len(args) == 4:
+                return ('fake:manila_b5afb5c1_6011_43c4_8a37_29820e6951a7', '')
+            if 'del-port' in args:
+                raise exception.ProcessExecutionError()
+            else:
+                return 0
+        self.mock_object(driver.LOG, "warning")
+        self.mock_object(self._driver, "_execute", fake_ovs_execute)
+
+        self._driver._teardown_server(
+            server_details={"id": "b5afb5c1-6011-43c4-8a37-29820e6951a7"})
+
+        self.assertTrue(driver.LOG.warning.called)
 
     @ddt.data(['veth0000000'], ['veth0000000' * 2])
     def test__teardown_server_check_continuation(self, list_of_veths):

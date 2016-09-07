@@ -85,6 +85,7 @@ class LVMHelperTestCase(test.TestCase):
     def test_remove_storage(self):
         actual_arguments = []
         expected_arguments = [
+            ('umount', '/dev/manila_docker_volumes/fakeshareid'),
             ('lvremove', '-f', '--autobackup', 'n',
              '/dev/manila_docker_volumes/fakeshareid')
         ]
@@ -95,6 +96,30 @@ class LVMHelperTestCase(test.TestCase):
         self.LVMHelper.remove_storage(self.share)
 
         self.assertEqual(expected_arguments, actual_arguments)
+
+    def test_remove_storage_umount_failed(self):
+        def fake_execute(*args, **kwargs):
+            if 'umount' in args:
+                raise exception.ProcessExecutionError()
+
+        self.mock_object(storage_helper.LOG, "warning")
+        self.mock_object(self.LVMHelper, "_execute", fake_execute)
+
+        self.LVMHelper.remove_storage(self.share)
+
+        self.assertTrue(storage_helper.LOG.warning.called)
+
+    def test_remove_storage_lvremove_failed(self):
+        def fake_execute(*args, **kwargs):
+            if 'lvremove' in args:
+                raise exception.ProcessExecutionError()
+
+        self.mock_object(storage_helper.LOG, "warning")
+        self.mock_object(self.LVMHelper, "_execute", fake_execute)
+
+        self.LVMHelper.remove_storage(self.share)
+
+        self.assertTrue(storage_helper.LOG.warning.called)
 
     def test_extend_share(self):
         actual_arguments = []
