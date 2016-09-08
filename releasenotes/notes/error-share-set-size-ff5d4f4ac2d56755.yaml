@@ -1,0 +1,5 @@
+---
+fixes:
+ - Any errors that may occur during 'managing' a share into manila will
+   result in the share's size being set to 1, aside from transitioning
+   the status to 'manage_error'.

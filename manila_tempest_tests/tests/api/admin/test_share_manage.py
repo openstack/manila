@@ -212,6 +212,8 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
 
         self.shares_v2_client.wait_for_share_status(
             share['id'], 'manage_error')
+        share = self.shares_v2_client.get_share(share['id'])
+        self.assertEqual(1, int(share['size']))
 
         # Delete resource from backend. We need to manage the share properly
         # so it can be removed.

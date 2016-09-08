@@ -290,13 +290,20 @@ class SchedulerManagerTestCase(test.TestCase):
 
         share = db_utils.create_share()
 
+        db_update = self.mock_object(db, 'share_update', mock.Mock())
         self.mock_object(
             base.Scheduler, 'host_passes_filters',
             mock.Mock(side_effect=exception.NoValidHost('fake')))
 
+        share_id = share['id']
+
         self.assertRaises(
             exception.NoValidHost, self.manager.manage_share,
-            self.context, share['id'], 'driver_options', {}, None)
+            self.context, share['id'], 'driver_options',
+            {'share_id': share_id}, None)
+        db_update.assert_called_once_with(
+            self.context, share_id,
+            {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
 
     def test_create_share_replica_exception_path(self):
         """Test 'raisable' exceptions for create_share_replica."""
