@@ -24,6 +24,7 @@ from oslo_log import log
 from manila.i18n import _LE
 from manila.i18n import _LW
 from manila.scheduler.filters import base_host
+from manila.scheduler import utils
 
 LOG = log.getLogger(__name__)
 
@@ -77,14 +78,19 @@ class CapacityFilter(base_host.BaseHostFilter):
                   "on host %(host)s (requested / avail): "
                   "%(requested)s/%(available)s", msg_args)
 
+        share_type = filter_properties.get('share_type', {})
+        use_thin_logic = utils.use_thin_logic(share_type)
+        thin_provisioning = utils.thin_provisioning(
+            host_state.thin_provisioning)
+
         # NOTE(xyang): Only evaluate using max_over_subscription_ratio
-        # if thin_provisioning is True. Check if the ratio of
-        # provisioned capacity over total capacity would exceed
+        # if use_thin_logic and thin_provisioning are True. Check if the
+        # ratio of provisioned capacity over total capacity would exceed
         # subscription ratio.
         # If max_over_subscription_ratio = 1, the provisioned_ratio
         # should still be limited by the max_over_subscription_ratio;
         # otherwise, it could result in infinite provisioning.
-        if (host_state.thin_provisioning and
+        if (use_thin_logic and thin_provisioning and
                 host_state.max_over_subscription_ratio >= 1):
             provisioned_ratio = ((host_state.provisioned_capacity_gb +
                                   share_size) / total)
@@ -105,7 +111,8 @@ class CapacityFilter(base_host.BaseHostFilter):
                 adjusted_free_virtual = (
                     free * host_state.max_over_subscription_ratio)
                 return adjusted_free_virtual >= share_size
-        elif host_state.thin_provisioning:
+        elif (use_thin_logic and thin_provisioning and
+              host_state.max_over_subscription_ratio < 1):
             LOG.error(_LE("Invalid max_over_subscription_ratio: %(ratio)s. "
                           "Valid value should be >= 1."),
                       {"ratio": host_state.max_over_subscription_ratio})

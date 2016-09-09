@@ -16,6 +16,7 @@
 Tests For Capacity Weigher.
 """
 
+import ddt
 import mock
 from oslo_config import cfg
 
@@ -29,6 +30,7 @@ from manila.tests.scheduler import fakes
 CONF = cfg.CONF
 
 
+@ddt.ddt
 class CapacityWeigherTestCase(test.TestCase):
     def setUp(self):
         super(CapacityWeigherTestCase, self).setUp()
@@ -61,9 +63,37 @@ class CapacityWeigherTestCase(test.TestCase):
     #        - total * reserved)
     # Otherwise, use the following formula:
     # free = math.floor(free_space - total * reserved)
-    def test_default_of_spreading_first(self):
+
+    @ddt.data(
+        {'cap_thin': '<is> True',
+         'cap_thin_key': 'capabilities:thin_provisioning',
+         'winner': 'host2'},
+        {'cap_thin': '<is> False',
+         'cap_thin_key': 'thin_provisioning',
+         'winner': 'host1'},
+        {'cap_thin': 'True',
+         'cap_thin_key': 'capabilities:thin_provisioning',
+         'winner': 'host2'},
+        {'cap_thin': 'False',
+         'cap_thin_key': 'thin_provisioning',
+         'winner': 'host1'},
+        {'cap_thin': 'true',
+         'cap_thin_key': 'capabilities:thin_provisioning',
+         'winner': 'host2'},
+        {'cap_thin': 'false',
+         'cap_thin_key': 'thin_provisioning',
+         'winner': 'host1'},
+        {'cap_thin': None,
+         'cap_thin_key': None,
+         'winner': 'host2'},
+    )
+    @ddt.unpack
+    def test_default_of_spreading_first(self, cap_thin, cap_thin_key,
+                                        winner):
         hostinfo_list = self._get_all_hosts()
 
+        # Results for the 1st test
+        # {'capabilities:thin_provisioning': '<is> True'}:
         # host1: thin_provisioning = False
         #        free_capacity_gb = 1024
         #        free = math.floor(1024 - 1024 * 0.1) = 921.0
@@ -73,16 +103,16 @@ class CapacityWeigherTestCase(test.TestCase):
         #        free_capacity_gb = 300
         #        free = math.floor(2048 * 2.0 - 1748 - 2048 * 0.1)=2143.0
         #        weight = 1.0
-        # host3: thin_provisioning = False
+        # host3: thin_provisioning = [False]
         #        free_capacity_gb = 512
         #        free = math.floor(256 - 512 * 0)=256.0
         #        weight = 0.08
-        # host4: thin_provisioning = True
+        # host4: thin_provisioning = [True]
         #        max_over_subscription_ratio = 1.0
         #        free_capacity_gb = 200
         #        free = math.floor(2048 * 1.0 - 1848 - 2048 * 0.05) = 97.0
         #        weight = 0.0
-        # host5: thin_provisioning = True
+        # host5: thin_provisioning = [True, False]
         #        max_over_subscription_ratio = 1.5
         #        free_capacity_gb = 500
         #        free = math.floor(2048 * 1.5 - 1548 - 2048 * 0.05) = 1421.0
@@ -92,10 +122,20 @@ class CapacityWeigherTestCase(test.TestCase):
         #        weight = 0.0
 
         # so, host2 should win:
-        weighed_host = self._get_weighed_host(hostinfo_list)
+        weight_properties = {
+            'size': 1,
+            'share_type': {
+                'extra_specs': {
+                    cap_thin_key: cap_thin,
+                }
+            }
+        }
+        weighed_host = self._get_weighed_host(
+            hostinfo_list,
+            weight_properties=weight_properties)
         self.assertEqual(1.0, weighed_host.weight)
         self.assertEqual(
-            'host2', utils.extract_host(weighed_host.obj.host))
+            winner, utils.extract_host(weighed_host.obj.host))
 
     def test_unknown_is_last(self):
         hostinfo_list = self._get_all_hosts()
@@ -105,10 +145,38 @@ class CapacityWeigherTestCase(test.TestCase):
             'host6', utils.extract_host(last_host.obj.host))
         self.assertEqual(0.0, last_host.weight)
 
-    def test_capacity_weight_multiplier_negative_1(self):
+    @ddt.data(
+        {'cap_thin': '<is> True',
+         'cap_thin_key': 'capabilities:thin_provisioning',
+         'winner': 'host4'},
+        {'cap_thin': '<is> False',
+         'cap_thin_key': 'thin_provisioning',
+         'winner': 'host2'},
+        {'cap_thin': 'True',
+         'cap_thin_key': 'capabilities:thin_provisioning',
+         'winner': 'host4'},
+        {'cap_thin': 'False',
+         'cap_thin_key': 'thin_provisioning',
+         'winner': 'host2'},
+        {'cap_thin': 'true',
+         'cap_thin_key': 'capabilities:thin_provisioning',
+         'winner': 'host4'},
+        {'cap_thin': 'false',
+         'cap_thin_key': 'thin_provisioning',
+         'winner': 'host2'},
+        {'cap_thin': None,
+         'cap_thin_key': None,
+         'winner': 'host4'},
+    )
+    @ddt.unpack
+    def test_capacity_weight_multiplier_negative_1(self, cap_thin,
+                                                   cap_thin_key,
+                                                   winner):
         self.flags(capacity_weight_multiplier=-1.0)
         hostinfo_list = self._get_all_hosts()
 
+        # Results for the 1st test
+        # {'capabilities:thin_provisioning': '<is> True'}:
         # host1: thin_provisioning = False
         #        free_capacity_gb = 1024
         #        free = math.floor(1024 - 1024 * 0.1) = 921.0
@@ -120,18 +188,18 @@ class CapacityWeigherTestCase(test.TestCase):
         #        free = math.floor(2048 * 2.0-1748-2048 * 0.1) = 2143.0
         #        free * (-1) = -2143.0
         #        weight = -1.0
-        # host3: thin_provisioning = False
+        # host3: thin_provisioning = [False]
         #        free_capacity_gb = 512
         #        free = math.floor(256 - 512 * 0) = 256.0
         #        free * (-1) = -256.0
         #        weight = -0.08
-        # host4: thin_provisioning = True
+        # host4: thin_provisioning = [True]
         #        max_over_subscription_ratio = 1.0
         #        free_capacity_gb = 200
         #        free = math.floor(2048 * 1.0 - 1848 - 2048 * 0.05) = 97.0
         #        free * (-1) = -97.0
         #        weight = 0.0
-        # host5: thin_provisioning = True
+        # host5: thin_provisioning = [True, False]
         #        max_over_subscription_ratio = 1.5
         #        free_capacity_gb = 500
         #        free = math.floor(2048 * 1.5 - 1548 - 2048 * 0.05) = 1421.0
@@ -143,15 +211,52 @@ class CapacityWeigherTestCase(test.TestCase):
         #        weight = 0.0
 
         # so, host4 should win:
-        weighed_host = self._get_weighed_host(hostinfo_list)
+        weight_properties = {
+            'size': 1,
+            'share_type': {
+                'extra_specs': {
+                    cap_thin_key: cap_thin,
+                }
+            }
+        }
+        weighed_host = self._get_weighed_host(
+            hostinfo_list,
+            weight_properties=weight_properties)
         self.assertEqual(0.0, weighed_host.weight)
         self.assertEqual(
-            'host4', utils.extract_host(weighed_host.obj.host))
+            winner, utils.extract_host(weighed_host.obj.host))
 
-    def test_capacity_weight_multiplier_2(self):
+    @ddt.data(
+        {'cap_thin': '<is> True',
+         'cap_thin_key': 'capabilities:thin_provisioning',
+         'winner': 'host2'},
+        {'cap_thin': '<is> False',
+         'cap_thin_key': 'thin_provisioning',
+         'winner': 'host1'},
+        {'cap_thin': 'True',
+         'cap_thin_key': 'capabilities:thin_provisioning',
+         'winner': 'host2'},
+        {'cap_thin': 'False',
+         'cap_thin_key': 'thin_provisioning',
+         'winner': 'host1'},
+        {'cap_thin': 'true',
+         'cap_thin_key': 'capabilities:thin_provisioning',
+         'winner': 'host2'},
+        {'cap_thin': 'false',
+         'cap_thin_key': 'thin_provisioning',
+         'winner': 'host1'},
+        {'cap_thin': None,
+         'cap_thin_key': None,
+         'winner': 'host2'},
+    )
+    @ddt.unpack
+    def test_capacity_weight_multiplier_2(self, cap_thin, cap_thin_key,
+                                          winner):
         self.flags(capacity_weight_multiplier=2.0)
         hostinfo_list = self._get_all_hosts()
 
+        # Results for the 1st test
+        # {'capabilities:thin_provisioning': '<is> True'}:
         # host1: thin_provisioning = False
         #        free_capacity_gb = 1024
         #        free = math.floor(1024-1024*0.1) = 921.0
@@ -163,18 +268,18 @@ class CapacityWeigherTestCase(test.TestCase):
         #        free = math.floor(2048 * 2.0 - 1748 - 2048 * 0.1) = 2143.0
         #        free * 2 = 4286.0
         #        weight = 2.0
-        # host3: thin_provisioning = False
+        # host3: thin_provisioning = [False]
         #        free_capacity_gb = 512
         #        free = math.floor(256 - 512 * 0) = 256.0
         #        free * 2 = 512.0
         #        weight = 0.16
-        # host4: thin_provisioning = True
+        # host4: thin_provisioning = [True]
         #        max_over_subscription_ratio = 1.0
         #        free_capacity_gb = 200
         #        free = math.floor(2048 * 1.0 - 1848 - 2048 * 0.05) = 97.0
         #        free * 2 = 194.0
         #        weight = 0.0
-        # host5: thin_provisioning = True
+        # host5: thin_provisioning = [True, False]
         #        max_over_subscription_ratio = 1.5
         #        free_capacity_gb = 500
         #        free = math.floor(2048 * 1.5 - 1548 - 2048 * 0.05) = 1421.0
@@ -185,7 +290,17 @@ class CapacityWeigherTestCase(test.TestCase):
         #        weight = 0.0
 
         # so, host2 should win:
-        weighed_host = self._get_weighed_host(hostinfo_list)
+        weight_properties = {
+            'size': 1,
+            'share_type': {
+                'extra_specs': {
+                    cap_thin_key: cap_thin,
+                }
+            }
+        }
+        weighed_host = self._get_weighed_host(
+            hostinfo_list,
+            weight_properties=weight_properties)
         self.assertEqual(2.0, weighed_host.weight)
         self.assertEqual(
-            'host2', utils.extract_host(weighed_host.obj.host))
+            winner, utils.extract_host(weighed_host.obj.host))

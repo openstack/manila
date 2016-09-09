@@ -31,7 +31,7 @@ import math
 
 from oslo_config import cfg
 
-
+from manila.scheduler import utils
 from manila.scheduler.weighers import base_host
 
 capacity_weight_opts = [
@@ -63,7 +63,13 @@ class CapacityWeigher(base_host.BaseHostWeigher):
                 free = float('inf')
         else:
             total = float(total_space)
-            if host_state.thin_provisioning:
+
+            share_type = weight_properties.get('share_type', {})
+            use_thin_logic = utils.use_thin_logic(share_type)
+            thin_provisioning = utils.thin_provisioning(
+                host_state.thin_provisioning)
+
+            if use_thin_logic and thin_provisioning:
                 # NOTE(xyang): Calculate virtual free capacity for thin
                 # provisioning.
                 free = math.floor(
