@@ -18,6 +18,8 @@
 """Testing of SQLAlchemy backend."""
 
 import ddt
+import mock
+
 from oslo_db import exception as db_exception
 from oslo_utils import uuidutils
 import six
@@ -203,6 +205,32 @@ class ShareDatabaseAPITestCase(test.TestCase):
         instance = db_api.share_instance_get(self.ctxt, share.instance['id'])
 
         self.assertEqual('share-%s' % instance['id'], instance['name'])
+
+    @ddt.data(True, False)
+    def test_share_instance_get_all_by_host(self, with_share_data):
+        db_utils.create_share()
+        instances = db_api.share_instances_get_all_by_host(
+            self.ctxt, 'fake_host', with_share_data)
+
+        self.assertEqual(1, len(instances))
+        instance = instances[0]
+
+        self.assertEqual('share-%s' % instance['id'], instance['name'])
+
+        if with_share_data:
+            self.assertEqual('NFS', instance['share_proto'])
+            self.assertEqual(0, instance['size'])
+        else:
+            self.assertNotIn('share_proto', instance)
+
+    def test_share_instance_get_all_by_host_not_found_exception(self):
+        db_utils.create_share()
+        self.mock_object(db_api, 'share_get', mock.Mock(
+                         side_effect=exception.NotFound))
+        instances = db_api.share_instances_get_all_by_host(
+            self.ctxt, 'fake_host', True)
+
+        self.assertEqual(0, len(instances))
 
     def test_share_instance_get_all_by_consistency_group(self):
         cg = db_utils.create_consistency_group()

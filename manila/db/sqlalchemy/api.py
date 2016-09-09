@@ -1212,10 +1212,28 @@ def share_instance_delete(context, instance_id, session=None):
             share_access_delete_all_by_share(context, share['id'])
 
 
+def _set_instances_share_data(context, instances, session):
+    if instances and not isinstance(instances, list):
+        instances = [instances]
+
+    instances_with_share_data = []
+    for instance in instances:
+        try:
+            parent_share = share_get(context, instance['share_id'],
+                                     session=session)
+        except exception.NotFound:
+            continue
+        instance.set_share_data(parent_share)
+        instances_with_share_data.append(instance)
+    return instances_with_share_data
+
+
 @require_admin_context
-def share_instances_get_all_by_host(context, host):
+def share_instances_get_all_by_host(context, host, with_share_data=False,
+                                    session=None):
     """Retrieves all share instances hosted on a host."""
-    result = (
+    session = session or get_session()
+    instances = (
         model_query(context, models.ShareInstance).filter(
             or_(
                 models.ShareInstance.host == host,
@@ -1223,7 +1241,10 @@ def share_instances_get_all_by_host(context, host):
             )
         ).all()
     )
-    return result
+
+    if with_share_data:
+        instances = _set_instances_share_data(context, instances, session)
+    return instances
 
 
 @require_context
