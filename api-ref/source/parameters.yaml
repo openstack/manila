@@ -8,6 +8,18 @@ api_version:
   type: string
   description: >
     The API version as returned in the links from the ``GET /`` call.
+cg_id_path:
+  description: |
+    The UUID of the consistency group.
+  in: path
+  required: true
+  type: string
+cg_share_network_id_path:
+  description: |
+    The UUID of the share network.
+  in: path
+  required: true
+  type: string
 cgsnapshot_id:
   description: |
     The UUID of the consistency group snapshot.
@@ -101,6 +113,12 @@ tenant_id_1:
   in: path
   required: true
   type: string
+tenant_id_path:
+  description: |
+    The tenant ID in a multi-tenancy cloud.
+  in: path
+  required: true
+  type: string
 
 # variables in query
 all_tenants:
@@ -108,15 +126,6 @@ all_tenants:
     (Admin only). Defines whether to list shares for
     all tenants. Set to ``1`` to list shares for all tenants. Set to
     ``0`` to list shares only for the current tenant.
-  in: query
-  required: false
-  type: boolean
-all_tenants_1:
-  description: |
-    (Admin only). Defines whether to list consistency groups for
-    all tenants. Set to ``1`` to list consistency groups for all
-    tenants. Set to ``0`` to list consistency groups only for the
-    current tenant.
   in: query
   required: false
   type: boolean
@@ -148,6 +157,28 @@ capabilities_1:
   in: query
   required: false
   type: string
+cg_all_tenants_query:
+  description: |
+    (Admin only). Defines whether to list consistency groups for
+    all tenants. Set to ``1`` to list consistency groups for all
+    tenants. Set to ``0`` to list consistency groups only for the
+    current tenant.
+  in: query
+  required: false
+  type: boolean
+cg_limit_query:
+  description: |
+    The maximum number of consistency groups to return.
+  in: query
+  required: false
+  type: integer
+cg_offset_query:
+  description: |
+    The offset to define start point of consistency
+    group listing.
+  in: query
+  required: false
+  type: integer
 consistency_group_id_3:
   description: |
     (Since API v2.4) The UUID of the consistency
@@ -196,12 +227,6 @@ limit:
   in: query
   required: false
   type: integer
-limit_1:
-  description: |
-    The maximum number of consistency groups to return.
-  in: query
-  required: false
-  type: integer
 limit_2:
   description: |
     The maximum number of consistency groups snapshots
@@ -242,13 +267,7 @@ offset:
   in: query
   required: false
   type: integer
-offset_1:
-  description: |
-    The offset to define start point of consistency
-    group listing.
-  in: query
-  required: false
-  type: integer
+
 offset_2:
   description: |
     The offset to define start point of consistency
@@ -590,6 +609,113 @@ capabilities:
   in: body
   required: true
   type: object
+cg_created_at:
+  description: |
+    The date and time stamp when the consistency group was created.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+  in: body
+  required: true
+  type: string
+cg_description_request:
+  description: |
+    The consistency group description.
+  in: body
+  required: false
+  type: string
+cg_description_response:
+  description: |
+    The consistency group description.
+  in: body
+  required: true
+  type: string
+cg_host:
+  description: |
+    The consistency group host name.
+  in: body
+  required: true
+  type: string
+cg_id_response:
+  description: |
+    The UUID of the consistency group.
+  in: body
+  required: true
+  type: string
+cg_links:
+  description: |
+    The consistency group links.
+  in: body
+  required: true
+  type: array
+cg_name_request:
+  description: |
+    The consistency group name.
+  in: body
+  required: false
+  type: string
+cg_name_response:
+  description: |
+    The consistency group name.
+  in: body
+  required: true
+  type: string
+cg_project_id:
+  description: |
+    The ID of the project in which the consistency
+    group snapshot was created.
+  in: body
+  required: true
+  type: string
+cg_share_network_id:
+  description: |
+    The UUID of the share network.
+  in: body
+  required: true
+  type: string
+cg_share_server_id:
+  description: |
+    The UUID of the share server.
+  in: body
+  required: true
+  type: string
+cg_share_types_request:
+  description: |
+    A list of share type IDs.
+  in: body
+  required: false
+  type: array
+cg_share_types_response:
+  description: |
+    A list of share type IDs.
+  in: body
+  required: true
+  type: array
+cg_snapshot_id:
+  description: |
+    The consistency group snapshot ID. A valid value
+    is ``null`` or the ID of the consistency group snapshot, if the
+    consistency group was created from a snapshot.
+  in: body
+  required: true
+  type: string
+cg_status:
+  description: |
+    The consistency group status. A valid value is
+    ``creating``, ``available``, ``error``, ``deleting``, or
+    ``error_deleting``.
+  in: body
+  required: true
+  type: string
 cgsnapshot:
   description: |
     The ``cgsnapshot`` object
@@ -1387,12 +1513,6 @@ id_16:
   in: body
   required: true
   type: string
-id_2:
-  description: |
-    The consistency group ID.
-  in: body
-  required: true
-  type: string
 id_3:
   description: |
     The security service ID.
@@ -1468,12 +1588,6 @@ is_public:
   in: body
   required: false
   type: boolean
-link:
-  description: |
-    The share links.
-  in: body
-  required: true
-  type: array
 link_1:
   description: |
     The share links
@@ -1657,12 +1771,6 @@ name_5:
 name_6:
   description: |
     The name of the availability zone.
-  in: body
-  required: true
-  type: string
-name_7:
-  description: |
-    The consistency group name.
   in: body
   required: true
   type: string
