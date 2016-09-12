@@ -159,7 +159,7 @@ class AvailabilityZoneMigrationChecks(BaseMigrationChecks):
 
         for az in engine.execute(az_table.select()):
             self.test_case.assertTrue(uuidutils.is_uuid_like(az.id))
-            self.test_case.assertTrue(az.name in self.valid_az_names)
+            self.test_case.assertIn(az.name, self.valid_az_names)
             self.test_case.assertEqual('False', az.deleted)
 
         services_table = utils.load_table('services', engine)

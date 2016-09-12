@@ -51,6 +51,6 @@ class HostFiltersTestCase(test.TestCase):
 
     def test_all_filters(self):
         # Double check at least a couple of known filters exist
-        self.assertTrue('JsonFilter' in self.class_map)
-        self.assertTrue('CapabilitiesFilter' in self.class_map)
-        self.assertTrue('AvailabilityZoneFilter' in self.class_map)
+        self.assertIn('JsonFilter', self.class_map)
+        self.assertIn('CapabilitiesFilter', self.class_map)
+        self.assertIn('AvailabilityZoneFilter', self.class_map)

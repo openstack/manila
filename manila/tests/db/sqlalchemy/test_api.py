@@ -262,7 +262,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
         db_share = db_api.share_get(self.ctxt, share['id'])
 
-        self.assertTrue('has_replicas' in db_share)
+        self.assertIn('has_replicas', db_share)
 
     @ddt.data({'with_share_data': False, 'with_share_server': False},
               {'with_share_data': False, 'with_share_server': True},
@@ -922,7 +922,7 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
 
         for instance in instances:
             self.assertEqual('fake_snapshot_id_1', instance['snapshot_id'])
-            self.assertTrue(instance['status'] in filters['statuses'])
+            self.assertIn(instance['status'], filters['statuses'])
 
         self.assertEqual(expected_number, len(instances))
 
@@ -1979,7 +1979,7 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         self.assertEqual(values['host'], server.host)
         self.assertEqual(values['status'], server.status)
         self.assertDictMatch(server['backend_details'], details)
-        self.assertTrue('backend_details' in server.to_dict())
+        self.assertIn('backend_details', server.to_dict())
 
     def test_delete_with_details(self):
         server = db_utils.create_share_server(backend_details={
