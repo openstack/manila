@@ -1,0 +1,5 @@
+---
+fixes:
+  - The NetApp cDOT driver's autosupport reporting
+    now works on Python 2.7.12 and later.
+

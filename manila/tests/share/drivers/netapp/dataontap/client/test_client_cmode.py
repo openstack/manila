@@ -4311,9 +4311,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_send_ems_log_message(self):
 
         # Mock client lest we not be able to see calls on its copy.
-        self.mock_object(copy,
-                         'deepcopy',
-                         mock.Mock(return_value=self.client))
+        self.mock_object(
+            copy, 'copy',
+            mock.Mock(side_effect=[self.client, self.client.connection]))
         self.mock_object(self.client,
                          '_get_ems_log_destination_vserver',
                          mock.Mock(return_value=fake.ADMIN_VSERVER_NAME))
@@ -4328,9 +4328,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_send_ems_log_message_api_error(self):
 
         # Mock client lest we not be able to see calls on its copy.
-        self.mock_object(copy,
-                         'deepcopy',
-                         mock.Mock(return_value=self.client))
+        self.mock_object(
+            copy, 'copy',
+            mock.Mock(side_effect=[self.client, self.client.connection]))
         self.mock_object(self.client,
                          '_get_ems_log_destination_vserver',
                          mock.Mock(return_value=fake.ADMIN_VSERVER_NAME))
