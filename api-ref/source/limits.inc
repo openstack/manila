@@ -45,7 +45,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Response parameters
 -------------------

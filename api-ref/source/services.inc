@@ -28,12 +28,12 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - host: host_12
-   - binary: binary_3
-   - zone: zone_1
-   - state: state_2
-   - status: status_17
+   - tenant_id: tenant_id_path
+   - host: service_host_query
+   - binary: service_binary_query
+   - zone: service_zone_query
+   - state: service_state_query
+   - status: service_status_query
 
 Response parameters
 -------------------
@@ -41,13 +41,13 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - services: services
-   - id: id_12
-   - status: status_4
-   - binary: binary_2
-   - zone: zone
-   - host: host_5
-   - state: state_1
-   - updated_at: updated_at_5
+   - id: service_id_response
+   - status: service_status_response
+   - binary: service_binary_response
+   - zone: service_zone_response
+   - host: service_host_response
+   - state: service_state_response
+   - updated_at: service_updated_at
 
 Response example
 ----------------
@@ -72,9 +72,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - binary: binary_1
-   - host: host_3
+   - tenant_id: tenant_id_path
+   - binary: service_enable_binary_request
+   - host: service_enable_host_request
 
 Request example
 ---------------
@@ -87,9 +87,9 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - host: host_14
-   - binary: binary_5
-   - disabled: disabled
+   - host: service_enable_host_response
+   - binary: service_binary_response
+   - disabled: service_disabled_response
 
 Response example
 ----------------
@@ -114,9 +114,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - binary: binary
-   - host: host_2
+   - tenant_id: tenant_id_path
+   - binary: service_disable_binary_request
+   - host: service_disable_host_request
 
 Request example
 ---------------
@@ -129,9 +129,9 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - host: host_13
-   - binary: binary_4
-   - disabled: disabled
+   - host: service_disable_host_response
+   - binary: service_disable_binary_response
+   - disabled: service_disabled_response
 
 Response example
 ----------------

@@ -295,6 +295,39 @@ project_id_6:
   in: query
   required: false
   type: string
+service_binary_query:
+  description: |
+    The service binary name. Default is the base name
+    of the executable.
+  in: query
+  required: false
+  type: string
+service_host_query:
+  description: |
+    The service host name.
+  in: query
+  required: false
+  type: string
+service_state_query:
+  description: |
+    The current state of the service. A valid value
+    is ``up`` or ``down``.
+  in: query
+  required: false
+  type: string
+service_status_query:
+  description: |
+    The service status, which is ``enabled`` or
+    ``disabled``.
+  in: query
+  required: false
+  type: string
+service_zone_query:
+  description: |
+    The availability zone.
+  in: query
+  required: false
+  type: string
 share_network_id_5:
   description: |
     The UUID of the share network.
@@ -561,13 +594,6 @@ backend_details_1:
   in: body
   required: true
   type: object
-binary:
-  description: |
-    The name of the service binary that you want to
-    disable. Typically, this name is the base name of the executable.
-  in: body
-  required: true
-  type: string
 binary:
   description: |
     The name of the service binary that you want to
@@ -1480,7 +1506,7 @@ host_4:
   type: string
 host_5:
   description: |
-    The host name.
+    The service host name.
   in: body
   required: true
   type: string
@@ -2190,12 +2216,129 @@ server_pools_mapping:
   in: body
   required: true
   type: object
+service_binary_response:
+  description: |
+    The service binary name. Default is the base name
+    of the executable.
+  in: body
+  required: true
+  type: string
+service_disable_binary_request:
+  description: |
+    The name of the service binary that you want to
+    disable. Typically, this name is the base name of the executable.
+  in: body
+  required: true
+  type: string
+service_disable_binary_response:
+  description: |
+    The name of the disabled service binary.
+    Typically, this name is the base name of the executable.
+  in: body
+  required: true
+  type: string
+service_disable_host_request:
+  description: |
+    The host name of the service that you want to
+    disable.
+  in: body
+  required: true
+  type: string
+service_disable_host_response:
+  description: |
+    The host name of the disabled service.
+  in: body
+  required: true
+  type: string
+service_disabled_response:
+  description: |
+    Indicates whether the service is disabled.
+  in: body
+  required: true
+  type: boolean
+service_enable_binary_request:
+  description: |
+    The name of the service binary that you want to
+    enable. Typically, this name is the base name of the executable.
+  in: body
+  required: true
+  type: string
+service_enable_binary_response:
+  description: |
+    The name of the enabled service binary.
+    Typically, this name is the base name of the executable.
+  in: body
+  required: true
+  type: string
+service_enable_host_request:
+  description: |
+    The host name of the service that you want to
+    enable.
+  in: body
+  required: true
+  type: string
+service_enable_host_response:
+  description: |
+    The host name of the enabled service.
+  in: body
+  required: true
+  type: string
 service_host:
   description: |
     The manage-share service host in this format:
     ``host@backend#POOL``.  - ``host``. The host name for the back
     end.  - ``backend``. The name of the back end.  - ``POOL``. The
     pool name for the back end.
+  in: body
+  required: true
+  type: string
+service_host_response:
+  description: |
+    The service host name.
+  in: body
+  required: true
+  type: string
+service_id_response:
+  description: |
+    The service ID.
+  in: body
+  required: true
+  type: integer
+service_state_response:
+  description: |
+    The current state of the service. A valid value
+    is ``up`` or ``down``.
+  in: body
+  required: true
+  type: string
+service_status_response:
+  description: |
+    The service status, which is ``enabled`` or
+    ``disabled``.
+  in: body
+  required: true
+  type: string
+service_updated_at:
+  description: |
+    The date and time stamp when the service was updated.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+  in: body
+  required: true
+  type: string
+service_zone_response:
+  description: |
+    The service availability zone.
   in: body
   required: true
   type: string
