@@ -1269,6 +1269,50 @@ extend:
   in: body
   required: true
   type: object
+extension_alias:
+  description: |
+    The alias for the extension. For example,
+    "FOXNSOX", "os-availability-zone", "os-extended-quotas", "os-
+    share-unmanage", or "os-used-limits".
+  in: body
+  required: true
+  type: string
+extension_description:
+  description: |
+    The extension description.
+  in: body
+  required: true
+  type: string
+extension_links:
+  description: |
+    The extension links.
+  in: body
+  required: true
+  type: array
+extension_name:
+  description: |
+    The name of the extension. For example, "Fox In Socks."
+  in: body
+  required: true
+  type: string
+extension_updated:
+  description: |
+    The date and time stamp when the extension was last updated.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+  in: body
+  required: true
+  type: string
 extra-spec-key:
   description: |
     The extra specification key
