@@ -195,6 +195,10 @@ class ShareMigrationHelper(object):
             LOG.debug("Restoring all of share %s access rules according to "
                       "DB.", self.share['id'])
 
+            # refresh share instance
+            new_share_instance = self.db.share_instance_get(
+                self.context, new_share_instance['id'], with_share_data=True)
+
             self.api.allow_access_to_instance(self.context, new_share_instance,
                                               rules)
             utils.wait_for_access_update(

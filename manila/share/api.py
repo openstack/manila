@@ -1348,20 +1348,7 @@ class API(base.Base):
         policy.check_policy(ctx, 'share', 'allow_access')
         share = self.db.share_get(ctx, share['id'])
         if share['status'] != constants.STATUS_AVAILABLE:
-            if not (share['status'] in (constants.STATUS_MIGRATING,
-                                        constants.STATUS_MIGRATING_TO) and
-                    share['task_state'] in (
-                        constants.TASK_STATE_DATA_COPYING_ERROR,
-                        constants.TASK_STATE_MIGRATION_ERROR,
-                        constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE,
-                        constants.TASK_STATE_DATA_COPYING_COMPLETED)):
-                msg = _("Share status must be %(available)s, or %(migrating)s "
-                        "while first phase of migration is completed.") % {
-                            'available': constants.STATUS_AVAILABLE,
-                            'migrating': constants.STATUS_MIGRATING
-                }
-            else:
-                msg = _("Share status must be %s") % constants.STATUS_AVAILABLE
+            msg = _("Share status must be %s") % constants.STATUS_AVAILABLE
             raise exception.InvalidShare(reason=msg)
         values = {
             'share_id': share['id'],
@@ -1433,20 +1420,7 @@ class API(base.Base):
             msg = _("Share doesn't have any instances")
             raise exception.InvalidShare(reason=msg)
         if share['status'] != constants.STATUS_AVAILABLE:
-            if not (share['status'] in (constants.STATUS_MIGRATING,
-                                        constants.STATUS_MIGRATING_TO) and
-                    share['task_state'] in (
-                        constants.TASK_STATE_DATA_COPYING_ERROR,
-                        constants.TASK_STATE_MIGRATION_ERROR,
-                        constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE,
-                        constants.TASK_STATE_DATA_COPYING_COMPLETED)):
-                msg = _("Share status must be %(available)s, or %(migrating)s "
-                        "while first phase of migration is completed.") % {
-                            'available': constants.STATUS_AVAILABLE,
-                            'migrating': constants.STATUS_MIGRATING
-                }
-            else:
-                msg = _("Share status must be %s") % constants.STATUS_AVAILABLE
+            msg = _("Share status must be %s") % constants.STATUS_AVAILABLE
             raise exception.InvalidShare(reason=msg)
 
         for share_instance in share.instances:

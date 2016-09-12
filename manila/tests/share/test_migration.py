@@ -345,6 +345,8 @@ class ShareMigrationHelperTestCase(test.TestCase):
                                         access_level='rw')
 
         # mocks
+        self.mock_object(db, 'share_instance_get',
+                         mock.Mock(return_value=new_share_instance))
         self.mock_object(db, 'share_instance_access_copy')
         self.mock_object(db, 'share_access_get_all_for_instance',
                          mock.Mock(return_value=[access]))
@@ -355,6 +357,8 @@ class ShareMigrationHelperTestCase(test.TestCase):
         self.helper.apply_new_access_rules(new_share_instance)
 
         # asserts
+        db.share_instance_get.assert_called_once_with(
+            self.context, new_share_instance['id'], with_share_data=True)
         db.share_instance_access_copy(self.context, self.share['id'],
                                       new_share_instance['id'])
         db.share_access_get_all_for_instance.assert_called_once_with(
