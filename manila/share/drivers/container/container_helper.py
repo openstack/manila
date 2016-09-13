@@ -39,10 +39,32 @@ class DockerExecHelper(driver.ExecuteMixin):
         LOG.debug("Starting container from image %s.", image_name)
         # (aovchinnikov): --privileged is required for both samba and
         # nfs-ganesha to actually allow access to shared folders.
+        #
+        # (aovchinnikov): To actually make docker container mount a
+        # logical volume created after container start-up to some location
+        # inside it, we must share entire /dev with it. While seemingly
+        # dangerous it is not and moreover this is apparently the only sane
+        # way to do it. The reason is when a logical volume gets created
+        # several new things appear in /dev: a new /dev/dm-X and a symlink
+        # in /dev/volume_group_name pointing to /dev/dm-X. But to be able
+        # to interact with /dev/dm-X, it must be already present inside
+        # the container's /dev i.e. it must have been -v shared during
+        # container start-up. So we should either precreate an unknown
+        # number of /dev/dm-Xs (one per LV), share them all and hope
+        # for the best or share the entire /dev and hope for the best.
+        #
+        # The risk of allowing a container having access to entire host's
+        # /dev is not as big as it seems: as long as actual share providers
+        # are invulnerable this does not pose any extra risks. If, however,
+        # share providers contain vulnerabilities then the driver does not
+        # provide any more possibilities for an exploitation than other
+        # first-party drivers.
+
         cmd = ["docker", "run", "-d", "-i", "-t", "--privileged",
-               "--name=%s" % name, '-v', "/tmp/shares:/shares", image_name]
-        result = self._inner_execute(cmd) or ['', 1]
-        if result[1] != '':
+               "-v", "/dev:/dev", "--name=%s" % name,
+               "-v", "/tmp/shares:/shares", image_name]
+        result = self._inner_execute(cmd) or ["", 1]
+        if result[1] != "":
             raise exception.ManilaException(
                 _("Container %s has failed to start.") % name)
         LOG.info(_LI("A container has been successfully started! Its id is "

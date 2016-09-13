@@ -126,6 +126,11 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
             ["mkdir", "-m", "750", "/shares/%s" % share_name]
         )
         self.storage.provide_storage(share)
+        lv_device = self.storage._get_lv_device(share)
+        self.container.execute(
+            server_id,
+            ["mount", lv_device, "/shares/%s" % share_name]
+        )
         location = self._get_helper(share).create_share(server_id)
         return location
 
@@ -136,15 +141,30 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         server_id = self._get_container_name(share_server["id"])
         self._get_helper(share).delete_share(server_id)
 
-        self.storage.remove_storage(share)
+        self.container.execute(
+            server_id,
+            ["umount", "/shares/%s" % share.share_id]
+        )
         self.container.execute(
             server_id,
             ["rm", "-fR", "/shares/%s" % share.share_id]
         )
+
+        self.storage.remove_storage(share)
         LOG.debug("Deletion of share %s is completed!", share.share_id)
 
     def extend_share(self, share, new_size, share_server=None):
+        server_id = self._get_container_name(share_server["id"])
+        self.container.execute(
+            server_id,
+            ["umount", "/shares/%s" % share.share_id]
+        )
         self.storage.extend_share(share, new_size, share_server)
+        lv_device = self.storage._get_lv_device(share)
+        self.container.execute(
+            server_id,
+            ["mount", lv_device, "/shares/%s" % share.share_id]
+        )
 
     def ensure_share(self, context, share, share_server=None):
         pass

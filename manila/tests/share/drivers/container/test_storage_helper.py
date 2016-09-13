@@ -73,10 +73,6 @@ class LVMHelperTestCase(test.TestCase):
             ('lvcreate', '-p', 'rw', '-L', '1G', '-n', 'fakeshareid',
              'manila_docker_volumes'),
             ('mkfs.ext4', '/dev/manila_docker_volumes/fakeshareid'),
-            ('mount', '/dev/manila_docker_volumes/fakeshareid',
-             '/tmp/shares/fakeshareid'),
-            ('chmod', '-R', '750', '/tmp/shares/fakeshareid'),
-            ('chown', 'nobody:nogroup', '/tmp/shares/fakeshareid')
         ]
         self.LVMHelper._execute = functools.partial(
             self.fake_exec_sync, execute_arguments=actual_arguments,
@@ -89,7 +85,6 @@ class LVMHelperTestCase(test.TestCase):
     def test_remove_storage(self):
         actual_arguments = []
         expected_arguments = [
-            ('umount', '/dev/manila_docker_volumes/fakeshareid'),
             ('lvremove', '-f', '--autobackup', 'n',
              '/dev/manila_docker_volumes/fakeshareid')
         ]
@@ -104,13 +99,10 @@ class LVMHelperTestCase(test.TestCase):
     def test_extend_share(self):
         actual_arguments = []
         expected_arguments = [
-            ('umount', '/tmp/shares/fakeshareid'),
             ('lvextend', '-L', 'shareG', '-n',
              '/dev/manila_docker_volumes/fakeshareid'),
             ('e2fsck', '-f', '-y', '/dev/manila_docker_volumes/fakeshareid'),
             ('resize2fs', '/dev/manila_docker_volumes/fakeshareid'),
-            ('mount', '/dev/manila_docker_volumes/fakeshareid',
-             '/tmp/shares/fakeshareid')
         ]
         self.LVMHelper._execute = functools.partial(
             self.fake_exec_sync, execute_arguments=actual_arguments,

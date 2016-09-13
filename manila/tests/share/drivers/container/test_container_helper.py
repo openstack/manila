@@ -37,8 +37,8 @@ class DockerExecHelperTestCase(test.TestCase):
         self.mock_object(self.DockerExecHelper, "_inner_execute",
                          mock.Mock(return_value=['fake_output', '']))
         uuid.uuid1 = mock.Mock(return_value='')
-        expected = ['docker', 'run', '-d', '-i', '-t', '--privileged',
-                    '--name=manila_cifs_docker_container', '-v',
+        expected = ['docker', 'run', '-d', '-i', '-t', '--privileged', '-v',
+                    '/dev:/dev', '--name=manila_cifs_docker_container', '-v',
                     '/tmp/shares:/shares', 'fake_image']
 
         self.DockerExecHelper.start_container()

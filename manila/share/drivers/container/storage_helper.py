@@ -77,24 +77,14 @@ class LVMHelper(driver.ExecuteMixin):
                       run_as_root=True)
         self._execute("mkfs.ext4", self._get_lv_device(share),
                       run_as_root=True)
-        self._execute("mount", self._get_lv_device(share),
-                      self._get_lv_folder(share), run_as_root=True)
-        self._execute("chmod", "-R", "750", self._get_lv_folder(share),
-                      run_as_root=True)
-        self._execute("chown", "nobody:nogroup", self._get_lv_folder(share),
-                      run_as_root=True)
 
     def remove_storage(self, share):
-        self._execute("umount", self._get_lv_device(share), run_as_root=True)
         self._execute("lvremove", "-f", "--autobackup", "n",
                       self._get_lv_device(share), run_as_root=True)
 
     def extend_share(self, share, new_size, share_server=None):
         lv_device = self._get_lv_device(share)
-        lv_folder = self._get_lv_folder(share)
-        self._execute("umount", lv_folder, run_as_root=True)
         cmd = ('lvextend', '-L', '%sG' % new_size, '-n', lv_device)
         self._execute(*cmd, run_as_root=True)
         self._execute("e2fsck", "-f", "-y", lv_device, run_as_root=True)
         self._execute('resize2fs', lv_device, run_as_root=True)
-        self._execute("mount", lv_device, lv_folder, run_as_root=True)
