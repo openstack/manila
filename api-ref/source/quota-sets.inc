@@ -160,7 +160,7 @@ If you specify the optional ``user_id`` query parameter, you delete
 the quotas for this user in the tenant. If you omit this parameter,
 you delete the quotas for the project.
 
-Error response codes: 202
+Normal response codes: 202
 Error response codes: badRequest(400), unauthorized(401), forbidden(403)
 
 Request
