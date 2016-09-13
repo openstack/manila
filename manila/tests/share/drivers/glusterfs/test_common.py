@@ -98,9 +98,19 @@ class GlusterManagerTestCase(test.TestCase):
         xmlout = mock.Mock()
         xmlout.find = mock.Mock(return_value=None)
 
-        ret = common.volxml_get(xmlout, 'some/path', default)
+        ret = common.volxml_get(xmlout, 'some/path', default=default)
 
         self.assertEqual(default, ret)
+
+    def test_volxml_get_multiple(self):
+        xmlout = mock.Mock()
+        value = mock.Mock()
+        value.text = 'foobar'
+        xmlout.find = mock.Mock(side_effect=(None, value))
+
+        ret = common.volxml_get(xmlout, 'some/path', 'better/path')
+
+        self.assertEqual('foobar', ret)
 
     def test_volxml_get_notfound(self):
         xmlout = mock.Mock()
@@ -385,11 +395,11 @@ class GlusterManagerTestCase(test.TestCase):
               {'opRet': '0', 'opErrno': '0', 'some/count': '2'})
     def test_xml_response_check_invalid(self, fdict):
 
-        def vxget(x, e, *a):
-            if a:
-                return fdict.get(e, a[0])
+        def vxget(x, *e, **kw):
+            if kw:
+                return fdict.get(e[0], kw['default'])
             else:
-                return fdict[e]
+                return fdict[e[0]]
 
         xtree = mock.Mock()
         command = ['volume', 'command', 'fake']
@@ -557,7 +567,8 @@ class GlusterManagerTestCase(test.TestCase):
         self._gluster_manager.gluster_call.assert_called_once_with(
             *args, check_exit_code=False)
 
-    def test_get_vol_regular_option(self):
+    @ddt.data({'start': "", 'end': ""}, {'start': "<Opt>", 'end': "</Opt>"})
+    def test_get_vol_regular_option(self, extratag):
 
         def xml_output(*ignore_args, **ignore_kwargs):
             return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -567,10 +578,12 @@ class GlusterManagerTestCase(test.TestCase):
   <opErrstr/>
   <volGetopts>
     <count>1</count>
+    %(start)s
     <Option>nfs.export-dir</Option>
     <Value>/foo(10.0.0.1|10.0.0.2),/bar(10.0.0.1)</Value>
+    %(end)s
   </volGetopts>
-</cliOutput>""", ''
+</cliOutput>""" % extratag, ''
 
         args = ('--xml', 'volume', 'get', self._gluster_manager.volume,
                 NFS_EXPORT_DIR)
