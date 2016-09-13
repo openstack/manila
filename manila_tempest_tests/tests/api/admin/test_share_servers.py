@@ -165,8 +165,8 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
 
     @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
     def test_show_share_server(self):
-        servers = self.shares_client.list_share_servers()
-        server = self.shares_client.show_share_server(servers[0]["id"])
+        share = self.shares_client.get_share(self.share["id"])
+        server = self.shares_client.show_share_server(share["share_server_id"])
         keys = [
             "id",
             "host",
