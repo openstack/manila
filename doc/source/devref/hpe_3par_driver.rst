@@ -40,7 +40,7 @@ The following operations are supported with HPE 3PAR File Persona:
 - Allow/deny CIFS share access
 
   * CIFS shares require user access rules.
-  * User access requires a 3PAR local user (LDAP and AD is not yet supported)
+  * User access requires a 3PAR local or AD user (LDAP is not yet supported)
 
 - Create/delete snapshots
 - Create shares from snapshots
@@ -106,6 +106,77 @@ contents will not be deleted. `hpe3par_cifs_admin_access_domain` and
 
 Restart of :term:`manila-share` service is needed for the configuration changes to take
 effect.
+
+Backend Configuration for AD user
+---------------------------------
+
+The following parameters need to be configured through HPE 3PAR CLI to access
+file share using AD.
+
+Set authentication parameters::
+
+    $ setauthparam ldap-server IP_ADDRESS_OF_AD_SERVER
+    $ setauthparam binding simple
+    $ setauthparam user-attr AD_DOMAIN_NAME\\
+    $ setauthparam accounts-dn CN=Users,DC=AD,DC=DOMAIN,DC=NAME
+    $ setauthparam account-obj user
+    $ setauthparam account-name-attr sAMAccountName
+    $ setauthparam memberof-attr memberOf
+    $ setauthparam super-map CN=AD_USER_GROUP,DC=AD,DC=DOMAIN,DC=NAME
+
+Verify new authentication parameters set as expected::
+
+    $ showauthparam
+
+Verify AD users set as expected::
+
+    $ checkpassword AD_USER
+
+Command result should show ``user AD_USER is authenticated and authorized``
+message on successful configuration.
+
+Add 'ActiveDirectory' in authentication providers list::
+
+    $ setfs auth ActiveDirectory Local
+
+Verify authentication provider list shows 'ActiveDirectory'::
+
+    $ showfs -auth
+
+Set/Add AD user on FS::
+
+    $ setfs ad –passwd PASSWORD AD_USER AD_DOMAIN_NAME
+
+Verify FS user details::
+
+    $ showfs -ad
+
+Example of using AD user to access CIFS share
+---------------------------------------------
+
+Pre-requisite:
+
+- Share type should be configured for 3PAR backend
+
+Create a CIFS file share with 2GB of size::
+
+    $ manila create --name FILE_SHARE_NAME --share-type SHARE_TYPE CIFS 2
+
+Check file share created as expected::
+
+    $ manila show FILE_SHARE_NAME
+
+Configuration to provide share access to AD user::
+
+    $ manila access-allow FILE_SHARE_NAME user AD_DOMAIN_NAME\\\\AD_USER
+      --access-level rw
+
+Check users permission set as expected::
+
+    $ manila access-list FILE_SHARE_NAME
+
+The AD_DOMAIN_NAME\\AD_USER must be listed in access_to column and should
+show active in its state column as result of this command.
 
 Network Approach
 ----------------
