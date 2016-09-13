@@ -132,7 +132,9 @@ def locked_share_replica_operation(operation):
     def wrapped(*args, **kwargs):
         share_id = kwargs.get('share_id')
 
-        @utils.synchronized("%s" % share_id, external=True)
+        @utils.synchronized(
+            "locked_share_replica_operation_by_share_%s" % share_id,
+            external=True)
         def locked_operation(*_args, **_kwargs):
             return operation(*_args, **_kwargs)
         return locked_operation(*args, **kwargs)
