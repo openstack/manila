@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed Hitachi HNAS driver allowing a share to be managed twice through
+    a malformed export location parameter.

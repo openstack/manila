@@ -390,12 +390,12 @@ class HDSHNASDriver(driver.ShareDriver):
                  {'shr_path': share['export_locations'][0]['path'],
                   'shr_id': share['id']})
 
-        old_path_info = share['export_locations'][0]['path'].split(':')
-        old_path = old_path_info[1].split('/')
+        old_path_info = share['export_locations'][0]['path'].split(
+            ':/shares/')
 
-        if len(old_path) == 3:
+        if len(old_path_info) == 2:
             evs_ip = old_path_info[0]
-            hnas_share_id = old_path[2]
+            hnas_share_id = old_path_info[1]
         else:
             msg = _("Incorrect path. It should have the following format: "
                     "IP:/shares/share_id.")
