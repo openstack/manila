@@ -691,7 +691,7 @@ class NeutronBindNetworkPluginTest(test.TestCase):
         self.mock_object(self.bind_plugin.neutron_api, 'show_port')
         self.bind_plugin.neutron_api.show_port.return_value = fake_neut_port
 
-        self.assertRaises(exception.ManilaException,
+        self.assertRaises(exception.NetworkException,
                           self.bind_plugin._wait_for_ports_bind,
                           [fake_neut_port, fake_neut_port],
                           fake_share_server)
@@ -701,19 +701,17 @@ class NeutronBindNetworkPluginTest(test.TestCase):
         self.sleep_mock.assert_not_called()
 
     @ddt.data(('DOWN', 'ACTIVE'), ('DOWN', 'DOWN'), ('ACTIVE', 'DOWN'))
-    @mock.patch.object(time, 'time', side_effect=[1, 1, 3])
-    def test_wait_for_bind_two_ports_no_bind(self, state, time_mock):
+    def test_wait_for_bind_two_ports_no_bind(self, state):
         fake_neut_port1 = copy.copy(fake_neutron_port)
         fake_neut_port1['status'] = state[0]
         fake_neut_port2 = copy.copy(fake_neutron_port)
         fake_neut_port2['status'] = state[1]
         self.mock_object(self.bind_plugin.neutron_api, 'show_port')
-        self.bind_plugin.neutron_api.show_port.side_effect = [fake_neut_port1,
-                                                              fake_neut_port2]
+        self.bind_plugin.neutron_api.show_port.side_effect = (
+            [fake_neut_port1, fake_neut_port2] * 20)
 
-        self.assertRaises(exception.ManilaException,
-                          self.bind_plugin._wait_for_ports_bind.__wrapped__,
-                          self.bind_plugin,
+        self.assertRaises(exception.NetworkBindException,
+                          self.bind_plugin._wait_for_ports_bind,
                           [fake_neut_port1, fake_neut_port2],
                           fake_share_server)
 
@@ -1231,7 +1229,7 @@ class NeutronBindSingleNetworkPluginTest(test.TestCase):
         self.mock_object(self.bind_plugin.neutron_api, 'show_port')
         self.bind_plugin.neutron_api.show_port.return_value = fake_neut_port
 
-        self.assertRaises(exception.ManilaException,
+        self.assertRaises(exception.NetworkException,
                           self.bind_plugin._wait_for_ports_bind,
                           [fake_neut_port, fake_neut_port],
                           fake_share_server)
@@ -1241,19 +1239,17 @@ class NeutronBindSingleNetworkPluginTest(test.TestCase):
         self.sleep_mock.assert_not_called()
 
     @ddt.data(('DOWN', 'ACTIVE'), ('DOWN', 'DOWN'), ('ACTIVE', 'DOWN'))
-    @mock.patch.object(time, 'time', side_effect=[1, 1, 3])
-    def test_wait_for_bind_two_ports_no_bind(self, state, time_mock):
+    def test_wait_for_bind_two_ports_no_bind(self, state):
         fake_neut_port1 = copy.copy(fake_neutron_port)
         fake_neut_port1['status'] = state[0]
         fake_neut_port2 = copy.copy(fake_neutron_port)
         fake_neut_port2['status'] = state[1]
         self.mock_object(self.bind_plugin.neutron_api, 'show_port')
-        self.bind_plugin.neutron_api.show_port.side_effect = [fake_neut_port1,
-                                                              fake_neut_port2]
+        self.bind_plugin.neutron_api.show_port.side_effect = (
+            [fake_neut_port1, fake_neut_port2] * 20)
 
         self.assertRaises(exception.NetworkBindException,
-                          self.bind_plugin._wait_for_ports_bind.__wrapped__,
-                          self.bind_plugin,
+                          self.bind_plugin._wait_for_ports_bind,
                           [fake_neut_port1, fake_neut_port2],
                           fake_share_server)
 
