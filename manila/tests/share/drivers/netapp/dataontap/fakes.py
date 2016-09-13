@@ -247,6 +247,7 @@ NETWORK_INFO = {
     'network_allocations': USER_NETWORK_ALLOCATIONS,
     'admin_network_allocations': ADMIN_NETWORK_ALLOCATIONS,
     'neutron_subnet_id': '62bf1c2c-18eb-421b-8983-48a6d39aafe0',
+    'segmentation_id': '1000',
 }
 NETWORK_INFO_NETMASK = '255.255.255.0'
 
