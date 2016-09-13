@@ -55,6 +55,7 @@ The following operations are supported:
 * Shrink share
 * Replication (experimental):
    * Create/update/delete/promote replica operations are supported
+* Share migration (experimental)
 
 Possibilities
 -------------
@@ -133,6 +134,9 @@ for the ZFSonLinux driver:
 * zfs_replica_snapshot_prefix = <prefix>
    * Prefix to be used in dataset snapshot names that are created
      by 'update replica' operation.
+* zfs_migration_snapshot_prefix = <prefix>
+   * Prefix to be used in dataset snapshot names that are created
+     for 'migration' operation.
 
 Restart of :term:`manila-share` service is needed for the configuration
 changes to take effect.
