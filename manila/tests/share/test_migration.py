@@ -382,7 +382,7 @@ class ShareMigrationHelperTestCase(test.TestCase):
             self.share_instance)
 
         if exc:
-            migration.LOG.warning.called
+            self.assertEqual(1, migration.LOG.warning.call_count)
 
     @ddt.data(None, Exception('fake'))
     def test_cleanup_access_rules(self, exc):
@@ -404,4 +404,4 @@ class ShareMigrationHelperTestCase(test.TestCase):
             self.share_instance, server, share_driver)
 
         if exc:
-            migration.LOG.warning.called
+            self.assertEqual(1, migration.LOG.warning.call_count)
