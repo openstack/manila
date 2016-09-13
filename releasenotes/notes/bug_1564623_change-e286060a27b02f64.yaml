@@ -1,0 +1,5 @@
+---
+fixes:
+    For a delete snapshot request, if backend reports that
+    snapshot is busy then state of snapshot is changed to
+    'error_deleting'.
