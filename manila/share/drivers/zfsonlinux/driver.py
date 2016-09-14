@@ -1380,6 +1380,10 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
         dst_dataset_name = self._get_dataset_name(destination_share)
         backend_name = share_utils.extract_host(
             destination_share['host'], level='backend_name')
+        ssh_cmd = '%(username)s@%(host)s' % {
+            'username': self.configuration.zfs_ssh_username,
+            'host': self.configuration.zfs_service_ip,
+        }
         config = get_backend_configuration(backend_name)
         remote_ssh_cmd = '%(username)s@%(host)s' % {
             'username': config.zfs_ssh_username,
@@ -1411,6 +1415,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
 
         # Send/receive temporary snapshot
         cmd = (
+            'ssh ' + ssh_cmd + ' '
             'sudo zfs send -vDR ' + src_snapshot_name + ' '
             '| ssh ' + remote_ssh_cmd + ' '
             'sudo zfs receive -v ' + dst_dataset_name
