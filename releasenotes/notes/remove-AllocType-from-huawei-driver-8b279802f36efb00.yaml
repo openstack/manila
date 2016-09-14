@@ -1,0 +1,8 @@
+---
+prelude: >
+    Manila scheduler checks "thin_provisioning" in extra specs of the share type
+    and decides whether to use the logic for thin or thick. If "thin_provisioning"
+    not given in extra specs, default use thin.
+upgrade:
+  - Remove the "AllocType" configuration from huawei driver configuration file.
+    If "thin_provisioning" not given, default create new share by "thin" type.
