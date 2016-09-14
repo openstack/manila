@@ -23,7 +23,7 @@ import six
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LI, _LW
+from manila.i18n import _, _LE, _LI, _LW
 from manila.share import driver
 
 LOG = log.getLogger(__name__)
@@ -812,13 +812,21 @@ class HitachiHNASDriver(driver.ShareDriver):
 
         self._check_protocol(share['id'], share['share_proto'])
 
-        if share['share_proto'].lower() == 'nfs':
-            self.hnas.nfs_export_add(share['id'])
-            uri = self.hnas_evs_ip + ":" + dest_path
-        else:
-            self.hnas.cifs_share_add(share['id'])
-            uri = r'\\%s\%s' % (self.hnas_evs_ip, share['id'])
-        return uri
+        try:
+            if share['share_proto'].lower() == 'nfs':
+                self.hnas.nfs_export_add(share['id'])
+                uri = self.hnas_evs_ip + ":" + dest_path
+            else:
+                self.hnas.cifs_share_add(share['id'])
+                uri = r'\\%s\%s' % (self.hnas_evs_ip, share['id'])
+            return uri
+        except exception.HNASBackendException:
+            with excutils.save_and_reraise_exception():
+                msg = _LE('Failed to create share %(share_id)s from snapshot '
+                          '%(snap)s.')
+                LOG.exception(msg, {'share_id': share['id'],
+                                    'snap': snapshot['id']})
+                self.hnas.vvol_delete(share['id'])
 
     def _check_protocol(self, share_id, protocol):
         if protocol.lower() not in ('nfs', 'cifs'):

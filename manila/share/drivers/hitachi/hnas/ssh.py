@@ -65,7 +65,12 @@ class HNASSSHBackend(object):
         path = '/shares/' + share_id
         command = ['nfs-export', 'add', '-S', 'disable', '-c', '127.0.0.1',
                    path, self.fs_name, path]
-        self._execute(command)
+        try:
+            self._execute(command)
+        except processutils.ProcessExecutionError:
+            msg = _("Could not create NFS export %s.") % share_id
+            LOG.exception(msg)
+            raise exception.HNASBackendException(msg=msg)
 
     def nfs_export_del(self, share_id):
         path = '/shares/' + share_id
@@ -85,7 +90,12 @@ class HNASSSHBackend(object):
         path = r'\\shares\\' + share_id
         command = ['cifs-share', 'add', '-S', 'disable', '--enable-abe',
                    '--nodefaultsaa', share_id, self.fs_name, path]
-        self._execute(command)
+        try:
+            self._execute(command)
+        except processutils.ProcessExecutionError:
+            msg = _("Could not create CIFS share %s.") % share_id
+            LOG.exception(msg)
+            raise exception.HNASBackendException(msg=msg)
 
     def cifs_share_del(self, share_id):
         command = ['cifs-share', 'del', '--target-label', self.fs_name,
