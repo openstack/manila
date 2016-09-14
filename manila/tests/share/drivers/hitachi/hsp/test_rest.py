@@ -237,7 +237,7 @@ class HitachiHSPRestTestCase(test.TestCase):
     def test_delete_share(self):
         url = "https://172.24.47.190/hspapi/shares/%s" % fakes.share['id']
 
-        self.mock_object(rest.HSPRestBackend, "_send_delete", mock.Mock())
+        self.mock_object(rest.HSPRestBackend, "_send_delete")
 
         self._driver.delete_share(fakes.share['id'])
 
@@ -265,13 +265,12 @@ class HitachiHSPRestTestCase(test.TestCase):
         url = "https://172.24.47.190/hspapi/shares/%s/" % fakes.share['id']
         payload = {
             "action": "delete-access-rule",
-            "name": fakes.share['id'] + fakes.access_rule['access_to'],
+            "name": fakes.hsp_rules[0]['name'],
         }
-
         self.mock_object(rest.HSPRestBackend, "_send_post", mock.Mock())
 
         self._driver.delete_access_rule(fakes.share['id'],
-                                        fakes.access_rule['access_to'])
+                                        fakes.hsp_rules[0]['name'])
 
         rest.HSPRestBackend._send_post.assert_called_once_with(
             url, payload=json.dumps(payload))
@@ -314,10 +313,13 @@ class HitachiHSPRestTestCase(test.TestCase):
         url = "fake_job_url"
         json = {
             'id': 'fake_id',
-            'properties': {'completion-status': stat},
+            'properties': {
+                'completion-details': 'Duplicate NFS access rule exists',
+                'completion-status': stat,
+            },
             'messages': [{
                 'id': 'fake_id',
-                'message': 'fake_msg'
+                'message': 'fake_msg',
             }]
         }
 
