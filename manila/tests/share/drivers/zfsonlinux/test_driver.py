@@ -90,6 +90,15 @@ class FakeDriverPrivateStorage(object):
         self.storage.pop(entity_id, None)
 
 
+class FakeTempDir(object):
+
+    def __enter__(self, *args, **kwargs):
+        return '/foo/path'
+
+    def __exit__(*args, **kwargs):
+        pass
+
+
 class GetBackendConfigurationTestCase(test.TestCase):
 
     def test_get_backend_configuration_success(self):
@@ -2162,6 +2171,10 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             dst_backend_name)
 
     def test_migration_start(self):
+        username = self.driver.configuration.zfs_ssh_username
+        hostname = self.driver.configuration.zfs_service_ip
+        dst_username = username + '_dst'
+        dst_hostname = hostname + '_dst'
         src_share = {
             'id': 'fake_src_share_id',
             'host': 'foohost@foobackend#foopool',
@@ -2186,16 +2199,19 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             'get_backend_configuration',
             mock.Mock(return_value=type(
                 'FakeConfig', (object,), {
-                    'zfs_ssh_username': (
-                        self.driver.configuration.zfs_ssh_username),
-                    'zfs_service_ip': self.driver.configuration.zfs_service_ip,
+                    'zfs_ssh_username': dst_username,
+                    'zfs_service_ip': dst_hostname,
                 })))
         self.mock_object(self.driver, 'execute')
-        self.driver.private_storage.update(
-            src_share['id'], {'dataset_name': src_dataset_name})
 
-        self.driver.migration_start(
-            self._context, src_share, dst_share)
+        self.mock_object(
+            zfs_driver.utils, 'tempdir',
+            mock.MagicMock(side_effect=FakeTempDir))
+
+        self.driver.private_storage.update(
+            src_share['id'],
+            {'dataset_name': src_dataset_name,
+             'ssh_cmd': username + '@' + hostname})
 
         src_snapshot_name = (
             '%(dataset_name)s@%(snapshot_tag)s' % {
@@ -2203,6 +2219,26 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
                 'dataset_name': src_dataset_name,
             }
         )
+        with mock.patch("six.moves.builtins.open",
+                        mock.mock_open(read_data="data")) as mock_file:
+            self.driver.migration_start(
+                self._context, src_share, dst_share)
+
+            expected_file_content = (
+                'ssh %(ssh_cmd)s sudo zfs send -vDR %(snap)s | '
+                'ssh %(dst_ssh_cmd)s sudo zfs receive -v %(dst_dataset)s'
+            ) % {
+                'ssh_cmd': self.driver.private_storage.get(
+                    src_share['id'], 'ssh_cmd'),
+                'dst_ssh_cmd': self.driver.private_storage.get(
+                    dst_share['id'], 'ssh_cmd'),
+                'snap': src_snapshot_name,
+                'dst_dataset': dst_dataset_name,
+            }
+            mock_file.assert_called_with("/foo/path/bar_dataset_name.sh", "w")
+            mock_file.return_value.write.assert_called_once_with(
+                expected_file_content)
+
         self.driver.execute.assert_has_calls([
             mock.call('sudo', 'zfs', 'snapshot', src_snapshot_name),
             mock.call('sudo', 'chmod', '755', mock.ANY),
@@ -2215,9 +2251,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         for k, v in (('dataset_name', dst_dataset_name),
                      ('migr_snapshot_tag', snapshot_tag),
                      ('pool_name', 'barpool'),
-                     ('ssh_cmd',
-                      self.driver.configuration.zfs_ssh_username + '@' +
-                      self.driver.configuration.zfs_service_ip)):
+                     ('ssh_cmd', dst_username + '@' + dst_hostname)):
             self.assertEqual(
                 v, self.driver.private_storage.get(dst_share['id'], k))
 
