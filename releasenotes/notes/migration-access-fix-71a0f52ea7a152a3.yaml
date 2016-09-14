@@ -1,0 +1,7 @@
+---
+fixes:
+  - Fixed access_allow and access_deny displaying incorrect error
+    message during migration of a share.
+  - Fixed access rule concurrency in migration that was preventing
+    new rules from being added to the migrated share.
+
