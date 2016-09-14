@@ -212,10 +212,12 @@ class HPE3ParShareDriver(driver.ShareDriver):
                 when a share is deleted #1582931
         2.0.5 - Add update_access support
         2.0.6 - Multi pool support per backend
+        2.0.7 - Fix get_vfs() to correctly validate conf IP addresses at
+                boot up #1621016
 
     """
 
-    VERSION = "2.0.6"
+    VERSION = "2.0.7"
 
     def __init__(self, *args, **kwargs):
         super(HPE3ParShareDriver, self).__init__((True, False),
@@ -265,7 +267,6 @@ class HPE3ParShareDriver(driver.ShareDriver):
         def _validate_pool_ips(addresses, conf_pool_ips):
             # Pool configured IP addresses should be subset of IP addresses
             # retured from vfs
-            addresses = to_list(addresses)
             if not set(conf_pool_ips) <= set(addresses):
                 msg = _("Incorrect configuration. "
                         "Configuration pool IP address did not match with "
@@ -287,8 +288,6 @@ class HPE3ParShareDriver(driver.ShareDriver):
                 vfs_info = mediator.get_vfs(pool_name)
                 if self.driver_handles_share_servers:
                     # Use discovered IP(s) from array
-                    vfs_info['vfsip']['address'] = to_list(
-                        vfs_info['vfsip']['address'])
                     self.fpgs[pool_name] = {
                         vfs_info['vfsname']: vfs_info['vfsip']['address']}
                 elif conf_pool_ips == []:
@@ -301,8 +300,6 @@ class HPE3ParShareDriver(driver.ShareDriver):
                         raise exception.HPE3ParInvalid(err=msg)
                     else:
                         # Use discovered pool ips
-                        vfs_info['vfsip']['address'] = to_list(
-                            vfs_info['vfsip']['address'])
                         self.fpgs[pool_name] = {
                             vfs_info['vfsname']: vfs_info['vfsip']['address']}
                 else:

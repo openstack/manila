@@ -33,6 +33,7 @@ CIDR_PREFIX = '24'
 
 # Constants to use with Mock and expect in results
 EXPECTED_IP_10203040 = '10.20.30.40'
+EXPECTED_IP_10203041 = '10.20.30.41'
 EXPECTED_IP_1234 = '1.2.3.4'
 EXPECTED_MY_IP = '9.8.7.6'
 EXPECTED_IP_127 = '127.0.0.1'
@@ -48,6 +49,7 @@ SHARE_ID = 'share-id'
 EXPECTED_SHARE_ID = 'osf-share-id'
 EXPECTED_SHARE_ID_RO = 'osf-ro-share-id'
 EXPECTED_SHARE_NAME = 'share-name'
+EXPECTED_NET_NAME = 'testnet'
 EXPECTED_FPG = 'pool'
 EXPECTED_HOST = 'hostname@backend#' + EXPECTED_FPG
 UNEXPECTED_FPG = 'not_a_pool'
@@ -64,8 +66,82 @@ EXPECTED_FPG_CONF = [{EXPECTED_FPG: [EXPECTED_IP_10203040]}]
 EXPECTED_FSTORE = EXPECTED_PROJECT_ID
 EXPECTED_VFS = 'test_vfs'
 EXPECTED_GET_VFS = {'vfsname': EXPECTED_VFS,
-                    'vfsip': {'address': EXPECTED_IP_10203040}}
+                    'vfsip': {'address': [EXPECTED_IP_10203040]}}
+EXPECTED_GET_VFS_MULTIPLES = {
+    'vfsname': EXPECTED_VFS,
+    'vfsip': {'address': [EXPECTED_IP_10203041, EXPECTED_IP_10203040]}}
+
+EXPECTED_CLIENT_GET_VFS_MEMBERS_MULTI = {
+    'fspname': EXPECTED_VFS,
+    'vfsip': [
+        {'networkName': EXPECTED_NET_NAME,
+         'fspool': EXPECTED_VFS,
+         'address': EXPECTED_IP_10203040,
+         'prefixLen': EXPECTED_SUBNET,
+         'vfs': EXPECTED_VFS,
+         'vlanTag': EXPECTED_VLAN_TAG,
+         },
+        {'networkName': EXPECTED_NET_NAME,
+         'fspool': EXPECTED_VFS,
+         'address': EXPECTED_IP_10203041,
+         'prefixLen': EXPECTED_SUBNET,
+         'vfs': EXPECTED_VFS,
+         'vlanTag': EXPECTED_VLAN_TAG,
+         },
+    ],
+    'vfsname': EXPECTED_VFS,
+    }
+EXPECTED_MEDIATOR_GET_VFS_RET_VAL_MULTI = {
+    'fspname': EXPECTED_VFS,
+    'vfsip': {
+        'networkName': EXPECTED_NET_NAME,
+        'fspool': EXPECTED_VFS,
+        'address': [
+            EXPECTED_IP_10203040,
+            EXPECTED_IP_10203041,
+        ],
+        'prefixLen': EXPECTED_SUBNET,
+        'vfs': EXPECTED_VFS,
+        'vlanTag': EXPECTED_VLAN_TAG
+    },
+    'vfsname': EXPECTED_VFS,
+    }
+
+EXPECTED_CLIENT_GET_VFS_MEMBERS = {
+    'fspname': EXPECTED_VFS,
+    'vfsip': {
+        'networkName': EXPECTED_NET_NAME,
+        'fspool': EXPECTED_VFS,
+        'address': EXPECTED_IP_10203040,
+        'prefixLen': EXPECTED_SUBNET,
+        'vfs': EXPECTED_VFS,
+        'vlanTag': EXPECTED_VLAN_TAG,
+    },
+    'vfsname': EXPECTED_VFS,
+    }
+EXPECTED_MEDIATOR_GET_VFS_RET_VAL = {
+    'fspname': EXPECTED_VFS,
+    'vfsip': {
+        'networkName': EXPECTED_NET_NAME,
+        'fspool': EXPECTED_VFS,
+        'address': [EXPECTED_IP_10203040],
+        'prefixLen': EXPECTED_SUBNET,
+        'vfs': EXPECTED_VFS,
+        'vlanTag': EXPECTED_VLAN_TAG,
+    },
+    'vfsname': EXPECTED_VFS,
+    }
+EXPECTED_CLIENT_GET_VFS_RETURN_VALUE = {
+    'total': 1,
+    'members': [EXPECTED_CLIENT_GET_VFS_MEMBERS],
+    }
+EXPECTED_CLIENT_GET_VFS_RETURN_VALUE_MULTI = {
+    'total': 1,
+    'members': [EXPECTED_CLIENT_GET_VFS_MEMBERS_MULTI],
+    }
 EXPECTED_FPG_MAP = {EXPECTED_FPG: {EXPECTED_VFS: [EXPECTED_IP_10203040]}}
+EXPECTED_FPG_MAP_MULTI_VFS = {EXPECTED_FPG: {
+    EXPECTED_VFS: [EXPECTED_IP_10203041, EXPECTED_IP_10203040]}}
 EXPECTED_SHARE_IP = '10.50.3.8'
 EXPECTED_HPE_DEBUG = True
 EXPECTED_COMMENT = "OpenStack Manila - foo-comment"

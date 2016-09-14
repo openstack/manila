@@ -117,10 +117,11 @@ class HPE3ParDriverTestCase(test.TestCase):
         self.driver = hpe3pardriver.HPE3ParShareDriver(
             configuration=self.conf)
 
-    def test_driver_setup_success(self):
+    def test_driver_setup_success(self,
+                                  get_vfs_ret_val=constants.EXPECTED_GET_VFS):
         """Driver do_setup without any errors."""
 
-        self.mock_mediator.get_vfs.return_value = constants.EXPECTED_GET_VFS
+        self.mock_mediator.get_vfs.return_value = get_vfs_ret_val
 
         self.driver.do_setup(None)
         conf = self.conf
@@ -162,6 +163,15 @@ class HPE3ParDriverTestCase(test.TestCase):
         self.test_driver_setup_success()
         self.assertEqual(constants.EXPECTED_FPG_MAP, self.driver.fpgs)
 
+    def test_driver_setup_no_dhss_multi_getvfs_success(self):
+        """Driver do_setup when dhss=False, getvfs returns multiple IPs."""
+
+        self.conf.driver_handles_share_servers = False
+        self.test_driver_setup_success(
+            get_vfs_ret_val=constants.EXPECTED_GET_VFS_MULTIPLES)
+        self.assertEqual(constants.EXPECTED_FPG_MAP,
+                         self.driver.fpgs)
+
     def test_driver_setup_success_no_dhss_no_conf_ss_ip(self):
         """test driver's do_setup()
 
@@ -177,7 +187,7 @@ class HPE3ParDriverTestCase(test.TestCase):
         self.test_driver_setup_success()
 
         self.assertEqual(constants.EXPECTED_FPG_MAP, self.driver.fpgs)
-        self.conf.hpe3par_fpg = original_fpg
+        constants.EXPECTED_FPG_CONF = original_fpg
 
     def test_driver_setup_failure_no_dhss_no_conf_ss_ip(self):
         """Configured IP address is required for dhss=False."""
@@ -193,7 +203,7 @@ class HPE3ParDriverTestCase(test.TestCase):
 
         self.assertRaises(exception.HPE3ParInvalid,
                           self.driver.do_setup, None)
-        self.conf.hpe3par_fpg = fpg_without_ss_ip
+        constants.EXPECTED_FPG_CONF = fpg_without_ss_ip
 
     def test_driver_setup_mediator_error(self):
         """Driver do_setup when the mediator setup fails."""

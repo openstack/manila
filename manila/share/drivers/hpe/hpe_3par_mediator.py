@@ -78,10 +78,12 @@ class HPE3ParMediator(object):
         2.0.6 - Read-write share from snapshot (using driver mount and copy)
         2.0.7 - Add update_access support
         2.0.8 - Multi pools support per backend
+        2.0.9 - Fix get_vfs() to correctly validate conf IP addresses at
+                boot up #1621016
 
     """
 
-    VERSION = "2.0.8"
+    VERSION = "2.0.9"
 
     def __init__(self, **kwargs):
 
@@ -1042,9 +1044,6 @@ class HPE3ParMediator(object):
                      'share_name': SUPER_SHARE})
         return path
 
-    def get_vfs_name(self, fpg):
-        return self.get_vfs(fpg)['vfsname']
-
     def get_vfs(self, fpg, vfs=None):
         """Get the VFS or raise an exception."""
 
@@ -1074,7 +1073,23 @@ class HPE3ParMediator(object):
                 LOG.error(message)
                 raise exception.ShareBackendException(msg=message)
 
-        return result['members'][0]
+        value = result['members'][0]
+        if isinstance(value['vfsip'], dict):
+            # This is for 3parclient returning only one VFS entry
+            LOG.debug("3parclient version up to 4.2.1 is in use. Client "
+                      "upgrade may be needed if using a VFS with multiple "
+                      "IP addresses.")
+            value['vfsip']['address'] = [value['vfsip']['address']]
+        else:
+            # This is for 3parclient returning list of VFS entries
+            # Format get_vfs ret value to combine all IP addresses
+            discovered_vfs_ips = []
+            for vfs_entry in value['vfsip']:
+                if vfs_entry['address']:
+                    discovered_vfs_ips.append(vfs_entry['address'])
+            value['vfsip'] = value['vfsip'][0]
+            value['vfsip']['address'] = discovered_vfs_ips
+        return value
 
     @staticmethod
     def _is_share_from_snapshot(fshare):
