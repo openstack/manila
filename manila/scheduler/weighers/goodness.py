@@ -16,8 +16,7 @@
 from oslo_log import log as logging
 import six
 
-from manila.i18n import _LI
-from manila.i18n import _LW
+from manila.i18n import _LI, _LW
 from manila.scheduler.evaluator import evaluator
 from manila.scheduler import utils
 from manila.scheduler.weighers import base_host

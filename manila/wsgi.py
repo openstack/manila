@@ -41,9 +41,7 @@ import webob.exc
 
 from manila.common import config
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LE
-from manila.i18n import _LI
+from manila.i18n import _, _LE, _LI
 
 socket_opts = [
     cfg.IntOpt('backlog',

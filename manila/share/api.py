@@ -32,10 +32,7 @@ from manila.common import constants
 from manila.data import rpcapi as data_rpcapi
 from manila.db import base
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LE
-from manila.i18n import _LI
-from manila.i18n import _LW
+from manila.i18n import _, _LE, _LI, _LW
 from manila import policy
 from manila import quota
 from manila.scheduler import rpcapi as scheduler_rpcapi

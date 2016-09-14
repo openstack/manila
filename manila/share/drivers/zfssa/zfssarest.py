@@ -18,9 +18,7 @@ from oslo_log import log
 from oslo_serialization import jsonutils
 
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LE
-from manila.i18n import _LW
+from manila.i18n import _, _LE, _LW
 from manila.share.drivers.zfssa import restclient
 
 

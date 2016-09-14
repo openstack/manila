@@ -18,8 +18,7 @@ import uuid
 from oslo_log import log
 
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LI
+from manila.i18n import _, _LI
 from manila.share import driver
 
 

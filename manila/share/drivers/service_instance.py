@@ -32,8 +32,7 @@ from manila.common import constants as const
 from manila import compute
 from manila import context
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LW
+from manila.i18n import _, _LW
 from manila.network.linux import ip_lib
 from manila.network.neutron import api as neutron
 from manila import utils

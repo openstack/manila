@@ -31,10 +31,7 @@ from oslo_utils import importutils
 from manila import context
 from manila import db
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LE
-from manila.i18n import _LI
-from manila.i18n import _LW
+from manila.i18n import _, _LE, _LI, _LW
 from manila import rpc
 from manila import version
 from manila import wsgi

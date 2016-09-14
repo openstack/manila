@@ -28,10 +28,7 @@ from oslo_utils import importutils
 import six
 
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LE
-from manila.i18n import _LI
-from manila.i18n import _LW
+from manila.i18n import _, _LE, _LI, _LW
 from manila.share import driver
 from manila.share.drivers import generic
 

@@ -25,8 +25,7 @@ from manila.api.views import security_service as security_service_views
 from manila.common import constants
 from manila import db
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LI
+from manila.i18n import _, _LI
 from manila import policy
 
 

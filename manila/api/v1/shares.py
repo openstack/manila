@@ -32,8 +32,7 @@ from manila.api.views import share_accesses as share_access_views
 from manila.api.views import shares as share_views
 from manila import db
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LI
+from manila.i18n import _, _LI
 from manila import share
 from manila.share import share_types
 
