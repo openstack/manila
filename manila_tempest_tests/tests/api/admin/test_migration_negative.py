@@ -13,8 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import six
 
+import ddt
 from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions as lib_exc
@@ -29,6 +29,7 @@ from manila_tempest_tests import utils
 CONF = config.CONF
 
 
+@ddt.ddt
 class MigrationTest(base.BaseSharesAdminTest):
     """Tests Share Migration.
 
@@ -68,17 +69,11 @@ class MigrationTest(base.BaseSharesAdminTest):
 
         cls.dest_pool = dest_pool['name']
 
-        extra_specs = {
-            'storage_protocol': CONF.share.capability_storage_protocol,
-            'driver_handles_share_servers': CONF.share.multitenancy_enabled,
-            'snapshot_support': six.text_type(
-                not CONF.share.capability_snapshot_support),
-        }
-        cls.new_type = cls.create_share_type(
+        cls.new_type_invalid = cls.create_share_type(
             name=data_utils.rand_name(
                 'new_invalid_share_type_for_migration'),
             cleanup_in_class=True,
-            extra_specs=extra_specs)
+            extra_specs=utils.get_configured_extra_specs(variation='invalid'))
 
     @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @base.skip_if_microversion_lt("2.22")
@@ -165,9 +160,17 @@ class MigrationTest(base.BaseSharesAdminTest):
     @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
     @base.skip_if_microversion_lt("2.22")
     def test_migrate_share_change_type_no_valid_host(self):
+        if not CONF.share.multitenancy_enabled:
+            new_share_network_id = self.create_share_network(
+                neutron_net_id='fake_net_id',
+                neutron_subnet_id='fake_subnet_id')['id']
+        else:
+            new_share_network_id = None
+
         self.shares_v2_client.migrate_share(
             self.share['id'], self.dest_pool,
-            new_share_type_id=self.new_type['share_type']['id'])
+            new_share_type_id=self.new_type_invalid['share_type']['id'],
+            new_share_network_id=new_share_network_id)
         self.shares_v2_client.wait_for_migration_status(
             self.share['id'], self.dest_pool,
             constants.TASK_STATE_MIGRATION_ERROR)
@@ -207,5 +210,30 @@ class MigrationTest(base.BaseSharesAdminTest):
     def test_migrate_share_invalid_share_type(self):
         self.assertRaises(
             lib_exc.BadRequest, self.shares_v2_client.migrate_share,
-            self.share['id'], self.dest_pool, True,
+            self.share['id'], self.dest_pool,
             new_share_type_id='invalid_type_id')
+
+    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @base.skip_if_microversion_lt("2.22")
+    def test_migrate_share_opposite_type_share_network_invalid(self):
+
+        extra_specs = utils.get_configured_extra_specs(
+            variation='opposite_driver_modes')
+
+        new_type_opposite = self.create_share_type(
+            name=data_utils.rand_name('share_type_migration_negative'),
+            extra_specs=extra_specs)
+
+        new_share_network_id = None
+
+        if CONF.share.multitenancy_enabled:
+
+            new_share_network_id = self.create_share_network(
+                neutron_net_id='fake_net_id',
+                neutron_subnet_id='fake_subnet_id')['id']
+
+        self.assertRaises(
+            lib_exc.BadRequest, self.shares_v2_client.migrate_share,
+            self.share['id'], self.dest_pool,
+            new_share_type_id=new_type_opposite['share_type']['id'],
+            new_share_network_id=new_share_network_id)
