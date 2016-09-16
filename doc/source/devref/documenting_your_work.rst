@@ -60,35 +60,17 @@ OpenStack Configuration Reference
   `OpenStack Manuals project <https://github.com/openstack/openstack-manuals>`_
 
 
-OpenStack Installation Guide
-----------------------------
+OpenStack Installation Tutorial
+-------------------------------
 - Instructions regarding setting up manila on OpenStack need to be documented
   here.
-- This guide covers step-by-step deployment of OpenStack services using a
+- This tutorial covers step-by-step deployment of OpenStack services using a
   functional example architecture suitable for new users of OpenStack with
   sufficient Linux experience.
-- The instructions are written together, but with the help of tags are
-  separated out into per-distro installation guides for hosting on the
-  documentation website.
-- The installation instructions for manila in the Mitaka release lived
-  alongside the major projects in the installation guide. However, with the
-  Newton release, the install guide will be part of manila's code tree.
-- **Links**:
-
-  - `Mitaka installation guide for openSUSE and SLES
-    <http://docs.openstack.org/mitaka/install-guide-obs/>`_
-  - `Mitaka installation guide for Red Hat Enterprise Linux and CentOS
-    <http://docs.openstack.org/mitaka/install-guide-rdo/>`_
-  - `Mitaka installation guide for Ubuntu 14.04
-    <http://docs.openstack.org/mitaka/install-guide-ubuntu/>`_
-
-- **Repository**: The installation guide is maintained within the
-  `OpenStack Manuals project
-  <https://github.com/openstack/openstack-manuals>`_. However, with the
-  Newton release, manila's install guide will live in its project tree.
-
-.. TODO(gouthamr): add actual links and repo instructions when available.
-
+- The instructions are written with reference to different distributions.
+- The source files for this tutorial live in manila's code tree.
+- **Link**: `Draft installation tutorial
+  <http://docs.openstack.org/project-install-guide/shared-file-systems/draft/>`_
 
 OpenStack API Reference
 -----------------------
@@ -97,23 +79,12 @@ OpenStack API Reference
   expected HTTP response codes as part of the API reference.
 - For releases prior to Newton, the API reference was maintained in `Web
   Application Description Language (WADL)
-  <https://en.wikipedia.org/wiki/Web_Application_Description_Language>`_
-- Starting with the Newton release, manila's API reference will be maintained
+  <https://en.wikipedia.org/wiki/Web_Application_Description_Language>`_ in
+  the `api-site <https://github.com/openstack/api-site>`_ project.
+- Since the Newton release, manila's API reference is maintained
   in-tree in custom YAML/JSON format files.
-- **Links**:
-
-  - `REST API reference of the Shared File Systems Project v1.0
-    <http://developer.openstack.org/api-ref-share-v1.html>`_
-  - `REST API reference of the Shared File Systems Project v2.0
-    <http://developer.openstack.org/api-ref-share-v2.html>`_
-
-- **Repository**: The API reference is maintained within the
-  `OpenStack API Site repository
-  <https://github.com/openstack/api-site>`_. However, with the Newton release,
-  manila's API reference will live in its project tree.
-
-.. TODO(gouthamr): add actual links and repo instructions when available.
-
+- **Link**: `REST API reference of the Shared File Systems Project v2.0
+  <http://developer.openstack.org/api-ref/shared-file-systems/>`_
 
 Manila Developer Reference
 --------------------------
@@ -133,7 +104,7 @@ Manila Developer Reference
 
 
 OpenStack Security Guide
--------------------------
+------------------------
 - Any feature that has a security impact needs to be documented here.
 - In general, administrators will follow the guidelines regarding best
   practices of setting up their manila deployments with this guide.
