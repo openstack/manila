@@ -603,6 +603,23 @@ function init_manila {
     rm -f $MANILA_AUTH_CACHE_DIR/*
 }
 
+# check_nfs_kernel_service_state_ubuntu- Make sure nfsd is running
+function check_nfs_kernel_service_state_ubuntu {
+    # (aovchinnikov): Workaround for nfs-utils bug 1052264
+    if [ ! sudo service nfs-kernel-server status | grep "nfsd running" -eq 0 ]; then
+        echo "Apparently nfsd is not running. Trying to fix that."
+        sudo mkdir -p "/media/nfsdonubuntuhelper"
+        # (aovchinnikov): shell wrapping is needed for cases when a file to be written
+        # is owned by root.
+        sudo sh -c "echo '/media/nfsdonubuntuhelper 127.0.0.1(ro)' >> /etc/exports"
+        sudo service nfs-kernel-server start
+    fi
+    if [ ! sudo service nfs-kernel-server status | grep "nfsd running" -eq 0 ]; then
+        echo "Failed to start nfsd. Exiting."
+        exit 1
+    fi
+}
+
 # install_manila - Collect source and prepare
 function install_manila {
     git_clone $MANILACLIENT_REPO $MANILACLIENT_DIR $MANILACLIENT_BRANCH
@@ -613,6 +630,7 @@ function install_manila {
         if is_service_enabled m-shr; then
             if is_ubuntu; then
                 install_package nfs-kernel-server nfs-common samba
+                check_nfs_kernel_service_state_ubuntu
             elif is_fedora; then
                 install_package nfs-utils nfs-utils-lib samba
             elif is_suse; then
@@ -639,6 +657,8 @@ function install_manila {
                 sudo apt-get install -y build-essential
                 sudo apt-get install -y ubuntu-zfs
                 sudo modprobe zfs
+
+                check_nfs_kernel_service_state_ubuntu
             else
                 echo "Manila Devstack plugin does not support installation "\
                     "of ZFS packages for non-'Ubuntu-trusty' distros. "\
