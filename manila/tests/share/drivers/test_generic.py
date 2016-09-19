@@ -397,9 +397,9 @@ class GenericShareDriverTestCase(test.TestCase):
             server)
         self._driver._ssh_exec.assert_called_once_with(
             server,
-            ['sudo mkdir -p', mount_path,
-             '&&', 'sudo mount', volume['mountpoint'], mount_path,
-             '&& sudo chmod 777', mount_path],
+            ['sudo', 'mkdir', '-p', mount_path,
+             '&&', 'sudo', 'mount', volume['mountpoint'], mount_path,
+             '&&', 'sudo', 'chmod', '777', mount_path],
         )
 
     def test_mount_device_present(self):
@@ -454,7 +454,7 @@ class GenericShareDriverTestCase(test.TestCase):
             self.server)
         self._driver._ssh_exec.assert_called_once_with(
             self.server,
-            ['sudo umount', mount_path, '&& sudo rmdir', mount_path],
+            ['sudo', 'umount', mount_path, '&&', 'sudo', 'rmdir', mount_path],
         )
 
     def test_unmount_device_retry_once(self):
@@ -485,8 +485,8 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver._sync_mount_temp_and_perm_files.assert_called_once_with(
             self.server)
         self.assertEqual(
-            [mock.call(self.server, ['sudo umount', mount_path,
-                                     '&& sudo rmdir', mount_path])
+            [mock.call(self.server, ['sudo', 'umount', mount_path,
+                                     '&&', 'sudo', 'rmdir', mount_path])
              for i in moves.range(2)],
             self._driver._ssh_exec.mock_calls,
         )
@@ -1365,6 +1365,24 @@ class GenericShareDriverTestCase(test.TestCase):
             {self.server['instance_id']: (ssh_pool, ssh)}
         )
         self.assertEqual(ssh_output, result)
+
+    def test__ssh_exec_check_list_comprehensions_still_work(self):
+        ssh_output = 'fake_ssh_output'
+        cmd = ['fake', 'command spaced']
+        ssh = mock.Mock()
+        ssh_pool = mock.Mock()
+        ssh_pool.create = mock.Mock(side_effect=lambda: ssh)
+        ssh_pool.remove = mock.Mock()
+        self.mock_object(processutils, 'ssh_execute',
+                         mock.Mock(return_value=ssh_output))
+        self._driver.ssh_connections = {
+            self.server['instance_id']: (ssh_pool, ssh)
+        }
+
+        self._driver._ssh_exec(self.server, cmd)
+
+        processutils.ssh_execute.assert_called_once_with(
+            ssh, 'fake "command spaced"', check_exit_code=True)
 
     def test_get_share_stats_refresh_false(self):
         self._driver._stats = {'fake_key': 'fake_value'}

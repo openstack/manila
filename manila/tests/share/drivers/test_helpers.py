@@ -241,8 +241,8 @@ class NFSHelperTestCase(test.TestCase):
         self._helper._ssh_exec.assert_any_call(
             self.server,
             ['cat', const.NFS_EXPORTS_FILE,
-             '| grep', self.share_name,
-             '| sudo tee', fake_maintenance_path]
+             '|', 'grep', self.share_name,
+             '|', 'sudo', 'tee', fake_maintenance_path]
         )
         self._helper._ssh_exec.assert_any_call(
             self.server,
@@ -264,8 +264,8 @@ class NFSHelperTestCase(test.TestCase):
         self._helper._ssh_exec.assert_called_once_with(
             self.server,
             ['cat', fake_maintenance_path,
-             '| sudo tee -a', const.NFS_EXPORTS_FILE,
-             '&& sudo exportfs -r', '&& sudo rm -f',
+             '|', 'sudo', 'tee', '-a', const.NFS_EXPORTS_FILE,
+             '&&', 'sudo', 'exportfs', '-r', '&&', 'sudo', 'rm', '-f',
              fake_maintenance_path]
         )
 
@@ -448,8 +448,8 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
                                    access_rules, [], [])
         self._helper._ssh_exec.assert_called_once_with(
             self.server_details, ['sudo', 'net', 'conf', 'setparm',
-                                  self.share_name, '"hosts allow"',
-                                  '"1.1.1.1"'])
+                                  self.share_name, 'hosts allow',
+                                  '1.1.1.1'])
 
     def test_get_allow_hosts(self):
         self.mock_object(self._helper, '_ssh_exec',
@@ -460,7 +460,7 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
             self.server_details, self.share_name)
         self.assertEqual(expected, result)
         cmd = ['sudo', 'net', 'conf', 'getparm', self.share_name,
-               '\"hosts allow\"']
+               'hosts allow']
         self._helper._ssh_exec.assert_called_once_with(
             self.server_details, cmd)
 
@@ -537,7 +537,8 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
             self.server_details, self.share_name)
         self._helper._set_allow_hosts.assert_called_once_with(
             self.server_details, [], self.share_name)
-        valid_cmd = ['echo', "'test test2'", '| sudo tee', maintenance_path]
+        valid_cmd = ['echo', "'test test2'", '|', 'sudo', 'tee',
+                     maintenance_path]
         self._helper._ssh_exec.assert_called_once_with(
             self.server_details, valid_cmd)
 
@@ -557,7 +558,7 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
         self._helper._ssh_exec.assert_any_call(
             self.server_details, ['cat', fake_maintenance_path])
         self._helper._ssh_exec.assert_any_call(
-            self.server_details, ['sudo rm -f', fake_maintenance_path])
+            self.server_details, ['sudo', 'rm', '-f', fake_maintenance_path])
 
 
 @ddt.ddt
@@ -601,10 +602,10 @@ class CIFSHelperUserAccessTestCase(test.TestCase):
         self._helper._ssh_exec.assert_has_calls([
             mock.call(self.server_details,
                       ['sudo', 'net', 'conf', 'setparm', self.share_name,
-                       'valid users', '"user1"']),
+                       'valid users', 'user1']),
             mock.call(self.server_details,
                       ['sudo', 'net', 'conf', 'setparm', self.share_name,
-                       'read list', '"user2"'])
+                       'read list', 'user2'])
         ])
 
     def test_update_access_exception_level(self):

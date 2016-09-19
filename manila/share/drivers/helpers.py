@@ -289,8 +289,8 @@ class NFSHelper(NASHelperBase):
         maintenance_file = self._get_maintenance_file_path(share_name)
         backup_exports = [
             'cat', const.NFS_EXPORTS_FILE,
-            '| grep', share_name,
-            '| sudo tee', maintenance_file
+            '|', 'grep', share_name,
+            '|', 'sudo', 'tee', maintenance_file
         ]
         self._ssh_exec(server, backup_exports)
 
@@ -304,9 +304,9 @@ class NFSHelper(NASHelperBase):
         maintenance_file = self._get_maintenance_file_path(share_name)
         restore_exports = [
             'cat', maintenance_file,
-            '| sudo tee -a', const.NFS_EXPORTS_FILE,
-            '&& sudo exportfs -r',
-            '&& sudo rm -f', maintenance_file
+            '|', 'sudo', 'tee', '-a', const.NFS_EXPORTS_FILE,
+            '&&', 'sudo', 'exportfs', '-r',
+            '&&', 'sudo', 'rm', '-f', maintenance_file
         ]
         self._ssh_exec(server, restore_exports)
 
@@ -324,10 +324,10 @@ class CIFSHelperIPAccess(NASHelperBase):
         self.export_format = '\\\\%s\\%s'
         self.parameters = {
             'browseable': 'yes',
-            '\"create mask\"': '0755',
-            '\"hosts deny\"': '0.0.0.0/0',  # deny all by default
-            '\"hosts allow\"': '127.0.0.1',
-            '\"read only\"': 'no',
+            'create mask': '0755',
+            'hosts deny': '0.0.0.0/0',  # deny all by default
+            'hosts allow': '127.0.0.1',
+            'read only': 'no',
         }
 
     def init_helper(self, server):
@@ -406,13 +406,13 @@ class CIFSHelperIPAccess(NASHelperBase):
 
     def _get_allow_hosts(self, server, share_name):
         (out, _) = self._ssh_exec(server, ['sudo', 'net', 'conf', 'getparm',
-                                           share_name, '\"hosts allow\"'])
+                                           share_name, 'hosts allow'])
         return out.split()
 
     def _set_allow_hosts(self, server, hosts, share_name):
-        value = "\"" + ' '.join(hosts) + "\""
+        value = ' '.join(hosts) or ' '
         self._ssh_exec(server, ['sudo', 'net', 'conf', 'setparm', share_name,
-                                '\"hosts allow\"', value])
+                                'hosts allow', value])
 
     @staticmethod
     def _get_share_group_name_from_export_location(export_location):
@@ -450,7 +450,8 @@ class CIFSHelperIPAccess(NASHelperBase):
         allowed_hosts = " ".join(self._get_allow_hosts(server, share_name))
 
         backup_exports = [
-            'echo', "'%s'" % allowed_hosts, '| sudo tee', maintenance_file
+            'echo', "'%s'" % allowed_hosts, '|', 'sudo', 'tee',
+            maintenance_file
         ]
         self._ssh_exec(server, backup_exports)
         self._set_allow_hosts(server, [], share_name)
@@ -459,7 +460,7 @@ class CIFSHelperIPAccess(NASHelperBase):
         maintenance_file = self._get_maintenance_file_path(share_name)
         (exports, __) = self._ssh_exec(server, ['cat', maintenance_file])
         self._set_allow_hosts(server, exports.split(), share_name)
-        self._ssh_exec(server, ['sudo rm -f', maintenance_file])
+        self._ssh_exec(server, ['sudo', 'rm', '-f', maintenance_file])
 
 
 class CIFSHelperUserAccess(CIFSHelperIPAccess):
@@ -512,7 +513,7 @@ class CIFSHelperUserAccess(CIFSHelperIPAccess):
             return 'read list'
 
     def _set_valid_users(self, server, users, share_name, access_level):
-        value = "\"" + ' '.join(users) + "\""
+        value = ' '.join(users)
         param = self._get_conf_param(access_level)
         self._ssh_exec(server, ['sudo', 'net', 'conf', 'setparm', share_name,
                                 param, value])
