@@ -171,6 +171,22 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertTupleEqual((fake.VSERVER1, 'fake_client'), result)
 
+    def test_get_ems_pool_info(self):
+
+        self.mock_object(self.library,
+                         '_find_matching_aggregates',
+                         mock.Mock(return_value=['aggr1', 'aggr2']))
+
+        result = self.library._get_ems_pool_info()
+
+        expected = {
+            'pools': {
+                'vserver': None,
+                'aggregates': ['aggr1', 'aggr2'],
+            },
+        }
+        self.assertEqual(expected, result)
+
     def test_handle_housekeeping_tasks(self):
 
         self.mock_object(self.client, 'prune_deleted_nfs_export_policies')

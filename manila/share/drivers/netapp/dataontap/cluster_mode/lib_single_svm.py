@@ -100,6 +100,14 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
         vserver_client = self._get_api_client(self._vserver)
         return self._vserver, vserver_client
 
+    def _get_ems_pool_info(self):
+        return {
+            'pools': {
+                'vserver': self._vserver,
+                'aggregates': self._find_matching_aggregates(),
+            },
+        }
+
     @na_utils.trace
     def _handle_housekeeping_tasks(self):
         """Handle various cleanup activities."""
