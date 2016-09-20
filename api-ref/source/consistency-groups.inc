@@ -40,10 +40,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - all_tenants: all_tenants_1
-   - limit: limit_1
-   - offset: offset_1
+   - tenant_id: tenant_id_path
+   - all_tenants: cg_all_tenants_query
+   - limit: cg_limit_query
+   - offset: cg_offset_query
 
 Response parameters
 -------------------
@@ -52,9 +52,9 @@ Response parameters
 
    - consistency_groups: consistency_groups
    - consistency_group: consistency_group
-   - id: id_2
-   - name: name_7
-   - link: link
+   - id: cg_id_response
+   - name: cg_name_response
+   - link: cg_links
 
 Response example
 ----------------
@@ -78,10 +78,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - all_tenants: all_tenants_1
-   - limit: limit_1
-   - offset: offset_1
+   - tenant_id: tenant_id_path
+   - all_tenants: cg_all_tenants_query
+   - limit: cg_limit_query
+   - offset: cg_offset_query
 
 Response parameters
 -------------------
@@ -90,18 +90,18 @@ Response parameters
 
    - consistency_groups: consistency_groups
    - consistency_group: consistency_group
-   - id: id_2
-   - status: status
-   - links: link
-   - name: name_7
-   - description: description_6
-   - source_cgsnapshot_id: source_cgsnapshot_id
-   - created_at: created_at_1
-   - share_network_id: share_network_id
-   - host: host
-   - project_id: project_id_2
-   - share_server_id: share_server_id
-   - share_types: share_types_1
+   - id: cg_id_response
+   - status: cg_status
+   - links: cg_links
+   - name: cg_name_response
+   - description: cg_description_response
+   - source_cgsnapshot_id: cg_snapshot_id
+   - created_at: cg_created_at
+   - share_network_id: cg_share_network_id
+   - host: cg_host
+   - project_id: cg_project_id
+   - share_server_id: cg_share_server_id
+   - share_types: cg_share_types_response
 
 Response example
 ----------------
@@ -126,8 +126,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - consistency_group_id: consistency_group_id_7
+   - tenant_id: tenant_id_path
+   - consistency_group_id: cg_id_path
 
 Response parameters
 -------------------
@@ -135,18 +135,18 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - consistency_group: consistency_group
-   - id: id_2
-   - status: status
-   - links: link
-   - name: name_7
-   - description: description_6
-   - source_cgsnapshot_id: source_cgsnapshot_id
-   - created_at: created_at_1
-   - share_network_id: share_network_id
-   - host: host
-   - project_id: project_id_2
-   - share_server_id: share_server_id
-   - share_types: share_types_1
+   - id: cg_id_response
+   - status: cg_status
+   - links: cg_links
+   - name: cg_name_response
+   - description: cg_description_response
+   - source_cgsnapshot_id: cg_snapshot_id
+   - created_at: cg_created_at
+   - share_network_id: cg_share_network_id
+   - host: cg_host
+   - project_id: cg_project_id
+   - share_server_id: cg_share_server_id
+   - share_types: cg_share_types_response
 
 Response example
 ----------------
@@ -173,12 +173,12 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - share_types: share_types
-   - name: name_2
-   - description: description_2
-   - share_network_id: share_network_id_1
-   - source_cgsnapshot_id: source_cgsnapshot_id
+   - tenant_id: tenant_id_path
+   - share_types: cg_share_types_request
+   - name: cg_name_request
+   - description: cg_description_request
+   - share_network_id: cg_share_network_id
+   - source_cgsnapshot_id: cg_snapshot_id
 
 Request example
 ---------------
@@ -193,18 +193,18 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - consistency_group: consistency_group
-   - id: id_2
-   - status: status
-   - links: link
-   - name: name_7
-   - description: description_6
-   - source_cgsnapshot_id: source_cgsnapshot_id
-   - created_at: created_at_1
-   - share_network_id: share_network_id
-   - host: host
-   - project_id: project_id_2
-   - share_server_id: share_server_id
-   - share_types: share_types_1
+   - id: cg_id_response
+   - status: cg_status
+   - links: cg_links
+   - name: cg_name_response
+   - description: cg_description_response
+   - source_cgsnapshot_id: cg_snapshot_id
+   - created_at: cg_created_at
+   - share_network_id: cg_share_network_id
+   - host: cg_host
+   - project_id: cg_project_id
+   - share_server_id: cg_share_server_id
+   - share_types: cg_share_types_response
 
 
 Response example
@@ -236,10 +236,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - consistency_group_id: consistency_group_id_7
-   - name: name_2
-   - description: description_2
+   - tenant_id: tenant_id
+   - consistency_group_id: cg_id_path
+   - name: cg_name_request
+   - description: cg_description_request
 
 Request example
 ---------------
@@ -253,18 +253,18 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - consistency_group: consistency_group
-   - id: id_2
-   - status: status
-   - links: link
-   - name: name_7
-   - description: description_6
-   - source_cgsnapshot_id: source_cgsnapshot_id
-   - created_at: created_at_1
+   - id: cg_id_response
+   - status: cg_status
+   - links: cg_links
+   - name: cg_name_response
+   - description: cg_description_response
+   - source_cgsnapshot_id: cg_snapshot_id
+   - created_at: cg_created_at
    - share_network_id: share_network_id
-   - host: host
-   - project_id: project_id_2
-   - share_server_id: share_server_id
-   - share_types: share_types_1
+   - host: cg_host
+   - project_id: cg_project_id
+   - share_server_id: cg_share_server_id
+   - share_types: cg_share_types_response
 
 Response example
 ----------------
@@ -292,8 +292,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - consistency_group_id: consistency_group_id_7
+   - tenant_id: tenant_id_path
+   - consistency_group_id: cg_id_path
    - reset_status: reset_status
    - os-reset_status: os-reset_status
    - status: status
@@ -324,8 +324,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - consistency_group_id: consistency_group_id_7
+   - tenant_id: tenant_id_path
+   - consistency_group_id: cg_id_path
    - os-force_delete: os-force_delete
    - force_delete: force_delete
 
@@ -351,5 +351,5 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - consistency_group_id: consistency_group_id_7
+   - tenant_id: tenant_id_path
+   - consistency_group_id: cg_id_path
