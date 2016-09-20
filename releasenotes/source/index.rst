@@ -7,5 +7,6 @@ Manila Release Notes
    :maxdepth: 1
 
    unreleased
+   newton
    mitaka
    liberty
