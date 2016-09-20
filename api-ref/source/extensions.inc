@@ -22,18 +22,18 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Response parameters
 -------------------
 
 .. rest_parameters:: parameters.yaml
 
-   - name: name_10
-   - links: links_2
-   - description: description_8
-   - alias: alias
-   - updated: updated
+   - name: extension_name
+   - links: extension_links
+   - description: extension_description
+   - alias: extension_alias
+   - updated: extension_updated
 
 Response example
 ----------------
