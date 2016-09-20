@@ -95,7 +95,7 @@ class SmartQos(object):
     def delete_qos(self, qos_id):
         qos_info = self.helper.get_qos_info(qos_id)
         qos_status = qos_info['RUNNINGSTATUS']
-        if qos_status == constants.STATUS_QOS_ACTIVE:
+        if qos_status != constants.STATUS_QOS_INACTIVATED:
             self.helper.activate_deactivate_qos(qos_id, False)
         self.helper.delete_qos_policy(qos_id)
 

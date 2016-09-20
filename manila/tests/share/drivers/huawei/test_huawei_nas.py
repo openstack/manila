@@ -4522,3 +4522,27 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'fake_pair_id')
 
         self.assertEqual(expected_state, result_state)
+
+    @ddt.data(*constants.QOS_STATUSES)
+    def test_delete_qos(self, qos_status):
+        self.driver.plugin.helper.custom_results['/ioclass/11'] = {
+            "GET": """{"error":{"code":0}, "data":{"RUNNINGSTATUS": "%s"}}""" %
+            qos_status
+        }
+
+        activate_deactivate_qos_mock = self.mock_object(
+            self.driver.plugin.helper,
+            'activate_deactivate_qos')
+        delete_qos_mock = self.mock_object(
+            self.driver.plugin.helper,
+            'delete_qos_policy')
+
+        qos = smartx.SmartQos(self.driver.plugin.helper)
+        qos.delete_qos('11')
+
+        if qos_status == constants.STATUS_QOS_INACTIVATED:
+            activate_deactivate_qos_mock.assert_not_called()
+        else:
+            activate_deactivate_qos_mock.assert_called_once_with('11', False)
+
+        delete_qos_mock.assert_called_once_with('11')
