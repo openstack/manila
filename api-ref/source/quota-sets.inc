@@ -12,8 +12,8 @@ Provides quotas management support.
     ``os-quota-sets``.
 
 
-Show default quotas
-===================
+Show default quota set
+======================
 
 .. rest_method::  GET /v2/{tenant_id}/quota-sets/{tenant_id}/defaults
 
@@ -27,7 +27,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - tenant_id: tenant_id
 
 Response parameters
@@ -36,12 +36,12 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - quota_set: quota_set
-   - id: id_15
-   - gigabytes: gigabytes
-   - snapshots: snapshots
-   - shares: shares
-   - snapshot_gigabytes: snapshot_gigabytes
-   - share_networks: share_networks
+   - id: quota_tenant_id
+   - gigabytes: quota_gigabytes
+   - snapshots: quota_snapshots
+   - shares: quota_shares
+   - snapshot_gigabytes: quota_snapshot_gigabytes
+   - share_networks: quota_share_networks
 
 Response example
 ----------------
@@ -50,8 +50,8 @@ Response example
    :language: javascript
 
 
-Show quotas
-===========
+Show quota set
+==============
 
 .. rest_method::  GET /v2/{tenant_id}/quota-sets/{tenant_id}?user_id={user_id}
 
@@ -69,9 +69,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - tenant_id: tenant_id
-   - user_id: user_id_1
+   - user_id: user_id_query
 
 Response parameters
 -------------------
@@ -79,12 +79,12 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - quota_set: quota_set
-   - id: id_15
-   - gigabytes: gigabytes
-   - snapshots: snapshots
-   - shares: shares
-   - snapshot_gigabytes: snapshot_gigabytes
-   - share_networks: share_networks
+   - id: quota_tenant_id
+   - gigabytes: quota_gigabytes
+   - snapshots: quota_snapshots
+   - shares: quota_shares
+   - snapshot_gigabytes: quota_snapshot_gigabytes
+   - share_networks: quota_share_networks
 
 Response example
 ----------------
@@ -93,8 +93,8 @@ Response example
    :language: javascript
 
 
-Update quotas
-=============
+Update quota set
+================
 
 .. rest_method::  PUT /v2/{tenant_id}/quota-sets/{tenant_id}?user_id={user_id}
 
@@ -112,16 +112,16 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - tenant_id: tenant_id
-   - user_id: user_id_1
+   - user_id: user_id_query
    - quota_set: quota_set
    - force: force
-   - gigabytes: gigabytes_1
-   - snapshots: snapshots_1
-   - snapshot_gigabytes: snapshot_gigabytes_1
-   - shares: shares_1
-   - share_networks: share_networks_1
+   - gigabytes: quota_gigabytes_request
+   - snapshots: quota_snapshots_request
+   - snapshot_gigabytes: quota_snapshot_gigabytes_request
+   - shares: quota_shares_request
+   - share_networks: quota_share_networks_request
 
 Request example
 ---------------
@@ -135,12 +135,12 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - quota_set: quota_set
-   - id: id_15
-   - gigabytes: gigabytes
-   - snapshots: snapshots
-   - shares: shares
-   - snapshot_gigabytes: snapshot_gigabytes
-   - share_networks: share_networks
+   - id: quota_tenant_id
+   - gigabytes: quota_gigabytes
+   - snapshots: quota_snapshots
+   - shares: quota_shares
+   - snapshot_gigabytes: quota_snapshot_gigabytes
+   - share_networks: quota_share_networks
 
 Response example
 ----------------
@@ -149,8 +149,8 @@ Response example
    :language: javascript
 
 
-Delete quotas
-=============
+Delete quota set
+================
 
 .. rest_method::  DELETE /v2/{tenant_id}/quota-sets/{tenant_id}?user_id={user_id}
 
@@ -168,6 +168,6 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - tenant_id: tenant_id
-   - user_id: user_id_1
+   - user_id: user_id_query

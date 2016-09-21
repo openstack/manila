@@ -396,7 +396,7 @@ status_6:
   in: query
   required: false
   type: string
-user_id_1:
+user_id_query:
   description: |
     The UUID of the user. If you specify this query parameter,
     you update the quotas for this user in the tenant.
@@ -1430,18 +1430,6 @@ free_capacity_gb:
   in: body
   required: true
   type: string
-gigabytes:
-  description: |
-    The number of gigabytes allowed for each tenant.
-  in: body
-  required: true
-  type: integer
-gigabytes_1:
-  description: |
-    The number of gigabytes for the tenant.
-  in: body
-  required: false
-  type: integer
 has_replicas:
   description: |
     (Since API v2.11) Indicates whether a share has
@@ -1567,13 +1555,6 @@ id_13:
 id_14:
   description: |
     The share server ID.
-  in: body
-  required: true
-  type: string
-id_15:
-  description: |
-    The UUID of the tenant for which you manage
-    quotas.
   in: body
   required: true
   type: string
@@ -2115,12 +2096,82 @@ qos:
   in: body
   required: true
   type: boolean
+quota_gigabytes:
+  description: |
+    The number of gigabytes allowed for each tenant.
+  in: body
+  required: true
+  type: integer
+quota_gigabytes_request:
+  description: |
+    The number of gigabytes for the tenant.
+  in: body
+  required: false
+  type: integer
 quota_set:
   description: |
     The ``quota_set`` object.
   in: body
   required: true
   type: object
+quota_share_networks:
+  description: |
+    The number of share networks allowed for each
+    tenant.
+  in: body
+  required: true
+  type: integer
+quota_share_networks_request:
+  description: |
+    The number of share networks for the tenant.
+  in: body
+  required: false
+  type: integer
+quota_shares:
+  description: |
+    The number of shares allowed for each tenant.
+  in: body
+  required: true
+  type: integer
+quota_shares_request:
+  description: |
+    The number of shares for the tenant.
+  in: body
+  required: false
+  type: integer
+quota_snapshot_gigabytes:
+  description: |
+    The number of gigabytes for the snapshots allowed
+    for each tenant.
+  in: body
+  required: true
+  type: integer
+quota_snapshot_gigabytes_request:
+  description: |
+    The number of gigabytes for the snapshots for the
+    tenant.
+  in: body
+  required: false
+  type: integer
+quota_snapshots:
+  description: |
+    The number of snapshots allowed for each tenant.
+  in: body
+  required: true
+  type: integer
+quota_snapshots_request:
+  description: |
+    The number of snapshots for the tenant.
+  in: body
+  required: false
+  type: integer
+quota_tenant_id:
+  description: |
+    The UUID of the tenant for which you manage
+    quotas.
+  in: body
+  required: true
+  type: string
 regex:
   description: |
     An API regular expression. For example,
@@ -2458,19 +2509,6 @@ share_network_name:
   in: body
   required: true
   type: string
-share_networks:
-  description: |
-    The number of share networks allowed for each
-    tenant.
-  in: body
-  required: true
-  type: integer
-share_networks_1:
-  description: |
-    The number of share networks for the tenant.
-  in: body
-  required: false
-  type: integer
 share_proto:
   description: |
     The Shared File Systems protocol. A valid value
@@ -2569,18 +2607,6 @@ share_types_1:
   in: body
   required: true
   type: array
-shares:
-  description: |
-    The number of shares allowed for each tenant.
-  in: body
-  required: true
-  type: integer
-shares_1:
-  description: |
-    The number of shares for the tenant.
-  in: body
-  required: false
-  type: integer
 shrink:
   description: |
     The ``shrink`` object.
@@ -2612,20 +2638,6 @@ size_3:
     The snapshot size, in GBs.
   in: body
   required: true
-  type: integer
-snapshot_gigabytes:
-  description: |
-    The number of gigabytes for the snapshots allowed
-    for each tenant.
-  in: body
-  required: true
-  type: integer
-snapshot_gigabytes_1:
-  description: |
-    The number of gigabytes for the snapshots for the
-    tenant.
-  in: body
-  required: false
   type: integer
 snapshot_id:
   description: |
@@ -2672,18 +2684,6 @@ snapshot_support_3:
   in: body
   required: false
   type: boolean
-snapshots:
-  description: |
-    The number of snapshots allowed for each tenant.
-  in: body
-  required: true
-  type: integer
-snapshots_1:
-  description: |
-    The number of snapshots for the tenant.
-  in: body
-  required: false
-  type: integer
 source_cgsnapshot_id:
   description: |
     The ID of the consistency group snapshot from
