@@ -150,8 +150,6 @@ class NeutronApiTest(test.TestCase):
 
     def test_create_port_with_required_args(self):
         # Set up test data
-        self.mock_object(self.neutron_api, '_has_port_binding_extension',
-                         mock.Mock(return_value=True))
         port_args = {'tenant_id': 'test tenant', 'network_id': 'test net'}
 
         # Execute method 'create_port'
@@ -161,13 +159,10 @@ class NeutronApiTest(test.TestCase):
         self.assertEqual(port_args['tenant_id'], port['tenant_id'])
         self.assertEqual(port_args['network_id'],
                          port['network_id'])
-        self.neutron_api._has_port_binding_extension.assert_called_once_with()
         self.assertTrue(clientv20.Client.called)
 
     def test_create_port_with_additional_kwargs(self):
         # Set up test data
-        self.mock_object(self.neutron_api, '_has_port_binding_extension',
-                         mock.Mock(return_value=True))
         port_args = {'tenant_id': 'test tenant', 'network_id': 'test net',
                      'binding_arg': 'foo'}
 
@@ -180,15 +175,22 @@ class NeutronApiTest(test.TestCase):
                          port['network_id'])
         self.assertEqual(port_args['binding_arg'],
                          port['binding_arg'])
-        self.neutron_api._has_port_binding_extension.assert_called_once_with()
         self.assertTrue(clientv20.Client.called)
+
+    def test_create_port_with_host_id_no_binding_ext(self):
+        self.mock_object(self.neutron_api, '_has_port_binding_extension',
+                         mock.Mock(return_value=False))
+        port_args = {
+            'tenant_id': 'test tenant',
+            'network_id': 'test net',
+            'host_id': 'foohost'
+        }
+
+        self.assertRaises(exception.NetworkException,
+                          self.neutron_api.create_port, **port_args)
 
     @mock.patch.object(neutron_api.LOG, 'exception', mock.Mock())
     def test_create_port_exception(self):
-        # Set up test data
-        self.mock_object(
-            self.neutron_api, '_has_port_binding_extension',
-            mock.Mock(return_value=True))
         self.mock_object(
             self.neutron_api.client, 'create_port',
             mock.Mock(side_effect=neutron_client_exc.NeutronClientException))
@@ -200,7 +202,6 @@ class NeutronApiTest(test.TestCase):
                           **port_args)
 
         # Verify results
-        self.neutron_api._has_port_binding_extension.assert_called_once_with()
         self.assertTrue(neutron_api.LOG.exception.called)
         self.assertTrue(clientv20.Client.called)
         self.assertTrue(self.neutron_api.client.create_port.called)
@@ -208,9 +209,6 @@ class NeutronApiTest(test.TestCase):
     @mock.patch.object(neutron_api.LOG, 'exception', mock.Mock())
     def test_create_port_exception_status_409(self):
         # Set up test data
-        self.mock_object(
-            self.neutron_api, '_has_port_binding_extension',
-            mock.Mock(return_value=True))
         self.mock_object(
             self.neutron_api.client, 'create_port',
             mock.Mock(side_effect=neutron_client_exc.NeutronClientException(
@@ -223,7 +221,6 @@ class NeutronApiTest(test.TestCase):
                           **port_args)
 
         # Verify results
-        self.neutron_api._has_port_binding_extension.assert_called_once_with()
         self.assertTrue(neutron_api.LOG.exception.called)
         self.assertTrue(clientv20.Client.called)
         self.assertTrue(self.neutron_api.client.create_port.called)

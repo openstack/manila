@@ -175,7 +175,12 @@ class API(object):
                 port_req_body['port']['security_groups'] = security_group_ids
             if mac_address:
                 port_req_body['port']['mac_address'] = mac_address
-            if self._has_port_binding_extension() and host_id:
+            if host_id:
+                if not self._has_port_binding_extension():
+                    msg = ("host_id (%(host_id)s) specified but neutron "
+                           "doesn't support port binding. Please activate the "
+                           "extension accordingly." % {"host_id": host_id})
+                    raise exception.NetworkException(message=msg)
                 port_req_body['port']['binding:host_id'] = host_id
             if dhcp_opts is not None:
                 port_req_body['port']['extra_dhcp_opts'] = dhcp_opts

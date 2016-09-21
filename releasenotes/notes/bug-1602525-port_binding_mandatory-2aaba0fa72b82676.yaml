@@ -1,0 +1,4 @@
+---
+fixes:
+  - Raises an exception in case the host_id is specified when creating a neutron port
+    but the port_binding extension is not activated.
