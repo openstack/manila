@@ -84,6 +84,7 @@ Module Reference
    ganesha
    share_replication
    driver_filter_goodness_weigher
+   share_migration
 
 Capabilities and Extra-Specs
 ----------------------------
