@@ -49,9 +49,17 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
     def setUp(self):
         super(ShareBasicOpsBase, self).setUp()
         base.verify_test_has_appropriate_tags(self)
+        self.image_ref = None
         # Setup image and flavor the test instance
         # Support both configured and injected values
-        self.image_ref = None
+        self.floatings = {}
+        if self.protocol not in CONF.share.enable_protocols:
+            message = "%s tests are disabled" % self.protocol
+            raise self.skipException(message)
+        if self.protocol not in CONF.share.enable_ip_rules_for_protocols:
+            message = ("%s tests for access rules other than IP are disabled" %
+                       self.protocol)
+            raise self.skipException(message)
         if not hasattr(self, 'flavor_ref'):
             self.flavor_ref = CONF.share.client_vm_flavor_ref
         if CONF.share.image_with_share_tools:
@@ -70,8 +78,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
                       image=self.image_ref, flavor=self.flavor_ref,
                       ssh_user=self.ssh_user))
         self.security_group = self._create_security_group()
-        if CONF.share.multitenancy_enabled:
-            self.create_share_network()
+        self.create_share_network()
 
     def boot_instance(self, wait_until="ACTIVE"):
         self.keypair = self.create_keypair()
@@ -91,6 +98,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         # Obtain a floating IP
         floating_ip = (self.compute_floating_ips_client.create_floating_ip()
                        ['floating_ip'])
+        self.floatings[instance['id']] = floating_ip
         self.addCleanup(test_utils.call_and_ignore_notfound_exc,
                         self.compute_floating_ips_client.delete_floating_ip,
                         floating_ip['id'])
@@ -152,6 +160,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         return self._create_share_type(
             data_utils.rand_name("share_type"),
             extra_specs={
+                'snapshot_support': CONF.share.capability_snapshot_support,
                 'driver_handles_share_servers': CONF.share.multitenancy_enabled
             },)['share_type']
 
@@ -182,6 +191,18 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         self._allow_access(share_id, access_type='ip', access_to=ip,
                            cleanup=cleanup)
 
+    def provide_access_to_auxiliary_instance(self, instance, share=None):
+        share = share or self.share
+        if self.protocol.lower() == 'cifs':
+            self.allow_access_ip(share['id'], instance=instance, cleanup=False)
+        elif not CONF.share.multitenancy_enabled:
+            self.allow_access_ip(
+                share['id'], ip=self.floatings[instance['id']]['ip'],
+                instance=instance, cleanup=False)
+        elif (CONF.share.multitenancy_enabled and
+              self.protocol.lower() == 'nfs'):
+            self.allow_access_ip(share['id'], instance=instance, cleanup=False)
+
     def wait_for_active_instance(self, instance_id):
         waiters.wait_for_server_status(
             self.manager.servers_client, instance_id, "ACTIVE")
@@ -192,9 +213,9 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         instance = self.boot_instance(wait_until="BUILD")
         self.create_share()
         instance = self.wait_for_active_instance(instance["id"])
-        self.allow_access_ip(self.share['id'], instance=instance,
-                             cleanup=False)
         ssh_client = self.init_ssh(instance)
+
+        self.provide_access_to_auxiliary_instance(instance)
 
         if utils.is_microversion_lt(CONF.share.max_api_microversion, "2.9"):
             locations = self.share['export_locations']
@@ -220,9 +241,8 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         instance2 = self.wait_for_active_instance(instance2["id"])
 
         # Write data to first VM
-        self.allow_access_ip(self.share['id'], instance=instance1,
-                             cleanup=False)
         ssh_client_inst1 = self.init_ssh(instance1)
+        self.provide_access_to_auxiliary_instance(instance1)
 
         if utils.is_microversion_lt(CONF.share.max_api_microversion, "2.9"):
             locations = self.share['export_locations']
@@ -237,9 +257,8 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         self.write_data(test_data, ssh_client_inst1)
 
         # Read from second VM
-        self.allow_access_ip(
-            self.share['id'], instance=instance2, cleanup=False)
         ssh_client_inst2 = self.init_ssh(instance2)
+        self.provide_access_to_auxiliary_instance(instance2)
         self.mount_share(locations[0], ssh_client_inst2)
         self.addCleanup(self.umount_share,
                         ssh_client_inst2)
@@ -252,7 +271,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
                           "Share migration tests are disabled.")
     def test_migration_files(self):
 
-        if self.protocol != "NFS":
+        if self.protocol != "nfs":
             raise self.skipException("Only NFS protocol supported "
                                      "at this moment.")
 
@@ -278,9 +297,8 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
         dest_pool = dest_pool['name']
 
-        self.allow_access_ip(
-            self.share['id'], instance=instance, cleanup=False)
         ssh_client = self.init_ssh(instance)
+        self.provide_access_to_auxiliary_instance(instance)
 
         if utils.is_microversion_lt(CONF.share.max_api_microversion, "2.9"):
             exports = self.share['export_locations']
@@ -293,24 +311,24 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
         self.mount_share(exports[0], ssh_client)
 
-        ssh_client.exec_command("mkdir -p /mnt/f1")
-        ssh_client.exec_command("mkdir -p /mnt/f2")
-        ssh_client.exec_command("mkdir -p /mnt/f3")
-        ssh_client.exec_command("mkdir -p /mnt/f4")
-        ssh_client.exec_command("mkdir -p /mnt/f1/ff1")
+        ssh_client.exec_command("sudo mkdir -p /mnt/f1")
+        ssh_client.exec_command("sudo mkdir -p /mnt/f2")
+        ssh_client.exec_command("sudo mkdir -p /mnt/f3")
+        ssh_client.exec_command("sudo mkdir -p /mnt/f4")
+        ssh_client.exec_command("sudo mkdir -p /mnt/f1/ff1")
         ssh_client.exec_command("sleep 1")
-        ssh_client.exec_command("dd if=/dev/zero of=/mnt/f1/1m1.bin bs=1M"
-                                " count=1")
-        ssh_client.exec_command("dd if=/dev/zero of=/mnt/f2/1m2.bin bs=1M"
-                                " count=1")
-        ssh_client.exec_command("dd if=/dev/zero of=/mnt/f3/1m3.bin bs=1M"
-                                " count=1")
-        ssh_client.exec_command("dd if=/dev/zero of=/mnt/f4/1m4.bin bs=1M"
-                                " count=1")
-        ssh_client.exec_command("dd if=/dev/zero of=/mnt/f1/ff1/1m5.bin bs=1M"
-                                " count=1")
-        ssh_client.exec_command("chmod -R 555 /mnt/f3")
-        ssh_client.exec_command("chmod -R 777 /mnt/f4")
+        ssh_client.exec_command(
+            "sudo dd if=/dev/zero of=/mnt/f1/1m1.bin bs=1M count=1")
+        ssh_client.exec_command(
+            "sudo dd if=/dev/zero of=/mnt/f2/1m2.bin bs=1M count=1")
+        ssh_client.exec_command(
+            "sudo dd if=/dev/zero of=/mnt/f3/1m3.bin bs=1M count=1")
+        ssh_client.exec_command(
+            "sudo dd if=/dev/zero of=/mnt/f4/1m4.bin bs=1M count=1")
+        ssh_client.exec_command(
+            "sudo dd if=/dev/zero of=/mnt/f1/ff1/1m5.bin bs=1M count=1")
+        ssh_client.exec_command("sudo chmod -R 555 /mnt/f3")
+        ssh_client.exec_command("sudo chmod -R 777 /mnt/f4")
 
         self.umount_share(ssh_client)
 
@@ -372,12 +390,11 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         instance = self.wait_for_active_instance(instance["id"])
         self.addCleanup(self.servers_client.delete_server, instance['id'])
 
-        # 3 - Provide RW access to S1, ok, provided
-        self.allow_access_ip(
-            parent_share['id'], instance=instance, cleanup=False)
-
-        # 4 - SSH to UVM, ok, connected
+        # 3 - SSH to UVM, ok, connected
         ssh_client = self.init_ssh(instance)
+
+        # 4 - Provide RW access to S1, ok, provided
+        self.provide_access_to_auxiliary_instance(instance, parent_share)
 
         # 5 - Try mount S1 to UVM, ok, mounted
         user_export_location = self._get_user_export_location(parent_share)
@@ -411,8 +428,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         )
 
         # 11 - Provide RW access to S2, ok, provided
-        self.allow_access_ip(
-            child_share['id'], instance=instance, cleanup=False)
+        self.provide_access_to_auxiliary_instance(instance, child_share)
 
         # 12 - Try mount S2, ok, mounted
         self.mount_share(user_export_location, ssh_client, child_share_dir)
@@ -440,7 +456,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
 
 class TestShareBasicOpsNFS(ShareBasicOpsBase):
-    protocol = "NFS"
+    protocol = "nfs"
 
     def mount_share(self, location, ssh_client, target_dir=None):
         target_dir = target_dir or "/mnt"
@@ -449,7 +465,7 @@ class TestShareBasicOpsNFS(ShareBasicOpsBase):
 
 
 class TestShareBasicOpsCIFS(ShareBasicOpsBase):
-    protocol = "CIFS"
+    protocol = "cifs"
 
     def mount_share(self, location, ssh_client, target_dir=None):
         location = location.replace("\\", "/")

@@ -145,9 +145,11 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     export MANILA_TEMPEST_CONCURRENCY=24
 
 elif [[ "$DRIVER" == "lvm" ]]; then
+    MANILA_SERVICE_IMAGE_ENABLED=True
     save_configuration "SHARE_DRIVER" "manila.share.drivers.lvm.LVMShareDriver"
     save_configuration "SHARE_BACKING_FILE_SIZE" "32000M"
 elif [[ "$DRIVER" == "zfsonlinux" ]]; then
+    MANILA_SERVICE_IMAGE_ENABLED=True
     save_configuration "SHARE_DRIVER" "manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver"
     save_configuration "RUN_MANILA_REPLICATION_TESTS" "True"
     # Set the replica_state_update_interval to 60 seconds to make
@@ -155,6 +157,9 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     # the build timeout for ZFS on the gate.
     save_configuration "MANILA_REPLICA_STATE_UPDATE_INTERVAL" "60"
     save_configuration "MANILA_ZFSONLINUX_USE_SSH" "True"
+    # Set proper host IP for user export to be able to run scenario tests correctly
+    save_configuration "MANILA_ZFSONLINUX_SHARE_EXPORT_IP" "$HOST"
+    save_configuration "MANILA_ZFSONLINUX_SERVICE_IP" "127.0.0.1"
 elif [[ "$DRIVER" == "container" ]]; then
     save_configuration "SHARE_DRIVER" "manila.share.drivers.container.driver.ContainerShareDriver"
     save_configuration "SHARE_BACKING_FILE_SIZE" "64000M"
