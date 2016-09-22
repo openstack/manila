@@ -119,6 +119,12 @@ df: CommandFilter, df, root
 chmod: CommandFilter, chmod, root
 # manila/share/drivers/ibm/gpfs.py: 'mmnfs', 'export', '%s', '%s'
 mmnfs: CommandFilter, mmnfs, root
+# manila/share/drivers/ibm/gpfs.py: 'mmlsfileset', '%s', '-J', '%s', '-L'
+mmlsfileset: CommandFilter, mmlsfileset, root
+# manila/share/drivers/ibm/gpfs.py: 'mmchfileset', '%s', '-J', '%s', '-j', '%s'
+mmchfileset: CommandFilter, mmchfileset, root
+# manila/share/drivers/ibm/gpfs.py: 'mmlsquota', '-j', '-J', '%s', '%s'
+mmlsquota: CommandFilter, mmlsquota, root
 
 # manila/share/drivers/ganesha/manager.py: 'mv', '%s', '%s'
 mv: CommandFilter, mv, root

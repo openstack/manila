@@ -44,7 +44,7 @@ import six
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _
+from manila.i18n import _, _LI
 from manila.share import driver
 from manila.share.drivers.helpers import NFSHelper
 from manila.share import share_types
@@ -564,6 +564,178 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             LOG.error(msg)
             raise exception.InvalidParameterValue(err=msg)
 
+    def _is_share_valid(self, fsdev, location):
+        try:
+            out, __ = self._gpfs_execute('mmlsfileset', fsdev, '-J',
+                                         location, '-L', '-Y')
+        except exception.ProcessExecutionError:
+            msg = (_('Given share path %(share_path)s does not exist at '
+                     'mount point %(mount_point)s.')
+                   % {'share_path': location, 'mount_point': fsdev})
+            LOG.exception(msg)
+            raise exception.ManageInvalidShare(reason=msg)
+
+        lines = out.splitlines()
+        try:
+            validation_token = lines[0].split(':').index('allocInodes')
+            alloc_inodes = lines[1].split(':')[validation_token]
+        except (IndexError, ValueError):
+            msg = (_('Failed to check share at %s.') % location)
+            LOG.exception(msg)
+            raise exception.GPFSException(msg)
+
+        return alloc_inodes != '0'
+
+    def _get_share_name(self, fsdev, location):
+        try:
+            out, __ = self._gpfs_execute('mmlsfileset', fsdev, '-J',
+                                         location, '-L', '-Y')
+        except exception.ProcessExecutionError:
+            msg = (_('Given share path %(share_path)s does not exist at '
+                     'mount point %(mount_point)s.')
+                   % {'share_path': location, 'mount_point': fsdev})
+            LOG.exception(msg)
+            raise exception.ManageInvalidShare(reason=msg)
+
+        lines = out.splitlines()
+        try:
+            validation_token = lines[0].split(':').index('filesetName')
+            share_name = lines[1].split(':')[validation_token]
+        except (IndexError, ValueError):
+            msg = (_('Failed to check share at %s.') % location)
+            LOG.exception(msg)
+            raise exception.GPFSException(msg)
+
+        return share_name
+
+    def _manage_existing(self, fsdev, share, old_share_name):
+        new_share_name = share['name']
+        new_export_location = self._local_path(new_share_name)
+        try:
+            self._gpfs_execute('mmunlinkfileset', fsdev, old_share_name, '-f')
+        except exception.ProcessExecutionError:
+            msg = _('Failed to unlink fileset for share %s.') % new_share_name
+            LOG.exception(msg)
+            raise exception.GPFSException(msg)
+        LOG.debug('Unlinked the fileset of share %s.', old_share_name)
+
+        try:
+            self._gpfs_execute('mmchfileset', fsdev, old_share_name,
+                               '-j', new_share_name)
+        except exception.ProcessExecutionError:
+            msg = _('Failed to rename fileset for share %s.') % new_share_name
+            LOG.exception(msg)
+            raise exception.GPFSException(msg)
+        LOG.debug('Renamed the fileset from %(old_share)s to %(new_share)s.',
+                  {'old_share': old_share_name, 'new_share': new_share_name})
+
+        try:
+            self._gpfs_execute('mmlinkfileset', fsdev, new_share_name, '-J',
+                               new_export_location)
+        except exception.ProcessExecutionError:
+            msg = _('Failed to link fileset for the share %s.'
+                    ) % new_share_name
+            LOG.exception(msg)
+            raise exception.GPFSException(msg)
+        LOG.debug('Linked the fileset of share %(share_name)s at location '
+                  '%(export_location)s.',
+                  {'share_name': new_share_name,
+                   'export_location': new_export_location})
+
+        try:
+            self._gpfs_execute('chmod', '777', new_export_location)
+        except exception.ProcessExecutionError:
+            msg = _('Failed to set permissions for share %s.') % new_share_name
+            LOG.exception(msg)
+            raise exception.GPFSException(msg)
+        LOG.debug('Changed the permission of share %s.', new_share_name)
+
+        try:
+            out, __ = self._gpfs_execute('mmlsquota', '-j', new_share_name,
+                                         '-Y', fsdev)
+        except exception.ProcessExecutionError:
+            msg = _('Failed to check size for share %s.') % new_share_name
+            LOG.exception(msg)
+            raise exception.GPFSException(msg)
+
+        lines = out.splitlines()
+        try:
+            quota_limit = lines[0].split(':').index('blockLimit')
+            quota_status = lines[1].split(':')[quota_limit]
+        except (IndexError, ValueError):
+            msg = _('Failed to check quota for share %s.') % new_share_name
+            LOG.exception(msg)
+            raise exception.GPFSException(msg)
+
+        share_size = int(quota_status)
+        # Note: since share_size returns integer value in KB,
+        # we are checking whether share is less than 1GiB.
+        # (units.Mi * KB = 1GB)
+        if share_size < units.Mi:
+            try:
+                self._gpfs_execute('mmsetquota', fsdev + ':' + new_share_name,
+                                   '--block', '0:1G')
+            except exception.ProcessExecutionError:
+                msg = _('Failed to set quota for share %s.') % new_share_name
+                LOG.exception(msg)
+                raise exception.GPFSException(msg)
+            LOG.info(_LI('Existing share %(shr)s has size %(size)s KB '
+                         'which is below 1GiB, so extended it to 1GiB.') %
+                     {'shr': new_share_name, 'size': share_size})
+            share_size = 1
+        else:
+            orig_share_size = share_size
+            share_size = int(math.ceil(float(share_size) / units.Mi))
+            if orig_share_size != share_size * units.Mi:
+                try:
+                    self._gpfs_execute('mmsetquota', fsdev + ':' +
+                                       new_share_name, '--block', '0:' +
+                                       str(share_size) + 'G')
+                except exception.ProcessExecutionError:
+                    msg = _('Failed to set quota for share %s.'
+                            ) % new_share_name
+                    LOG.exception(msg)
+                    raise exception.GPFSException(msg)
+
+        new_export_location = self._get_helper(share).create_export(
+            new_export_location)
+        return share_size, new_export_location
+
+    def manage_existing(self, share, driver_options):
+
+        old_export = share['export_location'].split(':')
+        try:
+            ces_ip = old_export[0]
+            old_export_location = old_export[1]
+        except IndexError:
+            msg = _('Incorrect export path. Expected format: '
+                    'IP:/gpfs_mount_point_base/share_id.')
+            LOG.exception(msg)
+            raise exception.ShareBackendException(msg=msg)
+
+        if ces_ip not in self.configuration.gpfs_nfs_server_list:
+            msg = _('The CES IP %s is not present in the '
+                    'configuration option "gpfs_nfs_server_list".') % ces_ip
+            raise exception.ShareBackendException(msg=msg)
+
+        fsdev = self._get_gpfs_device()
+        if not self._is_share_valid(fsdev, old_export_location):
+            err_msg = _('Given share path %s does not have a valid '
+                        'share.') % old_export_location
+            raise exception.ManageInvalidShare(reason=err_msg)
+
+        share_name = self._get_share_name(fsdev, old_export_location)
+
+        out = self._get_helper(share)._has_client_access(old_export_location)
+        if out:
+            err_msg = _('Clients have access to %s share currently. Evict any '
+                        'clients before trying again.') % share_name
+            raise exception.ManageInvalidShare(reason=err_msg)
+
+        share_size, new_export_location = self._manage_existing(
+            fsdev, share, share_name)
+        return {"size": share_size, "export_locations": new_export_location}
+
     def _update_share_stats(self):
         """Retrieve stats info from share volume group."""
 
@@ -679,6 +851,23 @@ class KNFSHelper(NASHelperBase):
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
+    def _has_client_access(self, local_path, access_to=None):
+        try:
+            out, __ = self._execute('exportfs', run_as_root=True)
+        except exception.ProcessExecutionError:
+            msg = _('Failed to check exports on the systems.')
+            LOG.exception(msg)
+            raise exception.GPFSException(msg)
+
+        if access_to:
+            if (re.search(re.escape(local_path) + '[\s\n]*'
+                          + re.escape(access_to), out)):
+                return True
+        else:
+            if re.findall(local_path + '\\b', ''.join(out)):
+                return True
+        return False
+
     def _publish_access(self, *cmd, **kwargs):
         check_exit_code = kwargs.get('check_exit_code', True)
 
@@ -739,19 +928,9 @@ class KNFSHelper(NASHelperBase):
             raise exception.InvalidShareAccess(reason='Only ip access type '
                                                       'supported.')
 
-        # check if present in export
-        try:
-            out, __ = self._execute('exportfs', run_as_root=True)
-        except exception.ProcessExecutionError as e:
-            msg = (_('Failed to check exports on the systems. '
-                     ' Error: %s.') % e)
-            LOG.error(msg)
-            raise exception.GPFSException(msg)
+        out = self._has_client_access(local_path, access['access_to'])
 
-        out = re.search(re.escape(local_path) + '[\s\n]*'
-                        + re.escape(access['access_to']), out)
-
-        if out is not None:
+        if out:
             access_type = access['access_type']
             access_to = access['access_to']
             raise exception.ShareAccessExists(access_type=access_type,

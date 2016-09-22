@@ -45,6 +45,7 @@ class GPFSShareDriverTestCase(test.TestCase):
 
         self._helper_fake = mock.Mock()
         CONF.set_default('driver_handles_share_servers', False)
+        CONF.set_default('share_backend_name', 'GPFS')
         self.fake_conf = config.Configuration(None)
         self._driver = gpfs.GPFSShareDriver(execute=self._gpfs_execute,
                                             configuration=self.fake_conf)
@@ -55,6 +56,7 @@ class GPFSShareDriverTestCase(test.TestCase):
         self.fakedev = "/dev/gpfs0"
         self.fakefspath = "/gpfs0"
         self.fakesharepath = "/gpfs0/share-fakeid"
+        self.fakeexistingshare = "existingshare"
         self.fakesnapshotpath = "/gpfs0/.snapshots/snapshot-fakesnapshotid"
 
         self.fake_ces_exports = """
@@ -74,7 +76,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self._driver._helpers = {
             'KNFS': self._helper_fake
         }
-        self.share = fake_share.fake_share(share_proto='NFS')
+        self.share = fake_share.fake_share(share_proto='NFS',
+                                           host='fakehost@fakehost#GPFS')
         self.server = {
             'backend_details': {
                 'ip': '1.2.3.4',
@@ -86,7 +89,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self.local_ip = "192.11.22.1"
         self.remote_ip = "192.11.22.2"
         self.remote_ip2 = "2.2.2.2"
-        gpfs_nfs_server_list = [self.remote_ip, self.local_ip, self.remote_ip2]
+        gpfs_nfs_server_list = [self.remote_ip, self.local_ip, self.remote_ip2,
+                                "fake_location"]
         self._knfs_helper.configuration.gpfs_nfs_server_list = \
             gpfs_nfs_server_list
         self._ces_helper.configuration.gpfs_nfs_server_list = \
@@ -671,6 +675,333 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
             'rsync', '-rp', self.fakesnapshotpath + '/', self.fakesharepath
         )
 
+    @ddt.data("mmlsfileset::allocInodes:\nmmlsfileset::100096:",
+              "mmlsfileset::allocInodes:\nmmlsfileset::0:")
+    def test__is_share_valid_with_quota(self, fakeout):
+        self._driver._gpfs_execute = mock.Mock(return_value=(fakeout, ''))
+
+        result = self._driver._is_share_valid(self.fakedev, self.fakesharepath)
+
+        self._driver._gpfs_execute.assert_called_once_with(
+            'mmlsfileset', self.fakedev, '-J', self.fakesharepath, '-L', '-Y')
+        if fakeout == "mmlsfileset::allocInodes:\nmmlsfileset::100096:":
+            self.assertTrue(result)
+        else:
+            self.assertFalse(result)
+
+    def test__is_share_valid_exception(self):
+        self._driver._gpfs_execute = mock.Mock(
+            side_effect=exception.ProcessExecutionError)
+
+        self.assertRaises(exception.ManageInvalidShare,
+                          self._driver._is_share_valid, self.fakedev,
+                          self.fakesharepath)
+
+        self._driver._gpfs_execute.assert_called_once_with(
+            'mmlsfileset', self.fakedev, '-J', self.fakesharepath, '-L', '-Y')
+
+    def test__is_share_valid_no_share_exist_exception(self):
+        fakeout = "mmlsfileset::allocInodes:"
+        self._driver._gpfs_execute = mock.Mock(return_value=(fakeout, ''))
+
+        self.assertRaises(exception.GPFSException,
+                          self._driver._is_share_valid, self.fakedev,
+                          self.fakesharepath)
+
+        self._driver._gpfs_execute.assert_called_once_with(
+            'mmlsfileset', self.fakedev, '-J', self.fakesharepath, '-L', '-Y')
+
+    def test__get_share_name(self):
+        fakeout = "mmlsfileset::filesetName:\nmmlsfileset::existingshare:"
+        self._driver._gpfs_execute = mock.Mock(return_value=(fakeout, ''))
+
+        result = self._driver._get_share_name(self.fakedev, self.fakesharepath)
+
+        self.assertEqual('existingshare', result)
+
+    def test__get_share_name_exception(self):
+        self._driver._gpfs_execute = mock.Mock(
+            side_effect=exception.ProcessExecutionError)
+
+        self.assertRaises(exception.ManageInvalidShare,
+                          self._driver._get_share_name, self.fakedev,
+                          self.fakesharepath)
+
+        self._driver._gpfs_execute.assert_called_once_with(
+            'mmlsfileset', self.fakedev, '-J', self.fakesharepath, '-L', '-Y')
+
+    def test__get_share_name_no_share_exist_exception(self):
+        fakeout = "mmlsfileset::filesetName:"
+        self._driver._gpfs_execute = mock.Mock(return_value=(fakeout, ''))
+
+        self.assertRaises(exception.GPFSException,
+                          self._driver._get_share_name, self.fakedev,
+                          self.fakesharepath)
+
+        self._driver._gpfs_execute.assert_called_once_with(
+            'mmlsfileset', self.fakedev, '-J', self.fakesharepath, '-L', '-Y')
+
+    @ddt.data("mmlsquota::blockLimit:\nmmlsquota::1048577",
+              "mmlsquota::blockLimit:\nmmlsquota::1048576",
+              "mmlsquota::blockLimit:\nmmlsquota::0")
+    def test__manage_existing(self, fakeout):
+        self._driver._gpfs_execute = mock.Mock(return_value=(fakeout, ''))
+        self._helper_fake.create_export.return_value = 'fakelocation'
+        self._driver._local_path = mock.Mock(return_value=self.fakesharepath)
+
+        actual_size, actual_path = self._driver._manage_existing(
+            self.fakedev, self.share, self.fakeexistingshare)
+
+        self._driver._gpfs_execute.assert_any_call('mmunlinkfileset',
+                                                   self.fakedev,
+                                                   self.fakeexistingshare,
+                                                   '-f')
+        self._driver._gpfs_execute.assert_any_call('mmchfileset',
+                                                   self.fakedev,
+                                                   self.fakeexistingshare,
+                                                   '-j', self.share['name'])
+        self._driver._gpfs_execute.assert_any_call('mmlinkfileset',
+                                                   self.fakedev,
+                                                   self.share['name'],
+                                                   '-J', self.fakesharepath)
+        self._driver._gpfs_execute.assert_any_call('chmod',
+                                                   '777',
+                                                   self.fakesharepath)
+        if fakeout == "mmlsquota::blockLimit:\nmmlsquota::1048577":
+            self._driver._gpfs_execute.assert_called_with('mmsetquota',
+                                                          self.fakedev + ':' +
+                                                          self.share['name'],
+                                                          '--block',
+                                                          '0:2G')
+            self.assertEqual(2, actual_size)
+            self.assertEqual('fakelocation', actual_path)
+        elif fakeout == "mmlsquota::blockLimit:\nmmlsquota::0":
+            self._driver._gpfs_execute.assert_called_with('mmsetquota',
+                                                          self.fakedev + ':' +
+                                                          self.share['name'],
+                                                          '--block',
+                                                          '0:1G')
+            self.assertEqual(1, actual_size)
+            self.assertEqual('fakelocation', actual_path)
+        else:
+            self.assertEqual(1, actual_size)
+            self.assertEqual('fakelocation', actual_path)
+
+    def test__manage_existing_fileset_unlink_exception(self):
+        self._driver._local_path = mock.Mock(return_value=self.fakesharepath)
+        self._driver._gpfs_execute = mock.Mock(
+            side_effect=exception.ProcessExecutionError)
+
+        self.assertRaises(exception.GPFSException,
+                          self._driver._manage_existing, self.fakedev,
+                          self.share, self.fakeexistingshare)
+
+        self._driver._local_path.assert_called_once_with(self.share['name'])
+        self._driver._gpfs_execute.assert_called_once_with(
+            'mmunlinkfileset', self.fakedev, self.fakeexistingshare, '-f')
+
+    def test__manage_existing_fileset_creation_exception(self):
+        self._driver._local_path = mock.Mock(return_value=self.fakesharepath)
+        self.mock_object(self._driver, '_gpfs_execute', mock.Mock(
+            side_effect=['', exception.ProcessExecutionError]))
+
+        self.assertRaises(exception.GPFSException,
+                          self._driver._manage_existing, self.fakedev,
+                          self.share, self.fakeexistingshare)
+
+        self._driver._local_path.assert_any_call(self.share['name'])
+        self._driver._gpfs_execute.assert_has_calls([
+            mock.call('mmunlinkfileset', self.fakedev, self.fakeexistingshare,
+                      '-f'),
+            mock.call('mmchfileset', self.fakedev, self.fakeexistingshare,
+                      '-j', self.share['name'])])
+
+    def test__manage_existing_fileset_relink_exception(self):
+        self._driver._local_path = mock.Mock(return_value=self.fakesharepath)
+        self.mock_object(self._driver, '_gpfs_execute', mock.Mock(
+            side_effect=['', '', exception.ProcessExecutionError]))
+
+        self.assertRaises(exception.GPFSException,
+                          self._driver._manage_existing, self.fakedev,
+                          self.share, self.fakeexistingshare)
+
+        self._driver._local_path.assert_any_call(self.share['name'])
+        self._driver._gpfs_execute.assert_has_calls([
+            mock.call('mmunlinkfileset', self.fakedev, self.fakeexistingshare,
+                      '-f'),
+            mock.call('mmchfileset', self.fakedev, self.fakeexistingshare,
+                      '-j', self.share['name']),
+            mock.call('mmlinkfileset', self.fakedev, self.share['name'], '-J',
+                      self.fakesharepath)])
+
+    def test__manage_existing_permission_change_exception(self):
+        self._driver._local_path = mock.Mock(return_value=self.fakesharepath)
+        self.mock_object(self._driver, '_gpfs_execute', mock.Mock(
+            side_effect=['', '', '', exception.ProcessExecutionError]))
+
+        self.assertRaises(exception.GPFSException,
+                          self._driver._manage_existing, self.fakedev,
+                          self.share, self.fakeexistingshare)
+
+        self._driver._local_path.assert_any_call(self.share['name'])
+        self._driver._gpfs_execute.assert_has_calls([
+            mock.call('mmunlinkfileset', self.fakedev, self.fakeexistingshare,
+                      '-f'),
+            mock.call('mmchfileset', self.fakedev, self.fakeexistingshare,
+                      '-j', self.share['name']),
+            mock.call('mmlinkfileset', self.fakedev, self.share['name'], '-J',
+                      self.fakesharepath),
+            mock.call('chmod', '777', self.fakesharepath)])
+
+    def test__manage_existing_checking_quota_of_fileset_exception(self):
+        self._driver._local_path = mock.Mock(return_value=self.fakesharepath)
+        self.mock_object(self._driver, '_gpfs_execute', mock.Mock(
+            side_effect=['', '', '', '', exception.ProcessExecutionError]))
+
+        self.assertRaises(exception.GPFSException,
+                          self._driver._manage_existing, self.fakedev,
+                          self.share, self.fakeexistingshare)
+
+        self._driver._local_path.assert_any_call(self.share['name'])
+        self._driver._gpfs_execute.assert_has_calls([
+            mock.call('mmunlinkfileset', self.fakedev, self.fakeexistingshare,
+                      '-f'),
+            mock.call('mmchfileset', self.fakedev, self.fakeexistingshare,
+                      '-j', self.share['name']),
+            mock.call('mmlinkfileset', self.fakedev, self.share['name'], '-J',
+                      self.fakesharepath),
+            mock.call('chmod', '777', self.fakesharepath),
+            mock.call('mmlsquota', '-j', self.share['name'], '-Y',
+                      self.fakedev)])
+
+    def test__manage_existing_unable_to_get_quota_of_fileset_exception(self):
+        fakeout = "mmlsquota::blockLimit:"
+        self._driver._local_path = mock.Mock(return_value=self.fakesharepath)
+        self._driver._gpfs_execute = mock.Mock(return_value=(fakeout, ''))
+
+        self.assertRaises(exception.GPFSException,
+                          self._driver._manage_existing, self.fakedev,
+                          self.share, self.fakeexistingshare)
+
+        self._driver._local_path.assert_any_call(self.share['name'])
+        self._driver._gpfs_execute.assert_any_call('mmunlinkfileset',
+                                                   self.fakedev,
+                                                   self.fakeexistingshare,
+                                                   '-f')
+        self._driver._gpfs_execute.assert_any_call('mmchfileset',
+                                                   self.fakedev,
+                                                   self.fakeexistingshare,
+                                                   '-j', self.share['name'])
+        self._driver._gpfs_execute.assert_any_call('mmlinkfileset',
+                                                   self.fakedev,
+                                                   self.share['name'],
+                                                   '-J', self.fakesharepath)
+        self._driver._gpfs_execute.assert_any_call('chmod',
+                                                   '777',
+                                                   self.fakesharepath)
+        self._driver._gpfs_execute.assert_called_with(
+            'mmlsquota', '-j', self.share['name'], '-Y', self.fakedev)
+
+    def test__manage_existing_set_quota_of_fileset_less_than_1G_exception(
+            self):
+        sizestr = '1G'
+        mock_out = "mmlsquota::blockLimit:\nmmlsquota::0:", None
+        self._driver._local_path = mock.Mock(return_value=self.fakesharepath)
+        self.mock_object(self._driver, '_gpfs_execute', mock.Mock(
+            side_effect=['', '', '', '', mock_out,
+                         exception.ProcessExecutionError]))
+
+        self.assertRaises(exception.GPFSException,
+                          self._driver._manage_existing, self.fakedev,
+                          self.share, self.fakeexistingshare)
+
+        self._driver._local_path.assert_any_call(self.share['name'])
+        self._driver._gpfs_execute.assert_has_calls([
+            mock.call('mmunlinkfileset', self.fakedev, self.fakeexistingshare,
+                      '-f'),
+            mock.call('mmchfileset', self.fakedev, self.fakeexistingshare,
+                      '-j', self.share['name']),
+            mock.call('mmlinkfileset', self.fakedev, self.share['name'], '-J',
+                      self.fakesharepath),
+            mock.call('chmod', '777', self.fakesharepath),
+            mock.call('mmlsquota', '-j', self.share['name'], '-Y',
+                      self.fakedev),
+            mock.call('mmsetquota', self.fakedev + ':' + self.share['name'],
+                      '--block', '0:' + sizestr)])
+
+    def test__manage_existing_set_quota_of_fileset_grater_than_1G_exception(
+            self):
+        sizestr = '2G'
+        mock_out = "mmlsquota::blockLimit:\nmmlsquota::1048577:", None
+        self._driver._local_path = mock.Mock(return_value=self.fakesharepath)
+        self.mock_object(self._driver, '_gpfs_execute', mock.Mock(
+            side_effect=['', '', '', '', mock_out,
+                         exception.ProcessExecutionError]))
+
+        self.assertRaises(exception.GPFSException,
+                          self._driver._manage_existing, self.fakedev,
+                          self.share, self.fakeexistingshare)
+
+        self._driver._local_path.assert_any_call(self.share['name'])
+        self._driver._gpfs_execute.assert_has_calls([
+            mock.call('mmunlinkfileset', self.fakedev, self.fakeexistingshare,
+                      '-f'),
+            mock.call('mmchfileset', self.fakedev, self.fakeexistingshare,
+                      '-j', self.share['name']),
+            mock.call('mmlinkfileset', self.fakedev, self.share['name'], '-J',
+                      self.fakesharepath),
+            mock.call('chmod', '777', self.fakesharepath),
+            mock.call('mmlsquota', '-j', self.share['name'], '-Y',
+                      self.fakedev),
+            mock.call('mmsetquota', self.fakedev + ':' + self.share['name'],
+                      '--block', '0:' + sizestr)])
+
+    def test_manage_existing(self):
+        self._driver._manage_existing = mock.Mock(return_value=('1',
+                                                  'fakelocation'))
+        self._driver._get_gpfs_device = mock.Mock(return_value=self.fakedev)
+        self._driver._is_share_valid = mock.Mock(return_value=True)
+        self._driver._get_share_name = mock.Mock(return_value=self.
+                                                 fakeexistingshare)
+        self._helper_fake._has_client_access = mock.Mock(return_value=[])
+
+        result = self._driver.manage_existing(self.share, {})
+
+        self.assertEqual('1', result['size'])
+        self.assertEqual('fakelocation', result['export_locations'])
+
+    def test_manage_existing_incorrect_path_exception(self):
+        share = fake_share.fake_share(export_location="wrong_ip::wrong_path")
+
+        self.assertRaises(exception.ShareBackendException,
+                          self._driver.manage_existing, share, {})
+
+    def test_manage_existing_incorrect_ip_exception(self):
+        share = fake_share.fake_share(export_location="wrong_ip:wrong_path")
+
+        self.assertRaises(exception.ShareBackendException,
+                          self._driver.manage_existing, share, {})
+
+    def test__manage_existing_invalid_export_exception(self):
+        share = fake_share.fake_share(export_location="wrong_ip/wrong_path")
+
+        self.assertRaises(exception.ShareBackendException,
+                          self._driver.manage_existing, share, {})
+
+    @ddt.data(True, False)
+    def test_manage_existing_invalid_share_exception(self, valid_share):
+        self._driver._get_gpfs_device = mock.Mock(return_value=self.fakedev)
+        self._driver._is_share_valid = mock.Mock(return_value=valid_share)
+        if valid_share:
+            self._driver._get_share_name = mock.Mock(return_value=self.
+                                                     fakeexistingshare)
+            self._helper_fake._has_client_access = mock.Mock()
+        else:
+            self.assertFalse(self._helper_fake._has_client_access.called)
+
+        self.assertRaises(exception.ManageInvalidShare,
+                          self._driver.manage_existing, self.share, {})
+
     def test__gpfs_local_execute(self):
         self.mock_object(utils, 'execute', mock.Mock(return_value=True))
         cmd = "testcmd"
@@ -729,6 +1060,28 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self.assertRaises(exception.InvalidInput,
                           self._knfs_helper.get_export_options,
                           share, access, 'KNFS', options_not_allowed)
+
+    @ddt.data(("/gpfs0/share-fakeid\t10.0.0.1", None),
+              ("", None),
+              ("/gpfs0/share-fakeid\t10.0.0.1", "10.0.0.1"),
+              ("/gpfs0/share-fakeid\t10.0.0.1", "10.0.0.2"))
+    @ddt.unpack
+    def test_knfs__has_client_access(self, mock_out, access_to):
+        self._knfs_helper._execute = mock.Mock(return_value=[mock_out, 0])
+
+        result = self._knfs_helper._has_client_access(self.fakesharepath,
+                                                      access_to)
+
+        self._ces_helper._execute.assert_called_once_with('exportfs',
+                                                          check_exit_code=True,
+                                                          run_as_root=True)
+        if mock_out == "/gpfs0/share-fakeid\t10.0.0.1":
+            if access_to in (None, "10.0.0.1"):
+                self.assertTrue(result)
+            else:
+                self.assertFalse(result)
+        else:
+            self.assertFalse(result)
 
     def test_knfs_allow_access(self):
         self._knfs_helper._execute = mock.Mock(
@@ -1041,7 +1394,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         access = self.access
         local_path = self.fakesharepath
 
-        self._ces_helper.allow_access(local_path, self.share, access)
+        self._ces_helper.allow_access(self.fakesharepath, self.share,
+                                      self.access)
 
         self._ces_helper._execute.assert_has_calls([
             mock.call('mmnfs', 'export', 'list', '-n', local_path, '-Y'),
