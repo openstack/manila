@@ -15,7 +15,7 @@
 
 from tempest import config
 from tempest.lib.common.utils import data_utils
-from tempest import test
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
@@ -56,14 +56,14 @@ class ShareMultiBackendTest(base.BaseSharesAdminTest):
         # Create shares using precreated share types
         cls.shares = cls.create_shares(share_data_list)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_share_backend_name_reporting(self):
         # Share's 'host' should be like "hostname@backend_name"
         for share in self.shares:
             get = self.shares_client.get_share(share['id'])
             self.assertTrue(len(get["host"].split("@")) == 2)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_share_share_type(self):
         # Share type should be the same as provided with share creation
         for i in [0, 1]:
@@ -71,7 +71,7 @@ class ShareMultiBackendTest(base.BaseSharesAdminTest):
                                                   version="2.5")
             self.assertEqual(self.sts[i]["name"], get["share_type"])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_share_share_type_v_2_6(self):
         # Share type should be the same as provided with share creation
         for i in [0, 1]:
@@ -80,7 +80,7 @@ class ShareMultiBackendTest(base.BaseSharesAdminTest):
             self.assertEqual(self.sts[i]["id"], get["share_type"])
             self.assertEqual(self.sts[i]["name"], get["share_type_name"])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_share_backend_name_distinction(self):
         # Different share backends should have different host records
         if CONF.share.backend_names[0] == CONF.share.backend_names[1]:

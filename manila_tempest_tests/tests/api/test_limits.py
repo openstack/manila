@@ -13,14 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest import test
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
 
 class ShareLimitsTest(base.BaseSharesTest):
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_limits_keys(self):
 
         # list limits
@@ -44,7 +44,7 @@ class ShareLimitsTest(base.BaseSharesTest):
         ]
         [self.assertIn(key, limits["absolute"].keys()) for key in abs_keys]
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_limits_values(self):
 
         # list limits

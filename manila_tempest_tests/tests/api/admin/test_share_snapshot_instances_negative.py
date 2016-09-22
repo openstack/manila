@@ -15,8 +15,8 @@
 
 from tempest import config
 from tempest.lib import exceptions as lib_exc
-from tempest import test
 import testtools
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
@@ -37,14 +37,14 @@ class SnapshotInstancesNegativeTest(base.BaseSharesMixedTest):
         cls.snapshot = cls.create_snapshot_wait_for_active(
             cls.share["id"], client=cls.admin_client)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     def test_list_snapshot_instances_with_snapshot_by_non_admin(self):
         self.assertRaises(
             lib_exc.Forbidden,
             self.member_client.list_snapshot_instances,
             snapshot_id=self.snapshot['id'])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     def test_get_snapshot_instance_by_non_admin(self):
         instances = self.admin_client.list_snapshot_instances(
             snapshot_id=self.snapshot['id'])
@@ -53,7 +53,7 @@ class SnapshotInstancesNegativeTest(base.BaseSharesMixedTest):
             self.member_client.get_snapshot_instance,
             instance_id=instances[0]['id'])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     def test_reset_snapshot_instance_status_by_non_admin(self):
         instances = self.admin_client.list_snapshot_instances(
             snapshot_id=self.snapshot['id'])
@@ -75,13 +75,13 @@ class SnapshotInstancesNegativeNoResourceTest(base.BaseSharesMixedTest):
         cls.admin_client = cls.admin_shares_v2_client
         cls.member_client = cls.shares_v2_client
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_get_snapshot_instance_with_non_existent_instance(self):
         self.assertRaises(lib_exc.NotFound,
                           self.admin_client.get_snapshot_instance,
                           instance_id="nonexistent_instance")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_list_snapshot_instances_by_non_admin(self):
         self.assertRaises(
             lib_exc.Forbidden,

@@ -15,7 +15,7 @@
 
 from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions as lib_exc
-from tempest import test
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
@@ -28,7 +28,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
         return self.create_share_type(
             name, extra_specs=extra_specs, client=self.admin_shares_v2_client)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_create_extra_specs_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
@@ -37,7 +37,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             st["share_type"]["id"],
             self.add_required_extra_specs_to_dict({"key": "new_value"}))
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_list_extra_specs_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
@@ -45,7 +45,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             self.shares_v2_client.get_share_type_extra_specs,
             st["share_type"]["id"])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_get_extra_spec_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
@@ -53,7 +53,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             self.shares_v2_client.get_share_type_extra_spec,
             st["share_type"]["id"], "key")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_get_extra_specs_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
@@ -61,7 +61,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             self.shares_v2_client.get_share_type_extra_specs,
             st["share_type"]["id"])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_read_extra_specs_on_share_type_with_user(self):
         st = self._create_share_type()
         share_type = self.shares_v2_client.get_share_type(
@@ -73,7 +73,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
                          'Incorrect extra specs visible to non-admin user; '
                          'expected %s, got %s' % (expected_keys, actual_keys))
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_update_extra_spec_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
@@ -81,7 +81,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             self.shares_v2_client.update_share_type_extra_spec,
             st["share_type"]["id"], "key", "new_value")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_update_extra_specs_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
@@ -89,7 +89,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             self.shares_v2_client.update_share_type_extra_specs,
             st["share_type"]["id"], {"key": "new_value"})
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_delete_extra_specs_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
@@ -97,7 +97,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             self.shares_v2_client.delete_share_type_extra_spec,
             st["share_type"]["id"], "key")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_set_too_long_key(self):
         too_big_key = "k" * 256
         st = self._create_share_type()
@@ -107,7 +107,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             st["share_type"]["id"],
             self.add_required_extra_specs_to_dict({too_big_key: "value"}))
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_set_too_long_value_with_creation(self):
         too_big_value = "v" * 256
         st = self._create_share_type()
@@ -117,7 +117,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             st["share_type"]["id"],
             self.add_required_extra_specs_to_dict({"key": too_big_value}))
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_set_too_long_value_with_update(self):
         too_big_value = "v" * 256
         st = self._create_share_type()
@@ -130,7 +130,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             st["share_type"]["id"],
             self.add_required_extra_specs_to_dict({"key": too_big_value}))
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_set_too_long_value_with_update_of_one_key(self):
         too_big_value = "v" * 256
         st = self._create_share_type()
@@ -142,34 +142,34 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             self.admin_shares_v2_client.update_share_type_extra_spec,
             st["share_type"]["id"], "key", too_big_value)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_list_es_with_empty_shr_type_id(self):
         self.assertRaises(
             lib_exc.NotFound,
             self.admin_shares_v2_client.get_share_type_extra_specs, "")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_list_es_with_invalid_shr_type_id(self):
         self.assertRaises(
             lib_exc.NotFound,
             self.admin_shares_v2_client.get_share_type_extra_specs,
             data_utils.rand_name("fake"))
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_create_es_with_empty_shr_type_id(self):
         self.assertRaises(
             lib_exc.NotFound,
             self.admin_shares_v2_client.create_share_type_extra_specs,
             "", {"key1": "value1", })
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_create_es_with_invalid_shr_type_id(self):
         self.assertRaises(
             lib_exc.NotFound,
             self.admin_shares_v2_client.create_share_type_extra_specs,
             data_utils.rand_name("fake"), {"key1": "value1", })
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_create_es_with_empty_specs(self):
         st = self._create_share_type()
         self.assertRaises(
@@ -177,7 +177,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             self.admin_shares_v2_client.create_share_type_extra_specs,
             st["share_type"]["id"], "")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_create_es_with_invalid_specs(self):
         st = self._create_share_type()
         self.assertRaises(
@@ -185,7 +185,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             self.admin_shares_v2_client.create_share_type_extra_specs,
             st["share_type"]["id"], {"": "value_with_empty_key"})
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_get_extra_spec_with_empty_key(self):
         st = self._create_share_type()
         self.assertRaises(
@@ -193,7 +193,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             self.admin_shares_v2_client.get_share_type_extra_spec,
             st["share_type"]["id"], "")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_get_extra_spec_with_invalid_key(self):
         st = self._create_share_type()
         self.assertRaises(
@@ -201,35 +201,35 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             self.admin_shares_v2_client.get_share_type_extra_spec,
             st["share_type"]["id"], data_utils.rand_name("fake"))
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_get_extra_specs_with_empty_shr_type_id(self):
         self.assertRaises(
             lib_exc.NotFound,
             self.admin_shares_v2_client.get_share_type_extra_specs,
             "")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_get_extra_specs_with_invalid_shr_type_id(self):
         self.assertRaises(
             lib_exc.NotFound,
             self.admin_shares_v2_client.get_share_type_extra_specs,
             data_utils.rand_name("fake"))
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_delete_es_key_with_empty_shr_type_id(self):
         self.assertRaises(
             lib_exc.NotFound,
             self.admin_shares_v2_client.delete_share_type_extra_spec,
             "", "key", )
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_delete_es_key_with_invalid_shr_type_id(self):
         self.assertRaises(
             lib_exc.NotFound,
             self.admin_shares_v2_client.delete_share_type_extra_spec,
             data_utils.rand_name("fake"), "key", )
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_delete_with_invalid_key(self):
         st = self._create_share_type()
         self.assertRaises(
@@ -237,21 +237,21 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             self.admin_shares_v2_client.delete_share_type_extra_spec,
             st["share_type"]["id"], data_utils.rand_name("fake"))
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_update_spec_with_empty_shr_type_id(self):
         self.assertRaises(
             lib_exc.NotFound,
             self.admin_shares_v2_client.update_share_type_extra_spec,
             "", "key", "new_value")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_update_spec_with_invalid_shr_type_id(self):
         self.assertRaises(
             lib_exc.NotFound,
             self.admin_shares_v2_client.update_share_type_extra_spec,
             data_utils.rand_name("fake"), "key", "new_value")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_update_spec_with_empty_key(self):
         st = self._create_share_type()
         self.assertRaises(
@@ -259,14 +259,14 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             self.admin_shares_v2_client.update_share_type_extra_spec,
             st["share_type"]["id"], "", "new_value")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_update_with_invalid_shr_type_id(self):
         self.assertRaises(
             lib_exc.NotFound,
             self.admin_shares_v2_client.update_share_type_extra_specs,
             data_utils.rand_name("fake"), {"key": "new_value"})
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_update_with_invalid_specs(self):
         st = self._create_share_type()
         self.assertRaises(
@@ -274,7 +274,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             self.admin_shares_v2_client.update_share_type_extra_specs,
             st["share_type"]["id"], {"": "new_value"})
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_delete_spec_driver_handles_share_servers(self):
         st = self._create_share_type()
 
@@ -285,7 +285,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
             st["share_type"]["id"],
             "driver_handles_share_servers")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_delete_spec_snapshot_support(self):
         st = self._create_share_type()
 

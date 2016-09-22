@@ -16,7 +16,7 @@
 import copy
 
 from tempest.lib.common.utils import data_utils
-from tempest import test
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
@@ -40,14 +40,14 @@ class ExtraSpecsReadAdminTest(base.BaseSharesAdminTest):
         cls.shares_client.create_share_type_extra_specs(
             cls.st_id, cls.custom_extra_specs)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_get_one_share_type_extra_spec(self):
         es_get_one = self.shares_client.get_share_type_extra_spec(
             self.st_id, "key1")
 
         self.assertEqual({"key1": self.custom_extra_specs["key1"]}, es_get_one)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_get_all_share_type_extra_specs(self):
         es_get_all = self.shares_client.get_share_type_extra_specs(self.st_id)
 
@@ -72,7 +72,7 @@ class ExtraSpecsWriteAdminTest(base.BaseSharesAdminTest):
         self.shares_client.create_share_type_extra_specs(
             self.st_id, self.custom_extra_specs)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_update_one_share_type_extra_spec(self):
         self.custom_extra_specs["key1"] = "fake_value1_updated"
 
@@ -86,7 +86,7 @@ class ExtraSpecsWriteAdminTest(base.BaseSharesAdminTest):
         expected_extra_specs.update(self.required_extra_specs)
         self.assertEqual(self.custom_extra_specs, get)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_update_all_share_type_extra_specs(self):
         self.custom_extra_specs["key2"] = "value2_updated"
 
@@ -100,7 +100,7 @@ class ExtraSpecsWriteAdminTest(base.BaseSharesAdminTest):
         expected_extra_specs.update(self.required_extra_specs)
         self.assertEqual(self.custom_extra_specs, get)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_delete_one_share_type_extra_spec(self):
         # Delete one extra spec for share type
         self.shares_client.delete_share_type_extra_spec(self.st_id, "key1")

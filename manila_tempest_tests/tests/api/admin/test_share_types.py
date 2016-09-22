@@ -17,7 +17,7 @@ import ddt
 from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions as lib_exc
-from tempest import test
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 from manila_tempest_tests import utils
@@ -28,7 +28,7 @@ CONF = config.CONF
 @ddt.ddt
 class ShareTypesAdminTest(base.BaseSharesAdminTest):
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_share_type_create_delete(self):
         name = data_utils.rand_name("tempest-manila")
         extra_specs = self.add_required_extra_specs_to_dict()
@@ -58,7 +58,7 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
             self.assertIn(old_key_name, share_type)
             self.assertNotIn(new_key_name, share_type)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     @ddt.data('2.0', '2.6', '2.7')
     def test_share_type_create_get(self, version):
         self.skip_if_microversion_not_supported(version)
@@ -83,7 +83,7 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         # Check that backwards compatibility didn't break
         self.assertDictMatch(get["volume_type"], get["share_type"])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     @ddt.data('2.0', '2.6', '2.7')
     def test_share_type_create_list(self, version):
         self.skip_if_microversion_not_supported(version)
@@ -111,7 +111,7 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         for i in range(len(sts)):
             self.assertDictMatch(sts[i], vts[i])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_get_share_with_share_type(self):
 
         # Data
@@ -141,7 +141,7 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         self.assertEqual(st_create["share_type"]["id"], get["share_type"])
         self.assertEqual(shr_type_name, get["share_type_name"])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_private_share_type_access(self):
         name = data_utils.rand_name("tempest-manila")
         extra_specs = self.add_required_extra_specs_to_dict({"key": "value", })

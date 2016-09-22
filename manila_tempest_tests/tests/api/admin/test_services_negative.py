@@ -15,7 +15,7 @@
 
 import ddt
 from tempest.lib import exceptions as lib_exc
-from tempest import test
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
@@ -29,12 +29,12 @@ class ServicesAdminNegativeTest(base.BaseSharesMixedTest):
         cls.admin_client = cls.admin_shares_v2_client
         cls.member_client = cls.shares_v2_client
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_list_services_with_non_admin_user(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.member_client.list_services)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_get_service_by_invalid_params(self):
         # All services are expected if send the request with invalid parameter
         services = self.admin_client.list_services()
@@ -54,37 +54,37 @@ class ServicesAdminNegativeTest(base.BaseSharesMixedTest):
                                 key=lambda service: service['id']),
                          msg)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_get_service_by_invalid_host(self):
         params = {'host': 'fake_host'}
         services_fake = self.admin_client.list_services(params)
         self.assertEqual(0, len(services_fake))
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_get_service_by_invalid_binary(self):
         params = {'binary': 'fake_binary'}
         services_fake = self.admin_client.list_services(params)
         self.assertEqual(0, len(services_fake))
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_get_service_by_invalid_zone(self):
         params = {'zone': 'fake_zone'}
         services_fake = self.admin_client.list_services(params)
         self.assertEqual(0, len(services_fake))
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_get_service_by_invalid_status(self):
         params = {'status': 'fake_status'}
         services_fake = self.admin_client.list_services(params)
         self.assertEqual(0, len(services_fake))
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_get_service_by_invalid_state(self):
         params = {'state': 'fake_state'}
         services_fake = self.admin_client.list_services(params)
         self.assertEqual(0, len(services_fake))
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     @ddt.data(
         ('os-services', '2.7'),
         ('services', '2.6'),

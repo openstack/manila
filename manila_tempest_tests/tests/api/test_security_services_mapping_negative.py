@@ -17,8 +17,8 @@ from oslo_log import log
 import six
 from tempest import config
 from tempest.lib import exceptions as lib_exc
-from tempest import test
 import testtools
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
@@ -35,62 +35,62 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
         cls.ss = cls.create_security_service(cleanup_in_class=True)
         cls.cl = cls.shares_client
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_add_sec_service_twice_to_share_network(self):
         self.cl.add_sec_service_to_share_network(self.sn["id"], self.ss["id"])
         self.assertRaises(lib_exc.Conflict,
                           self.cl.add_sec_service_to_share_network,
                           self.sn["id"], self.ss["id"])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_add_nonexistant_sec_service_to_share_network(self):
         self.assertRaises(lib_exc.NotFound,
                           self.cl.add_sec_service_to_share_network,
                           self.sn["id"], "wrong_ss_id")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_add_empty_sec_service_id_to_share_network(self):
         self.assertRaises(lib_exc.NotFound,
                           self.cl.add_sec_service_to_share_network,
                           self.sn["id"], "")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_add_sec_service_to_nonexistant_share_network(self):
         self.assertRaises(lib_exc.NotFound,
                           self.cl.add_sec_service_to_share_network,
                           "wrong_sn_id", self.ss["id"])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_add_sec_service_to_share_network_with_empty_id(self):
         self.assertRaises(lib_exc.NotFound,
                           self.cl.add_sec_service_to_share_network,
                           "", self.ss["id"])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_list_sec_services_for_nonexistant_share_network(self):
         self.assertRaises(lib_exc.NotFound,
                           self.cl.list_sec_services_for_share_network,
                           "wrong_id")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_delete_nonexistant_sec_service_from_share_network(self):
         self.assertRaises(lib_exc.NotFound,
                           self.cl.remove_sec_service_from_share_network,
                           self.sn["id"], "wrong_id")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_delete_sec_service_from_nonexistant_share_network(self):
         self.assertRaises(lib_exc.NotFound,
                           self.cl.remove_sec_service_from_share_network,
                           "wrong_id", self.ss["id"])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_delete_nonexistant_ss_from_nonexistant_sn(self):
         self.assertRaises(lib_exc.NotFound,
                           self.cl.remove_sec_service_from_share_network,
                           "wrong_id", "wrong_id")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipIf(
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_delete_ss_from_sn_used_by_share_server(self):
@@ -122,7 +122,7 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
                           fresh_sn["id"],
                           self.ss["id"])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_map_two_ss_with_same_type_to_sn(self):
         # create share network
         data = self.generate_share_network_data()
@@ -147,7 +147,7 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
                           self.cl.add_sec_service_to_share_network,
                           sn["id"], security_services[1]["id"])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_delete_ss_that_assigned_to_sn(self):
         # create share network
         data = self.generate_share_network_data()

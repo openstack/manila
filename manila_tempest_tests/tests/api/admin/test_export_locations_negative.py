@@ -15,7 +15,7 @@
 
 from tempest import config
 from tempest.lib import exceptions as lib_exc
-from tempest import test
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
@@ -35,7 +35,7 @@ class ExportLocationsNegativeTest(base.BaseSharesMixedTest):
         cls.share_instances = cls.admin_client.get_instances_of_share(
             cls.share['id'])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     def test_get_inexistent_share_export_location(self):
         self.assertRaises(
             lib_exc.NotFound,
@@ -44,7 +44,7 @@ class ExportLocationsNegativeTest(base.BaseSharesMixedTest):
             "fake-inexistent-share-instance-id",
         )
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     def test_get_inexistent_share_instance_export_location(self):
         for share_instance in self.share_instances:
             self.assertRaises(
@@ -54,7 +54,7 @@ class ExportLocationsNegativeTest(base.BaseSharesMixedTest):
                 "fake-inexistent-share-instance-id",
             )
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     def test_list_share_instance_export_locations_by_member(self):
         for share_instance in self.share_instances:
             self.assertRaises(
@@ -63,7 +63,7 @@ class ExportLocationsNegativeTest(base.BaseSharesMixedTest):
                 "fake-inexistent-share-instance-id",
             )
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     def test_get_share_instance_export_location_by_member(self):
         for share_instance in self.share_instances:
             export_locations = (
@@ -80,7 +80,7 @@ class ExportLocationsNegativeTest(base.BaseSharesMixedTest):
 @base.skip_if_microversion_not_supported("2.9")
 class ExportLocationsAPIOnlyNegativeTest(base.BaseSharesAdminTest):
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_get_export_locations_by_nonexistent_share(self):
         self.assertRaises(
             lib_exc.NotFound,
@@ -88,7 +88,7 @@ class ExportLocationsAPIOnlyNegativeTest(base.BaseSharesAdminTest):
             "fake-inexistent-share-id",
         )
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_get_export_locations_by_nonexistent_share_instance(self):
         self.assertRaises(
             lib_exc.NotFound,

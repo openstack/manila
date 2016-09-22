@@ -16,8 +16,8 @@
 
 from tempest import config
 from tempest.lib.common.utils import data_utils
-from tempest import test
 import testtools
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
@@ -79,7 +79,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
         cls.cgsnapshot2 = cls.create_cgsnapshot_wait_for_active(
             cls.cg2['id'], name=cls.cgsnap_name, description=cls.cgsnap_desc)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_get_consistency_group_v2_4(self):
 
         # Get consistency group
@@ -105,7 +105,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
         self.assertEqual(self.cg_desc, str(consistency_group["description"]),
                          msg)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_get_share_v2_4(self):
 
         # Get share
@@ -141,7 +141,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
             self.cg["id"], share["consistency_group_id"])
         self.assertEqual(self.cg["id"], share["consistency_group_id"], msg)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_list_consistency_groups_v2_4(self):
 
         # List consistency groups
@@ -160,7 +160,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
                    cg_id)
             self.assertEqual(1, len(gen), msg)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_list_consistency_groups_with_detail_v2_4(self):
 
         # List consistency groups
@@ -179,7 +179,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
                    cg_id)
             self.assertEqual(1, len(gen), msg)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_filter_shares_by_consistency_group_id_v2_4(self):
 
         shares = self.shares_v2_client.list_shares(
@@ -200,7 +200,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
                       'Share %s expected in returned list, but got %s'
                       % (self.shares[0]['id'], share_ids))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_get_cgsnapshot_v2_4(self):
 
         # Get consistency group
@@ -226,7 +226,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
         self.assertEqual(self.cg_desc, str(consistency_group["description"]),
                          msg)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_get_cgsnapshot_members_v2_4(self):
 
         cgsnapshot_members = self.shares_v2_client.list_cgsnapshot_members(
@@ -251,7 +251,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
                     # self.assertEqual(share['share_type'],
                     #                  member['share_type_id'])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_create_consistency_group_from_populated_cgsnapshot_v2_4(self):
 
         cgsnapshot_members = self.shares_v2_client.list_cgsnapshot_members(
@@ -319,7 +319,7 @@ class ConsistencyGroupRenameTest(base.BaseSharesTest):
             description=cls.cg_desc,
         )
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_update_consistency_group_v2_4(self):
 
         # Get consistency_group
@@ -346,7 +346,7 @@ class ConsistencyGroupRenameTest(base.BaseSharesTest):
         self.assertEqual(new_name, consistency_group["name"])
         self.assertEqual(new_desc, consistency_group["description"])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_create_update_read_consistency_group_with_unicode_v2_4(self):
         value1 = u'ಠ_ಠ'
         value2 = u'ಠ_ರೃ'

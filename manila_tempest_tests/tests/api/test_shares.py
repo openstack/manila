@@ -15,8 +15,8 @@
 
 from tempest import config
 from tempest.lib import exceptions as lib_exc
-from tempest import test
 import testtools
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 from manila_tempest_tests import utils
@@ -36,7 +36,7 @@ class SharesNFSTest(base.BaseSharesTest):
             raise cls.skipException(message)
         cls.share = cls.create_share(cls.protocol)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_create_get_delete_share(self):
 
         share = self.create_share(self.protocol)
@@ -99,7 +99,7 @@ class SharesNFSTest(base.BaseSharesTest):
                           self.shares_v2_client.get_share,
                           share['id'])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
     def test_create_delete_snapshot(self):
@@ -133,7 +133,7 @@ class SharesNFSTest(base.BaseSharesTest):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_snapshot, snap['id'])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
     def test_create_share_from_snapshot(self):
@@ -159,7 +159,7 @@ class SharesNFSTest(base.BaseSharesTest):
               "source of share %s" % (snap["id"], get["snapshot_id"])
         self.assertEqual(get["snapshot_id"], snap["id"], msg)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     @testtools.skipIf(not CONF.share.multitenancy_enabled,
                       "Only for multitenancy.")
     @testtools.skipUnless(CONF.share.run_snapshot_tests,

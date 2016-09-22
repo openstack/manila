@@ -17,7 +17,7 @@
 import ddt
 from tempest import config
 from tempest.lib.common.utils import data_utils
-from tempest import test
+from testtools import testcase as tc
 
 from manila_tempest_tests.common import constants
 from manila_tempest_tests.tests.api import base
@@ -74,7 +74,7 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
             extra_specs=utils.get_configured_extra_specs(
                 variation='opposite_driver_modes'))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     @base.skip_if_microversion_lt("2.22")
     @ddt.data(True, False)
     def test_migration_cancel(self, force_host_assisted):
@@ -111,7 +111,7 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
             dest_pool, share, constants.TASK_STATE_MIGRATION_CANCELLED,
             complete=False)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     @base.skip_if_microversion_lt("2.22")
     @ddt.data(True, False)
     def test_migration_opposite_driver_modes(self, force_host_assisted):
@@ -171,7 +171,7 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
             complete=True, share_network_id=new_share_network_id,
             share_type_id=new_share_type_id)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     @base.skip_if_microversion_lt("2.22")
     @ddt.data(True, False)
     def test_migration_2phase(self, force_host_assisted):

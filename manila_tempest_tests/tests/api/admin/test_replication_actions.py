@@ -13,8 +13,8 @@
 from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions as lib_exc
-from tempest import test
 import testtools
+from testtools import testcase as tc
 
 from manila_tempest_tests.common import constants
 from manila_tempest_tests import share_exceptions
@@ -65,7 +65,7 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
         cls.replica = cls.admin_client.list_share_replicas(
             share_id=cls.share['id'])[0]
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(CONF.share.run_extend_tests,
                           'Extend share tests are disabled.')
     def test_extend_replicated_share(self):
@@ -77,7 +77,7 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
         share = self.admin_client.get_share(self.share["id"])
         self.assertEqual(new_size, int(share["size"]))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(CONF.share.run_shrink_tests,
                           'Shrink share tests are disabled.')
     def test_shrink_replicated_share(self):
@@ -88,7 +88,7 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
         shrink_share = self.admin_client.get_share(self.share["id"])
         self.assertEqual(new_size, int(shrink_share["size"]))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     @testtools.skipUnless(CONF.share.run_manage_unmanage_tests,
                           'Manage/Unmanage Tests are disabled.')
     def test_manage_share_for_replication_type(self):
@@ -123,7 +123,7 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
         self.create_share_replica(managed_share['id'], self.replica_zone,
                                   cleanup=True, client=self.admin_client)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(CONF.share.run_manage_unmanage_tests,
                           'Manage/Unmanage Tests are disabled.')
     def test_unmanage_replicated_share_with_replica(self):
@@ -136,7 +136,7 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
             self.admin_client.unmanage_share,
             share_id=self.share['id'])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     @testtools.skipUnless(CONF.share.run_manage_unmanage_tests,
                           'Manage/Unmanage Tests are disabled.')
     def test_unmanage_replicated_share_with_no_replica(self):
@@ -148,7 +148,7 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
         self.admin_client.unmanage_share(share['id'])
         self.admin_client.wait_for_resource_deletion(share_id=share['id'])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(CONF.share.run_manage_unmanage_snapshot_tests,
                           'Manage/Unmanage Snapshot Tests are disabled.')
     def test_manage_replicated_share_snapshot(self):
@@ -163,7 +163,7 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
             provider_location="127.0.0.1:/fake_provider_location/"
                               "manila_share_9dc61f49_fbc8_48d7_9337_2f9593d9")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(CONF.share.run_manage_unmanage_snapshot_tests,
                           'Manage/Unmanage Snapshot Tests are disabled.')
     def test_unmanage_replicated_share_snapshot(self):

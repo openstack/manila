@@ -14,19 +14,19 @@
 #    under the License.
 
 from tempest.lib import exceptions as lib_exc
-from tempest import test
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
 
 class SchedulerStatsNegativeTest(base.BaseSharesTest):
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_list_pools_with_user(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.list_pools)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_list_pools_detailed_with_user(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.list_pools,

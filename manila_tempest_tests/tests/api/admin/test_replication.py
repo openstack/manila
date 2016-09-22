@@ -15,8 +15,8 @@
 
 from tempest import config
 from tempest.lib.common.utils import data_utils
-from tempest import test
 import testtools
+from testtools import testcase as tc
 
 from manila_tempest_tests.common import constants
 from manila_tempest_tests import share_exceptions
@@ -68,7 +68,7 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
         return [replica['id'] for replica in replica_list
                 if replica['replica_state'] == r_state]
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_promote_out_of_sync_share_replica(self):
         """Test promote 'out_of_sync' share replica to active state."""
         if (self.replication_type
@@ -120,7 +120,7 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
             replica_list, constants.REPLICATION_STATE_ACTIVE)
         self.assertEqual(1, len(new_active_replicas))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_force_delete_share_replica(self):
         """Test force deleting a replica that is in 'error_deleting' status."""
         replica = self.create_share_replica(self.share['id'],
@@ -134,7 +134,7 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
         self.admin_client.force_delete_share_replica(replica['id'])
         self.admin_client.wait_for_resource_deletion(replica_id=replica['id'])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_reset_share_replica_status(self):
         """Test resetting a replica's 'status' attribute."""
         replica = self.create_share_replica(self.share['id'],
@@ -146,7 +146,7 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
         self.admin_client.wait_for_share_replica_status(
             replica['id'], constants.STATUS_ERROR)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_reset_share_replica_state(self):
         """Test resetting a replica's 'replica_state' attribute."""
         replica = self.create_share_replica(self.share['id'],
@@ -158,7 +158,7 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
         self.admin_client.wait_for_share_replica_status(
             replica['id'], constants.STATUS_ERROR, status_attr='replica_state')
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_resync_share_replica(self):
         """Test resyncing a replica."""
         replica = self.create_share_replica(self.share['id'],

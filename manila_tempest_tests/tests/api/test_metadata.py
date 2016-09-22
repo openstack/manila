@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest import test
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
@@ -25,7 +25,7 @@ class SharesMetadataTest(base.BaseSharesTest):
         super(SharesMetadataTest, cls).resource_setup()
         cls.share = cls.create_share()
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_set_metadata_in_share_creation(self):
 
         md = {u"key1": u"value1", u"key2": u"value2", }
@@ -39,7 +39,7 @@ class SharesMetadataTest(base.BaseSharesTest):
         # verify metadata
         self.assertEqual(md, metadata)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_set_get_delete_metadata(self):
 
         md = {u"key3": u"value3", u"key4": u"value4", }
@@ -64,7 +64,7 @@ class SharesMetadataTest(base.BaseSharesTest):
         get_metadata = self.shares_client.get_metadata(share["id"])
         self.assertEqual({}, get_metadata)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_set_and_update_metadata_by_key(self):
 
         md1 = {u"key5": u"value5", u"key6": u"value6", }
@@ -85,7 +85,7 @@ class SharesMetadataTest(base.BaseSharesTest):
         # verify metadata
         self.assertEqual(md2, get_md)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_set_metadata_min_size_key(self):
         data = {"k": "value"}
 
@@ -94,7 +94,7 @@ class SharesMetadataTest(base.BaseSharesTest):
         body_get = self.shares_client.get_metadata(self.share["id"])
         self.assertEqual(data['k'], body_get.get('k'))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_set_metadata_max_size_key(self):
         max_key = "k" * 255
         data = {max_key: "value"}
@@ -105,7 +105,7 @@ class SharesMetadataTest(base.BaseSharesTest):
         self.assertIn(max_key, body_get)
         self.assertEqual(data[max_key], body_get.get(max_key))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_set_metadata_min_size_value(self):
         data = {"key": "v"}
 
@@ -114,7 +114,7 @@ class SharesMetadataTest(base.BaseSharesTest):
         body_get = self.shares_client.get_metadata(self.share["id"])
         self.assertEqual(data['key'], body_get['key'])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_set_metadata_max_size_value(self):
         max_value = "v" * 1023
         data = {"key": max_value}
@@ -124,7 +124,7 @@ class SharesMetadataTest(base.BaseSharesTest):
         body_get = self.shares_client.get_metadata(self.share["id"])
         self.assertEqual(data['key'], body_get['key'])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_upd_metadata_min_size_key(self):
         data = {"k": "value"}
 
@@ -133,7 +133,7 @@ class SharesMetadataTest(base.BaseSharesTest):
         body_get = self.shares_client.get_metadata(self.share["id"])
         self.assertEqual(data, body_get)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_upd_metadata_max_size_key(self):
         max_key = "k" * 255
         data = {max_key: "value"}
@@ -143,7 +143,7 @@ class SharesMetadataTest(base.BaseSharesTest):
         body_get = self.shares_client.get_metadata(self.share["id"])
         self.assertEqual(data, body_get)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_upd_metadata_min_size_value(self):
         data = {"key": "v"}
 
@@ -152,7 +152,7 @@ class SharesMetadataTest(base.BaseSharesTest):
         body_get = self.shares_client.get_metadata(self.share["id"])
         self.assertEqual(data, body_get)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_upd_metadata_max_size_value(self):
         max_value = "v" * 1023
         data = {"key": max_value}

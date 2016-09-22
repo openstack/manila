@@ -19,8 +19,8 @@ from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest.lib.common.utils import test_utils
 from tempest.lib import exceptions
-from tempest import test
 import testtools
+from testtools import testcase as tc
 
 from manila_tempest_tests.common import constants
 from manila_tempest_tests.tests.api import base
@@ -183,8 +183,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
             self.manager.servers_client, instance_id, "ACTIVE")
         return self.manager.servers_client.show_server(instance_id)["server"]
 
-    @test.services('compute', 'network')
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_mount_share_one_vm(self):
         instance = self.boot_instance(wait_until="BUILD")
         self.create_share()
@@ -205,8 +204,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
             self.umount_share(ssh_client)
         self.servers_client.delete_server(instance['id'])
 
-    @test.services('compute', 'network')
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_read_write_two_vms(self):
         """Boots two vms and writes/reads data on it."""
         test_data = "Some test data to write"
@@ -245,8 +243,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         data = self.read_data(ssh_client_inst2)
         self.assertEqual(test_data, data)
 
-    @test.services('compute', 'network')
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     @testtools.skipUnless(CONF.share.run_host_assisted_migration_tests or
                           CONF.share.run_driver_assisted_migration_tests,
                           "Share migration tests are disabled.")

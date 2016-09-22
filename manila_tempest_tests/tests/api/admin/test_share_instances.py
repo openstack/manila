@@ -14,7 +14,7 @@
 #    under the License.
 
 from tempest import config
-from tempest import test
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 from manila_tempest_tests import utils
@@ -29,7 +29,7 @@ class ShareInstancesTest(base.BaseSharesAdminTest):
         super(ShareInstancesTest, cls).resource_setup()
         cls.share = cls.create_share()
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_get_instances_of_share_v2_3(self):
         """Test that we get only the 1 share instance back for the share."""
         share_instances = self.shares_v2_client.get_instances_of_share(
@@ -47,7 +47,7 @@ class ShareInstancesTest(base.BaseSharesAdminTest):
                                                    self.share['id'],
                                                    si['share_id']))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_list_share_instances_v2_3(self):
         """Test that we get at least the share instance back for the share."""
         share_instances = self.shares_v2_client.get_instances_of_share(
@@ -83,14 +83,14 @@ class ShareInstancesTest(base.BaseSharesAdminTest):
                          'expected %s, got %s.' % (
                              si['id'], expected_keys, actual_keys))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_get_share_instance_v2_3(self):
         self._get_share_instance('2.3')
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_get_share_instance_v2_9(self):
         self._get_share_instance('2.9')
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_get_share_instance_v2_10(self):
         self._get_share_instance('2.10')

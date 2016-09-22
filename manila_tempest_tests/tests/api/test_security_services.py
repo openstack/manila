@@ -16,8 +16,8 @@
 from oslo_log import log
 import six
 from tempest import config
-from tempest import test
 import testtools
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
@@ -27,7 +27,7 @@ LOG = log.getLogger(__name__)
 
 class SecurityServiceListMixin(object):
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_list_security_services(self):
         listed = self.shares_client.list_security_services()
         self.assertTrue(any(self.ss_ldap['id'] == ss['id'] for ss in listed))
@@ -38,7 +38,7 @@ class SecurityServiceListMixin(object):
         keys = ["name", "id", "status", "type", ]
         [self.assertIn(key, s_s.keys()) for s_s in listed for key in keys]
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_list_security_services_with_detail(self):
         listed = self.shares_client.list_security_services(detailed=True)
         self.assertTrue(any(self.ss_ldap['id'] == ss['id'] for ss in listed))
@@ -53,7 +53,7 @@ class SecurityServiceListMixin(object):
         ]
         [self.assertIn(key, s_s.keys()) for s_s in listed for key in keys]
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     @testtools.skipIf(
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_list_security_services_filter_by_share_network(self):
@@ -79,7 +79,7 @@ class SecurityServiceListMixin(object):
         keys = ["name", "id", "status", "type", ]
         [self.assertIn(key, s_s.keys()) for s_s in listed for key in keys]
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_list_security_services_detailed_filter_by_ss_attributes(self):
         search_opts = {
             'name': 'ss_ldap',
@@ -122,7 +122,7 @@ class SecurityServicesTest(base.BaseSharesTest,
         self.ss_kerberos = self.create_security_service(
             'kerberos', **ss_kerberos_data)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_create_delete_security_service(self):
         data = self.generate_security_service_data()
         self.service_names = ["ldap", "kerberos", "active_directory"]
@@ -132,7 +132,7 @@ class SecurityServicesTest(base.BaseSharesTest,
             self.assertEqual(ss_name, ss["type"])
             self.shares_client.delete_security_service(ss["id"])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_get_security_service(self):
         data = self.generate_security_service_data()
         ss = self.create_security_service(**data)
@@ -141,7 +141,7 @@ class SecurityServicesTest(base.BaseSharesTest,
         get = self.shares_client.get_security_service(ss["id"])
         self.assertDictContainsSubset(data, get)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_update_security_service(self):
         data = self.generate_security_service_data()
         ss = self.create_security_service(**data)
@@ -155,7 +155,7 @@ class SecurityServicesTest(base.BaseSharesTest,
         self.assertDictContainsSubset(upd_data, updated)
         self.assertDictContainsSubset(upd_data, get)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipIf(
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_try_update_valid_keys_sh_server_exists(self):
@@ -193,7 +193,7 @@ class SecurityServicesTest(base.BaseSharesTest,
             ss["id"], **update_data)
         self.assertDictContainsSubset(update_data, updated)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_list_security_services_filter_by_invalid_opt(self):
         listed = self.shares_client.list_security_services(
             params={'fake_opt': 'some_value'})

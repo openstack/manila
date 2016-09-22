@@ -18,8 +18,8 @@ import six
 from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions as lib_exc
-from tempest import test
 import testtools
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 from manila_tempest_tests import utils
@@ -121,7 +121,7 @@ class ManageNFSSnapshotTest(base.BaseSharesAdminTest):
                           self.shares_v2_client.get_snapshot,
                           get_snapshot['id'])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     @ddt.data('2.12', '2.16', CONF.share.max_api_microversion)
     def test_manage_different_versions(self, version):
         """Run snapshot manage test for multiple versions.

@@ -15,8 +15,8 @@
 
 from tempest import config
 from tempest.lib import exceptions as lib_exc
-from tempest import test
 import testtools
+from testtools import testcase as tc
 
 from manila_tempest_tests import share_exceptions
 from manila_tempest_tests.tests.api import base
@@ -35,13 +35,13 @@ class SharesNegativeTest(base.BaseSharesTest):
             metadata={'key': 'value'}
         )
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     def test_update_share_with_wrong_public_value(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.update_share, self.share["id"],
                           is_public="truebar")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
     def test_try_delete_share_with_existing_snapshot(self):
@@ -57,7 +57,7 @@ class SharesNegativeTest(base.BaseSharesTest):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.delete_share, share["id"])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
     def test_create_share_from_snap_with_less_size(self):
@@ -83,7 +83,7 @@ class SharesNegativeTest(base.BaseSharesTest):
                           snapshot_id=snap["id"],
                           cleanup_in_class=False)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipIf(not CONF.share.multitenancy_enabled,
                       "Only for multitenancy.")
     def test_create_share_with_nonexistant_share_network(self):
@@ -91,7 +91,7 @@ class SharesNegativeTest(base.BaseSharesTest):
                           self.shares_client.create_share,
                           share_network_id="wrong_sn_id")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipIf(not CONF.share.multitenancy_enabled,
                       "Only for multitenancy.")
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
@@ -126,14 +126,14 @@ class SharesNegativeTest(base.BaseSharesTest):
             snapshot_id=snap["id"],
         )
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     def test_update_other_tenants_public_share(self):
         isolated_client = self.get_client_with_isolated_creds(
             type_of_creds='alt')
         self.assertRaises(lib_exc.Forbidden, isolated_client.update_share,
                           self.share["id"], name="new_name")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     def test_delete_other_tenants_public_share(self):
         isolated_client = self.get_client_with_isolated_creds(
             type_of_creds='alt')
@@ -141,7 +141,7 @@ class SharesNegativeTest(base.BaseSharesTest):
                           isolated_client.delete_share,
                           self.share['id'])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     def test_set_metadata_of_other_tenants_public_share(self):
         isolated_client = self.get_client_with_isolated_creds(
             type_of_creds='alt')
@@ -150,7 +150,7 @@ class SharesNegativeTest(base.BaseSharesTest):
                           self.share['id'],
                           {'key': 'value'})
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     def test_update_metadata_of_other_tenants_public_share(self):
         isolated_client = self.get_client_with_isolated_creds(
             type_of_creds='alt')
@@ -159,7 +159,7 @@ class SharesNegativeTest(base.BaseSharesTest):
                           self.share['id'],
                           {'key': 'value'})
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     def test_delete_metadata_of_other_tenants_public_share(self):
         isolated_client = self.get_client_with_isolated_creds(
             type_of_creds='alt')
@@ -171,47 +171,47 @@ class SharesNegativeTest(base.BaseSharesTest):
 
 class SharesAPIOnlyNegativeTest(base.BaseSharesTest):
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_unmanage_share_by_user(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.unmanage_share,
                           'fake-id')
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_manage_share_by_user(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.manage_share,
                           'fake-host', 'nfs', '/export/path',
                           'fake-type')
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_list_by_share_server_by_user(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.list_shares,
                           params={'share_server_id': 12345})
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_create_share_non_existent_az(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_v2_client.create_share,
                           availability_zone='fake_az')
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_create_share_with_zero_size(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_share, size=0)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_create_share_with_invalid_size(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_share, size="#$%")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_create_share_with_out_passing_size(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_share, size="")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
     def test_delete_snapshot_with_wrong_id(self):
@@ -219,7 +219,7 @@ class SharesAPIOnlyNegativeTest(base.BaseSharesTest):
                           self.shares_client.delete_snapshot,
                           "wrong_share_id")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
     def test_create_snapshot_with_wrong_id(self):
@@ -227,41 +227,41 @@ class SharesAPIOnlyNegativeTest(base.BaseSharesTest):
                           self.shares_client.create_snapshot,
                           "wrong_share_id")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_create_share_with_invalid_protocol(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_share,
                           share_protocol="nonexistent_protocol")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_create_share_with_wrong_public_value(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_share, is_public='truebar')
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_get_share_with_wrong_id(self):
         self.assertRaises(lib_exc.NotFound, self.shares_client.get_share,
                           "wrong_share_id")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_get_share_without_passing_share_id(self):
         # Should not be able to get share when empty ID is passed
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_share, '')
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_list_shares_nonadmin_with_nonexistent_share_server_filter(self):
         # filtering by share server allowed only for admins by default
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.list_shares_with_detail,
                           {'share_server_id': 'fake_share_server_id'})
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_delete_share_with_wrong_id(self):
         self.assertRaises(lib_exc.NotFound, self.shares_client.delete_share,
                           "wrong_share_id")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_delete_share_without_passing_share_id(self):
         # Should not be able to delete share when empty ID is passed
         self.assertRaises(lib_exc.NotFound,

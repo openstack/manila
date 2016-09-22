@@ -15,8 +15,8 @@
 
 from tempest import config
 from tempest.lib.common.utils import data_utils
-from tempest import test
 import testtools
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
@@ -42,7 +42,7 @@ class ConsistencyGroupsTest(base.BaseSharesAdminTest):
         share_type = cls.create_share_type(name, extra_specs=extra_specs)
         cls.share_type2 = share_type['share_type']
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_create_cg_with_multiple_share_types_v2_4(self):
         # Create a consistency group
         consistency_group = self.create_consistency_group(
@@ -67,7 +67,7 @@ class ConsistencyGroupsTest(base.BaseSharesAdminTest):
                                                       expected_share_types,
                                                       actual_share_types))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipIf(
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_create_cg_from_cgsnapshot_verify_share_server_information(self):
