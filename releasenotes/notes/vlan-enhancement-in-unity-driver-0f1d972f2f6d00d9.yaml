@@ -1,0 +1,10 @@
+---
+features:
+  - Dell EMC Unity driver deprecated the option `emc_nas_server_container`.
+    The driver will choose storage processor automatically to load balance
+    the nas servers.
+  - Dell EMC Unity driver is enhanced to use different tenant in Unity for
+    each vlan. Thus the nas server in different vlan could have isolated IP
+    address space.
+  - Dell EMC Unity driver is enhanced to select the appropriate port on the
+    system to create interfaces based on the network MTU.

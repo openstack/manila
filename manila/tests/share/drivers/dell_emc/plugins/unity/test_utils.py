@@ -19,6 +19,40 @@ from manila.share.drivers.dell_emc.plugins.unity import utils
 from manila import test
 
 
+class MockPort(object):
+    def __init__(self, sp_id):
+        self.sp_id = sp_id
+
+    def get_id(self):
+        return self.sp_id
+
+
+SPA = MockPort('spa')
+SPB = MockPort('spb')
+
+
+class MockPort(object):
+    def __init__(self, sp, port_id, mtu):
+        self._sp = sp
+        self.port_id = port_id
+        self.mtu = mtu
+
+    def get_id(self):
+        return self.port_id
+
+    @property
+    def parent_storage_processor(self):
+        return self._sp
+
+
+SPA_ETH0 = MockPort(SPA, 'spa_eth0', 1500)
+SPA_ETH1 = MockPort(SPA, 'spa_eth1', 9000)
+SPB_ETH0 = MockPort(SPB, 'spb_eth0', 1500)
+SPB_ETH1 = MockPort(SPB, 'spb_eth1', 9000)
+SPA_LA1 = MockPort(SPA, 'spa_la_1', 1500)
+SPB_LA1 = MockPort(SPB, 'spb_la_1', 1500)
+
+
 @ddt.ddt
 class TestUtils(test.TestCase):
     @ddt.data({'matcher': None,
@@ -48,3 +82,32 @@ class TestUtils(test.TestCase):
         matched, not_matched = utils.do_match(full, matcher)
         self.assertEqual(expected_matched, matched)
         self.assertEqual(expected_not_matched, not_matched)
+
+    @ddt.data({'ports': [SPA_ETH0, SPB_ETH0],
+               'ids_conf': None,
+               'port_map': {'spa': {'spa_eth0'}, 'spb': {'spb_eth0'}},
+               'unmanaged': set()},
+              {'ports': [SPA_ETH0, SPB_ETH0],
+               'ids_conf': ['   '],
+               'port_map': {'spa': {'spa_eth0'}, 'spb': {'spb_eth0'}},
+               'unmanaged': set()},
+              {'ports': [SPA_ETH0, SPB_ETH0, SPA_ETH1],
+               'ids_conf': ['spa*'],
+               'port_map': {'spa': {'spa_eth0', 'spa_eth1'}},
+               'unmanaged': {'spb_eth0'}},
+              )
+    @ddt.unpack
+    def test_match_ports(self, ports, ids_conf, port_map, unmanaged):
+        sp_ports_map, unmanaged_port_ids = utils.match_ports(ports,
+                                                             ids_conf)
+        self.assertEqual(port_map, sp_ports_map)
+        self.assertEqual(unmanaged, unmanaged_port_ids)
+
+    def test_find_ports_by_mtu(self):
+        all_ports = [SPA_ETH0, SPB_ETH0, SPA_ETH1, SPB_ETH1, SPA_LA1,
+                     SPB_LA1]
+        port_ids_conf = '*'
+        port_map = utils.find_ports_by_mtu(all_ports, port_ids_conf, 1500)
+        self.assertEqual({'spa': {'spa_eth0', 'spa_la_1'},
+                          'spb': {'spb_eth0', 'spb_la_1'}},
+                         port_map)

@@ -30,3 +30,6 @@ def load_yaml(file_name):
         res = yaml.load(f)
         LOG.debug('Loaded yaml mock objects from %s.', yaml_file)
     return res
+
+patch_find_ports_by_mtu = mock.patch('manila.share.drivers.dell_emc.plugins.'
+                                     'unity.utils.find_ports_by_mtu')

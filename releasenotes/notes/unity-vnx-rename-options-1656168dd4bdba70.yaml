@@ -4,7 +4,6 @@ upgrade:
     emc_nas_pool_names with unity_share_data_pools,
     emc_nas_server_pool with unity_server_meta_pool,
     emc_interface_ports with unity_ethernet_ports,
-    emc_nas_server_container with unity_server_container.
   - For Dell EMC VNX Manila driver, replaced
     emc_nas_pool_names with vnx_share_data_pools,
     emc_interface_ports with vnx_ethernet_ports,

@@ -12,11 +12,10 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
-import random
 import six
 
 from oslo_log import log
+from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import units
 
@@ -27,7 +26,7 @@ if storops:
 
 from manila.common import constants as const
 from manila import exception
-from manila.i18n import _, _LI, _LE
+from manila.i18n import _, _LI, _LE, _LW
 
 LOG = log.getLogger(__name__)
 
@@ -121,9 +120,10 @@ class UnityClient(object):
         except storops_ex.UnityResourceNotFoundError:
             LOG.info(_LI('Filesystem %s is already removed.'), filesystem.name)
 
-    def create_nas_server(self, name, sp, pool):
+    def create_nas_server(self, name, sp, pool, tenant=None):
         try:
-            return self.system.create_nas_server(name, sp, pool)
+            return self.system.create_nas_server(name, sp, pool,
+                                                 tenant=tenant)
         except storops_ex.UnityNasServerNameUsedError:
             LOG.info(_LI('Share server %s already exists, ignoring share '
                          'server creation.'), name)
@@ -137,11 +137,31 @@ class UnityClient(object):
             raise
 
     def delete_nas_server(self, name, username=None, password=None):
+        tenant = None
         try:
             nas_server = self.get_nas_server(name=name)
+            tenant = nas_server.tenant
             nas_server.delete(username=username, password=password)
         except storops_ex.UnityResourceNotFoundError:
             LOG.info(_LI('NAS server %s not found.'), name)
+
+        if tenant is not None:
+            self._delete_tenant(tenant)
+
+    @staticmethod
+    def _delete_tenant(tenant):
+        if tenant.nas_servers:
+            LOG.debug('There are NAS servers belonging to the tenant %s. ',
+                      'Do not delete it.',
+                      tenant.get_id())
+            return
+        try:
+            tenant.delete(delete_hosts=True)
+        except storops_ex.UnityException as ex:
+            LOG.warning(_LW('Delete tenant %(tenant)s failed with error: '
+                            '%(ex)s. Leave the tenant on the system.'),
+                        {'tenant': tenant.get_id(),
+                         'ex': ex})
 
     @staticmethod
     def create_dns_server(nas_server, domain, dns_ip):
@@ -152,12 +172,10 @@ class UnityClient(object):
                          'ignoring DNS server creation.'), domain)
 
     @staticmethod
-    def create_interface(nas_server, ip_addr, netmask, gateway, ports,
+    def create_interface(nas_server, ip_addr, netmask, gateway, port_id,
                          vlan_id=None):
-        port_list = list(ports)
-        random.shuffle(port_list)
         try:
-            nas_server.create_file_interface(port_list[0],
+            nas_server.create_file_interface(port_id,
                                              ip_addr,
                                              netmask=netmask,
                                              gateway=gateway,
@@ -222,9 +240,13 @@ class UnityClient(object):
     def get_pool(self, name=None):
         return self.system.get_pool(name=name)
 
-    def get_storage_processor(self, sp_id):
+    def get_storage_processor(self, sp_id=None):
         sp = self.system.get_sp(sp_id)
-        return sp if sp.existed else None
+        if sp_id is None:
+            # `sp` is a list of SPA and SPB.
+            return [s for s in sp if s is not None and s.existed]
+        else:
+            return sp if sp.existed else None
 
     def cifs_clear_access(self, share_name, white_list=None):
         share = self.system.get_cifs_share(name=share_name)
@@ -266,14 +288,11 @@ class UnityClient(object):
             LOG.info(_LI('%(host)s access to %(share)s is already removed.'),
                      {'host': host_ip, 'share': share_name})
 
-    def get_ip_ports(self, sp=None):
-        ports = self.system.get_ip_port()
+    def get_file_ports(self):
+        ports = self.system.get_file_port()
         link_up_ports = []
         for port in ports:
-            if port.is_link_up and 'eth' in port.id:
-                if sp and port.sp.id != sp.id:
-                    continue
-
+            if port.is_link_up and self._is_external_port(port.id):
                 link_up_ports.append(port)
 
         return link_up_ports
@@ -294,3 +313,31 @@ class UnityClient(object):
             LOG.debug('The size of the file system %(id)s is %(size)s '
                       'bytes.', {'id': fs.get_id(), 'size': size})
         return size
+
+    @staticmethod
+    def _is_external_port(port_id):
+        return 'eth' in port_id or '_la' in port_id
+
+    def get_tenant(self, name, vlan_id):
+        if not vlan_id:
+            # Do not create vlan for flat network
+            return None
+
+        tenant = None
+        try:
+            tenant_name = "vlan_%(vlan_id)s_%(name)s" % {'vlan_id': vlan_id,
+                                                         'name': name}
+            tenant = self.system.create_tenant(tenant_name, vlans=[vlan_id])
+        except (storops_ex.UnityVLANUsedByOtherTenantError,
+                storops_ex.UnityTenantNameInUseError,
+                storops_ex.UnityVLANAlreadyHasInterfaceError):
+            with excutils.save_and_reraise_exception() as exc:
+                tenant = self.system.get_tenant_use_vlan(vlan_id)
+                if tenant is not None:
+                    LOG.debug("The VLAN %s is already added into a tenant. "
+                              "Use the existing VLAN tenant.", vlan_id)
+                    exc.reraise = False
+        except storops_ex.SystemAPINotSupported:
+            LOG.info(_LI("This system doesn't support tenant."))
+
+        return tenant

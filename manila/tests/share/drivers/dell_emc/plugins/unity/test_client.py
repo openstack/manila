@@ -18,6 +18,7 @@ from oslo_utils import units
 
 from manila import exception
 from manila import test
+from manila.tests.share.drivers.dell_emc.plugins.unity import fake_exceptions
 from manila.tests.share.drivers.dell_emc.plugins.unity import res_mock
 
 
@@ -114,11 +115,9 @@ class TestClient(test.TestCase):
     @res_mock.patch_client
     def test_create_interface__existed_expt(self, client, mocked_input):
         nas_server = mocked_input['nas_server']
-        port_set = ('fake_port',)
-
         self.assertRaises(exception.IPAddressInUse, client.create_interface,
                           nas_server, 'fake_ip_addr', 'fake_mask',
-                          'fake_gateway', ports=port_set)
+                          'fake_gateway', port_id='fake_port_id')
 
     @res_mock.mock_client_input
     @res_mock.patch_client
@@ -187,3 +186,33 @@ class TestClient(test.TestCase):
         size = client.extend_filesystem(fs, 5)
 
         self.assertEqual(5 * units.Gi, size)
+
+    @res_mock.patch_client
+    def test_get_file_ports(self, client):
+        ports = client.get_file_ports()
+        self.assertEqual(2, len(ports))
+
+    @res_mock.patch_client
+    def test_get_tenant(self, client):
+        tenant = client.get_tenant('test', 5)
+        self.assertEqual('tenant_1', tenant.id)
+
+    @res_mock.patch_client
+    def test_get_tenant_preexist(self, client):
+        tenant = client.get_tenant('test', 6)
+        self.assertEqual('tenant_1', tenant.id)
+
+    @res_mock.patch_client
+    def test_get_tenant_name_inuse_but_vlan_not_used(self, client):
+        self.assertRaises(fake_exceptions.UnityTenantNameInUseError,
+                          client.get_tenant, 'test', 7)
+
+    @res_mock.patch_client
+    def test_get_tenant_for_vlan_0(self, client):
+        tenant = client.get_tenant('tenant', 0)
+        self.assertIsNone(tenant)
+
+    @res_mock.patch_client
+    def test_get_tenant_for_vlan_already_has_interfaces(self, client):
+        tenant = client.get_tenant('tenant', 3)
+        self.assertEqual('tenant_1', tenant.id)
