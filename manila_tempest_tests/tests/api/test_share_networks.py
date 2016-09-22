@@ -223,3 +223,43 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
         # create second share network
         sn2 = self.create_share_network(**data)
         self.assertDictContainsSubset(data, sn2)
+
+    @testtools.skipUnless(CONF.share.create_networks_when_multitenancy_enabled,
+                          "Only for setups with network creation.")
+    @testtools.skipUnless(CONF.share.multitenancy_enabled,
+                          "Only for multitenancy.")
+    @testtools.skipUnless(CONF.service_available.neutron, "Only with neutron.")
+    @base.skip_if_microversion_lt("2.18")
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    def test_gateway_with_neutron(self):
+        os = getattr(self, 'os_%s' % self.credentials[0])
+        subnet_client = os.subnets_client
+
+        self.create_share(cleanup_in_class=False)
+        share_net_details = self.shares_v2_client.get_share_network(
+            self.shares_v2_client.share_network_id)
+        subnet_details = subnet_client.show_subnet(
+            share_net_details['neutron_subnet_id'])
+
+        self.assertEqual(subnet_details['subnet']['gateway_ip'],
+                         share_net_details['gateway'])
+
+    @testtools.skipUnless(CONF.share.create_networks_when_multitenancy_enabled,
+                          "Only for setups with network creation.")
+    @testtools.skipUnless(CONF.share.multitenancy_enabled,
+                          "Only for multitenancy.")
+    @testtools.skipUnless(CONF.service_available.neutron, "Only with neutron.")
+    @base.skip_if_microversion_lt("2.20")
+    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    def test_mtu_with_neutron(self):
+        os = getattr(self, 'os_%s' % self.credentials[0])
+        network_client = os.networks_client
+
+        self.create_share(cleanup_in_class=False)
+        share_net_details = self.shares_v2_client.get_share_network(
+            self.shares_v2_client.share_network_id)
+        network_details = network_client.show_network(
+            share_net_details['neutron_net_id'])
+
+        self.assertEqual(network_details['network']['mtu'],
+                         share_net_details['mtu'])
