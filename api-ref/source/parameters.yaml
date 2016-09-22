@@ -566,6 +566,54 @@ availability_zone_1:
   in: body
   required: true
   type: string
+availability_zone_created_at:
+  description: |
+    The date and time stamp when the availability zone was created.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+  in: body
+  required: true
+  type: string
+availability_zone_id:
+  description: |
+    The availability zone ID.
+  in: body
+  required: true
+  type: string
+availability_zone_name:
+  description: |
+    The name of the availability zone.
+  in: body
+  required: true
+  type: string
+availability_zone_updated_at:
+  description: |
+    The date and time stamp when the availability zone was updated.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+  in: body
+  required: true
+  type: string
 availability_zones:
   description: |
     Top level response body element.
@@ -965,24 +1013,6 @@ created_at_5:
 created_at_6:
   description: |
     The date and time stamp when the access rule was created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
-created_at_7:
-  description: |
-    The date and time stamp when the availability zone was created.
 
     The date and time stamp format is `ISO 8601
     <https://en.wikipedia.org/wiki/ISO_8601>`_:
@@ -1601,12 +1631,6 @@ id_8:
   in: body
   required: true
   type: string
-id_9:
-  description: |
-    The availability zone ID.
-  in: body
-  required: true
-  type: string
 ip_version:
   description: |
     The IP version of the network. A valid value is
@@ -1818,12 +1842,6 @@ name_5:
     The share name.
   in: body
   required: false
-  type: string
-name_6:
-  description: |
-    The name of the availability zone.
-  in: body
-  required: true
   type: string
 name_8:
   description: |
@@ -3064,24 +3082,6 @@ updated_at_3:
     For example, ``2015-08-27T09:49:58-05:00``.
 
     If the access rule was never updated, this value is ``null``.
-  in: body
-  required: true
-  type: string
-updated_at_4:
-  description: |
-    The date and time stamp when the availability zone was updated.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
   in: body
   required: true
   type: string
