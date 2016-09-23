@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed qos deletion failing in huawei driver when qos status is 'idle'
+    by deactivating it first.
