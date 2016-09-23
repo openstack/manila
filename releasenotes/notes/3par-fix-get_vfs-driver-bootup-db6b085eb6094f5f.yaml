@@ -1,0 +1,8 @@
+---
+issues:
+  - 3parclient up to version 4.2.1 always returns only 1 VFS IP address.
+    This may cause 3PAR driver boot up failure while validating VFS IP
+    addresses against IP addresses configured in manila.conf.
+fixes:
+  - Fixed 3PAR driver boot up failure while validating share server IP address
+    provided in manila.conf against IP address set on array.

@@ -121,12 +121,12 @@ class HPE3ParMediatorTestCase(test.TestCase):
                                      conn_timeout=constants.TIMEOUT)])
 
     def test_mediator_vfs_exception(self):
-        """Backend exception during get_vfs_name."""
+        """Backend exception during get_vfs."""
 
         self.init_mediator()
         self.mock_client.getvfs.side_effect = Exception('non-manila-except')
         self.assertRaises(exception.ManilaException,
-                          self.mediator.get_vfs_name,
+                          self.mediator.get_vfs,
                           fpg=constants.EXPECTED_FPG)
         expected_calls = [
             mock.call.getvfs(fpg=constants.EXPECTED_FPG, vfs=None),
@@ -138,8 +138,25 @@ class HPE3ParMediatorTestCase(test.TestCase):
         self.init_mediator()
         self.mock_client.getvfs.return_value = {'total': 0}
         self.assertRaises(exception.ManilaException,
-                          self.mediator.get_vfs_name,
+                          self.mediator.get_vfs,
                           fpg=constants.EXPECTED_FPG)
+        expected_calls = [
+            mock.call.getvfs(fpg=constants.EXPECTED_FPG, vfs=None),
+        ]
+        self.mock_client.assert_has_calls(expected_calls)
+
+    @ddt.data((constants.EXPECTED_CLIENT_GET_VFS_RETURN_VALUE,
+               constants.EXPECTED_MEDIATOR_GET_VFS_RET_VAL),
+              (constants.EXPECTED_CLIENT_GET_VFS_RETURN_VALUE_MULTI,
+               constants.EXPECTED_MEDIATOR_GET_VFS_RET_VAL_MULTI))
+    @ddt.unpack
+    def test_mediator_get_vfs(self, get_vfs_val, exp_vfs_val):
+        """VFS not found."""
+        self.init_mediator()
+        self.mock_client.getvfs.return_value = get_vfs_val
+
+        ret_val = self.mediator.get_vfs(constants.EXPECTED_FPG)
+        self.assertEqual(exp_vfs_val, ret_val)
         expected_calls = [
             mock.call.getvfs(fpg=constants.EXPECTED_FPG, vfs=None),
         ]
