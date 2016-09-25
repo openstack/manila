@@ -18,7 +18,6 @@
 """Utilities and helper functions."""
 
 import contextlib
-import errno
 import functools
 import inspect
 import os
@@ -268,24 +267,6 @@ def get_from_path(items, path):
         return results
     else:
         return get_from_path(results, remainder)
-
-
-def is_ipv6_configured():
-    """Check if system contain IPv6 capable network interface.
-
-    :rtype: bool
-    :raises: IOError
-    """
-    try:
-        fd = open('/proc/net/if_inet6')
-    except IOError as e:
-        if e.errno != errno.ENOENT:
-            raise
-        result = False
-    else:
-        result = bool(fd.read(32))
-        fd.close()
-    return result
 
 
 def is_eventlet_bug105():
