@@ -219,18 +219,6 @@ class LazyPluggable(object):
         return getattr(backend, key)
 
 
-def delete_if_exists(pathname):
-    """Delete a file, but ignore file not found error."""
-
-    try:
-        os.unlink(pathname)
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            return
-        else:
-            raise
-
-
 def get_from_path(items, path):
     """Returns a list of items matching the specified path.
 
@@ -474,21 +462,6 @@ def walk_class_hierarchy(clazz, encountered=None):
             for subsubclass in walk_class_hierarchy(subclass, encountered):
                 yield subsubclass
             yield subclass
-
-
-def ensure_tree(path):
-    """Create a directory (and any ancestor directories required)
-
-    :param path: Directory to create
-    """
-    try:
-        os.makedirs(path)
-    except OSError as exc:
-        if exc.errno == errno.EEXIST:
-            if not os.path.isdir(path):
-                raise
-        else:
-            raise
 
 
 def cidr_to_netmask(cidr):
