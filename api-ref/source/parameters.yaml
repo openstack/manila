@@ -50,7 +50,7 @@ export_location_id:
   in: path
   required: false
   type: string
-security_service_id_1:
+security_service_id_path:
   description: |
     The UUID of the security service.
   in: path
@@ -907,24 +907,6 @@ created_at_2:
   in: body
   required: true
   type: string
-created_at_3:
-  description: |
-    The date and time stamp when the security service was created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
 created_at_4:
   description: |
     The date and time stamp when the share was created.
@@ -1053,13 +1035,6 @@ description_11:
   in: body
   required: true
   type: string
-description_12:
-  description: |
-    The security service description. If you specify
-    this value, the description is updated.
-  in: body
-  required: false
-  type: string
 description_2:
   description: |
     The consistency group description.
@@ -1183,32 +1158,6 @@ display_name_4:
     the share name is updated.
   in: body
   required: false
-  type: string
-dns_ip:
-  description: |
-    The DNS IP address that is used inside the tenant
-    network.
-  in: body
-  required: false
-  type: string
-dns_ip_1:
-  description: |
-    The DNS IP address that is used inside the tenant
-    network.
-  in: body
-  required: true
-  type: string
-domain:
-  description: |
-    The security service domain.
-  in: body
-  required: false
-  type: string
-domain_1:
-  description: |
-    The security service domain.
-  in: body
-  required: true
   type: string
 driver_handles_share_servers:
   description: |
@@ -1564,12 +1513,6 @@ id_16:
   in: body
   required: true
   type: string
-id_3:
-  description: |
-    The security service ID.
-  in: body
-  required: true
-  type: string
 id_4:
   description: |
     The UUID of the share.
@@ -1770,12 +1713,6 @@ name_11:
   in: body
   required: true
   type: string
-name_12:
-  description: |
-    The security service name.
-  in: body
-  required: true
-  type: string
 name_14:
   description: |
     The snapshot name.
@@ -1950,18 +1887,6 @@ os-share-type-access:is_public:
   in: body
   required: false
   type: boolean
-password:
-  description: |
-    The user password, if you specify a ``user``.
-  in: body
-  required: false
-  type: string
-password_1:
-  description: |
-    The user password, if you specify a ``user``.
-  in: body
-  required: true
-  type: string
 path:
   description: |
     The export location path that should be used for
@@ -2025,13 +1950,6 @@ project_id_2:
   description: |
     The ID of the project in which the consistency
     group was created.
-  in: body
-  required: true
-  type: string
-project_id_3:
-  description: |
-    The UUID of the project where the security
-    service was created.
   in: body
   required: true
   type: string
@@ -2219,10 +2137,66 @@ reset_status:
   in: body
   required: true
   type: object
+security_service_created_at:
+  description: |
+    The date and time stamp when the security service was created.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+  in: body
+  required: true
+  type: string
+security_service_description:
+  description: |
+    Description of the security service in plain text.
+  in: body
+  required: true
+  type: string
+security_service_description_request:
+  description: |
+    The security service description. If you specify
+    this value, the description is updated.
+  in: body
+  required: false
+  type: string
+security_service_dns_ip:
+  description: |
+    The DNS IP address that is used inside the tenant
+    network.
+  in: body
+  required: true
+  type: string
+security_service_dns_ip_request:
+  description: |
+    The DNS IP address that is used inside the tenant
+    network.
+  in: body
+  required: false
+  type: string
+security_service_domain:
+  description: |
+    The security service domain.
+  in: body
+  required: true
+  type: string
+security_service_domain_request:
+  description: |
+    The security service domain.
+  in: body
+  required: false
+  type: string
 security_service_id:
   description: |
-    The UUID of the security service to add to the
-    share network. For details, see the security service section.
+    The security service ID.
   in: body
   required: true
   type: string
@@ -2232,6 +2206,101 @@ security_service_id_2:
     the share network. For details, see the security service section.
   in: body
   required: true
+  type: string
+security_service_name:
+  description: |
+    The security service name.
+  in: body
+  required: true
+  type: string
+security_service_password:
+  description: |
+    The user password, if you specify a ``user``.
+  in: body
+  required: true
+  type: string
+security_service_password_request:
+  description: |
+    The user password, if you specify a ``user``.
+  in: body
+  required: false
+  type: string
+security_service_project_id:
+  description: |
+    The UUID of the project where the security
+    service was created.
+  in: body
+  required: true
+  type: string
+security_service_server:
+  description: |
+    The security service host name or IP address.
+  in: body
+  required: true
+  type: string
+security_service_server_request:
+  description: |
+    The security service host name or IP address.
+  in: body
+  required: false
+  type: string
+security_service_status:
+  description: |
+    The security service status.
+  in: body
+  required: true
+  type: string
+security_service_type:
+  description: |
+    The security service type. A valid value is
+    ``ldap``, ``kerberos``, or ``active_directory``.
+  in: body
+  required: true
+  type: string
+security_service_type_request:
+  description: |
+    The security service type. A valid value is
+    ``ldap``, ``kerberos``, or ``active_directory``.
+  in: body
+  required: false
+  type: string
+security_service_updated_at:
+  description: |
+    The date and time stamp when the security service was updated.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+  in: body
+  required: true
+  type: string
+security_service_user:
+  description: |
+    The security service user or group name that is
+    used by the tenant.
+  in: body
+  required: true
+  type: string
+security_service_user_request:
+  description: |
+    The security service user or group name that is
+    used by the tenant.
+  in: body
+  required: false
+  type: string
+security_servie_server_request:
+  description: |
+    The security service host name or IP address.
+  in: body
+  required: false
   type: string
 segmentation_id:
   description: |
@@ -2249,18 +2318,6 @@ segmentation_id_1:
   in: body
   required: true
   type: integer
-server:
-  description: |
-    The security service host name or IP address.
-  in: body
-  required: false
-  type: string
-server_1:
-  description: |
-    The security service host name or IP address.
-  in: body
-  required: true
-  type: string
 server_pools_mapping:
   description: |
     The mapping between servers and pools.
@@ -2797,12 +2854,6 @@ status_16:
   in: body
   required: true
   type: string
-status_2:
-  description: |
-    The security service status.
-  in: body
-  required: true
-  type: string
 status_3:
   description: |
     The share status. A valid value is:  -
@@ -2937,20 +2988,6 @@ totalSnapshotGigabytesUsed:
   in: body
   required: true
   type: integer
-type:
-  description: |
-    The security service type. A valid value is
-    ``ldap``, ``kerberos``, or ``active_directory``.
-  in: body
-  required: true
-  type: string
-type_1:
-  description: |
-    The security service type. A valid value is
-    ``ldap``, ``kerberos``, or ``active_directory``.
-  in: body
-  required: false
-  type: string
 unit:
   description: |
     The time interval during which a number of API
@@ -2995,24 +3032,6 @@ updated:
 updated_at:
   description: |
     The date and time stamp when the share network was updated.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
-updated_at_1:
-  description: |
-    The date and time stamp when the security service was updated.
 
     The date and time stamp format is `ISO 8601
     <https://en.wikipedia.org/wiki/ISO_8601>`_:
@@ -3127,20 +3146,6 @@ uri:
   format: uri
   in: body
   required: false
-  type: string
-user:
-  description: |
-    The security service user or group name that is
-    used by the tenant.
-  in: body
-  required: false
-  type: string
-user_1:
-  description: |
-    The security service user or group name that is
-    used by the tenant.
-  in: body
-  required: true
   type: string
 user_id:
   description: |
