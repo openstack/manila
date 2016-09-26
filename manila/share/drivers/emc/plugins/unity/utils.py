@@ -14,7 +14,7 @@
 #    under the License.
 """ Utility module for EMC Unity Manila Driver """
 
-import fnmatch
+from oslo_utils import fnmatch
 
 
 def do_match(full, matcher_list):
