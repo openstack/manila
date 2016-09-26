@@ -24,11 +24,11 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - pool: pool_1
-   - host: host_9
-   - backend: backend_1
-   - capabilities: capabilities_1
+   - tenant_id: tenant_id_path
+   - pool: backend_pool_query
+   - host: backend_host_query
+   - backend: backend_query
+   - capabilities: backend_capabilities_query
 
 Response parameters
 -------------------
@@ -36,9 +36,9 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - backend: backend
-   - host: host_4
+   - host: backend_host
    - pool: pool
-   - name: name_11
+   - name: backend_name
 
 Response example
 ----------------
@@ -63,37 +63,37 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - pool: pool_1
-   - host: host_9
-   - backend: backend_1
-   - capabilities: capabilities_1
+   - tenant_id: tenant_id_path
+   - pool: backend_pool_query
+   - host: backend_host_query
+   - backend: backend_query
+   - capabilities: backend_capabilities_query
 
 Response parameters
 -------------------
 
 .. rest_parameters:: parameters.yaml
 
-   - backend: backend
-   - host: host_4
-   - pool: pool
-   - name: name_11
-   - capabilities: capabilities_1
-   - qos: qos
-   - consistency_group_support: consistency_group_support
-   - timestamp: timestamp
-   - share_backend_name: share_backend_name
-   - server_pools_mapping: server_pools_mapping
-   - driver_handles_share_servers: driver_handles_share_servers
-   - driver_version: driver_version
-   - total_capacity_gb: total_capacity_gb
-   - free_capacity_gb: free_capacity_gb
-   - reserved_percentage: reserved_percentage
    - pools: pools
-   - vendor_name: vendor_name
-   - snapshot_support: snapshot_support_2
-   - replication_type: replication_type
-   - storage_protocol: storage_protocol
+   - name: backend_name
+   - backend: backend
+   - pool: pool
+   - host: backend_host
+   - capabilities: capabilities
+   - qos: capability_qos
+   - consistency_group_support: capability_consistency_group_support
+   - timestamp: timestamp
+   - share_backend_name: capability_share_backend_name
+   - server_pools_mapping: capability_server_pools_mapping
+   - driver_handles_share_servers: capability_driver_handles_share_servers
+   - driver_version: capability_driver_version
+   - total_capacity_gb: capability_total_capacity_gb
+   - free_capacity_gb: capability_free_capacity_gb
+   - reserved_percentage: capability_reserved_percentage
+   - vendor_name: capability_vendor_name
+   - snapshot_support: capability_snapshot_support
+   - replication_domain: capability_replication_domain
+   - storage_protocol: capability_storage_protocol
 
 Response example
 ----------------

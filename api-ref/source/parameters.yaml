@@ -138,7 +138,25 @@ all_tenants_2:
   in: query
   required: false
   type: boolean
-backend_1:
+backend_capabilities_query:
+  description: |
+    The capabilities for the storage back end.
+  in: query
+  required: false
+  type: string
+backend_host_query:
+  description: |
+    The host name for the back end.
+  in: query
+  required: false
+  type: string
+backend_pool_query:
+  description: |
+    The pool name for the back end.
+  in: query
+  required: false
+  type: string
+backend_query:
   description: |
     The name of the back end.
   in: query
@@ -148,12 +166,6 @@ binary_3:
   description: |
     The service binary name. Default is the base name
     of the executable.
-  in: query
-  required: false
-  type: string
-capabilities_1:
-  description: |
-    The capabilities for the storage back end.
   in: query
   required: false
   type: string
@@ -281,12 +293,6 @@ offset_3:
   in: query
   required: false
   type: integer
-pool_1:
-  description: |
-    The pool name for the back end.
-  in: query
-  required: false
-  type: string
 project_id_6:
   description: |
     The UUID of the project in which the share was
@@ -593,6 +599,21 @@ backend_details_1:
   in: body
   required: true
   type: object
+backend_host:
+  description: |
+    The host name for the back end.
+  in: body
+  required: true
+  type: string
+backend_name:
+  description: |
+    The name of the back end in this format:
+    ``host@backend#POOL``.  - ``host``. The host name for the back
+    end.  - ``backend``. The name of the back end.  - ``POOL``. The
+    pool name for the back end.
+  in: body
+  required: true
+  type: string
 binary:
   description: |
     The name of the service binary that you want to
@@ -630,10 +651,110 @@ binary_5:
   type: string
 capabilities:
   description: |
-    The capabilities for the storage back end.
+    The back end capabilities which include ``qos``, ``total_capacity_gb``,
+    etc.
   in: body
   required: true
   type: object
+capability_consistency_group_support:
+  min_version: 2.4
+  description: |
+    Specifies the level of support for scheduling shares within consistency
+    groups if the pool supports this feature. Valid values are ``host``,
+    ``pool`` and ``false``. If ``host``, shares within a consistency group
+    can span multiple storage pools belonging to a host#backend combination.
+    If ``pool``, shares created within a given consistency group can only be
+    scheduled within that pool. If ``false``, the pool cannot accept
+    scheduling consistency groups, and hence any shares belonging to
+    consistency groups.
+  in: body
+  required: true
+  type: string
+capability_driver_handles_share_servers:
+  description: |
+    Share server is usually a storage virtual machine or a lightweight
+    container that is used to export shared file systems. Storage backends
+    may be able to work with configured share servers or allow the
+    share driver to create and manage the lifecycle of share servers. This
+    capability specifies whether the pool's associated share driver is
+    responsible to create and manage the lifecycle of share servers. If
+    ``false``, the administrator of the shared file systems service has
+    configured the share server as necessary for the given back end.
+  in: body
+  required: true
+  type: boolean
+capability_driver_version:
+  description: |
+    The driver version of the back end.
+  in: body
+  required: true
+  type: string
+capability_free_capacity_gb:
+  description: |
+    The amount of free capacity for the back end, in
+    GBs. A valid value is a string, such as ``unknown``, or an
+    integer.
+  in: body
+  required: true
+  type: string
+capability_qos:
+  description: |
+    The quality of service (QoS) support.
+  in: body
+  required: true
+  type: boolean
+capability_replication_domain:
+  description: |
+    The back end replication domain.
+  in: body
+  required: true
+  type: string
+capability_reserved_percentage:
+  description: |
+    The percentage of the total capacity that is
+    reserved for the internal use by the back end.
+  in: body
+  required: true
+  type: integer
+capability_server_pools_mapping:
+  description: |
+    The mapping between servers and pools.
+  in: body
+  required: true
+  type: object
+capability_share_backend_name:
+  description: |
+    The name of the share back end.
+  in: body
+  required: true
+  type: string
+capability_snapshot_support:
+  description: |
+    The specification that filters back ends by
+    whether they do or do not support share snapshots.
+  in: body
+  required: true
+  type: boolean
+capability_storage_protocol:
+  description: |
+    The storage protocol for the back end. For
+    example, ``NFS_CIFS``, ``glusterfs``, ``HDFS``, etc.
+  in: body
+  required: true
+  type: string
+capability_total_capacity_gb:
+  description: |
+    The total capacity for the back end, in GBs. A
+    valid value is a string, such as ``unknown``, or an integer.
+  in: body
+  required: true
+  type: string
+capability_vendor_name:
+  description: |
+    The name of the vendor for the back end.
+  in: body
+  required: true
+  type: string
 cg_created_at:
   description: |
     The date and time stamp when the consistency group was created.
@@ -1391,12 +1512,6 @@ host_3:
   in: body
   required: true
   type: string
-host_4:
-  description: |
-    The host name for the back end.
-  in: body
-  required: true
-  type: string
 host_5:
   description: |
     The service host name.
@@ -1951,13 +2066,27 @@ protocol:
   in: body
   required: true
   type: string
-provider_location_request:
+provider_location:
   description: |
-    Provider location of the snapshot on the backend.
+    (Since API v2.12) Provider location of the
+    snapshot on the back end.
+  in: body
+  required: true
+  type: string
+provider_location_1:
+  description: |
+    Provider location of the snapshot on the back end.
   in: body
   required: false
   type: string
   min_version: 2.12
+provider_location_request:
+  description: |
+    (Since API v2.12) Provider location of the
+    snapshot on the back end.
+  in: body
+  required: false
+  type: string
 qos:
   description: |
     The quality of service (QoS) support.
@@ -2790,13 +2919,6 @@ snapshot_support_1:
     whether they do or do not support share snapshots.
   in: body
   required: false
-  type: boolean
-snapshot_support_2:
-  description: |
-    The specification that filters back ends by
-    whether they do or do not support share snapshots.
-  in: body
-  required: true
   type: boolean
 snapshot_support_3:
   description: |
