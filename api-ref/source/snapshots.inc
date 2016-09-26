@@ -51,15 +51,15 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Response parameters
 -------------------
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id_16
-   - name: name_15
+   - id: snapshot_id
+   - name: snapshot_name
 
 Response example
 ----------------
@@ -83,22 +83,22 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Response parameters
 -------------------
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id_16
-   - status: status_13
-   - share_id: share_id_5
-   - name: name_15
-   - description: description_11
-   - created_at: created_at_10
-   - share_proto: share_proto_2
-   - share_size: share_size
-   - size: size_3
+   - id: snapshot_id
+   - status: snapshot_status
+   - share_id: snapshot_share_id
+   - name: snapshot_name
+   - description: snapshot_description
+   - created_at: snapshot_created_at
+   - share_proto: snapshot_share_protocol
+   - share_size: snapshot_share_size
+   - size: snapshot_size
 
 Response example
 ----------------
@@ -122,23 +122,23 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - snapshot_id: snapshot_id_1
+   - tenant_id: tenant_id_path
+   - snapshot_id: snapshot_id_path
 
 Response parameters
 -------------------
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id_16
-   - status: status_13
-   - share_id: share_id_5
-   - name: name_15
-   - description: description_11
-   - created_at: created_at_10
-   - share_proto: share_proto_2
-   - share_size: share_size
-   - size: size_3
+   - id: snapshot_id
+   - status: snapshot_status
+   - share_id: snapshot_share_id
+   - name: snapshot_name
+   - description: snapshot_description
+   - created_at: snapshot_created_at
+   - share_proto: snapshot_share_protocol
+   - share_size: snapshot_share_size
+   - size: snapshot_size
 
 Response example
 ----------------
@@ -164,13 +164,13 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - share_id: share_id_4
-   - force: force
-   - name: name_14
-   - display_name: display_name_1
-   - description: description_10
-   - display_description: display_description_1
+   - tenant_id: tenant_id_path
+   - share_id: snapshot_share_id_request
+   - force: force_snapshot_request
+   - name: snapshot_name_request
+   - display_name: snapshot_display_name
+   - description: snapshot_description_request
+   - display_description: snapshot_display_description
 
 Request example
 ---------------
@@ -183,16 +183,16 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id_16
-   - share_id: share_id_5
-   - status: status_13
-   - name: name_15
-   - description: description_11
-   - created_at: created_at_10
-   - share_proto: share_proto
-   - share_size: share_size
-   - provider_location: provider_location_1
-   - size: size_3
+   - id: snapshot_id
+   - share_id: snapshot_share_id
+   - status: snapshot_status
+   - name: snapshot_name
+   - description: snapshot_description
+   - created_at: snapshot_created_at
+   - share_proto: snapshot_share_protocol
+   - share_size: snapshot_share_size
+   - provider_location: snapshot_provider_location
+   - size: snapshot_size
 
 Response example
 ----------------
@@ -217,13 +217,13 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - share_id: share_id_6
-   - provider_location: provider_location
-   - name: name
-   - display_name: display_name_1
-   - description: description
-   - display_description: display_description_1
+   - tenant_id: tenant_id_path
+   - share_id: snapshot_manage_share_id
+   - provider_location: snapshot_provider_location_request
+   - name: snapshot_name_request
+   - display_name: snapshot_display_name
+   - description: snapshot_description_request
+   - display_description: snapshot_display_description
    - driver_options: driver_options
 
 Request example
@@ -237,16 +237,16 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id_16
-   - share_id: share_id_5
-   - status: status_14
-   - name: name_15
-   - description: description_11
-   - created_at: created_at_10
-   - share_proto: share_proto
-   - share_size: share_size
-   - provider_location: provider_location_1
-   - size: size_3
+   - id: snapshot_id
+   - share_id: snapshot_share_id
+   - status: snapshot_manage_status
+   - name: snapshot_name
+   - description: snapshot_description
+   - created_at: snapshot_created_at
+   - share_proto: snapshot_share_protocol
+   - share_size: snapshot_share_size
+   - provider_location: snapshot_provider_location
+   - size: snapshot_size
 
 Response example
 ----------------
@@ -271,9 +271,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - snapshot_id: snapshot_id_1
-   - unmanage: unmanage
+   - tenant_id: tenant_id_path
+   - snapshot_id: snapshot_id_path
+   - unmanage: snapshot_unmanage
 
 Request example
 ---------------
@@ -281,6 +281,10 @@ Request example
 .. literalinclude:: samples/snapshot-actions-unmanage-request.json
    :language: javascript
 
+Response parameters
+-------------------
+
+There is no body content for the response.
 
 Reset share snapshot state
 ==========================
@@ -301,9 +305,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - snapshot_id: snapshot_id_1
-   - status: status_12
+   - tenant_id: tenant_id_path
+   - snapshot_id: snapshot_id_path
+   - status: snapshot_status_request
 
 Request example
 ---------------
@@ -331,9 +335,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - snapshot_id: snapshot_id_1
-   - force_delete: force_delete_4
+   - tenant_id: tenant_id_path
+   - snapshot_id: snapshot_id_path
+   - force_delete: snapshot_force_delete
 
 Request example
 ---------------
@@ -371,10 +375,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - snapshot_id: snapshot_id_1
-   - display_name: display_name_3
-   - display_description: display_description_2
+   - tenant_id: tenant_id_path
+   - snapshot_id: snapshot_id_path
+   - display_name: snapshot_display_name
+   - display_description: snapshot_display_description
 
 Request example
 ---------------
@@ -387,15 +391,15 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id_16
-   - status: status_13
-   - share_id: share_id_5
-   - name: name_15
-   - description: description_11
-   - created_at: created_at_10
-   - share_proto: share_proto_2
-   - share_size: share_size
-   - size: size_3
+   - id: snapshot_id
+   - status: snapshot_status
+   - share_id: snapshot_share_id
+   - name: snapshot_name
+   - description: snapshot_description
+   - created_at: snapshot_created_at
+   - share_proto: snapshot_share_protocol
+   - share_size: snapshot_share_size
+   - size: snapshot_size
 
 Response example
 ----------------
@@ -420,5 +424,5 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - snapshot_id: snapshot_id_1
+   - tenant_id: tenant_id_path
+   - snapshot_id: snapshot_id_path

@@ -63,7 +63,7 @@ Response parameters
    - share_network_id: share_network_id
    - export_locations: export_locations
    - share_server_id: share_server_id
-   - snapshot_id: snapshot_id_3
+   - snapshot_id: snapshot_id_share_response
    - id: id_4
    - size: size_2
    - share_type: share_type_1

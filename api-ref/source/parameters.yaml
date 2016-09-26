@@ -92,7 +92,7 @@ share_type_id:
   in: path
   required: true
   type: string
-snapshot_id_1:
+snapshot_id_path:
   description: |
     The UUID of the snapshot.
   in: path
@@ -267,7 +267,6 @@ offset:
   in: query
   required: false
   type: integer
-
 offset_2:
   description: |
     The offset to define start point of consistency
@@ -346,7 +345,7 @@ share_type_id_2:
   in: query
   required: false
   type: string
-snapshot_id_2:
+snapshot_id_share_response:
   description: |
     The UUID of the snapshot that was used to create
     the share.
@@ -864,24 +863,6 @@ created_at_1:
   in: body
   required: true
   type: string
-created_at_10:
-  description: |
-    The date and time stamp when the snapshot was created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
 created_at_11:
   description: |
     The date and time stamp when the share server was created.
@@ -1098,15 +1079,6 @@ display_description:
   in: body
   required: false
   type: string
-display_description_1:
-  description: |
-    The snapshot description.  The shared file
-    systems API supports the use of both ``name`` and ``display_name``
-    attributes, which are inherited attributes from the block storage
-    API.
-  in: body
-  required: false
-  type: string
 display_description_2:
   description: |
     The snapshot description. If you specify this
@@ -1124,14 +1096,6 @@ display_description_3:
 display_name:
   description: |
     The share name.  The Shared File Systems API
-    supports the use of both ``name`` and ``display_name`` attributes,
-    which are inherited attributes from the Block Storage API.
-  in: body
-  required: false
-  type: string
-display_name_1:
-  description: |
-    The snapshot name.  The Shared File Systems API
     supports the use of both ``name`` and ``display_name`` attributes,
     which are inherited attributes from the Block Storage API.
   in: body
@@ -1316,15 +1280,6 @@ force:
   in: body
   required: false
   type: boolean
-force_1:
-  description: |
-    Indicates whether snapshot creation is enabled
-    when a share is busy.  Set to ``true`` to force snapshot creation
-    when the share is busy.  Set to ``false`` to deny snapshot
-    creation when the share is busy. Default is ``false``.
-  in: body
-  required: false
-  type: boolean
 force_delete:
   description: |
     To force-delete a consistency group snapshot, set
@@ -1355,14 +1310,6 @@ force_delete_3:
   in: body
   required: true
   type: string
-force_delete_4:
-  description: |
-    To force-delete a snapshot, set this value to
-    ``null``. The force- delete action, unlike the delete action,
-    ignores the snapshot status.
-  in: body
-  required: true
-  type: string
 force_host_copy:
   description: |
     Enables or disables generic host-based forced
@@ -1370,6 +1317,15 @@ force_host_copy:
     ``false``.
   in: body
   required: true
+  type: boolean
+force_snapshot_request:
+  description: |
+    Indicates whether snapshot creation must be attempted
+    when a share's status is not ``available``. Set to ``true`` to force
+    snapshot creation when the share is busy performing other operations.
+    Default is ``false``.
+  in: body
+  required: false
   type: boolean
 free_capacity_gb:
   description: |
@@ -1995,19 +1951,13 @@ protocol:
   in: body
   required: true
   type: string
-provider_location:
-  description: |
-    (Since API v2.12) Provider location of the
-    snapshot on the backend.
-  in: body
-  required: true
-  type: string
-provider_location_1:
+provider_location_request:
   description: |
     Provider location of the snapshot on the backend.
   in: body
-  required: true
+  required: false
   type: string
+  min_version: 2.12
 qos:
   description: |
     The quality of service (QoS) support.
@@ -2489,20 +2439,6 @@ share_id_4:
   in: body
   required: true
   type: string
-share_id_5:
-  description: |
-    The UUID of the source share that was used to
-    create the snapshot.
-  in: body
-  required: true
-  type: string
-share_id_6:
-  description: |
-    The UUID of the share that has snapshot which
-    should be managed.
-  in: body
-  required: true
-  type: string
 share_id_7:
   description: |
     The UUID of the share to which you are granted
@@ -2570,23 +2506,7 @@ share_proto:
   description: |
     The Shared File Systems protocol. A valid value
     is ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, or ``CephFS``.
-    ``CephFS`` supported starting with API v2.13
-  in: body
-  required: true
-  type: string
-share_proto_1:
-  description: |
-    The file system protocol of a share snapshot. A
-    valid value is ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, or
-    ``CephFS``.  ``CephFS`` supported starting with API v2.13
-  in: body
-  required: true
-  type: string
-share_proto_2:
-  description: |
-    The file system protocol of a share snapshot. A
-    valid value is ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, or
-    ``CephFS``.  ``CephFS`` supported starting with API v2.13.
+    ``CephFS`` supported is starting with API v2.13.
   in: body
   required: true
   type: string
@@ -2603,12 +2523,6 @@ share_server_id:
   in: body
   required: true
   type: string
-share_size:
-  description: |
-    The share snapshot size, in GBs.
-  in: body
-  required: true
-  type: integer
 share_size_1:
   description: |
     The size of a source share, in GBs.
@@ -2690,22 +2604,175 @@ size_2:
   in: body
   required: true
   type: integer
-size_3:
+snapshot_created_at:
+  description: |
+    The date and time stamp when the snapshot was created.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+  in: body
+  required: true
+  type: string
+snapshot_description:
+  description: |
+    The snapshot description.
+  in: body
+  required: true
+  type: string
+snapshot_description_request:
+  description: |
+    The snapshot description.
+  in: body
+  required: false
+  type: string
+snapshot_display_description:
+  description: |
+    The snapshot description.  The shared file
+    systems API supports the use of both ``name`` and ``display_name``
+    attributes, which are inherited attributes from the block storage
+    API.
+  in: body
+  required: false
+  type: string
+snapshot_display_name:
+  description: |
+    The snapshot name.  The Shared File Systems API
+    supports the use of both ``name`` and ``display_name`` attributes,
+    which are inherited attributes from the Block Storage API.
+  in: body
+  required: false
+  type: string
+snapshot_force_delete:
+  description: |
+    To force-delete a snapshot, include this param and set its value to
+    ``null``. The force-delete action, unlike the delete action,
+    ignores the snapshot status.
+  in: body
+  required: true
+  type: string
+snapshot_id:
+  description: |
+    The UUID of the snapshot.
+  in: body
+  required: true
+  type: string
+snapshot_id_query:
+  description: |
+    The UUID of the share's base snapshot to filter the request based on.
+  in: body
+  required: false
+  type: string
+snapshot_id_request:
+  description: |
+    The UUID of the share's base snapshot.
+  in: body
+  required: false
+  type: string
+snapshot_manage_share_id:
+  description: |
+    The UUID of the share that has snapshot which
+    should be managed.
+  in: body
+  required: true
+  type: string
+snapshot_manage_status:
+  description: |
+    The snapshot status, which could be
+    ``manage_starting``, ``manage_error``, ``unmanage_starting``, or
+    ``unmanage_error``.
+  in: body
+  required: true
+  type: string
+snapshot_name:
+  description: |
+    The snapshot name.
+  in: body
+  required: true
+  type: string
+snapshot_name_request:
+  description: |
+    The snapshot name.
+  in: body
+  required: false
+  type: string
+snapshot_provider_location:
+  description: |
+    Provider location of the snapshot on the backend.
+  in: body
+  required: true
+  type: string
+snapshot_provider_location_request:
+  description: |
+    Provider location of the snapshot on the backend.
+  in: body
+  required: true
+  type: string
+snapshot_share_id:
+  description: |
+    The UUID of the source share that was used to
+    create the snapshot.
+  in: body
+  required: true
+  type: string
+snapshot_share_id_request:
+  description: |
+    The UUID of the share from which to create a
+    snapshot.
+  in: body
+  required: true
+  type: string
+snapshot_share_protocol:
+  description: |
+    The file system protocol of a share snapshot. A
+    valid value is ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, or
+    ``CephFS``.  ``CephFS`` is supported starting with API v2.13.
+  in: body
+  required: true
+  type: string
+snapshot_share_protocol_request:
+  description: |
+    The file system protocol of a share snapshot. A
+    valid value is ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, or
+    ``CephFS``.  ``CephFS`` is supported starting with API v2.13.
+  in: body
+  required: true
+  type: string
+snapshot_share_size:
+  description: |
+    The share snapshot size, in GBs.
+  in: body
+  required: true
+  type: integer
+snapshot_size:
   description: |
     The snapshot size, in GBs.
   in: body
   required: true
   type: integer
-snapshot_id:
+snapshot_status:
   description: |
-    The UUID of the snapshot from which to create the
-    share.
+    The snapshot status, which can be ``available``,
+    ``error``, ``creating``, ``deleting``, ``manage_starting``,
+    ``manage_error``, ``unmanage_starting``, ``unmanage_error`` or
+    ``error_deleting``.
   in: body
-  required: false
+  requitred: true
   type: string
-snapshot_id_3:
+snapshot_status_request:
   description: |
-    The UUID of the snapshot.
+    The snapshot status, which can be ``available``,
+    ``error``, ``creating``, ``deleting``, ``manage_starting``,
+    ``manage_error``, ``unmanage_starting``, ``unmanage_error`` or
+    ``error_deleting``.
   in: body
   required: false
   type: string
@@ -2741,6 +2808,13 @@ snapshot_support_3:
   in: body
   required: false
   type: boolean
+snapshot_unmanage:
+  description: |
+    To unmanage a share snapshot, include this parameter and set its value to
+    ``null``.
+  in: body
+  required: true
+  type: string
 source_cgsnapshot_id:
   description: |
     The ID of the consistency group snapshot from
@@ -2811,28 +2885,6 @@ status_11:
   description: |
     The share status, which is ``creating``,
     ``error``, ``available``, ``deleting``, or ``error_deleting``.
-  in: body
-  required: true
-  type: string
-status_12:
-  description: |
-    The snapshot status, which is ``available``,
-    ``error``, ``creating``, ``deleting``, or ``error_deleting``.
-  in: body
-  required: false
-  type: string
-status_13:
-  description: |
-    The snapshot status, which is ``available``,
-    ``error``, ``creating``, ``deleting``, or ``error_deleting``.
-  in: body
-  required: true
-  type: string
-status_14:
-  description: |
-    The snapshot status, which is
-    ``manage_starting``, ``manage_error``, ``unmanage_starting``, or
-    ``unmanage_error``.
   in: body
   required: true
   type: string
@@ -3240,4 +3292,3 @@ zone:
   in: body
   required: true
   type: string
-

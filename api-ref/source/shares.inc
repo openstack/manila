@@ -93,7 +93,7 @@ Request
    - offset: offset
    - sort_key: sort_key
    - sort_dir: sort_dir
-   - snapshot_id: snapshot_id_2
+   - snapshot_id: snapshot_id_query
    - host: host_1
    - share_network_id: share_network_id
    - project_id: project_id_6
@@ -144,7 +144,7 @@ Request
    - offset: offset
    - sort_key: sort_key
    - sort_dir: sort_dir
-   - snapshot_id: snapshot_id_2
+   - snapshot_id: snapshot_id_query
    - host: host_1
    - share_network_id: share_network_id
    - project_id: project_id_6
@@ -162,7 +162,7 @@ Response parameters
    - share_network_id: share_network_id
    - export_locations: export_locations
    - share_server_id: share_server_id
-   - snapshot_id: snapshot_id_3
+   - snapshot_id: snapshot_id_share_response
    - id: id_4
    - size: size_2
    - share_type: share_type_1
@@ -223,7 +223,7 @@ Response parameters
    - share_network_id: share_network_id
    - export_locations: export_locations
    - share_server_id: share_server_id
-   - snapshot_id: snapshot_id_3
+   - snapshot_id: snapshot_id_share_response
    - id: id_4
    - size: size_2
    - share_type: share_type_1
@@ -278,7 +278,7 @@ Request
    - display_description: display_description
    - share_type: share_type
    - volume_type: volume_type
-   - snapshot_id: snapshot_id
+   - snapshot_id: snapshot_id_request
    - is_public: is_public
    - metadata: metadata
    - share_network_id: share_network_id_2
@@ -311,7 +311,7 @@ Response parameters
    - has_replicas: has_replicas
    - replication_type: replication_type
    - volume_type: volume_type
-   - snapshot_id: snapshot_id
+   - snapshot_id: snapshot_id_share_response
    - is_public: is_public
    - metadata: metadata
    - share_network_id: share_network_id
@@ -378,7 +378,7 @@ Response parameters
    - share_network_id: share_network_id
    - export_locations: export_locations
    - share_server_id: share_server_id
-   - snapshot_id: snapshot_id_3
+   - snapshot_id: snapshot_id_share_response
    - id: id_4
    - size: size_2
    - share_type: share_type_1
@@ -458,7 +458,7 @@ Response parameters
    - share_network_id: share_network_id
    - export_locations: export_locations
    - share_server_id: share_server_id
-   - snapshot_id: snapshot_id_3
+   - snapshot_id: snapshot_id_share_response
    - id: id_4
    - size: size_2
    - share_type: share_type_1
