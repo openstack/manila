@@ -606,7 +606,7 @@ function init_manila {
 # check_nfs_kernel_service_state_ubuntu- Make sure nfsd is running
 function check_nfs_kernel_service_state_ubuntu {
     # (aovchinnikov): Workaround for nfs-utils bug 1052264
-    if [ ! sudo service nfs-kernel-server status | grep "nfsd running" -eq 0 ]; then
+    if [[ $(sudo service nfs-kernel-server status | grep -c "nfsd running") -eq 0 ]]; then
         echo "Apparently nfsd is not running. Trying to fix that."
         sudo mkdir -p "/media/nfsdonubuntuhelper"
         # (aovchinnikov): shell wrapping is needed for cases when a file to be written
@@ -614,7 +614,7 @@ function check_nfs_kernel_service_state_ubuntu {
         sudo sh -c "echo '/media/nfsdonubuntuhelper 127.0.0.1(ro)' >> /etc/exports"
         sudo service nfs-kernel-server start
     fi
-    if [ ! sudo service nfs-kernel-server status | grep "nfsd running" -eq 0 ]; then
+    if [[ $(sudo service nfs-kernel-server status | grep -c "nfsd running") -eq 0 ]]; then
         echo "Failed to start nfsd. Exiting."
         exit 1
     fi
