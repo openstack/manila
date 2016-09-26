@@ -160,6 +160,11 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             ssh_pool.remove(ssh)
             ssh = ssh_pool.create()
             self.ssh_connections[server['instance_id']] = (ssh_pool, ssh)
+
+        # (aovchinnikov): ssh_execute does not behave well when passed
+        # parameters with spaces.
+        wrap = lambda token: "\"" + token + "\""
+        command = [wrap(tkn) if tkn.count(' ') else tkn for tkn in command]
         return processutils.ssh_execute(ssh, ' '.join(command),
                                         check_exit_code=check_exit_code)
 
@@ -335,10 +340,11 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                                volume):
                     LOG.debug("Mounting '%(dev)s' to path '%(path)s' on "
                               "server '%(server)s'.", log_data)
-                    mount_cmd = ['sudo mkdir -p', mount_path, '&&']
-                    mount_cmd.extend(['sudo mount', volume['mountpoint'],
+                    mount_cmd = ['sudo', 'mkdir', '-p', mount_path, '&&']
+                    mount_cmd.extend(['sudo', 'mount', volume['mountpoint'],
                                       mount_path])
-                    mount_cmd.extend(['&& sudo chmod 777', mount_path])
+                    mount_cmd.extend(['&&', 'sudo', 'chmod', '777',
+                                      mount_path])
                     self._ssh_exec(server_details, mount_cmd)
 
                     # Add mount permanently
@@ -365,8 +371,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             if self._is_device_mounted(mount_path, server_details):
                 LOG.debug("Unmounting path '%(path)s' on server "
                           "'%(server)s'.", log_data)
-                unmount_cmd = ['sudo umount', mount_path, '&& sudo rmdir',
-                               mount_path]
+                unmount_cmd = ['sudo', 'umount', mount_path, '&&', 'sudo',
+                               'rmdir', mount_path]
                 self._ssh_exec(server_details, unmount_cmd)
                 # Remove mount permanently
                 self._sync_mount_temp_and_perm_files(server_details)
