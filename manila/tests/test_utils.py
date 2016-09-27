@@ -25,6 +25,7 @@ import mock
 from oslo_config import cfg
 from oslo_utils import timeutils
 import paramiko
+from webob import exc
 
 import manila
 from manila.common import constants
@@ -376,6 +377,56 @@ class CidrToNetmaskTestCase(test.TestCase):
     def test_cidr_to_netmask_invalid_04(self):
         cidr = '10.0.0.555/33'
         self.assertRaises(exception.InvalidInput, utils.cidr_to_netmask, cidr)
+
+
+@ddt.ddt
+class ParseBoolValueTestCase(test.TestCase):
+
+    @ddt.data(
+        ('t', True),
+        ('on', True),
+        ('1', True),
+        ('false', False),
+        ('n', False),
+        ('no', False),
+        ('0', False),)
+    @ddt.unpack
+    def test_bool_with_valid_string(self, string, value):
+        fake_dict = {'fake_key': string}
+        result = utils.get_bool_from_api_params('fake_key', fake_dict)
+        self.assertEqual(value, result)
+
+    @ddt.data('None', 'invalid', 'falses')
+    def test_bool_with_invalid_string(self, string):
+        fake_dict = {'fake_key': string}
+        self.assertRaises(exc.HTTPBadRequest,
+                          utils.get_bool_from_api_params,
+                          'fake_key', fake_dict)
+
+    @ddt.data('undefined', None)
+    def test_bool_with_key_not_found_raise_error(self, def_val):
+        fake_dict = {'fake_key1': 'value1'}
+        self.assertRaises(exc.HTTPBadRequest,
+                          utils.get_bool_from_api_params,
+                          'fake_key2',
+                          fake_dict,
+                          def_val)
+
+    @ddt.data((False, False, False),
+              (True, True, False),
+              ('true', True, False),
+              ('false', False, False),
+              ('undefined', 'undefined', False),
+              (False, False, True),
+              ('true', True, True))
+    @ddt.unpack
+    def test_bool_with_key_not_found(self, def_val, expected, strict):
+        fake_dict = {'fake_key1': 'value1'}
+        invalid_default = utils.get_bool_from_api_params('fake_key2',
+                                                         fake_dict,
+                                                         def_val,
+                                                         strict)
+        self.assertEqual(expected, invalid_default)
 
 
 @ddt.ddt
