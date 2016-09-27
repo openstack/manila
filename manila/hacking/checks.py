@@ -59,6 +59,7 @@ dict_constructor_with_list_copy_re = re.compile(r".*\bdict\((\[)?(\(|\[)")
 assert_no_xrange_re = re.compile(r"\s*xrange\s*\(")
 assert_True = re.compile(r".*assertEqual\(True, .*\)")
 assert_None = re.compile(r".*assertEqual\(None, .*\)")
+no_log_warn = re.compile(r"\s*LOG.warn\(.*")
 
 
 class BaseASTChecker(ast.NodeVisitor):
@@ -360,6 +361,19 @@ def check_uuid4(logical_line):
         yield (0, msg)
 
 
+def no_log_warn_check(logical_line):
+    """Disallow 'LOG.warn'
+
+    Deprecated LOG.warn(), instead use LOG.warning
+    ://bugs.launchpad.net/manila/+bug/1508442
+
+    M338
+    """
+    msg = ("M338: LOG.warn is deprecated, use LOG.warning.")
+    if re.match(no_log_warn, logical_line):
+        yield(0, msg)
+
+
 def factory(register):
     register(validate_log_translations)
     register(check_explicit_underscore_import)
@@ -373,3 +387,4 @@ def factory(register):
     register(validate_assertTrue)
     register(validate_assertIsNone)
     register(check_uuid4)
+    register(no_log_warn_check)

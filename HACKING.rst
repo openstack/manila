@@ -27,6 +27,7 @@ Manila Specific Commandments
   with a sequence of key-value pairs.
 - [M337] Ensure to not use xrange().
 - [M354] Use oslo_utils.uuidutils to generate UUID instead of uuid4().
+- [M338] Ensure to not use LOG.warn().
 
 LOG Translations
 ----------------

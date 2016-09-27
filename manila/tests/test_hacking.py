@@ -329,3 +329,15 @@ class HackingTestCase(test.TestCase):
                hex_uuid = uuid.uuid4().hex
                """
         self._assert_has_no_errors(code, checks.check_uuid4)
+
+    def test_no_log_warn_check(self):
+        self.assertEqual(0, len(list(checks.no_log_warn_check(
+            "LOG.warning('This should not trigger LOG.warn "
+            "hacking check.')"))))
+        self.assertEqual(1, len(list(checks.no_log_warn_check(
+            "LOG.warn('We should not use LOG.warn')"))))
+        foo = """
+            LOG.warn('Catch me too, please'
+            )
+            """
+        self.assertEqual(1, len(list(checks.no_log_warn_check(foo))))
