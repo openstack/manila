@@ -35,7 +35,6 @@ neutron_network_plugin_opts = [
         help="The name of the physical network to determine which net segment "
              "is used. This opt is optional and will only be used for "
              "networks configured with multiple segments.",
-        default=None,
         deprecated_group='DEFAULT'),
 ]
 

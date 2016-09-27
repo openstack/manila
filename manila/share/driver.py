@@ -124,11 +124,9 @@ share_opts = [
              "specified in the group, it means that replication is not "
              "enabled on the backend."),
     cfg.StrOpt('filter_function',
-               default=None,
                help='String representation for an equation that will be '
                     'used to filter hosts.'),
     cfg.StrOpt('goodness_function',
-               default=None,
                help='String representation for an equation that will be '
                     'used to determine the goodness of a host.'),
 ]
