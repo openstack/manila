@@ -2030,7 +2030,7 @@ class ShareManager(manager.SchedulerDependentManager):
         def share_manage_set_error_status(msg, exception):
             status = {'status': constants.STATUS_UNMANAGE_ERROR}
             self.db.share_update(context, share_id, status)
-            LOG.error(msg, six.text_type(exception))
+            LOG.error(msg, exception)
 
         try:
             if self.driver.driver_handles_share_servers:

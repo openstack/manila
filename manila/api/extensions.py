@@ -19,7 +19,6 @@ import os
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
-import six
 import webob.dec
 import webob.exc
 
@@ -183,8 +182,7 @@ class ExtensionManager(object):
                       ' '.join(extension.__doc__.strip().split()))
             LOG.debug('Ext updated: %s', extension.updated)
         except AttributeError as ex:
-            LOG.exception(_LE("Exception loading extension: %s"),
-                          six.text_type(ex))
+            LOG.exception(_LE("Exception loading extension: %s"), ex)
             return False
 
         return True

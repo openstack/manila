@@ -86,7 +86,7 @@ class DockerExecHelper(driver.ExecuteMixin):
         LOG.debug("Executing inside a container %s.", name)
         cmd = ["docker", "exec", "-i", name] + cmd
         result = self._inner_execute(cmd)
-        LOG.debug("Run result: %s.", str(result))
+        LOG.debug("Run result: %s.", result)
         return result
 
     def _inner_execute(self, cmd):
