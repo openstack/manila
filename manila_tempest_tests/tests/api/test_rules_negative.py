@@ -27,12 +27,13 @@ LATEST_MICROVERSION = CONF.share.max_api_microversion
 
 
 @ddt.ddt
-class ShareIpRulesForNFSNegativeTest(base.BaseSharesTest):
+class ShareIpRulesForNFSNegativeTest(base.BaseSharesMixedTest):
     protocol = "nfs"
 
     @classmethod
     def resource_setup(cls):
         super(ShareIpRulesForNFSNegativeTest, cls).resource_setup()
+        cls.admin_client = cls.admin_shares_v2_client
         if not (cls.protocol in CONF.share.enable_protocols and
                 cls.protocol in CONF.share.enable_ip_rules_for_protocols):
             msg = "IP rule tests for %s protocol are disabled" % cls.protocol
@@ -157,6 +158,23 @@ class ShareIpRulesForNFSNegativeTest(base.BaseSharesTest):
                                                      rule["id"])
             self.shares_v2_client.wait_for_resource_deletion(
                 rule_id=rule["id"], share_id=self.share["id"], version=version)
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    def test_add_access_rule_on_share_with_no_host(self):
+        access_type, access_to = self._get_access_rule_data_from_config()
+        extra_specs = self.add_extra_specs_to_dict(
+            {"share_backend_name": 'invalid_backend'})
+        share_type = self.create_share_type('invalid_backend',
+                                            extra_specs=extra_specs,
+                                            client=self.admin_client)
+        share_type = share_type['share_type']
+        share = self.create_share(share_type_id=share_type['id'],
+                                  client=self.admin_client,
+                                  cleanup_in_class=False,
+                                  wait_for_status=False)
+        self.assertRaises(lib_exc.BadRequest,
+                          self.admin_client.create_access_rule,
+                          share["id"], access_type, access_to)
 
 
 @ddt.ddt

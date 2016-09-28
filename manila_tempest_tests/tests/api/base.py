@@ -495,6 +495,7 @@ class BaseSharesTest(test.BaseTestCase):
         data = []
         for d in share_data_list:
             client = d["kwargs"].pop("client", cls.shares_v2_client)
+            wait_for_status = d["kwargs"].pop("wait_for_status", True)
             local_d = {
                 "args": d["args"],
                 "kwargs": copy.deepcopy(d["kwargs"]),
@@ -504,10 +505,13 @@ class BaseSharesTest(test.BaseTestCase):
                 *local_d["args"], **local_d["kwargs"])
             local_d["cnt"] = 0
             local_d["available"] = False
+            local_d["wait_for_status"] = wait_for_status
             data.append(local_d)
 
         while not all(d["available"] for d in data):
             for d in data:
+                if not d["wait_for_status"]:
+                    d["available"] = True
                 if d["available"]:
                     continue
                 client = d["kwargs"]["client"]
@@ -703,6 +707,33 @@ class BaseSharesTest(test.BaseTestCase):
             constants.REPLICATION_STATE_ACTIVE,
             status_attr="replica_state")
         return replica
+
+    def _get_access_rule_data_from_config(self):
+        """Get the first available access type/to combination from config.
+
+        This method opportunistically picks the first configured protocol
+        to create the share. Do not use this method in tests where you need
+        to test depth and breadth in the access types and access recipients.
+        """
+        protocol = self.shares_v2_client.share_protocol
+
+        if protocol in CONF.share.enable_ip_rules_for_protocols:
+            access_type = "ip"
+            access_to = utils.rand_ip()
+        elif protocol in CONF.share.enable_user_rules_for_protocols:
+            access_type = "user"
+            access_to = CONF.share.username_for_user_rules
+        elif protocol in CONF.share.enable_cert_rules_for_protocols:
+            access_type = "cert"
+            access_to = "client3.com"
+        elif protocol in CONF.share.enable_cephx_rules_for_protocols:
+            access_type = "cephx"
+            access_to = "eve"
+        else:
+            message = "Unrecognized protocol and access rules configuration."
+            raise self.skipException(message)
+
+        return access_type, access_to
 
     @classmethod
     def create_share_network(cls, client=None,
