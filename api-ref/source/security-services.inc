@@ -47,17 +47,17 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Response parameters
 -------------------
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status_2
-   - type: type
-   - id: id_3
-   - name: name_12
+   - status: security_service_status
+   - type: security_service_type
+   - id: security_service_id
+   - name: security_service_name
 
 Response example
 ----------------
@@ -81,26 +81,26 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Response parameters
 -------------------
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status_2
-   - id: id_3
-   - project_id: project_id_3
-   - type: type
-   - name: name_12
-   - description: description_12
-   - dns_ip: dns_ip
-   - user: user
-   - password: password
-   - domain: domain
-   - server: server
-   - updated_at: created_at_3
-   - created_at: created_at_1
+   - status: security_service_status
+   - id: security_service_id
+   - project_id: security_service_project_id
+   - type: security_service_type
+   - name: security_service_name
+   - description: security_service_description
+   - dns_ip: security_service_dns_ip
+   - user: security_service_user
+   - password: security_service_password
+   - domain: security_service_domain
+   - server: security_service_server
+   - updated_at: security_service_updated_at
+   - created_at: security_service_created_at
 
 Response example
 ----------------
@@ -125,27 +125,27 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - security_service_id: security_service_id_1
+   - tenant_id: tenant_id_path
+   - security_service_id: security_service_id_path
 
 Response parameters
 -------------------
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status_2
-   - id: id_3
-   - project_id: project_id_3
-   - type: type
-   - name: name_12
-   - description: description_12
-   - dns_ip: dns_ip
-   - user: user
-   - password: password
-   - domain: domain
-   - server: server
-   - updated_at: created_at_3
-   - created_at: created_at_1
+   - status: security_service_status
+   - id: security_service_id
+   - project_id: security_service_project_id
+   - type: security_service_type
+   - name: security_service_name
+   - description: security_service_description
+   - dns_ip: security_service_dns_ip
+   - user: security_service_user
+   - password: security_service_password
+   - domain: security_service_domain
+   - server: security_service_server
+   - updated_at: security_service_updated_at
+   - created_at: security_service_created_at
 
 Response example
 ----------------
@@ -170,15 +170,15 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - type: type
-   - name: name_12
-   - description: description_12
-   - dns_ip: dns_ip
-   - user: user
-   - password: password
-   - domain: domain
-   - server: server
+   - tenant_id: tenant_id_path
+   - type: security_service_type
+   - name: security_service_name
+   - description: security_service_description_request
+   - dns_ip: security_service_dns_ip_request
+   - user: security_service_user_request
+   - password: security_service_password_request
+   - domain: security_service_domain_request
+   - server: security_service_server_request
 
 Request example
 ---------------
@@ -191,19 +191,19 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status_2
-   - id: id_3
-   - project_id: project_id_3
-   - type: type
-   - name: name_12
-   - description: description_12
-   - dns_ip: dns_ip
-   - user: user
-   - password: password
-   - domain: domain
-   - server: server
-   - updated_at: created_at_3
-   - created_at: created_at_1
+   - status: security_service_status
+   - id: security_service_id
+   - project_id: security_service_project_id
+   - type: security_service_type
+   - name: security_service_name
+   - description: security_service_description
+   - dns_ip: security_service_dns_ip
+   - user: security_service_user
+   - password: security_service_password
+   - domain: security_service_domain
+   - server: security_service_server
+   - updated_at: security_service_updated_at
+   - created_at: security_service_created_at
 
 Response example
 ----------------
@@ -233,16 +233,16 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - security_service_id: security_service_id_1
-   - type: type
-   - name: name_12
-   - description: description_12
-   - dns_ip: dns_ip
-   - user: user
-   - password: password
-   - domain: domain
-   - server: server
+   - tenant_id: tenant_id_path
+   - security_service_id: security_service_id_path
+   - type: security_service_type
+   - name: security_service_name
+   - description: security_service_description_request
+   - dns_ip: security_service_dns_ip_request
+   - user: security_service_user_request
+   - password: security_service_password_request
+   - domain: security_service_domain_request
+   - server: security_service_server_request
 
 Request example
 ---------------
@@ -255,19 +255,19 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status_2
-   - id: id_3
-   - project_id: project_id_3
-   - type: type
-   - name: name_12
-   - description: description_12
-   - dns_ip: dns_ip
-   - user: user
-   - password: password
-   - domain: domain
-   - server: server
-   - updated_at: created_at_3
-   - created_at: created_at_1
+   - status: security_service_status
+   - id: security_service_id
+   - project_id: security_service_project_id
+   - type: security_service_type
+   - name: security_service_name
+   - description: security_service_description
+   - dns_ip: security_service_dns_ip
+   - user: security_service_user
+   - password: security_service_password
+   - domain: security_service_domain
+   - server: security_service_server
+   - updated_at: security_service_updated_at
+   - created_at: security_service_created_at
 
 Response example
 ----------------
@@ -292,5 +292,5 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - security_service_id: security_service_id_1
+   - tenant_id: tenant_id_path
+   - security_service_id: security_service_id_path
