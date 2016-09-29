@@ -603,53 +603,86 @@ function init_manila {
     rm -f $MANILA_AUTH_CACHE_DIR/*
 }
 
+
+# check_nfs_kernel_service_state_ubuntu- Make sure nfsd is running
+function check_nfs_kernel_service_state_ubuntu {
+    # (aovchinnikov): Workaround for nfs-utils bug 1052264
+    if [[ $(sudo service nfs-kernel-server status &> /dev/null || echo 'fail') == 'fail' ]]; then
+        echo "Apparently nfsd is not running. Trying to fix that."
+        sudo mkdir -p "/media/nfsdonubuntuhelper"
+        # (aovchinnikov): shell wrapping is needed for cases when a file to be written
+        # is owned by root.
+        sudo sh -c "echo '/media/nfsdonubuntuhelper 127.0.0.1(ro)' >> /etc/exports"
+        sudo service nfs-kernel-server start
+    fi
+    if [[ $(sudo service nfs-kernel-server status &> /dev/null || echo 'fail') == 'fail' ]]; then
+        echo "Failed to start nfsd. Exiting."
+        exit 1
+    fi
+}
+
+function _install_nfs_and_samba {
+    if is_ubuntu; then
+        install_package nfs-kernel-server nfs-common samba
+        check_nfs_kernel_service_state_ubuntu
+    elif is_fedora; then
+        install_package nfs-utils nfs-utils-lib samba
+    elif is_suse; then
+        install_package nfs-kernel-server nfs-utils samba
+    else:
+        echo "This distro is not supported. Skipping step of NFS and Samba installation."
+    fi
+}
+
+
 # install_manila - Collect source and prepare
 function install_manila {
     git_clone $MANILACLIENT_REPO $MANILACLIENT_DIR $MANILACLIENT_BRANCH
     setup_develop $MANILACLIENT_DIR
     setup_develop $MANILA_DIR
 
-    if [ "$SHARE_DRIVER" == "manila.share.drivers.lvm.LVMShareDriver" ]; then
-        if is_service_enabled m-shr; then
-            if is_ubuntu; then
-                install_package nfs-kernel-server nfs-common samba
-            elif is_fedora; then
-                install_package nfs-utils nfs-utils-lib samba
-            elif is_suse; then
-                install_package nfs-kernel-server nfs-utils samba
-            fi
-        fi
-    elif [ "$SHARE_DRIVER" == "manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver" ]; then
-        if is_service_enabled m-shr; then
-            if is_ubuntu; then
-                sudo apt-get install -y nfs-kernel-server nfs-common samba
-                # NOTE(vponomaryov): following installation is valid for Ubuntu 'trusty'.
-                sudo apt-get install -y software-properties-common
-                sudo apt-add-repository --yes ppa:zfs-native/stable
+    if is_service_enabled m-shr; then
+        _install_nfs_and_samba
 
-                # Workaround for bug #1609696
-                sudo apt-mark hold grub*
+        if [ "$SHARE_DRIVER" == "manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver" ]; then
+            if [[ $(sudo zfs list &> /dev/null && sudo zpool list &> /dev/null || echo 'absent') == 'absent' ]]; then
+                # ZFS not found, try to install it
+                if is_ubuntu; then
+                    if [[ $(lsb_release -s -d) == *"14.04"* ]]; then
+                        # Trusty
+                        sudo apt-get install -y software-properties-common
+                        sudo apt-add-repository --yes ppa:zfs-native/stable
 
-                sudo apt-get -y -q update && sudo apt-get -y -q upgrade
+                        # Workaround for bug #1609696
+                        sudo apt-mark hold grub*
 
-                # Workaround for bug #1609696
-                sudo apt-mark unhold grub*
+                        sudo apt-get -y -q update && sudo apt-get -y -q upgrade
 
-                sudo apt-get install -y linux-headers-generic
-                sudo apt-get install -y build-essential
-                sudo apt-get install -y ubuntu-zfs
+                        # Workaround for bug #1609696
+                        sudo apt-mark unhold grub*
+
+                        sudo apt-get install -y linux-headers-generic
+                        sudo apt-get install -y build-essential
+                        sudo apt-get install -y ubuntu-zfs
+                    elif [[ $(lsb_release -s -d) == *"16.04"* ]]; then
+                        # Xenial
+                        sudo apt-get install -y zfsutils-linux
+                    else
+                        echo "Only 'Trusty' and 'Xenial' releases of Ubuntu are supported."
+                        exit 1
+                    fi
+                else
+                    echo "Manila Devstack plugin supports installation "\
+                        "of ZFS packages only for 'Ubuntu' distros. "\
+                        "Please, install it first by other means or add its support "\
+                        "for your distro."
+                    exit 1
+                fi
                 sudo modprobe zfs
-            else
-                echo "Manila Devstack plugin does not support installation "\
-                    "of ZFS packages for non-'Ubuntu-trusty' distros. "\
-                    "Please, install it first by other means or add its support "\
-                    "for your distro."
-                exit 1
+                sudo modprobe zpool
             fi
-        fi
-    elif [ "$SHARE_DRIVER" == $MANILA_CONTAINER_DRIVER ]; then
-        if is_service_enabled m-shr; then
-            echo "m-shr service is enabled"
+            check_nfs_kernel_service_state_ubuntu
+        elif [ "$SHARE_DRIVER" == $MANILA_CONTAINER_DRIVER ]; then
             if is_ubuntu; then
                 echo "Installing docker...."
                 install_docker_ubuntu
