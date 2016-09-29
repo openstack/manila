@@ -102,7 +102,7 @@ class TestWSGIServer(test.TestCase):
         server.stop()
         server.wait()
 
-    @testtools.skipIf(not utils.is_ipv6_configured(),
+    @testtools.skipIf(not netutils.is_ipv6_enabled(),
                       "Test requires an IPV6 configured interface")
     @testtools.skipIf(utils.is_eventlet_bug105(),
                       'Eventlet bug #105 affect test results.')
@@ -212,7 +212,7 @@ class TestWSGIServer(test.TestCase):
 
         server.stop()
 
-    @testtools.skipIf(not utils.is_ipv6_configured(),
+    @testtools.skipIf(not netutils.is_ipv6_enabled(),
                       "Test requires an IPV6 configured interface")
     @testtools.skipIf(utils.is_eventlet_bug105(),
                       'Eventlet bug #105 affect test results.')

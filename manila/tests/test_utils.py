@@ -289,35 +289,6 @@ class GenericUtilsTestCase(test.TestCase):
             self.assertFalse(result)
             timeutils.utcnow.assert_called_once_with()
 
-    def test_is_ipv6_configured0(self):
-        fake_fd = mock.Mock()
-        fake_fd.read.return_value = 'test'
-        with mock.patch('six.moves.builtins.open',
-                        mock.Mock(return_value=fake_fd)) as open:
-            self.assertTrue(utils.is_ipv6_configured())
-
-            open.assert_called_once_with('/proc/net/if_inet6')
-            fake_fd.read.assert_called_once_with(32)
-
-    def test_is_ipv6_configured1(self):
-        fake_fd = mock.Mock()
-        fake_fd.read.return_value = ''
-        with mock.patch(
-                'six.moves.builtins.open', mock.Mock(return_value=fake_fd)):
-            self.assertFalse(utils.is_ipv6_configured())
-
-    def test_is_ipv6_configured2(self):
-        with mock.patch('six.moves.builtins.open',
-                        mock.Mock(side_effect=IOError(
-                            errno.ENOENT, 'Fake no such file error.'))):
-            self.assertFalse(utils.is_ipv6_configured())
-
-    def test_is_ipv6_configured3(self):
-        with mock.patch('six.moves.builtins.open',
-                        mock.Mock(side_effect=IOError(
-                            errno.EPERM, 'Fake no such file error.'))):
-            self.assertRaises(IOError, utils.is_ipv6_configured)
-
     def test_is_eventlet_bug105(self):
         fake_dns = mock.Mock()
         fake_dns.getaddrinfo.side_effect = socket.gaierror(errno.EBADF)
