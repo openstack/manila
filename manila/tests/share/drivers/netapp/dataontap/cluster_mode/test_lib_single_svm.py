@@ -15,6 +15,7 @@
 Unit tests for the NetApp Data ONTAP cDOT single-SVM storage driver library.
 """
 
+import ddt
 import mock
 from oslo_log import log
 
@@ -26,6 +27,7 @@ from manila import test
 import manila.tests.share.drivers.netapp.dataontap.fakes as fake
 
 
+@ddt.ddt
 class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def setUp(self):
@@ -164,19 +166,32 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertTrue(mock_vserver_client.prune_deleted_snapshots.called)
         self.assertTrue(mock_super.called)
 
-    def test_find_matching_aggregates(self):
+    @ddt.data(True, False)
+    def test_find_matching_aggregates(self, have_cluster_creds):
 
+        self.library._have_cluster_creds = have_cluster_creds
+        aggregates = fake.AGGREGATES + fake.ROOT_AGGREGATES
         mock_vserver_client = mock.Mock()
-        mock_vserver_client.list_vserver_aggregates.return_value = (
-            fake.AGGREGATES)
+        mock_vserver_client.list_vserver_aggregates.return_value = aggregates
         self.mock_object(self.library,
                          '_get_api_client',
                          mock.Mock(return_value=mock_vserver_client))
+        mock_client = mock.Mock()
+        mock_client.list_root_aggregates.return_value = fake.ROOT_AGGREGATES
+        self.library._client = mock_client
 
         self.library.configuration.netapp_aggregate_name_search_pattern = (
             '.*_aggr_1')
+
         result = self.library._find_matching_aggregates()
-        self.assertListEqual([fake.AGGREGATES[0]], result)
+
+        if have_cluster_creds:
+            self.assertListEqual([fake.AGGREGATES[0]], result)
+            mock_client.list_root_aggregates.assert_called_once_with()
+        else:
+            self.assertListEqual([fake.AGGREGATES[0], fake.ROOT_AGGREGATES[0]],
+                                 result)
+            self.assertFalse(mock_client.list_root_aggregates.called)
 
     def test_get_network_allocations_number(self):
         self.assertEqual(0, self.library.get_network_allocations_number())

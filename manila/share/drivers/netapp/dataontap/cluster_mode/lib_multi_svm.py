@@ -100,7 +100,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
     @na_utils.trace
     def _find_matching_aggregates(self):
         """Find all aggregates match pattern."""
-        aggregate_names = self._client.list_aggregates()
+        aggregate_names = self._client.list_non_root_aggregates()
         pattern = self.configuration.netapp_aggregate_name_search_pattern
         return [aggr_name for aggr_name in aggregate_names
                 if re.match(pattern, aggr_name)]

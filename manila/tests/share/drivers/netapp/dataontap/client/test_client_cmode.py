@@ -796,16 +796,80 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.assertSequenceEqual(fake.SORTED_PORTS_ALL_SPEEDS, result)
 
+    def test_list_root_aggregates(self):
+
+        api_response = netapp_api.NaElement(
+            fake.AGGR_GET_ITER_ROOT_AGGR_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.list_root_aggregates()
+
+        aggr_get_iter_args = {
+            'desired-attributes': {
+                'aggr-attributes': {
+                    'aggregate-name': None,
+                    'aggr-raid-attributes': {
+                        'has-local-root': None,
+                        'has-partner-root': None,
+                    },
+                },
+            }
+        }
+        self.assertSequenceEqual(fake.ROOT_AGGREGATE_NAMES, result)
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('aggr-get-iter', aggr_get_iter_args)])
+
+    def test_list_non_root_aggregates(self):
+
+        api_response = netapp_api.NaElement(
+            fake.AGGR_GET_ITER_NON_ROOT_AGGR_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.list_non_root_aggregates()
+
+        aggr_get_iter_args = {
+            'query': {
+                'aggr-attributes': {
+                    'aggr-raid-attributes': {
+                        'has-local-root': 'false',
+                        'has-partner-root': 'false',
+                    }
+                },
+            },
+            'desired-attributes': {
+                'aggr-attributes': {
+                    'aggregate-name': None,
+                },
+            },
+        }
+        self.assertSequenceEqual(fake.SHARE_AGGREGATE_NAMES, result)
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('aggr-get-iter', aggr_get_iter_args)])
+
     def test_list_aggregates(self):
 
         api_response = netapp_api.NaElement(fake.AGGR_GET_NAMES_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
-        result = self.client.list_aggregates()
+        result = self.client._list_aggregates()
 
-        self.assertSequenceEqual(fake.SHARE_AGGREGATE_NAMES, result)
+        aggr_get_iter_args = {
+            'desired-attributes': {
+                'aggr-attributes': {
+                    'aggregate-name': None,
+                },
+            },
+        }
+        self.assertSequenceEqual(
+            fake.ROOT_AGGREGATE_NAMES + fake.SHARE_AGGREGATE_NAMES, result)
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('aggr-get-iter', aggr_get_iter_args)])
 
     def test_list_aggregates_not_found(self):
 
@@ -815,7 +879,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          mock.Mock(return_value=api_response))
 
         self.assertRaises(exception.NetAppException,
-                          self.client.list_aggregates)
+                          self.client._list_aggregates)
 
     def test_list_vserver_aggregates(self):
 

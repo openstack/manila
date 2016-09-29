@@ -1,0 +1,6 @@
+---
+fixes:
+  - The NetApp cDOT driver now explicitly filters root aggregates
+    from the pools reported to the manila scheduler if the driver
+    is operating with cluster credentials.
+

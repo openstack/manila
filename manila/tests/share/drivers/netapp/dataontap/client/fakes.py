@@ -38,6 +38,7 @@ VSERVER_NAME_2 = 'fake_vserver_2'
 ADMIN_VSERVER_NAME = 'fake_admin_vserver'
 NODE_VSERVER_NAME = 'fake_node_vserver'
 NFS_VERSIONS = ['nfs3', 'nfs4.0']
+ROOT_AGGREGATE_NAMES = ('root_aggr1', 'root_aggr2')
 ROOT_VOLUME_AGGREGATE_NAME = 'fake_root_aggr'
 ROOT_VOLUME_NAME = 'fake_root_volume'
 SHARE_AGGREGATE_NAME = 'fake_aggr1'
@@ -791,34 +792,21 @@ AGGR_GET_NAMES_RESPONSE = etree.XML("""
     <attributes-list>
       <aggr-attributes>
         <aggr-raid-attributes>
-          <plexes>
-            <plex-attributes>
-              <plex-name>/%(aggr1)s/plex0</plex-name>
-              <raidgroups>
-                <raidgroup-attributes>
-                  <raidgroup-name>/%(aggr1)s/plex0/rg0</raidgroup-name>
-                </raidgroup-attributes>
-              </raidgroups>
-            </plex-attributes>
-          </plexes>
+        </aggr-raid-attributes>
+        <aggregate-name>%(root1)s</aggregate-name>
+      </aggr-attributes>
+      <aggr-attributes>
+        <aggr-raid-attributes>
+        </aggr-raid-attributes>
+        <aggregate-name>%(root2)s</aggregate-name>
+      </aggr-attributes>
+      <aggr-attributes>
+        <aggr-raid-attributes>
         </aggr-raid-attributes>
         <aggregate-name>%(aggr1)s</aggregate-name>
       </aggr-attributes>
       <aggr-attributes>
         <aggr-raid-attributes>
-          <plexes>
-            <plex-attributes>
-              <plex-name>/%(aggr2)s/plex0</plex-name>
-              <raidgroups>
-                <raidgroup-attributes>
-                  <raidgroup-name>/%(aggr2)s/plex0/rg0</raidgroup-name>
-                </raidgroup-attributes>
-                <raidgroup-attributes>
-                  <raidgroup-name>/%(aggr2)s/plex0/rg1</raidgroup-name>
-                </raidgroup-attributes>
-              </raidgroups>
-            </plex-attributes>
-          </plexes>
         </aggr-raid-attributes>
         <aggregate-name>%(aggr2)s</aggregate-name>
       </aggr-attributes>
@@ -826,6 +814,8 @@ AGGR_GET_NAMES_RESPONSE = etree.XML("""
     <num-records>2</num-records>
   </results>
 """ % {
+    'root1': ROOT_AGGREGATE_NAMES[0],
+    'root2': ROOT_AGGREGATE_NAMES[1],
     'aggr1': SHARE_AGGREGATE_NAMES[0],
     'aggr2': SHARE_AGGREGATE_NAMES[1],
 })
@@ -1267,6 +1257,72 @@ AGGR_GET_ITER_SSC_RESPONSE = etree.XML("""
     <num-records>1</num-records>
   </results>
 """ % {'aggr1': SHARE_AGGREGATE_NAMES[0]})
+
+AGGR_GET_ITER_ROOT_AGGR_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <aggr-attributes>
+        <aggr-raid-attributes>
+          <has-local-root>true</has-local-root>
+          <has-partner-root>false</has-partner-root>
+        </aggr-raid-attributes>
+        <aggregate-name>%(root1)s</aggregate-name>
+      </aggr-attributes>
+      <aggr-attributes>
+        <aggr-raid-attributes>
+          <has-local-root>true</has-local-root>
+          <has-partner-root>false</has-partner-root>
+        </aggr-raid-attributes>
+        <aggregate-name>%(root2)s</aggregate-name>
+      </aggr-attributes>
+      <aggr-attributes>
+        <aggr-raid-attributes>
+          <has-local-root>false</has-local-root>
+          <has-partner-root>false</has-partner-root>
+        </aggr-raid-attributes>
+        <aggregate-name>%(aggr1)s</aggregate-name>
+      </aggr-attributes>
+      <aggr-attributes>
+        <aggr-raid-attributes>
+          <has-local-root>false</has-local-root>
+          <has-partner-root>false</has-partner-root>
+        </aggr-raid-attributes>
+        <aggregate-name>%(aggr2)s</aggregate-name>
+      </aggr-attributes>
+    </attributes-list>
+    <num-records>6</num-records>
+  </results>
+""" % {
+    'root1': ROOT_AGGREGATE_NAMES[0],
+    'root2': ROOT_AGGREGATE_NAMES[1],
+    'aggr1': SHARE_AGGREGATE_NAMES[0],
+    'aggr2': SHARE_AGGREGATE_NAMES[1],
+})
+
+AGGR_GET_ITER_NON_ROOT_AGGR_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <aggr-attributes>
+        <aggr-raid-attributes>
+          <has-local-root>false</has-local-root>
+          <has-partner-root>false</has-partner-root>
+        </aggr-raid-attributes>
+        <aggregate-name>%(aggr1)s</aggregate-name>
+      </aggr-attributes>
+      <aggr-attributes>
+        <aggr-raid-attributes>
+          <has-local-root>false</has-local-root>
+          <has-partner-root>false</has-partner-root>
+        </aggr-raid-attributes>
+        <aggregate-name>%(aggr2)s</aggregate-name>
+      </aggr-attributes>
+    </attributes-list>
+    <num-records>6</num-records>
+  </results>
+""" % {
+    'aggr1': SHARE_AGGREGATE_NAMES[0],
+    'aggr2': SHARE_AGGREGATE_NAMES[1],
+})
 
 VOLUME_GET_NAME_RESPONSE = etree.XML("""
   <results status="passed">
