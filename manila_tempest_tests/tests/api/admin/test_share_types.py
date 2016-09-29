@@ -100,7 +100,7 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         # list share types
         st_list = self.shares_v2_client.list_share_types(version=version)
         sts = st_list["share_types"]
-        self.assertTrue(len(sts) >= 1)
+        self.assertGreaterEqual(len(sts), 1)
         self.assertTrue(any(st_id in st["id"] for st in sts))
         for st in sts:
             self._verify_is_public_key_name(st, version)

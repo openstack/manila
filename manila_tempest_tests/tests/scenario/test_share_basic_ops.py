@@ -340,11 +340,11 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
         self.umount_share(ssh_client)
 
-        self.assertTrue('1m1.bin' in output)
-        self.assertTrue('1m2.bin' in output)
-        self.assertTrue('1m3.bin' in output)
-        self.assertTrue('1m4.bin' in output)
-        self.assertTrue('1m5.bin' in output)
+        self.assertIn('1m1.bin', output)
+        self.assertIn('1m2.bin', output)
+        self.assertIn('1m3.bin', output)
+        self.assertIn('1m4.bin', output)
+        self.assertIn('1m5.bin', output)
 
 
 class TestShareBasicOpsNFS(ShareBasicOpsBase):

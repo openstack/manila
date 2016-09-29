@@ -428,20 +428,20 @@ class MonkeyPatchTestCase(test.TestCase):
 
         self.assertEqual(8, ret_b)
         package_a = self.example_package + 'example_a.'
-        self.assertTrue(package_a + 'example_function_a'
-                        in manila.tests.monkey_patch_example.CALLED_FUNCTION)
+        self.assertIn(package_a + 'example_function_a',
+                      manila.tests.monkey_patch_example.CALLED_FUNCTION)
 
-        self.assertTrue(package_a + 'ExampleClassA.example_method'
-                        in manila.tests.monkey_patch_example.CALLED_FUNCTION)
-        self.assertTrue(package_a + 'ExampleClassA.example_method_add'
-                        in manila.tests.monkey_patch_example.CALLED_FUNCTION)
+        self.assertIn(package_a + 'ExampleClassA.example_method',
+                      manila.tests.monkey_patch_example.CALLED_FUNCTION)
+        self.assertIn(package_a + 'ExampleClassA.example_method_add',
+                      manila.tests.monkey_patch_example.CALLED_FUNCTION)
         package_b = self.example_package + 'example_b.'
-        self.assertFalse(package_b + 'example_function_b'
-                         in manila.tests.monkey_patch_example.CALLED_FUNCTION)
-        self.assertFalse(package_b + 'ExampleClassB.example_method'
-                         in manila.tests.monkey_patch_example.CALLED_FUNCTION)
-        self.assertFalse(package_b + 'ExampleClassB.example_method_add'
-                         in manila.tests.monkey_patch_example.CALLED_FUNCTION)
+        self.assertNotIn(package_b + 'example_function_b',
+                         manila.tests.monkey_patch_example.CALLED_FUNCTION)
+        self.assertNotIn(package_b + 'ExampleClassB.example_method',
+                         manila.tests.monkey_patch_example.CALLED_FUNCTION)
+        self.assertNotIn(package_b + 'ExampleClassB.example_method_add',
+                         manila.tests.monkey_patch_example.CALLED_FUNCTION)
 
 
 class FakeSSHClient(object):

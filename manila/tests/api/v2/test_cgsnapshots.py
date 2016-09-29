@@ -283,7 +283,7 @@ class CGSnapshotApiTest(test.TestCase):
         exc = self.assertRaises(webob.exc.HTTPBadRequest,
                                 self.controller.update,
                                 self.request, 'fake_id', body)
-        self.assertTrue('unknown_field' in six.text_type(exc))
+        self.assertIn('unknown_field', six.text_type(exc))
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'update')
 
@@ -292,7 +292,7 @@ class CGSnapshotApiTest(test.TestCase):
         exc = self.assertRaises(webob.exc.HTTPBadRequest,
                                 self.controller.update,
                                 self.request, 'fake_id', body)
-        self.assertTrue('created_at' in six.text_type(exc))
+        self.assertIn('created_at', six.text_type(exc))
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'update')
 

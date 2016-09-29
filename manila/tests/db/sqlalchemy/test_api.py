@@ -262,7 +262,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
         db_share = db_api.share_get(self.ctxt, share['id'])
 
-        self.assertTrue('has_replicas' in db_share)
+        self.assertIn('has_replicas', db_share)
 
     @ddt.data({'with_share_data': False, 'with_share_server': False},
               {'with_share_data': False, 'with_share_server': True},
@@ -309,7 +309,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
                     self.assertTrue(expected_ss_keys.issubset(
                         replica['share_server'].keys()))
                 else:
-                    self.assertFalse('share_server' in replica.keys())
+                    self.assertNotIn('share_server', replica.keys())
                     self.assertEqual(
                         with_share_data,
                         expected_share_keys.issubset(replica.keys()))
@@ -358,7 +358,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
                     self.assertTrue(expected_ss_keys.issubset(
                         replica['share_server'].keys()))
                 else:
-                    self.assertFalse('share_server' in replica.keys())
+                    self.assertNotIn('share_server', replica.keys())
                 self.assertEqual(with_share_data,
                                  expected_share_keys.issubset(replica.keys()))
 
@@ -922,7 +922,7 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
 
         for instance in instances:
             self.assertEqual('fake_snapshot_id_1', instance['snapshot_id'])
-            self.assertTrue(instance['status'] in filters['statuses'])
+            self.assertIn(instance['status'], filters['statuses'])
 
         self.assertEqual(expected_number, len(instances))
 
@@ -1125,7 +1125,7 @@ class ShareInstanceExportLocationsMetadataDatabaseAPITestCase(test.TestCase):
         for el in els:
             if el.path == path:
                 export_location_uuid = el.uuid
-        self.assertFalse(export_location_uuid is None)
+        self.assertIsNotNone(export_location_uuid)
         return export_location_uuid
 
     def test_get_export_locations_by_share_id(self):
@@ -1529,7 +1529,7 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
             filter_by(security_service_id=security_dict1['id']).\
             filter_by(share_network_id=self.share_nw_dict['id']).first()
 
-        self.assertTrue(result is not None)
+        self.assertIsNotNone(result)
 
     def test_add_security_service_not_found_01(self):
         security_service_id = 'unknown security service'
@@ -1593,7 +1593,7 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
             filter_by(security_service_id=security_dict1['id']).\
             filter_by(share_network_id=self.share_nw_dict['id']).first()
 
-        self.assertTrue(result is None)
+        self.assertIsNone(result)
 
         share_nw_ref = db_api.share_network_get(self.fake_context,
                                                 self.share_nw_dict['id'])
@@ -1979,7 +1979,7 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         self.assertEqual(values['host'], server.host)
         self.assertEqual(values['status'], server.status)
         self.assertDictMatch(server['backend_details'], details)
-        self.assertTrue('backend_details' in server.to_dict())
+        self.assertIn('backend_details', server.to_dict())
 
     def test_delete_with_details(self):
         server = db_utils.create_share_server(backend_details={

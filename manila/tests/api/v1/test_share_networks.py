@@ -108,9 +108,9 @@ class ShareNetworkAPITest(test.TestCase):
 
         self.assertEqual(share_nw['created_at'], view['created_at'])
         self.assertEqual(share_nw['updated_at'], view['updated_at'])
-        self.assertFalse('shares' in view)
-        self.assertFalse('network_allocations' in view)
-        self.assertFalse('security_services' in view)
+        self.assertNotIn('shares', view)
+        self.assertNotIn('network_allocations', view)
+        self.assertNotIn('security_services', view)
 
     @ddt.data(
         {'nova_net_id': 'fake_nova_net_id'},

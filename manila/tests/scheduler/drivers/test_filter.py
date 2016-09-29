@@ -58,7 +58,7 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         retval = sched._format_filter_properties(
             fake_context, {}, request_spec)
 
-        self.assertTrue('replication_domain' in retval[0])
+        self.assertIn('replication_domain', retval[0])
 
     def test_create_share_no_hosts(self):
         # Ensure empty hosts/child_zones result in NoValidHosts exception.

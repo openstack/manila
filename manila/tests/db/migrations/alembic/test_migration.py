@@ -186,7 +186,7 @@ class TestManilaMigrationsMySQL(ManilaMigrationsCheckers,
             text(sanity_check),
             database=self.engine.url.database)
 
-        self.assertTrue(total.scalar() > 0, "No tables found. Wrong schema?")
+        self.assertGreater(total.scalar(), 0, "No tables found. Wrong schema?")
 
         noninnodb_query = """
             SELECT count(*)

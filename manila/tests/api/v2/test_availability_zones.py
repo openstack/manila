@@ -80,10 +80,10 @@ class AvailabilityZonesAPITest(test.TestCase):
         self.assertEqual(["availability_zones"], list(result.keys()))
         self.assertIsInstance(result["availability_zones"], list)
         self.assertEqual(2, len(result["availability_zones"]))
-        self.assertTrue(azs[0] in result["availability_zones"])
+        self.assertIn(azs[0], result["availability_zones"])
         azs[1].pop("deleted")
         azs[1].pop("redundant_key")
-        self.assertTrue(azs[1] in result["availability_zones"])
+        self.assertIn(azs[1], result["availability_zones"])
 
     @ddt.data(
         ('1.0', availability_zones.AvailabilityZoneController),

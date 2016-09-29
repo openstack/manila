@@ -90,7 +90,7 @@ class TestFaults(test.TestCase):
         resp = req.get_response(raiser)
         self.assertEqual("application/json", resp.content_type)
         self.assertEqual(404, resp.status_int)
-        self.assertTrue(six.b('whut?') in resp.body)
+        self.assertIn(six.b('whut?'), resp.body)
 
     def test_raise_403(self):
         """Ensure the ability to raise :class:`Fault` in WSGI-ified methods."""
@@ -102,8 +102,8 @@ class TestFaults(test.TestCase):
         resp = req.get_response(raiser)
         self.assertEqual("application/json", resp.content_type)
         self.assertEqual(403, resp.status_int)
-        self.assertTrue(six.b('resizeNotAllowed') not in resp.body)
-        self.assertTrue(six.b('forbidden') in resp.body)
+        self.assertNotIn(six.b('resizeNotAllowed'), resp.body)
+        self.assertIn(six.b('forbidden'), resp.body)
 
     def test_fault_has_status_int(self):
         """Ensure the status_int is set correctly on faults."""

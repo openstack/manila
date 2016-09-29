@@ -852,7 +852,7 @@ class IsilonApiTest(test.TestCase):
         expected_url = '{0}/namespace{1}?recursive={2}'.format(
             self._mock_url, path, six.text_type(is_recursive))
         self.assertEqual(expected_url, request.url)
-        self.assertTrue("x-isi-ifs-target-type" in request.headers)
+        self.assertIn("x-isi-ifs-target-type", request.headers)
         self.assertEqual("container",
                          request.headers['x-isi-ifs-target-type'])
 
@@ -863,6 +863,6 @@ class IsilonApiTest(test.TestCase):
             self._mock_url, fq_dest_path, snapshot_name
         )
         self.assertEqual(expected_url, request.request.url)
-        self.assertTrue("x-isi-ifs-copy-source" in request.headers)
+        self.assertIn("x-isi-ifs-copy-source", request.headers)
         self.assertEqual('/namespace' + fq_file_path,
                          request.headers['x-isi-ifs-copy-source'])
