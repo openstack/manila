@@ -488,7 +488,7 @@ class GPFSShareDriverTestCase(test.TestCase):
         self.assertEqual(result, True)
 
     def test__is_dir_failure(self):
-        fakeoutput = "regulalr file"
+        fakeoutput = "regular file"
         self._driver._gpfs_execute = mock.Mock(return_value=(fakeoutput, ''))
         result = self._driver._is_dir(self.fakefspath)
         self._driver._gpfs_execute.assert_called_once_with(
