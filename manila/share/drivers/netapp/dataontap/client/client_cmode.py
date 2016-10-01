@@ -59,9 +59,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         ontapi_version = self.get_ontapi_version(cached=True)
         ontapi_1_20 = ontapi_version >= (1, 20)
+        ontapi_1_2x = (1, 20) <= ontapi_version < (1, 30)
         ontapi_1_30 = ontapi_version >= (1, 30)
 
         self.features.add_feature('SNAPMIRROR_V2', supported=ontapi_1_20)
+        self.features.add_feature('SYSTEM_METRICS', supported=ontapi_1_2x)
+        self.features.add_feature('SYSTEM_CONSTITUENT_METRICS',
+                                  supported=ontapi_1_30)
         self.features.add_feature('BROADCAST_DOMAINS', supported=ontapi_1_30)
         self.features.add_feature('IPSPACES', supported=ontapi_1_30)
         self.features.add_feature('SUBNETS', supported=ontapi_1_30)
@@ -1047,6 +1051,105 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             return []
         else:
             return result.get_child_by_name('attributes-list').get_children()
+
+    def get_performance_instance_uuids(self, object_name, node_name):
+        """Get UUIDs of performance instances for a cluster node."""
+
+        api_args = {
+            'objectname': object_name,
+            'query': {
+                'instance-info': {
+                    'uuid': node_name + ':*',
+                }
+            }
+        }
+
+        result = self.send_request('perf-object-instance-list-info-iter',
+                                   api_args)
+
+        uuids = []
+
+        instances = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('None')
+
+        for instance_info in instances.get_children():
+            uuids.append(instance_info.get_child_content('uuid'))
+
+        return uuids
+
+    def get_performance_counter_info(self, object_name, counter_name):
+        """Gets info about one or more Data ONTAP performance counters."""
+
+        api_args = {'objectname': object_name}
+        result = self.send_request('perf-object-counter-list-info', api_args)
+
+        counters = result.get_child_by_name(
+            'counters') or netapp_api.NaElement('None')
+
+        for counter in counters.get_children():
+
+            if counter.get_child_content('name') == counter_name:
+
+                labels = []
+                label_list = counter.get_child_by_name(
+                    'labels') or netapp_api.NaElement('None')
+                for label in label_list.get_children():
+                    labels.extend(label.get_content().split(','))
+                base_counter = counter.get_child_content('base-counter')
+
+                return {
+                    'name': counter_name,
+                    'labels': labels,
+                    'base-counter': base_counter,
+                }
+        else:
+            raise exception.NotFound(_('Counter %s not found') % counter_name)
+
+    def get_performance_counters(self, object_name, instance_uuids,
+                                 counter_names):
+        """Gets one or more cDOT performance counters."""
+
+        api_args = {
+            'objectname': object_name,
+            'instance-uuids': [
+                {'instance-uuid': instance_uuid}
+                for instance_uuid in instance_uuids
+            ],
+            'counters': [
+                {'counter': counter} for counter in counter_names
+            ],
+        }
+
+        result = self.send_request('perf-object-get-instances', api_args)
+
+        counter_data = []
+
+        timestamp = result.get_child_content('timestamp')
+
+        instances = result.get_child_by_name(
+            'instances') or netapp_api.NaElement('None')
+        for instance in instances.get_children():
+
+            instance_name = instance.get_child_content('name')
+            instance_uuid = instance.get_child_content('uuid')
+            node_name = instance_uuid.split(':')[0]
+
+            counters = instance.get_child_by_name(
+                'counters') or netapp_api.NaElement('None')
+            for counter in counters.get_children():
+
+                counter_name = counter.get_child_content('name')
+                counter_value = counter.get_child_content('value')
+
+                counter_data.append({
+                    'instance-name': instance_name,
+                    'instance-uuid': instance_uuid,
+                    'node-name': node_name,
+                    'timestamp': timestamp,
+                    counter_name: counter_value,
+                })
+
+        return counter_data
 
     @na_utils.trace
     def setup_security_services(self, security_services, vserver_client,

@@ -32,7 +32,8 @@ REMOTE_CLUSTER_NAME = 'fake_cluster_2'
 CLUSTER_ADDRESS_1 = 'fake_cluster_address'
 CLUSTER_ADDRESS_2 = 'fake_cluster_address_2'
 VERSION = 'NetApp Release 8.2.1 Cluster-Mode: Fri Mar 21 14:25:07 PDT 2014'
-NODE_NAME = 'fake_node'
+NODE_NAME = 'fake_node1'
+NODE_NAMES = ('fake_node1', 'fake_node2')
 VSERVER_NAME = 'fake_vserver'
 VSERVER_NAME_2 = 'fake_vserver_2'
 ADMIN_VSERVER_NAME = 'fake_admin_vserver'
@@ -2057,6 +2058,131 @@ SNAPMIRROR_INITIALIZE_RESULT = etree.XML("""
     <result-status>succeeded</result-status>
   </results>
 """)
+
+PERF_OBJECT_COUNTER_TOTAL_CP_MSECS_LABELS = [
+    'SETUP', 'PRE_P0', 'P0_SNAP_DEL', 'P1_CLEAN', 'P1_QUOTA', 'IPU_DISK_ADD',
+    'P2V_INOFILE', 'P2V_INO_PUB', 'P2V_INO_PRI', 'P2V_FSINFO', 'P2V_DLOG1',
+    'P2V_DLOG2', 'P2V_REFCOUNT', 'P2V_TOPAA', 'P2V_DF_SCORES_SUB', 'P2V_BM',
+    'P2V_SNAP', 'P2V_DF_SCORES', 'P2V_VOLINFO', 'P2V_CONT', 'P2A_INOFILE',
+    'P2A_INO', 'P2A_DLOG1', 'P2A_HYA', 'P2A_DLOG2', 'P2A_FSINFO',
+    'P2A_IPU_BITMAP_GROW', 'P2A_REFCOUNT', 'P2A_TOPAA', 'P2A_HYABC', 'P2A_BM',
+    'P2A_SNAP', 'P2A_VOLINFO', 'P2_FLUSH', 'P2_FINISH', 'P3_WAIT',
+    'P3V_VOLINFO', 'P3A_VOLINFO', 'P3_FINISH', 'P4_FINISH', 'P5_FINISH',
+]
+
+PERF_OBJECT_COUNTER_LIST_INFO_WAFL_RESPONSE = etree.XML("""
+  <results status="passed">
+    <counters>
+      <counter-info>
+        <desc>No. of times 8.3 names are accessed per second.</desc>
+        <name>access_8_3_names</name>
+        <privilege-level>diag</privilege-level>
+        <properties>rate</properties>
+        <unit>per_sec</unit>
+      </counter-info>
+      <counter-info>
+        <desc>Array of counts of different types of CPs</desc>
+        <labels>
+          <label-info>wafl_timer generated CP</label-info>
+          <label-info>snapshot generated CP</label-info>
+          <label-info>wafl_avail_bufs generated CP</label-info>
+          <label-info>dirty_blk_cnt generated CP</label-info>
+          <label-info>full NV-log generated CP,back-to-back CP</label-info>
+          <label-info>flush generated CP,sync generated CP</label-info>
+          <label-info>deferred back-to-back CP</label-info>
+          <label-info>low mbufs generated CP</label-info>
+          <label-info>low datavecs generated CP</label-info>
+          <label-info>nvlog replay takeover time limit CP</label-info>
+        </labels>
+        <name>cp_count</name>
+        <privilege-level>diag</privilege-level>
+        <properties>delta</properties>
+        <type>array</type>
+        <unit>none</unit>
+      </counter-info>
+      <counter-info>
+        <base-counter>total_cp_msecs</base-counter>
+        <desc>Array of percentage time spent in different phases of CP</desc>
+        <labels>
+          <label-info>%(labels)s</label-info>
+        </labels>
+        <name>cp_phase_times</name>
+        <privilege-level>diag</privilege-level>
+        <properties>percent</properties>
+        <type>array</type>
+        <unit>percent</unit>
+      </counter-info>
+    </counters>
+  </results>
+""" % {'labels': ','.join(PERF_OBJECT_COUNTER_TOTAL_CP_MSECS_LABELS)})
+
+PERF_OBJECT_GET_INSTANCES_SYSTEM_RESPONSE_CMODE = etree.XML("""
+  <results status="passed">
+    <instances>
+      <instance-data>
+        <counters>
+          <counter-data>
+            <name>avg_processor_busy</name>
+            <value>5674745133134</value>
+          </counter-data>
+        </counters>
+        <name>system</name>
+        <uuid>%(node1)s:kernel:system</uuid>
+      </instance-data>
+      <instance-data>
+        <counters>
+          <counter-data>
+            <name>avg_processor_busy</name>
+            <value>4077649009234</value>
+          </counter-data>
+        </counters>
+        <name>system</name>
+        <uuid>%(node2)s:kernel:system</uuid>
+      </instance-data>
+    </instances>
+    <timestamp>1453412013</timestamp>
+  </results>
+""" % {'node1': NODE_NAMES[0], 'node2': NODE_NAMES[1]})
+
+PERF_OBJECT_GET_INSTANCES_SYSTEM_RESPONSE_7MODE = etree.XML("""
+  <results status="passed">
+    <timestamp>1454146292</timestamp>
+    <instances>
+      <instance-data>
+        <name>system</name>
+        <counters>
+          <counter-data>
+            <name>avg_processor_busy</name>
+            <value>13215732322</value>
+          </counter-data>
+        </counters>
+      </instance-data>
+    </instances>
+  </results>""")
+
+PERF_OBJECT_INSTANCE_LIST_INFO_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <instance-info>
+        <name>system</name>
+        <uuid>%(node)s:kernel:system</uuid>
+      </instance-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'node': NODE_NAME})
+
+PERF_OBJECT_INSTANCE_LIST_INFO_RESPONSE = etree.XML("""
+  <results status="passed">
+    <instances>
+      <instance-info>
+        <name>processor0</name>
+      </instance-info>
+      <instance-info>
+        <name>processor1</name>
+      </instance-info>
+    </instances>
+  </results>""")
 
 FAKE_VOL_XML = """<volume-info xmlns='http://www.netapp.com/filer/admin'>
     <name>open123</name>

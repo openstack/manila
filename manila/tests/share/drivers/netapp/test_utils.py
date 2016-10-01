@@ -44,6 +44,17 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
         na_utils.setup_tracing(None)
 
+    def test_round_down(self):
+        self.assertAlmostEqual(na_utils.round_down(5.567), 5.56)
+        self.assertAlmostEqual(na_utils.round_down(5.567, '0.00'), 5.56)
+        self.assertAlmostEqual(na_utils.round_down(5.567, '0.0'), 5.5)
+        self.assertAlmostEqual(na_utils.round_down(5.567, '0'), 5)
+        self.assertAlmostEqual(na_utils.round_down(0, '0.00'), 0)
+        self.assertAlmostEqual(na_utils.round_down(-5.567), -5.56)
+        self.assertAlmostEqual(na_utils.round_down(-5.567, '0.00'), -5.56)
+        self.assertAlmostEqual(na_utils.round_down(-5.567, '0.0'), -5.5)
+        self.assertAlmostEqual(na_utils.round_down(-5.567, '0'), -5)
+
     def test_setup_tracing(self):
         na_utils.setup_tracing(None)
         self.assertFalse(na_utils.TRACE_API)

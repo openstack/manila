@@ -56,7 +56,7 @@ def check_flags(required_flags, configuration):
             raise exception.InvalidInput(reason=msg)
 
 
-def round_down(value, precision):
+def round_down(value, precision='0.00'):
     """Round a number downward using a specified level of precision.
 
     Example: round_down(float(total_space_in_bytes) / units.Gi, '0.01')

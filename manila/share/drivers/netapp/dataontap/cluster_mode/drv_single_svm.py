@@ -107,9 +107,17 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
                                    delete_rules, **kwargs)
 
     def _update_share_stats(self, data=None):
-        data = self.library.get_share_stats()
+        data = self.library.get_share_stats(
+            filter_function=self.get_filter_function(),
+            goodness_function=self.get_goodness_function())
         super(NetAppCmodeSingleSvmShareDriver, self)._update_share_stats(
             data=data)
+
+    def get_default_filter_function(self):
+        return self.library.get_default_filter_function()
+
+    def get_default_goodness_function(self):
+        return self.library.get_default_goodness_function()
 
     def get_share_server_pools(self, share_server):
         return self.library.get_share_server_pools(share_server)

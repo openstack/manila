@@ -1848,6 +1848,115 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call('aggr-get-iter', {})])
         self.assertListEqual([], result)
 
+    def test_get_performance_instance_uuids(self):
+
+        api_response = netapp_api.NaElement(
+            fake.PERF_OBJECT_INSTANCE_LIST_INFO_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_performance_instance_uuids(
+            'system', fake.NODE_NAME)
+
+        expected = [fake.NODE_NAME + ':kernel:system']
+        self.assertEqual(expected, result)
+
+        perf_object_instance_list_info_iter_args = {
+            'objectname': 'system',
+            'query': {
+                'instance-info': {
+                    'uuid': fake.NODE_NAME + ':*',
+                }
+            }
+        }
+        self.client.send_request.assert_called_once_with(
+            'perf-object-instance-list-info-iter',
+            perf_object_instance_list_info_iter_args)
+
+    def test_get_performance_counter_info(self):
+
+        api_response = netapp_api.NaElement(
+            fake.PERF_OBJECT_COUNTER_LIST_INFO_WAFL_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_performance_counter_info('wafl',
+                                                          'cp_phase_times')
+
+        expected = {
+            'name': 'cp_phase_times',
+            'base-counter': 'total_cp_msecs',
+            'labels': fake.PERF_OBJECT_COUNTER_TOTAL_CP_MSECS_LABELS,
+        }
+        self.assertEqual(expected, result)
+
+        perf_object_counter_list_info_args = {'objectname': 'wafl'}
+        self.client.send_request.assert_called_once_with(
+            'perf-object-counter-list-info',
+            perf_object_counter_list_info_args)
+
+    def test_get_performance_counter_info_not_found(self):
+
+        api_response = netapp_api.NaElement(
+            fake.PERF_OBJECT_COUNTER_LIST_INFO_WAFL_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(exception.NotFound,
+                          self.client.get_performance_counter_info,
+                          'wafl',
+                          'invalid')
+
+    def test_get_performance_counters(self):
+
+        api_response = netapp_api.NaElement(
+            fake.PERF_OBJECT_GET_INSTANCES_SYSTEM_RESPONSE_CMODE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        instance_uuids = [
+            fake.NODE_NAMES[0] + ':kernel:system',
+            fake.NODE_NAMES[1] + ':kernel:system',
+        ]
+        counter_names = ['avg_processor_busy']
+        result = self.client.get_performance_counters('system',
+                                                      instance_uuids,
+                                                      counter_names)
+
+        expected = [
+            {
+                'avg_processor_busy': '5674745133134',
+                'instance-name': 'system',
+                'instance-uuid': instance_uuids[0],
+                'node-name': fake.NODE_NAMES[0],
+                'timestamp': '1453412013',
+            }, {
+                'avg_processor_busy': '4077649009234',
+                'instance-name': 'system',
+                'instance-uuid': instance_uuids[1],
+                'node-name': fake.NODE_NAMES[1],
+                'timestamp': '1453412013'
+            },
+        ]
+        self.assertEqual(expected, result)
+
+        perf_object_get_instances_args = {
+            'objectname': 'system',
+            'instance-uuids': [
+                {'instance-uuid': instance_uuid}
+                for instance_uuid in instance_uuids
+            ],
+            'counters': [
+                {'counter': counter} for counter in counter_names
+            ],
+        }
+        self.client.send_request.assert_called_once_with(
+            'perf-object-get-instances', perf_object_get_instances_args)
+
     def test_setup_security_services_ldap(self):
 
         self.mock_object(self.client, 'send_request')

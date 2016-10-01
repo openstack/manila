@@ -36,6 +36,7 @@ from manila.i18n import _, _LE, _LI, _LW
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
+from manila.share.drivers.netapp.dataontap.cluster_mode import performance
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode
 from manila.share.drivers.netapp import options as na_opts
@@ -54,6 +55,9 @@ class NetAppCmodeFileStorageLibrary(object):
     HOUSEKEEPING_INTERVAL_SECONDS = 600  # ten minutes
 
     SUPPORTED_PROTOCOLS = ('nfs', 'cifs')
+
+    DEFAULT_FILTER_FUNCTION = 'capabilities.utilization < 70'
+    DEFAULT_GOODNESS_FUNCTION = '100 - capabilities.utilization'
 
     # Maps NetApp qualified extra specs keys to corresponding backend API
     # client library argument keywords.  When we expose more backend
@@ -109,6 +113,9 @@ class NetAppCmodeFileStorageLibrary(object):
     def do_setup(self, context):
         self._client = self._get_api_client()
         self._have_cluster_creds = self._client.check_for_cluster_credentials()
+
+        # Performance monitoring library
+        self._perf_library = performance.PerformanceLibrary(self._client)
 
     @na_utils.trace
     def check_for_setup_error(self):
@@ -214,8 +221,16 @@ class NetAppCmodeFileStorageLibrary(object):
         else:
             return None
 
+    def get_default_filter_function(self):
+        """Get the default filter_function string."""
+        return self.DEFAULT_FILTER_FUNCTION
+
+    def get_default_goodness_function(self):
+        """Get the default goodness_function string."""
+        return self.DEFAULT_GOODNESS_FUNCTION
+
     @na_utils.trace
-    def get_share_stats(self):
+    def get_share_stats(self, filter_function=None, goodness_function=None):
         """Retrieve stats info from Data ONTAP backend."""
 
         data = {
@@ -226,7 +241,8 @@ class NetAppCmodeFileStorageLibrary(object):
             'netapp_storage_family': 'ontap_cluster',
             'storage_protocol': 'NFS_CIFS',
             'consistency_group_support': 'host',
-            'pools': self._get_pools(),
+            'pools': self._get_pools(filter_function=filter_function,
+                                     goodness_function=goodness_function),
         }
 
         if (self.configuration.replication_domain and
@@ -249,28 +265,35 @@ class NetAppCmodeFileStorageLibrary(object):
         return self._get_pools()
 
     @na_utils.trace
-    def _get_pools(self):
+    def _get_pools(self, filter_function=None, goodness_function=None):
         """Retrieve list of pools available to this backend."""
 
         pools = []
         aggr_space = self._get_aggregate_space()
+        aggregates = aggr_space.keys()
 
-        for aggr_name in sorted(aggr_space.keys()):
+        # Get up-to-date node utilization metrics just once.
+        if self._have_cluster_creds:
+            self._perf_library.update_performance_cache({}, self._ssc_stats)
+
+        for aggr_name in sorted(aggregates):
 
             reserved_percentage = self.configuration.reserved_share_percentage
 
             total_capacity_gb = na_utils.round_down(float(
-                aggr_space[aggr_name].get('total', 0)) / units.Gi, '0.01')
+                aggr_space[aggr_name].get('total', 0)) / units.Gi)
             free_capacity_gb = na_utils.round_down(float(
-                aggr_space[aggr_name].get('available', 0)) / units.Gi, '0.01')
+                aggr_space[aggr_name].get('available', 0)) / units.Gi)
             allocated_capacity_gb = na_utils.round_down(float(
-                aggr_space[aggr_name].get('used', 0)) / units.Gi, '0.01')
+                aggr_space[aggr_name].get('used', 0)) / units.Gi)
 
             if total_capacity_gb == 0.0:
                 total_capacity_gb = 'unknown'
 
             pool = {
                 'pool_name': aggr_name,
+                'filter_function': filter_function,
+                'goodness_function': goodness_function,
                 'total_capacity_gb': total_capacity_gb,
                 'free_capacity_gb': free_capacity_gb,
                 'allocated_capacity_gb': allocated_capacity_gb,
@@ -279,13 +302,17 @@ class NetAppCmodeFileStorageLibrary(object):
                 'dedupe': [True, False],
                 'compression': [True, False],
                 'thin_provisioning': [True, False],
-                'netapp_aggregate': aggr_name,
             }
 
             # Add storage service catalog data.
             pool_ssc_stats = self._ssc_stats.get(aggr_name)
             if pool_ssc_stats:
                 pool.update(pool_ssc_stats)
+
+            # Add utilization info, or nominal value if not available.
+            utilization = self._perf_library.get_node_utilization_for_pool(
+                aggr_name)
+            pool['utilization'] = na_utils.round_down(utilization)
 
             pools.append(pool)
 
@@ -1160,7 +1187,9 @@ class NetAppCmodeFileStorageLibrary(object):
         # Initialize entries for each aggregate.
         for aggregate_name in aggregate_names:
             if aggregate_name not in ssc_stats:
-                ssc_stats[aggregate_name] = {}
+                ssc_stats[aggregate_name] = {
+                    'netapp_aggregate': aggregate_name,
+                }
 
         if aggregate_names:
             self._update_ssc_aggr_info(aggregate_names, ssc_stats)
