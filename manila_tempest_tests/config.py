@@ -17,14 +17,10 @@ from __future__ import print_function
 
 from oslo_config import cfg
 
-service_available_group = cfg.OptGroup(name="service_available",
-                                       title="Available OpenStack Services")
-
-ServiceAvailableGroup = [
-    cfg.BoolOpt("manila",
-                default=True,
-                help="Whether or not manila is expected to be available"),
-]
+service_option = cfg.BoolOpt("manila",
+                             default=True,
+                             help="Whether or not manila is expected to be "
+                                  "available")
 
 share_group = cfg.OptGroup(name="share", title="Share Service Options")
 

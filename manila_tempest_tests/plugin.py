@@ -16,7 +16,6 @@
 
 import os
 
-from tempest import config
 from tempest.test_discover import plugins
 
 from manila_tempest_tests import config as config_share
@@ -31,11 +30,10 @@ class ManilaTempestPlugin(plugins.TempestPlugin):
         return full_test_dir, base_path
 
     def register_opts(self, conf):
-        config.register_opt_group(
-            conf, config_share.service_available_group,
-            config_share.ServiceAvailableGroup)
-        config.register_opt_group(conf, config_share.share_group,
-                                  config_share.ShareGroup)
+        conf.register_opt(config_share.service_option,
+                          group='service_available')
+        conf.register_group(config_share.share_group)
+        conf.register_opts(config_share.ShareGroup, group='share')
 
         # NOTE(vponomaryov): set opt 'capability_snapshot_support' by
         # default equal to opt 'run_snapshot_tests'.
@@ -48,4 +46,4 @@ class ManilaTempestPlugin(plugins.TempestPlugin):
 
     def get_opt_lists(self):
         return [(config_share.share_group.name, config_share.ShareGroup),
-                ('service_available', config_share.ServiceAvailableGroup)]
+                ('service_available', [config_share.service_option])]
