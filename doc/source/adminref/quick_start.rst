@@ -120,7 +120,7 @@ Here are the registration steps, similar to those of cinder:
 
 .. code-block:: console
 
-    $ openstack user create --name manila --password %PASSWORD%
+    $ openstack user create --password %PASSWORD% manila
 
 2) Add the admin role to the manila user:
 
@@ -143,7 +143,7 @@ Here are the registration steps, similar to those of cinder:
 
     $ openstack service create \
         --name manilav2 \
-        --description "OpenStack Shared Filesystems"\
+        --description "OpenStack Shared Filesystems V2"\
         sharev2
 
 
@@ -181,6 +181,22 @@ Result::
         --adminurl http://%controller%:8786/v1/%\(tenant_id\)s \
         share
 
+
+Result should be similar to::
+
+    +--------------+--------------------------------------------------------------+
+    | Field        | Value                                                        |
+    +--------------+--------------------------------------------------------------+
+    | adminurl     | http://%controller%:8786/v1/%(tenant_id)s                    |
+    | id           | 118230f5aa514809a9866ae411636b43                             |
+    | internalurl  | http://%controller%:8786/v1/%(tenant_id)s                    |
+    | publicurl    | http://%controller%:8786/v1/%(tenant_id)s                    |
+    | region       | RegionOne                                                    |
+    | service_id   | 4c13e9ff7ec04f4e95a26f72ecdf9919                             |
+    | service_name | manila                                                       |
+    | service_type | share                                                        |
+    +--------------+--------------------------------------------------------------+
+
     $ openstack endpoint create \
         --region RegionOne \
         --publicurl http://%controller%:8786/v2/%\(tenant_id\)s \
@@ -191,12 +207,18 @@ Result::
 
 Result should be similar to::
 
-    +----------------------------------+-----------+--------------+----------------+----------------------------------------------------+
-    | ID                               | Region    | Service Name | Service Type   | PublicURL                                          |
-    +----------------------------------+-----------+--------------+----------------+----------------------------------------------------+
-    | 3933b186baec48b9bc647877ee685d0f | RegionOne | Manila       | share          | http://%controller%:8786/v1/%\(tenant_id\)s        |
-    | de06e6d76b534fac854dba8d740a1741 | RegionOne | Manilav2     | sharev2        | http://%controller%:8786/v2/%\(tenant_id\)s        |
-    +----------------------------------+-----------+--------------+----------------+----------------------------------------------------+
+    +--------------+--------------------------------------------------------------+
+    | Field        | Value                                                        |
+    +--------------+--------------------------------------------------------------+
+    | adminurl     | http://%controller%:8786/v2/%(tenant_id)s                    |
+    | id           | 228230f5aa514809a9866ae411636b8d                             |
+    | internalurl  | http://%controller%:8786/v2/%(tenant_id)s                    |
+    | publicurl    | http://%controller%:8786/v2/%(tenant_id)s                    |
+    | region       | RegionOne                                                    |
+    | service_id   | 2840d1e7b033437f8776a7bd5045b28d                             |
+    | service_name | manilav2                                                     |
+    | service_type | sharev2                                                      |
+    +--------------+--------------------------------------------------------------+
 
 .. note::
     Port ‘8786’ is the default port for manila. It may be changed to any
