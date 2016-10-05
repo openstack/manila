@@ -15,7 +15,7 @@
 #    under the License.
 
 from tempest import config
-from tempest import test
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
@@ -33,7 +33,7 @@ class MicroversionsTest(base.BaseSharesTest):
     Sends HTTP GET requests to the version API to validate microversions.
     """
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_microversions_root_version(self):
 
         resp, resp_body = self.shares_v2_client.send_microversion_request()
@@ -55,7 +55,7 @@ class MicroversionsTest(base.BaseSharesTest):
         self.assertEqual(_MIN_API_VERSION, v2.get('min_version'))
         self.assertEqual(_MAX_API_VERSION, v2.get('version'))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_microversions_v1_no_version(self):
 
         resp, resp_body = self.shares_v2_client.send_microversion_request(
@@ -72,7 +72,7 @@ class MicroversionsTest(base.BaseSharesTest):
         self.assertEqual('', version_list[0].get('min_version'))
         self.assertEqual('', version_list[0].get('version'))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_microversions_v1_with_version(self):
 
         resp, resp_body = self.shares_v2_client.send_microversion_request(
@@ -89,7 +89,7 @@ class MicroversionsTest(base.BaseSharesTest):
         self.assertEqual('', version_list[0].get('min_version'))
         self.assertEqual('', version_list[0].get('version'))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_microversions_v2_no_version(self):
 
         resp, resp_body = self.shares_v2_client.send_microversion_request(
@@ -107,7 +107,7 @@ class MicroversionsTest(base.BaseSharesTest):
         self.assertEqual(_MIN_API_VERSION, version_list[0].get('min_version'))
         self.assertEqual(_MAX_API_VERSION, version_list[0].get('version'))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_microversions_v2_min_version(self):
 
         resp, resp_body = self.shares_v2_client.send_microversion_request(
@@ -125,7 +125,7 @@ class MicroversionsTest(base.BaseSharesTest):
         self.assertEqual(_MIN_API_VERSION, version_list[0].get('min_version'))
         self.assertEqual(_MAX_API_VERSION, version_list[0].get('version'))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_microversions_v2_max_version(self):
 
         resp, resp_body = self.shares_v2_client.send_microversion_request(
@@ -143,7 +143,7 @@ class MicroversionsTest(base.BaseSharesTest):
         self.assertEqual(_MIN_API_VERSION, version_list[0].get('min_version'))
         self.assertEqual(_MAX_API_VERSION, version_list[0].get('version'))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_microversions_v2_invalid_version(self):
 
         resp, _ = self.shares_v2_client.send_microversion_request(
@@ -151,7 +151,7 @@ class MicroversionsTest(base.BaseSharesTest):
 
         self.assertEqual(400, resp.status)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_microversions_v2_unacceptable_version(self):
 
         # First get max version from the server

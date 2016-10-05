@@ -15,8 +15,8 @@
 
 import ddt
 from tempest import config
-from tempest import test
 import testtools
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
@@ -37,7 +37,7 @@ class ShareSnapshotInstancesTest(base.BaseSharesAdminTest):
         cls.snapshot = cls.shares_v2_client.get_snapshot(snap['id'])
 
     @ddt.data(True, False)
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_list_snapshot_instances_by_snapshot(self, detail):
         """Test that we get only the 1 snapshot instance from snapshot."""
         snapshot_instances = self.shares_v2_client.list_snapshot_instances(
@@ -69,7 +69,7 @@ class ShareSnapshotInstancesTest(base.BaseSharesAdminTest):
             self.assertIn(key, expected_keys)
         self.assertEqual(len(expected_keys), len(si))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_list_snapshot_instances(self):
         """Test that we get at least the snapshot instance."""
         snapshot_instances = self.shares_v2_client.list_snapshot_instances()
@@ -80,7 +80,7 @@ class ShareSnapshotInstancesTest(base.BaseSharesAdminTest):
                self.snapshot['id'])
         self.assertIn(self.snapshot['id'], snapshot_ids, msg)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_get_snapshot_instance(self):
         instances = self.shares_v2_client.list_snapshot_instances(
             snapshot_id=self.snapshot['id'])
@@ -101,7 +101,7 @@ class ShareSnapshotInstancesTest(base.BaseSharesAdminTest):
         self.assertEqual(self.snapshot['provider_location'],
                          instance_detail['provider_location'])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_reset_snapshot_instance_status_and_delete(self):
         """Test resetting a snapshot instance's status attribute."""
         snapshot = self.create_snapshot_wait_for_active(self.share["id"])

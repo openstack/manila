@@ -14,7 +14,7 @@
 #    under the License.
 
 import ddt
-from tempest import test
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
@@ -26,7 +26,7 @@ class ServicesAdminTest(base.BaseSharesAdminTest):
         super(ServicesAdminTest, self).setUp()
         self.services = self.shares_client.list_services()
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_list_services(self, client_name):
         services = getattr(self, client_name).list_services()
@@ -35,7 +35,7 @@ class ServicesAdminTest(base.BaseSharesAdminTest):
         for service in services:
             self.assertIsNotNone(service['id'])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_get_services_by_host_name(self, client_name):
         host = self.services[0]["host"]
@@ -45,7 +45,7 @@ class ServicesAdminTest(base.BaseSharesAdminTest):
         for service in services:
             self.assertEqual(host, service["host"])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_get_services_by_binary_name(self, client_name):
         binary = self.services[0]["binary"]
@@ -55,7 +55,7 @@ class ServicesAdminTest(base.BaseSharesAdminTest):
         for service in services:
             self.assertEqual(binary, service["binary"])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_get_services_by_availability_zone(self, client_name):
         zone = self.services[0]["zone"]
@@ -65,7 +65,7 @@ class ServicesAdminTest(base.BaseSharesAdminTest):
         for service in services:
             self.assertEqual(zone, service["zone"])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_get_services_by_status(self, client_name):
         status = self.services[0]["status"]
@@ -75,7 +75,7 @@ class ServicesAdminTest(base.BaseSharesAdminTest):
         for service in services:
             self.assertEqual(status, service["status"])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_get_services_by_state(self, client_name):
         state = self.services[0]["state"]
@@ -85,7 +85,7 @@ class ServicesAdminTest(base.BaseSharesAdminTest):
         for service in services:
             self.assertEqual(state, service["state"])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_get_services_by_all_filters(self, client_name):
         params = {

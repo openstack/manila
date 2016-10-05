@@ -15,8 +15,8 @@
 
 from tempest import config
 from tempest.lib.common.utils import data_utils
-from tempest import test
 import testtools
+from testtools import testcase as tc
 
 from manila_tempest_tests.common import constants
 from manila_tempest_tests import share_exceptions
@@ -62,7 +62,7 @@ class ReplicationSnapshotTest(base.BaseSharesMixedTest):
             'availability_zone': cls.share_zone,
         }}
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_snapshot_after_share_replica(self):
         """Test the snapshot for replicated share.
 
@@ -88,7 +88,7 @@ class ReplicationSnapshotTest(base.BaseSharesMixedTest):
         self.delete_share_replica(original_replica['id'])
         self.create_share(snapshot_id=snapshot['id'])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_snapshot_before_share_replica(self):
         """Test the snapshot for replicated share.
 
@@ -118,7 +118,7 @@ class ReplicationSnapshotTest(base.BaseSharesMixedTest):
         self.delete_share_replica(original_replica['id'])
         self.create_share(snapshot_id=snapshot['id'])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_snapshot_before_and_after_share_replica(self):
         """Test the snapshot for replicated share.
 
@@ -155,7 +155,7 @@ class ReplicationSnapshotTest(base.BaseSharesMixedTest):
         self.create_share(snapshot_id=snapshot1['id'])
         self.create_share(snapshot_id=snapshot2['id'])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_delete_snapshot_after_adding_replica(self):
         """Verify the snapshot delete.
 
@@ -175,7 +175,7 @@ class ReplicationSnapshotTest(base.BaseSharesMixedTest):
         self.shares_v2_client.wait_for_resource_deletion(
             snapshot_id=snapshot["id"])
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_BACKEND])
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_create_replica_from_snapshot_share(self):
         """Test replica for a share that was created from snapshot."""
 

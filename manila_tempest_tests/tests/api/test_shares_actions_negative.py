@@ -15,8 +15,8 @@
 
 from tempest import config
 from tempest.lib import exceptions as lib_exc
-from tempest import test
 import testtools
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
@@ -30,7 +30,7 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
         cls.admin_client = cls.admin_shares_v2_client
         cls.share = cls.create_share()
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(
         CONF.share.run_extend_tests,
         "Share extend tests are disabled.")
@@ -48,7 +48,7 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
                           self.share['id'],
                           new_size)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(
         CONF.share.run_extend_tests,
         "Share extend tests are disabled.")
@@ -61,7 +61,7 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
                           self.share['id'],
                           new_size)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(
         CONF.share.run_extend_tests,
         "Share extend tests are disabled.")
@@ -74,7 +74,7 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
                           self.share['id'],
                           new_size)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(
         CONF.share.run_extend_tests,
         "Share extend tests are disabled.")
@@ -91,7 +91,7 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
                           share['id'],
                           new_size)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(
         CONF.share.run_shrink_tests,
         "Share shrink tests are disabled.")
@@ -104,7 +104,7 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
                           self.share['id'],
                           new_size)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(
         CONF.share.run_shrink_tests,
         "Share shrink tests are disabled.")
@@ -117,7 +117,7 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
                           self.share['id'],
                           new_size)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(
         CONF.share.run_shrink_tests,
         "Share shrink tests are disabled.")

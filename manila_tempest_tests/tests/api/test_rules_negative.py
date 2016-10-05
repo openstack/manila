@@ -16,8 +16,8 @@
 import ddt
 from tempest import config
 from tempest.lib import exceptions as lib_exc
-from tempest import test
 import testtools
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 from manila_tempest_tests import utils
@@ -43,63 +43,63 @@ class ShareIpRulesForNFSNegativeTest(base.BaseSharesTest):
             # create snapshot
             cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_ip_with_wrong_target_1(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
                           getattr(self, client_name).create_access_rule,
                           self.share["id"], "ip", "1.2.3.256")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_ip_with_wrong_target_2(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
                           getattr(self, client_name).create_access_rule,
                           self.share["id"], "ip", "1.1.1.-")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_ip_with_wrong_target_3(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
                           getattr(self, client_name).create_access_rule,
                           self.share["id"], "ip", "1.2.3.4/33")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_ip_with_wrong_target_4(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
                           getattr(self, client_name).create_access_rule,
                           self.share["id"], "ip", "1.2.3.*")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_ip_with_wrong_target_5(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
                           getattr(self, client_name).create_access_rule,
                           self.share["id"], "ip", "1.2.3.*/23")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_ip_with_wrong_target_6(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
                           getattr(self, client_name).create_access_rule,
                           self.share["id"], "ip", "1.2.3.1|23")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_ip_with_wrong_target_7(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
                           getattr(self, client_name).create_access_rule,
                           self.share["id"], "ip", "1.2.3.1/-1")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_ip_with_wrong_target_8(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
                           getattr(self, client_name).create_access_rule,
                           self.share["id"], "ip", "1.2.3.1/")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_with_wrong_level(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
@@ -109,7 +109,7 @@ class ShareIpRulesForNFSNegativeTest(base.BaseSharesTest):
                           '2.2.2.2',
                           'su')
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('1.0', '2.9', LATEST_MICROVERSION)
     def test_create_duplicate_of_ip_rule(self, version):
         # test data
@@ -181,7 +181,7 @@ class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
             # create snapshot
             cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_user_with_wrong_input_2(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
@@ -189,28 +189,28 @@ class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
                           self.share["id"], "user",
                           "try+")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_user_with_empty_key(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
                           getattr(self, client_name).create_access_rule,
                           self.share["id"], "user", "")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_user_with_too_little_key(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
                           getattr(self, client_name).create_access_rule,
                           self.share["id"], "user", "abc")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_user_with_too_big_key(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
                           getattr(self, client_name).create_access_rule,
                           self.share["id"], "user", "a" * 33)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_user_with_wrong_input_1(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
@@ -218,7 +218,7 @@ class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
                           self.share["id"], "user",
                           "try+")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
@@ -229,7 +229,7 @@ class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
                           access_type="user",
                           access_to="fakeuser")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_user_with_wrong_share_id(self, client_name):
         self.assertRaises(lib_exc.NotFound,
@@ -238,7 +238,7 @@ class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
                           access_type="user",
                           access_to="fakeuser")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_with_wrong_level(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
@@ -271,14 +271,14 @@ class ShareCertRulesForGLUSTERFSNegativeTest(base.BaseSharesTest):
             # create snapshot
             cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_cert_with_empty_common_name(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
                           getattr(self, client_name).create_access_rule,
                           self.share["id"], "cert", "")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_cert_with_whitespace_common_name(self,
                                                                  client_name):
@@ -286,7 +286,7 @@ class ShareCertRulesForGLUSTERFSNegativeTest(base.BaseSharesTest):
                           getattr(self, client_name).create_access_rule,
                           self.share["id"], "cert", " ")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_cert_with_too_big_common_name(self,
                                                               client_name):
@@ -295,7 +295,7 @@ class ShareCertRulesForGLUSTERFSNegativeTest(base.BaseSharesTest):
                           getattr(self, client_name).create_access_rule,
                           self.share["id"], "cert", "a" * 65)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
     @ddt.data('shares_client', 'shares_v2_client')
@@ -306,7 +306,7 @@ class ShareCertRulesForGLUSTERFSNegativeTest(base.BaseSharesTest):
                           access_type="cert",
                           access_to="fakeclient1.com")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_cert_with_wrong_share_id(self, client_name):
         self.assertRaises(lib_exc.NotFound,
@@ -333,14 +333,14 @@ class ShareCephxRulesForCephFSNegativeTest(base.BaseSharesTest):
         cls.access_type = "cephx"
         cls.access_to = "david"
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('jane.doe', u"bj\u00F6rn")
     def test_create_access_rule_cephx_with_invalid_cephx_id(self, access_to):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_v2_client.create_access_rule,
                           self.share["id"], self.access_type, access_to)
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     def test_create_access_rule_cephx_with_wrong_level(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_v2_client.create_access_rule,
@@ -383,7 +383,7 @@ class ShareRulesNegativeTest(base.BaseSharesTest):
             # create snapshot
             cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_delete_access_rule_with_wrong_id(self, client_name):
         skip_if_cephx_access_type_not_supported_by_client(self, client_name)
@@ -391,7 +391,7 @@ class ShareRulesNegativeTest(base.BaseSharesTest):
                           getattr(self, client_name).delete_access_rule,
                           self.share["id"], "wrong_rule_id")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_ip_with_wrong_type(self, client_name):
         skip_if_cephx_access_type_not_supported_by_client(self, client_name)
@@ -399,7 +399,7 @@ class ShareRulesNegativeTest(base.BaseSharesTest):
                           getattr(self, client_name).create_access_rule,
                           self.share["id"], "wrong_type", "1.2.3.4")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
@@ -413,7 +413,7 @@ class ShareRulesNegativeTest(base.BaseSharesTest):
 @ddt.ddt
 class ShareRulesAPIOnlyNegativeTest(base.BaseSharesTest):
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     @ddt.data('shares_client', 'shares_v2_client')
     def test_create_access_rule_ip_with_wrong_share_id(self, client_name):
         skip_if_cephx_access_type_not_supported_by_client(self, client_name)

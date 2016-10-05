@@ -17,8 +17,8 @@ from oslo_log import log
 import six
 from tempest import config
 from tempest.lib import exceptions as lib_exc
-from tempest import test
 import testtools
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
@@ -28,52 +28,52 @@ LOG = log.getLogger(__name__)
 
 class SecurityServicesNegativeTest(base.BaseSharesTest):
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_create_security_service_with_empty_type(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_security_service, "")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_create_security_service_with_wrong_type(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_security_service,
                           "wrong_type")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_get_security_service_without_id(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_security_service, "")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_get_security_service_with_wrong_id(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_security_service,
                           "wrong_id")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_delete_security_service_without_id(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_security_service, "")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_delete_security_service_with_wrong_type(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_security_service,
                           "wrong_id")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_update_nonexistant_security_service(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.update_security_service,
                           "wrong_id", name="name")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_update_security_service_with_empty_id(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.update_security_service,
                           "", name="name")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipIf(
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_try_update_invalid_keys_sh_server_exists(self):
@@ -108,7 +108,7 @@ class SecurityServicesNegativeTest(base.BaseSharesTest):
                           ss["id"],
                           user="new_user")
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_get_deleted_security_service(self):
         data = self.generate_security_service_data()
         ss = self.create_security_service(**data)
@@ -121,7 +121,7 @@ class SecurityServicesNegativeTest(base.BaseSharesTest):
                           self.shares_client.get_security_service,
                           ss["id"])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_list_security_services_all_tenants(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.list_security_services,

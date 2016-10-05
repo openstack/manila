@@ -17,8 +17,8 @@ import six
 from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions as lib_exc
-from tempest import test
 import testtools
+from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 
@@ -62,7 +62,7 @@ class ManageNFSSnapshotNegativeTest(base.BaseSharesAdminTest):
             share_protocol=cls.protocol
         )
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     def test_manage_not_found(self):
         # Manage snapshot fails
         self.assertRaises(lib_exc.NotFound,
@@ -71,7 +71,7 @@ class ManageNFSSnapshotNegativeTest(base.BaseSharesAdminTest):
                           'fake-vol-snap-id',
                           driver_options={})
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND])
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     def test_manage_already_exists(self):
         # Manage already existing snapshot fails
 
