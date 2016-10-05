@@ -146,8 +146,9 @@ Create a section like this to define a CephFS backend:
     cephfs_cluster_name = ceph
     cephfs_enable_snapshots = True
 
-Set ``cephfs_enable_snapshots`` to True in the section to let the driver
-perform snapshot related operations.
+Set ``driver-handles-share-servers`` to ``False`` as the driver does not
+manage the lifecycle of ``share-servers``.  To let the driver perform snapshot
+related operations, set ``cephfs_enable_snapshots`` to True.
 
 Then edit ``enabled_share_backends`` to point to the driver's backend section
 using the section name.  In this example we are also including another backend
@@ -195,17 +196,11 @@ Allow Ceph auth ID ``alice`` access to the share using ``cephx`` access type.
 
     manila access-allow cephshare1 cephx alice
 
+Note the access status, and the access/secret key of ``alice``.
 
-Mounting shares using FUSE client
----------------------------------
+.. code-block:: console
 
-Using the secret key of the authorized ID ``alice`` create a keyring file,
-``alice.keyring`` like:
-
-.. code-block:: ini
-
-    [client.alice]
-            key = AQA8+ANW/4ZWNRAAOtWJMFPEihBA1unFImJczA==
+    manila access-list cephshare1
 
 .. note::
 
@@ -232,6 +227,19 @@ Using the secret key of the authorized ID ``alice`` create a keyring file,
     For more details, please see the Ceph documentation.
     http://docs.ceph.com/docs/jewel/rados/operations/user-management/#add-a-user
 
+
+Mounting shares using FUSE client
+---------------------------------
+
+Using the secret key of the authorized ID ``alice`` create a keyring file,
+``alice.keyring`` like:
+
+.. code-block:: ini
+
+    [client.alice]
+            key = AQA8+ANW/4ZWNRAAOtWJMFPEihBA1unFImJczA==
+
+
 Using the mon IP addresses from the share's export location, create a
 configuration file, ``ceph.conf`` like:
 
@@ -257,18 +265,11 @@ from the share's export location:
 Known restrictions
 ------------------
 
-Mitaka release
-
 Consider the driver as a building block for supporting multi-tenant
 workloads in the future.  However, it can be used in private cloud
 deployments.
 
 - The guests have direct access to Ceph's public network.
-
-- The secret-key of a Ceph auth ID required to mount a share is not exposed to
-  an user by a manila API.  To workaround this, the storage admin would need to
-  pass the key out of band of manila, or the user would need to use the Ceph ID
-  and key already created and shared with her by the cloud admin.
 
 - The snapshot support of the driver is disabled by default.
   ``cephfs_enable_snapshots`` configuration option needs to be set to ``True``
@@ -281,11 +282,16 @@ deployments.
 - To restrict share sizes, CephFS uses quotas that are enforced in the client
   side.  The CephFS clients are relied on to respect quotas.
 
+Mitaka release
+
+- The secret-key of a Ceph auth ID required to mount a share is not exposed to
+  an user by a manila API.  To workaround this, the storage admin would need to
+  pass the key out of band of manila, or the user would need to use the Ceph ID
+  and key already created and shared with her by the cloud admin.
+
 
 Security
 --------
-
-Mitaka release
 
 - Each share's data is mapped to a distinct Ceph RADOS namespace.  A guest is
   restricted to access only that particular RADOS namespace.
