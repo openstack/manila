@@ -89,7 +89,7 @@ Configure components
 
      Replace ``MANAGEMENT_INTERFACE_IP_ADDRESS`` with the IP address
      of the management network interface on your storage node,
-     typically 10.0.0.41 for the first node in the the example architecture
+     typically 10.0.0.41 for the first node in the example architecture
      shown below:
 
      .. figure:: figures/hwreqs.png

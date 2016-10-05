@@ -220,7 +220,7 @@ Using the secret key of the authorized ID ``alice`` create a keyring file,
     Ceph auth IDs, whose secret keys are already shared with them out of band
     of manila, to access the shares.
 
-    Following is a command that the the cloud admin could run from the
+    Following is a command that the cloud admin could run from the
     server running the :term:`manila-share` service to create a Ceph auth ID
     and get its keyring file.
 
