@@ -14,6 +14,7 @@
 #    under the License.
 """Unit tests for the Container driver module."""
 
+import ddt
 import functools
 import mock
 from oslo_config import cfg
@@ -33,6 +34,7 @@ CONF = cfg.CONF
 CONF.import_opt('lvm_share_export_ip', 'manila.share.drivers.lvm')
 
 
+@ddt.ddt
 class ContainerShareDriverTestCase(test.TestCase):
     """Tests ContainerShareDriver"""
 
@@ -212,11 +214,12 @@ class ContainerShareDriverTestCase(test.TestCase):
         self._driver._connect_to_network("fake-server", network_info,
                                          "fake-veth")
 
-    def test__teardown_server(self):
+    @ddt.data(['veth0000000'], ['veth0000000' * 2])
+    def test__teardown_server(self, list_of_veths):
         def fake_ovs_execute(*args, **kwargs):
             kwargs['arguments'].append(args)
             if len(args) == 3:
-                return ['veth0000000']
+                return list_of_veths
             elif len(args) == 4:
                 return ('fake:manila_b5afb5c1_6011_43c4_8a37_29820e6951a7', '')
             else:
@@ -236,11 +239,12 @@ class ContainerShareDriverTestCase(test.TestCase):
 
         self.assertEqual(expected_arguments.sort(), actual_arguments.sort())
 
-    def test__teardown_server_check_continuation(self):
+    @ddt.data(['veth0000000'], ['veth0000000' * 2])
+    def test__teardown_server_check_continuation(self, list_of_veths):
         def fake_ovs_execute(*args, **kwargs):
             kwargs['arguments'].append(args)
             if len(args) == 3:
-                return ['veth0000000']
+                return list_of_veths
             elif len(args) == 4:
                 return ('fake:', '')
             else:
