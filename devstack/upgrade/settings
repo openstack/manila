@@ -7,17 +7,17 @@ BASE_RUN_SMOKE=False
 TARGET_RUN_SMOKE=False
 
 devstack_localrc base enable_service manila m-api m-shr m-sch m-dat
-devstack_localrc base enable_plugin manila git://git.openstack.org/openstack/manila stable/mitaka
+devstack_localrc base enable_plugin manila git://git.openstack.org/openstack/manila stable/newton
 devstack_localrc base MANILA_UI_ENABLED=False
 devstack_localrc base OSLO_SERVICE_WORKS=True
 
 # NOTE(vponomaryov): stable client is used for keeping scenarios stable
 # so they are not broken by changed CLI view.
-devstack_localrc base MANILACLIENT_BRANCH="stable/mitaka"
+devstack_localrc base MANILACLIENT_BRANCH="stable/newton"
 
 devstack_localrc target enable_service manila m-api m-shr m-sch m-dat
 devstack_localrc target enable_plugin manila git://git.openstack.org/openstack/manila
 devstack_localrc target MANILA_UI_ENABLED=False
 devstack_localrc target OSLO_SERVICE_WORKS=True
 devstack_localrc target MANILA_USE_DOWNGRADE_MIGRATIONS=False
-devstack_localrc target MANILACLIENT_BRANCH="stable/mitaka"
+devstack_localrc target MANILACLIENT_BRANCH="stable/newton"
