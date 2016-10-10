@@ -65,7 +65,7 @@ class ShareRpcAPITestCase(test.TestCase):
         self.rpcapi = share_rpcapi.ShareAPI()
 
     def test_serialized_share_has_id(self):
-        self.assertTrue('id' in self.fake_share)
+        self.assertIn('id', self.fake_share)
 
     def _test_share_api(self, method, rpc_method, **kwargs):
         expected_retval = 'foo' if method == 'call' else None

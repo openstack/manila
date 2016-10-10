@@ -62,7 +62,7 @@ class StorageObjectManagerTestCase(test.TestCase):
                 isinstance(self.manager.getStorageContext(key), value))
 
         for key in self.manager.context.keys():
-            self.assertTrue(key in type_map)
+            self.assertIn(key, type_map)
 
     def test_get_storage_context_invalid_type(self):
 

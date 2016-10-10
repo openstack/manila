@@ -173,7 +173,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         self.assertTrue(len(shares) > 0)
         shares_ids = [s["id"] for s in shares]
         for share in self.shares:
-            self.assertTrue(share["id"] in shares_ids)
+            self.assertIn(share["id"], shares_ids)
         for share in shares:
             # find its name or id, get id
             st_id = None
@@ -218,7 +218,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
                 filters['share_type_id'], st_id)
         share_ids = [share['id'] for share in shares]
         for share in self.shares:
-            self.assertTrue(share['id'] in share_ids)
+            self.assertIn(share['id'], share_ids)
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_list_shares_with_detail_filter_by_host(self):

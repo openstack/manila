@@ -152,7 +152,7 @@ class ShareTypesAPITest(test.TestCase):
                 self.assertEqual('value1', entry['extra_specs'].get('key1'))
             else:
                 self.assertIsNone(entry['extra_specs'].get('key1'))
-            self.assertTrue('required_extra_specs' in entry)
+            self.assertIn('required_extra_specs', entry)
             required_extra_spec = entry['required_extra_specs'].get(
                 constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS, '')
             self.assertEqual('true', required_extra_spec)
@@ -290,7 +290,7 @@ class ShareTypesAPITest(test.TestCase):
     @ddt.data(None, True, 'true', 'false', 'all')
     def test_parse_is_public_valid(self, value):
         result = self.controller._parse_is_public(value)
-        self.assertTrue(result in (True, False, None))
+        self.assertIn(result, (True, False, None))
 
     def test_parse_is_public_invalid(self):
         self.assertRaises(webob.exc.HTTPBadRequest,

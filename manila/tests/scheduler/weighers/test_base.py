@@ -28,9 +28,9 @@ class TestWeightHandler(test.TestCase):
         handler = base.BaseWeightHandler(
             base.BaseWeigher, namespace)
         classes = handler.get_all_classes()
-        self.assertTrue(fakes.FakeWeigher1 in classes)
-        self.assertTrue(fakes.FakeWeigher2 in classes)
-        self.assertFalse(fakes.FakeClass in classes)
+        self.assertIn(fakes.FakeWeigher1, classes)
+        self.assertIn(fakes.FakeWeigher2, classes)
+        self.assertNotIn(fakes.FakeClass, classes)
 
     def test_no_multiplier(self):
         class FakeWeigher(base.BaseWeigher):

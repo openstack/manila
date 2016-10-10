@@ -301,7 +301,7 @@ class ExceptionTest(test.TestCase):
 
         if hasattr(exception_type, 'headers'):
             for (key, value) in exception_type.headers.items():
-                self.assertTrue(key in resp.headers)
+                self.assertIn(key, resp.headers)
                 self.assertEqual(value, resp.headers[key])
 
     def test_quota_error_mapping(self):

@@ -832,8 +832,8 @@ class ShareManagerTestCase(test.TestCase):
         self.assertEqual(2, len(r_ids))
         if has_snapshots:
             for snapshot_dict in snapshot_list_arg:
-                self.assertTrue('active_replica_snapshot' in snapshot_dict)
-                self.assertTrue('share_replica_snapshot' in snapshot_dict)
+                self.assertIn('active_replica_snapshot', snapshot_dict)
+                self.assertIn('share_replica_snapshot', snapshot_dict)
         else:
             self.assertFalse(mock_instance_get_call.called)
 
@@ -1336,8 +1336,8 @@ class ShareManagerTestCase(test.TestCase):
             self.assertEqual(0, mock_warning_log.call_count)
         self.assertTrue(mock_driver_call.called)
         snapshot_list_arg = mock_driver_call.call_args[0][4]
-        self.assertTrue('active_replica_snapshot' in snapshot_list_arg[0])
-        self.assertTrue('share_replica_snapshot' in snapshot_list_arg[0])
+        self.assertIn('active_replica_snapshot', snapshot_list_arg[0])
+        self.assertIn('share_replica_snapshot', snapshot_list_arg[0])
         mock_db_update_call.assert_has_calls(mock_db_update_calls)
         self.assertEqual(1, mock_debug_log.call_count)
 
