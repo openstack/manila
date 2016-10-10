@@ -248,7 +248,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         self.container.stop_container(server_id)
         interfaces = self._execute("ovs-vsctl", "list", "interface",
                                    run_as_root=True)[0]
-        veths = re.findall("veth[0-9a-zA-Z]{7}", interfaces)
+        veths = set(re.findall("veth[0-9a-zA-Z]{7}", interfaces))
         manila_re = ("manila_[0-9a-f]{8}_[0-9a-f]{4}_[0-9a-f]{4}_[0-9a-f]{4}_"
                      "[0-9a-f]{12}")
         for veth in veths:
