@@ -429,7 +429,7 @@ def tempdir(**kwargs):
         try:
             shutil.rmtree(tmpdir)
         except OSError as e:
-            LOG.debug('Could not remove tmpdir: %s', six.text_type(e))
+            LOG.debug('Could not remove tmpdir: %s', e)
 
 
 def walk_class_hierarchy(clazz, encountered=None):

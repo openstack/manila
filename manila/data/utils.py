@@ -15,7 +15,6 @@
 import os
 
 from oslo_log import log
-import six
 
 from manila import exception
 from manila.i18n import _
@@ -89,7 +88,7 @@ class Copy(object):
         self.copy_stats(self.src)
         self.completed = True
 
-        LOG.info(six.text_type(self.get_progress()))
+        LOG.info(self.get_progress())
 
     def get_total_size(self, path):
         if self.cancelled:
@@ -144,7 +143,7 @@ class Copy(object):
                 self._copy_and_validate(src_item, dest_item)
 
                 self.current_size += int(size)
-                LOG.info(six.text_type(self.get_progress()))
+                LOG.info(self.get_progress())
 
     @utils.retry(exception.ShareDataCopyFailed, retries=2)
     def _copy_and_validate(self, src_item, dest_item):

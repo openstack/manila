@@ -1235,7 +1235,7 @@ class API(base.Base):
         if search_opts is None:
             search_opts = {}
 
-        LOG.debug("Searching for shares by: %s", six.text_type(search_opts))
+        LOG.debug("Searching for shares by: %s", search_opts)
 
         # Prepare filters
         filters = {}
@@ -1302,7 +1302,7 @@ class API(base.Base):
         policy.check_policy(context, 'share_snapshot', 'get_all_snapshots')
 
         search_opts = search_opts or {}
-        LOG.debug("Searching for snapshots by: %s", six.text_type(search_opts))
+        LOG.debug("Searching for snapshots by: %s", search_opts)
 
         # Read and remove key 'all_tenants' if was provided
         all_tenants = search_opts.pop('all_tenants', None)
