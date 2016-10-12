@@ -27,20 +27,37 @@ on controllers, compute nodes, or storage nodes.
 .. important::
 
     For simplicity, this guide describes configuring the Shared File Systems
-    service to use the ``generic`` back end with the driver handles
-    share server mode (DHSS) enabled that uses the `Compute service`
-    (`nova`), `Networking service` (`neutron`) and `Block storage service`
-    (`cinder`).
+    service to use one of either:
 
-    Networking service configuration requires the capability of networks being
-    attached to a public router in order to create share networks.
+    * the ``generic`` back end with the ``driver_handles_share_servers`` mode
+      (DHSS) enabled that uses the `Compute service` (`nova`),
+      `Image service` (`glance`), `Networking service` (`neutron`) and
+      `Block storage service` (`cinder`); or,
+    * the ``LVM`` back end with ``driver_handles_share_servers`` mode (DHSS)
+      disabled.
 
-    Before you proceed, ensure that Compute, Networking and Block storage
-    services are properly working. For networking service, ensure that option
-    2 is properly configured.
+    The storage protocol used and referenced in this guide is ``NFS``. As
+    stated above, the Shared File System service supports different storage
+    protocols depending on the back end chosen.
 
-For more information, see the `Configuration Reference
+    For the ``generic`` back end, networking service configuration requires
+    the capability of networks being attached to a public router in order to
+    create share networks. If using this back end, ensure that Compute,
+    Networking and Block storage services are properly working before you
+    proceed. For networking service, ensure that option 2 (deploying the
+    networking service with support for self-service networks) is properly
+    configured.
+
+    This installation tutorial also assumes that installation and configuration
+    of OpenStack packages, Network Time Protocol, database engine and
+    message queue has been completed as per the instructions in the `OpenStack
+    Installation Tutorial. <http://docs.openstack.org/#install-guides>`_. The
+    `Identity Service` (`keystone`) has to be pre-configured with suggested
+    client environment scripts.
+
+For more information on various Shared File Systems storage back ends,
+see the `Shared File Systems Configuration Reference.
 <http://docs.openstack.org/mitaka/config-reference/shared-file-systems.html>`_.
 
-This chapter assumes a working setup of OpenStack following the `OpenStack
-Installation Tutorial <http://docs.openstack.org/#install-guides>`_
+To learn more about installation dependencies noted above, see the `OpenStack
+Installation Tutorial. <http://docs.openstack.org/#install-guides>`_

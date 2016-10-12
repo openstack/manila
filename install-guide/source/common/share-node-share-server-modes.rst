@@ -5,25 +5,31 @@ Option 1
 --------
 Deploying the service without driver support for share management.
 In this mode, the service does not do anything related to networking. The
-operator must ensure network connectivity between instances and the NFS
-server. This tutorial demonstrates setting up the LVM driver to support this
-driver mode. It requires LVM and NFS packages as well as an additional disk
-for the ``manila-share`` LVM volume group. This driver
-mode may be referred to as ``driver_handles_share_servers = False`` mode, or
-simply ``DHSS=False`` mode.
+operator must ensure network connectivity between instances and the NAS
+protocol based server.
+
+This tutorial demonstrates setting up the LVM driver which creates LVM volumes
+on the share node and exports them with the help of an NFS server that is
+installed locally on the share node. It therefore requires LVM and NFS packages
+as well as an additional disk for the ``manila-share`` LVM volume group.
+
+This driver mode may be referred to as ``driver_handles_share_servers = False``
+mode, or simply ``DHSS=False`` mode.
 
 Option 2
 --------
 Deploying the service with driver support for share management. In
 this mode, the service runs with a back end driver that creates and manages
-share servers. This tutorial demonstrates setting up the Generic driver.
-This driver requires Compute (nova), Networking (neutron) and Block
-storage (cinder) services for managing share servers. The information used for
-creating share servers is configured with the help of share networks. This
-option uses the generic driver with the handling of share servers capacity
-and requires attaching the ``selfservice`` network to a router. This driver
-mode may be referred to as ``driver_handles_share_servers = True`` mode, or
-simply ``DHSS=True`` mode.
+share servers. This tutorial demonstrates setting up the ``Generic`` driver.
+This driver requires Compute service (nova), Image service (glance) and
+Networking service (neutron) for creating and managing share servers; and
+Block storage service (cinder) for creating shares.
+
+The information used for creating share servers is configured with the help of
+share networks.
+
+This driver mode may be referred to as ``driver_handles_share_servers = True``
+mode, or simply ``DHSS=True`` mode.
 
 .. warning::
 
