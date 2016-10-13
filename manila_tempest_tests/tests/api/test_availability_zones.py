@@ -21,7 +21,7 @@ from manila_tempest_tests.tests.api import base
 class AvailabilityZonesTest(base.BaseSharesTest):
 
     def _list_availability_zones_assertions(self, availability_zones):
-        self.assertTrue(len(availability_zones) > 0)
+        self.assertGreater(len(availability_zones), 0)
         keys = ("created_at", "updated_at", "name", "id")
         for az in availability_zones:
             self.assertEqual(len(keys), len(az))

@@ -185,7 +185,7 @@ class ExperimentalAPITestCase(test.TestCase):
             self.assertEqual(experimental,
                              response.headers.get(experimental_header_name))
         else:
-            self.assertFalse(experimental_header_name in response.headers)
+            self.assertNotIn(experimental_header_name, response.headers)
 
     def test_experimental_api_called_when_requested(self):
 
@@ -205,7 +205,7 @@ class ExperimentalAPITestCase(test.TestCase):
         response = self.req.get_response(self.app)
 
         self.assertEqual(404, response.status_int)
-        self.assertFalse(experimental_header_name in response.headers)
+        self.assertNotIn(experimental_header_name, response.headers)
 
     def test_experimental_header_returned_in_exception(self):
 

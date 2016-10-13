@@ -94,8 +94,8 @@ class ShareNetworkListMixin(object):
         for sn in listed:
             self.assertTrue(all(sn[key] == value for key, value in
                                 six.iteritems(valid_filter_opts)))
-            self.assertTrue(sn['created_at'] <= created_before)
-            self.assertTrue(sn['created_at'] >= created_since)
+            self.assertLessEqual(sn['created_at'], created_before)
+            self.assertGreaterEqual(sn['created_at'], created_since)
 
 
 class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):

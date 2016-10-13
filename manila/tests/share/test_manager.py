@@ -531,7 +531,7 @@ class ShareManagerTestCase(test.TestCase):
 
         shr = db.share_get(self.context, share_id)
         self.assertEqual(constants.STATUS_AVAILABLE, shr['status'])
-        self.assertTrue(len(shr['export_location']) > 0)
+        self.assertGreater(len(shr['export_location']), 0)
         self.assertEqual(2, len(shr['export_locations']))
 
     def test_create_share_instance_for_share_with_replication_support(self):
@@ -1174,8 +1174,8 @@ class ShareManagerTestCase(test.TestCase):
 
         self.assertEqual(2, mock_export_locs_update.call_count)
         self.assertEqual(2, mock_replica_update.call_count)
-        self.assertTrue(
-            reset_replication_change_call in mock_replica_update.mock_calls)
+        self.assertIn(
+            reset_replication_change_call, mock_replica_update.mock_calls)
         self.assertTrue(mock_info_log.called)
         self.assertFalse(mock_snap_instance_update.called)
 
@@ -1739,7 +1739,7 @@ class ShareManagerTestCase(test.TestCase):
         shr = db.share_get(self.context, share_id)
         self.assertEqual(shr['status'], constants.STATUS_AVAILABLE)
         self.assertEqual(shr['share_server_id'], share_srv['id'])
-        self.assertTrue(len(shr['export_location']) > 0)
+        self.assertGreater(len(shr['export_location']), 0)
         self.assertEqual(1, len(shr['export_locations']))
         manager.LOG.info.assert_called_with(mock.ANY, share.instance['id'])
 

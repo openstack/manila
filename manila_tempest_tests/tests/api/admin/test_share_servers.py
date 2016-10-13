@@ -53,7 +53,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_list_share_servers_without_filters(self):
         servers = self.shares_client.list_share_servers()
-        self.assertTrue(len(servers) > 0)
+        self.assertGreater(len(servers), 0)
         keys = [
             "id",
             "host",
@@ -70,11 +70,11 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             if server["updated_at"]:
                 self.assertTrue(self.date_re.match(server["updated_at"]))
             # Host is not empty
-            self.assertTrue(len(server["host"]) > 0)
+            self.assertGreater(len(server["host"]), 0)
             # Id is not empty
-            self.assertTrue(len(server["id"]) > 0)
+            self.assertGreater(len(server["id"]), 0)
             # Project id is not empty
-            self.assertTrue(len(server["project_id"]) > 0)
+            self.assertGreater(len(server["project_id"]), 0)
 
         # Do not verify statuses because we get all share servers from whole
         # cluster and here can be servers with any state.
@@ -103,7 +103,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             raise lib_exc.NotFound(message=msg)
         search_opts = {"host": host}
         servers = self.shares_client.list_share_servers(search_opts)
-        self.assertTrue(len(servers) > 0)
+        self.assertGreater(len(servers), 0)
         for server in servers:
             self.assertEqual(server["host"], host)
 
@@ -129,7 +129,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             raise lib_exc.NotFound(message=msg)
         search_opts = {"status": status}
         servers = self.shares_client.list_share_servers(search_opts)
-        self.assertTrue(len(servers) > 0)
+        self.assertGreater(len(servers), 0)
         for server in servers:
             self.assertEqual(server["status"], status)
 
@@ -138,7 +138,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         search_opts = {"project_id": self.share_network["project_id"]}
         servers = self.shares_client.list_share_servers(search_opts)
         # Should exist, at least, one share server, used by this test suite.
-        self.assertTrue(len(servers) > 0)
+        self.assertGreater(len(servers), 0)
         for server in servers:
             self.assertEqual(server["project_id"],
                              self.share_network["project_id"])
@@ -148,7 +148,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         search_opts = {"share_network": self.share_network["name"]}
         servers = self.shares_client.list_share_servers(search_opts)
         # Should exist, at least, one share server, used by this test suite.
-        self.assertTrue(len(servers) > 0)
+        self.assertGreater(len(servers), 0)
         for server in servers:
             self.assertEqual(server["share_network_name"],
                              self.share_network["name"])
@@ -158,7 +158,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         search_opts = {"share_network": self.share_network["id"]}
         servers = self.shares_client.list_share_servers(search_opts)
         # Should exist, at least, one share server, used by this test suite.
-        self.assertTrue(len(servers) > 0)
+        self.assertGreater(len(servers), 0)
         for server in servers:
             self.assertIn(server["share_network_name"],
                           self.sn_name_and_id)
@@ -186,15 +186,15 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         if server["updated_at"]:
             self.assertTrue(self.date_re.match(server["updated_at"]))
         # Host is not empty
-        self.assertTrue(len(server["host"]) > 0)
+        self.assertGreater(len(server["host"]), 0)
         # Id is not empty
-        self.assertTrue(len(server["id"]) > 0)
+        self.assertGreater(len(server["id"]), 0)
         # Project id is not empty
-        self.assertTrue(len(server["project_id"]) > 0)
+        self.assertGreater(len(server["project_id"]), 0)
         # Status is not empty
-        self.assertTrue(len(server["status"]) > 0)
+        self.assertGreater(len(server["status"]), 0)
         # share_network_name is not empty
-        self.assertTrue(len(server["share_network_name"]) > 0)
+        self.assertGreater(len(server["share_network_name"]), 0)
         # backend_details should be a dict
         self.assertIsInstance(server["backend_details"], dict)
 

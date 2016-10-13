@@ -255,7 +255,7 @@ class SharesActionsTest(base.BaseSharesTest):
         shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
-        self.assertTrue(len(shares) > 0)
+        self.assertGreater(len(shares), 0)
         for share in shares:
             self.assertDictContainsSubset(
                 filters['metadata'], share['metadata'])
@@ -271,7 +271,7 @@ class SharesActionsTest(base.BaseSharesTest):
         shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
-        self.assertTrue(len(shares) > 0)
+        self.assertGreater(len(shares), 0)
         for share in shares:
             self.assertEqual(filters['host'], share['host'])
 
@@ -286,7 +286,7 @@ class SharesActionsTest(base.BaseSharesTest):
         shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
-        self.assertTrue(len(shares) > 0)
+        self.assertGreater(len(shares), 0)
         for share in shares:
             self.assertEqual(
                 filters['share_network_id'], share['share_network_id'])
@@ -301,7 +301,7 @@ class SharesActionsTest(base.BaseSharesTest):
         shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
-        self.assertTrue(len(shares) > 0)
+        self.assertGreater(len(shares), 0)
         for share in shares:
             self.assertEqual(filters['snapshot_id'], share['snapshot_id'])
         self.assertFalse(self.shares[0]['id'] in [s['id'] for s in shares])
@@ -314,7 +314,7 @@ class SharesActionsTest(base.BaseSharesTest):
         shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
-        self.assertTrue(len(shares) > 0)
+        self.assertGreater(len(shares), 0)
         sorted_list = [share['created_at'] for share in shares]
         self.assertEqual(sorted(sorted_list), sorted_list)
 
@@ -337,7 +337,7 @@ class SharesActionsTest(base.BaseSharesTest):
         # list shares by active status, at least one share is expected
         params = {"status": "available"}
         shares = self.shares_client.list_shares_with_detail(params)
-        self.assertTrue(len(shares) > 0)
+        self.assertGreater(len(shares), 0)
         for share in shares:
             self.assertEqual(params["status"], share["status"])
 
@@ -353,7 +353,7 @@ class SharesActionsTest(base.BaseSharesTest):
         # non-admin user can get shares only from his project
         params = {"all_tenants": 1}
         shares = self.shares_client.list_shares_with_detail(params)
-        self.assertTrue(len(shares) > 0)
+        self.assertGreater(len(shares), 0)
 
         # get share with detailed info, we need its 'project_id'
         share = self.shares_client.get_share(self.shares[0]["id"])
@@ -533,7 +533,7 @@ class SharesActionsTest(base.BaseSharesTest):
             params=filters)
 
         # verify response
-        self.assertTrue(len(snaps) > 0)
+        self.assertGreater(len(snaps), 0)
         for snap in snaps:
             self.assertEqual(filters['status'], snap['status'])
             self.assertEqual(filters['name'], snap['name'])
@@ -549,7 +549,7 @@ class SharesActionsTest(base.BaseSharesTest):
             params=filters)
 
         # verify response
-        self.assertTrue(len(snaps) > 0)
+        self.assertGreater(len(snaps), 0)
         sorted_list = [snap['share_id'] for snap in snaps]
         self.assertEqual(sorted(sorted_list), sorted_list)
 
