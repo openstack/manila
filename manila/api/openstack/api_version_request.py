@@ -82,7 +82,7 @@ REST_API_VERSION_HISTORY = """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
-# the minimum version of the API supported.
+# minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
 _MAX_API_VERSION = "2.22"
 DEFAULT_API_VERSION = _MIN_API_VERSION
