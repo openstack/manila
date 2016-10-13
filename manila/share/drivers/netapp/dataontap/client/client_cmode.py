@@ -444,7 +444,51 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return sorted(ports, key=sort_key, reverse=True)
 
     @na_utils.trace
-    def list_aggregates(self):
+    def list_root_aggregates(self):
+        """Get names of all aggregates that contain node root volumes."""
+
+        desired_attributes = {
+            'aggr-attributes': {
+                'aggregate-name': None,
+                'aggr-raid-attributes': {
+                    'has-local-root': None,
+                    'has-partner-root': None,
+                },
+            },
+        }
+        aggrs = self._get_aggregates(desired_attributes=desired_attributes)
+
+        root_aggregates = []
+        for aggr in aggrs:
+            aggr_name = aggr.get_child_content('aggregate-name')
+            aggr_raid_attrs = aggr.get_child_by_name('aggr-raid-attributes')
+
+            local_root = strutils.bool_from_string(
+                aggr_raid_attrs.get_child_content('has-local-root'))
+            partner_root = strutils.bool_from_string(
+                aggr_raid_attrs.get_child_content('has-partner-root'))
+
+            if local_root or partner_root:
+                root_aggregates.append(aggr_name)
+
+        return root_aggregates
+
+    @na_utils.trace
+    def list_non_root_aggregates(self):
+        """Get names of all aggregates that don't contain node root volumes."""
+
+        query = {
+            'aggr-attributes': {
+                'aggr-raid-attributes': {
+                    'has-local-root': 'false',
+                    'has-partner-root': 'false',
+                }
+            },
+        }
+        return self._list_aggregates(query=query)
+
+    @na_utils.trace
+    def _list_aggregates(self, query=None):
         """Get names of all aggregates."""
         try:
             api_args = {
@@ -454,6 +498,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                     },
                 },
             }
+            if query:
+                api_args['query'] = query
             result = self.send_iter_request('aggr-get-iter', api_args)
             aggr_list = result.get_child_by_name(
                 'attributes-list').get_children()

@@ -54,6 +54,7 @@ FREE_CAPACITY = 10000000000
 TOTAL_CAPACITY = 20000000000
 AGGREGATE = 'manila_aggr_1'
 AGGREGATES = ('manila_aggr_1', 'manila_aggr_2')
+ROOT_AGGREGATES = ('root_aggr_1', 'root_aggr_2')
 ROOT_VOLUME_AGGREGATE = 'manila1'
 ROOT_VOLUME = 'root'
 CLUSTER_NODE = 'cluster1_01'

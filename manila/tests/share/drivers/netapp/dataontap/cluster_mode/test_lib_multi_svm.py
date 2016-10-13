@@ -186,14 +186,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_find_matching_aggregates(self):
 
-        self.mock_object(self.client,
-                         'list_aggregates',
-                         mock.Mock(return_value=fake.AGGREGATES))
-
+        mock_list_non_root_aggregates = self.mock_object(
+            self.client, 'list_non_root_aggregates',
+            mock.Mock(return_value=fake.AGGREGATES))
         self.library.configuration.netapp_aggregate_name_search_pattern = (
             '.*_aggr_1')
+
         result = self.library._find_matching_aggregates()
+
         self.assertListEqual([fake.AGGREGATES[0]], result)
+        mock_list_non_root_aggregates.assert_called_once_with()
 
     def test_setup_server(self):
 

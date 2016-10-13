@@ -115,9 +115,15 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
         """Find all aggregates match pattern."""
         vserver_client = self._get_api_client(vserver=self._vserver)
         aggregate_names = vserver_client.list_vserver_aggregates()
+
+        root_aggregate_names = []
+        if self._have_cluster_creds:
+            root_aggregate_names = self._client.list_root_aggregates()
+
         pattern = self.configuration.netapp_aggregate_name_search_pattern
         return [aggr_name for aggr_name in aggregate_names
-                if re.match(pattern, aggr_name)]
+                if re.match(pattern, aggr_name) and
+                aggr_name not in root_aggregate_names]
 
     @na_utils.trace
     def get_network_allocations_number(self):
