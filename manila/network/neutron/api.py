@@ -94,8 +94,12 @@ neutron_opts = [
         help='Location of CA certificates file to use for '
              'neutron client requests.'),
     cfg.StrOpt(
+        'endpoint_type',
+        default='publicURL',
+        help='Endpoint type to be used with neutron client calls.'),
+    cfg.StrOpt(
         'region_name',
-        help='Region name for connecting to neutron in admin context')
+        help='Region name for connecting to neutron in admin context.'),
 ]
 
 CONF = cfg.CONF
@@ -145,7 +149,12 @@ class API(object):
                 cfg_group=NEUTRON_GROUP,
                 deprecated_opts_for_v2=v2_deprecated_opts)
 
-        return self.auth_obj.get_client(self, context)
+        return self.auth_obj.get_client(
+            self,
+            context,
+            endpoint_type=CONF[NEUTRON_GROUP].endpoint_type,
+            region_name=CONF[NEUTRON_GROUP].region_name,
+        )
 
     @property
     def admin_project_id(self):
