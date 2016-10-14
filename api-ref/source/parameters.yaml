@@ -2838,7 +2838,7 @@ status_14:
   type: string
 status_15:
   description: |
-    The share server status, which is is ``active``,
+    The share server status, which is ``active``,
     ``error``, ``creating``, or ``deleting``.
   in: body
   required: true
