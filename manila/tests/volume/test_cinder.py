@@ -19,6 +19,7 @@ import mock
 from manila import context
 from manila import exception
 from manila import test
+from manila.tests import utils as test_utils
 from manila.volume import cinder
 
 
@@ -39,6 +40,82 @@ class FakeCinderClient(object):
     def __init__(self):
         self.volumes = self.Volumes()
         self.volume_snapshots = self.volumes
+
+
+def get_fake_auth_obj():
+    return type('FakeAuthObj', (object, ), {'get_client': mock.Mock()})
+
+
+class CinderclientTestCase(test.TestCase):
+
+    @mock.patch('manila.volume.cinder.AUTH_OBJ', None)
+    def test_no_auth_obj(self):
+        mock_client_loader = self.mock_object(
+            cinder.client_auth, 'AuthClientLoader')
+        fake_context = 'fake_context'
+        data = {
+            'DEFAULT': {
+                'cinder_admin_username': 'foo_username',
+                'cinder_admin_password': 'foo_password',
+                'cinder_admin_tenant_name': 'foo_tenant_name',
+                'cinder_admin_auth_url': 'foo_auth_url',
+            },
+            'cinder': {
+                'api_insecure': True,
+                'ca_certificates_file': 'foo_ca_certificates_file',
+                'http_retries': 3,
+                'endpoint_type': 'foo_endpoint_type',
+                'region_name': 'foo_region_name',
+            }
+        }
+
+        with test_utils.create_temp_config_with_opts(data):
+            cinder.cinderclient(fake_context)
+
+        mock_client_loader.assert_called_once_with(
+            client_class=cinder.cinder_client.Client,
+            exception_module=cinder.cinder_exception,
+            cfg_group=cinder.CINDER_GROUP,
+            deprecated_opts_for_v2={
+                'username': data['DEFAULT']['cinder_admin_username'],
+                'password': data['DEFAULT']['cinder_admin_password'],
+                'tenant_name': data['DEFAULT']['cinder_admin_tenant_name'],
+                'auth_url': data['DEFAULT']['cinder_admin_auth_url'],
+            },
+        )
+        mock_client_loader.return_value.get_client.assert_called_once_with(
+            fake_context,
+            insecure=data['cinder']['api_insecure'],
+            cacert=data['cinder']['ca_certificates_file'],
+            retries=data['cinder']['http_retries'],
+            endpoint_type=data['cinder']['endpoint_type'],
+            region_name=data['cinder']['region_name'],
+        )
+
+    @mock.patch('manila.volume.cinder.AUTH_OBJ', get_fake_auth_obj())
+    def test_with_auth_obj(self):
+        fake_context = 'fake_context'
+        data = {
+            'cinder': {
+                'api_insecure': True,
+                'ca_certificates_file': 'foo_ca_certificates_file',
+                'http_retries': 3,
+                'endpoint_type': 'foo_endpoint_type',
+                'region_name': 'foo_region_name',
+            }
+        }
+
+        with test_utils.create_temp_config_with_opts(data):
+            cinder.cinderclient(fake_context)
+
+        cinder.AUTH_OBJ.get_client.assert_called_once_with(
+            fake_context,
+            insecure=data['cinder']['api_insecure'],
+            cacert=data['cinder']['ca_certificates_file'],
+            retries=data['cinder']['http_retries'],
+            endpoint_type=data['cinder']['endpoint_type'],
+            region_name=data['cinder']['region_name'],
+        )
 
 
 @ddt.ddt
