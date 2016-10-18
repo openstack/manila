@@ -218,57 +218,6 @@ class LazyPluggable(object):
         return getattr(backend, key)
 
 
-def get_from_path(items, path):
-    """Returns a list of items matching the specified path.
-
-    Takes an XPath-like expression e.g. prop1/prop2/prop3, and for each item
-    in items, looks up items[prop1][prop2][prop3].  Like XPath, if any of the
-    intermediate results are lists it will treat each list item individually.
-    A 'None' in items or any child expressions will be ignored, this function
-    will not throw because of None (anywhere) in items.  The returned list
-    will contain no None values.
-
-    """
-    if path is None:
-        raise exception.Error('Invalid mini_xpath')
-
-    (first_token, sep, remainder) = path.partition('/')
-
-    if first_token == '':
-        raise exception.Error('Invalid mini_xpath')
-
-    results = []
-
-    if items is None:
-        return results
-
-    if not isinstance(items, list):
-        # Wrap single objects in a list
-        items = [items]
-
-    for item in items:
-        if item is None:
-            continue
-        get_method = getattr(item, 'get', None)
-        if get_method is None:
-            continue
-        child = get_method(first_token)
-        if child is None:
-            continue
-        if isinstance(child, list):
-            # Flatten intermediate lists
-            for x in child:
-                results.append(x)
-        else:
-            results.append(child)
-
-    if not sep:
-        # No more tokens
-        return results
-    else:
-        return get_from_path(results, remainder)
-
-
 def is_eventlet_bug105():
     """Check if eventlet support IPv6 addresses.
 
@@ -341,26 +290,6 @@ def monkey_patch():
                         decorator("%s.%s" % (module, key), func))
 
 
-def read_cached_file(filename, cache_info, reload_func=None):
-    """Read from a file if it has been modified.
-
-    :param cache_info: dictionary to hold opaque cache.
-    :param reload_func: optional function to be called with data when
-                        file is reloaded due to a modification.
-
-    :returns: data from file
-
-    """
-    mtime = os.path.getmtime(filename)
-    if not cache_info or mtime != cache_info.get('mtime'):
-        with open(filename) as fap:
-            cache_info['data'] = fap.read()
-        cache_info['mtime'] = mtime
-        if reload_func:
-            reload_func(cache_info['data'])
-    return cache_info['data']
-
-
 def file_open(*args, **kwargs):
     """Open file
 
@@ -389,35 +318,6 @@ def validate_service_host(context, host):
         raise exception.ServiceIsDown(service=service['host'])
 
     return service
-
-
-def read_file_as_root(file_path):
-    """Secure helper to read file as root."""
-    try:
-        out, _err = execute('cat', file_path, run_as_root=True)
-        return out
-    except exception.ProcessExecutionError:
-        raise exception.FileNotFound(file_path=file_path)
-
-
-@contextlib.contextmanager
-def temporary_chown(path, owner_uid=None):
-    """Temporarily chown a path.
-
-    :params owner_uid: UID of temporary owner (defaults to current user)
-    """
-    if owner_uid is None:
-        owner_uid = os.getuid()
-
-    orig_uid = os.stat(path).st_uid
-
-    if orig_uid != owner_uid:
-        execute('chown', owner_uid, path, run_as_root=True)
-    try:
-        yield
-    finally:
-        if orig_uid != owner_uid:
-            execute('chown', orig_uid, path, run_as_root=True)
 
 
 @contextlib.contextmanager
