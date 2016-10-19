@@ -4482,3 +4482,13 @@ class HuaweiShareDriverTestCase(test.TestCase):
             activate_deactivate_qos_mock.assert_called_once_with('11', False)
 
         delete_qos_mock.assert_called_once_with('11')
+
+    def test_username_password_encode_decode(self):
+        for i in (1, 2):
+            # First loop will encode the username/password and
+            # write back to configuration.
+            # Second loop will get the encoded username/password and
+            # decode them.
+            logininfo = self.driver.plugin.helper._get_login_info()
+            self.assertEqual('admin', logininfo['UserName'])
+            self.assertEqual('Admin@storage', logininfo['UserPassword'])
