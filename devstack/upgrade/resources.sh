@@ -56,13 +56,17 @@ function scenario_1_do_share_with_rules_and_metadata {
 
         share_network_cmd="manila share-network-create "
         share_network_cmd+="--name $MANILA_GRENADE_SHARE_NETWORK_NAME"
-        if [[ $share_driver == $generic_driver || \
-                $share_driver == $windows_driver || \
-                ! $network_plugin =~ 'Single' || \
-                ! $network_plugin =~ 'Standalone' ]]; then
-            net_id=$(openstack network show $MANILA_GRENADE_NETWORK_NAME -c id -f value)
-            subnet_id=$(openstack subnet show $MANILA_GRENADE_SUBNET_NAME -c id -f value)
-            share_network_cmd+=" --neutron-net $net_id --neutron-subnet $subnet_id"
+        if is_service_enabled neutron; then
+            if [[ $share_driver == $generic_driver || \
+                    $share_driver == $windows_driver || \
+                    ! $network_plugin =~ 'Single' || \
+                    ! $network_plugin =~ 'Standalone' ]]; then
+                net_id=$(openstack network show $MANILA_GRENADE_NETWORK_NAME -c id -f value)
+                subnet_id=$(openstack subnet show $MANILA_GRENADE_SUBNET_NAME -c id -f value)
+                share_network_cmd+=" --neutron-net $net_id --neutron-subnet $subnet_id"
+            fi
+        else
+            echo 'Neutron service is disabled, creating empty share-network'
         fi
         create_share_cmd+=" --share-network $MANILA_GRENADE_SHARE_NETWORK_NAME"
         resource_save manila share_network $MANILA_GRENADE_SHARE_NETWORK_NAME
