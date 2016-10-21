@@ -231,6 +231,14 @@ class BaseSharesTest(test.BaseTestCase):
         super(BaseSharesTest, cls).setup_clients()
         os = getattr(cls, 'os_%s' % cls.credentials[0])
         os.shares_client = shares_client.SharesClient(os.auth_provider)
+
+        if CONF.identity.auth_version == 'v3':
+            project_id = os.auth_provider.auth_data[1]['project']['id']
+        else:
+            project_id = os.auth_provider.auth_data[1]['token']['tenant']['id']
+        cls.tenant_id = project_id
+        cls.user_id = os.auth_provider.auth_data[1]['user']['id']
+
         cls.shares_client = os.shares_client
         os.shares_v2_client = shares_v2_client.SharesV2Client(
             os.auth_provider)

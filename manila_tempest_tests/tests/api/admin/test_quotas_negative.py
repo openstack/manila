@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 from tempest import config
 from tempest.lib import exceptions as lib_exc
 from testtools import testcase as tc
@@ -22,6 +23,7 @@ from manila_tempest_tests.tests.api import base
 CONF = config.CONF
 
 
+@ddt.ddt
 class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
 
     force_tenant_isolation = True
@@ -176,3 +178,28 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           client.tenant_id,
                           client.user_id,
                           share_networks=bigger_value)
+
+    @ddt.data(
+        ('quota-sets', '2.0', 'show_quotas'),
+        ('quota-sets', '2.0', 'default_quotas'),
+        ('quota-sets', '2.0', 'reset_quotas'),
+        ('quota-sets', '2.0', 'update_quotas'),
+        ('quota-sets', '2.6', 'show_quotas'),
+        ('quota-sets', '2.6', 'default_quotas'),
+        ('quota-sets', '2.6', 'reset_quotas'),
+        ('quota-sets', '2.6', 'update_quotas'),
+        ('os-quota-sets', '2.7', 'show_quotas'),
+        ('os-quota-sets', '2.7', 'default_quotas'),
+        ('os-quota-sets', '2.7', 'reset_quotas'),
+        ('os-quota-sets', '2.7', 'update_quotas'),
+    )
+    @ddt.unpack
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
+    @base.skip_if_microversion_not_supported("2.7")
+    def test_show_quotas_with_wrong_versions(self, url, version, method_name):
+        self.assertRaises(
+            lib_exc.NotFound,
+            getattr(self.shares_v2_client, method_name),
+            self.shares_v2_client.tenant_id,
+            version=version, url=url,
+        )
