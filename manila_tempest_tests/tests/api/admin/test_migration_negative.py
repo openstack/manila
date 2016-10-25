@@ -54,7 +54,8 @@ class MigrationNegativeTest(base.BaseSharesAdminTest):
             raise cls.skipException("At least two different pool entries "
                                     "are needed to run share migration tests.")
 
-        cls.share = cls.create_share(cls.protocol)
+        cls.share = cls.create_share(cls.protocol,
+                                     size=CONF.share.share_size+1)
         cls.share = cls.shares_client.get_share(cls.share['id'])
 
         cls.default_type = cls.shares_v2_client.list_share_types(
@@ -130,8 +131,9 @@ class MigrationNegativeTest(base.BaseSharesAdminTest):
             lib_exc.Conflict, self.shares_v2_client.migrate_share,
             self.share['id'], self.dest_pool,
             force_host_assisted_migration=True)
-        self.shares_client.delete_snapshot(snap['id'])
-        self.shares_client.wait_for_resource_deletion(snapshot_id=snap["id"])
+        self.shares_v2_client.delete_snapshot(snap['id'])
+        self.shares_v2_client.wait_for_resource_deletion(snapshot_id=snap[
+            "id"])
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @base.skip_if_microversion_lt("2.29")
@@ -258,3 +260,67 @@ class MigrationNegativeTest(base.BaseSharesAdminTest):
             self.share['id'], self.dest_pool,
             new_share_type_id=new_type_opposite['share_type']['id'],
             new_share_network_id=new_share_network_id)
+
+    @testtools.skipUnless(CONF.share.run_driver_assisted_migration_tests,
+                          "Driver-assisted migration tests are disabled.")
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    @base.skip_if_microversion_lt("2.29")
+    def test_create_snapshot_during_share_migration(self):
+        self._test_share_actions_during_share_migration('create_snapshot', [])
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    @base.skip_if_microversion_lt("2.29")
+    @ddt.data(('extend_share', [CONF.share.share_size + 2]),
+              ('shrink_share', [CONF.share.share_size]))
+    @ddt.unpack
+    def test_share_resize_during_share_migration(self, method_name, *args):
+        self._test_share_actions_during_share_migration(method_name, *args)
+
+    def skip_if_tests_are_disabled(self, method_name):
+        property_to_evaluate = {
+            'extend_share': CONF.share.run_extend_tests,
+            'shrink_share': CONF.share.run_shrink_tests,
+            'create_snapshot': CONF.share.run_snapshot_tests,
+        }
+        if not property_to_evaluate[method_name]:
+            raise self.skipException(method_name + 'tests are disabled.')
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    @base.skip_if_microversion_lt("2.29")
+    def test_add_access_rule_during_migration(self):
+        access_type = "ip"
+        access_to = "50.50.50.50"
+        self.shares_v2_client.reset_state(self.share['id'],
+                                          constants.STATUS_MIGRATING)
+        self.shares_v2_client.reset_task_state(
+            self.share['id'],
+            constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE)
+        self.assertRaises(
+            lib_exc.BadRequest,
+            self.shares_v2_client.create_access_rule,
+            self.share['id'], access_type, access_to)
+        # Revert the migration state by cancelling the migration
+        self.shares_v2_client.reset_state(self.share['id'],
+                                          constants.STATUS_AVAILABLE)
+        self.shares_v2_client.reset_task_state(
+            self.share['id'],
+            constants.TASK_STATE_MIGRATION_CANCELLED)
+
+    def _test_share_actions_during_share_migration(self, method_name, *args):
+        self.skip_if_tests_are_disabled(method_name)
+        # Verify various share operations during share migration
+        self.shares_v2_client.reset_state(self.share['id'],
+                                          constants.STATUS_MIGRATING)
+        self.shares_v2_client.reset_task_state(
+            self.share['id'],
+            constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE)
+
+        self.assertRaises(
+            lib_exc.BadRequest, getattr(self.shares_v2_client, method_name),
+            self.share['id'], *args)
+        # Revert the migration state by cancelling the migration
+        self.shares_v2_client.reset_state(self.share['id'],
+                                          constants.STATUS_AVAILABLE)
+        self.shares_v2_client.reset_task_state(
+            self.share['id'],
+            constants.TASK_STATE_MIGRATION_CANCELLED)

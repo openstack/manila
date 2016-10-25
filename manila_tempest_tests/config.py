@@ -192,6 +192,10 @@ ShareGroup = [
                 deprecated_name="run_migration_tests",
                 default=False,
                 help="Enable or disable driver-assisted migration tests."),
+    cfg.BoolOpt("run_migration_with_preserve_snapshots_tests",
+                default=False,
+                help="Enable or disable migration with "
+                     "preserve_snapshots tests set to True."),
     cfg.BoolOpt("run_manage_unmanage_tests",
                 default=False,
                 help="Defines whether to run manage/unmanage tests or not. "

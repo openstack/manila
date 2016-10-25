@@ -78,7 +78,7 @@ dummy_opts = [
             "update_replicated_snapshot": "1.17",
 
             "migration_start": 1.01,
-            "migration_continue": 1.02,  # it will be called 4 times
+            "migration_continue": 1.02,  # it will be called 2 times
             "migration_complete": 1.03,
             "migration_cancel": 1.04,
             "migration_get_progress": 1.05,
@@ -548,7 +548,7 @@ class DummyDriver(driver.ShareDriver):
         if source_share["id"] not in self.migration_progress:
             self.migration_progress[source_share["id"]] = 0
 
-        self.migration_progress[source_share["id"]] += 25
+        self.migration_progress[source_share["id"]] += 50
 
         LOG.debug(
             "Migration of dummy share with ID '%s' is continuing, %s." %

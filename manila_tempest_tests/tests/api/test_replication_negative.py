@@ -175,6 +175,27 @@ class ReplicationNegativeTest(base.BaseSharesMixedTest):
                           self.admin_client.create_access_rule,
                           self.share1["id"], access_type, access_to, 'ro')
 
+    @testtools.skipUnless(CONF.share.run_host_assisted_migration_tests or
+                          CONF.share.run_driver_assisted_migration_tests,
+                          "Share migration tests are disabled.")
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    @base.skip_if_microversion_lt("2.29")
+    def test_migration_of_replicated_share(self):
+        pools = self.admin_client.list_pools(detail=True)['pools']
+        hosts = [p['name'] for p in pools]
+        self.create_share_replica(self.share1["id"], self.replica_zone,
+                                  cleanup_in_class=False)
+        share_host = self.share1['host']
+
+        for host in hosts:
+            if host != share_host:
+                dest_host = host
+                break
+
+        self.assertRaises(
+            lib_exc.Conflict, self.admin_client.migrate_share,
+            self.share1['id'], dest_host)
+
 
 @testtools.skipUnless(CONF.share.run_replication_tests,
                       'Replication tests are disabled.')

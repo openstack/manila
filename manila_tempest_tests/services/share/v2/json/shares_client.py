@@ -493,6 +493,15 @@ class SharesV2Client(shares_client.SharesClient):
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
+    def list_snapshots_for_share(self, share_id, detailed=False,
+                                 version=LATEST_MICROVERSION):
+        """Get list of snapshots for given share."""
+        uri = ('snapshots/detail?share_id=%s' % share_id
+               if detailed else 'snapshots?share_id=%s' % share_id)
+        resp, body = self.get(uri, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
     def list_snapshots_with_detail(self, params=None,
                                    version=LATEST_MICROVERSION):
         """Get detailed list of share snapshots w/o filters."""
