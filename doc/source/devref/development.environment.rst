@@ -30,7 +30,6 @@ tests. If you want to be able to run manila (i.e., create NFS/CIFS shares),
 you will also need to install dependent projects: Nova, Neutron, Cinder and Glance.
 For this purpose 'devstack' project can be used (A documented shell script to build complete OpenStack development environments).
 
-.. _DeployOpenstack: http://devstack.org/
 
 Virtual environments
 --------------------
