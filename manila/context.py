@@ -20,14 +20,11 @@
 import copy
 
 from oslo_context import context
-from oslo_log import log
 from oslo_utils import timeutils
 import six
 
-from manila.i18n import _, _LW
+from manila.i18n import _
 from manila import policy
-
-LOG = log.getLogger(__name__)
 
 
 class RequestContext(context.RequestContext):
@@ -71,10 +68,6 @@ class RequestContext(context.RequestContext):
             overwrite=overwrite,
             roles=roles)
 
-        kwargs.pop('user_identity', None)
-        if kwargs:
-            LOG.warning(_LW('Arguments dropped when creating context: %s.'),
-                        str(kwargs))
         self.user_id = self.user
         self.project_id = self.tenant
 
