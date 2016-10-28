@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Share type extra-specification ``share_backend_name`` is now ignored when
+    creating share replicas. This ensures that backends in the same
+    replication domain need not have the same value of ``share_backend_name``.
+    See `launchpad bug #1634734 <https://bugs.launchpad.net/manila/+bug/1634734>`_
+    for details.

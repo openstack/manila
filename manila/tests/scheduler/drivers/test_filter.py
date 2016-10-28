@@ -60,6 +60,35 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
 
         self.assertIn('replication_domain', retval[0])
 
+    @ddt.data(True, False)
+    def test__format_filter_properties_backend_specified_for_replica(
+            self, has_share_backend_name):
+        sched = fakes.FakeFilterScheduler()
+        fake_context = context.RequestContext('user', 'project')
+        request_spec = {
+            'share_properties': {'project_id': 1, 'size': 1},
+            'share_instance_properties': {},
+            'share_type': {
+                'name': 'NFS',
+                'extra_specs': {},
+            },
+            'share_id': 'fake-id1',
+            'active_replica_host': 'fake_ar_host',
+        }
+
+        if has_share_backend_name:
+            request_spec['share_type']['extra_specs'].update(
+                {'share_backend_name': 'fake_backend'})
+
+        self.mock_object(sched.host_manager, 'get_all_host_states_share',
+                         mock.Mock(return_value=[]))
+
+        retval = sched._format_filter_properties(
+            fake_context, {}, request_spec)
+
+        self.assertNotIn('share_backend_name',
+                         retval[0]['share_type']['extra_specs'])
+
     def test_create_share_no_hosts(self):
         # Ensure empty hosts/child_zones result in NoValidHosts exception.
         sched = fakes.FakeFilterScheduler()
