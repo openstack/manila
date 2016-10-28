@@ -116,7 +116,7 @@ class CopyClassTestCase(test.TestCase):
         self._copy.cancel()
 
         # asserts
-        self.assertEqual(self._copy.cancelled, True)
+        self.assertTrue(self._copy.cancelled)
 
         # reset
         self._copy.cancelled = False
@@ -139,7 +139,7 @@ class CopyClassTestCase(test.TestCase):
         self._copy.get_total_size(self._copy.src)
 
         # asserts
-        self.assertEqual(self._copy.total_size, 10000)
+        self.assertEqual(10000, self._copy.total_size)
 
         utils.execute.assert_has_calls([
             mock.call("ls", "-pA1", "--group-directories-first",
@@ -159,7 +159,7 @@ class CopyClassTestCase(test.TestCase):
         self._copy.get_total_size(self._copy.src)
 
         # asserts
-        self.assertEqual(self._copy.total_size, 0)
+        self.assertEqual(0, self._copy.total_size)
 
         # reset
         self._copy.total_size = 10000
@@ -180,7 +180,7 @@ class CopyClassTestCase(test.TestCase):
         self._copy.get_total_size(self._copy.src)
 
         # asserts
-        self.assertEqual(self._copy.total_size, 0)
+        self.assertEqual(0, self._copy.total_size)
         utils.execute.assert_called_once_with(
             "ls", "-pA1", "--group-directories-first", self._copy.src,
             run_as_root=True)
