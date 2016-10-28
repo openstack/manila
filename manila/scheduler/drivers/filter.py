@@ -174,6 +174,11 @@ class FilterScheduler(base.Scheduler):
             if ar_host:
                 replication_domain = ar_host.replication_domain
 
+            # NOTE(zengyingzhe): remove the 'share_backend_name' extra spec,
+            # let scheduler choose the available host for this replica
+            # creation request.
+            share_type.get('extra_specs', {}).pop('share_backend_name', None)
+
         if filter_properties is None:
             filter_properties = {}
         self._populate_retry_share(filter_properties, resource_properties)
