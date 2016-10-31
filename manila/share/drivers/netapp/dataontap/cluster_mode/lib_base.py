@@ -20,6 +20,7 @@ single-SVM or multi-SVM functionality needed by the cDOT Manila drivers.
 """
 
 import copy
+import json
 import math
 import socket
 
@@ -294,23 +295,48 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def _handle_ems_logging(self):
         """Build and send an EMS log message."""
-        self._client.send_ems_log_message(self._build_ems_log_message())
+        self._client.send_ems_log_message(self._build_ems_log_message_0())
+        self._client.send_ems_log_message(self._build_ems_log_message_1())
 
-    @na_utils.trace
-    def _build_ems_log_message(self):
-        """Construct EMS Autosupport log message."""
+    def _build_base_ems_log_message(self):
+        """Construct EMS Autosupport log message common to all events."""
 
         ems_log = {
-            'computer-name': socket.getfqdn() or 'Manila_node',
-            'event-id': '0',
+            'computer-name': socket.gethostname() or 'Manila_node',
             'event-source': 'Manila driver %s' % self.driver_name,
             'app-version': self._app_version,
             'category': 'provisioning',
-            'event-description': 'OpenStack Manila connected to cluster node',
-            'log-level': '6',
+            'log-level': '5',
             'auto-support': 'false',
         }
         return ems_log
+
+    @na_utils.trace
+    def _build_ems_log_message_0(self):
+        """Construct EMS Autosupport log message with deployment info."""
+
+        ems_log = self._build_base_ems_log_message()
+        ems_log.update({
+            'event-id': '0',
+            'event-description': 'OpenStack Manila connected to cluster node',
+        })
+        return ems_log
+
+    @na_utils.trace
+    def _build_ems_log_message_1(self):
+        """Construct EMS Autosupport log message with storage pool info."""
+
+        message = self._get_ems_pool_info()
+
+        ems_log = self._build_base_ems_log_message()
+        ems_log.update({
+            'event-id': '1',
+            'event-description': json.dumps(message),
+        })
+        return ems_log
+
+    def _get_ems_pool_info(self):
+        raise NotImplementedError()
 
     @na_utils.trace
     def _handle_housekeeping_tasks(self):

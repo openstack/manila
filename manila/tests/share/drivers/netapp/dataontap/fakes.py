@@ -476,14 +476,25 @@ SHARE_ACCESS = {
     'access_to': [LIF_ADDRESSES[0]]
 }
 
-EMS_MESSAGE = {
-    'computer-name': 'fake_host',
+EMS_MESSAGE_0 = {
+    'computer-name': HOST_NAME,
     'event-id': '0',
-    'event-source': 'fake_driver',
-    'app-version': 'fake_app_version',
-    'category': 'fake_category',
-    'event-description': 'fake_description',
-    'log-level': '6',
+    'event-source': 'Manila driver %s' % DRIVER_NAME,
+    'app-version': APP_VERSION,
+    'category': 'provisioning',
+    'event-description': 'OpenStack Manila connected to cluster node',
+    'log-level': '5',
+    'auto-support': 'false'
+}
+
+EMS_MESSAGE_1 = {
+    'computer-name': HOST_NAME,
+    'event-id': '1',
+    'event-source': 'Manila driver %s' % DRIVER_NAME,
+    'app-version': APP_VERSION,
+    'category': 'provisioning',
+    'event-description': '',
+    'log-level': '5',
     'auto-support': 'false'
 }
 

@@ -17,6 +17,7 @@ Unit tests for the NetApp Data ONTAP cDOT base storage driver library.
 """
 
 import copy
+import json
 import math
 import socket
 import time
@@ -409,33 +410,54 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_handle_ems_logging(self):
 
         self.mock_object(self.library,
-                         '_build_ems_log_message',
-                         mock.Mock(return_value=fake.EMS_MESSAGE))
+                         '_build_ems_log_message_0',
+                         mock.Mock(return_value=fake.EMS_MESSAGE_0))
+        self.mock_object(self.library,
+                         '_build_ems_log_message_1',
+                         mock.Mock(return_value=fake.EMS_MESSAGE_1))
 
         self.library._handle_ems_logging()
 
-        self.library._client.send_ems_log_message.assert_called_with(
-            fake.EMS_MESSAGE)
+        self.library._client.send_ems_log_message.assert_has_calls([
+            mock.call(fake.EMS_MESSAGE_0),
+            mock.call(fake.EMS_MESSAGE_1),
+        ])
 
-    def test_build_ems_log_message(self):
+    def test_build_ems_log_message_0(self):
 
         self.mock_object(socket,
-                         'getfqdn',
+                         'gethostname',
                          mock.Mock(return_value=fake.HOST_NAME))
 
-        result = self.library._build_ems_log_message()
+        result = self.library._build_ems_log_message_0()
 
-        fake_ems_log = {
-            'computer-name': fake.HOST_NAME,
-            'event-id': '0',
-            'event-source': 'Manila driver %s' % fake.DRIVER_NAME,
-            'app-version': fake.APP_VERSION,
-            'category': 'provisioning',
-            'event-description': 'OpenStack Manila connected to cluster node',
-            'log-level': '6',
-            'auto-support': 'false'
+        self.assertDictEqual(fake.EMS_MESSAGE_0, result)
+
+    def test_build_ems_log_message_1(self):
+
+        pool_info = {
+            'pools': {
+                'vserver': 'fake_vserver',
+                'aggregates': ['aggr1', 'aggr2'],
+            },
         }
-        self.assertDictEqual(fake_ems_log, result)
+        self.mock_object(socket,
+                         'gethostname',
+                         mock.Mock(return_value=fake.HOST_NAME))
+        self.mock_object(self.library,
+                         '_get_ems_pool_info',
+                         mock.Mock(return_value=pool_info))
+
+        result = self.library._build_ems_log_message_1()
+
+        self.assertDictEqual(pool_info,
+                             json.loads(result['event-description']))
+        result['event-description'] = ''
+        self.assertDictEqual(fake.EMS_MESSAGE_1, result)
+
+    def test_get_ems_pool_info(self):
+        self.assertRaises(NotImplementedError,
+                          self.library._get_ems_pool_info)
 
     def test_find_matching_aggregates(self):
         self.assertRaises(NotImplementedError,

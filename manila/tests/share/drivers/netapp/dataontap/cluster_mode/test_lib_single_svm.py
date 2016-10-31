@@ -150,6 +150,22 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(exception.VserverNotFound,
                           self.library._get_vserver)
 
+    def test_get_ems_pool_info(self):
+
+        self.mock_object(self.library,
+                         '_find_matching_aggregates',
+                         mock.Mock(return_value=['aggr1', 'aggr2']))
+
+        result = self.library._get_ems_pool_info()
+
+        expected = {
+            'pools': {
+                'vserver': fake.VSERVER1,
+                'aggregates': ['aggr1', 'aggr2'],
+            },
+        }
+        self.assertEqual(expected, result)
+
     def test_handle_housekeeping_tasks(self):
 
         mock_vserver_client = mock.Mock()
