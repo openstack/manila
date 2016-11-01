@@ -22,12 +22,12 @@ What needs a release note?
   deployer to take some action while upgrading
 * API changes
 
- * New APIs
- * Changes to the response schema of existing APIs
- * Changes to request/response headers
- * Non-trivial API changes such as response code changes from 2xx to 4xx
- * Deprecation of APIs or response fields
- * Removal of APIs
+  * New APIs
+  * Changes to the response schema of existing APIs
+  * Changes to request/response headers
+  * Non-trivial API changes such as response code changes from 2xx to 4xx
+  * Deprecation of APIs or response fields
+  * Removal of APIs
 
 * A new feature is implemented, such as a new core feature in manila,
   driver support for an existing manila feature or a new driver
@@ -77,6 +77,11 @@ Or directly as a one-liner, with:
 .. code-block:: console
 
     $ tox -e venv -- reno new slug-goes-here
+
+.. note::
+
+    When you are adding a bug-fix reno, name your file using the template:
+    "bug-<launchpad-bug-id>-slug-goes-here".
 
 Then add the notes in ``yaml`` format in the file created. Pay attention to the
 type of section. The following are general sections to use:
@@ -155,7 +160,7 @@ Dos and Don'ts
 ~~~~~~~~~~~~~~
 * Release notes need to be succinct. Short and unambiguous descriptions are
   preferred
-* Use present tense
+* Write in past tense, unless you are writing an imperative statement
 * Do not have blank sections in the file
 * Do not include code or links
 * Avoid special rst formatting unless absolutely necessary
@@ -166,6 +171,11 @@ Dos and Don'ts
 * Limit a release note to fewer than 2-3 lines per change per section
 * OpenStack prefers atomic changes. So remember that your change may need the
   fewest sections possible
+* General writing guidelines can be found
+  `here <http://docs.openstack
+  .org/contributor-guide/writing-style/general-writing-guidelines.html>`_
+* Proofread your note. Pretend you are a user or a deployer who is reading
+  the note after a milestone or a release has been cut
 
 Examples
 ~~~~~~~~
