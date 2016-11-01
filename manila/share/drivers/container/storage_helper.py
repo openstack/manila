@@ -17,9 +17,10 @@ import os
 import re
 
 from oslo_config import cfg
+from oslo_log import log
 
 from manila import exception
-from manila.i18n import _
+from manila.i18n import _, _LW
 from manila.share import driver
 
 
@@ -34,6 +35,7 @@ lv_opts = [
 ]
 
 CONF.register_opts(lv_opts)
+LOG = log.getLogger(__name__)
 
 
 class LVMHelper(driver.ExecuteMixin):
@@ -79,8 +81,21 @@ class LVMHelper(driver.ExecuteMixin):
                       run_as_root=True)
 
     def remove_storage(self, share):
-        self._execute("lvremove", "-f", "--autobackup", "n",
-                      self._get_lv_device(share), run_as_root=True)
+        to_remove = self._get_lv_device(share)
+        try:
+            self._execute("umount", to_remove, run_as_root=True)
+        except exception.ProcessExecutionError as e:
+            LOG.warning(_LW("Failed to umount helper directory %s."),
+                        to_remove)
+            LOG.error(e)
+        # (aovchinnikov): bug 1621784 manifests itself in jamming logical
+        # volumes, so try removing once and issue warning until it is fixed.
+        try:
+            self._execute("lvremove", "-f", "--autobackup", "n",
+                          to_remove, run_as_root=True)
+        except exception.ProcessExecutionError as e:
+            LOG.warning(_LW("Failed to remove logical volume %s.") % to_remove)
+            LOG.error(e)
 
     def extend_share(self, share, new_size, share_server=None):
         lv_device = self._get_lv_device(share)

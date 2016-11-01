@@ -216,7 +216,7 @@ class DockerCIFSHelperTestCase(test.TestCase):
         self.DockerCIFSHelper._get_existing_users = mock.Mock()
         self.DockerCIFSHelper._get_existing_users.side_effect = TypeError
         self.DockerCIFSHelper._set_users = mock.Mock()
-        protocol_helper.LOG.warning = mock.Mock()
+        self.mock_object(protocol_helper.LOG, "warning")
 
         self.DockerCIFSHelper._deny_access("fake_share", "fake_server_id",
                                            "fake_user2", "rw")

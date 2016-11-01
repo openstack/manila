@@ -132,6 +132,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         location = self._get_helper(share).create_share(server_id)
         return location
 
+    @utils.synchronized('container_driver_delete_share_lock', external=True)
     def delete_share(self, context, share, share_server=None):
         LOG.debug("Deleting share %(share)s on server '%(server)s'." %
                   {"server": share_server["id"],
@@ -143,10 +144,21 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
             server_id,
             ["umount", "/shares/%s" % share.share_id]
         )
-        self.container.execute(
-            server_id,
-            ["rm", "-fR", "/shares/%s" % share.share_id]
-        )
+        # (aovchinnikov): bug 1621784 manifests itself here as well as in
+        # storage helper. There is a chance that we won't be able to remove
+        # this directory, despite the fact that it is not shared anymore and
+        # already contains nothing. In such case the driver should not fail
+        # share deletion, but issue a warning.
+        try:
+            self.container.execute(
+                server_id,
+                ["rm", "-fR", "/shares/%s" % share.share_id]
+            )
+        except exception.ProcessExecutionError as e:
+            LOG.warning(_LW("Failed to remove /shares/%(share)s directory in "
+                            "container %(cont)s."), {"share": share.share_id,
+                                                     "cont": server_id})
+            LOG.error(e)
 
         self.storage.remove_storage(share)
         LOG.debug("Deletion of share %s is completed!", share.share_id)
@@ -243,6 +255,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         LOG.debug("Now container %(id)s should be accessible from network "
                   "%(subnet)s by address %(ip)s." % msg_helper)
 
+    @utils.synchronized("container_driver_teardown_lock", external=True)
     def _teardown_server(self, *args, **kwargs):
         server_id = self._get_container_name(kwargs["server_details"]["id"])
         self.container.stop_container(server_id)
@@ -259,9 +272,14 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
                 continue
             elif container_id[0] == server_id:
                 LOG.debug("Deleting veth %s.", veth)
-                self._execute("ovs-vsctl", "--", "del-port",
-                              self.configuration.container_ovs_bridge_name,
-                              veth, run_as_root=True)
+                try:
+                    self._execute("ovs-vsctl", "--", "del-port",
+                                  self.configuration.container_ovs_bridge_name,
+                                  veth, run_as_root=True)
+                except exception.ProcessExecutionError as e:
+                    LOG.warning(_LW("Failed to delete port %s: port "
+                                    "vanished."), veth)
+                    LOG.error(e)
 
     def _get_veth_state(self):
         result = self._execute("brctl", "show",

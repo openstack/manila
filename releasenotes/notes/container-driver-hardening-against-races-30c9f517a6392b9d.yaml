@@ -1,0 +1,4 @@
+---
+fixes:
+  - Container driver. Fixed share and share server deletion concurrencies
+    by adding shared external lock.
