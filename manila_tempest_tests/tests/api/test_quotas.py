@@ -22,7 +22,7 @@ from manila_tempest_tests.tests.api import base
 CONF = config.CONF
 
 
-@ddt.data
+@ddt.ddt
 class SharesQuotasTest(base.BaseSharesTest):
 
     @classmethod
@@ -31,8 +31,8 @@ class SharesQuotasTest(base.BaseSharesTest):
             msg = "Quota tests are disabled."
             raise cls.skipException(msg)
         super(SharesQuotasTest, cls).resource_setup()
-        cls.user_id = cls.shares_v2_client.user_id
-        cls.tenant_id = cls.shares_v2_client.tenant_id
+        cls.user_id = cls.shares_v2_client.user_id or cls.user_id
+        cls.tenant_id = cls.shares_v2_client.tenant_id or cls.tenant_id
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     @ddt.data('shares_client', 'shares_v2_client')
