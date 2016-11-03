@@ -4317,9 +4317,13 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.share_instance_update.assert_called_once_with(
             self.context, dest_instance['id'],
             {'status': constants.STATUS_AVAILABLE})
-        self.share_manager.db.share_update.assert_called_once_with(
-            self.context, dest_instance['share_id'],
-            {'task_state': constants.TASK_STATE_MIGRATION_SUCCESS})
+        self.share_manager.db.share_update.assert_has_calls([
+            mock.call(
+                self.context, dest_instance['share_id'],
+                {'task_state': constants.TASK_STATE_MIGRATION_COMPLETING}),
+            mock.call(
+                self.context, dest_instance['share_id'],
+                {'task_state': constants.TASK_STATE_MIGRATION_SUCCESS})])
 
     def test__migration_complete_host_assisted(self):
 
