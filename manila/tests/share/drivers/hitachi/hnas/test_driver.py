@@ -145,6 +145,7 @@ class HitachiHNASTestCase(test.TestCase):
         CONF.set_default('driver_handles_share_servers', False)
         CONF.hitachi_hnas_evs_id = '2'
         CONF.hitachi_hnas_evs_ip = '172.24.44.10'
+        CONF.hitachi_hnas_admin_network_ip = '10.20.30.40'
         CONF.hitachi_hnas_ip = '172.24.44.1'
         CONF.hitachi_hnas_ip_port = 'hitachi_hnas_ip_port'
         CONF.hitachi_hnas_user = 'hitachi_hnas_user'
@@ -334,6 +335,18 @@ class HitachiHNASTestCase(test.TestCase):
             share_cifs['id'])
         self.assertTrue(self.mock_log.debug.called)
 
+    def _get_export(self, share, ip, is_admin_only):
+        if share['share_proto'].lower() == 'nfs':
+            export = ':'.join((ip, '/shares/' + share['id']))
+        else:
+            export = r'\\%s\%s' % (ip, share['id'])
+
+        return {
+            "path": export,
+            "is_admin_only": is_admin_only,
+            "metadata": {},
+        }
+
     @ddt.data(share_nfs, share_cifs)
     def test_create_share(self, share):
         self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted",
@@ -350,18 +363,21 @@ class HitachiHNASTestCase(test.TestCase):
         ssh.HNASSSHBackend.vvol_create.assert_called_once_with(share['id'])
         ssh.HNASSSHBackend.quota_add.assert_called_once_with(share['id'],
                                                              share['size'])
+        expected = [
+            self._get_export(
+                share, self._driver.hnas_evs_ip, False),
+            self._get_export(
+                share, self._driver.hnas_admin_network_ip, True)]
+
         if share['share_proto'].lower() == 'nfs':
-            self.assertEqual(self._driver.hnas_evs_ip + ":/shares/" +
-                             share_nfs['id'], result)
             ssh.HNASSSHBackend.nfs_export_add.assert_called_once_with(
                 share_nfs['id'])
             self.assertFalse(ssh.HNASSSHBackend.cifs_share_add.called)
         else:
-            self.assertEqual("\\\\" + self._driver.hnas_evs_ip + "\\" +
-                             share_cifs['id'], result)
             ssh.HNASSSHBackend.cifs_share_add.assert_called_once_with(
                 share_cifs['id'])
             self.assertFalse(ssh.HNASSSHBackend.nfs_export_add.called)
+        self.assertEqual(expected, result)
 
     def test_create_share_export_error(self):
         self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted",
@@ -507,15 +523,20 @@ class HitachiHNASTestCase(test.TestCase):
         ssh.HNASSSHBackend.check_vvol.assert_called_once_with(share['id'])
         ssh.HNASSSHBackend.check_quota.assert_called_once_with(share['id'])
 
+        expected = [
+            self._get_export(
+                share, self._driver.hnas_evs_ip, False),
+            self._get_export(
+                share, self._driver.hnas_admin_network_ip, True)]
+
         if share['share_proto'].lower() == 'nfs':
-            self.assertEqual(['172.24.44.10:/shares/' + share['id']], result)
             ssh.HNASSSHBackend.check_export.assert_called_once_with(
                 share['id'])
             self.assertFalse(ssh.HNASSSHBackend.check_cifs.called)
         else:
-            self.assertEqual(['\\\\172.24.44.10\\' + share['id']], result)
             ssh.HNASSSHBackend.check_cifs.assert_called_once_with(share['id'])
             self.assertFalse(ssh.HNASSSHBackend.check_export.called)
+        self.assertEqual(expected, result)
 
     def test_ensure_share_invalid_protocol(self):
         ex = self.assertRaises(exception.ShareBackendException,
@@ -567,9 +588,15 @@ class HitachiHNASTestCase(test.TestCase):
 
     @ddt.data(share_nfs, share_cifs)
     def test_manage_existing(self, share):
+
+        expected_exports = [
+            self._get_export(
+                share, self._driver.hnas_evs_ip, False),
+            self._get_export(
+                share, self._driver.hnas_admin_network_ip, True)]
+
         expected_out = {'size': share['size'],
-                        'export_locations':
-                            [share['export_locations'][0]['path']]}
+                        'export_locations': expected_exports}
 
         self.mock_object(ssh.HNASSSHBackend, "get_share_quota", mock.Mock(
             return_value=share['size']))
@@ -661,16 +688,22 @@ class HitachiHNASTestCase(test.TestCase):
             '/snapshots/' + share['id'] + '/' + snapshot['id'],
             '/shares/' + share['id'])
 
+        expected = [
+            self._get_export(
+                share, self._driver.hnas_evs_ip, False),
+            self._get_export(
+                share, self._driver.hnas_admin_network_ip, True)]
+
         if share['share_proto'].lower() == 'nfs':
             ssh.HNASSSHBackend.nfs_export_add.assert_called_once_with(
                 share['id'])
-            self.assertEqual('172.24.44.10:/shares/' + share_nfs['id'], result)
             self.assertFalse(ssh.HNASSSHBackend.cifs_share_add.called)
         else:
             ssh.HNASSSHBackend.cifs_share_add.assert_called_once_with(
                 share['id'])
-            self.assertEqual('\\\\172.24.44.10\\' + share['id'], result)
             self.assertFalse(ssh.HNASSSHBackend.nfs_export_add.called)
+
+        self.assertEqual(expected, result)
 
     def test_create_share_from_snapshot_empty_snapshot(self):
         self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted",
@@ -683,8 +716,13 @@ class HitachiHNASTestCase(test.TestCase):
 
         result = self._driver.create_share_from_snapshot('context', share_nfs,
                                                          snapshot_nfs)
+        expected = [
+            self._get_export(
+                share_nfs, self._driver.hnas_evs_ip, False),
+            self._get_export(
+                share_nfs, self._driver.hnas_admin_network_ip, True)]
 
-        self.assertEqual('172.24.44.10:/shares/' + share_nfs['id'], result)
+        self.assertEqual(expected, result)
         self.assertTrue(self.mock_log.warning.called)
         ssh.HNASSSHBackend.vvol_create.assert_called_once_with(share_nfs['id'])
         ssh.HNASSSHBackend.quota_add.assert_called_once_with(share_nfs['id'],

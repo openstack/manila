@@ -48,6 +48,8 @@ hitachi_hnas_opts = [
     cfg.StrOpt('hitachi_hnas_evs_ip',
                deprecated_name='hds_hnas_evs_ip',
                help="Specify IP for mounting shares."),
+    cfg.StrOpt('hitachi_hnas_admin_network_ip',
+               help="Specify IP for mounting shares in the Admin network."),
     cfg.StrOpt('hitachi_hnas_file_system_name',
                deprecated_name='hds_hnas_file_system_name',
                help="Specify file-system name for creating shares."),
@@ -89,6 +91,7 @@ class HitachiHNASDriver(driver.ShareDriver):
     1.0.0 - Initial Version.
     2.0.0 - Refactoring, bugfixes, implemented Share Shrink and Update Access.
     3.0.0 - New driver location, implemented support for CIFS protocol.
+    3.1.0 - Added admin network export location support.
     """
 
     def __init__(self, *args, **kwargs):
@@ -108,6 +111,8 @@ class HitachiHNASDriver(driver.ShareDriver):
         hnas_password = self.configuration.safe_get('hitachi_hnas_password')
         hnas_evs_id = self.configuration.safe_get('hitachi_hnas_evs_id')
         self.hnas_evs_ip = self.configuration.safe_get('hitachi_hnas_evs_ip')
+        self.hnas_admin_network_ip = self.configuration.safe_get(
+            'hitachi_hnas_admin_network_ip')
         self.fs_name = self.configuration.safe_get(
             'hitachi_hnas_file_system_name')
         self.cifs_snapshot = self.configuration.safe_get(
@@ -277,21 +282,53 @@ class HitachiHNASDriver(driver.ShareDriver):
         :param share: Share that will be created.
         :param share_server: Data structure with share server information.
             Not used by this driver.
-        :returns: Returns a path of EVS IP concatenate with the path
-            of share in the filesystem (e.g. ['172.24.44.10:/shares/id'] for
-            NFS and ['\\172.24.44.10\id'] for CIFS).
+        :returns: Returns a list of dicts containing the EVS IP concatenated
+            with the path of share in the filesystem.
+
+            Example for NFS::
+
+            [
+              {
+                'path': '172.24.44.10:/shares/id',
+                'metadata': {},
+                'is_admin_only': False
+              },
+              {
+                'path': '192.168.0.10:/shares/id',
+                'metadata': {},
+                'is_admin_only': True
+              }
+            ]
+
+            Example for CIFS::
+
+            [
+              {
+                'path': '\\172.24.44.10\id',
+                'metadata': {},
+                'is_admin_only': False
+              },
+              {
+                'path': '\\192.168.0.10\id',
+                'metadata': {},
+                'is_admin_only': True
+              }
+            ]
+
         """
-        LOG.debug("Creating share in HNAS: %(shr)s.",
-                  {'shr': share['id']})
+        LOG.debug("Creating share in HNAS: %(shr)s.", {'shr': share['id']})
 
         self._check_protocol(share['id'], share['share_proto'])
 
-        uri = self._create_share(share['id'], share['size'],
-                                 share['share_proto'])
+        export_list = self._create_share(share['id'], share['size'],
+                                         share['share_proto'])
 
-        LOG.debug("Share created successfully on path: %(uri)s.",
-                  {'uri': uri})
-        return uri
+        LOG.debug("Share %(share)s created successfully on path(s): "
+                  "%(paths)s.",
+                  {'paths': ', '.join([x['path'] for x in export_list]),
+                   'share': share['id']})
+
+        return export_list
 
     def delete_share(self, context, share, share_server=None):
         """Deletes share.
@@ -357,21 +394,53 @@ class HitachiHNASDriver(driver.ShareDriver):
             to new share.
         :param share_server: Data structure with share server information.
             Not used by this driver.
-        :returns: Returns a path of EVS IP concatenate with the path
-            of new share in the filesystem (e.g. ['172.24.44.10:/shares/id']).
+        :returns: Returns a list of dicts containing the EVS IP concatenated
+            with the path of share in the filesystem.
+
+            Example for NFS::
+
+            [
+              {
+                'path': '172.24.44.10:/shares/id',
+                'metadata': {},
+                'is_admin_only': False
+              },
+              {
+                'path': '192.168.0.10:/shares/id',
+                'metadata': {},
+                'is_admin_only': True
+              }
+            ]
+
+            Example for CIFS::
+
+            [
+              {
+                'path': '\\172.24.44.10\id',
+                'metadata': {},
+                'is_admin_only': False
+              },
+              {
+                'path': '\\192.168.0.10\id',
+                'metadata': {},
+                'is_admin_only': True
+              }
+            ]
+
         """
         LOG.debug("Creating a new share from snapshot: %(ss_id)s.",
                   {'ss_id': snapshot['id']})
 
         hnas_src_share_id = self._get_hnas_share_id(snapshot['share_id'])
 
-        uri = self._create_share_from_snapshot(share, hnas_src_share_id,
-                                               snapshot)
+        export_list = self._create_share_from_snapshot(
+            share, hnas_src_share_id, snapshot)
 
-        LOG.debug("Share %(share)s created successfully on path: %(uri)s.",
-                  {'uri': uri,
+        LOG.debug("Share %(share)s created successfully on path(s): "
+                  "%(paths)s.",
+                  {'paths': ', '.join([x['path'] for x in export_list]),
                    'share': share['id']})
-        return uri
+        return export_list
 
     def ensure_share(self, context, share, share_server=None):
         """Ensure that share is exported.
@@ -380,17 +449,45 @@ class HitachiHNASDriver(driver.ShareDriver):
         :param share: Share that will be checked.
         :param share_server: Data structure with share server information.
             Not used by this driver.
-        :returns: Returns a list of EVS IP concatenated with the path
-            of share in the filesystem (e.g. ['172.24.44.10:/shares/id'] for
-            NFS and ['\\172.24.44.10\id'] for CIFS).
+        :returns: Returns a list of dicts containing the EVS IP concatenated
+            with the path of share in the filesystem.
+
+            Example for NFS::
+
+            [
+              {
+                'path': '172.24.44.10:/shares/id',
+                'metadata': {},
+                'is_admin_only': False
+              },
+              {
+                'path': '192.168.0.10:/shares/id',
+                'metadata': {},
+                'is_admin_only': True
+              }
+            ]
+
+            Example for CIFS::
+
+            [
+              {
+                'path': '\\172.24.44.10\id',
+                'metadata': {},
+                'is_admin_only': False
+              },
+              {
+                'path': '\\192.168.0.10\id',
+                'metadata': {},
+                'is_admin_only': True
+              }
+            ]
+
         """
         LOG.debug("Ensuring share in HNAS: %(shr)s.", {'shr': share['id']})
 
         hnas_share_id = self._get_hnas_share_id(share['id'])
 
-        export = self._ensure_share(share, hnas_share_id)
-
-        export_list = [export]
+        export_list = self._ensure_share(share, hnas_share_id)
 
         LOG.debug("Share ensured in HNAS: %(shr)s, protocol %(proto)s.",
                   {'shr': share['id'], 'proto': share['share_proto']})
@@ -459,8 +556,45 @@ class HitachiHNASDriver(driver.ShareDriver):
 
         :param share: Share that will be managed.
         :param driver_options: Empty dict or dict with 'volume_id' option.
-        :returns: Returns a dict with size of share managed
-            and its export location.
+        :returns: Returns a dict with size of the share managed and a list of
+            dicts containing its export locations.
+
+            Example for NFS::
+
+            {
+              'size': 10,
+              'export_locations': [
+                {
+                  'path': '172.24.44.10:/shares/id',
+                  'metadata': {},
+                  'is_admin_only': False
+                },
+                {
+                  'path': '192.168.0.10:/shares/id',
+                  'metadata': {},
+                  'is_admin_only': True
+                }
+              ]
+            }
+
+            Example for CIFS::
+
+            {
+              'size': 10,
+              'export_locations': [
+                {
+                  'path': '\\172.24.44.10\id',
+                  'metadata': {},
+                  'is_admin_only': False
+                },
+                {
+                  'path': '\\192.168.0.10\id',
+                  'metadata': {},
+                  'is_admin_only': True
+                }
+              ]
+            }
+
         """
         hnas_share_id = self._get_hnas_share_id(share['id'])
 
@@ -581,8 +715,9 @@ class HitachiHNASDriver(driver.ShareDriver):
         :param share_size: Size limit of share.
         :param share_proto: Protocol of share that will be created
             (NFS or CIFS)
-        :returns: Returns a path IP:/shares/share_id for NFS or \\IP\share_id
-            for CIFS if the export was created successfully.
+        :returns: Returns a list of dicts containing the new share's export
+            locations.
+
         """
         self._check_fs_mounted()
 
@@ -599,19 +734,20 @@ class HitachiHNASDriver(driver.ShareDriver):
                 self.hnas.nfs_export_add(share_id)
                 LOG.debug("NFS Export created to %(shr)s.",
                           {'shr': share_id})
-                uri = self.hnas_evs_ip + ":/shares/" + share_id
             else:
                 # Create CIFS share with vvol path
                 self.hnas.cifs_share_add(share_id)
                 LOG.debug("CIFS share created to %(shr)s.",
                           {'shr': share_id})
-                uri = r'\\%s\%s' % (self.hnas_evs_ip, share_id)
-            return uri
+
         except exception.HNASBackendException as e:
             with excutils.save_and_reraise_exception():
                 self.hnas.vvol_delete(share_id)
                 msg = six.text_type(e)
                 LOG.exception(msg)
+
+        export_list = self._get_export_locations(share_proto, share_id)
+        return export_list
 
     def _check_fs_mounted(self):
         mounted = self.hnas.check_fs_mounted()
@@ -624,24 +760,25 @@ class HitachiHNASDriver(driver.ShareDriver):
 
         :param share: Share that will be checked.
         :param hnas_share_id: HNAS ID of share that will be checked.
-        :returns: Returns a path IP:/shares/share_id for NFS or \\IP\share_id
-            for CIFS if the export is ok.
+        :returns: Returns a list of dicts containing the share's export
+            locations.
+
         """
         self._check_protocol(share['id'], share['share_proto'])
-
-        path = os.path.join('/shares', hnas_share_id)
-
         self._check_fs_mounted()
 
         self.hnas.check_vvol(hnas_share_id)
         self.hnas.check_quota(hnas_share_id)
+
         if share['share_proto'].lower() == 'nfs':
             self.hnas.check_export(hnas_share_id)
-            export = self.hnas_evs_ip + ":" + path
         else:
             self.hnas.check_cifs(hnas_share_id)
-            export = r'\\%s\%s' % (self.hnas_evs_ip, hnas_share_id)
-        return export
+
+        export_list = self._get_export_locations(
+            share['share_proto'], hnas_share_id)
+
+        return export_list
 
     def _shrink_share(self, hnas_share_id, share, new_size):
         """Shrinks a share to new size.
@@ -706,8 +843,8 @@ class HitachiHNASDriver(driver.ShareDriver):
 
         :param share: share that will be managed.
         :param hnas_share_id: HNAS ID of share that will be managed.
-        :returns: Returns a dict with size of share managed
-            and its export location.
+        :returns: Returns a dict with size of the share managed and a list of
+            dicts containing its export locations.
         """
         self._ensure_share(share, hnas_share_id)
 
@@ -718,12 +855,10 @@ class HitachiHNASDriver(driver.ShareDriver):
                    % share['id'])
             raise exception.ManageInvalidShare(reason=msg)
 
-        if share['share_proto'].lower() == 'nfs':
-            path = self.hnas_evs_ip + os.path.join(':/shares', hnas_share_id)
-        else:
-            path = r'\\%s\%s' % (self.hnas_evs_ip, hnas_share_id)
+        export_list = self._get_export_locations(
+            share['share_proto'], hnas_share_id)
 
-        return {'size': share_size, 'export_locations': [path]}
+        return {'size': share_size, 'export_locations': export_list}
 
     def _create_snapshot(self, hnas_share_id, snapshot):
         """Creates a snapshot of share.
@@ -789,7 +924,8 @@ class HitachiHNASDriver(driver.ShareDriver):
             taken.
         :param snapshot: a dict from snapshot that will be copied to
             new share.
-        :returns: Returns the path for new share.
+        :returns: Returns a list of dicts containing the new share's export
+            locations.
         """
         dest_path = os.path.join('/shares', share['id'])
         src_path = os.path.join('/snapshots', src_hnas_share_id,
@@ -815,11 +951,9 @@ class HitachiHNASDriver(driver.ShareDriver):
         try:
             if share['share_proto'].lower() == 'nfs':
                 self.hnas.nfs_export_add(share['id'])
-                uri = self.hnas_evs_ip + ":" + dest_path
+
             else:
                 self.hnas.cifs_share_add(share['id'])
-                uri = r'\\%s\%s' % (self.hnas_evs_ip, share['id'])
-            return uri
         except exception.HNASBackendException:
             with excutils.save_and_reraise_exception():
                 msg = _LE('Failed to create share %(share_id)s from snapshot '
@@ -828,6 +962,9 @@ class HitachiHNASDriver(driver.ShareDriver):
                                     'snap': snapshot['id']})
                 self.hnas.vvol_delete(share['id'])
 
+        return self._get_export_locations(
+            share['share_proto'], share['id'])
+
     def _check_protocol(self, share_id, protocol):
         if protocol.lower() not in ('nfs', 'cifs'):
             msg = _("Only NFS or CIFS protocol are currently supported. "
@@ -835,3 +972,23 @@ class HitachiHNASDriver(driver.ShareDriver):
                     "%(proto)s.") % {'share': share_id,
                                      'proto': protocol}
             raise exception.ShareBackendException(msg=msg)
+
+    def _get_export_locations(self, share_proto, hnas_share_id):
+        export_list = []
+        for ip in (self.hnas_evs_ip, self.hnas_admin_network_ip):
+            if ip:
+                path = self._get_export_path(ip, share_proto, hnas_share_id)
+                export_list.append({
+                    "path": path,
+                    "is_admin_only": ip == self.hnas_admin_network_ip,
+                    "metadata": {},
+                })
+        return export_list
+
+    def _get_export_path(self, ip, share_proto, hnas_share_id):
+        if share_proto.lower() == 'nfs':
+            path = os.path.join('/shares', hnas_share_id)
+            export = ':'.join((ip, path))
+        else:
+            export = r'\\%s\%s' % (ip, hnas_share_id)
+        return export
