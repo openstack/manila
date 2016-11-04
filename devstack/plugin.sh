@@ -486,6 +486,19 @@ function create_default_share_type {
     fi
 }
 
+# create_custom_share_types - create share types suitable for both possible
+# driver modes with names "dhss_true" and "dhss_false".
+function create_custom_share_types {
+    manila type-create dhss_true True
+    if [[ $MANILA_DHSS_TRUE_SHARE_TYPE_EXTRA_SPECS ]]; then
+        manila type-key dhss_true set $MANILA_DHSS_TRUE_SHARE_TYPE_EXTRA_SPECS
+    fi
+
+    manila type-create dhss_false False
+    if [[ $MANILA_DHSS_FALSE_SHARE_TYPE_EXTRA_SPECS ]]; then
+        manila type-key dhss_false set $MANILA_DHSS_FALSE_SHARE_TYPE_EXTRA_SPECS
+    fi
+}
 
 # configure_backing_file - Set up backing file for LVM
 function configure_backing_file {
@@ -914,6 +927,9 @@ elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
 
     echo_summary "Creating Manila default share type"
     create_default_share_type
+
+    echo_summary "Creating Manila custom share types"
+    create_custom_share_types
 
     echo_summary "Update Tempest config"
     update_tempest
