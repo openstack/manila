@@ -149,6 +149,7 @@ elif [[ "$DRIVER" == "generic" ]]; then
         iniset $TEMPEST_CONFIG share enable_protocols nfs
     fi
     MANILA_TESTS="(^manila_tempest_tests.tests.api)(?=.*\[.*\bbackend\b.*\])"
+    RUN_MANILA_CG_TESTS=False
 fi
 
 if [[ "$DRIVER" == "lvm" ]]; then

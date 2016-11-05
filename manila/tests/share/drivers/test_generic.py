@@ -65,7 +65,7 @@ def get_fake_snap_dict():
         'deleted': '0',
         'created_at': '2015-08-10 00:05:58',
         'updated_at': '2015-08-10 00:05:58',
-        'consistency_group_id': '4b04fdc3-00b9-4909-ba1a-06e9b3f88b67',
+        'consistency_group_id': None,
         'cgsnapshot_members': [
             {
                 'status': 'available',
@@ -119,7 +119,7 @@ def get_fake_cg_dict():
             {
                 'id': 'f6aa3b56-45a5-9631-02a32f06e1937b',
                 'deleted': False,
-                'consistency_group_id': '4b04fdc3-00b9-4909-ba1a-06e9b3f88b67',
+                'consistency_group_id': None,
                 'share_type_id': '1a9ed31e-ee70-483d-93ba-89690e028d7f',
             },
         ],
@@ -1827,211 +1827,6 @@ class GenericShareDriverTestCase(test.TestCase):
         )
 
         self.assertEqual(result, actual_result)
-
-    @ddt.data({'consistency_group': {'share_server_id': 'fake'},
-               'result': {'id': 'fake'}},
-              {'consistency_group': None, 'result': {'id': 'fake'}},
-              {'consistency_group': {'share_server_id': 'test'},
-               'result': {'id': 'test'}})
-    @ddt.unpack
-    def tests_choose_share_server_compatible_with_share_and_cg(
-            self, consistency_group, result):
-        share_servers = [{'id': 'fake'}, {'id': 'test'}]
-        fake_share = "fake"
-
-        actual_result = self._driver.choose_share_server_compatible_with_share(
-            self._context, share_servers, fake_share,
-            consistency_group=consistency_group
-        )
-
-        self.assertEqual(result, actual_result)
-
-    def test_create_consistency_group(self):
-        FAKE_SNAP_DICT = get_fake_snap_dict()
-
-        result = self._driver.create_consistency_group(
-            self._context, FAKE_SNAP_DICT, share_server=self.server)
-
-        self.assertEqual(1, self.mock_debug_log.call_count)
-        self.assertEqual(1, self.mock_warning_log.call_count)
-        self.assertIsNone(result)
-
-    def test_delete_consistency_group(self):
-        FAKE_SNAP_DICT = get_fake_snap_dict()
-
-        result = self._driver.delete_consistency_group(
-            self._context, FAKE_SNAP_DICT, share_server=self.server)
-
-        self.assertEqual(1, self.mock_debug_log.call_count)
-        self.assertIsNone(result)
-
-    def test_create_cgsnapshot_no_cg_members(self):
-        FAKE_SNAP_DICT = dict(get_fake_snap_dict(), cgsnapshot_members=[])
-        mock_snapshot_creation = self.mock_object(generic.GenericShareDriver,
-                                                  'create_snapshot')
-
-        result = self._driver.create_cgsnapshot(
-            self._context, FAKE_SNAP_DICT, share_server=self.server)
-
-        self.assertEqual(1, self.mock_debug_log.call_count)
-        self.assertEqual(2, self.mock_warning_log.call_count)
-        self.assertFalse(mock_snapshot_creation.called)
-        self.assertEqual((None, None), result)
-
-    @ddt.data(
-        {
-            'delete_snap_side_effect': None,
-            'expected_error_log_call_count': 0,
-        },
-        {
-            'delete_snap_side_effect': exception.ManilaException,
-            'expected_error_log_call_count': 1,
-        }
-    )
-    @ddt.unpack
-    def test_create_cgsnapshot_manila_exception_on_create_and_delete(
-            self, delete_snap_side_effect, expected_error_log_call_count):
-        FAKE_SNAP_DICT = get_fake_snap_dict()
-        # Append another fake share
-        FAKE_SHARE = dict(FAKE_SNAP_DICT['cgsnapshot_members'][0])
-        FAKE_SNAP_DICT['cgsnapshot_members'].append(FAKE_SHARE)
-
-        self.mock_object(generic.GenericShareDriver,
-                         'create_snapshot',
-                         mock.Mock(side_effect=[
-                             None,
-                             exception.ManilaException,
-                         ]))
-        self.mock_object(generic.GenericShareDriver,
-                         'delete_snapshot',
-                         mock.Mock(side_effect=delete_snap_side_effect))
-
-        self.assertRaises(exception.ManilaException,
-                          self._driver.create_cgsnapshot,
-                          self._context, FAKE_SNAP_DICT,
-                          share_server=self.server)
-        self.assertEqual(2, self.mock_debug_log.call_count)
-        self.assertEqual(1, self.mock_warning_log.call_count)
-        self.assertEqual(1, self.mock_exception_log.call_count)
-        self.assertEqual(expected_error_log_call_count,
-                         self.mock_error_log.call_count)
-
-    def test_create_cgsnapshot(self):
-        FAKE_SNAP_DICT = get_fake_snap_dict()
-        FAKE_SHARE_SNAPSHOT = {
-            'share_id': 'e14b5174-e534-4f35-bc4f-fe81c1575d6f',
-            'id': '03e2f06e-14f2-45a5-9631-0949d1937bd8',
-        }
-
-        mock_snapshot_creation = self.mock_object(generic.GenericShareDriver,
-                                                  'create_snapshot')
-
-        result = self._driver.create_cgsnapshot(
-            self._context, FAKE_SNAP_DICT, share_server=self.server)
-
-        mock_snapshot_creation.assert_called_once_with(self._context,
-                                                       FAKE_SHARE_SNAPSHOT,
-                                                       self.server)
-
-        self.assertEqual(2, self.mock_debug_log.call_count)
-        self.assertEqual(1, self.mock_warning_log.call_count)
-        self.assertFalse(self.mock_error_log.called)
-        self.assertEqual((None, None), result)
-
-    def test_delete_cgsnapshot_manila_exception(self):
-        FAKE_SNAP_DICT = get_fake_snap_dict()
-        self.mock_object(generic.GenericShareDriver,
-                         'delete_snapshot',
-                         mock.Mock(side_effect=exception.ManilaException))
-
-        self.assertRaises(exception.ManilaException,
-                          self._driver.delete_cgsnapshot,
-                          self._context, FAKE_SNAP_DICT,
-                          share_server=self.server)
-
-        self.assertEqual(1, self.mock_error_log.call_count)
-
-    def test_delete_cgsnapshot(self):
-        FAKE_SNAP_DICT = get_fake_snap_dict()
-        FAKE_SHARE_SNAPSHOT = {
-            'share_id': 'e14b5174-e534-4f35-bc4f-fe81c1575d6f',
-            'id': '03e2f06e-14f2-45a5-9631-0949d1937bd8',
-        }
-        mock_snapshot_creation = self.mock_object(generic.GenericShareDriver,
-                                                  'delete_snapshot')
-
-        result = self._driver.delete_cgsnapshot(
-            self._context, FAKE_SNAP_DICT, share_server=self.server)
-
-        mock_snapshot_creation.assert_called_once_with(self._context,
-                                                       FAKE_SHARE_SNAPSHOT,
-                                                       self.server)
-
-        self.assertEqual(2, self.mock_debug_log.call_count)
-        self.assertEqual((None, None), result)
-
-    def test_create_consistency_group_from_cgsnapshot_no_members(self):
-        FAKE_CG_DICT = get_fake_cg_dict()
-        FAKE_CGSNAP_DICT = dict(get_fake_snap_dict(), cgsnapshot_members=[])
-        mock_share_creation = self.mock_object(generic.GenericShareDriver,
-                                               'create_share_from_snapshot')
-
-        result = self._driver.create_consistency_group_from_cgsnapshot(
-            self._context, FAKE_CG_DICT, FAKE_CGSNAP_DICT,
-            share_server=self.server)
-
-        self.assertFalse(self.mock_debug_log.called)
-        self.assertFalse(mock_share_creation.called)
-        self.assertEqual((None, None), result)
-
-    def test_create_consistency_group_from_cgsnapshot(self):
-        FAKE_CG_DICT = get_fake_cg_dict()
-        FAKE_CGSNAP_DICT = get_fake_snap_dict()
-        FAKE_COLLATED_INFO = get_fake_collated_cg_snap_info()
-        FAKE_SHARE_UPDATE_LIST = [
-            {
-                'id': '02a32f06e-14f2-45a5-9631-7483f1937bd8',
-                'export_locations': 'xyzzy',
-            }
-        ]
-        self.mock_object(generic.GenericShareDriver,
-                         '_collate_cg_snapshot_info',
-                         mock.Mock(return_value=FAKE_COLLATED_INFO))
-        mock_share_creation = self.mock_object(generic.GenericShareDriver,
-                                               'create_share_from_snapshot',
-                                               mock.Mock(return_value='xyzzy'))
-
-        result = self._driver.create_consistency_group_from_cgsnapshot(
-            self._context, FAKE_CG_DICT, FAKE_CGSNAP_DICT,
-            share_server=self.server)
-
-        self.assertEqual((None, FAKE_SHARE_UPDATE_LIST), result)
-        self.assertEqual(1, self.mock_debug_log.call_count)
-        mock_share_creation.assert_called_once_with(
-            self._context,
-            FAKE_COLLATED_INFO[0]['share'],
-            FAKE_COLLATED_INFO[0]['snapshot'],
-            share_server=self.server
-        )
-
-    def test_collate_cg_snapshot_info_invalid_cg(self):
-        FAKE_CG_DICT = get_fake_cg_dict()
-        FAKE_CGSNAP_DICT = dict(get_fake_snap_dict(), cgsnapshot_members=[])
-
-        self.assertRaises(exception.InvalidConsistencyGroup,
-                          self._driver._collate_cg_snapshot_info,
-                          FAKE_CG_DICT,
-                          FAKE_CGSNAP_DICT)
-
-    def test_collate_cg_snapshot(self):
-        FAKE_CG_DICT = get_fake_cg_dict()
-        FAKE_CGSNAP_DICT = get_fake_snap_dict()
-        FAKE_COLLATED_INFO = get_fake_collated_cg_snap_info()
-
-        result = self._driver._collate_cg_snapshot_info(
-            FAKE_CG_DICT, FAKE_CGSNAP_DICT)
-
-        self.assertEqual(FAKE_COLLATED_INFO, result)
 
     def test_manage_snapshot_not_found(self):
         snapshot_instance = {'id': 'snap_instance_id',

@@ -1,0 +1,4 @@
+---
+other:
+  - Removed fake Consistency Group support from Generic driver.
+    It was added only for testing purpose and now it is redundant.
