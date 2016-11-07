@@ -72,41 +72,25 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
             cleanup_in_class=True,
             extra_specs=cls.extra_specs_invalid)
 
-        creation_data = {'kwargs': {
-            'share_type_id': cls.st['share_type']['id'],
-            'share_protocol': cls.protocol,
-        }}
+    def _test_manage(self, is_public=False,
+                     version=CONF.share.max_api_microversion,
+                     check_manage=False):
 
-        # Data for creating shares in parallel
-        data = [creation_data, creation_data]
-        if utils.is_microversion_ge(CONF.share.max_api_microversion, "2.5"):
-            data.append(creation_data)
-        if utils.is_microversion_ge(CONF.share.max_api_microversion, "2.8"):
-            data.append(creation_data)
-        if utils.is_microversion_ge(CONF.share.max_api_microversion, "2.16"):
-            data.append(creation_data)
-        shares_created = cls.create_shares(data)
+        share = self._create_share_for_manage()
 
-        cls.shares = []
-        # Load all share data (host, etc.)
-        for share in shares_created:
-            # Unmanage shares from manila
-            get_share = cls.shares_v2_client.get_share(share['id'])
-            if utils.is_microversion_ge(
-                    CONF.share.max_api_microversion, "2.9"):
-                get_share["export_locations"] = (
-                    cls.shares_v2_client.list_share_export_locations(
-                        share["id"])
-                    )
-            cls.shares.append(get_share)
-            cls.shares_client.unmanage_share(share['id'])
-            cls.shares_client.wait_for_resource_deletion(
-                share_id=share['id'])
-
-    def _test_manage(self, share, is_public=False,
-                     version=CONF.share.max_api_microversion):
         name = "Name for 'managed' share that had ID %s" % share['id']
         description = "Description for 'managed' share"
+
+        # Unmanage share
+        self._unmanage_share_and_wait(share)
+
+        if check_manage:
+            # After 'unmanage' operation, share instance should be deleted.
+            # Assert not related to 'manage' test, but placed here for
+            # resource optimization.
+            share_instance_list = self.shares_v2_client.list_share_instances()
+            share_ids = [si['share_id'] for si in share_instance_list]
+            self.assertNotIn(share['id'], share_ids)
 
         # Manage share
         managed_share = self.shares_v2_client.manage_share(
@@ -160,31 +144,43 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
                           self.shares_v2_client.get_share,
                           managed_share['id'])
 
+    def _create_share_for_manage(self):
+        creation_data = {
+            'share_type_id': self.st['share_type']['id'],
+            'share_protocol': self.protocol,
+        }
+
+        share = self.create_share(**creation_data)
+        share = self.shares_v2_client.get_share(share['id'])
+
+        if utils.is_microversion_ge(CONF.share.max_api_microversion, "2.9"):
+            el = self.shares_v2_client.list_share_export_locations(share["id"])
+            share["export_locations"] = el
+
+        return share
+
+    def _unmanage_share_and_wait(self, share):
+        self.shares_v2_client.unmanage_share(share['id'])
+        self.shares_v2_client.wait_for_resource_deletion(share_id=share['id'])
+
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @base.skip_if_microversion_not_supported("2.5")
     def test_manage_with_os_share_manage_url(self):
-        self._test_manage(share=self.shares[2], version="2.5")
+        self._test_manage(version="2.5")
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @base.skip_if_microversion_not_supported("2.8")
     def test_manage_with_is_public_True(self):
-        self._test_manage(share=self.shares[3], is_public=True, version="2.8")
+        self._test_manage(is_public=True, version="2.8")
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @base.skip_if_microversion_not_supported("2.16")
     def test_manage_show_user_id(self):
-        self._test_manage(share=self.shares[4], version="2.16")
+        self._test_manage(version="2.16")
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_manage(self):
-        # After 'unmanage' operation, share instance should be deleted.
-        # Assert not related to 'manage' test, but placed here for
-        # resource optimization.
-        share_instance_list = self.shares_v2_client.list_share_instances()
-        share_ids = [si['share_id'] for si in share_instance_list]
-        self.assertNotIn(self.shares[0]['id'], share_ids)
-
-        self._test_manage(share=self.shares[0])
+        self._test_manage(check_manage=True)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     def test_manage_invalid(self):
@@ -203,29 +199,33 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
                               self.shares_v2_client.get_share,
                               share_id)
 
-        share = self.shares_v2_client.manage_share(
-            service_host=self.shares[1]['host'],
-            export_path=self.shares[1]['export_locations'][0],
-            protocol=self.shares[1]['share_proto'],
+        share = self._create_share_for_manage()
+
+        self._unmanage_share_and_wait(share)
+
+        managed_share = self.shares_v2_client.manage_share(
+            service_host=share['host'],
+            export_path=share['export_locations'][0],
+            protocol=share['share_proto'],
             share_type_id=self.st_invalid['share_type']['id'])
-        self.addCleanup(_delete_share, share['id'])
+        self.addCleanup(_delete_share, managed_share['id'])
 
         self.shares_v2_client.wait_for_share_status(
-            share['id'], 'manage_error')
-        share = self.shares_v2_client.get_share(share['id'])
-        self.assertEqual(1, int(share['size']))
+            managed_share['id'], 'manage_error')
+        managed_share = self.shares_v2_client.get_share(managed_share['id'])
+        self.assertEqual(1, int(managed_share['size']))
 
         # Delete resource from backend. We need to manage the share properly
         # so it can be removed.
-        share = self.shares_v2_client.manage_share(
-            service_host=self.shares[1]['host'],
-            export_path=self.shares[1]['export_locations'][0],
-            protocol=self.shares[1]['share_proto'],
+        managed_share = self.shares_v2_client.manage_share(
+            service_host=share['host'],
+            export_path=share['export_locations'][0],
+            protocol=share['share_proto'],
             share_type_id=self.st['share_type']['id'])
-        self.addCleanup(_delete_share, share['id'])
+        self.addCleanup(_delete_share, managed_share['id'])
 
         self.shares_v2_client.wait_for_share_status(
-            share['id'], 'available')
+            managed_share['id'], 'available')
 
 
 class ManageCIFSShareTest(ManageNFSShareTest):
