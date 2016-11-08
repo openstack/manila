@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_utils import strutils
 import six
 import webob
 from webob import exc
@@ -30,6 +29,7 @@ from manila import db
 from manila import exception
 from manila.i18n import _
 from manila import share
+from manila import utils
 
 
 class ShareController(shares.ShareMixin,
@@ -99,44 +99,16 @@ class ShareController(shares.ShareMixin,
         except KeyError:
             raise exc.HTTPBadRequest(explanation=_("Must specify 'host'."))
 
-        force_host_assisted_migration = params.get(
-            'force_host_assisted_migration', False)
-        try:
-            force_host_assisted_migration = strutils.bool_from_string(
-                force_host_assisted_migration, strict=True)
-        except ValueError:
-            msg = _("Invalid value %s for 'force_host_assisted_migration'. "
-                    "Expecting a boolean.") % force_host_assisted_migration
-            raise exc.HTTPBadRequest(explanation=msg)
+        force_host_assisted_migration = utils.get_bool_from_api_params(
+            'force_host_assisted_migration', params)
 
         new_share_network = None
         new_share_type = None
 
-        preserve_metadata = params.get('preserve_metadata', True)
-        try:
-            preserve_metadata = strutils.bool_from_string(
-                preserve_metadata, strict=True)
-        except ValueError:
-            msg = _("Invalid value %s for 'preserve_metadata'. "
-                    "Expecting a boolean.") % preserve_metadata
-            raise exc.HTTPBadRequest(explanation=msg)
-
-        writable = params.get('writable', True)
-        try:
-            writable = strutils.bool_from_string(writable, strict=True)
-        except ValueError:
-            msg = _("Invalid value %s for 'writable'. "
-                    "Expecting a boolean.") % writable
-            raise exc.HTTPBadRequest(explanation=msg)
-
-        nondisruptive = params.get('nondisruptive', False)
-        try:
-            nondisruptive = strutils.bool_from_string(
-                nondisruptive, strict=True)
-        except ValueError:
-            msg = _("Invalid value %s for 'nondisruptive'. "
-                    "Expecting a boolean.") % nondisruptive
-            raise exc.HTTPBadRequest(explanation=msg)
+        preserve_metadata = utils.get_bool_from_api_params('preserve_metadata',
+                                                           params, True)
+        writable = utils.get_bool_from_api_params('writable', params, True)
+        nondisruptive = utils.get_bool_from_api_params('nondisruptive', params)
 
         new_share_network_id = params.get('new_share_network_id', None)
         if new_share_network_id:

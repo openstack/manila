@@ -38,10 +38,12 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
 from oslo_utils import netutils
+from oslo_utils import strutils
 from oslo_utils import timeutils
 import paramiko
 import retrying
 import six
+from webob import exc
 
 from manila.common import constants
 from manila.db import api as db_api
@@ -459,6 +461,26 @@ def retry(exception, interval=1, retries=10, backoff_rate=2,
         return _wrapper
 
     return _decorator
+
+
+def get_bool_from_api_params(key, params, default=False, strict=True):
+    """Parse bool value from request params.
+
+    HTTPBadRequest will be directly raised either of the cases below:
+    1. invalid bool string was found by key(with strict on).
+    2. key not found while default value is invalid(with strict on).
+    """
+    param = params.get(key, default)
+    try:
+        param = strutils.bool_from_string(param,
+                                          strict=strict,
+                                          default=default)
+    except ValueError:
+        msg = _('Invalid value %(param)s for %(param_string)s. '
+                'Expecting a boolean.') % {'param': param,
+                                           'param_string': key}
+        raise exc.HTTPBadRequest(explanation=msg)
+    return param
 
 
 def require_driver_initialized(func):
