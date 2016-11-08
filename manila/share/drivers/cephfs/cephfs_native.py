@@ -82,6 +82,11 @@ class CephFSNativeDriver(driver.ShareDriver,):
 
         self.configuration.append_config_values(cephfs_native_opts)
 
+    def check_for_setup_error(self):
+        # NOTE: make sure that we can really connect to the ceph,
+        # otherwise an exception is raised
+        self.volume_client
+
     def _update_share_stats(self):
         stats = self.volume_client.rados.get_cluster_stats()
 
