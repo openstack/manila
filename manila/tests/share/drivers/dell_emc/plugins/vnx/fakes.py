@@ -134,6 +134,15 @@ class FakeData(object):
     emc_nas_password = 'fakepassword'
     share_backend_name = 'EMC_NAS_Storage'
 
+    cifs_access = """
+        1478607389: SMB:11: Unix user 'Guest' UID=32769
+        1478607389: SMB:10: FindUserUid:Access_Password 'Guest',1=0x8001 T=0
+        1478607389: SHARE: 6: ALLOWED:fullcontrol:S-1-5-15-3399d125-6dcdf5f4
+        1478607389: SMB:11: Unix user 'Administrator' UID=32768
+        1478607389: SMB:10: FindUserUid:Access_Password 'Administrator',
+        1478607389: SHARE: 6: ALLOWED:fullcontrol:S-1-5-15-3399d125
+        """
+
 
 class StorageObjectTestData(object):
     def __init__(self):
@@ -1106,7 +1115,10 @@ class CIFSServerTestData(StorageObjectTestData):
         )
 
     @response
-    def resp_get_succeed(self, mover_id, is_vdm, join_domain):
+    def resp_get_succeed(self, mover_id, is_vdm, join_domain,
+                         cifs_server_name=None):
+        if cifs_server_name is None:
+            cifs_server_name = self.cifs_server_name
         return (
             '<QueryStatus maxSeverity="ok"/>'
             '<CifsServer interfaces="%(ip)s" type="W2K" '
@@ -1122,7 +1134,7 @@ class CIFSServerTestData(StorageObjectTestData):
                'alias': self.cifs_server_name[-12:],
                'domain': self.domain_name,
                'join_domain': 'true' if join_domain else 'false',
-               'comp_name': self.cifs_server_name}
+               'comp_name': cifs_server_name}
         )
 
     @response
@@ -1256,8 +1268,10 @@ class CIFSShareTestData(StorageObjectTestData):
         ]
 
     def cmd_change_access(self, access_level=const.ACCESS_LEVEL_RW,
-                          action='grant'):
-        account = self.domain_user + '@' + self.domain_name
+                          action='grant', user=None):
+        if user is None:
+            user = self.domain_user
+        account = user + '@' + self.domain_name
 
         if access_level == const.ACCESS_LEVEL_RW:
             str_access = 'fullcontrol'
@@ -1275,6 +1289,14 @@ class CIFSShareTestData(StorageObjectTestData):
             'env', 'NAS_DB=/nas',
             '/nas/bin/.server_config', self.vdm_name,
             '-v', '%s' % allow_str,
+        ]
+
+    def cmd_get_access(self):
+        get_str = 'sharesd %s dump' % self.share_name
+        return [
+            'env', 'NAS_DB=/nas',
+            '/nas/bin/.server_config', self.vdm_name,
+            '-v', '%s' % get_str,
         ]
 
     def output_allow_access(self):
@@ -1373,7 +1395,7 @@ class NFSShareTestData(StorageObjectTestData):
                 'access=-0.0.0.0/0.0.0.0:%(host)s root=%(host)s '
                 'rw=%(rw_host)s\n'
                 % {'mover_name': self.vdm_name,
-                   'host': rw_hosts,
+                   'host': ":".join(rw_hosts),
                    'path': self.path,
                    'rw_host': ":".join(rw_hosts)}
             )
@@ -1383,7 +1405,7 @@ class NFSShareTestData(StorageObjectTestData):
                 'access=-0.0.0.0/0.0.0.0:%(host)s root=%(host)s '
                 'ro=%(ro_host)s\n'
                 % {'mover_name': self.vdm_name,
-                   'host': ro_hosts,
+                   'host': ":".join(ro_hosts),
                    'path': self.path,
                    'ro_host': ":".join(ro_hosts)}
             )

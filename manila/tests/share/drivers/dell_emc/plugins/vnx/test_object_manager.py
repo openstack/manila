@@ -2738,6 +2738,63 @@ class CIFSShareTestCase(StorageObjectTestCaseBase):
         ]
         context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
 
+    def test_get_share_access(self):
+        self.ssh_hook.append(fakes.FakeData.cifs_access)
+
+        context = self.manager.getStorageContext('CIFSShare')
+        context.conn['SSH'].run_ssh = mock.Mock(side_effect=self.ssh_hook)
+
+        ret = context.get_share_access(
+            mover_name=self.vdm.vdm_name,
+            share_name=self.cifs_share.share_name)
+
+        ssh_calls = [
+            mock.call(self.cifs_share.cmd_get_access(), True),
+        ]
+        self.assertEqual(2, len(ret))
+        self.assertEqual(constants.CIFS_ACL_FULLCONTROL, ret['administrator'])
+        self.assertEqual(constants.CIFS_ACL_FULLCONTROL, ret['guest'])
+        context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
+
+    def test_get_share_access_failed(self):
+        expt_err = processutils.ProcessExecutionError(
+            stdout=self.nfs_share.fake_output)
+        self.ssh_hook.append(ex=expt_err)
+
+        context = self.manager.getStorageContext('CIFSShare')
+        context.conn['SSH'].run_ssh = mock.Mock(side_effect=self.ssh_hook)
+
+        self.assertRaises(exception.EMCVnxXMLAPIError,
+                          context.get_share_access,
+                          mover_name=self.vdm.vdm_name,
+                          share_name=self.cifs_share.share_name)
+
+        ssh_calls = [
+            mock.call(self.cifs_share.cmd_get_access(), True),
+        ]
+        context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
+
+    def test_clear_share_access_has_white_list(self):
+        self.ssh_hook.append(fakes.FakeData.cifs_access)
+        self.ssh_hook.append('Command succeeded')
+
+        context = self.manager.getStorageContext('CIFSShare')
+        context.conn['SSH'].run_ssh = mock.Mock(side_effect=self.ssh_hook)
+
+        to_remove = context.clear_share_access(
+            mover_name=self.vdm.vdm_name,
+            share_name=self.cifs_share.share_name,
+            domain=self.cifs_server.domain_name,
+            white_list_users=['guest'])
+
+        ssh_calls = [
+            mock.call(self.cifs_share.cmd_get_access(), True),
+            mock.call(self.cifs_share.cmd_change_access(action='revoke'),
+                      True),
+        ]
+        self.assertEqual({'administrator'}, to_remove)
+        context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
+
 
 class NFSShareTestCase(StorageObjectTestCaseBase):
     def setUp(self):
@@ -3010,6 +3067,32 @@ class NFSShareTestCase(StorageObjectTestCaseBase):
         ]
         context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
 
+    def test_clear_share_access(self):
+        hosts = ['192.168.1.1', '192.168.1.3']
+
+        self.ssh_hook.append(self.nfs_share.output_get_succeed(
+            rw_hosts=self.nfs_share.rw_hosts,
+            ro_hosts=self.nfs_share.ro_hosts))
+        self.ssh_hook.append(self.nfs_share.output_set_access_success())
+        self.ssh_hook.append(self.nfs_share.output_get_succeed(
+            rw_hosts=[hosts[0]], ro_hosts=[hosts[1]]))
+
+        context = self.manager.getStorageContext('NFSShare')
+        context.conn['SSH'].run_ssh = utils.EMCNFSShareMock(
+            side_effect=self.ssh_hook)
+
+        context.clear_share_access(share_name=self.nfs_share.share_name,
+                                   mover_name=self.vdm.vdm_name,
+                                   white_list_hosts=hosts)
+
+        ssh_calls = [
+            mock.call(self.nfs_share.cmd_get()),
+            mock.call(self.nfs_share.cmd_set_access(
+                rw_hosts=[hosts[0]], ro_hosts=[hosts[1]])),
+            mock.call(self.nfs_share.cmd_get()),
+        ]
+        context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
+
     def test_deny_ro_share_access(self):
         ro_hosts = copy.deepcopy(self.nfs_share.ro_hosts)
         ro_hosts.append(self.nfs_share.nfs_host_ip)
@@ -3085,3 +3168,18 @@ class NFSShareTestCase(StorageObjectTestCaseBase):
                                                     self.nfs_share.ro_hosts)),
         ]
         context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
+
+    def test_clear_share_access_failed_to_get_share(self):
+        self.ssh_hook.append("no output.")
+
+        context = self.manager.getStorageContext('NFSShare')
+        context.conn['SSH'].run_ssh = mock.Mock(side_effect=self.ssh_hook)
+
+        self.assertRaises(exception.EMCVnxXMLAPIError,
+                          context.clear_share_access,
+                          share_name=self.nfs_share.share_name,
+                          mover_name=self.vdm.vdm_name,
+                          white_list_hosts=None)
+
+        context.conn['SSH'].run_ssh.assert_called_once_with(
+            self.nfs_share.cmd_get(), False)

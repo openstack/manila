@@ -61,6 +61,11 @@ class StorageConnection(object):
     def deny_access(self, context, share, access, share_server):
         """Deny access to the share."""
 
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
+        """Update access rules for given share."""
+        raise NotImplementedError()
+
     def raise_connect_error(self):
         """Check for setup error."""
         pass
