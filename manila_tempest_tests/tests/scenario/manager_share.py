@@ -16,12 +16,12 @@
 from oslo_log import log
 import six
 
-from tempest.common.utils.linux import remote_client
 from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest.scenario import manager
 
 from manila_tempest_tests.common import constants
+from manila_tempest_tests.common import remote_client
 from manila_tempest_tests.services.share.json import shares_client
 from manila_tempest_tests.services.share.v2.json import (
     shares_client as shares_v2_client)
