@@ -1,0 +1,6 @@
+---
+fixes:
+  - Added missing 'migration_completing' task state when
+    requesting migration-complete for a driver-assisted share
+     migration.
+

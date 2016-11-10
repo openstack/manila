@@ -996,6 +996,10 @@ class ShareManager(manager.SchedulerDependentManager):
         dest_share_server = self._get_share_server(
             context, dest_share_instance)
 
+        self.db.share_update(
+            context, share_ref['id'],
+            {'task_state': constants.TASK_STATE_MIGRATION_COMPLETING})
+
         export_locations = self.driver.migration_complete(
             context, src_share_instance, dest_share_instance,
             share_server, dest_share_server)
