@@ -96,6 +96,11 @@ cinder_opts = [
                 help='Allow to perform insecure SSL requests to cinder.',
                 deprecated_group='DEFAULT',
                 deprecated_name="cinder_api_insecure"),
+    cfg.StrOpt('endpoint_type',
+               default='publicURL',
+               help='Endpoint type to be used with cinder client calls.'),
+    cfg.StrOpt('region_name',
+               help='Region name for connecting to cinder.'),
     ]
 
 CONF = cfg.CONF
@@ -114,10 +119,10 @@ def cinderclient(context):
     global AUTH_OBJ
     if not AUTH_OBJ:
         deprecated_opts_for_v2 = {
-            'username': CONF.nova_admin_username,
-            'password': CONF.nova_admin_password,
-            'tenant_name': CONF.nova_admin_tenant_name,
-            'auth_url': CONF.nova_admin_auth_url,
+            'username': CONF.cinder_admin_username,
+            'password': CONF.cinder_admin_password,
+            'tenant_name': CONF.cinder_admin_tenant_name,
+            'auth_url': CONF.cinder_admin_auth_url,
         }
         AUTH_OBJ = client_auth.AuthClientLoader(
             client_class=cinder_client.Client,
@@ -127,7 +132,9 @@ def cinderclient(context):
     return AUTH_OBJ.get_client(context,
                                insecure=CONF[CINDER_GROUP].api_insecure,
                                cacert=CONF[CINDER_GROUP].ca_certificates_file,
-                               retries=CONF[CINDER_GROUP].http_retries)
+                               retries=CONF[CINDER_GROUP].http_retries,
+                               endpoint_type=CONF[CINDER_GROUP].endpoint_type,
+                               region_name=CONF[CINDER_GROUP].region_name)
 
 
 def _untranslate_volume_summary_view(context, vol):
