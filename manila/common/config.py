@@ -188,27 +188,25 @@ def verify_share_protocols():
 
 def set_middleware_defaults():
     """Update default configuration options for oslo.middleware."""
-    # CORS Defaults
-    # TODO(krotscheck): Update with https://review.openstack.org/#/c/285368/
-    cfg.set_defaults(cors.CORS_OPTS,
-                     allow_headers=['X-Auth-Token',
-                                    'X-OpenStack-Request-ID',
-                                    'X-Openstack-Manila-Api-Version',
-                                    'X-OpenStack-Manila-API-Experimental',
-                                    'X-Identity-Status',
-                                    'X-Roles',
-                                    'X-Service-Catalog',
-                                    'X-User-Id',
-                                    'X-Tenant-Id'],
-                     expose_headers=['X-Auth-Token',
-                                     'X-OpenStack-Request-ID',
-                                     'X-Openstack-Manila-Api-Version',
-                                     'X-OpenStack-Manila-API-Experimental',
-                                     'X-Subject-Token',
-                                     'X-Service-Token'],
-                     allow_methods=['GET',
-                                    'PUT',
-                                    'POST',
-                                    'DELETE',
-                                    'PATCH']
-                     )
+    cors.set_defaults(
+        allow_headers=['X-Auth-Token',
+                       'X-OpenStack-Request-ID',
+                       'X-Openstack-Manila-Api-Version',
+                       'X-OpenStack-Manila-API-Experimental',
+                       'X-Identity-Status',
+                       'X-Roles',
+                       'X-Service-Catalog',
+                       'X-User-Id',
+                       'X-Tenant-Id'],
+        expose_headers=['X-Auth-Token',
+                        'X-OpenStack-Request-ID',
+                        'X-Openstack-Manila-Api-Version',
+                        'X-OpenStack-Manila-API-Experimental',
+                        'X-Subject-Token',
+                        'X-Service-Token'],
+        allow_methods=['GET',
+                       'PUT',
+                       'POST',
+                       'DELETE',
+                       'PATCH']
+    )
