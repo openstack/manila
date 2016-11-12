@@ -23,7 +23,6 @@ inline callbacks.
 
 import os
 import shutil
-import uuid
 
 import fixtures
 import mock
@@ -32,6 +31,7 @@ from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 import oslo_i18n
 from oslo_messaging import conffixture as messaging_conffixture
+from oslo_utils import uuidutils
 import oslotest.base as base_test
 
 from manila.db import migration
@@ -176,7 +176,7 @@ class TestCase(base_test.BaseTestCase):
             CONF.set_override(k, v, enforce_type=True)
 
     def start_service(self, name, host=None, **kwargs):
-        host = host and host or uuid.uuid4().hex
+        host = host and host or uuidutils.generate_uuid()
         kwargs.setdefault('host', host)
         kwargs.setdefault('binary', 'manila-%s' % name)
         svc = service.Service.create(**kwargs)

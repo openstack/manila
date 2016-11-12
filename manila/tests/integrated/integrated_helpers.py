@@ -19,7 +19,6 @@ Provides common functionality for integrated unit tests
 
 import random
 import string
-import uuid
 
 from oslo_log import log
 
@@ -28,6 +27,7 @@ from manila import test  # For the flags
 from manila.tests.integrated.api import client
 
 from oslo_config import cfg
+from oslo_utils import uuidutils
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
@@ -103,7 +103,7 @@ class _IntegratedTestBase(test.TestCase):
         return generate_new_element(server_names, 'server')
 
     def get_invalid_image(self):
-        return str(uuid.uuid4())
+        return uuidutils.generate_uuid()
 
     def _build_minimal_create_server_request(self):
         server = {}

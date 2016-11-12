@@ -15,12 +15,12 @@
 
 import copy
 import datetime
-import uuid
 
 import ddt
 import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
+from oslo_utils import uuidutils
 import six
 import webob
 
@@ -49,7 +49,7 @@ class CGApiTest(test.TestCase):
         super(self.__class__, self).setUp()
         self.controller = cgs.CGController()
         self.resource_name = self.controller.resource_name
-        self.fake_share_type = {'id': six.text_type(uuid.uuid4())}
+        self.fake_share_type = {'id': six.text_type(uuidutils.generate_uuid())}
         self.api_version = '2.4'
         self.request = fakes.HTTPRequest.blank('/consistency-groups',
                                                version=self.api_version,
@@ -89,8 +89,8 @@ class CGApiTest(test.TestCase):
             'description': None,
             'host': None,
             'source_cgsnapshot_id': None,
-            'share_network_id': uuid.uuid4(),
-            'share_server_id': uuid.uuid4(),
+            'share_network_id': uuidutils.generate_uuid(),
+            'share_server_id': uuidutils.generate_uuid(),
             'share_types': [],
             'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
         }
@@ -134,7 +134,7 @@ class CGApiTest(test.TestCase):
             self.context, self.resource_name, 'create')
 
     def test_cg_create_invalid_cgsnapshot_state(self):
-        fake_snap_id = six.text_type(uuid.uuid4())
+        fake_snap_id = six.text_type(uuidutils.generate_uuid())
         self.mock_object(self.controller.cg_api, 'create',
                          mock.Mock(side_effect=exception.InvalidCGSnapshot(
                              reason='bad status'
@@ -214,8 +214,8 @@ class CGApiTest(test.TestCase):
             self.context, self.resource_name, 'create')
 
     def test_cg_create_with_source_cgsnapshot_id_and_share_network(self):
-        fake_snap_id = six.text_type(uuid.uuid4())
-        fake_net_id = six.text_type(uuid.uuid4())
+        fake_snap_id = six.text_type(uuidutils.generate_uuid())
+        fake_net_id = six.text_type(uuidutils.generate_uuid())
         self.mock_object(share_types, 'get_default_share_type',
                          mock.Mock(return_value=self.fake_share_type))
         mock_api_call = self.mock_object(self.controller.cg_api, 'create')
@@ -235,7 +235,7 @@ class CGApiTest(test.TestCase):
             self.context, self.resource_name, 'create')
 
     def test_cg_create_with_source_cgsnapshot_id(self):
-        fake_snap_id = six.text_type(uuid.uuid4())
+        fake_snap_id = six.text_type(uuidutils.generate_uuid())
         fake_cg, expected_cg = self._get_fake_cg(
             source_cgsnapshot_id=fake_snap_id)
 
@@ -256,7 +256,7 @@ class CGApiTest(test.TestCase):
             self.context, self.resource_name, 'create')
 
     def test_cg_create_with_share_network_id(self):
-        fake_net_id = six.text_type(uuid.uuid4())
+        fake_net_id = six.text_type(uuidutils.generate_uuid())
         fake_cg, expected_cg = self._get_fake_cg(
             share_network_id=fake_net_id)
 
@@ -278,7 +278,7 @@ class CGApiTest(test.TestCase):
             self.context, self.resource_name, 'create')
 
     def test_cg_create_no_default_share_type_with_cgsnapshot(self):
-        fake_snap_id = six.text_type(uuid.uuid4())
+        fake_snap_id = six.text_type(uuidutils.generate_uuid())
         fake_cg, expected_cg = self._get_fake_cg()
         self.mock_object(share_types, 'get_default_share_type',
                          mock.Mock(return_value=None))
@@ -334,7 +334,7 @@ class CGApiTest(test.TestCase):
             self.context, self.resource_name, 'create')
 
     def test_cg_create_source_cgsnapshot_not_in_available(self):
-        fake_snap_id = six.text_type(uuid.uuid4())
+        fake_snap_id = six.text_type(uuidutils.generate_uuid())
         body = {"consistency_group": {"source_cgsnapshot_id": fake_snap_id}}
         self.mock_object(self.controller.cg_api, 'create', mock.Mock(
             side_effect=exception.InvalidCGSnapshot(reason='blah')))
@@ -345,7 +345,7 @@ class CGApiTest(test.TestCase):
             self.context, self.resource_name, 'create')
 
     def test_cg_create_source_cgsnapshot_does_not_exist(self):
-        fake_snap_id = six.text_type(uuid.uuid4())
+        fake_snap_id = six.text_type(uuidutils.generate_uuid())
         body = {"consistency_group": {"source_cgsnapshot_id": fake_snap_id}}
         self.mock_object(self.controller.cg_api, 'create', mock.Mock(
             side_effect=exception.CGSnapshotNotFound(

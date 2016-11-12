@@ -16,12 +16,12 @@
 
 import copy
 import datetime
-import uuid
 
 import ddt
 import mock
 from oslo_config import cfg
 from oslo_utils import timeutils
+from oslo_utils import uuidutils
 
 from manila.common import constants
 from manila import context
@@ -1204,7 +1204,8 @@ class ShareAPITestCase(test.TestCase):
     @ddt.data(constants.STATUS_MANAGING, constants.STATUS_ERROR_DELETING,
               constants.STATUS_CREATING, constants.STATUS_AVAILABLE)
     def test_delete_snapshot_force_delete(self, status):
-        share = fakes.fake_share(id=uuid.uuid4(), has_replicas=False)
+        share = fakes.fake_share(id=uuidutils.generate_uuid(),
+                                 has_replicas=False)
         snapshot = fakes.fake_snapshot(aggregate_status=status, share=share)
         snapshot_instance = fakes.fake_snapshot_instance(
             base_snapshot=snapshot)
@@ -1872,7 +1873,7 @@ class ShareAPITestCase(test.TestCase):
 
     def test_share_metadata_get(self):
         metadata = {'a': 'b', 'c': 'd'}
-        share_id = str(uuid.uuid4())
+        share_id = uuidutils.generate_uuid()
         db_api.share_create(self.context,
                             {'id': share_id, 'metadata': metadata})
         self.assertEqual(metadata,
@@ -1882,7 +1883,7 @@ class ShareAPITestCase(test.TestCase):
         metadata1 = {'a': '1', 'c': '2'}
         metadata2 = {'a': '3', 'd': '5'}
         should_be = {'a': '3', 'c': '2', 'd': '5'}
-        share_id = str(uuid.uuid4())
+        share_id = uuidutils.generate_uuid()
         db_api.share_create(self.context,
                             {'id': share_id, 'metadata': metadata1})
         db_api.share_metadata_update(self.context, share_id, metadata2, False)
@@ -1893,7 +1894,7 @@ class ShareAPITestCase(test.TestCase):
         metadata1 = {'a': '1', 'c': '2'}
         metadata2 = {'a': '3', 'd': '4'}
         should_be = metadata2
-        share_id = str(uuid.uuid4())
+        share_id = uuidutils.generate_uuid()
         db_api.share_create(self.context,
                             {'id': share_id, 'metadata': metadata1})
         db_api.share_metadata_update(self.context, share_id, metadata2, True)

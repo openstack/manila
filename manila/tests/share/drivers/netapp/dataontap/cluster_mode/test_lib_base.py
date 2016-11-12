@@ -21,7 +21,6 @@ import json
 import math
 import socket
 import time
-import uuid
 
 import ddt
 import mock
@@ -29,6 +28,7 @@ from oslo_log import log
 from oslo_service import loopingcall
 from oslo_utils import timeutils
 from oslo_utils import units
+from oslo_utils import uuidutils
 
 from manila.common import constants
 from manila import exception
@@ -3043,10 +3043,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fake_snapshot = copy.deepcopy(fake.SNAPSHOT)
         fake_snapshot['share_id'] = self.fake_replica['id']
         fake_snapshot_2 = copy.deepcopy(fake.SNAPSHOT)
-        fake_snapshot_2['id'] = str(uuid.uuid4())
+        fake_snapshot_2['id'] = uuidutils.generate_uuid()
         fake_snapshot_2['share_id'] = self.fake_replica_2['id']
         fake_snapshot_3 = copy.deepcopy(fake.SNAPSHOT)
-        fake_snapshot_3['id'] = str(uuid.uuid4())
+        fake_snapshot_3['id'] = uuidutils.generate_uuid()
         fake_snapshot_3['share_id'] = fake_replica_3['id']
         snapshot_list = [fake_snapshot, fake_snapshot_2, fake_snapshot_3]
 
@@ -3091,10 +3091,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fake_snapshot = copy.deepcopy(fake.SNAPSHOT)
         fake_snapshot['share_id'] = self.fake_replica['id']
         fake_snapshot_2 = copy.deepcopy(fake.SNAPSHOT)
-        fake_snapshot_2['id'] = str(uuid.uuid4())
+        fake_snapshot_2['id'] = uuidutils.generate_uuid()
         fake_snapshot_2['share_id'] = self.fake_replica_2['id']
         fake_snapshot_3 = copy.deepcopy(fake.SNAPSHOT)
-        fake_snapshot_3['id'] = str(uuid.uuid4())
+        fake_snapshot_3['id'] = uuidutils.generate_uuid()
         fake_snapshot_3['share_id'] = fake_replica_3['id']
         snapshot_list = [fake_snapshot, fake_snapshot_2, fake_snapshot_3]
 
@@ -3141,10 +3141,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fake_snapshot = copy.deepcopy(fake.SNAPSHOT)
         fake_snapshot['share_id'] = self.fake_replica['id']
         fake_snapshot_2 = copy.deepcopy(fake.SNAPSHOT)
-        fake_snapshot_2['id'] = str(uuid.uuid4())
+        fake_snapshot_2['id'] = uuidutils.generate_uuid()
         fake_snapshot_2['share_id'] = self.fake_replica_2['id']
         fake_snapshot_3 = copy.deepcopy(fake.SNAPSHOT)
-        fake_snapshot_3['id'] = str(uuid.uuid4())
+        fake_snapshot_3['id'] = uuidutils.generate_uuid()
         fake_snapshot_3['share_id'] = fake_replica_3['id']
         snapshot_list = [fake_snapshot, fake_snapshot_2, fake_snapshot_3]
 
@@ -3192,10 +3192,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fake_snapshot = copy.deepcopy(fake.SNAPSHOT)
         fake_snapshot['share_id'] = self.fake_replica['id']
         fake_snapshot_2 = copy.deepcopy(fake.SNAPSHOT)
-        fake_snapshot_2['id'] = str(uuid.uuid4())
+        fake_snapshot_2['id'] = uuidutils.generate_uuid()
         fake_snapshot_2['share_id'] = self.fake_replica_2['id']
         fake_snapshot_3 = copy.deepcopy(fake.SNAPSHOT)
-        fake_snapshot_3['id'] = str(uuid.uuid4())
+        fake_snapshot_3['id'] = uuidutils.generate_uuid()
         fake_snapshot_3['share_id'] = fake_replica_3['id']
         snapshot_list = [fake_snapshot, fake_snapshot_2, fake_snapshot_3]
 
@@ -3222,11 +3222,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake_snapshot['id'])
         fake_snapshot['provider_location'] = snapshot_name
         fake_snapshot_2 = copy.deepcopy(fake.SNAPSHOT)
-        fake_snapshot_2['id'] = str(uuid.uuid4())
+        fake_snapshot_2['id'] = uuidutils.generate_uuid()
         fake_snapshot_2['share_id'] = self.fake_replica_2['id']
         fake_snapshot_2['provider_location'] = snapshot_name
         fake_snapshot_3 = copy.deepcopy(fake.SNAPSHOT)
-        fake_snapshot_3['id'] = str(uuid.uuid4())
+        fake_snapshot_3['id'] = uuidutils.generate_uuid()
         fake_snapshot_3['share_id'] = fake_replica_3['id']
         fake_snapshot_3['provider_location'] = snapshot_name
 
@@ -3265,11 +3265,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake_snapshot['id'])
         fake_snapshot['provider_location'] = snapshot_name
         fake_snapshot_2 = copy.deepcopy(fake.SNAPSHOT)
-        fake_snapshot_2['id'] = str(uuid.uuid4())
+        fake_snapshot_2['id'] = uuidutils.generate_uuid()
         fake_snapshot_2['share_id'] = self.fake_replica_2['id']
         fake_snapshot_2['provider_location'] = snapshot_name
         fake_snapshot_3 = copy.deepcopy(fake.SNAPSHOT)
-        fake_snapshot_3['id'] = str(uuid.uuid4())
+        fake_snapshot_3['id'] = uuidutils.generate_uuid()
         fake_snapshot_3['share_id'] = fake_replica_3['id']
         fake_snapshot_3['provider_location'] = snapshot_name
 
@@ -3312,11 +3312,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fake_snapshot['busy'] = False
 
         fake_snapshot_2 = copy.deepcopy(fake.SNAPSHOT)
-        fake_snapshot_2['id'] = str(uuid.uuid4())
+        fake_snapshot_2['id'] = uuidutils.generate_uuid()
         fake_snapshot_2['share_id'] = self.fake_replica_2['id']
         fake_snapshot_2['provider_location'] = snapshot_name
         fake_snapshot_3 = copy.deepcopy(fake.SNAPSHOT)
-        fake_snapshot_3['id'] = str(uuid.uuid4())
+        fake_snapshot_3['id'] = uuidutils.generate_uuid()
         fake_snapshot_3['share_id'] = fake_replica_3['id']
         fake_snapshot_3['provider_location'] = snapshot_name
 
@@ -3358,11 +3358,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fake_snapshot['busy'] = False
 
         fake_snapshot_2 = copy.deepcopy(fake.SNAPSHOT)
-        fake_snapshot_2['id'] = str(uuid.uuid4())
+        fake_snapshot_2['id'] = uuidutils.generate_uuid()
         fake_snapshot_2['share_id'] = self.fake_replica_2['id']
         fake_snapshot_2['provider_location'] = snapshot_name
         fake_snapshot_3 = copy.deepcopy(fake.SNAPSHOT)
-        fake_snapshot_3['id'] = str(uuid.uuid4())
+        fake_snapshot_3['id'] = uuidutils.generate_uuid()
         fake_snapshot_3['share_id'] = fake_replica_3['id']
         fake_snapshot_3['provider_location'] = snapshot_name
 

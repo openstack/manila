@@ -14,12 +14,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import datetime
-import uuid
 
 from manila.api.openstack import api_version_request as api_version
 from manila.common import constants
 from manila.db.sqlalchemy import models
 from manila.tests.db import fakes as db_fakes
+from oslo_utils import uuidutils
 
 
 def fake_share(**kwargs):
@@ -230,7 +230,7 @@ def fake_access(**kwargs):
 
 def fake_replica(id=None, as_primitive=True, for_manager=False, **kwargs):
     replica = {
-        'id': id or str(uuid.uuid4()),
+        'id': id or uuidutils.generate_uuid(),
         'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
         'deleted': False,
         'host': 'openstack@BackendZ#PoolA',

@@ -15,12 +15,12 @@
 
 import copy
 import datetime
-import uuid
 
 import ddt
 import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
+from oslo_utils import uuidutils
 import six
 import webob
 
@@ -125,7 +125,7 @@ class CGSnapshotApiTest(test.TestCase):
 
     def test_create(self):
         fake_snap, expected_snap = self._get_fake_cgsnapshot()
-        fake_id = six.text_type(uuid.uuid4())
+        fake_id = six.text_type(uuidutils.generate_uuid())
         self.mock_object(self.controller.cg_api, 'create_cgsnapshot',
                          mock.Mock(return_value=fake_snap))
 
@@ -140,12 +140,12 @@ class CGSnapshotApiTest(test.TestCase):
         self.assertEqual(expected_snap, res_dict['cgsnapshot'])
 
     def test_create_cg_does_not_exist(self):
-        fake_id = six.text_type(uuid.uuid4())
+        fake_id = six.text_type(uuidutils.generate_uuid())
         self.mock_object(self.controller.cg_api, 'create_cgsnapshot',
                          mock.Mock(
                              side_effect=exception.ConsistencyGroupNotFound(
                                  consistency_group_id=six.text_type(
-                                     uuid.uuid4())
+                                     uuidutils.generate_uuid())
                              )))
 
         body = {"cgsnapshot": {"consistency_group_id": fake_id}}
@@ -168,7 +168,7 @@ class CGSnapshotApiTest(test.TestCase):
             self.context, self.resource_name, 'create')
 
     def test_create_invalid_cg(self):
-        fake_id = six.text_type(uuid.uuid4())
+        fake_id = six.text_type(uuidutils.generate_uuid())
         self.mock_object(self.controller.cg_api, 'create_cgsnapshot',
                          mock.Mock(
                              side_effect=exception.InvalidConsistencyGroup(
@@ -184,7 +184,7 @@ class CGSnapshotApiTest(test.TestCase):
     def test_create_with_name(self):
         fake_name = 'fake_name'
         fake_snap, expected_snap = self._get_fake_cgsnapshot(name=fake_name)
-        fake_id = six.text_type(uuid.uuid4())
+        fake_id = six.text_type(uuidutils.generate_uuid())
         self.mock_object(self.controller.cg_api, 'create_cgsnapshot',
                          mock.Mock(return_value=fake_snap))
 
@@ -202,7 +202,7 @@ class CGSnapshotApiTest(test.TestCase):
         fake_description = 'fake_description'
         fake_snap, expected_snap = self._get_fake_cgsnapshot(
             description=fake_description)
-        fake_id = six.text_type(uuid.uuid4())
+        fake_id = six.text_type(uuidutils.generate_uuid())
         self.mock_object(self.controller.cg_api, 'create_cgsnapshot',
                          mock.Mock(return_value=fake_snap))
 
@@ -220,7 +220,7 @@ class CGSnapshotApiTest(test.TestCase):
     def test_create_with_name_and_description(self):
         fake_name = 'fake_name'
         fake_description = 'fake_description'
-        fake_id = six.text_type(uuid.uuid4())
+        fake_id = six.text_type(uuidutils.generate_uuid())
         fake_snap, expected_snap = self._get_fake_cgsnapshot(
             description=fake_description, name=fake_name)
         self.mock_object(self.controller.cg_api, 'create_cgsnapshot',
@@ -241,7 +241,7 @@ class CGSnapshotApiTest(test.TestCase):
     def test_update_with_name_and_description(self):
         fake_name = 'fake_name'
         fake_description = 'fake_description'
-        fake_id = six.text_type(uuid.uuid4())
+        fake_id = six.text_type(uuidutils.generate_uuid())
         fake_snap, expected_snap = self._get_fake_cgsnapshot(
             description=fake_description, name=fake_name)
         self.mock_object(self.controller.cg_api, 'get_cgsnapshot',

@@ -18,12 +18,12 @@ import datetime
 import errno
 import socket
 import time
-import uuid
 
 import ddt
 import mock
 from oslo_config import cfg
 from oslo_utils import timeutils
+from oslo_utils import uuidutils
 import paramiko
 from webob import exc
 
@@ -202,7 +202,7 @@ class MonkeyPatchTestCase(test.TestCase):
 class FakeSSHClient(object):
 
     def __init__(self):
-        self.id = uuid.uuid4()
+        self.id = uuidutils.generate_uuid()
         self.transport = FakeTransport()
 
     def set_missing_host_key_policy(self, policy):

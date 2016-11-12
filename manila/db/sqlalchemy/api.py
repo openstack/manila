@@ -22,7 +22,6 @@ import copy
 import datetime
 from functools import wraps
 import sys
-import uuid
 import warnings
 
 # NOTE(uglide): Required to override default oslo_db Query class
@@ -3532,12 +3531,12 @@ def consistency_group_get_all_by_share_server(context, share_server_id):
 def consistency_group_create(context, values):
     consistency_group = models.ConsistencyGroup()
     if not values.get('id'):
-        values['id'] = six.text_type(uuid.uuid4())
+        values['id'] = six.text_type(uuidutils.generate_uuid())
 
     mappings = []
     for item in values.get('share_types') or []:
         mapping = models.ConsistencyGroupShareTypeMapping()
-        mapping['id'] = six.text_type(uuid.uuid4())
+        mapping['id'] = six.text_type(uuidutils.generate_uuid())
         mapping['share_type_id'] = item
         mapping['consistency_group_id'] = values['id']
         mappings.append(mapping)
@@ -3684,7 +3683,7 @@ def cgsnapshot_get_all_by_project(context, project_id, detailed=True):
 def cgsnapshot_create(context, values):
     cgsnapshot = models.CGSnapshot()
     if not values.get('id'):
-        values['id'] = six.text_type(uuid.uuid4())
+        values['id'] = six.text_type(uuidutils.generate_uuid())
 
     session = get_session()
     with session.begin():
@@ -3742,7 +3741,7 @@ def cgsnapshot_member_get(context, member_id, session=None):
 def cgsnapshot_member_create(context, values):
     member = models.CGSnapshotMember()
     if not values.get('id'):
-        values['id'] = six.text_type(uuid.uuid4())
+        values['id'] = six.text_type(uuidutils.generate_uuid())
 
     session = get_session()
     with session.begin():

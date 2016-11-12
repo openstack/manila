@@ -13,9 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import uuid
-
 from oslo_config import cfg
+from oslo_utils import uuidutils
 
 CONF = cfg.CONF
 
@@ -124,11 +123,11 @@ class API(object):
     def get_all_admin_project_networks(self):
         net1 = self.network.copy()
         net1['tenant_id'] = self.admin_project_id
-        net1['id'] = str(uuid.uuid4())
+        net1['id'] = uuidutils.generate_uuid()
 
         net2 = self.network.copy()
         net2['tenant_id'] = self.admin_project_id
-        net2['id'] = str(uuid.uuid4())
+        net2['id'] = uuidutils.generate_uuid()
         return [net1, net2]
 
     def create_port(self, tenant_id, network_id, subnet_id=None,
@@ -154,7 +153,7 @@ class API(object):
         for i in range(2):
             ports.append(self.port.copy())
         for port in ports:
-            port['id'] = str(uuid.uuid4())
+            port['id'] = uuidutils.generate_uuid()
             for key, val in search_opts.items():
                 port[key] = val
             if 'id' in search_opts:
@@ -195,8 +194,8 @@ class API(object):
         """Get all networks for client."""
         net1 = self.network.copy()
         net2 = self.network.copy()
-        net1['id'] = str(uuid.uuid4())
-        net2['id'] = str(uuid.uuid4())
+        net1['id'] = uuidutils.generate_uuid()
+        net2['id'] = uuidutils.generate_uuid()
         return [net1, net2]
 
     def get_network(self, network_uuid):
