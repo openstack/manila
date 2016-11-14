@@ -307,7 +307,7 @@ class GenericShareDriverTestCase(test.TestCase):
         volume = {'mountpoint': 'fake_mount_point'}
         self.mock_object(self._driver, '_is_device_mounted',
                          mock.Mock(return_value=False))
-        self.mock_object(self._driver, '_sync_mount_temp_and_perm_files')
+        self.mock_object(self._driver, '_add_mount_permanently')
         self.mock_object(self._driver, '_ssh_exec',
                          mock.Mock(return_value=('', '')))
 
@@ -315,8 +315,8 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self._driver._is_device_mounted.assert_called_once_with(
             mount_path, server, volume)
-        self._driver._sync_mount_temp_and_perm_files.assert_called_once_with(
-            server)
+        self._driver._add_mount_permanently.assert_called_once_with(
+            self.share.id, server)
         self._driver._ssh_exec.assert_called_once_with(
             server, (
                 'sudo', 'mkdir', '-p', mount_path,
@@ -365,7 +365,7 @@ class GenericShareDriverTestCase(test.TestCase):
         mount_path = '/fake/mount/path'
         self.mock_object(self._driver, '_is_device_mounted',
                          mock.Mock(return_value=True))
-        self.mock_object(self._driver, '_sync_mount_temp_and_perm_files')
+        self.mock_object(self._driver, '_remove_mount_permanently')
         self.mock_object(self._driver, '_get_mount_path',
                          mock.Mock(return_value=mount_path))
         self.mock_object(self._driver, '_ssh_exec',
@@ -376,8 +376,8 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver._get_mount_path.assert_called_once_with(self.share)
         self._driver._is_device_mounted.assert_called_once_with(
             mount_path, self.server)
-        self._driver._sync_mount_temp_and_perm_files.assert_called_once_with(
-            self.server)
+        self._driver._remove_mount_permanently.assert_called_once_with(
+            self.share.id, self.server)
         self._driver._ssh_exec.assert_called_once_with(
             self.server,
             ['sudo', 'umount', mount_path, '&&', 'sudo', 'rmdir', mount_path],
@@ -394,7 +394,7 @@ class GenericShareDriverTestCase(test.TestCase):
         mount_path = '/fake/mount/path'
         self.mock_object(self._driver, '_is_device_mounted',
                          mock.Mock(return_value=True))
-        self.mock_object(self._driver, '_sync_mount_temp_and_perm_files')
+        self.mock_object(self._driver, '_remove_mount_permanently')
         self.mock_object(self._driver, '_get_mount_path',
                          mock.Mock(return_value=mount_path))
         self.mock_object(self._driver, '_ssh_exec',
@@ -408,8 +408,8 @@ class GenericShareDriverTestCase(test.TestCase):
         self.assertEqual([mock.call(mount_path,
                                     self.server) for i in moves.range(2)],
                          self._driver._is_device_mounted.mock_calls)
-        self._driver._sync_mount_temp_and_perm_files.assert_called_once_with(
-            self.server)
+        self._driver._remove_mount_permanently.assert_called_once_with(
+            self.share.id, self.server)
         self.assertEqual(
             [mock.call(self.server, ['sudo', 'umount', mount_path,
                                      '&&', 'sudo', 'rmdir', mount_path])
@@ -488,45 +488,57 @@ class GenericShareDriverTestCase(test.TestCase):
             self.server, ['sudo', 'mount'])
         self.assertFalse(result)
 
-    def test_sync_mount_temp_and_perm_files(self):
+    def test_add_mount_permanently(self):
         self.mock_object(self._driver, '_ssh_exec')
-        self._driver._sync_mount_temp_and_perm_files(self.server)
+        self._driver._add_mount_permanently(self.share.id, self.server)
         self._driver._ssh_exec.has_calls(
             mock.call(
                 self.server,
-                ['sudo', 'cp', const.MOUNT_FILE_TEMP, const.MOUNT_FILE]),
-            mock.call(self.server, ['sudo', 'mount', '-a']))
+                ['grep', self.share.id, const.MOUNT_FILE_TEMP,
+                 '|', 'sudo', 'tee', '-a', const.MOUNT_FILE]),
+            mock.call(self.server, ['sudo', 'mount', '-a'])
+        )
 
-    def test_sync_mount_temp_and_perm_files_raise_error_on_copy(self):
+    def test_add_mount_permanently_raise_error_on_add(self):
         self.mock_object(
             self._driver, '_ssh_exec',
             mock.Mock(side_effect=exception.ProcessExecutionError))
         self.assertRaises(
             exception.ShareBackendException,
-            self._driver._sync_mount_temp_and_perm_files,
+            self._driver._add_mount_permanently,
+            self.share.id,
             self.server
         )
         self._driver._ssh_exec.assert_called_once_with(
             self.server,
-            ['sudo', 'cp', const.MOUNT_FILE_TEMP, const.MOUNT_FILE])
+            ['grep', self.share.id, const.MOUNT_FILE_TEMP,
+             '|', 'sudo', 'tee', '-a', const.MOUNT_FILE],
+        )
 
-    def test_sync_mount_temp_and_perm_files_raise_error_on_mount(self):
-        def raise_error_on_mount(*args, **kwargs):
-            if args[1][1] == 'cp':
-                raise exception.ProcessExecutionError()
+    def test_remove_mount_permanently(self):
+        self.mock_object(self._driver, '_ssh_exec')
+        self._driver._remove_mount_permanently(self.share.id, self.server)
+        self._driver._ssh_exec.assert_called_once_with(
+            self.server,
+            ['sudo', 'sed', '-i', '\'/%s/d\'' % self.share.id,
+             const.MOUNT_FILE],
+        )
 
-        self.mock_object(self._driver, '_ssh_exec',
-                         mock.Mock(side_effect=raise_error_on_mount))
+    def test_remove_mount_permanently_raise_error_on_remove(self):
+        self.mock_object(
+            self._driver, '_ssh_exec',
+            mock.Mock(side_effect=exception.ProcessExecutionError))
         self.assertRaises(
             exception.ShareBackendException,
-            self._driver._sync_mount_temp_and_perm_files,
+            self._driver._remove_mount_permanently,
+            self.share.id,
             self.server
         )
-        self._driver._ssh_exec.has_calls(
-            mock.call(
-                self.server,
-                ['sudo', 'cp', const.MOUNT_FILE_TEMP, const.MOUNT_FILE]),
-            mock.call(self.server, ['sudo', 'mount', '-a']))
+        self._driver._ssh_exec.assert_called_once_with(
+            self.server,
+            ['sudo', 'sed', '-i', '\'/%s/d\'' % self.share.id,
+             const.MOUNT_FILE],
+        )
 
     def test_get_mount_path(self):
         result = self._driver._get_mount_path(self.share)
