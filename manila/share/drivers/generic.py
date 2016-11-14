@@ -285,16 +285,19 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                     return True
         return False
 
-    def _sync_mount_temp_and_perm_files(self, server_details):
-        """Sync temporary and permanent files for mounted filesystems."""
+    def _add_mount_permanently(self, share_id, server_details):
+        """Add mount permanently for mounted filesystems."""
         try:
             self._ssh_exec(
                 server_details,
-                ['sudo', 'cp', const.MOUNT_FILE_TEMP, const.MOUNT_FILE],
+                ['grep', share_id, const.MOUNT_FILE_TEMP,
+                 '|', 'sudo', 'tee', '-a', const.MOUNT_FILE],
             )
         except exception.ProcessExecutionError as e:
-            LOG.error(_LE("Failed to sync mount files on server '%s'."),
-                      server_details['instance_id'])
+            LOG.error(_LE("Failed to add 'Share-%(share_id)s' mount "
+                      "permanently on server '%(instance_id)s'."),
+                      {"share_id": share_id,
+                       "instance_id": server_details['instance_id']})
             raise exception.ShareBackendException(msg=six.text_type(e))
         try:
             # Remount it to avoid postponed point of failure
@@ -302,6 +305,20 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         except exception.ProcessExecutionError as e:
             LOG.error(_LE("Failed to mount all shares on server '%s'."),
                       server_details['instance_id'])
+
+    def _remove_mount_permanently(self, share_id, server_details):
+        """Remove mount permanently from mounted filesystems."""
+        try:
+            self._ssh_exec(
+                server_details,
+                ['sudo', 'sed', '-i', '\'/%s/d\'' % share_id,
+                 const.MOUNT_FILE],
+            )
+        except exception.ProcessExecutionError as e:
+            LOG.error(_LE("Failed to remove 'Share-%(share_id)s' mount "
+                      "permanently on server '%(instance_id)s'."),
+                      {"share_id": share_id,
+                       "instance_id": server_details['instance_id']})
             raise exception.ShareBackendException(msg=six.text_type(e))
 
     def _mount_device(self, share, server_details, volume):
@@ -342,9 +359,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                         '&&', 'sudo', 'mount', device_path, mount_path,
                     )
                     self._ssh_exec(server_details, mount_cmd)
-
-                    # Add mount permanently
-                    self._sync_mount_temp_and_perm_files(server_details)
+                    self._add_mount_permanently(share.id, server_details)
                 else:
                     LOG.warning(_LW("Mount point '%(path)s' already exists on "
                                     "server '%(server)s'."), log_data)
@@ -370,8 +385,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 unmount_cmd = ['sudo', 'umount', mount_path, '&&', 'sudo',
                                'rmdir', mount_path]
                 self._ssh_exec(server_details, unmount_cmd)
-                # Remove mount permanently
-                self._sync_mount_temp_and_perm_files(server_details)
+                self._remove_mount_permanently(share.id, server_details)
             else:
                 LOG.warning(_LW("Mount point '%(path)s' does not exist on "
                                 "server '%(server)s'."), log_data)
