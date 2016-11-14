@@ -667,16 +667,18 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         helper = self._get_helper(share)
         helper.disable_access_for_maintenance(server_details, share['name'])
         self._unmount_device(share, server_details)
-        self._detach_volume(self.admin_context, share, server_details)
-
         volume = self._get_volume(self.admin_context, share['id'])
-        volume = self._extend_volume(self.admin_context, volume, new_size)
 
-        volume = self._attach_volume(
-            self.admin_context,
-            share,
-            server_details['instance_id'],
-            volume)
+        if int(new_size) > volume['size']:
+            self._detach_volume(self.admin_context, share, server_details)
+            volume = self._extend_volume(self.admin_context, volume, new_size)
+
+            volume = self._attach_volume(
+                self.admin_context,
+                share,
+                server_details['instance_id'],
+                volume)
+
         self._resize_filesystem(server_details, volume)
         self._mount_device(share, server_details, volume)
         helper.restore_access_after_maintenance(server_details,

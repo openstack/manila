@@ -1630,8 +1630,12 @@ class GenericShareDriverTestCase(test.TestCase):
             "fake", "fake"
         )
 
-    def test_extend_share(self):
-        fake_volume = "fake"
+    @ddt.data(100, 130, 123)
+    def test_extend_share(self, volume_size):
+        fake_volume = {
+            "name": "fake",
+            "size": volume_size,
+        }
         fake_share = {
             'id': 'fake',
             'share_proto': 'NFS',
@@ -1662,14 +1666,21 @@ class GenericShareDriverTestCase(test.TestCase):
             self._driver.service_instance_manager.get_common_server.called)
         self._driver._unmount_device.assert_called_once_with(
             fake_share, srv_details)
-        self._driver._detach_volume.assert_called_once_with(
-            mock.ANY, fake_share, srv_details)
         self._driver._get_volume.assert_called_once_with(
             mock.ANY, fake_share['id'])
-        self._driver._extend_volume.assert_called_once_with(
-            mock.ANY, fake_volume, new_size)
-        self._driver._attach_volume.assert_called_once_with(
-            mock.ANY, fake_share, srv_details['instance_id'], mock.ANY)
+
+        if new_size > volume_size:
+            self._driver._detach_volume.assert_called_once_with(
+                mock.ANY, fake_share, srv_details)
+            self._driver._extend_volume.assert_called_once_with(
+                mock.ANY, fake_volume, new_size)
+            self._driver._attach_volume.assert_called_once_with(
+                mock.ANY, fake_share, srv_details['instance_id'], mock.ANY)
+        else:
+            self.assertFalse(self._driver._detach_volume.called)
+            self.assertFalse(self._driver._extend_volume.called)
+            self.assertFalse(self._driver._attach_volume.called)
+
         self._helper_nfs.disable_access_for_maintenance.\
             assert_called_once_with(srv_details, 'test_share')
         self._helper_nfs.restore_access_after_maintenance.\
