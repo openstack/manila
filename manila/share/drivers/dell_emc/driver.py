@@ -40,7 +40,7 @@ EMC_NAS_OPTS = [
                 help='Use secure connection to server.'),
     cfg.StrOpt('emc_share_backend',
                ignore_case=True,
-               choices=['isilon', 'vnx', 'unity'],
+               choices=['isilon', 'vnx', 'unity', 'vmax'],
                help='Share backend.'),
     cfg.StrOpt('emc_nas_root_dir',
                help='The root directory where shares will be located.')
