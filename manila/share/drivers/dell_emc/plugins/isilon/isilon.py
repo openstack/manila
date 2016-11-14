@@ -25,8 +25,8 @@ import six
 from manila.common import constants as const
 from manila import exception
 from manila.i18n import _, _LW
-from manila.share.drivers.emc.plugins import base
-from manila.share.drivers.emc.plugins.isilon import isilon_api
+from manila.share.drivers.dell_emc.plugins import base
+from manila.share.drivers.dell_emc.plugins.isilon import isilon_api
 
 CONF = cfg.CONF
 VERSION = "0.1.0"

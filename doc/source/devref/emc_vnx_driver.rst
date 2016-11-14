@@ -188,7 +188,7 @@ for the VNX driver:
     emc_nas_server_container = <Data Mover name>
     emc_nas_pool_name = <pool name>
     emc_interface_ports = <Comma separated ports list>
-    share_driver = manila.share.drivers.emc.driver.EMCShareDriver
+    share_driver = manila.share.drivers.dell_emc.driver.EMCShareDriver
 
 - `emc_share_backend` is the plugin name. Set it to `vnx` for the VNX driver.
 - `emc_nas_server` is the control station IP address of the VNX system to be
@@ -258,19 +258,19 @@ The VNX driver has the following restrictions:
   support site](http://support.emc.com) for the limitations and configure the
   quotas accordingly.
 
-The :mod:`manila.share.drivers.emc.driver` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The :mod:`manila.share.drivers.dell_emc.driver` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.share.drivers.emc.driver
+.. automodule:: manila.share.drivers.dell_emc.driver
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
-The :mod:`manila.share.drivers.emc.plugins.vnx.connection` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The :mod:`manila.share.drivers.dell_emc.plugins.vnx.connection` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.share.drivers.emc.plugins.vnx.connection
+.. automodule:: manila.share.drivers.dell_emc.plugins.vnx.connection
     :noindex:
     :members:
     :undoc-members:

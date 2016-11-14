@@ -26,7 +26,7 @@ from six.moves.urllib import request as url_request  # pylint: disable=E0611
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
-from manila.share.drivers.emc.plugins.vnx import constants
+from manila.share.drivers.dell_emc.plugins.vnx import constants
 from manila import utils
 
 LOG = log.getLogger(__name__)

@@ -15,7 +15,7 @@
 
 import ddt
 
-from manila.share.drivers.emc.plugins.vnx import utils
+from manila.share.drivers.dell_emc.plugins.vnx import utils
 from manila import test
 
 

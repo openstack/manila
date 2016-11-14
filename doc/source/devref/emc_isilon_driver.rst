@@ -57,7 +57,7 @@ Backend Configuration
 The following parameters need to be configured in the manila configuration file
 for the Isilon driver:
 
-* share_driver = manila.share.drivers.emc.driver.EMCShareDriver
+* share_driver = manila.share.drivers.dell_emc.driver.EMCShareDriver
 * driver_handles_share_servers = False
 * emc_share_backend = isilon
 * emc_nas_server = <IP address of Isilon cluster>
@@ -78,19 +78,19 @@ The Isilon driver has the following restrictions:
 
 - Only FLAT network is supported.
 
-The :mod:`manila.share.drivers.emc.driver` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The :mod:`manila.share.drivers.dell_emc.driver` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.share.drivers.emc.driver
+.. automodule:: manila.share.drivers.dell_emc.driver
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
-The :mod:`manila.share.drivers.emc.plugins.isilon.isilon` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The :mod:`manila.share.drivers.dell_emc.plugins.isilon.isilon` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.share.drivers.emc.plugins.isilon.isilon
+.. automodule:: manila.share.drivers.dell_emc.plugins.isilon.isilon
     :noindex:
     :members:
     :undoc-members:

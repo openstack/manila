@@ -42,7 +42,7 @@ The following example shows five configured back ends::
     enabled_share_backends=backendEMC1,backendEMC2,backendGeneric1,backendGeneric2,backendNetApp
 
     [backendEMC1]
-    share_driver=manila.share.drivers.emc.driver.EMCShareDriver
+    share_driver=manila.share.drivers.dell_emc.driver.EMCShareDriver
     share_backend_name=backendEMC1
     emc_share_backend=vnx
     emc_nas_server=1.1.1.1
@@ -52,7 +52,7 @@ The following example shows five configured back ends::
     emc_nas_pool_name="Pool 1"
 
     [backendEMC2]
-    share_driver=manila.share.drivers.emc.driver.EMCShareDriver
+    share_driver=manila.share.drivers.dell_emc.driver.EMCShareDriver
     share_backend_name=backendEMC2
     emc_share_backend=vnx
     emc_nas_server=1.1.1.1

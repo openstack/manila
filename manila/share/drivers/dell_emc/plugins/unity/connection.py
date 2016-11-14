@@ -27,10 +27,10 @@ if storops:
 from manila.common import constants as const
 from manila import exception
 from manila.i18n import _, _LE, _LW, _LI
-from manila.share.drivers.emc.plugins import base as driver
-from manila.share.drivers.emc.plugins.unity import client
-from manila.share.drivers.emc.plugins.unity import utils as unity_utils
-from manila.share.drivers.emc.plugins.vnx import utils as emc_utils
+from manila.share.drivers.dell_emc.plugins import base as driver
+from manila.share.drivers.dell_emc.plugins.unity import client
+from manila.share.drivers.dell_emc.plugins.unity import utils as unity_utils
+from manila.share.drivers.dell_emc.plugins.vnx import utils as emc_utils
 from manila.share import utils as share_utils
 from manila import utils
 

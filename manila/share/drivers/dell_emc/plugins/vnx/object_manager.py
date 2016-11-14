@@ -25,10 +25,10 @@ import six
 from manila.common import constants as const
 from manila import exception
 from manila.i18n import _, _LI, _LW
-from manila.share.drivers.emc.plugins.vnx import connector
-from manila.share.drivers.emc.plugins.vnx import constants
-from manila.share.drivers.emc.plugins.vnx import utils as vnx_utils
-from manila.share.drivers.emc.plugins.vnx import xml_api_parser as parser
+from manila.share.drivers.dell_emc.plugins.vnx import connector
+from manila.share.drivers.dell_emc.plugins.vnx import constants
+from manila.share.drivers.dell_emc.plugins.vnx import utils as vnx_utils
+from manila.share.drivers.dell_emc.plugins.vnx import xml_api_parser as parser
 from manila import utils
 
 LOG = log.getLogger(__name__)
