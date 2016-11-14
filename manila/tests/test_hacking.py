@@ -316,3 +316,16 @@ class HackingTestCase(test.TestCase):
             "assertIsNone(None)"))))
         self.assertEqual(1, len(list(checks.validate_assertIsNone(
             "assertEqual(None, %s)" % test_value))))
+
+    def test_check_uuid4(self):
+        code = """
+            fake_uuid = uuid.uuid4()
+               """
+        errors = [(1, 0, 'M354')]
+        self._assert_has_errors(code, checks.check_uuid4,
+                                expected_errors=errors)
+
+        code = """
+               hex_uuid = uuid.uuid4().hex
+               """
+        self._assert_has_no_errors(code, checks.check_uuid4)

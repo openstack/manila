@@ -342,6 +342,24 @@ def validate_assertIsNone(logical_line):
         yield(0, msg)
 
 
+def check_uuid4(logical_line):
+    """Generating UUID
+
+    Use oslo_utils.uuidutils to generate UUID instead of uuid4().
+
+    M354
+    """
+
+    msg = ("M354: Use oslo_utils.uuidutils to generate UUID instead "
+           "of uuid4().")
+
+    if "uuid4()." in logical_line:
+        return
+
+    if "uuid4()" in logical_line:
+        yield (0, msg)
+
+
 def factory(register):
     register(validate_log_translations)
     register(check_explicit_underscore_import)
@@ -354,3 +372,4 @@ def factory(register):
     register(no_xrange)
     register(validate_assertTrue)
     register(validate_assertIsNone)
+    register(check_uuid4)
