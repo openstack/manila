@@ -1,0 +1,4 @@
+---
+fixes:
+  - Added a check on driver startup for CEPHFS back ends to verify whether
+    the back end is accessible.
