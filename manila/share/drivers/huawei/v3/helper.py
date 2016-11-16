@@ -190,7 +190,7 @@ class RestHelper(object):
         need_encode = False
         for key in ['UserName', 'UserPassword']:
             node = root.find('Storage/%s' % key)
-            if node.text.find(prefix_name) > -1:
+            if node.text.startswith(prefix_name):
                 logininfo[key] = base64.b64decode(
                     six.b(node.text[4:])).decode()
             else:

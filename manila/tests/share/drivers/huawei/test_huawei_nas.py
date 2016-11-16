@@ -26,6 +26,7 @@ import xml.dom.minidom
 import ddt
 import mock
 from oslo_serialization import jsonutils
+from xml.etree import ElementTree as ET
 
 from manila.common import constants as common_constants
 from manila import context
@@ -821,6 +822,45 @@ class FakeHuaweiNasDriver(huawei_nas.HuaweiNasDriver):
             self.plugin.helper)
         self.plugin.rpc_client = FakeRpcClient(self.plugin.helper)
         self.plugin.private_storage = FakePrivateStorage()
+
+
+class FakeConfigParseTree(object):
+    class FakeNode(object):
+        def __init__(self, text):
+            self._text = text
+
+        @property
+        def text(self):
+            return self._text
+
+        @text.setter
+        def text(self, text):
+            self._text = text
+
+    class FakeRoot(object):
+        def __init__(self):
+            self._node_map = {}
+
+        def findtext(self, path, default=None):
+            if path in self._node_map:
+                return self._node_map[path].text
+            return default
+
+        def find(self, path):
+            if path in self._node_map:
+                return self._node_map[path]
+            return None
+
+    def __init__(self, path_value):
+        self.root = self.FakeRoot()
+        for k in path_value:
+            self.root._node_map[k] = self.FakeNode(path_value[k])
+
+    def getroot(self):
+        return self.root
+
+    def write(self, filename, format):
+        pass
 
 
 @ddt.ddt
@@ -4492,3 +4532,36 @@ class HuaweiShareDriverTestCase(test.TestCase):
             logininfo = self.driver.plugin.helper._get_login_info()
             self.assertEqual('admin', logininfo['UserName'])
             self.assertEqual('Admin@storage', logininfo['UserPassword'])
+
+    @ddt.data({
+        'username': 'abc',
+        'password': '123456',
+        'expect_username': 'abc',
+        'expect_password': '123456',
+    }, {
+        'username': '!$$$YWJj',
+        'password': '!$$$MTIzNDU2',
+        'expect_username': 'abc',
+        'expect_password': '123456',
+    }, {
+        'username': 'ab!$$$c',
+        'password': '123!$$$456',
+        'expect_username': 'ab!$$$c',
+        'expect_password': '123!$$$456',
+    })
+    @ddt.unpack
+    def test__get_login_info(self, username, password, expect_username,
+                             expect_password):
+        configs = {
+            'Storage/RestURL': 'https://123456',
+            'Storage/UserName': username,
+            'Storage/UserPassword': password,
+        }
+        self.mock_object(
+            ET, 'parse',
+            mock.Mock(return_value=FakeConfigParseTree(configs)))
+
+        result = self.driver.plugin.helper._get_login_info()
+        self.assertEqual(expect_username, result['UserName'])
+        self.assertEqual(expect_password, result['UserPassword'])
+        ET.parse.assert_called_once_with(self.fake_conf_file)
