@@ -50,7 +50,7 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         cls.shares_admin_v2_client = shares_v2_client.SharesV2Client(
             cls.os_admin.auth_provider)
 
-    def _create_share(self, share_protocol=None, size=1, name=None,
+    def _create_share(self, share_protocol=None, size=None, name=None,
                       snapshot_id=None, description=None, metadata=None,
                       share_network_id=None, share_type_id=None,
                       client=None, cleanup_in_class=True):
@@ -79,7 +79,7 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         metadata = metadata or {}
         kwargs = {
             'share_protocol': share_protocol,
-            'size': size,
+            'size': size or CONF.share.share_size,
             'name': name,
             'snapshot_id': snapshot_id,
             'description': description,
