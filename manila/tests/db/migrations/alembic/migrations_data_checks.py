@@ -121,6 +121,97 @@ class BaseMigrationChecks(object):
         """
 
 
+@map_to_migration('38e632621e5a')
+class ShareTypeMigrationChecks(BaseMigrationChecks):
+    def _get_fake_data(self):
+        extra_specs = []
+        self.share_type_ids = []
+        volume_types = [
+            {
+                'id': uuidutils.generate_uuid(),
+                'deleted': 'False',
+                'name': 'vol-type-A',
+            },
+            {
+                'id': uuidutils.generate_uuid(),
+                'deleted': 'False',
+                'name': 'vol-type-B',
+            },
+        ]
+        for idx, volume_type in enumerate(volume_types):
+            extra_specs.append({
+                'volume_type_id': volume_type['id'],
+                'key': 'foo',
+                'value': 'bar%s' % idx,
+                'deleted': False,
+            })
+            extra_specs.append({
+                'volume_type_id': volume_type['id'],
+                'key': 'xyzzy',
+                'value': 'spoon_%s' % idx,
+                'deleted': False,
+            })
+            self.share_type_ids.append(volume_type['id'])
+        return volume_types, extra_specs
+
+    def setup_upgrade_data(self, engine):
+        (self.volume_types, self.extra_specs) = self._get_fake_data()
+
+        volume_types_table = utils.load_table('volume_types', engine)
+        engine.execute(volume_types_table.insert(self.volume_types))
+        extra_specs_table = utils.load_table('volume_type_extra_specs',
+                                             engine)
+        engine.execute(extra_specs_table.insert(self.extra_specs))
+
+    def check_upgrade(self, engine, data):
+        # Verify table transformations
+        share_types_table = utils.load_table('share_types', engine)
+        share_types_specs_table = utils.load_table(
+            'share_type_extra_specs', engine)
+        self.test_case.assertRaises(sa_exc.NoSuchTableError, utils.load_table,
+                                    'volume_types', engine)
+        self.test_case.assertRaises(sa_exc.NoSuchTableError, utils.load_table,
+                                    'volume_type_extra_specs', engine)
+
+        # Verify presence of data
+        share_type_ids = [
+            st['id'] for st in engine.execute(share_types_table.select())
+            if st['id'] in self.share_type_ids
+        ]
+        self.test_case.assertEqual(sorted(self.share_type_ids),
+                                   sorted(share_type_ids))
+        extra_specs = [
+            {'type': es['share_type_id'], 'key': es['spec_key']}
+            for es in engine.execute(share_types_specs_table.select())
+            if es['share_type_id'] in self.share_type_ids
+        ]
+        self.test_case.assertEqual(4, len(extra_specs))
+
+    def check_downgrade(self, engine):
+        # Verify table transformations
+        volume_types_table = utils.load_table('volume_types', engine)
+        volume_types_specs_table = utils.load_table(
+            'volume_type_extra_specs', engine)
+        self.test_case.assertRaises(sa_exc.NoSuchTableError, utils.load_table,
+                                    'share_types', engine)
+        self.test_case.assertRaises(sa_exc.NoSuchTableError, utils.load_table,
+                                    'share_type_extra_specs', engine)
+
+        # Verify presence of data
+        volume_type_ids = [
+            vt['id'] for vt in engine.execute(volume_types_table.select())
+            if vt['id'] in self.share_type_ids
+        ]
+        self.test_case.assertEqual(sorted(self.share_type_ids),
+                                   sorted(volume_type_ids))
+        extra_specs = [
+            {'type': es['volume_type_id'], 'key': es['key']}
+            for es in engine.execute(volume_types_specs_table.select())
+            if es['volume_type_id'] in self.share_type_ids
+        ]
+        self.test_case.assertEqual(4, len(extra_specs))
+
+
 @map_to_migration('1f0bd302c1a6')
 class AvailabilityZoneMigrationChecks(BaseMigrationChecks):
 

@@ -115,7 +115,7 @@ def _copy_records(destination_table, up_migration=True):
         sa.Column('created_at', sa.DateTime),
         sa.Column('updated_at', sa.DateTime),
         sa.Column('deleted_at', sa.DateTime),
-        sa.Column('deleted', sa.Integer if up_migration else sa.Boolean),
+        sa.Column('deleted', sa.Boolean if up_migration else sa.Integer),
         sa.Column('id', sa.Integer, primary_key=True, nullable=False),
         sa.Column(data_from[0] + '_type_id', sa.String(length=36)),
         sa.Column(data_from[1] + 'key', sa.String(length=255)),
@@ -126,13 +126,12 @@ def _copy_records(destination_table, up_migration=True):
         if up_migration:
             deleted = strutils.int_from_bool_as_string(es.deleted)
         else:
-            deleted = strutils.bool_from_string(es.deleted)
+            deleted = strutils.bool_from_string(es.deleted, default=True)
         extra_specs.append({
             'created_at': es.created_at,
             'updated_at': es.updated_at,
             'deleted_at': es.deleted_at,
             'deleted': deleted,
-            'id': es.id,
             data_to[0] + '_type_id': getattr(es, data_from[0] + '_type_id'),
             data_to[1] + 'key': getattr(es, data_from[1] + 'key'),
             data_to[1] + 'value': getattr(es, data_from[1] + 'value'),
