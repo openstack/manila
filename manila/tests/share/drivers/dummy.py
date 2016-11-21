@@ -29,6 +29,10 @@ This driver simulates support of:
 
 """
 
+import functools
+import time
+
+from oslo_config import cfg
 from oslo_log import log
 
 from manila.common import constants
@@ -40,16 +44,110 @@ from manila.share import utils as share_utils
 LOG = log.getLogger(__name__)
 
 
+dummy_opts = [
+    cfg.FloatOpt(
+        "dummy_driver_default_driver_method_delay",
+        help="Defines default time delay in seconds for each dummy driver "
+             "method. To redefine some specific method delay use other "
+             "'dummy_driver_driver_methods_delays' config opt. Optional.",
+        default=2.0,
+        min=0,
+    ),
+    cfg.DictOpt(
+        "dummy_driver_driver_methods_delays",
+        help="It is dictionary-like config option, that consists of "
+             "driver method names as keys and integer/float values that are "
+             "time delay in seconds. Optional.",
+        default={
+            "ensure_share": "1.05",
+            "create_share": "3.98",
+            "get_pool": "0.5",
+            "do_setup": "0.05",
+
+            "_get_pools_info": "0.1",
+            "_update_share_stats": "0.3",
+
+            "create_replica": "3.99",
+            "delete_replica": "2.98",
+            "promote_replica": "0.75",
+            "update_replica_state": "0.85",
+            "create_replicated_snapshot": "4.15",
+            "delete_replicated_snapshot": "3.16",
+            "update_replicated_snapshot": "1.17",
+
+            "migration_start": 1.01,
+            "migration_continue": 1.02,  # it will be called 4 times
+            "migration_complete": 1.03,
+            "migration_cancel": 1.04,
+            "migration_get_progress": 1.05,
+            "migration_check_compatibility": 0.05,
+        },
+    ),
+]
+
+CONF = cfg.CONF
+
+
+def slow_me_down(f):
+
+    @functools.wraps(f)
+    def wrapped_func(self, *args, **kwargs):
+        sleep_time = self.configuration.safe_get(
+            "dummy_driver_driver_methods_delays").get(
+                f.__name__,
+                self.configuration.safe_get(
+                    "dummy_driver_default_driver_method_delay")
+            )
+        time.sleep(float(sleep_time))
+        return f(self, *args, **kwargs)
+
+    return wrapped_func
+
+
 class DummyDriver(driver.ShareDriver):
     """Dummy share driver that implements all share driver interfaces."""
 
     def __init__(self, *args, **kwargs):
         """Do initialization."""
-        super(self.__class__, self).__init__([False, True], *args, **kwargs)
+        super(self.__class__, self).__init__(
+            [False, True], *args, config_opts=[dummy_opts], **kwargs)
+        self._verify_configuration()
         self.private_storage = kwargs.get('private_storage')
         self.backend_name = self.configuration.safe_get(
             "share_backend_name") or "DummyDriver"
         self.migration_progress = {}
+
+    def _verify_configuration(self):
+        allowed_driver_methods = [m for m in dir(self) if m[0] != '_']
+        allowed_driver_methods.extend([
+            "_setup_server",
+            "_teardown_server",
+            "_get_pools_info",
+            "_update_share_stats",
+        ])
+        disallowed_driver_methods = (
+            "get_admin_network_allocations_number",
+            "get_network_allocations_number",
+            "get_share_server_pools",
+        )
+        for k, v in self.configuration.safe_get(
+                "dummy_driver_driver_methods_delays").items():
+            if k not in allowed_driver_methods:
+                raise exception.BadConfigurationException(reason=(
+                    "Dummy driver does not have '%s' method." % k
+                ))
+            elif k in disallowed_driver_methods:
+                raise exception.BadConfigurationException(reason=(
+                    "Method '%s' does not support delaying." % k
+                ))
+            try:
+                float(v)
+            except (TypeError, ValueError):
+                raise exception.BadConfigurationException(reason=(
+                    "Wrong value (%(v)s) for '%(k)s' dummy driver method time "
+                    "delay is set in 'dummy_driver_driver_methods_delays' "
+                    "config option." % {"k": k, "v": v}
+                ))
 
     def _get_share_name(self, share):
         return "share_%(s_id)s_%(si_id)s" % {
@@ -97,10 +195,12 @@ class DummyDriver(driver.ShareDriver):
         return self._generate_export_locations(
             mountpoint, share_server=share_server)
 
+    @slow_me_down
     def create_share(self, context, share, share_server=None):
         """Is called to create share."""
         return self._create_share(share, share_server=share_server)
 
+    @slow_me_down
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None):
         """Is called to create share from snapshot."""
@@ -115,26 +215,32 @@ class DummyDriver(driver.ShareDriver):
         )
         return {"provider_location": snapshot_name}
 
+    @slow_me_down
     def create_snapshot(self, context, snapshot, share_server=None):
         """Is called to create snapshot."""
         return self._create_snapshot(snapshot)
 
+    @slow_me_down
     def delete_share(self, context, share, share_server=None):
         """Is called to remove share."""
         self.private_storage.delete(share["id"])
 
+    @slow_me_down
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Is called to remove snapshot."""
         self.private_storage.delete(snapshot["id"])
 
+    @slow_me_down
     def get_pool(self, share):
         """Return pool name where the share resides on."""
         pool_name = share_utils.extract_host(share["host"], level="pool")
         return pool_name
 
+    @slow_me_down
     def ensure_share(self, context, share, share_server=None):
         """Invoked to ensure that share is exported."""
 
+    @slow_me_down
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
         """Update access rules for given share."""
@@ -149,27 +255,34 @@ class DummyDriver(driver.ShareDriver):
                     "access_type": access_type, "share_proto": share_proto}
                 raise exception.InvalidShareAccess(reason=msg)
 
+    @slow_me_down
     def do_setup(self, context):
         """Any initialization the share driver does while starting."""
 
+    @slow_me_down
     def manage_existing(self, share, driver_options):
         """Brings an existing share under Manila management."""
         return {"size": 1, "export_locations": self._create_share(share)}
 
+    @slow_me_down
     def unmanage(self, share):
         """Removes the specified share from Manila management."""
 
+    @slow_me_down
     def manage_existing_snapshot(self, snapshot, driver_options):
         """Brings an existing snapshot under Manila management."""
         self._create_snapshot(snapshot)
         return {"size": 1, "provider_location": snapshot["provider_location"]}
 
+    @slow_me_down
     def unmanage_snapshot(self, snapshot):
         """Removes the specified snapshot from Manila management."""
 
+    @slow_me_down
     def extend_share(self, share, new_size, share_server=None):
         """Extends size of existing share."""
 
+    @slow_me_down
     def shrink_share(self, share, new_size, share_server=None):
         """Shrinks size of existing share."""
 
@@ -180,6 +293,7 @@ class DummyDriver(driver.ShareDriver):
     def get_admin_network_allocations_number(self):
         return 1
 
+    @slow_me_down
     def _setup_server(self, network_info, metadata=None):
         """Sets up and configures share server with given network parameters.
 
@@ -197,9 +311,11 @@ class DummyDriver(driver.ShareDriver):
         }
         return server_details
 
+    @slow_me_down
     def _teardown_server(self, server_details, security_services=None):
         """Tears down share server."""
 
+    @slow_me_down
     def _get_pools_info(self):
         pools = [{
             "pool_name": "fake_pool_for_%s" % self.backend_name,
@@ -211,6 +327,7 @@ class DummyDriver(driver.ShareDriver):
             pools[0]["replication_type"] = "readable"
         return pools
 
+    @slow_me_down
     def _update_share_stats(self, data=None):
         """Retrieve stats info from share group."""
         data = {
@@ -231,28 +348,33 @@ class DummyDriver(driver.ShareDriver):
         """Return list of pools related to a particular share server."""
         return []
 
+    @slow_me_down
     def create_consistency_group(self, context, cg_dict, share_server=None):
         """Create a consistency group."""
         LOG.debug(
             "Successfully created dummy Consistency Group with ID: %s.",
             cg_dict["id"])
 
+    @slow_me_down
     def delete_consistency_group(self, context, cg_dict, share_server=None):
         """Delete a consistency group."""
         LOG.debug(
             "Successfully deleted dummy consistency group with ID %s.",
             cg_dict["id"])
 
+    @slow_me_down
     def create_cgsnapshot(self, context, snap_dict, share_server=None):
         """Create a consistency group snapshot."""
         LOG.debug("Successfully created CG snapshot %s." % snap_dict["id"])
         return None, None
 
+    @slow_me_down
     def delete_cgsnapshot(self, context, snap_dict, share_server=None):
         """Delete a consistency group snapshot."""
         LOG.debug("Successfully deleted CG snapshot %s." % snap_dict["id"])
         return None, None
 
+    @slow_me_down
     def create_consistency_group_from_cgsnapshot(
             self, context, cg_dict, cgsnapshot_dict, share_server=None):
         """Create a consistency group from a cgsnapshot."""
@@ -262,6 +384,7 @@ class DummyDriver(driver.ShareDriver):
             {"cg_id": cg_dict["id"], "cg_snap_id": cgsnapshot_dict["id"]})
         return None, []
 
+    @slow_me_down
     def create_replica(self, context, replica_list, new_replica,
                        access_rules, replica_snapshots, share_server=None):
         """Replicate the active replica to a new replica on this backend."""
@@ -280,11 +403,13 @@ class DummyDriver(driver.ShareDriver):
             "access_rules_status": constants.STATUS_ACTIVE,
         }
 
+    @slow_me_down
     def delete_replica(self, context, replica_list, replica_snapshots,
                        replica, share_server=None):
         """Delete a replica."""
         self.private_storage.delete(replica["id"])
 
+    @slow_me_down
     def promote_replica(self, context, replica_list, replica, access_rules,
                         share_server=None):
         """Promote a replica to 'active' replica state."""
@@ -298,12 +423,14 @@ class DummyDriver(driver.ShareDriver):
                 {"id": r["id"], "replica_state": replica_state})
         return return_replica_list
 
+    @slow_me_down
     def update_replica_state(self, context, replica_list, replica,
                              access_rules, replica_snapshots,
                              share_server=None):
         """Update the replica_state of a replica."""
         return constants.REPLICA_STATE_IN_SYNC
 
+    @slow_me_down
     def create_replicated_snapshot(self, context, replica_list,
                                    replica_snapshots, share_server=None):
         """Create a snapshot on active instance and update across the replicas.
@@ -315,6 +442,7 @@ class DummyDriver(driver.ShareDriver):
                 {"id": r["id"], "status": constants.STATUS_AVAILABLE})
         return return_replica_snapshots
 
+    @slow_me_down
     def delete_replicated_snapshot(self, context, replica_list,
                                    replica_snapshots, share_server=None):
         """Delete a snapshot by deleting its instances across the replicas."""
@@ -324,6 +452,7 @@ class DummyDriver(driver.ShareDriver):
                 {"id": r["id"], "status": constants.STATUS_DELETED})
         return return_replica_snapshots
 
+    @slow_me_down
     def update_replicated_snapshot(self, context, replica_list,
                                    share_replica, replica_snapshots,
                                    replica_snapshot, share_server=None):
@@ -331,6 +460,7 @@ class DummyDriver(driver.ShareDriver):
         return {
             "id": replica_snapshot["id"], "status": constants.STATUS_AVAILABLE}
 
+    @slow_me_down
     def migration_check_compatibility(
             self, context, source_share, destination_share,
             share_server=None, destination_share_server=None):
@@ -342,6 +472,7 @@ class DummyDriver(driver.ShareDriver):
             'nondisruptive': True,
         }
 
+    @slow_me_down
     def migration_start(
             self, context, source_share, destination_share,
             share_server=None, destination_share_server=None):
@@ -353,6 +484,7 @@ class DummyDriver(driver.ShareDriver):
             source_share["id"])
         self.migration_progress[source_share['share_id']] = 0
 
+    @slow_me_down
     def migration_continue(
             self, context, source_share, destination_share,
             share_server=None, destination_share_server=None):
@@ -369,6 +501,7 @@ class DummyDriver(driver.ShareDriver):
 
         return self.migration_progress[source_share["id"]] == 100
 
+    @slow_me_down
     def migration_complete(
             self, context, source_share, destination_share,
             share_server=None, destination_share_server=None):
@@ -394,6 +527,7 @@ class DummyDriver(driver.ShareDriver):
         return self._generate_export_locations(
             mountpoint, share_server=share_server)
 
+    @slow_me_down
     def migration_cancel(
             self, context, source_share, destination_share,
             share_server=None, destination_share_server=None):
@@ -403,6 +537,7 @@ class DummyDriver(driver.ShareDriver):
             source_share["id"])
         self.migration_progress.pop(source_share["id"], None)
 
+    @slow_me_down
     def migration_get_progress(
             self, context, source_share, destination_share,
             share_server=None, destination_share_server=None):
