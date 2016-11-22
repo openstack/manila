@@ -97,6 +97,15 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         client.wait_for_share_status(share['id'], 'available')
         return share
 
+    def _create_snapshot(self, share_id, client=None, **kwargs):
+        client = client or self.shares_v2_client
+        snapshot = client.create_snapshot(share_id, **kwargs)
+        self.addCleanup(
+            client.wait_for_resource_deletion, snapshot_id=snapshot['id'])
+        self.addCleanup(client.delete_snapshot, snapshot['id'])
+        client.wait_for_snapshot_status(snapshot["id"], "available")
+        return snapshot
+
     def _wait_for_share_server_deletion(self, sn_id, client=None):
         """Wait for a share server to be deleted
 
