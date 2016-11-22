@@ -1,0 +1,7 @@
+---
+fixes:
+  - In the Generic driver, the backing volume size is
+    greater than the share size when the share has been
+    shrunk. So share extend logic in this driver was
+    changed to only extend the backing volume if its
+    size is less than the size of the new, extended share.
