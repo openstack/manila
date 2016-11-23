@@ -597,7 +597,7 @@ class TestConnection(test.TestCase):
 
     @res_mock.patch_connection
     def test_get_network_allocations_number(self, connection):
-        self.assertEqual(2, connection.get_network_allocations_number())
+        self.assertEqual(1, connection.get_network_allocations_number())
 
     @res_mock.patch_connection
     def test_get_proto_enum(self, connection):
