@@ -64,3 +64,7 @@ class UnityNfsAlreadyEnabledError(UnityException):
 
 class UnityHostNotFoundException(UnityException):
     pass
+
+
+class UnityNothingToModifyError(UnityException):
+    pass

@@ -17,7 +17,6 @@
 from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
-from oslo_utils import units
 
 storops = importutils.try_import('storops')
 if storops:
@@ -98,7 +97,7 @@ class UnityStorageConnection(driver.StorageConnection):
     def create_share(self, context, share, share_server=None):
         """Create a share and export it based on protocol used."""
         share_name = share['id']
-        size = share['size'] * units.Gi
+        size = share['size']
 
         # Check share's protocol.
         # Throw an exception immediately if it is an invalid protocol.
@@ -205,7 +204,8 @@ class UnityStorageConnection(driver.StorageConnection):
                                               share['share_proto'])
 
         if not self._is_share_from_snapshot(backend_share):
-            backend_share.filesystem.extend(new_size * units.Gi)
+            self.client.extend_filesystem(backend_share.filesystem,
+                                          new_size)
         else:
             share_id = share['id']
             reason = _LE("Driver does not support extending a "
