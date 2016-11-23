@@ -444,21 +444,19 @@ function create_manila_accounts {
 
     create_service_user "manila"
 
-    if [[ "$KEYSTONE_CATALOG_BACKEND" = 'sql' ]]; then
-        # Set up Manila v1 service and endpoint
-        get_or_create_service "manila" "share" "Manila Shared Filesystem Service"
-        get_or_create_endpoint "share" "$REGION_NAME" \
-            "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s" \
-            "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s" \
-            "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s"
+    # Set up Manila v1 service and endpoint
+    get_or_create_service "manila" "share" "Manila Shared Filesystem Service"
+    get_or_create_endpoint "share" "$REGION_NAME" \
+        "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s" \
+        "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s" \
+        "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s"
 
-        # Set up Manila v2 service and endpoint
-        get_or_create_service "manilav2" "sharev2" "Manila Shared Filesystem Service V2"
-        get_or_create_endpoint "sharev2" "$REGION_NAME" \
-            "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v2/\$(tenant_id)s" \
-            "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v2/\$(tenant_id)s" \
-            "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v2/\$(tenant_id)s"
-    fi
+    # Set up Manila v2 service and endpoint
+    get_or_create_service "manilav2" "sharev2" "Manila Shared Filesystem Service V2"
+    get_or_create_endpoint "sharev2" "$REGION_NAME" \
+        "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v2/\$(tenant_id)s" \
+        "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v2/\$(tenant_id)s" \
+        "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v2/\$(tenant_id)s"
 }
 
 # create_default_share_type - create share type that will be set as default.
