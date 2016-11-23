@@ -506,7 +506,7 @@ class ZFSSAShareDriverTestCase(test.TestCase):
 
         ret = self._driver._verify_share_to_manage('sharename', {})
 
-        self.assertEqual(ret, None)
+        self.assertIsNone(ret)
         # Change it back to strict
         self.configuration.zfssa_manage_policy = 'strict'
 

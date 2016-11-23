@@ -107,4 +107,4 @@ class DockerExecHelperTestCase(test.TestCase):
 
         result = self.DockerExecHelper._inner_execute("fake_command")
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
