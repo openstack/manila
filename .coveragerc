@@ -1,7 +1,7 @@
 [run]
 branch = True
 source = manila
-omit = manila/test*,manila/openstack/*
+omit = manila/test*
 
 [report]
 precision = 2
