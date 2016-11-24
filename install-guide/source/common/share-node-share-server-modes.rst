@@ -3,7 +3,7 @@ share servers. The mode depends on driver support.
 
 Option 1
 --------
-Deploying the service without driver support for share management.
+Deploying the service without driver support for share server management.
 In this mode, the service does not do anything related to networking. The
 operator must ensure network connectivity between instances and the NAS
 protocol based server.
@@ -18,7 +18,7 @@ mode, or simply ``DHSS=False`` mode.
 
 Option 2
 --------
-Deploying the service with driver support for share management. In
+Deploying the service with driver support for share server management. In
 this mode, the service runs with a back end driver that creates and manages
 share servers. This tutorial demonstrates setting up the ``Generic`` driver.
 This driver requires Compute service (nova), Image service (glance) and
