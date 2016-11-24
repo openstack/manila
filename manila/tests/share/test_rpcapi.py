@@ -243,13 +243,14 @@ class ShareRpcAPITestCase(test.TestCase):
     def test_migration_start(self):
         self._test_share_api('migration_start',
                              rpc_method='cast',
-                             version='1.12',
+                             version='1.15',
                              share=self.fake_share,
                              dest_host=self.fake_host,
                              force_host_assisted_migration=True,
                              preserve_metadata=True,
                              writable=True,
                              nondisruptive=False,
+                             preserve_snapshots=True,
                              new_share_network_id='fake_net_id',
                              new_share_type_id='fake_type_id')
 

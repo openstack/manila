@@ -30,7 +30,7 @@ CONF = config.CONF
 
 
 @ddt.ddt
-class MigrationTest(base.BaseSharesAdminTest):
+class MigrationNegativeTest(base.BaseSharesAdminTest):
     """Tests Share Migration.
 
     Tests share migration in multi-backend environment.
@@ -40,7 +40,7 @@ class MigrationTest(base.BaseSharesAdminTest):
 
     @classmethod
     def resource_setup(cls):
-        super(MigrationTest, cls).resource_setup()
+        super(MigrationNegativeTest, cls).resource_setup()
         if cls.protocol not in CONF.share.enable_protocols:
             message = "%s tests are disabled." % cls.protocol
             raise cls.skipException(message)
@@ -57,11 +57,11 @@ class MigrationTest(base.BaseSharesAdminTest):
         cls.share = cls.create_share(cls.protocol)
         cls.share = cls.shares_client.get_share(cls.share['id'])
 
-        default_type = cls.shares_v2_client.list_share_types(
+        cls.default_type = cls.shares_v2_client.list_share_types(
             default=True)['share_type']
 
         dest_pool = utils.choose_matching_backend(
-            cls.share, pools, default_type)
+            cls.share, pools, cls.default_type)
 
         if not dest_pool or dest_pool.get('name') is None:
             raise share_exceptions.ShareMigrationException(
@@ -121,44 +121,65 @@ class MigrationTest(base.BaseSharesAdminTest):
             'invalid_share_id')
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @base.skip_if_microversion_lt("2.22")
+    @base.skip_if_microversion_lt("2.29")
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
     def test_migrate_share_with_snapshot(self):
         snap = self.create_snapshot_wait_for_active(self.share['id'])
         self.assertRaises(
-            lib_exc.BadRequest, self.shares_v2_client.migrate_share,
-            self.share['id'], self.dest_pool)
+            lib_exc.Conflict, self.shares_v2_client.migrate_share,
+            self.share['id'], self.dest_pool,
+            force_host_assisted_migration=True)
         self.shares_client.delete_snapshot(snap['id'])
         self.shares_client.wait_for_resource_deletion(snapshot_id=snap["id"])
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @base.skip_if_microversion_lt("2.22")
-    def test_migrate_share_same_host(self):
-        self.assertRaises(
-            lib_exc.BadRequest, self.shares_v2_client.migrate_share,
-            self.share['id'], self.share['host'])
+    @base.skip_if_microversion_lt("2.29")
+    @ddt.data(True, False)
+    def test_migrate_share_same_host(self, specified):
+        new_share_type_id = None
+        new_share_network_id = None
+        if specified:
+            new_share_type_id = self.default_type['id']
+            new_share_network_id = self.share['share_network_id']
+        self.migrate_share(
+            self.share['id'], self.share['host'],
+            wait_for_status=constants.TASK_STATE_MIGRATION_SUCCESS,
+            new_share_type_id=new_share_type_id,
+            new_share_network_id=new_share_network_id)
+        # NOTE(ganso): No need to assert, it is already waiting for correct
+        # status (migration_success).
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @base.skip_if_microversion_lt("2.22")
+    @base.skip_if_microversion_lt("2.29")
     def test_migrate_share_host_invalid(self):
         self.assertRaises(
             lib_exc.NotFound, self.shares_v2_client.migrate_share,
             self.share['id'], 'invalid_host')
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @base.skip_if_microversion_lt("2.22")
-    def test_migrate_share_host_assisted_not_allowed(self):
-        self.shares_v2_client.migrate_share(
+    @base.skip_if_microversion_lt("2.29")
+    @ddt.data({'writable': False, 'preserve_metadata': False,
+               'preserve_snapshots': False, 'nondisruptive': True},
+              {'writable': False, 'preserve_metadata': False,
+               'preserve_snapshots': True, 'nondisruptive': False},
+              {'writable': False, 'preserve_metadata': True,
+               'preserve_snapshots': False, 'nondisruptive': False},
+              {'writable': True, 'preserve_metadata': False,
+               'preserve_snapshots': False, 'nondisruptive': False})
+    @ddt.unpack
+    def test_migrate_share_host_assisted_not_allowed_API(
+            self, writable, preserve_metadata, preserve_snapshots,
+            nondisruptive):
+        self.assertRaises(
+            lib_exc.BadRequest, self.shares_v2_client.migrate_share,
             self.share['id'], self.dest_pool,
-            force_host_assisted_migration=True, writable=True,
-            preserve_metadata=True)
-        self.shares_v2_client.wait_for_migration_status(
-            self.share['id'], self.dest_pool,
-            constants.TASK_STATE_MIGRATION_ERROR)
+            force_host_assisted_migration=True, writable=writable,
+            preserve_metadata=preserve_metadata, nondisruptive=nondisruptive,
+            preserve_snapshots=preserve_snapshots)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @base.skip_if_microversion_lt("2.22")
+    @base.skip_if_microversion_lt("2.29")
     def test_migrate_share_change_type_no_valid_host(self):
         if not CONF.share.multitenancy_enabled:
             new_share_network_id = self.create_share_network(
@@ -176,14 +197,14 @@ class MigrationTest(base.BaseSharesAdminTest):
             constants.TASK_STATE_MIGRATION_ERROR)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @base.skip_if_microversion_lt("2.22")
+    @base.skip_if_microversion_lt("2.29")
     def test_migrate_share_not_found(self):
         self.assertRaises(
             lib_exc.NotFound, self.shares_v2_client.migrate_share,
             'invalid_share_id', self.dest_pool)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @base.skip_if_microversion_lt("2.22")
+    @base.skip_if_microversion_lt("2.29")
     def test_migrate_share_not_available(self):
         self.shares_client.reset_state(self.share['id'],
                                        constants.STATUS_ERROR)
@@ -198,7 +219,7 @@ class MigrationTest(base.BaseSharesAdminTest):
                                                  constants.STATUS_AVAILABLE)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @base.skip_if_microversion_lt("2.22")
+    @base.skip_if_microversion_lt("2.29")
     def test_migrate_share_invalid_share_network(self):
         self.assertRaises(
             lib_exc.BadRequest, self.shares_v2_client.migrate_share,
@@ -206,7 +227,7 @@ class MigrationTest(base.BaseSharesAdminTest):
             new_share_network_id='invalid_net_id')
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @base.skip_if_microversion_lt("2.22")
+    @base.skip_if_microversion_lt("2.29")
     def test_migrate_share_invalid_share_type(self):
         self.assertRaises(
             lib_exc.BadRequest, self.shares_v2_client.migrate_share,
@@ -214,7 +235,7 @@ class MigrationTest(base.BaseSharesAdminTest):
             new_share_type_id='invalid_type_id')
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @base.skip_if_microversion_lt("2.22")
+    @base.skip_if_microversion_lt("2.29")
     def test_migrate_share_opposite_type_share_network_invalid(self):
 
         extra_specs = utils.get_configured_extra_specs(

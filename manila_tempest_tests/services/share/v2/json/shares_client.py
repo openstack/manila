@@ -1092,8 +1092,9 @@ class SharesV2Client(shares_client.SharesClient):
     def migrate_share(self, share_id, host,
                       force_host_assisted_migration=False,
                       new_share_network_id=None, writable=False,
-                      preserve_metadata=False, nondisruptive=False,
-                      new_share_type_id=None, version=LATEST_MICROVERSION):
+                      preserve_metadata=False, preserve_snapshots=False,
+                      nondisruptive=False, new_share_type_id=None,
+                      version=LATEST_MICROVERSION):
 
         body = {
             'migration_start': {
@@ -1103,6 +1104,7 @@ class SharesV2Client(shares_client.SharesClient):
                 'new_share_type_id': new_share_type_id,
                 'writable': writable,
                 'preserve_metadata': preserve_metadata,
+                'preserve_snapshots': preserve_snapshots,
                 'nondisruptive': nondisruptive,
             }
         }

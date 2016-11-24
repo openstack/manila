@@ -2229,7 +2229,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         with mock.patch("six.moves.builtins.open",
                         mock.mock_open(read_data="data")) as mock_file:
             self.driver.migration_start(
-                self._context, src_share, dst_share)
+                self._context, src_share, dst_share, None, None)
 
             expected_file_content = (
                 'ssh %(ssh_cmd)s sudo zfs send -vDR %(snap)s | '
@@ -2281,7 +2281,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             mock.Mock(return_value=('fake_out', 'fake_err')))
 
         result = self.driver.migration_continue(
-            self._context, 'fake_src_share', dst_share)
+            self._context, 'fake_src_share', dst_share, None, None)
 
         self.assertTrue(result)
         mock_executor.assert_called_once_with(dst_share['host'])
@@ -2310,7 +2310,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             mock.Mock(return_value=('foo@%s' % snapshot_tag, 'fake_err')))
 
         result = self.driver.migration_continue(
-            self._context, 'fake_src_share', dst_share)
+            self._context, 'fake_src_share', dst_share, None, None)
 
         self.assertIsNone(result)
         self.assertFalse(mock_executor.called)
@@ -2340,7 +2340,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         self.assertRaises(
             exception.ZFSonLinuxException,
             self.driver.migration_continue,
-            self._context, 'fake_src_share', dst_share,
+            self._context, 'fake_src_share', dst_share, None, None
         )
 
         mock_executor.assert_called_once_with(dst_share['host'])
@@ -2379,10 +2379,14 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         self.mock_object(self.driver, 'delete_share')
 
         result = self.driver.migration_complete(
-            self._context, src_share, dst_share)
+            self._context, src_share, dst_share, None, None)
 
-        self.assertEqual(
-            mock_helper.return_value.create_exports.return_value, result)
+        expected_result = {
+            'export_locations': (mock_helper.return_value.
+                                 create_exports.return_value)
+        }
+
+        self.assertEqual(expected_result, result)
         mock_executor.assert_called_once_with(dst_share['host'])
         self.driver.execute.assert_called_once_with(
             'sudo', 'zfs', 'destroy', dst_snapshot_name,
@@ -2428,7 +2432,8 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             mock.Mock(return_value=(ps_output, 'fake_err'))
         )
 
-        self.driver.migration_cancel(self._context, src_share, dst_share)
+        self.driver.migration_cancel(
+            self._context, src_share, dst_share, [], {})
 
         self.driver.execute.assert_has_calls([
             mock.call('ps', 'aux'),
@@ -2470,7 +2475,8 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             mock.Mock(side_effect=exception.ProcessExecutionError),
         )
 
-        self.driver.migration_cancel(self._context, src_share, dst_share)
+        self.driver.migration_cancel(
+            self._context, src_share, dst_share, [], {})
 
         self.driver.execute.assert_has_calls([
             mock.call('ps', 'aux'),

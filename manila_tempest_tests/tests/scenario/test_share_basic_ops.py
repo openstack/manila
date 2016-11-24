@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
+
 from oslo_log import log as logging
 from tempest.common import waiters
 from tempest import config
@@ -32,6 +34,7 @@ CONF = config.CONF
 LOG = logging.getLogger(__name__)
 
 
+@ddt.ddt
 class ShareBasicOpsBase(manager.ShareScenarioTest):
 
     """This smoke test case follows this basic set of operations:
@@ -135,11 +138,14 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         data = ssh_client.exec_command("sudo cat /mnt/t1")
         return data.rstrip()
 
-    def migrate_share(self, share_id, dest_host, status):
-        share = self._migrate_share(share_id, dest_host, status,
-                                    self.shares_admin_v2_client)
-        share = self._migration_complete(share['id'], dest_host)
+    def migrate_share(self, share_id, dest_host, status, force_host_assisted):
+        share = self._migrate_share(
+            share_id, dest_host, status, force_host_assisted,
+            self.shares_admin_v2_client)
         return share
+
+    def migration_complete(self, share_id, dest_host):
+        return self._migration_complete(share_id, dest_host)
 
     def create_share_network(self):
         self.net = self._create_network(namestart="manila-share")
@@ -266,10 +272,21 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         self.assertEqual(test_data, data)
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
+    @base.skip_if_microversion_lt("2.29")
     @testtools.skipUnless(CONF.share.run_host_assisted_migration_tests or
                           CONF.share.run_driver_assisted_migration_tests,
                           "Share migration tests are disabled.")
-    def test_migration_files(self):
+    @ddt.data(True, False)
+    def test_migration_files(self, force_host_assisted):
+
+        if (force_host_assisted and
+                not CONF.share.run_host_assisted_migration_tests):
+                raise self.skipException("Host-assisted migration tests are "
+                                         "disabled.")
+        elif (not force_host_assisted and
+              not CONF.share.run_driver_assisted_migration_tests):
+            raise self.skipException("Driver-assisted migration tests are "
+                                     "disabled.")
 
         if self.protocol != "nfs":
             raise self.skipException("Only NFS protocol supported "
@@ -300,14 +317,11 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         ssh_client = self.init_ssh(instance)
         self.provide_access_to_auxiliary_instance(instance)
 
-        if utils.is_microversion_lt(CONF.share.max_api_microversion, "2.9"):
-            exports = self.share['export_locations']
-        else:
-            exports = self.shares_v2_client.list_share_export_locations(
-                self.share['id'])
-            self.assertNotEmpty(exports)
-            exports = [x['path'] for x in exports]
-            self.assertNotEmpty(exports)
+        exports = self.shares_v2_client.list_share_export_locations(
+            self.share['id'])
+        self.assertNotEmpty(exports)
+        exports = [x['path'] for x in exports]
+        self.assertNotEmpty(exports)
 
         self.mount_share(exports[0], ssh_client)
 
@@ -330,23 +344,31 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         ssh_client.exec_command("sudo chmod -R 555 /mnt/f3")
         ssh_client.exec_command("sudo chmod -R 777 /mnt/f4")
 
-        self.umount_share(ssh_client)
-
-        task_state = (constants.TASK_STATE_DATA_COPYING_COMPLETED,
-                      constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE)
+        task_state = (constants.TASK_STATE_DATA_COPYING_COMPLETED
+                      if force_host_assisted
+                      else constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE)
 
         self.share = self.migrate_share(
-            self.share['id'], dest_pool, task_state)
+            self.share['id'], dest_pool, task_state, force_host_assisted)
 
-        if utils.is_microversion_lt(CONF.share.max_api_microversion, "2.9"):
-            new_exports = self.share['export_locations']
-            self.assertNotEmpty(new_exports)
-        else:
-            new_exports = self.shares_v2_client.list_share_export_locations(
-                self.share['id'])
-            self.assertNotEmpty(new_exports)
-            new_exports = [x['path'] for x in new_exports]
-            self.assertNotEmpty(new_exports)
+        read_only = False
+        if force_host_assisted:
+            try:
+                ssh_client.exec_command(
+                    "dd if=/dev/zero of=/mnt/f1/1m6.bin bs=1M count=1")
+            except Exception:
+                read_only = True
+            self.assertTrue(read_only)
+
+        self.umount_share(ssh_client)
+
+        self.share = self.migration_complete(self.share['id'], dest_pool)
+
+        new_exports = self.shares_v2_client.list_share_export_locations(
+            self.share['id'])
+        self.assertNotEmpty(new_exports)
+        new_exports = [x['path'] for x in new_exports]
+        self.assertNotEmpty(new_exports)
 
         self.assertEqual(dest_pool, self.share['host'])
         self.assertEqual(constants.TASK_STATE_MIGRATION_SUCCESS,

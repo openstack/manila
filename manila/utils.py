@@ -483,6 +483,32 @@ def get_bool_from_api_params(key, params, default=False, strict=True):
     return param
 
 
+def check_params_exist(keys, params):
+    """Validates if keys exist in params.
+
+    :param keys: List of keys to check
+    :param params: Parameters received from REST API
+    """
+    if any(set(keys) - set(params)):
+        msg = _("Must specify all mandatory parameters: %s") % keys
+        raise exc.HTTPBadRequest(explanation=msg)
+
+
+def check_params_are_boolean(keys, params, default=False):
+    """Validates if keys in params are boolean.
+
+    :param keys: List of keys to check
+    :param params: Parameters received from REST API
+    :param default: default value when it does not exist
+    :return: a dictionary with keys and respective retrieved value
+    """
+    result = {}
+    for key in keys:
+        value = get_bool_from_api_params(key, params, default, strict=True)
+        result[key] = value
+    return result
+
+
 def require_driver_initialized(func):
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):

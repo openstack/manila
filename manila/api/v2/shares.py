@@ -199,7 +199,7 @@ class ShareController(shares.ShareMixin,
     def share_force_delete(self, req, id, body):
         return self._force_delete(req, id, body)
 
-    @wsgi.Controller.api_version('2.22', experimental=True)
+    @wsgi.Controller.api_version('2.29', experimental=True)
     @wsgi.action("migration_start")
     @wsgi.Controller.authorize
     def migration_start(self, req, id, body):
@@ -215,21 +215,17 @@ class ShareController(shares.ShareMixin,
         if not params:
             raise exc.HTTPBadRequest(explanation=_("Request is missing body."))
 
-        try:
-            host = params['host']
-        except KeyError:
-            raise exc.HTTPBadRequest(explanation=_("Must specify 'host'."))
+        driver_assisted_params = ['preserve_metadata', 'writable',
+                                  'nondisruptive', 'preserve_snapshots']
+        bool_params = (driver_assisted_params +
+                       ['force_host_assisted_migration'])
+        mandatory_params = driver_assisted_params + ['host']
 
-        force_host_assisted_migration = utils.get_bool_from_api_params(
-            'force_host_assisted_migration', params)
+        utils.check_params_exist(mandatory_params, params)
+        bool_param_values = utils.check_params_are_boolean(bool_params, params)
 
         new_share_network = None
         new_share_type = None
-
-        preserve_metadata = utils.get_bool_from_api_params('preserve_metadata',
-                                                           params, True)
-        writable = utils.get_bool_from_api_params('writable', params, True)
-        nondisruptive = utils.get_bool_from_api_params('nondisruptive', params)
 
         new_share_network_id = params.get('new_share_network_id', None)
         if new_share_network_id:
@@ -251,15 +247,19 @@ class ShareController(shares.ShareMixin,
                 raise exc.HTTPBadRequest(explanation=msg)
 
         try:
-            self.share_api.migration_start(
-                context, share, host, force_host_assisted_migration,
-                preserve_metadata, writable, nondisruptive,
+            return_code = self.share_api.migration_start(
+                context, share, params['host'],
+                bool_param_values['force_host_assisted_migration'],
+                bool_param_values['preserve_metadata'],
+                bool_param_values['writable'],
+                bool_param_values['nondisruptive'],
+                bool_param_values['preserve_snapshots'],
                 new_share_network=new_share_network,
                 new_share_type=new_share_type)
         except exception.Conflict as e:
             raise exc.HTTPConflict(explanation=six.text_type(e))
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=return_code)
 
     @wsgi.Controller.api_version('2.22', experimental=True)
     @wsgi.action("migration_complete")

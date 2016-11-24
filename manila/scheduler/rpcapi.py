@@ -38,15 +38,16 @@ class SchedulerAPI(object):
         1.4 - Add migrate_share_to_host method
         1.5 - Add create_share_replica
         1.6 - Add manage_share
+        1.7 - Updated migrate_share_to_host method with new parameters
     """
 
-    RPC_API_VERSION = '1.6'
+    RPC_API_VERSION = '1.7'
 
     def __init__(self):
         super(SchedulerAPI, self).__init__()
         target = messaging.Target(topic=CONF.scheduler_topic,
                                   version=self.RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.6')
+        self.client = rpc.get_client(target, version_cap='1.7')
 
     def create_share_instance(self, context, request_spec=None,
                               filter_properties=None):
@@ -83,10 +84,11 @@ class SchedulerAPI(object):
 
     def migrate_share_to_host(
             self, context, share_id, host, force_host_assisted_migration,
-            preserve_metadata, writable, nondisruptive, new_share_network_id,
-            new_share_type_id, request_spec=None, filter_properties=None):
+            preserve_metadata, writable, nondisruptive, preserve_snapshots,
+            new_share_network_id, new_share_type_id, request_spec=None,
+            filter_properties=None):
 
-        call_context = self.client.prepare(version='1.4')
+        call_context = self.client.prepare(version='1.7')
         request_spec_p = jsonutils.to_primitive(request_spec)
         return call_context.cast(
             context, 'migrate_share_to_host',
@@ -96,6 +98,7 @@ class SchedulerAPI(object):
             preserve_metadata=preserve_metadata,
             writable=writable,
             nondisruptive=nondisruptive,
+            preserve_snapshots=preserve_snapshots,
             new_share_network_id=new_share_network_id,
             new_share_type_id=new_share_type_id,
             request_spec=request_spec_p,

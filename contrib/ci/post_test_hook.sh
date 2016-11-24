@@ -142,6 +142,7 @@ if [[ "$TEST_TYPE" == "scenario" ]]; then
     echo "Set test set to scenario only"
     MANILA_TESTS='manila_tempest_tests.tests.scenario'
     iniset $TEMPEST_CONFIG auth use_dynamic_credentials True
+    RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=True
 elif [[ "$DRIVER" == "generic" ]]; then
     RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=True
     RUN_MANILA_MANAGE_SNAPSHOT_TESTS=True

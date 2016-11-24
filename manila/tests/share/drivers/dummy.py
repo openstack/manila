@@ -38,7 +38,9 @@ from oslo_log import log
 from manila.common import constants
 from manila import exception
 from manila.i18n import _
+from manila.share import configuration
 from manila.share import driver
+from manila.share.manager import share_manager_opts  # noqa
 from manila.share import utils as share_utils
 
 LOG = log.getLogger(__name__)
@@ -102,6 +104,27 @@ def slow_me_down(f):
         return f(self, *args, **kwargs)
 
     return wrapped_func
+
+
+def get_backend_configuration(backend_name):
+    config_stanzas = CONF.list_all_sections()
+    if backend_name not in config_stanzas:
+        msg = _("Could not find backend stanza %(backend_name)s in "
+                "configuration which is required for share replication and "
+                "migration. Available stanzas are %(stanzas)s")
+        params = {
+            "stanzas": config_stanzas,
+            "backend_name": backend_name,
+        }
+        raise exception.BadConfigurationException(reason=msg % params)
+
+    config = configuration.Configuration(
+        driver.share_opts, config_group=backend_name)
+    config.append_config_values(dummy_opts)
+    config.append_config_values(share_manager_opts)
+    config.append_config_values(driver.ssh_opts)
+
+    return config
 
 
 class DummyDriver(driver.ShareDriver):
@@ -477,17 +500,23 @@ class DummyDriver(driver.ShareDriver):
             self, context, source_share, destination_share,
             share_server=None, destination_share_server=None):
         """Is called to test compatibility with destination backend."""
+        backend_name = share_utils.extract_host(
+            destination_share['host'], level='backend_name')
+        config = get_backend_configuration(backend_name)
+        compatible = 'Dummy' in config.share_driver
         return {
-            'compatible': True,
-            'writable': True,
-            'preserve_metadata': True,
-            'nondisruptive': True,
+            'compatible': compatible,
+            'writable': compatible,
+            'preserve_metadata': compatible,
+            'nondisruptive': False,
+            'preserve_snapshots': compatible,
         }
 
     @slow_me_down
     def migration_start(
-            self, context, source_share, destination_share,
-            share_server=None, destination_share_server=None):
+            self, context, source_share, destination_share, source_snapshots,
+            snapshot_mappings, share_server=None,
+            destination_share_server=None):
         """Is called to perform 1st phase of driver migration of a given share.
 
         """
@@ -498,8 +527,9 @@ class DummyDriver(driver.ShareDriver):
 
     @slow_me_down
     def migration_continue(
-            self, context, source_share, destination_share,
-            share_server=None, destination_share_server=None):
+            self, context, source_share, destination_share, source_snapshots,
+            snapshot_mappings, share_server=None,
+            destination_share_server=None):
 
         if source_share["id"] not in self.migration_progress:
             self.migration_progress[source_share["id"]] = 0
@@ -515,34 +545,45 @@ class DummyDriver(driver.ShareDriver):
 
     @slow_me_down
     def migration_complete(
-            self, context, source_share, destination_share,
-            share_server=None, destination_share_server=None):
+            self, context, source_share, destination_share, source_snapshots,
+            snapshot_mappings, share_server=None,
+            destination_share_server=None):
         """Is called to perform 2nd phase of driver migration of a given share.
 
         """
-        return self._do_migration(source_share, share_server)
+        snapshot_updates = {}
+        for src_snap_ins, dest_snap_ins in snapshot_mappings.items():
+            snapshot_updates[dest_snap_ins['id']] = self._create_snapshot(
+                dest_snap_ins)
+        return {
+            'snapshot_updates': snapshot_updates,
+            'export_locations': self._do_migration(
+                source_share, destination_share, share_server)
+        }
 
-    def _do_migration(self, share_ref, share_server):
-        share_name = self._get_share_name(share_ref)
+    def _do_migration(self, source_share_ref, dest_share_ref, share_server):
+        share_name = self._get_share_name(dest_share_ref)
         mountpoint = "/path/to/fake/share/%s" % share_name
+        self.private_storage.delete(source_share_ref["id"])
         self.private_storage.update(
-            share_ref["id"], {
+            dest_share_ref["id"], {
                 "fake_provider_share_name": share_name,
                 "fake_provider_location": mountpoint,
             }
         )
         LOG.debug(
             "Migration of dummy share with ID '%s' has been completed." %
-            share_ref["id"])
-        self.migration_progress.pop(share_ref["id"], None)
+            source_share_ref["id"])
+        self.migration_progress.pop(source_share_ref["id"], None)
 
         return self._generate_export_locations(
             mountpoint, share_server=share_server)
 
     @slow_me_down
     def migration_cancel(
-            self, context, source_share, destination_share,
-            share_server=None, destination_share_server=None):
+            self, context, source_share, destination_share, source_snapshots,
+            snapshot_mappings, share_server=None,
+            destination_share_server=None):
         """Is called to cancel driver migration."""
         LOG.debug(
             "Migration of dummy share with ID '%s' has been canceled." %
@@ -551,8 +592,9 @@ class DummyDriver(driver.ShareDriver):
 
     @slow_me_down
     def migration_get_progress(
-            self, context, source_share, destination_share,
-            share_server=None, destination_share_server=None):
+            self, context, source_share, destination_share, source_snapshots,
+            snapshot_mappings, share_server=None,
+            destination_share_server=None):
         """Is called to get migration progress."""
         # Simulate migration progress.
         if source_share["id"] not in self.migration_progress:

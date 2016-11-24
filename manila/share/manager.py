@@ -189,7 +189,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.14'
+    RPC_API_VERSION = '1.15'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -292,11 +292,6 @@ class ShareManager(manager.SchedulerDependentManager):
         LOG.debug("Re-exporting %s shares", len(share_instances))
         for share_instance in share_instances:
             share_ref = self.db.share_get(ctxt, share_instance['share_id'])
-
-            if (share_ref['task_state'] == (
-                    constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS) and
-                    share_instance['status'] == constants.STATUS_MIGRATING):
-                continue
 
             if share_ref.is_busy:
                 LOG.info(
@@ -673,8 +668,8 @@ class ShareManager(manager.SchedulerDependentManager):
 
     def _migration_start_driver(
             self, context, share_ref, src_share_instance, dest_host, writable,
-            preserve_metadata, nondisruptive, new_share_network_id, new_az_id,
-            new_share_type_id):
+            preserve_metadata, nondisruptive, preserve_snapshots,
+            new_share_network_id, new_az_id, new_share_type_id):
 
         share_server = self._get_share_server(context, src_share_instance)
 
@@ -744,6 +739,55 @@ class ShareManager(manager.SchedulerDependentManager):
                         "remaining writable.") % share_ref['id']
                 raise exception.ShareMigrationFailed(reason=msg)
 
+            if (not compatibility.get('preserve_snapshots') and
+                    preserve_snapshots):
+                msg = _("Driver cannot perform migration of share %s while "
+                        "preserving snapshots.") % share_ref['id']
+                raise exception.ShareMigrationFailed(reason=msg)
+
+            snapshot_mapping = {}
+            src_snap_instances = []
+            src_snapshots = self.db.share_snapshot_get_all_for_share(
+                context, share_ref['id'])
+
+            if compatibility.get('preserve_snapshots'):
+
+                # Make sure all snapshots are 'available'
+                if any(x['status'] != constants.STATUS_AVAILABLE
+                       for x in src_snapshots):
+                    msg = _(
+                        "All snapshots must have '%(status)s' status to be "
+                        "migrated by the driver along with share "
+                        "%(share)s.") % {
+                            'share': share_ref['id'],
+                            'status': constants.STATUS_AVAILABLE
+                        }
+                    raise exception.ShareMigrationFailed(reason=msg)
+
+                src_snap_instances = [x.instance for x in src_snapshots]
+
+                dest_snap_instance_data = {
+                    'status': constants.STATUS_MIGRATING_TO,
+                    'progress': '0%',
+                    'share_instance_id': dest_share_instance['id'],
+                }
+
+                for snap_instance in src_snap_instances:
+                    snapshot_mapping[snap_instance['id']] = (
+                        self.db.share_snapshot_instance_create(
+                            context, snap_instance['snapshot_id'],
+                            dest_snap_instance_data))
+                    self.db.share_snapshot_instance_update(
+                        context, snap_instance['id'],
+                        {'status': constants.STATUS_MIGRATING})
+
+            else:
+                if src_snapshots:
+                    msg = _("Driver does not support preserving snapshots, "
+                            "driver-assisted migration cannot proceed while "
+                            "share %s has snapshots.") % share_ref['id']
+                    raise exception.ShareMigrationFailed(reason=msg)
+
             if not compatibility.get('writable'):
                 self._cast_access_rules_to_readonly(
                     context, src_share_instance, share_server)
@@ -758,7 +802,8 @@ class ShareManager(manager.SchedulerDependentManager):
 
             self.driver.migration_start(
                 context, src_share_instance, dest_share_instance,
-                share_server, dest_share_server)
+                src_snap_instances, snapshot_mapping, share_server,
+                dest_share_server)
 
             self.db.share_update(
                 context, share_ref['id'],
@@ -770,6 +815,8 @@ class ShareManager(manager.SchedulerDependentManager):
             # database. It is assumed that driver cleans up leftovers in
             # backend when migration fails.
             self._migration_delete_instance(context, dest_share_instance['id'])
+            self._restore_migrating_snapshots_status(
+                context, src_share_instance['id'])
 
             # NOTE(ganso): For now source share instance should remain in
             # migrating status for host-assisted migration.
@@ -810,6 +857,7 @@ class ShareManager(manager.SchedulerDependentManager):
         instances = self.db.share_instances_get_all_by_host(context, self.host)
 
         for instance in instances:
+
             if instance['status'] != constants.STATUS_MIGRATING:
                 continue
 
@@ -834,10 +882,15 @@ class ShareManager(manager.SchedulerDependentManager):
                 dest_share_server = self._get_share_server(
                     context, dest_share_instance)
 
+                src_snap_instances, snapshot_mappings = (
+                    self._get_migrating_snapshots(context, src_share_instance,
+                                                  dest_share_instance))
+
                 try:
 
                     finished = self.driver.migration_continue(
                         context, src_share_instance, dest_share_instance,
+                        src_snap_instances, snapshot_mappings,
                         src_share_server, dest_share_server)
 
                     if finished:
@@ -867,7 +920,8 @@ class ShareManager(manager.SchedulerDependentManager):
                     # up leftovers in backend when migration fails.
                     self._migration_delete_instance(
                         context, dest_share_instance['id'])
-
+                    self._restore_migrating_snapshots_status(
+                        context, src_share_instance['id'])
                     self.db.share_instance_update(
                         context, src_share_instance['id'],
                         {'status': constants.STATUS_AVAILABLE})
@@ -878,10 +932,54 @@ class ShareManager(manager.SchedulerDependentManager):
                             "failed.") % share['id']
                     LOG.exception(msg)
 
+    def _get_migrating_snapshots(
+            self, context, src_share_instance, dest_share_instance):
+
+        dest_snap_instances = (
+            self.db.share_snapshot_instance_get_all_with_filters(
+                context,
+                {'share_instance_ids': [dest_share_instance['id']]}))
+
+        snapshot_mappings = {}
+        src_snap_instances = []
+        if len(dest_snap_instances) > 0:
+            src_snap_instances = (
+                self.db.share_snapshot_instance_get_all_with_filters(
+                    context,
+                    {'share_instance_ids': [src_share_instance['id']]}))
+            for snap in src_snap_instances:
+                dest_snap_instance = next(
+                    x for x in dest_snap_instances
+                    if snap['snapshot_id'] == x['snapshot_id'])
+                snapshot_mappings[snap['id']] = dest_snap_instance
+
+        return src_snap_instances, snapshot_mappings
+
+    def _restore_migrating_snapshots_status(
+            self, context, src_share_instance_id,
+            errored_dest_instance_id=None):
+        filters = {'share_instance_ids': [src_share_instance_id]}
+        status = constants.STATUS_AVAILABLE
+        if errored_dest_instance_id:
+            filters['share_instance_ids'].append(errored_dest_instance_id)
+            status = constants.STATUS_ERROR
+        snap_instances = (
+            self.db.share_snapshot_instance_get_all_with_filters(
+                context, filters)
+        )
+        for instance in snap_instances:
+            if instance['status'] == constants.STATUS_MIGRATING:
+                self.db.share_snapshot_instance_update(
+                    context, instance['id'], {'status': status})
+            elif (errored_dest_instance_id and
+                  instance['status'] == constants.STATUS_MIGRATING_TO):
+                self.db.share_snapshot_instance_update(
+                    context, instance['id'], {'status': status})
+
     @utils.require_driver_initialized
     def migration_start(
             self, context, share_id, dest_host, force_host_assisted_migration,
-            preserve_metadata=True, writable=True, nondisruptive=False,
+            preserve_metadata, writable, nondisruptive, preserve_snapshots,
             new_share_network_id=None, new_share_type_id=None):
         """Migrates a share from current host to another host."""
         LOG.debug("Entered migration_start method for share %s.", share_id)
@@ -904,8 +1002,8 @@ class ShareManager(manager.SchedulerDependentManager):
             try:
                 success = self._migration_start_driver(
                     context, share_ref, share_instance, dest_host, writable,
-                    preserve_metadata, nondisruptive, new_share_network_id,
-                    new_az_id, new_share_type_id)
+                    preserve_metadata, nondisruptive, preserve_snapshots,
+                    new_share_network_id, new_az_id, new_share_type_id)
 
             except Exception as e:
                 if not isinstance(e, NotImplementedError):
@@ -916,13 +1014,22 @@ class ShareManager(manager.SchedulerDependentManager):
         try:
 
             if not success:
-                if writable or preserve_metadata or nondisruptive:
+                if (writable or preserve_metadata or nondisruptive or
+                        preserve_snapshots):
                     msg = _("Migration for share %s could not be "
                             "performed because host-assisted migration is not "
                             "allowed when share must remain writable, "
-                            "preserve all file metadata or be performed "
-                            "non-disruptively.") % share_id
+                            "preserve snapshots and/or file metadata or be "
+                            "performed nondisruptively.") % share_id
 
+                    raise exception.ShareMigrationFailed(reason=msg)
+
+                # We only handle shares without snapshots for now
+                snaps = self.db.share_snapshot_get_all_for_share(
+                    context, share_id)
+                if snaps:
+                    msg = _("Share %s must not have snapshots in order to "
+                            "perform a host-assisted migration.") % share_id
                     raise exception.ShareMigrationFailed(reason=msg)
 
                 LOG.debug("Starting host-assisted migration "
@@ -1018,13 +1125,27 @@ class ShareManager(manager.SchedulerDependentManager):
             context, share_ref['id'],
             {'task_state': constants.TASK_STATE_MIGRATION_COMPLETING})
 
-        export_locations = self.driver.migration_complete(
-            context, src_share_instance, dest_share_instance,
-            share_server, dest_share_server)
+        src_snap_instances, snapshot_mappings = (
+            self._get_migrating_snapshots(context, src_share_instance,
+                                          dest_share_instance))
 
-        if export_locations:
+        data_updates = self.driver.migration_complete(
+            context, src_share_instance, dest_share_instance,
+            src_snap_instances, snapshot_mappings, share_server,
+            dest_share_server) or {}
+
+        if data_updates.get('export_locations'):
             self.db.share_export_locations_update(
-                context, dest_share_instance['id'], export_locations)
+                context, dest_share_instance['id'],
+                data_updates['export_locations'])
+
+        snapshot_updates = data_updates.get('snapshot_updates') or {}
+        for src_snap_ins, dest_snap_ins in snapshot_mappings.items():
+            model_update = snapshot_updates.get(dest_snap_ins['id']) or {}
+            model_update['status'] = constants.STATUS_AVAILABLE
+            model_update['progress'] = '100%'
+            self.db.share_snapshot_instance_update(
+                context, dest_snap_ins['id'], model_update)
 
         helper = migration.ShareMigrationHelper(
             context, self.db, share_ref, self.access_helper)
@@ -1054,6 +1175,12 @@ class ShareManager(manager.SchedulerDependentManager):
 
         self.access_helper.delete_share_instance_access_rules(
             context, rules, instance_id)
+
+        snap_instances = self.db.share_snapshot_instance_get_all_with_filters(
+            context, {'share_instance_ids': [instance_id]})
+
+        for instance in snap_instances:
+            self.db.share_snapshot_instance_delete(context, instance['id'])
 
         self.db.share_instance_delete(context, instance_id)
         LOG.info(_LI("Share instance %s: deleted successfully."),
@@ -1086,9 +1213,20 @@ class ShareManager(manager.SchedulerDependentManager):
                     msg = _("Driver migration completion failed for"
                             " share %s.") % share_ref['id']
                     LOG.exception(msg)
+
+                    # NOTE(ganso): If driver fails during migration-complete,
+                    # all instances are set to error and it is up to the admin
+                    # to fix the problem to either complete migration
+                    # manually or clean it up. At this moment, data
+                    # preservation at the source backend cannot be
+                    # guaranteed.
+
+                    self._restore_migrating_snapshots_status(
+                        context, src_share_instance['id'],
+                        errored_dest_instance_id=dest_share_instance['id'])
                     self.db.share_instance_update(
                         context, src_instance_id,
-                        {'status': constants.STATUS_AVAILABLE})
+                        {'status': constants.STATUS_ERROR})
                     self.db.share_instance_update(
                         context, dest_instance_id,
                         {'status': constants.STATUS_ERROR})
@@ -1113,8 +1251,23 @@ class ShareManager(manager.SchedulerDependentManager):
                         {'status': constants.STATUS_AVAILABLE})
                     raise exception.ShareMigrationFailed(reason=msg)
 
+        self._update_migrated_share_model(
+            context, share_ref['id'], dest_share_instance)
+
         LOG.info(_LI("Share Migration for share %s"
                      " completed successfully."), share_ref['id'])
+
+    def _update_migrated_share_model(
+            self, context, share_id, dest_share_instance):
+
+        share_type = share_types.get_share_type(
+            context, dest_share_instance['share_type_id'])
+
+        share_api = api.API()
+
+        update = share_api.get_share_attributes_from_share_type(share_type)
+
+        self.db.share_update(context, share_id, update)
 
     def _migration_complete_host_assisted(self, context, share_ref,
                                           src_instance_id, dest_instance_id):
@@ -1223,11 +1376,19 @@ class ShareManager(manager.SchedulerDependentManager):
 
             helper.cleanup_access_rules(src_share_instance, share_server)
         else:
+
+            src_snap_instances, snapshot_mappings = (
+                self._get_migrating_snapshots(context, src_share_instance,
+                                              dest_share_instance))
+
             self.driver.migration_cancel(
                 context, src_share_instance, dest_share_instance,
-                share_server, dest_share_server)
+                src_snap_instances, snapshot_mappings, share_server,
+                dest_share_server)
 
             self._migration_delete_instance(context, dest_share_instance['id'])
+            self._restore_migrating_snapshots_status(
+                context, src_share_instance['id'])
 
         self.db.share_update(
             context, share_ref['id'],
@@ -1268,9 +1429,14 @@ class ShareManager(manager.SchedulerDependentManager):
             dest_share_server = self.db.share_server_get(
                 context, dest_share_instance['share_server_id'])
 
+        src_snap_instances, snapshot_mappings = (
+            self._get_migrating_snapshots(context, src_share_instance,
+                                          dest_share_instance))
+
         return self.driver.migration_get_progress(
             context, src_share_instance, dest_share_instance,
-            share_server, dest_share_server)
+            src_snap_instances, snapshot_mappings, share_server,
+            dest_share_server)
 
     def _get_share_instance(self, context, share):
         if isinstance(share, six.string_types):

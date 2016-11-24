@@ -538,7 +538,7 @@ class ShareDriverTestCase(test.TestCase):
         share_driver = driver.ShareDriver(False)
 
         self.assertRaises(NotImplementedError, share_driver.migration_start,
-                          None, None, None, None, None)
+                          None, None, None, None, None, None, None)
 
     def test_migration_continue(self):
 
@@ -546,7 +546,7 @@ class ShareDriverTestCase(test.TestCase):
         share_driver = driver.ShareDriver(False)
 
         self.assertRaises(NotImplementedError, share_driver.migration_continue,
-                          None, None, None, None, None,)
+                          None, None, None, None, None, None, None)
 
     def test_migration_complete(self):
 
@@ -554,7 +554,7 @@ class ShareDriverTestCase(test.TestCase):
         share_driver = driver.ShareDriver(False)
 
         self.assertRaises(NotImplementedError, share_driver.migration_complete,
-                          None, None, None, None, None)
+                          None, None, None, None, None, None, None)
 
     def test_migration_cancel(self):
 
@@ -562,7 +562,7 @@ class ShareDriverTestCase(test.TestCase):
         share_driver = driver.ShareDriver(False)
 
         self.assertRaises(NotImplementedError, share_driver.migration_cancel,
-                          None, None, None, None, None)
+                          None, None, None, None, None, None, None)
 
     def test_migration_get_progress(self):
 
@@ -571,7 +571,7 @@ class ShareDriverTestCase(test.TestCase):
 
         self.assertRaises(NotImplementedError,
                           share_driver.migration_get_progress,
-                          None, None, None, None, None)
+                          None, None, None, None, None, None, None)
 
     @ddt.data(True, False)
     def test_connection_get_info(self, admin):
@@ -612,6 +612,7 @@ class ShareDriverTestCase(test.TestCase):
             'writable': False,
             'preserve_metadata': False,
             'nondisruptive': False,
+            'preserve_snapshots': False,
         }
 
         result = share_driver.migration_check_compatibility(
