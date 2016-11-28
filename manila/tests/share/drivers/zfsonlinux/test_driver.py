@@ -2406,7 +2406,6 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             src_share['id'], {'dataset_name': src_dataset_name})
         self.driver.private_storage.update(
             dst_share['id'], {
-                'dataset_name': dst_dataset_name,
                 'migr_snapshot_tag': snapshot_tag,
                 'dataset_name': dst_dataset_name,
                 'ssh_cmd': dst_ssh_cmd,
@@ -2452,7 +2451,6 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             src_share['id'], {'dataset_name': src_dataset_name})
         self.driver.private_storage.update(
             dst_share['id'], {
-                'dataset_name': dst_dataset_name,
                 'migr_snapshot_tag': snapshot_tag,
                 'dataset_name': dst_dataset_name,
                 'ssh_cmd': dst_ssh_cmd,

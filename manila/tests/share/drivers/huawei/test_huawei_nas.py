@@ -913,7 +913,6 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'share_proto': 'NFS',
             'share_network_id': 'fake_net_id',
             'share_server_id': 'fake-share-srv-id',
-            'host': 'fake_host@fake_backend#OpenStack_Pool',
             'export_locations': [
                 {'path': '100.115.10.68:/share_fake_uuid'},
             ],
