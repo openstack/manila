@@ -132,42 +132,20 @@ class ShareMigrationHelper(object):
                         " migration for share %s."), self.share['id'])
 
     def cleanup_access_rules(self, share_instance, share_server, driver):
+
+        # NOTE(ganso): For the purpose of restoring the access rules, the share
+        # instance status must not be "MIGRATING", else they would be cast to
+        # read-only. We briefly change them to "INACTIVE" so they are restored
+        # and after cleanup finishes, the invoking method will set the status
+        # back to "AVAILABLE".
+        self.db.share_instance_update(self.context, share_instance['id'],
+                                      {'status': constants.STATUS_INACTIVE})
+
         try:
             self.revert_access_rules(share_instance, share_server, driver)
         except Exception:
             LOG.warning(_LW("Failed to cleanup access rules during generic"
                         " migration for share %s."), self.share['id'])
-
-    def change_to_read_only(self, share_instance, share_server,
-                            readonly_support, driver):
-
-        # NOTE(ganso): If the share does not allow readonly mode we
-        # should remove all access rules and prevent any access
-
-        rules = self.db.share_access_get_all_for_instance(
-            self.context, share_instance['id'])
-
-        if len(rules) > 0:
-
-            if readonly_support:
-
-                LOG.debug("Changing all of share %s access rules "
-                          "to read-only.", self.share['id'])
-
-                for rule in rules:
-                    rule['access_level'] = constants.ACCESS_LEVEL_RO
-
-                driver.update_access(self.context, share_instance, rules,
-                                     add_rules=[], delete_rules=[],
-                                     share_server=share_server)
-            else:
-
-                LOG.debug("Removing all access rules for migration of "
-                          "share %s." % self.share['id'])
-
-                driver.update_access(self.context, share_instance, [],
-                                     add_rules=[], delete_rules=rules,
-                                     share_server=share_server)
 
     def revert_access_rules(self, share_instance, share_server, driver):
 

@@ -248,64 +248,6 @@ class ShareMigrationHelperTestCase(test.TestCase):
         # asserts
         db.share_server_get.assert_called_with(self.context, 'fake_server_id')
 
-    def test_change_to_read_only_with_ro_support(self):
-
-        share_instance = db_utils.create_share_instance(
-            share_id=self.share['id'], status=constants.STATUS_AVAILABLE)
-
-        access = db_utils.create_access(share_id=self.share['id'],
-                                        access_to='fake_ip',
-                                        access_level='rw')
-
-        server = db_utils.create_share_server(share_id=self.share['id'])
-
-        # mocks
-        share_driver = mock.Mock()
-        self.mock_object(share_driver, 'update_access')
-
-        self.mock_object(db, 'share_access_get_all_for_instance',
-                         mock.Mock(return_value=[access]))
-
-        # run
-        self.helper.change_to_read_only(share_instance, server, True,
-                                        share_driver)
-
-        # asserts
-        db.share_access_get_all_for_instance.assert_called_once_with(
-            self.context, share_instance['id'])
-        share_driver.update_access.assert_called_once_with(
-            self.context, share_instance, [access], add_rules=[],
-            delete_rules=[], share_server=server)
-
-    def test_change_to_read_only_without_ro_support(self):
-
-        share_instance = db_utils.create_share_instance(
-            share_id=self.share['id'], status=constants.STATUS_AVAILABLE)
-
-        access = db_utils.create_access(share_id=self.share['id'],
-                                        access_to='fake_ip',
-                                        access_level='rw')
-
-        server = db_utils.create_share_server(share_id=self.share['id'])
-
-        # mocks
-        share_driver = mock.Mock()
-        self.mock_object(share_driver, 'update_access')
-
-        self.mock_object(db, 'share_access_get_all_for_instance',
-                         mock.Mock(return_value=[access]))
-
-        # run
-        self.helper.change_to_read_only(share_instance, server, False,
-                                        share_driver)
-
-        # asserts
-        db.share_access_get_all_for_instance.assert_called_once_with(
-            self.context, share_instance['id'])
-        share_driver.update_access.assert_called_once_with(
-            self.context, share_instance, [], add_rules=[],
-            delete_rules=[access], share_server=server)
-
     def test_revert_access_rules(self):
 
         share_instance = db_utils.create_share_instance(
@@ -396,6 +338,7 @@ class ShareMigrationHelperTestCase(test.TestCase):
         share_driver = mock.Mock()
         self.mock_object(self.helper, 'revert_access_rules',
                          mock.Mock(side_effect=exc))
+        self.mock_object(self.helper.db, 'share_instance_update')
 
         self.mock_object(migration.LOG, 'warning')
 
@@ -406,6 +349,9 @@ class ShareMigrationHelperTestCase(test.TestCase):
         # asserts
         self.helper.revert_access_rules.assert_called_once_with(
             self.share_instance, server, share_driver)
+        self.helper.db.share_instance_update.assert_called_once_with(
+            self.context, self.share_instance['id'],
+            {'status': constants.STATUS_INACTIVE})
 
         if exc:
             self.assertEqual(1, migration.LOG.warning.call_count)

@@ -100,13 +100,43 @@ class ShareInstanceAccess(object):
                         if rule["id"] in delete_ids]
                     delete_rules = []
 
+        # NOTE(ganso): up to here we are certain of the rules that we are
+        # supposed to pass to drivers. 'rules' variable is used for validating
+        # the refresh mechanism later, according to the 'supposed' rules.
+        driver_rules = rules
+
+        if share_instance['status'] == constants.STATUS_MIGRATING:
+            # NOTE(ganso): If the share instance is the source in a migration,
+            # it should have all its rules cast to read-only.
+
+            readonly_support = self.driver.configuration.safe_get(
+                'migration_readonly_rules_support')
+
+            # NOTE(ganso): If the backend supports read-only rules, then all
+            # rules are cast to read-only here and passed to drivers.
+            if readonly_support:
+                for rule in driver_rules + add_rules:
+                    rule['access_level'] = constants.ACCESS_LEVEL_RO
+                LOG.debug("All access rules of share instance %s are being "
+                          "cast to read-only for migration.",
+                          share_instance['id'])
+            # NOTE(ganso): If the backend does not support read-only rules, we
+            # will remove all access to the share and have only the access
+            # requested by the Data Service for migration as RW.
+            else:
+                LOG.debug("All previously existing access rules of share "
+                          "instance %s are being removed for migration, as "
+                          "driver does not support read-only mode rules.",
+                          share_instance['id'])
+                driver_rules = add_rules
+
         try:
             access_keys = None
             try:
                 access_keys = self.driver.update_access(
                     context,
                     share_instance,
-                    rules,
+                    driver_rules,
                     add_rules=add_rules,
                     delete_rules=delete_rules,
                     share_server=share_server
