@@ -724,7 +724,9 @@ function configure_samba {
             sudo service $samba_daemon_name restart || echo "Couldn't restart '$samba_daemon_name' service"
         fi
 
-        sudo cp /usr/share/samba/smb.conf $SMB_CONF
+        if [[ -e /usr/share/samba/smb.conf ]]; then
+            sudo cp /usr/share/samba/smb.conf $SMB_CONF
+        fi
         sudo chown $STACK_USER -R /etc/samba
         iniset $SMB_CONF global include registry
         iniset $SMB_CONF global security user
