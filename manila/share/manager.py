@@ -741,11 +741,14 @@ class ShareManager(manager.SchedulerDependentManager):
                 raise exception.ShareMigrationFailed(reason=msg)
 
             if not compatibility.get('writable'):
-                readonly_support = self.driver.configuration.safe_get(
-                    'migration_readonly_rules_support')
 
-                helper.change_to_read_only(src_share_instance, share_server,
-                                           readonly_support, self.driver)
+                self.db.share_instance_update_access_status(
+                    context, src_share_instance['id'],
+                    constants.STATUS_OUT_OF_SYNC)
+
+                self.access_helper.update_access_rules(
+                    context, src_share_instance['id'],
+                    share_server=share_server)
 
             LOG.debug("Initiating driver migration for share %s.",
                       share_ref['id'])
@@ -936,11 +939,12 @@ class ShareManager(manager.SchedulerDependentManager):
         share_server = self._get_share_server(context.elevated(),
                                               src_share_instance)
 
-        readonly_support = self.driver.configuration.safe_get(
-            'migration_readonly_rules_support')
+        self.db.share_instance_update_access_status(
+            context, src_share_instance['id'],
+            constants.STATUS_OUT_OF_SYNC)
 
-        helper.change_to_read_only(src_share_instance, share_server,
-                                   readonly_support, self.driver)
+        self.access_helper.update_access_rules(
+            context, src_share_instance['id'], share_server=share_server)
 
         try:
             dest_share_instance = helper.create_instance_and_wait(

@@ -259,3 +259,54 @@ class ShareInstanceAccessTestCase(test.TestCase):
             mock.call(self.context, share_instance, original_rules,
                       add_rules=[], delete_rules=[], share_server=None)
         ])
+
+    @ddt.data(True, False)
+    def test_update_access_rules_migrating(self, read_only_support):
+
+        def override_conf(conf_name):
+            if conf_name == 'migration_readonly_rules_support':
+                return read_only_support
+
+        rules = []
+        for i in range(2):
+            rules.append(
+                db_utils.create_access(
+                    id='fakeid%s' % i,
+                    share_id=self.share['id'],
+                    access_to='fakeip%s' % i,
+                ))
+        driver_rules = [] if not read_only_support else rules
+        access_rules_status = constants.STATUS_OUT_OF_SYNC
+        share_instance = db_utils.create_share_instance(
+            id='fakeid',
+            status=constants.STATUS_MIGRATING,
+            share_id=self.share['id'],
+            access_rules_status=access_rules_status)
+
+        self.mock_object(db, "share_instance_get", mock.Mock(
+            return_value=share_instance))
+        self.mock_object(db, "share_access_get_all_for_instance",
+                         mock.Mock(return_value=rules))
+        self.mock_object(db, "share_instance_update_access_status",
+                         mock.Mock())
+        self.mock_object(self.driver, "update_access",
+                         mock.Mock(return_value=None))
+        self.mock_object(self.share_access_helper,
+                         "_remove_access_rules", mock.Mock())
+        self.mock_object(self.share_access_helper, "_check_needs_refresh",
+                         mock.Mock(return_value=False))
+        self.mock_object(self.driver.configuration, 'safe_get',
+                         mock.Mock(side_effect=override_conf))
+
+        self.share_access_helper.update_access_rules(
+            self.context, share_instance['id'])
+
+        self.driver.update_access.assert_called_once_with(
+            self.context, share_instance, driver_rules, add_rules=[],
+            delete_rules=[], share_server=None)
+        self.share_access_helper._remove_access_rules.assert_called_once_with(
+            self.context, [], share_instance['id'])
+        self.share_access_helper._check_needs_refresh.assert_called_once_with(
+            self.context, rules, share_instance)
+        db.share_instance_update_access_status.assert_called_with(
+            self.context, share_instance['id'], constants.STATUS_ACTIVE)

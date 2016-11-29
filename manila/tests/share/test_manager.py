@@ -3792,8 +3792,10 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(return_value=server))
         self.mock_object(self.share_manager.db, 'share_instance_update',
                          mock.Mock(return_value=server))
-        self.mock_object(migration_api.ShareMigrationHelper,
-                         'change_to_read_only')
+        self.mock_object(self.share_manager.db,
+                         'share_instance_update_access_status')
+        self.mock_object(self.share_manager.access_helper,
+                         'update_access_rules')
         if exc is None:
             self.mock_object(migration_api.ShareMigrationHelper,
                              'create_instance_and_wait',
@@ -3824,10 +3826,12 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.share_server_get.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             instance['share_server_id'])
-
-        migration_api.ShareMigrationHelper.change_to_read_only.\
-            assert_called_once_with(instance, server, True,
-                                    self.share_manager.driver)
+        (self.share_manager.db.share_instance_update_access_status.
+         assert_called_once_with(self.context, instance['id'],
+                                 constants.STATUS_OUT_OF_SYNC))
+        (self.share_manager.access_helper.update_access_rules.
+         assert_called_once_with(
+             self.context, instance['id'], share_server=server))
         migration_api.ShareMigrationHelper.create_instance_and_wait.\
             assert_called_once_with(share, 'fake_host', 'fake_net_id',
                                     'fake_az_id', 'fake_type_id')
@@ -3896,10 +3900,12 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(
             migration_api.ShareMigrationHelper, 'wait_for_share_server',
             mock.Mock(return_value=dest_server))
-        self.mock_object(
-            migration_api.ShareMigrationHelper, 'change_to_read_only')
         self.mock_object(self.share_manager.driver, 'migration_start')
         self.mock_object(self.share_manager, '_migration_delete_instance')
+        self.mock_object(self.share_manager.db,
+                         'share_instance_update_access_status')
+        self.mock_object(self.share_manager.access_helper,
+                         'update_access_rules')
 
         # run
         if exc:
@@ -3926,12 +3932,15 @@ class ShareManagerTestCase(test.TestCase):
                     {'task_state':
                      constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS})
             ])
+            (self.share_manager.db.share_instance_update_access_status.
+             assert_called_once_with(self.context, src_instance['id'],
+                                     constants.STATUS_OUT_OF_SYNC))
+            (self.share_manager.access_helper.update_access_rules.
+             assert_called_once_with(
+                 self.context, src_instance['id'], share_server=src_server))
             self.share_manager.driver.migration_start.assert_called_once_with(
                 self.context, src_instance, migrating_instance,
                 src_server, dest_server)
-            (migration_api.ShareMigrationHelper.change_to_read_only.
-             assert_called_once_with(src_instance, src_server, True,
-                                     self.share_manager.driver))
 
         self.share_manager.db.share_instance_get.assert_called_once_with(
             self.context, migrating_instance['id'], with_share_data=True)
