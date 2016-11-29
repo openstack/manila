@@ -3302,23 +3302,6 @@ def share_type_access_remove(context, type_id, project_id):
         raise exception.ShareTypeAccessNotFound(
             share_type_id=type_id, project_id=project_id)
 
-
-@require_context
-def volume_get_active_by_window(context,
-                                begin,
-                                end=None,
-                                project_id=None):
-    """Return volumes that were active during window."""
-    query = model_query(context, models.Share, read_deleted="yes")
-    query = query.filter(or_(models.Share.deleted_at is None,
-                             models.Share.deleted_at > begin))
-    if end:
-        query = query.filter(models.Share.created_at < end)
-    if project_id:
-        query = query.filter_by(project_id=project_id)
-
-    return query.all()
-
 ####################
 
 
