@@ -24,10 +24,10 @@ from oslo_utils import units
 from manila.common import constants as const
 from manila import exception
 from manila.i18n import _, _LE, _LI, _LW
-from manila.share.drivers.emc.plugins import base as driver
-from manila.share.drivers.emc.plugins.vnx import constants
-from manila.share.drivers.emc.plugins.vnx import object_manager as manager
-from manila.share.drivers.emc.plugins.vnx import utils as vnx_utils
+from manila.share.drivers.dell_emc.plugins import base as driver
+from manila.share.drivers.dell_emc.plugins.vnx import constants
+from manila.share.drivers.dell_emc.plugins.vnx import object_manager as manager
+from manila.share.drivers.dell_emc.plugins.vnx import utils as vnx_utils
 from manila.share import utils as share_utils
 from manila import utils
 

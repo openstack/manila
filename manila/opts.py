@@ -53,8 +53,8 @@ import manila.share.driver
 import manila.share.drivers.cephfs.cephfs_native
 import manila.share.drivers.container.driver
 import manila.share.drivers.container.storage_helper
-import manila.share.drivers.emc.driver
-import manila.share.drivers.emc.plugins.isilon.isilon
+import manila.share.drivers.dell_emc.driver
+import manila.share.drivers.dell_emc.plugins.isilon.isilon
 import manila.share.drivers.generic
 import manila.share.drivers.glusterfs
 import manila.share.drivers.glusterfs.common
@@ -123,7 +123,7 @@ _global_opt_lists = [
     manila.share.drivers.cephfs.cephfs_native.cephfs_native_opts,
     manila.share.drivers.container.driver.container_opts,
     manila.share.drivers.container.storage_helper.lv_opts,
-    manila.share.drivers.emc.driver.EMC_NAS_OPTS,
+    manila.share.drivers.dell_emc.driver.EMC_NAS_OPTS,
     manila.share.drivers.generic.share_opts,
     manila.share.drivers.glusterfs.common.glusterfs_common_opts,
     manila.share.drivers.glusterfs.GlusterfsManilaShare_opts,

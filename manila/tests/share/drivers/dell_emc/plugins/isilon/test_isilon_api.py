@@ -20,7 +20,7 @@ import requests_mock
 import six
 
 from manila import exception
-from manila.share.drivers.emc.plugins.isilon import isilon_api
+from manila.share.drivers.dell_emc.plugins.isilon import isilon_api
 from manila import test
 
 

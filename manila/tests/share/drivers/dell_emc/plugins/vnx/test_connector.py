@@ -21,10 +21,10 @@ from six.moves.urllib import request as url_request  # pylint: disable=E0611
 
 from manila import exception
 from manila.share import configuration as conf
-from manila.share.drivers.emc.plugins.vnx import connector
+from manila.share.drivers.dell_emc.plugins.vnx import connector
 from manila import test
-from manila.tests.share.drivers.emc.plugins.vnx import fakes
-from manila.tests.share.drivers.emc.plugins.vnx import utils as emc_utils
+from manila.tests.share.drivers.dell_emc.plugins.vnx import fakes
+from manila.tests.share.drivers.dell_emc.plugins.vnx import utils as emc_utils
 from manila import utils
 
 

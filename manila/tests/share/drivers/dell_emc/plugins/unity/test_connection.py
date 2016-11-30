@@ -21,8 +21,8 @@ import six
 
 from manila import exception
 from manila import test
-from manila.tests.share.drivers.emc.plugins.unity import fake_exceptions
-from manila.tests.share.drivers.emc.plugins.unity import res_mock
+from manila.tests.share.drivers.dell_emc.plugins.unity import fake_exceptions
+from manila.tests.share.drivers.dell_emc.plugins.unity import res_mock
 
 
 @ddt.ddt

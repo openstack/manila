@@ -18,8 +18,8 @@ from stevedore import extension
 
 from manila import network
 from manila.share import configuration as conf
-from manila.share.drivers.emc import driver as emcdriver
-from manila.share.drivers.emc.plugins import base
+from manila.share.drivers.dell_emc import driver as emcdriver
+from manila.share.drivers.dell_emc.plugins import base
 from manila import test
 
 
@@ -115,7 +115,7 @@ class EMCShareFrameworkTestCase(test.TestCase):
         self.driver._update_share_stats()
         data["share_backend_name"] = FAKE_BACKEND
         data["driver_handles_share_servers"] = True
-        data["vendor_name"] = 'EMC'
+        data["vendor_name"] = 'Dell EMC'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'NFS_CIFS'
         data['total_capacity_gb'] = 'unknown'

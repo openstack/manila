@@ -24,7 +24,7 @@ from oslo_config import cfg
 from oslo_log import log
 
 from manila.share import driver
-from manila.share.drivers.emc import plugin_manager as manager
+from manila.share.drivers.dell_emc import plugin_manager as manager
 
 LOG = log.getLogger(__name__)
 
@@ -77,7 +77,7 @@ class EMCShareDriver(driver.ShareDriver):
             self.backend_name = CONF.emc_share_backend
         self.backend_name = self.backend_name or 'EMC_NAS_Storage'
         self.plugin_manager = manager.EMCPluginManager(
-            namespace='manila.share.drivers.emc.plugins')
+            namespace='manila.share.drivers.dell_emc.plugins')
         self.plugin = self.plugin_manager.load_plugin(self.backend_name, LOG)
         super(EMCShareDriver, self).__init__(
             self.plugin.driver_handles_share_servers, *args, **kwargs)
@@ -139,7 +139,7 @@ class EMCShareDriver(driver.ShareDriver):
             'share_backend_name') or "EMC_NAS_Storage"
         data = dict(
             share_backend_name=backend_name,
-            vendor_name='EMC',
+            vendor_name='Dell EMC',
             storage_protocol='NFS_CIFS')
         self.plugin.update_share_stats(data)
         super(EMCShareDriver, self)._update_share_stats(data)

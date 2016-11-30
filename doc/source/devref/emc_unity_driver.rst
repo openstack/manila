@@ -114,7 +114,7 @@ for the Unity driver.
 
 .. code-block:: ini
 
-    share_driver = manila.share.drivers.emc.driver.EMCShareDriver
+    share_driver = manila.share.drivers.dell_emc.driver.EMCShareDriver
     emc_share_backend = unity
     emc_nas_server = <management IP address of the Unity system>
     emc_nas_login = <user with administrator privilege>
@@ -178,19 +178,19 @@ Following driver features are implemented in the plugin.
 * teardown_server: Tear down the share server.
 
 
-The :mod:`manila.share.drivers.emc.driver` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The :mod:`manila.share.drivers.dell_emc.driver` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.share.drivers.emc.driver
+.. automodule:: manila.share.drivers.dell_emc.driver
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
-The :mod:`manila.share.drivers.emc.plugins.unity.connection` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The :mod:`manila.share.drivers.dell_emc.plugins.unity.connection` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.share.drivers.emc.plugins.unity.connection
+.. automodule:: manila.share.drivers.dell_emc.plugins.unity.connection
     :noindex:
     :members:
     :undoc-members:

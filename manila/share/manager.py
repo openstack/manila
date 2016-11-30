@@ -121,6 +121,8 @@ MAPPING = {
     'manila.share.drivers.glusterfs_native.GlusterfsNativeShareDriver':
     'manila.share.drivers.glusterfs.glusterfs_native.'
     'GlusterfsNativeShareDriver',
+    'manila.share.drivers.emc.driver.EMCShareDriver':
+    'manila.share.drivers.dell_emc.driver.EMCShareDriver',
 }
 
 QUOTAS = quota.QUOTAS

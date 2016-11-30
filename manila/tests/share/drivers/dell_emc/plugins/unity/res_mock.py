@@ -17,12 +17,12 @@ import mock
 from oslo_log import log
 
 from manila.share import configuration as conf
-from manila.share.drivers.emc.plugins.unity import client
-from manila.share.drivers.emc.plugins.unity import connection
+from manila.share.drivers.dell_emc.plugins.unity import client
+from manila.share.drivers.dell_emc.plugins.unity import connection
 from manila.tests.db import fakes as db_fakes
 from manila.tests import fake_share
-from manila.tests.share.drivers.emc.plugins.unity import fake_exceptions
-from manila.tests.share.drivers.emc.plugins.unity import utils
+from manila.tests.share.drivers.dell_emc.plugins.unity import fake_exceptions
+from manila.tests.share.drivers.dell_emc.plugins.unity import utils
 
 client.storops_ex = fake_exceptions
 connection.storops_ex = fake_exceptions

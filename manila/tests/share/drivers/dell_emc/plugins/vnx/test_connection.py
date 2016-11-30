@@ -20,13 +20,13 @@ import mock
 from oslo_log import log
 
 from manila import exception
-from manila.share.drivers.emc.plugins.vnx import connection
-from manila.share.drivers.emc.plugins.vnx import connector
-from manila.share.drivers.emc.plugins.vnx import object_manager
+from manila.share.drivers.dell_emc.plugins.vnx import connection
+from manila.share.drivers.dell_emc.plugins.vnx import connector
+from manila.share.drivers.dell_emc.plugins.vnx import object_manager
 from manila import test
 from manila.tests import fake_share
-from manila.tests.share.drivers.emc.plugins.vnx import fakes
-from manila.tests.share.drivers.emc.plugins.vnx import utils
+from manila.tests.share.drivers.dell_emc.plugins.vnx import fakes
+from manila.tests.share.drivers.dell_emc.plugins.vnx import utils
 
 LOG = log.getLogger(__name__)
 

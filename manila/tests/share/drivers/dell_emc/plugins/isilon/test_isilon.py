@@ -21,8 +21,8 @@ import six
 
 from manila.common import constants as const
 from manila import exception
-from manila.share.drivers.emc.plugins.isilon import isilon
-from manila.share.drivers.emc.plugins.isilon import isilon_api
+from manila.share.drivers.dell_emc.plugins.isilon import isilon
+from manila.share.drivers.dell_emc.plugins.isilon import isilon_api
 from manila import test
 
 LOG = log.getLogger(__name__)
@@ -59,7 +59,8 @@ class IsilonTest(test.TestCase):
                 return None
 
     @mock.patch(
-        'manila.share.drivers.emc.plugins.isilon.isilon.isilon_api.IsilonApi',
+        'manila.share.drivers.dell_emc.plugins.isilon.isilon.isilon_api.'
+        'IsilonApi',
         autospec=True)
     def setUp(self, mock_isi_api):
         super(IsilonTest, self).setUp()
@@ -694,7 +695,8 @@ class IsilonTest(test.TestCase):
         self.storage_connection.ensure_share(self.mock_context, share, None)
 
     @mock.patch(
-        'manila.share.drivers.emc.plugins.isilon.isilon.isilon_api.IsilonApi',
+        'manila.share.drivers.dell_emc.plugins.isilon.isilon.isilon_api.'
+        'IsilonApi',
         autospec=True)
     def test_connect(self, mock_isi_api):
         storage_connection = isilon.IsilonStorageConnection(LOG)
@@ -718,7 +720,8 @@ class IsilonTest(test.TestCase):
         self.assertFalse(storage_connection._verify_ssl_cert)
 
     @mock.patch(
-        'manila.share.drivers.emc.plugins.isilon.isilon.isilon_api.IsilonApi',
+        'manila.share.drivers.dell_emc.plugins.isilon.isilon.isilon_api.'
+        'IsilonApi',
         autospec=True)
     def test_connect_root_dir_does_not_exist(self, mock_isi_api):
         mock_isilon_api = mock_isi_api.return_value

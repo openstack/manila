@@ -1,0 +1,6 @@
+---
+upgrade:
+  - The EMCShareDriver is moved to the dell_emc directory.
+    share_driver entry in manila.conf needs to be changed to
+    manila.share.drivers.dell_emc.driver.EMCShareDriver.
+    Vendor name is changed to "Dell EMC".
