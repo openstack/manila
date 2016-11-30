@@ -1986,7 +1986,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
             if not snapshot_update.get('size'):
                 snapshot_update['size'] = snapshot_ref['share']['size']
-                LOG.warning(_LI("Cannot get the size of the snapshot "
+                LOG.warning(_LW("Cannot get the size of the snapshot "
                                 "%(snapshot_id)s. Using the size of "
                                 "the share instead."),
                             {'snapshot_id': snapshot_id})
