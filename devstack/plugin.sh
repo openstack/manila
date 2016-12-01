@@ -931,11 +931,11 @@ elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
     echo_summary "Creating Manila custom share types"
     create_custom_share_types
 
-    echo_summary "Update Tempest config"
-    update_tempest
-
     echo_summary "Configuring Manila UI"
     configure_manila_ui
+elif [[ "$1" == "stack" && "$2" == "test-config" ]]; then
+    echo_summary "Update Tempest config"
+    update_tempest
 fi
 
 if [[ "$1" == "unstack" ]]; then
