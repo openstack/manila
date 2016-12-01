@@ -22,6 +22,7 @@ from manila.compute import nova
 from manila import context
 from manila import exception
 from manila import test
+from manila.tests import utils as test_utils
 from manila.volume import cinder
 
 
@@ -129,6 +130,82 @@ class TranslateServerExceptionTestCase(test.TestCase):
             exception.ManilaException,
             decorated_by_translate_server_exception,
             'foo_self', 'foo_ctxt', 'foo_instance_id', exc)
+
+
+def get_fake_auth_obj():
+    return type('FakeAuthObj', (object, ), {'get_client': mock.Mock()})
+
+
+class NovaclientTestCase(test.TestCase):
+
+    @mock.patch('manila.compute.nova.AUTH_OBJ', None)
+    def test_no_auth_obj(self):
+        mock_client_loader = self.mock_object(
+            nova.client_auth, 'AuthClientLoader')
+        fake_context = 'fake_context'
+        data = {
+            'DEFAULT': {
+                'nova_admin_username': 'foo_username',
+                'nova_admin_password': 'foo_password',
+                'nova_admin_tenant_name': 'foo_tenant_name',
+                'nova_admin_auth_url': 'foo_auth_url',
+            },
+            'nova': {
+                'api_microversion': 'foo_api_microversion',
+                'api_insecure': True,
+                'ca_certificates_file': 'foo_ca_certificates_file',
+                'endpoint_type': 'foo_endpoint_type',
+                'region_name': 'foo_region_name',
+            }
+        }
+
+        with test_utils.create_temp_config_with_opts(data):
+            nova.novaclient(fake_context)
+
+        mock_client_loader.assert_called_once_with(
+            client_class=nova.nova_client.Client,
+            exception_module=nova.nova_exception,
+            cfg_group=nova.NOVA_GROUP,
+            deprecated_opts_for_v2={
+                'username': data['DEFAULT']['nova_admin_username'],
+                'password': data['DEFAULT']['nova_admin_password'],
+                'tenant_name': data['DEFAULT']['nova_admin_tenant_name'],
+                'auth_url': data['DEFAULT']['nova_admin_auth_url'],
+            },
+        )
+        mock_client_loader.return_value.get_client.assert_called_once_with(
+            fake_context,
+            version=data['nova']['api_microversion'],
+            insecure=data['nova']['api_insecure'],
+            cacert=data['nova']['ca_certificates_file'],
+            endpoint_type=data['nova']['endpoint_type'],
+            region_name=data['nova']['region_name'],
+        )
+
+    @mock.patch('manila.compute.nova.AUTH_OBJ', get_fake_auth_obj())
+    def test_with_auth_obj(self):
+        fake_context = 'fake_context'
+        data = {
+            'nova': {
+                'api_microversion': 'foo_api_microversion',
+                'api_insecure': True,
+                'ca_certificates_file': 'foo_ca_certificates_file',
+                'endpoint_type': 'foo_endpoint_type',
+                'region_name': 'foo_region_name',
+            }
+        }
+
+        with test_utils.create_temp_config_with_opts(data):
+            nova.novaclient(fake_context)
+
+        nova.AUTH_OBJ.get_client.assert_called_once_with(
+            fake_context,
+            version=data['nova']['api_microversion'],
+            insecure=data['nova']['api_insecure'],
+            cacert=data['nova']['ca_certificates_file'],
+            endpoint_type=data['nova']['endpoint_type'],
+            region_name=data['nova']['region_name'],
+        )
 
 
 @ddt.ddt

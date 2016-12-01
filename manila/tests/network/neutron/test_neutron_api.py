@@ -26,6 +26,7 @@ from manila.network.neutron import api as neutron_api
 from manila.network.neutron import constants as neutron_constants
 from manila import test
 from manila.tests.db import fakes
+from manila.tests import utils as test_utils
 
 CONF = cfg.CONF
 
@@ -79,6 +80,72 @@ class FakeNeutronClient(object):
 
     def list_extensions(self):
         pass
+
+
+class NeutronclientTestCase(test.TestCase):
+
+    def test_no_auth_obj(self):
+        mock_client_loader = self.mock_object(
+            neutron_api.client_auth, 'AuthClientLoader')
+        fake_context = 'fake_context'
+        data = {
+            'DEFAULT': {
+                'neutron_admin_username': 'foo_username',
+                'neutron_admin_password': 'foo_password',
+                'neutron_admin_tenant_name': 'foo_tenant_name',
+                'neutron_admin_auth_url': 'foo_auth_url',
+            },
+            'neutron': {
+                'endpoint_type': 'foo_endpoint_type',
+                'region_name': 'foo_region_name',
+            }
+        }
+
+        self.client = None
+        with test_utils.create_temp_config_with_opts(data):
+            self.client = neutron_api.API()
+            self.client.get_client(fake_context)
+
+        mock_client_loader.assert_called_once_with(
+            client_class=neutron_api.clientv20.Client,
+            exception_module=neutron_api.neutron_client_exc,
+            cfg_group=neutron_api.NEUTRON_GROUP,
+            deprecated_opts_for_v2={
+                'username': data['DEFAULT']['neutron_admin_username'],
+                'password': data['DEFAULT']['neutron_admin_password'],
+                'tenant_name': data['DEFAULT']['neutron_admin_tenant_name'],
+                'auth_url': data['DEFAULT']['neutron_admin_auth_url'],
+            },
+        )
+        mock_client_loader.return_value.get_client.assert_called_once_with(
+            self.client,
+            fake_context,
+            endpoint_type=data['neutron']['endpoint_type'],
+            region_name=data['neutron']['region_name'],
+        )
+
+    def test_with_auth_obj(self):
+        fake_context = 'fake_context'
+        data = {
+            'neutron': {
+                'endpoint_type': 'foo_endpoint_type',
+                'region_name': 'foo_region_name',
+            }
+        }
+
+        self.client = None
+        with test_utils.create_temp_config_with_opts(data):
+            self.client = neutron_api.API()
+            self.client.auth_obj = type(
+                'FakeAuthObj', (object, ), {'get_client': mock.Mock()})
+            self.client.get_client(fake_context)
+
+        self.client.auth_obj.get_client.assert_called_once_with(
+            self.client,
+            fake_context,
+            endpoint_type=data['neutron']['endpoint_type'],
+            region_name=data['neutron']['region_name'],
+        )
 
 
 class NeutronApiTest(test.TestCase):
