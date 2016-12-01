@@ -42,25 +42,12 @@ function manila_wait_for_generic_driver_init {
         GENERIC_DRIVER='manila.share.drivers.generic.GenericShareDriver'
         DHSS=$(iniget $MANILA_CONF $driver_group driver_handles_share_servers)
         if [[ $SHARE_DRIVER == $GENERIC_DRIVER && $(trueorfalse False DHSS) == False ]]; then
-            # Wait for availability
+            # Wait for service VM availability
             source /opt/stack/new/devstack/openrc admin demo
-            vm_id=$(iniget $MANILA_CONF $driver_group service_instance_name_or_id)
-            vm_ips=$(nova show $vm_id | grep "private network")
-            attempts=0
-            for vm_ip in ${vm_ips//,/ }; do
-                # Get IPv4 address
-                if [[ $vm_ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-                    # Check availability
-                    ((attempts++))
-                    manila_check_service_vm_availability $vm_ip
-                    break
-                fi
-            done
-            if [[ (( attempts < 1 )) ]]; then
-                echo "No IPv4 addresses found among private IPs of '$vm_id' for '$GENERIC_DRIVER'. "\
-                    "Reported IPs: '$vm_ips'."
-                exit 1
-            fi
+            vm_ip=$(iniget $MANILA_CONF $driver_group service_net_name_or_ip)
+
+            # Check availability
+            manila_check_service_vm_availability $vm_ip
         fi
     done
 }

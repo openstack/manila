@@ -242,9 +242,14 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 "export_location_metadata_example": "example",
             },
         }]
-        if server_details.get('admin_ip'):
+        # NOTE(vponomaryov): 'admin_ip' exists only in case of DHSS=True mode.
+        # 'ip' exists in case of DHSS=False mode.
+        # Use one of these for creation of export location for service needs.
+        service_address = server_details.get(
+            "admin_ip", server_details.get("ip"))
+        if service_address:
             admin_location = location.replace(
-                server_details['public_address'], server_details['admin_ip'])
+                server_details['public_address'], service_address)
             export_list.append({
                 "path": admin_location,
                 "is_admin_only": True,
