@@ -95,13 +95,14 @@ REST_API_VERSION_HISTORY = """
              'nondisruptive' to be mandatory as well. All previous
              migration_start APIs prior to this microversion are now
              unsupported.
+    * 2.30 - Added cast_rules_to_readonly field to share_instances.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.29"
+_MAX_API_VERSION = "2.30"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

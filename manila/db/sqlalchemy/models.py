@@ -335,7 +335,7 @@ class ShareInstance(BASE, ManilaBase):
     _proxified_properties = ('user_id', 'project_id', 'size',
                              'display_name', 'display_description',
                              'snapshot_id', 'share_proto', 'is_public',
-                             'consistency_group_id',
+                             'consistency_group_id', 'replication_type',
                              'source_cgsnapshot_member_id')
 
     def set_share_data(self, share):
@@ -377,6 +377,7 @@ class ShareInstance(BASE, ManilaBase):
     launched_at = Column(DateTime)
     terminated_at = Column(DateTime)
     replica_state = Column(String(255), nullable=True)
+    cast_rules_to_readonly = Column(Boolean, default=False, nullable=False)
     share_type_id = Column(String(36), ForeignKey('share_types.id'),
                            nullable=True)
     availability_zone_id = Column(String(36),

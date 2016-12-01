@@ -54,6 +54,7 @@ class ShareMigrationHelper(object):
         self.context = context
         self.access_helper = access_helper
         self.api = share_api.API()
+        self.access_helper = access_helper
 
         self.migration_create_delete_share_timeout = (
             CONF.migration_create_delete_share_timeout)
@@ -133,14 +134,6 @@ class ShareMigrationHelper(object):
                         " migration for share %s."), self.share['id'])
 
     def cleanup_access_rules(self, share_instance, share_server):
-
-        # NOTE(ganso): For the purpose of restoring the access rules, the share
-        # instance status must not be "MIGRATING", else they would be cast to
-        # read-only. We briefly change them to "INACTIVE" so they are restored
-        # and after cleanup finishes, the invoking method will set the status
-        # back to "AVAILABLE".
-        self.db.share_instance_update(self.context, share_instance['id'],
-                                      {'status': constants.STATUS_INACTIVE})
 
         try:
             self.revert_access_rules(share_instance, share_server)

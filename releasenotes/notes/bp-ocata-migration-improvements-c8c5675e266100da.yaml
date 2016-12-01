@@ -17,7 +17,7 @@ upgrade:
     force-host-assisted-migration is True.
 deprecations:
   - Support for the experimental share migration APIs has been
-    dropped for API microversions prior to 2.29.
+    dropped for API microversions prior to 2.30.
 fixes:
   - Added check to validate that host assisted migration cannot
     be forced while specifying driver assisted migration options.

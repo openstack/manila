@@ -291,10 +291,10 @@ class ShareInstanceAccess(ShareInstanceAccessDatabaseMixin):
             self._get_rules_to_send_to_driver(context, share_instance)
         )
 
-        if share_instance['status'] == constants.STATUS_MIGRATING:
+        if share_instance['cast_rules_to_readonly']:
             # Ensure read/only semantics for a migrating instances
             access_rules_to_be_on_share = self._set_rules_to_readonly(
-                add_rules, access_rules_to_be_on_share, share_instance)
+                access_rules_to_be_on_share, share_instance)
             add_rules = []
             rules_to_be_removed_from_db = delete_rules
             delete_rules = []
@@ -433,29 +433,17 @@ class ShareInstanceAccess(ShareInstanceAccessDatabaseMixin):
                 share_instance_id=share_instance_id,
                 conditionally_change=conditional_state_updates)
 
-    def _set_rules_to_readonly(self, add_rules, access_rules_to_be_on_share,
-                               share_instance):
-        # NOTE(ganso): If the share instance is the source in a migration,
-        # it should have all its rules cast to read-only.
-        readonly_support = self.driver.configuration.safe_get(
-            'migration_readonly_rules_support')
-        # NOTE(ganso): If the backend supports read-only rules, then all
-        # rules are cast to read-only here and passed to drivers.
-        if readonly_support:
-            for rule in access_rules_to_be_on_share:
-                rule['access_level'] = constants.ACCESS_LEVEL_RO
-            LOG.debug("All access rules of share instance %s are being "
-                      "cast to read-only for migration.",
-                      share_instance['id'])
-        # NOTE(ganso): If the backend does not support read-only rules, we
-        # will remove all access to the share and have only the access
-        # requested by the Data Service for migration as RW.
-        else:
-            LOG.debug("All previously existing access rules of share "
-                      "instance %s are being removed for migration, as "
-                      "driver does not support read-only mode rules.",
-                      share_instance['id'])
-            access_rules_to_be_on_share = add_rules
+    @staticmethod
+    def _set_rules_to_readonly(access_rules_to_be_on_share, share_instance):
+
+        LOG.debug("All access rules of share instance %s are being "
+                  "cast to read-only for a migration or because the "
+                  "instance is a readable replica.",
+                  share_instance['id'])
+
+        for rule in access_rules_to_be_on_share:
+            rule['access_level'] = constants.ACCESS_LEVEL_RO
+
         return access_rules_to_be_on_share
 
     def _get_rules_to_send_to_driver(self, context, share_instance):

@@ -105,9 +105,12 @@ share_opts = [
     cfg.BoolOpt(
         'migration_readonly_rules_support',
         default=True,
+        deprecated_for_removal=True,
+        deprecated_reason="All drivers are now required to support read-only "
+                          "access rules.",
         deprecated_name='migration_readonly_support',
         help="Specify whether read only access rule mode is supported in this "
-             "backend."),
+             "backend. Obsolete."),
     cfg.StrOpt(
         "admin_network_config_group",
         help="If share driver requires to setup admin network for share, then "

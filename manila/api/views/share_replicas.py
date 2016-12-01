@@ -22,6 +22,10 @@ class ReplicationViewBuilder(common.ViewBuilder):
     _collection_name = 'share_replicas'
     _collection_links = 'share_replica_links'
 
+    _detail_version_modifiers = [
+        "add_cast_rules_to_readonly_field",
+    ]
+
     def summary_list(self, request, replicas):
         """Summary view of a list of replicas."""
         return self._list_view(self.summary, request, replicas)
@@ -60,6 +64,7 @@ class ReplicationViewBuilder(common.ViewBuilder):
         if context.is_admin:
             replica_dict['share_server_id'] = replica.get('share_server_id')
 
+        self.update_versioned_resource_dict(request, replica_dict, replica)
         return {'share_replica': replica_dict}
 
     def _list_view(self, func, request, replicas):
@@ -77,3 +82,9 @@ class ReplicationViewBuilder(common.ViewBuilder):
             replicas_dict[self._collection_links] = replica_links
 
         return replicas_dict
+
+    @common.ViewBuilder.versioned_method("2.30")
+    def add_cast_rules_to_readonly_field(self, context, replica_dict, replica):
+        if context.is_admin:
+            replica_dict['cast_rules_to_readonly'] = replica.get(
+                'cast_rules_to_readonly', False)

@@ -1,0 +1,7 @@
+---
+features:
+  - Improvements have been made to ensure read only rule semantics for
+    shares and readable replicas. When invoked with administrative context,
+    the share instance and share replica APIs will return
+    ``cast_rules_to_readonly`` as an additional field in the detailed JSON
+    response.
