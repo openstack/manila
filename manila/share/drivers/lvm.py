@@ -244,7 +244,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
             try:
                 os.rmdir(mount_path)
             except OSError:
-                LOG.warning(_LI('Unable to delete %s'), mount_path)
+                LOG.warning(_LW('Unable to delete %s'), mount_path)
 
     def ensure_share(self, ctx, share, share_server=None):
         """Ensure that storage are mounted and exported."""
@@ -259,7 +259,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
             self._get_helper(share).remove_export(self.share_server,
                                                   share['name'])
         except exception.ProcessExecutionError:
-            LOG.warning(_LI("Can't remove share %r"), share['id'])
+            LOG.warning(_LW("Can't remove share %r"), share['id'])
         except exception.InvalidShare as exc:
             LOG.warning(exc.message)
 
