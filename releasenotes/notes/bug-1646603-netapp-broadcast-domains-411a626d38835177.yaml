@@ -1,0 +1,4 @@
+---
+fixes:
+  - Changed NetApp cDOT driver when running with DHSS=True to maintain
+    a 1-1 relation between IPSpaces and broadcast domains.
