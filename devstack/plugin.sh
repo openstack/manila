@@ -277,9 +277,9 @@ function configure_manila_ui {
 
 function create_manila_service_keypair {
     if is_service_enabled nova; then
-        local keypair_exists=$( nova keypair-list | grep " $MANILA_SERVICE_KEYPAIR_NAME " )
+        local keypair_exists=$( openstack keypair list | grep " $MANILA_SERVICE_KEYPAIR_NAME " )
         if [[ -z $keypair_exists ]]; then
-            nova keypair-add $MANILA_SERVICE_KEYPAIR_NAME --pub-key $MANILA_PATH_TO_PUBLIC_KEY
+            openstack keypair create $MANILA_SERVICE_KEYPAIR_NAME --public-key $MANILA_PATH_TO_PUBLIC_KEY
         fi
     fi
 }
@@ -309,17 +309,17 @@ function create_service_share_servers {
         if [[ $share_driver == $generic_driver ]]; then
             if [[ $(trueorfalse False driver_handles_share_servers) == False ]]; then
                 vm_name='manila_service_share_server_'$BE
-                local vm_exists=$( nova list --all-tenants | grep " $vm_name " )
+                local vm_exists=$( openstack server list --all-projects | grep " $vm_name " )
                 if [[ -z $vm_exists ]]; then
-                    nova boot $vm_name \
+                    openstack server create $vm_name \
                         --flavor $MANILA_SERVICE_VM_FLAVOR_NAME \
                         --image $MANILA_SERVICE_IMAGE_NAME \
                         --nic net-id=$private_net_id \
-                        --security-groups $MANILA_SERVICE_SECGROUP \
+                        --security-group $MANILA_SERVICE_SECGROUP \
                         --key-name $MANILA_SERVICE_KEYPAIR_NAME
                 fi
 
-                vm_id=$(nova show $vm_name | grep ' id ' | get_field 2)
+                vm_id=$(openstack server show $vm_name -f value -c id)
 
                 floating_ip=$(openstack floating ip create $PUBLIC_NETWORK_NAME --subnet $PUBLIC_SUBNET_NAME | grep 'floating_ip_address' | get_field 2)
                 openstack server add floating ip $vm_name $floating_ip
@@ -332,14 +332,16 @@ function create_service_share_servers {
                     if ! [[ -z $MANILA_ADMIN_NET_RANGE ]]; then
                         if [ $created_admin_network == false ]; then
                             project_id=$(openstack project show $SERVICE_PROJECT_NAME -c id -f value)
-                            local admin_net_id=$( neutron net-list --all-tenants | grep " admin_net " | get_field 1 )
+                            local admin_net_id=$( openstack network show admin_net -f value -c id )
                             if [[ -z $admin_net_id ]]; then
-                                admin_net_id=$(neutron net-create --tenant-id $project_id admin_net | grep ' id ' | get_field 2)
+                                openstack network create admin_net --project $project_id
+                                admin_net_id=$(openstack network show admin_net -f value -c id)
                             fi
 
-                            local admin_subnet_id=$( neutron subnet-list --all-tenants | grep " admin_subnet " | get_field 1 )
+                            local admin_subnet_id=$( openstack subnet show admin_subnet -f value -c id )
                             if [[ -z $admin_subnet_id ]]; then
-                                admin_subnet_id=$(neutron subnet-create --tenant-id $project_id --ip_version 4 --no-gateway --name admin_subnet --subnetpool None $admin_net_id $MANILA_ADMIN_NET_RANGE | grep ' id ' | get_field 2)
+                                openstack subnet create admin_subnet --project $project_id --ip-version 4 --network $admin_net_id --gateway None --subnet-range $MANILA_ADMIN_NET_RANGE
+                                admin_subnet_id=$(openstack subnet show admin_subnet -f value -c id)
                             fi
                             created_admin_network=true
                         fi
@@ -372,15 +374,15 @@ function configure_data_service_generic_driver {
 # with configured generic driver to boot Nova VMs with.
 function create_manila_service_flavor {
     if is_service_enabled nova; then
-        local flavor_exists=$( nova flavor-list | grep " $MANILA_SERVICE_VM_FLAVOR_NAME " )
+        local flavor_exists=$( openstack flavor list | grep " $MANILA_SERVICE_VM_FLAVOR_NAME " )
         if [[ -z $flavor_exists ]]; then
             # Create flavor for Manila's service VM
-            nova flavor-create \
+            openstack flavor create \
                 $MANILA_SERVICE_VM_FLAVOR_NAME \
-                $MANILA_SERVICE_VM_FLAVOR_REF \
-                $MANILA_SERVICE_VM_FLAVOR_RAM \
-                $MANILA_SERVICE_VM_FLAVOR_DISK \
-                $MANILA_SERVICE_VM_FLAVOR_VCPUS
+                --id $MANILA_SERVICE_VM_FLAVOR_REF \
+                --ram $MANILA_SERVICE_VM_FLAVOR_RAM \
+                --disk $MANILA_SERVICE_VM_FLAVOR_DISK \
+                --vcpus $MANILA_SERVICE_VM_FLAVOR_VCPUS
         fi
     fi
 }
@@ -390,7 +392,7 @@ function create_manila_service_flavor {
 function create_manila_service_image {
     if is_service_enabled nova; then
         TOKEN=$(openstack token issue -c id -f value)
-        local image_exists=$( nova image-list | grep " $MANILA_SERVICE_IMAGE_NAME " )
+        local image_exists=$( openstack image list | grep " $MANILA_SERVICE_IMAGE_NAME " )
         if [[ -z $image_exists ]]; then
             # Download Manila's image
             if is_service_enabled g-reg; then
@@ -404,42 +406,42 @@ function create_manila_service_image {
 # Nova VMs when generic driver is configured.
 function create_manila_service_secgroup {
     # Create a secgroup
-    if ! nova secgroup-list | grep -q $MANILA_SERVICE_SECGROUP; then
-        nova secgroup-create $MANILA_SERVICE_SECGROUP "$MANILA_SERVICE_SECGROUP description"
-        if ! timeout 30 sh -c "while ! nova secgroup-list | grep -q $MANILA_SERVICE_SECGROUP; do sleep 1; done"; then
+    if ! openstack security group list | grep -q $MANILA_SERVICE_SECGROUP; then
+        openstack security group create $MANILA_SERVICE_SECGROUP --description "$MANILA_SERVICE_SECGROUP description"
+        if ! timeout 30 sh -c "while ! openstack security group list | grep -q $MANILA_SERVICE_SECGROUP; do sleep 1; done"; then
             echo "Security group not created"
             exit 1
         fi
     fi
 
     # Configure Security Group Rules
-    if ! nova secgroup-list-rules $MANILA_SERVICE_SECGROUP | grep -q icmp; then
-        nova secgroup-add-rule $MANILA_SERVICE_SECGROUP icmp -1 -1 0.0.0.0/0
+    if ! openstack security group rule list $MANILA_SERVICE_SECGROUP | grep -q icmp; then
+        openstack security group rule create $MANILA_SERVICE_SECGROUP --protocol icmp
     fi
-    if ! nova secgroup-list-rules $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 22 "; then
-        nova secgroup-add-rule $MANILA_SERVICE_SECGROUP tcp 22 22 0.0.0.0/0
+    if ! openstack security group rule list $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 22 "; then
+        openstack security group rule create $MANILA_SERVICE_SECGROUP --protocol tcp --dst-port 22
     fi
-    if ! nova secgroup-list-rules $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 2049 "; then
-        nova secgroup-add-rule $MANILA_SERVICE_SECGROUP tcp 2049 2049 0.0.0.0/0
+    if ! openstack security group rule list $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 2049 "; then
+        openstack security group rule create $MANILA_SERVICE_SECGROUP --protocol tcp --dst-port 2049
     fi
-    if ! nova secgroup-list-rules $MANILA_SERVICE_SECGROUP | grep -q " udp .* 2049 "; then
-        nova secgroup-add-rule $MANILA_SERVICE_SECGROUP udp 2049 2049 0.0.0.0/0
+    if ! openstack security group rule list $MANILA_SERVICE_SECGROUP | grep -q " udp .* 2049 "; then
+        openstack security group rule create $MANILA_SERVICE_SECGROUP --protocol udp --dst-port 2049
     fi
-    if ! nova secgroup-list-rules $MANILA_SERVICE_SECGROUP | grep -q " udp .* 445 "; then
-        nova secgroup-add-rule $MANILA_SERVICE_SECGROUP udp 445 445 0.0.0.0/0
+    if ! openstack security group rule list $MANILA_SERVICE_SECGROUP | grep -q " udp .* 445 "; then
+        openstack security group rule create $MANILA_SERVICE_SECGROUP --protocol udp --dst-port 445
     fi
-    if ! nova secgroup-list-rules $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 445 "; then
-        nova secgroup-add-rule $MANILA_SERVICE_SECGROUP tcp 445 445 0.0.0.0/0
+    if ! openstack security group rule list $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 445 "; then
+        openstack security group rule create $MANILA_SERVICE_SECGROUP --protocol tcp --dst-port 445
     fi
-    if ! nova secgroup-list-rules $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 139 "; then
-        nova secgroup-add-rule $MANILA_SERVICE_SECGROUP tcp 137 139 0.0.0.0/0
+    if ! openstack security group rule list $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 139 "; then
+        openstack security group rule create $MANILA_SERVICE_SECGROUP --protocol tcp --dst-port 137:139
     fi
-    if ! nova secgroup-list-rules $MANILA_SERVICE_SECGROUP | grep -q " udp .* 139 "; then
-        nova secgroup-add-rule $MANILA_SERVICE_SECGROUP udp 137 139 0.0.0.0/0
+    if ! openstack security group rule list $MANILA_SERVICE_SECGROUP | grep -q " udp .* 139 "; then
+        openstack security group rule create $MANILA_SERVICE_SECGROUP --protocol udp --dst-port 137:139
     fi
 
     # List secgroup rules
-    nova secgroup-list-rules $MANILA_SERVICE_SECGROUP
+    openstack security group rule list $MANILA_SERVICE_SECGROUP
 }
 
 # create_manila_accounts - Set up common required manila accounts
