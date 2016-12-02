@@ -218,6 +218,7 @@ class GenericShareDriverTestCase(test.TestCase):
             'pk_path': 'fake_pk_path',
             'backend_details': {
                 'ip': '1.2.3.4',
+                'public_address': 'fake_public_address',
                 'instance_id': 'fake',
                 'service_ip': 'fake_ip',
             },
@@ -316,23 +317,33 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_create_share(self):
         volume = 'fake_volume'
         volume2 = 'fake_volume2'
-        self._helper_nfs.create_export.return_value = 'fakelocation'
+        location = (
+            '%s:/fake/path' % self.server['backend_details']['public_address'])
+        self._helper_nfs.create_export.return_value = location
         self.mock_object(self._driver, '_allocate_container',
                          mock.Mock(return_value=volume))
         self.mock_object(self._driver, '_attach_volume',
                          mock.Mock(return_value=volume2))
         self.mock_object(self._driver, '_format_device')
         self.mock_object(self._driver, '_mount_device')
-        expected_el = [{
-            'is_admin_only': False,
-            'path': 'fakelocation',
-            'metadata': {'export_location_metadata_example': 'example'},
-        }]
+        expected_el = [
+            {'is_admin_only': False,
+             'path': location,
+             'metadata': {'export_location_metadata_example': 'example'}},
+            {'is_admin_only': True,
+             'path': location.replace(
+                 self.server['backend_details']['public_address'],
+                 self.server['backend_details']['ip']),
+             'metadata': {'export_location_metadata_example': 'example'}},
+        ]
 
         result = self._driver.create_share(
             self._context, self.share, share_server=self.server)
 
-        self.assertEqual(expected_el, result)
+        self.assertIsInstance(result, list)
+        self.assertEqual(2, len(result))
+        for el in expected_el:
+            self.assertIn(el, result)
         self._driver._allocate_container.assert_called_once_with(
             self._driver.admin_context, self.share)
         self._driver._attach_volume.assert_called_once_with(

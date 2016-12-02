@@ -300,7 +300,7 @@ function is_driver_enabled {
 # create_service_share_servers - creates service Nova VMs, one per generic
 # driver, and only if it is configured to mode without handling of share servers.
 function create_service_share_servers {
-    private_net_id=$(nova net-list | grep ' private ' | get_field 1)
+    private_net_id=$(openstack network show $PRIVATE_NETWORK_NAME -f value -c id)
     created_admin_network=false
     for BE in ${MANILA_ENABLED_BACKENDS//,/ }; do
         driver_handles_share_servers=$(iniget $MANILA_CONF $BE driver_handles_share_servers)
@@ -321,9 +321,12 @@ function create_service_share_servers {
 
                 vm_id=$(nova show $vm_name | grep ' id ' | get_field 2)
 
+                floating_ip=$(openstack floating ip create $PUBLIC_NETWORK_NAME --subnet $PUBLIC_SUBNET_NAME | grep 'floating_ip_address' | get_field 2)
+                openstack server add floating ip $vm_name $floating_ip
+
                 iniset $MANILA_CONF $BE service_instance_name_or_id $vm_id
-                iniset $MANILA_CONF $BE service_net_name_or_ip private
-                iniset $MANILA_CONF $BE tenant_net_name_or_ip private
+                iniset $MANILA_CONF $BE service_net_name_or_ip $floating_ip
+                iniset $MANILA_CONF $BE tenant_net_name_or_ip $PRIVATE_NETWORK_NAME
             else
                 if is_service_enabled neutron; then
                     if ! [[ -z $MANILA_ADMIN_NET_RANGE ]]; then
