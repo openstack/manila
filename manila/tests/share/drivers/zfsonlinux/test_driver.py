@@ -362,6 +362,8 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             'vendor_name': 'Open Source',
             'filter_function': None,
             'goodness_function': None,
+            'ipv4_support': True,
+            'ipv6_support': False,
         }
         if replication_domain:
             expected['replication_type'] = 'readable'

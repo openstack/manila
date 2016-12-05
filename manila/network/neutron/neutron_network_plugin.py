@@ -14,6 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ipaddress
+import six
 import socket
 
 from oslo_config import cfg
@@ -99,7 +101,10 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
 
     def __init__(self, *args, **kwargs):
         db_driver = kwargs.pop('db_driver', None)
-        super(NeutronNetworkPlugin, self).__init__(db_driver=db_driver)
+        config_group_name = kwargs.get('config_group_name', 'DEFAULT')
+        super(NeutronNetworkPlugin,
+              self).__init__(config_group_name=config_group_name,
+                             db_driver=db_driver)
         self._neutron_api = None
         self._neutron_api_args = args
         self._neutron_api_kwargs = kwargs
@@ -156,6 +161,23 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
 
         return ports
 
+    def _get_matched_ip_address(self, fixed_ips, ip_version):
+        """Get first ip address which matches the specified ip_version."""
+
+        for ip in fixed_ips:
+            try:
+                address = ipaddress.ip_address(six.text_type(ip['ip_address']))
+                if address.version == ip_version:
+                    return ip['ip_address']
+            except ValueError:
+                LOG.error("%(address)s isn't a valid ip "
+                          "address, omitted."), {'address':
+                                                 ip['ip_address']}
+        msg = _("Can not find any IP address with configured IP "
+                "version %(version)s in share-network.") % {'version':
+                                                            ip_version}
+        raise exception.NetworkBadConfigurationException(reason=msg)
+
     def deallocate_network(self, context, share_server_id):
         """Deallocate neutron network resources for the given share server.
 
@@ -188,10 +210,12 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
         port = self.neutron_api.create_port(
             share_network['project_id'], **create_args)
 
+        ip_address = self._get_matched_ip_address(port['fixed_ips'],
+                                                  share_network['ip_version'])
         port_dict = {
             'id': port['id'],
             'share_server_id': share_server['id'],
-            'ip_address': port['fixed_ips'][0]['ip_address'],
+            'ip_address': ip_address,
             'gateway': share_network['gateway'],
             'mac_address': port['mac_address'],
             'status': constants.STATUS_ACTIVE,

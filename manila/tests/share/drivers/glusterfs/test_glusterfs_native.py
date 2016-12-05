@@ -265,6 +265,8 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             'replication_domain': None,
             'filter_function': None,
             'goodness_function': None,
+            'ipv4_support': True,
+            'ipv6_support': False,
         }
         self.assertEqual(test_data, self._driver._stats)
 

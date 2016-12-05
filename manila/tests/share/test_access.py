@@ -720,3 +720,56 @@ class ShareInstanceAccessTestCase(test.TestCase):
         else:
             self.assertEqual(states[0], rule_1['state'])
             self.assertEqual(states[-1], rule_4['state'])
+
+    @ddt.data(('nfs', True), ('cifs', False), ('ceph', False))
+    @ddt.unpack
+    def test__filter_ipv6_rules(self, proto, filtered):
+        pass_rules = [
+            {
+                'access_type': 'ip',
+                'access_to': '1.1.1.1'
+            },
+            {
+                'access_type': 'ip',
+                'access_to': '1.1.1.0/24'
+            },
+            {
+                'access_type': 'user',
+                'access_to': 'fake_user'
+            },
+        ]
+        fail_rules = [
+            {
+                'access_type': 'ip',
+                'access_to': '1001::1001'
+            },
+            {
+                'access_type': 'ip',
+                'access_to': '1001::/64'
+            },
+        ]
+        test_rules = pass_rules + fail_rules
+        filtered_rules = self.access_helper._filter_ipv6_rules(
+            test_rules, proto)
+        if filtered:
+            self.assertEqual(pass_rules, filtered_rules)
+        else:
+            self.assertEqual(test_rules, filtered_rules)
+
+    def test__get_rules_to_send_to_driver(self):
+        self.driver.ipv6_implemented = False
+
+        share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
+        share_instance = share['instance']
+        db_utils.create_access(share_id=share['id'], access_to='1001::/64',
+                               state=constants.ACCESS_STATE_ACTIVE)
+        self.mock_object(
+            self.access_helper, 'get_and_update_share_instance_access_rules',
+            mock.Mock(side_effect=self.access_helper.
+                      get_and_update_share_instance_access_rules))
+
+        access_rules_to_be_on_share, add_rules, delete_rules = (
+            self.access_helper._get_rules_to_send_to_driver(
+                self.context, share_instance))
+        self.assertEqual([], add_rules)
+        self.assertEqual([], delete_rules)

@@ -1,0 +1,8 @@
+---
+features:
+  - Added optional extra spec 'ipv4_support' and 'ipv6_support' for share
+    type.
+  - Added new capabilities 'ipv4_support' and 'ipv6_support' for IP based
+    drivers.
+  - Added IPv6 support in network plugins. (support either IPv6 or IPv4)
+  - Added IPv6 support in the lvm driver. (support both IPv6 and IPv4)

@@ -386,13 +386,21 @@ def cidr_to_netmask(cidr):
 
 
 def is_valid_ip_address(ip_address, ip_version):
-    if int(ip_version) == 4:
-        return netutils.is_valid_ipv4(ip_address)
-    elif int(ip_version) == 6:
-        return netutils.is_valid_ipv6(ip_address)
-    else:
+    ip_version = ([int(ip_version)] if not isinstance(ip_version, list)
+                  else ip_version)
+
+    if not set(ip_version).issubset(set([4, 6])):
         raise exception.ManilaException(
             _("Provided improper IP version '%s'.") % ip_version)
+
+    if 4 in ip_version:
+        if netutils.is_valid_ipv4(ip_address):
+            return True
+    if 6 in ip_version:
+        if netutils.is_valid_ipv6(ip_address):
+            return True
+
+    return False
 
 
 class IsAMatcher(object):

@@ -747,6 +747,8 @@ class HPE3ParDriverTestCase(test.TestCase):
             'replication_domain': None,
             'filter_function': None,
             'goodness_function': None,
+            'ipv4_support': True,
+            'ipv6_support': False,
         }
 
         result = self.driver.get_share_stats(refresh=True)
@@ -822,6 +824,8 @@ class HPE3ParDriverTestCase(test.TestCase):
             'replication_domain': None,
             'filter_function': None,
             'goodness_function': None,
+            'ipv4_support': True,
+            'ipv6_support': False,
         }
 
         result = self.driver.get_share_stats(refresh=True)
@@ -864,6 +868,8 @@ class HPE3ParDriverTestCase(test.TestCase):
             'replication_domain': None,
             'filter_function': None,
             'goodness_function': None,
+            'ipv4_support': True,
+            'ipv6_support': False,
         }
 
         result = self.driver.get_share_stats(refresh=True)

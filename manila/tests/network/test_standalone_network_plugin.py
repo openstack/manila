@@ -70,7 +70,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
                 'standalone_network_plugin_segmentation_id': 1001,
                 'standalone_network_plugin_allowed_ip_ranges': (
                     '10.0.0.3-10.0.0.7,10.0.0.69-10.0.0.157,10.0.0.213'),
-                'standalone_network_plugin_ip_version': 4,
+                'network_plugin_ipv4_enabled': True,
             },
         }
         allowed_cidrs = [
@@ -104,7 +104,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
                 'standalone_network_plugin_gateway': (
                     '2001:cdba::3257:9652'),
                 'standalone_network_plugin_mask': '48',
-                'standalone_network_plugin_ip_version': 6,
+                'network_plugin_ipv6_enabled': True,
             },
         }
         with test_utils.create_temp_config_with_opts(data):
@@ -138,7 +138,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
                 'standalone_network_plugin_segmentation_id': 3999,
                 'standalone_network_plugin_allowed_ip_ranges': (
                     '2001:db8::-2001:db8:0000:0000:0000:007f:ffff:ffff'),
-                'standalone_network_plugin_ip_version': 6,
+                'network_plugin_ipv6_enabled': True,
             },
         }
         with test_utils.create_temp_config_with_opts(data):
@@ -168,7 +168,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
                 'standalone_network_plugin_mask': '255.255.0.0',
                 'standalone_network_plugin_network_type': network_type,
                 'standalone_network_plugin_segmentation_id': 1001,
-                'standalone_network_plugin_ip_version': 4,
+                'network_plugin_ipv4_enabled': True,
             },
         }
         with test_utils.create_temp_config_with_opts(data):
@@ -186,7 +186,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
                 'standalone_network_plugin_mask': '255.255.0.0',
                 'standalone_network_plugin_network_type': fake_network_type,
                 'standalone_network_plugin_segmentation_id': 1001,
-                'standalone_network_plugin_ip_version': 4,
+                'network_plugin_ipv4_enabled': True,
             },
         }
         with test_utils.create_temp_config_with_opts(data):
@@ -255,10 +255,15 @@ class StandaloneNetworkPluginTest(test.TestCase):
         data = {
             group_name: {
                 'standalone_network_plugin_gateway': gateway,
-                'standalone_network_plugin_ip_version': vers,
                 'standalone_network_plugin_mask': '25',
             },
         }
+        if vers == 4:
+            data[group_name]['network_plugin_ipv4_enabled'] = True
+        if vers == 6:
+            data[group_name]['network_plugin_ipv4_enabled'] = False
+            data[group_name]['network_plugin_ipv6_enabled'] = True
+
         with test_utils.create_temp_config_with_opts(data):
             self.assertRaises(
                 exception.NetworkBadConfigurationException,
@@ -319,7 +324,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
             'DEFAULT': {
                 'standalone_network_plugin_gateway': '2001:db8::0001',
                 'standalone_network_plugin_mask': '64',
-                'standalone_network_plugin_ip_version': 6,
+                'network_plugin_ipv6_enabled': True,
             },
         }
         with test_utils.create_temp_config_with_opts(data):

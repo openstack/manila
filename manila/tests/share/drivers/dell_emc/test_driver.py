@@ -16,7 +16,6 @@
 import mock
 from stevedore import extension
 
-from manila import network
 from manila.share import configuration as conf
 from manila.share.drivers.dell_emc import driver as emcdriver
 from manila.share.drivers.dell_emc.plugins import base
@@ -98,7 +97,6 @@ class EMCShareFrameworkTestCase(test.TestCase):
         self.configuration.append_config_values = mock.Mock(return_value=0)
         self.configuration.share_backend_name = FAKE_BACKEND
         self.mock_object(self.configuration, 'safe_get', self._fake_safe_get)
-        self.mock_object(network, 'API')
         self.driver = emcdriver.EMCShareDriver(
             configuration=self.configuration)
 
@@ -133,6 +131,8 @@ class EMCShareFrameworkTestCase(test.TestCase):
         data['goodness_function'] = None
         data['snapshot_support'] = True
         data['create_share_from_snapshot_support'] = True
+        data['ipv4_support'] = True
+        data['ipv6_support'] = False
         self.assertEqual(data, self.driver._stats)
 
     def _fake_safe_get(self, value):

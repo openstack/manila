@@ -13,6 +13,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import copy
+import netaddr
 import os
 import re
 
@@ -183,7 +185,20 @@ class NFSHelper(NASHelperBase):
 
     def create_exports(self, server, share_name, recreate=False):
         path = os.path.join(self.configuration.share_mount_path, share_name)
-        return self.get_exports_for_share(server, path)
+        server_copy = copy.copy(server)
+        public_addresses = []
+        if 'public_addresses' in server_copy:
+            for address in server_copy['public_addresses']:
+                public_addresses.append(
+                    self._get_parsed_address_or_cidr(address))
+            server_copy['public_addresses'] = public_addresses
+
+        for t in ['public_address', 'admin_ip', 'ip']:
+            address = server_copy.get(t)
+            if address is not None:
+                server_copy[t] = self._get_parsed_address_or_cidr(address)
+
+        return self.get_exports_for_share(server_copy, path)
 
     def init_helper(self, server):
         try:
@@ -197,12 +212,6 @@ class NFSHelper(NASHelperBase):
 
     def remove_exports(self, server, share_name):
         """Remove exports."""
-
-    def _get_parsed_access_to(self, access_to):
-        netmask = utils.cidr_to_netmask(access_to)
-        if netmask == '255.255.255.255':
-            return access_to.split('/')[0]
-        return access_to.split('/')[0] + '/' + netmask
 
     @nfs_synchronized
     def update_access(self, server, share_name, access_rules, add_rules,
@@ -234,8 +243,9 @@ class NFSHelper(NASHelperBase):
                     server,
                     ['sudo', 'exportfs', '-o',
                      rules_options % access['access_level'],
-                     ':'.join((self._get_parsed_access_to(access['access_to']),
-                               local_path))])
+                     ':'.join((
+                         self._get_parsed_address_or_cidr(access['access_to']),
+                         local_path))])
             self._sync_nfs_temp_and_perm_files(server)
         # Adding/Deleting specific rules
         else:
@@ -245,7 +255,7 @@ class NFSHelper(NASHelperBase):
                 (const.ACCESS_LEVEL_RO, const.ACCESS_LEVEL_RW))
 
             for access in delete_rules:
-                access['access_to'] = self._get_parsed_access_to(
+                access['access_to'] = self._get_parsed_address_or_cidr(
                     access['access_to'])
                 try:
                     self.validate_access_rules(
@@ -265,7 +275,7 @@ class NFSHelper(NASHelperBase):
             if delete_rules:
                 self._sync_nfs_temp_and_perm_files(server)
             for access in add_rules:
-                access['access_to'] = self._get_parsed_access_to(
+                access['access_to'] = self._get_parsed_address_or_cidr(
                     access['access_to'])
                 found_item = re.search(
                     re.escape(local_path) + '[\s\n]*' + re.escape(
@@ -289,6 +299,22 @@ class NFSHelper(NASHelperBase):
                          ':'.join((access['access_to'], local_path))])
             if add_rules:
                 self._sync_nfs_temp_and_perm_files(server)
+
+    def _get_parsed_address_or_cidr(self, access_to):
+        try:
+            network = netaddr.IPNetwork(access_to)
+        except netaddr.AddrFormatError:
+            raise exception.InvalidInput(
+                reason=_("Invalid address or cidr supplied %s.") % access_to)
+        mask_length = network.netmask.netmask_bits()
+        address = access_to.split('/')[0]
+        if network.version == 4:
+            if mask_length == 32:
+                return address
+            return '%s/%s' % (address, mask_length)
+        if mask_length == 128:
+            return "[%s]" % address
+        return "[%s]/%s" % (address, mask_length)
 
     @staticmethod
     def get_host_list(output, local_path):

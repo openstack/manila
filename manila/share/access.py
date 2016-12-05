@@ -14,12 +14,15 @@
 #    under the License.
 
 import copy
+import ipaddress
 
 from oslo_log import log
 
 from manila.common import constants
 from manila.i18n import _
 from manila import utils
+
+import six
 
 LOG = log.getLogger(__name__)
 
@@ -459,6 +462,18 @@ class ShareInstanceAccess(ShareInstanceAccessDatabaseMixin):
 
         return access_rules_to_be_on_share
 
+    @staticmethod
+    def _filter_ipv6_rules(rules, share_instance_proto):
+        filtered = []
+        for rule in rules:
+            if rule['access_type'] == 'ip' and share_instance_proto == 'nfs':
+                ip_version = ipaddress.ip_network(
+                    six.text_type(rule['access_to'])).version
+                if 6 == ip_version:
+                    continue
+            filtered.append(rule)
+        return filtered
+
     def _get_rules_to_send_to_driver(self, context, share_instance):
         add_rules = []
         delete_rules = []
@@ -472,6 +487,7 @@ class ShareInstanceAccess(ShareInstanceAccessDatabaseMixin):
             share_instance_id=share_instance['id'])
         # Update queued rules to transitional states
         for rule in existing_rules_in_db:
+
             if rule['state'] == constants.ACCESS_STATE_APPLYING:
                 add_rules.append(rule)
             elif rule['state'] == constants.ACCESS_STATE_DENYING:
@@ -480,6 +496,13 @@ class ShareInstanceAccess(ShareInstanceAccessDatabaseMixin):
         access_rules_to_be_on_share = [
             r for r in existing_rules_in_db if r['id'] not in delete_rule_ids
         ]
+        share = self.db.share_get(context, share_instance['share_id'])
+        si_proto = share['share_proto'].lower()
+        if not self.driver.ipv6_implemented:
+            add_rules = self._filter_ipv6_rules(add_rules, si_proto)
+            delete_rules = self._filter_ipv6_rules(delete_rules, si_proto)
+            access_rules_to_be_on_share = self._filter_ipv6_rules(
+                access_rules_to_be_on_share, si_proto)
         return access_rules_to_be_on_share, add_rules, delete_rules
 
     def _check_needs_refresh(self, context, share_instance_id):

@@ -27,7 +27,7 @@ from manila import utils
 standalone_network_plugin_opts = [
     cfg.StrOpt(
         'standalone_network_plugin_gateway',
-        help="Gateway IPv4 address that should be used. Required.",
+        help="Gateway address that should be used. Required.",
         deprecated_group='DEFAULT'),
     cfg.StrOpt(
         'standalone_network_plugin_mask',
@@ -63,7 +63,12 @@ standalone_network_plugin_opts = [
         'standalone_network_plugin_ip_version',
         default=4,
         help="IP version of network. Optional."
-             "Allowed values are '4' and '6'. Default value is '4'.",
+             "Allowed values are '4' and '6'. Default value is '4'. "
+             "Note: This option is no longer used and has no effect",
+        deprecated_for_removal=True,
+        deprecated_reason="This option has been replaced by "
+                          "'network_plugin_ipv4_enabled' and "
+                          "'network_plugin_ipv6_enabled' options.",
         deprecated_group='DEFAULT'),
     cfg.IntOpt(
         'standalone_network_plugin_mtu',
@@ -89,8 +94,10 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
     """
 
     def __init__(self, config_group_name=None, db_driver=None, label='user'):
-        super(StandaloneNetworkPlugin, self).__init__(db_driver=db_driver)
         self.config_group_name = config_group_name or 'DEFAULT'
+        super(StandaloneNetworkPlugin,
+              self).__init__(config_group_name=self.config_group_name,
+                             db_driver=db_driver)
         CONF.register_opts(
             standalone_network_plugin_opts,
             group=self.config_group_name)
@@ -125,6 +132,34 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
 
     def _set_persistent_network_data(self):
         """Sets persistent data for whole plugin."""
+        # NOTE(tommylikehu): Standalone plugin could only support
+        # either IPv4 or IPv6, so if both network_plugin_ipv4_enabled
+        # and network_plugin_ipv6_enabled are configured True
+        # we would only support IPv6.
+        ipv4_enabled = getattr(self.configuration,
+                               'network_plugin_ipv4_enabled', None)
+        ipv6_enabled = getattr(self.configuration,
+                               'network_plugin_ipv6_enabled', None)
+
+        if ipv4_enabled:
+            ip_version = 4
+        if ipv6_enabled:
+            ip_version = 6
+        if ipv4_enabled and ipv6_enabled:
+            LOG.warning("Only IPv6 is enabled, although both "
+                        "'network_plugin_ipv4_enabled' and "
+                        "'network_plugin_ipv6_enabled' are "
+                        "configured True.")
+
+        if not (ipv4_enabled or ipv6_enabled):
+            ip_version = int(
+                self.configuration.standalone_network_plugin_ip_version)
+            LOG.warning("You're using a deprecated option that may"
+                        " be removed and silently ignored in the future. "
+                        "Please use 'network_plugin_ipv4_enabled' or "
+                        "'network_plugin_ipv6_enabled' instead of "
+                        "'standalone_network_plugin_ip_version'.")
+
         self.network_type = (
             self.configuration.standalone_network_plugin_network_type)
         self.segmentation_id = (
@@ -133,8 +168,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
         self.mask = self.configuration.standalone_network_plugin_mask
         self.allowed_ip_ranges = (
             self.configuration.standalone_network_plugin_allowed_ip_ranges)
-        self.ip_version = int(
-            self.configuration.standalone_network_plugin_ip_version)
+        self.ip_version = ip_version
         self.net = self._get_network()
         self.allowed_cidrs = self._get_list_of_allowed_addresses()
         self.reserved_addresses = (
@@ -191,7 +225,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
                     msg = _("Config option "
                             "'standalone_network_plugin_allowed_ip_ranges' "
                             "has incorrect value "
-                            "'%s'") % self.allowed_ip_ranges
+                            "'%s'.") % self.allowed_ip_ranges
                     raise exception.NetworkBadConfigurationException(
                         reason=msg)
 
