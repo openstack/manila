@@ -846,7 +846,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
         self.driver.execute.assert_has_calls([
             mock.call(
                 'ssh', 'someuser@2.2.2.2',
-                'sudo', 'zfs', 'send', '-vDp', snap_name, '|',
+                'sudo', 'zfs', 'send', '-vD', snap_name, '|',
                 'sudo', 'zfs', 'receive', '-v',
                 'bar/subbar/some_prefix_fake_share_id'),
             mock.call(

@@ -604,7 +604,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
             # NOTE(vponomaryov): SSH is used as workaround for 'execute'
             # implementation restriction that does not support usage of '|'.
             'ssh', ssh_cmd,
-            'sudo', 'zfs', 'send', '-vDp', snapshot_name, '|',
+            'sudo', 'zfs', 'send', '-vD', snapshot_name, '|',
             'sudo', 'zfs', 'receive', '-v', dataset_name,
         )
         # Apply options based on used share type that may differ from

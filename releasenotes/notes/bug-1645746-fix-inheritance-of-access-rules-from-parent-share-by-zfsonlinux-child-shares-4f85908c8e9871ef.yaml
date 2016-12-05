@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fix inheritance of access rules from parent share by ZFSonLinux child
+    shares. It was inherited before, now it is not, as expected.
+    Now, each share created from snapshot will not have inherited access rules.
