@@ -220,46 +220,26 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     @ensure_server
     def create_share(self, context, share, share_server=None):
         """Creates share."""
+        return self._create_share(
+            context, share,
+            snapshot=None,
+            share_server=share_server,
+        )
+
+    def _create_share(self, context, share, snapshot, share_server=None):
         helper = self._get_helper(share)
         server_details = share_server['backend_details']
-        volume = self._allocate_container(self.admin_context, share)
+        volume = self._allocate_container(
+            self.admin_context, share, snapshot=snapshot)
         volume = self._attach_volume(
-            self.admin_context,
-            share,
-            server_details['instance_id'],
-            volume)
-        self._format_device(server_details, volume)
+            self.admin_context, share, server_details['instance_id'], volume)
+        if not snapshot:
+            self._format_device(server_details, volume)
+
         self._mount_device(share, server_details, volume)
-        location = helper.create_export(
-            server_details,
-            share['name'])
-        export_list = [{
-            "path": location,
-            "is_admin_only": False,
-            "metadata": {
-                # TODO(vponomaryov): remove this fake metadata when
-                # proper appears.
-                "export_location_metadata_example": "example",
-            },
-        }]
-        # NOTE(vponomaryov): 'admin_ip' exists only in case of DHSS=True mode.
-        # 'ip' exists in case of DHSS=False mode.
-        # Use one of these for creation of export location for service needs.
-        service_address = server_details.get(
-            "admin_ip", server_details.get("ip"))
-        if service_address:
-            admin_location = location.replace(
-                server_details['public_address'], service_address)
-            export_list.append({
-                "path": admin_location,
-                "is_admin_only": True,
-                "metadata": {
-                    # TODO(vponomaryov): remove this fake metadata when
-                    #  proper appears.
-                    "export_location_metadata_example": "example",
-                },
-            })
-        return export_list
+        export_locations = helper.create_exports(
+            server_details, share['name'])
+        return export_locations
 
     @utils.retry(exception.ProcessExecutionError, backoff_rate=1)
     def _is_device_file_available(self, server_details, volume):
@@ -644,37 +624,11 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None):
         """Is called to create share from snapshot."""
-        helper = self._get_helper(share)
-        server_details = share_server['backend_details']
-        volume = self._allocate_container(self.admin_context, share, snapshot)
-        volume = self._attach_volume(
-            self.admin_context, share,
-            share_server['backend_details']['instance_id'], volume)
-        self._mount_device(share, share_server['backend_details'], volume)
-        location = helper.create_export(share_server['backend_details'],
-                                        share['name'])
-        export_list = [{
-            "path": location,
-            "is_admin_only": False,
-            "metadata": {
-                # TODO(vponomaryov): remove this fake metadata when
-                # proper appears.
-                "export_location_metadata_example": "example",
-            },
-        }]
-        if server_details.get('admin_ip'):
-            admin_location = location.replace(
-                server_details['public_address'], server_details['admin_ip'])
-            export_list.append({
-                "path": admin_location,
-                "is_admin_only": True,
-                "metadata": {
-                    # TODO(vponomaryov): remove this fake metadata when
-                    #  proper appears.
-                    "export_location_metadata_example": "example",
-                },
-            })
-        return export_list
+        return self._create_share(
+            context, share,
+            snapshot=snapshot,
+            share_server=share_server,
+        )
 
     @ensure_server
     def extend_share(self, share, new_size, share_server=None):
@@ -783,7 +737,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         if not self.driver_handles_share_servers:
             share_server = self.service_instance_manager.get_common_server()
         if self._is_share_server_active(context, share_server):
-            helper.remove_export(
+            helper.remove_exports(
                 share_server['backend_details'], share['name'])
             self._unmount_device(share, share_server['backend_details'])
             self._detach_volume(self.admin_context, share,
@@ -869,7 +823,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 share_server['backend_details']['instance_id'],
                 volume)
             self._mount_device(share, share_server['backend_details'], volume)
-            helper.create_export(
+            helper.create_exports(
                 share_server['backend_details'], share['name'], recreate=True)
 
     @ensure_server

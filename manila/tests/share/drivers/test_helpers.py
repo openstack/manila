@@ -80,12 +80,28 @@ class NFSHelperTestCase(test.TestCase):
         self._helper._ssh_exec.assert_called_once_with(
             self.server, ['sudo', 'exportfs'])
 
-    def test_create_export(self):
-        ret = self._helper.create_export(self.server, self.share_name)
-        expected_location = ':'.join([self.server['public_address'],
-                                      os.path.join(CONF.share_mount_path,
-                                                   self.share_name)])
-        self.assertEqual(expected_location, ret)
+    @ddt.data(
+        {"public_address": "1.2.3.4"},
+        {"public_address": "1.2.3.4", "admin_ip": "5.6.7.8"},
+        {"public_address": "1.2.3.4", "ip": "9.10.11.12"},
+    )
+    def test_create_exports(self, server):
+        result = self._helper.create_exports(server, self.share_name)
+
+        expected_export_locations = []
+        path = os.path.join(CONF.share_mount_path, self.share_name)
+        service_address = server.get("admin_ip", server.get("ip"))
+        for ip, is_admin in ((server['public_address'], False),
+                             (service_address, True)):
+            if ip:
+                expected_export_locations.append({
+                    "path": "%s:%s" % (ip, path),
+                    "is_admin_only": is_admin,
+                    "metadata": {
+                        "export_location_metadata_example": "example",
+                    },
+                })
+        self.assertEqual(expected_export_locations, result)
 
     @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
     def test_update_access(self, access_level):
@@ -206,7 +222,12 @@ class NFSHelperTestCase(test.TestCase):
         result = self._helper.get_exports_for_share(server, export_location)
 
         path = export_location.split(':')[-1]
-        self.assertEqual([':'.join([server['public_address'], path])], result)
+        expected_export_locations = [
+            {"is_admin_only": False,
+             "path": "%s:%s" % (server["public_address"], path),
+             "metadata": {"export_location_metadata_example": "example"}}
+        ]
+        self.assertEqual(expected_export_locations, result)
 
     @ddt.data(
         {'public_address_with_suffix': 'foo'},
@@ -307,9 +328,14 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
         self.mock_object(self._helper, '_ssh_exec',
                          mock.Mock(side_effect=fake_ssh_exec))
 
-        ret = self._helper.create_export(self.server_details, self.share_name)
-        expected_location = '\\\\%s\\%s' % (
-            self.server_details['public_address'], self.share_name)
+        ret = self._helper.create_exports(self.server_details, self.share_name)
+
+        expected_location = [{
+            "is_admin_only": False,
+            "path": "\\\\%s\\%s" % (
+                self.server_details['public_address'], self.share_name),
+            "metadata": {"export_location_metadata_example": "example"}
+        }]
         self.assertEqual(expected_location, ret)
         share_path = os.path.join(
             self._helper.configuration.share_mount_path,
@@ -338,14 +364,19 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
                          ))
 
         self.assertRaises(
-            exception.ManilaException, self._helper.create_export,
+            exception.ManilaException, self._helper.create_exports,
             self.server_details, self.share_name)
 
-    def test_create_export_share_exist_recreate_true(self):
-        ret = self._helper.create_export(self.server_details, self.share_name,
-                                         recreate=True)
-        expected_location = '\\\\%s\\%s' % (
-            self.server_details['public_address'], self.share_name)
+    def test_create_exports_share_exist_recreate_true(self):
+        ret = self._helper.create_exports(
+            self.server_details, self.share_name, recreate=True)
+
+        expected_location = [{
+            "is_admin_only": False,
+            "path": "\\\\%s\\%s" % (
+                self.server_details['public_address'], self.share_name),
+            "metadata": {"export_location_metadata_example": "example"}
+        }]
         self.assertEqual(expected_location, ret)
         share_path = os.path.join(
             self._helper.configuration.share_mount_path,
@@ -372,7 +403,7 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
     def test_create_export_share_exist_recreate_false(self):
         self.assertRaises(
             exception.ShareBackendException,
-            self._helper.create_export,
+            self._helper.create_exports,
             self.server_details,
             self.share_name,
             recreate=False,
@@ -384,8 +415,9 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
             ),
         ])
 
-    def test_remove_export(self):
-        self._helper.remove_export(self.server_details, self.share_name)
+    def test_remove_exports(self):
+        self._helper.remove_exports(self.server_details, self.share_name)
+
         self._helper._ssh_exec.assert_called_once_with(
             self.server_details,
             ['sudo', 'net', 'conf', 'delshare', self.share_name],
@@ -403,7 +435,7 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
         self.mock_object(self._helper, '_ssh_exec',
                          mock.Mock(side_effect=fake_ssh_exec))
 
-        self._helper.remove_export(self.server_details, self.share_name)
+        self._helper.remove_exports(self.server_details, self.share_name)
 
         self._helper._ssh_exec.assert_has_calls([
             mock.call(
@@ -484,7 +516,11 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
 
         result = self._helper.get_exports_for_share(server, export_location)
 
-        expected_export_location = ['\\\\%s\\foo' % server['public_address']]
+        expected_export_location = [{
+            "is_admin_only": False,
+            "path": "\\\\%s\\foo" % server['public_address'],
+            "metadata": {"export_location_metadata_example": "example"}
+        }]
         self.assertEqual(expected_export_location, result)
         self._helper._get_share_group_name_from_export_location.\
             assert_called_once_with(export_location)

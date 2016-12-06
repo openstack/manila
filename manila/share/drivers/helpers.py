@@ -37,12 +37,12 @@ class NASHelperBase(object):
     def init_helper(self, server):
         pass
 
-    def create_export(self, server, share_name, recreate=False):
-        """Create new export, delete old one if exists."""
+    def create_exports(self, server, share_name, recreate=False):
+        """Create new exports, delete old ones if exist."""
         raise NotImplementedError()
 
-    def remove_export(self, server, share_name):
-        """Remove export."""
+    def remove_exports(self, server, share_name):
+        """Remove exports."""
         raise NotImplementedError()
 
     def configure_access(self, server, share_name):
@@ -80,9 +80,42 @@ class NASHelperBase(object):
             raise exception.ManilaException(
                 _("Can not get 'public_address' for generation of export."))
 
-    def get_exports_for_share(self, server, old_export_location):
-        """Returns list of exports based on server info."""
+    def _get_export_location_template(self, export_location_or_path):
+        """Returns template of export location.
+
+        Example for NFS:
+            %s:/path/to/share
+        Example for CIFS:
+            \\\\%s\\cifs_share_name
+        """
         raise NotImplementedError()
+
+    def get_exports_for_share(self, server, export_location_or_path):
+        """Returns list of exports based on server info."""
+        self._verify_server_has_public_address(server)
+        export_location_template = self._get_export_location_template(
+            export_location_or_path)
+        export_locations = []
+
+        # NOTE(vponomaryov):
+        # Generic driver case: 'admin_ip' exists only in case of DHSS=True
+        # mode and 'ip' exists in case of DHSS=False mode.
+        # Use one of these for creation of export location for service needs.
+        # LVM driver will have only single export location.
+        service_address = server.get("admin_ip", server.get("ip"))
+        for ip, is_admin in ((server['public_address'], False),
+                             (service_address, True)):
+            if ip:
+                export_locations.append({
+                    "path": export_location_template % ip,
+                    "is_admin_only": is_admin,
+                    "metadata": {
+                        # TODO(vponomaryov): remove this fake metadata when
+                        # proper appears.
+                        "export_location_metadata_example": "example",
+                    },
+                })
+        return export_locations
 
     def get_share_path_by_export_location(self, server, export_location):
         """Returns share path by its export location."""
@@ -137,11 +170,9 @@ def nfs_synchronized(f):
 class NFSHelper(NASHelperBase):
     """Interface to work with share."""
 
-    def create_export(self, server, share_name, recreate=False):
-        """Create new export, delete old one if exists."""
-        return ':'.join((server['public_address'],
-                         os.path.join(
-                             self.configuration.share_mount_path, share_name)))
+    def create_exports(self, server, share_name, recreate=False):
+        path = os.path.join(self.configuration.share_mount_path, share_name)
+        return self.get_exports_for_share(server, path)
 
     def init_helper(self, server):
         try:
@@ -153,8 +184,8 @@ class NFSHelper(NASHelperBase):
                     % server['instance_id'])
             LOG.error(e.stderr)
 
-    def remove_export(self, server, share_name):
-        """Remove export."""
+    def remove_exports(self, server, share_name):
+        """Remove exports."""
 
     def _get_parsed_access_to(self, access_to):
         netmask = utils.cidr_to_netmask(access_to)
@@ -276,10 +307,9 @@ class NFSHelper(NASHelperBase):
             self._ssh_exec(
                 server, ['sudo', 'service', 'nfs-kernel-server', 'restart'])
 
-    def get_exports_for_share(self, server, old_export_location):
-        self._verify_server_has_public_address(server)
-        path = old_export_location.split(':')[-1]
-        return [':'.join((server['public_address'], path))]
+    def _get_export_location_template(self, export_location_or_path):
+        path = export_location_or_path.split(':')[-1]
+        return '%s:' + path
 
     def get_share_path_by_export_location(self, server, export_location):
         return export_location.split(':')[-1]
@@ -321,7 +351,6 @@ class CIFSHelperIPAccess(NASHelperBase):
     """
     def __init__(self, *args):
         super(CIFSHelperIPAccess, self).__init__(*args)
-        self.export_format = '\\\\%s\\%s'
         self.parameters = {
             'browseable': 'yes',
             'create mask': '0755',
@@ -334,7 +363,7 @@ class CIFSHelperIPAccess(NASHelperBase):
         # This is smoke check that we have required dependency
         self._ssh_exec(server, ['sudo', 'net', 'conf', 'list'])
 
-    def create_export(self, server, share_name, recreate=False):
+    def create_exports(self, server, share_name, recreate=False):
         """Create share at samba server."""
         share_path = os.path.join(self.configuration.share_mount_path,
                                   share_name)
@@ -374,9 +403,9 @@ class CIFSHelperIPAccess(NASHelperBase):
             self._ssh_exec(server, ['sudo', 'net', 'conf', 'setparm',
                            share_name, param, value])
 
-        return self.export_format % (server['public_address'], share_name)
+        return self.get_exports_for_share(server, '\\\\%s\\' + share_name)
 
-    def remove_export(self, server, share_name):
+    def remove_exports(self, server, share_name):
         """Remove share definition from samba server."""
         try:
             self._ssh_exec(
@@ -426,12 +455,10 @@ class CIFSHelperIPAccess(NASHelperBase):
         msg = _("Got incorrect CIFS export location '%s'.") % export_location
         raise exception.InvalidShare(reason=msg)
 
-    def get_exports_for_share(self, server, old_export_location):
-        self._verify_server_has_public_address(server)
+    def _get_export_location_template(self, export_location_or_path):
         group_name = self._get_share_group_name_from_export_location(
-            old_export_location)
-        data = dict(ip=server['public_address'], share=group_name)
-        return ['\\\\%(ip)s\\%(share)s' % data]
+            export_location_or_path)
+        return ('\\\\%s' + ('\\%s' % group_name))
 
     def get_share_path_by_export_location(self, server, export_location):
         # Get name of group that contains share data on CIFS server
@@ -473,7 +500,6 @@ class CIFSHelperUserAccess(CIFSHelperIPAccess):
     """
     def __init__(self, *args):
         super(CIFSHelperUserAccess, self).__init__(*args)
-        self.export_format = '//%s/%s'
         self.parameters = {
             'browseable': 'yes',
             'create mask': '0755',

@@ -210,8 +210,8 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         self._allocate_container(share)
         # create file system
         device_name = self._get_local_path(share)
-        location = self._get_helper(share).create_export(self.share_server,
-                                                         share['name'])
+        location = self._get_helper(share).create_exports(
+            self.share_server, share['name'])
         self._mount_device(share, device_name)
         return location
 
@@ -226,8 +226,8 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         )
         self._copy_volume(
             snapshot_device_name, share_device_name, share['size'])
-        location = self._get_helper(share).create_export(self.share_server,
-                                                         share['name'])
+        location = self._get_helper(share).create_exports(
+            self.share_server, share['name'])
         self._mount_device(share, share_device_name)
         return location
 
@@ -258,14 +258,14 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         """Ensure that storage are mounted and exported."""
         device_name = self._get_local_path(share)
         self._mount_device(share, device_name)
-        self._get_helper(share).create_export(self.share_server, share['name'],
-                                              recreate=True)
+        self._get_helper(share).create_exports(
+            self.share_server, share['name'], recreate=True)
 
     def _delete_share(self, ctx, share):
         """Delete a share."""
         try:
-            self._get_helper(share).remove_export(self.share_server,
-                                                  share['name'])
+            self._get_helper(share).remove_exports(
+                self.share_server, share['name'])
         except exception.ProcessExecutionError:
             LOG.warning(_LW("Can't remove share %r"), share['id'])
         except exception.InvalidShare as exc:
