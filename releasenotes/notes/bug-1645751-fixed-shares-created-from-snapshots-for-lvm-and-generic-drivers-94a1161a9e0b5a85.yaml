@@ -1,0 +1,6 @@
+---
+fixes:
+  - Fixed shares created from snapshots on the LVM and Generic drivers to
+    no longer share the same filesystem handle as the source shares.
+    The cause was the same as described in Ubuntu launchpad bug
+    https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1071733

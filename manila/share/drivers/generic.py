@@ -335,8 +335,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                             '%s' % server_details['instance_id'])
         def _mount_device_with_lock():
             mount_path = self._get_mount_path(share)
+            device_path = volume['mountpoint']
             log_data = {
-                'dev': volume['mountpoint'],
+                'dev': device_path,
                 'path': mount_path,
                 'server': server_details['instance_id'],
             }
@@ -345,11 +346,21 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                                volume):
                     LOG.debug("Mounting '%(dev)s' to path '%(path)s' on "
                               "server '%(server)s'.", log_data)
-                    mount_cmd = ['sudo', 'mkdir', '-p', mount_path, '&&']
-                    mount_cmd.extend(['sudo', 'mount', volume['mountpoint'],
-                                      mount_path])
-                    mount_cmd.extend(['&&', 'sudo', 'chmod', '777',
-                                      mount_path])
+                    mount_cmd = (
+                        'sudo', 'mkdir', '-p', mount_path,
+                        '&&', 'sudo', 'mount', device_path, mount_path,
+                        '&&', 'sudo', 'chmod', '777', mount_path,
+                        '&&', 'sudo', 'umount', mount_path,
+                        # NOTE(vponomaryov): 'tune2fs' is required to make
+                        # filesystem of share created from snapshot have
+                        # unique ID, in case of LVM volumes, by default,
+                        # it will have the same UUID as source volume one.
+                        # 'tune2fs' command can be executed only when device
+                        # is not mounted and also, in current case, it takes
+                        # effect only after it was mounted. Closes #1645751
+                        '&&', 'sudo', 'tune2fs', '-U', 'random', device_path,
+                        '&&', 'sudo', 'mount', device_path, mount_path,
+                    )
                     self._ssh_exec(server_details, mount_cmd)
 
                     # Add mount permanently

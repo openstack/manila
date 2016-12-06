@@ -200,6 +200,7 @@ class LVMShareDriverTestCase(test.TestCase):
         expected_exec = [
             'lvcreate -L 1G -n fakename fakevg',
             'mkfs.ext4 /dev/mapper/fakevg-fakename',
+            'tune2fs -U random %s' % mount_share,
             ("dd count=0 if=%s of=%s iflag=direct oflag=direct" %
              (mount_snapshot, mount_share)),
             ("dd if=%s of=%s count=1024 bs=1M iflag=direct oflag=direct" %
@@ -319,8 +320,9 @@ class LVMShareDriverTestCase(test.TestCase):
         self._driver.create_snapshot(self._context, self.snapshot,
                                      self.share_server)
         expected_exec = [
-            ("lvcreate -L 1G --name fakesnapshotname --snapshot "
-             "%s/fakename" % (CONF.lvm_share_volume_group,)),
+            "lvcreate -L 1G --name %s --snapshot %s/fakename" % (
+                self.snapshot['name'], CONF.lvm_share_volume_group,),
+            "tune2fs -U random /dev/mapper/fakevg-%s" % self.snapshot['name'],
         ]
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
 
