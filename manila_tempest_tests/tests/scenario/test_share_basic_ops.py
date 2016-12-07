@@ -202,7 +202,6 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         for location in locations:
             self.mount_share(location, ssh_client)
             self.umount_share(ssh_client)
-        self.servers_client.delete_server(instance['id'])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_read_write_two_vms(self):
