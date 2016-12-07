@@ -36,10 +36,10 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - availability_zones: availability_zones
-   - id: id_9
-   - name: name_6
-   - created_at: created_at_7
-   - updated_at: updated_at_4
+   - id: availability_zone_id
+   - name: availability_zone_name
+   - created_at: availability_zone_created_at
+   - updated_at: availability_zone_updated_at
 
 Response example
 ----------------
