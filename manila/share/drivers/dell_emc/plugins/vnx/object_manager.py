@@ -181,7 +181,7 @@ class StorageObject(object):
                 if re.search(pattern[0], e.stdout):
                     raise pattern[1]
 
-            raise e
+            raise
 
         return out, err
 
