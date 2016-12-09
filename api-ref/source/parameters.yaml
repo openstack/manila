@@ -351,6 +351,13 @@ share_type_id_2:
   in: query
   required: false
   type: string
+share_type_query:
+  description: |
+    The share type name or UUID. Allows filtering back end pools based
+    on the extra-specs in the share type.
+  in: query
+  required: false
+  type: string
 snapshot_id_share_response:
   description: |
     The UUID of the snapshot that was used to create

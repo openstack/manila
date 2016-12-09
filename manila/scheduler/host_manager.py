@@ -35,9 +35,11 @@ from manila import db
 from manila import exception
 from manila.i18n import _LI, _LW
 from manila.scheduler.filters import base_host as base_host_filter
+from manila.scheduler import utils as scheduler_utils
 from manila.scheduler.weighers import base_host as base_host_weigher
 from manila.share import utils as share_utils
 from manila import utils
+
 
 host_manager_opts = [
     cfg.ListOpt('scheduler_default_filters',
@@ -584,7 +586,6 @@ class HostManager(object):
 
     def get_pools(self, context, filters=None):
         """Returns a dict of all pools on all hosts HostManager knows about."""
-
         self._update_host_state_map(context)
 
         all_pools = []
@@ -629,7 +630,11 @@ class HostManager(object):
         for filter_key, filter_value in filter_dict.items():
             if filter_key not in dict_to_check:
                 return False
-            if not re.match(filter_value, dict_to_check.get(filter_key)):
+            if filter_key == 'capabilities':
+                if not scheduler_utils.capabilities_satisfied(
+                        dict_to_check.get(filter_key), filter_value):
+                    return False
+            elif not re.match(filter_value, dict_to_check.get(filter_key)):
                 return False
 
         return True
