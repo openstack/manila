@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import six
 from tempest import config
 import testtools
 from testtools import testcase as tc
@@ -93,7 +92,7 @@ class ShareNetworkListMixin(object):
         created_since = valid_filter_opts.pop('created_since')
         for sn in listed:
             self.assertTrue(all(sn[key] == value for key, value in
-                                six.iteritems(valid_filter_opts)))
+                                valid_filter_opts.items()))
             self.assertLessEqual(sn['created_at'], created_before)
             self.assertGreaterEqual(sn['created_at'], created_since)
 

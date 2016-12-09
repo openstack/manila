@@ -95,7 +95,7 @@ class SecurityServiceListMixin(object):
         self.assertTrue(any(self.ss_ldap['id'] == ss['id'] for ss in listed))
         for ss in listed:
             self.assertTrue(all(ss[key] == value for key, value
-                                in six.iteritems(search_opts)))
+                                in search_opts.items()))
 
 
 class SecurityServicesTest(base.BaseSharesTest,
