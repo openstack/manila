@@ -407,10 +407,14 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver._sync_mount_temp_and_perm_files.assert_called_once_with(
             server)
         self._driver._ssh_exec.assert_called_once_with(
-            server,
-            ['sudo', 'mkdir', '-p', mount_path,
-             '&&', 'sudo', 'mount', volume['mountpoint'], mount_path,
-             '&&', 'sudo', 'chmod', '777', mount_path],
+            server, (
+                'sudo', 'mkdir', '-p', mount_path,
+                '&&', 'sudo', 'mount', volume['mountpoint'], mount_path,
+                '&&', 'sudo', 'chmod', '777', mount_path,
+                '&&', 'sudo', 'umount', mount_path,
+                '&&', 'sudo', 'tune2fs', '-U', 'random', volume['mountpoint'],
+                '&&', 'sudo', 'mount', volume['mountpoint'], mount_path,
+            ),
         )
 
     def test_mount_device_present(self):

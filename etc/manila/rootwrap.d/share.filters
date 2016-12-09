@@ -57,6 +57,9 @@ lvcreate: CommandFilter, lvcreate, root
 # manila/share/drivers/lvm.py: 'vgs', %s, '--rows', '--units', 'g'
 vgs: CommandFilter, vgs, root
 
+# manila/share/drivers/lvm.py: 'tune2fs', '-U', 'random', '%volume-snapshot%'
+tune2fs: CommandFilter, tune2fs, root
+
 # manila/share/drivers/glusterfs.py: 'mkdir', '%s'
 # manila/share/drivers/ganesha/manager.py: 'mkdir', '-p', '%s'
 mkdir: CommandFilter, mkdir, root

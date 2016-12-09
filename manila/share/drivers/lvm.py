@@ -116,6 +116,10 @@ class LVMMixin(driver.ExecuteMixin):
             'lvcreate', '-L', '%sG' % snapshot['share']['size'],
             '--name', snapshot['name'],
             '--snapshot', orig_lv_name, run_as_root=True)
+        snapshot_device_name = self._get_local_path(snapshot)
+        self._execute(
+            'tune2fs', '-U', 'random', snapshot_device_name, run_as_root=True,
+        )
 
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes a snapshot."""
@@ -215,12 +219,16 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
                                    share_server=None):
         """Is called to create share from snapshot."""
         self._allocate_container(share)
-        device_name = self._get_local_path(snapshot)
-        self._copy_volume(device_name, self._get_local_path(share),
-                          share['size'])
+        snapshot_device_name = self._get_local_path(snapshot)
+        share_device_name = self._get_local_path(share)
+        self._execute(
+            'tune2fs', '-U', 'random', share_device_name, run_as_root=True,
+        )
+        self._copy_volume(
+            snapshot_device_name, share_device_name, share['size'])
         location = self._get_helper(share).create_export(self.share_server,
                                                          share['name'])
-        self._mount_device(share, device_name)
+        self._mount_device(share, share_device_name)
         return location
 
     def delete_share(self, context, share, share_server=None):
