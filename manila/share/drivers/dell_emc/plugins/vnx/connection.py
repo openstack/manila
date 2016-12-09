@@ -370,6 +370,61 @@ class VNXStorageConnection(driver.StorageConnection):
         self._get_context('NFSShare').allow_share_access(
             share['id'], host_ip, vdm_name, access_level)
 
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
+        # deleting rules
+        for rule in delete_rules:
+            self.deny_access(context, share, rule, share_server)
+
+        # adding rules
+        for rule in add_rules:
+            self.allow_access(context, share, rule, share_server)
+
+        # recovery mode
+        if not (add_rules or delete_rules):
+            white_list = []
+            for rule in access_rules:
+                self.allow_access(context, share, rule, share_server)
+                white_list.append(rule['access_to'])
+            self.clear_access(share, share_server, white_list)
+
+    def clear_access(self, share, share_server, white_list):
+        share_proto = share['share_proto'].upper()
+        share_name = share['id']
+        if share_proto == 'CIFS':
+            self._cifs_clear_access(share_name, share_server, white_list)
+        elif share_proto == 'NFS':
+            self._nfs_clear_access(share_name, share_server, white_list)
+
+    @vnx_utils.log_enter_exit
+    def _cifs_clear_access(self, share_name, share_server, white_list):
+        """Clear access for CIFS share except hosts in the white list."""
+        vdm_name = self._get_share_server_name(share_server)
+
+        # Check if CIFS server exists.
+        server_name = vdm_name
+        status, server = self._get_context('CIFSServer').get(server_name,
+                                                             vdm_name)
+        if status != constants.STATUS_OK:
+            message = (_("CIFS server %(server_name)s has issue. "
+                         "Detail: %(status)s") %
+                       {'server_name': server_name, 'status': status})
+            raise exception.EMCVnxXMLAPIError(err=message)
+
+        self._get_context('CIFSShare').clear_share_access(
+            share_name=share_name,
+            mover_name=vdm_name,
+            domain=server['domain'],
+            white_list_users=white_list)
+
+    @vnx_utils.log_enter_exit
+    def _nfs_clear_access(self, share_name, share_server, white_list):
+        """Clear access for NFS share except hosts in the white list."""
+        self._get_context('NFSShare').clear_share_access(
+            share_name=share_name,
+            mover_name=self._get_share_server_name(share_server),
+            white_list_hosts=white_list)
+
     def deny_access(self, context, share, access, share_server=None):
         """Deny access to a share."""
         share_proto = share['share_proto']

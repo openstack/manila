@@ -135,6 +135,15 @@ class EMCNFSShareMock(mock.Mock):
 
         return option_map
 
+    @staticmethod
+    def _opt_value_from_map(opt_map, key):
+        value = opt_map.get(key)
+        if value:
+            ret = set(value.split(':'))
+        else:
+            ret = set()
+        return ret
+
     def _option_check(self, expect, actual):
         if '-option' in actual and '-option' in expect:
             exp_option = expect[expect.index('-option') + 1]
@@ -144,8 +153,8 @@ class EMCNFSShareMock(mock.Mock):
             act_opt_map = self._option_parser(act_option)
 
             for key in exp_opt_map:
-                exp_set = set(exp_opt_map[key].split(':'))
-                act_set = set(act_opt_map[key].split(':'))
+                exp_set = self._opt_value_from_map(exp_opt_map, key)
+                act_set = self._opt_value_from_map(act_opt_map, key)
                 if exp_set != act_set:
                     return False
 

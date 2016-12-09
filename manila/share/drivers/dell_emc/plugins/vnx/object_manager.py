@@ -1730,6 +1730,47 @@ class CIFSShare(StorageObject):
                 LOG.error(message)
                 raise exception.EMCVnxXMLAPIError(err=message)
 
+    def get_share_access(self, mover_name, share_name):
+        get_str = 'sharesd %s dump' % share_name
+        get_access = [
+            'env', 'NAS_DB=/nas', '/nas/bin/.server_config', mover_name,
+            '-v', "%s" % get_str,
+        ]
+
+        try:
+            out, err = self._execute_cmd(get_access, check_exit_code=True)
+        except processutils.ProcessExecutionError:
+            msg = _('Failed to get access list of CIFS share %s.') % share_name
+            LOG.exception(msg)
+            raise exception.EMCVnxXMLAPIError(err=msg)
+
+        ret = {}
+        name_pattern = re.compile(r"Unix user '(.+?)'")
+        access_pattern = re.compile(r"ALLOWED:(.+?):")
+
+        name = None
+        for line in out.splitlines():
+            if name is None:
+                names = name_pattern.findall(line)
+                if names:
+                    name = names[0].lower()
+            else:
+                accesses = access_pattern.findall(line)
+                if accesses:
+                    ret[name] = accesses[0].lower()
+                    name = None
+        return ret
+
+    def clear_share_access(self, mover_name, share_name, domain,
+                           white_list_users):
+        existing_users = self.get_share_access(mover_name, share_name)
+        white_list_users_set = set(user.lower() for user in white_list_users)
+        users_to_remove = set(existing_users.keys()) - white_list_users_set
+        for user in users_to_remove:
+            self.deny_share_access(mover_name, share_name, user, domain,
+                                   existing_users[user])
+        return users_to_remove
+
 
 @vnx_utils.decorate_all_methods(vnx_utils.log_enter_exit,
                                 debug_only=True)
@@ -1948,8 +1989,44 @@ class NFSShare(StorageObject):
 
         do_deny_access(share_name, host_ip, mover_name)
 
+    def clear_share_access(self, share_name, mover_name, white_list_hosts):
+        @utils.synchronized('emc-shareaccess-' + share_name)
+        def do_clear_access(share_name, mover_name, white_list_hosts):
+            def hosts_to_remove(orig_list):
+                if white_list_hosts is None:
+                    ret = set()
+                else:
+                    ret = set(white_list_hosts).intersection(set(orig_list))
+                return ret
+
+            status, share = self.get(share_name, mover_name)
+            if constants.STATUS_OK != status:
+                message = (_('Query nfs share %(path)s failed. '
+                             'Reason %(err)s.') %
+                           {'path': share_name, 'err': status})
+                raise exception.EMCVnxXMLAPIError(err=message)
+
+            self._set_share_access('/' + share_name,
+                                   mover_name,
+                                   hosts_to_remove(share['RwHosts']),
+                                   hosts_to_remove(share['RoHosts']),
+                                   hosts_to_remove(share['RootHosts']),
+                                   hosts_to_remove(share['AccessHosts']))
+
+            # Update self.nfs_share_map
+            self.get(share_name, mover_name, force=True,
+                     check_exit_code=True)
+
+        do_clear_access(share_name, mover_name, white_list_hosts)
+
     def _set_share_access(self, path, mover_name, rw_hosts, ro_hosts,
                           root_hosts, access_hosts):
+
+        if access_hosts is None:
+            access_hosts = set()
+
+        if '-0.0.0.0/0.0.0.0' not in access_hosts:
+            access_hosts.add('-0.0.0.0/0.0.0.0')
 
         access_str = ('access=%(access)s'
                       % {'access': ':'.join(access_hosts)})
@@ -1959,6 +2036,7 @@ class NFSShare(StorageObject):
             access_str += ',rw=%(rw)s' % {'rw': ':'.join(rw_hosts)}
         if ro_hosts:
             access_str += ',ro=%(ro)s' % {'ro': ':'.join(ro_hosts)}
+
         set_nfs_share_access_cmd = [
             'env', 'NAS_DB=/nas', '/nas/bin/server_export', mover_name,
             '-ignore',
