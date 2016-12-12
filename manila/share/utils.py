@@ -86,3 +86,21 @@ def get_active_replica(replica_list):
     for replica in replica_list:
         if replica['replica_state'] == constants.REPLICA_STATE_ACTIVE:
             return replica
+
+
+def change_rules_to_readonly(access_rules, add_rules, delete_rules):
+    dict_access_rules = cast_access_object_to_dict_in_readonly(access_rules)
+    dict_add_rules = cast_access_object_to_dict_in_readonly(add_rules)
+    dict_delete_rules = cast_access_object_to_dict_in_readonly(delete_rules)
+    return dict_access_rules, dict_add_rules, dict_delete_rules
+
+
+def cast_access_object_to_dict_in_readonly(rules):
+    dict_rules = []
+    for rule in rules:
+        dict_rules.append({
+            'access_level': constants.ACCESS_LEVEL_RO,
+            'access_type': rule['access_type'],
+            'access_to': rule['access_to']
+        })
+    return dict_rules

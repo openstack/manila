@@ -31,6 +31,7 @@ from manila import exception
 from manila.i18n import _, _LE, _LI, _LW
 from manila.share import driver
 from manila.share.drivers import generic
+from manila.share import utils
 
 LOG = log.getLogger(__name__)
 
@@ -428,27 +429,9 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         :param share_server: None or Share server model
         """
         helper = self._get_helper(snapshot['share'])
-        access_rules, add_rules, delete_rules = change_rules_to_readonly(
+        access_rules, add_rules, delete_rules = utils.change_rules_to_readonly(
             access_rules, add_rules, delete_rules)
 
         helper.update_access(self.share_server,
                              snapshot['name'], access_rules,
                              add_rules=add_rules, delete_rules=delete_rules)
-
-
-def change_rules_to_readonly(access_rules, add_rules, delete_rules):
-    dict_access_rules = cast_access_object_to_dict_in_readonly(access_rules)
-    dict_add_rules = cast_access_object_to_dict_in_readonly(add_rules)
-    dict_delete_rules = cast_access_object_to_dict_in_readonly(delete_rules)
-    return dict_access_rules, dict_add_rules, dict_delete_rules
-
-
-def cast_access_object_to_dict_in_readonly(rules):
-    dict_rules = []
-    for rule in rules:
-        dict_rules.append({
-            'access_level': 'ro',
-            'access_type': rule['access_type'],
-            'access_to': rule['access_to']
-        })
-    return dict_rules
