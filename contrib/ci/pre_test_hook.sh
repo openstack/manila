@@ -85,7 +85,7 @@ save_configuration "MANILA_DATA_COPY_CHECK_HASH" "${MANILA_DATA_COPY_CHECK_HASH:
 # Share Migration CI tests migration_continue period task interval
 save_configuration "MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL" "${MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL:=5}"
 
-MANILA_SERVICE_IMAGE_ENABLED=False
+MANILA_SERVICE_IMAGE_ENABLED=${MANILA_SERVICE_IMAGE_ENABLED:-False}
 if [[ "$DRIVER" == "generic" ]]; then
     MANILA_SERVICE_IMAGE_ENABLED=True
     save_configuration "SHARE_DRIVER" "manila.share.drivers.generic.GenericShareDriver"
