@@ -51,6 +51,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         base.verify_test_has_appropriate_tags(self)
         # Setup image and flavor the test instance
         # Support both configured and injected values
+        self.image_ref = None
         if not hasattr(self, 'flavor_ref'):
             self.flavor_ref = CONF.share.client_vm_flavor_ref
         if CONF.share.image_with_share_tools:
