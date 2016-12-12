@@ -552,6 +552,7 @@ class HitachiHNASDriver(driver.ShareDriver):
             'qos': False,
             'thin_provisioning': True,
             'dedupe': dedupe,
+            'revert_to_snapshot_support': True,
         }
 
         LOG.info(_LI("HNAS Capabilities: %(data)s."),
@@ -702,6 +703,40 @@ class HitachiHNASDriver(driver.ShareDriver):
                      "%(shr_size)sG."),
                  {'shr_id': share['id'],
                   'shr_size': six.text_type(new_size)})
+
+    def revert_to_snapshot(self, context, snapshot, share_server=None):
+        """Reverts a share to a given snapshot.
+
+        :param context: The `context.RequestContext` object for the request
+        :param snapshot: The snapshot to which the share is to be reverted to.
+        :param share_server: Data structure with share server information.
+            Not used by this driver.
+        """
+
+        self._check_fs_mounted()
+
+        hnas_share_id = self._get_hnas_share_id(snapshot['share_id'])
+
+        hnas_snapshot_id = self._get_hnas_snapshot_id(snapshot)
+
+        dest_path = os.path.join('/shares', hnas_share_id)
+        src_path = os.path.join('/snapshots', hnas_share_id, hnas_snapshot_id)
+
+        self.hnas.tree_delete(dest_path)
+
+        self.hnas.vvol_create(hnas_share_id)
+
+        self.hnas.quota_add(hnas_share_id, snapshot['size'])
+
+        try:
+            self.hnas.tree_clone(src_path, dest_path)
+        except exception.HNASNothingToCloneException:
+            LOG.warning(_LW("Source directory is empty, creating an empty "
+                            "directory."))
+
+        LOG.info(_LI("Share %(share)s successfully reverted to snapshot "
+                     "%(snapshot)s."), {'share': snapshot['share_id'],
+                                        'snapshot': snapshot['id']})
 
     def _get_hnas_share_id(self, share_id):
         hnas_id = self.private_storage.get(share_id, 'hnas_id')
