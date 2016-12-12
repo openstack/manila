@@ -45,7 +45,7 @@ SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
 class UnityStorageConnection(driver.StorageConnection):
     """Implements Unity specific functionality for EMC Manila driver."""
 
-    IP_ALLOCATIONS = 2
+    IP_ALLOCATIONS = 1
 
     @emc_utils.log_enter_exit
     def __init__(self, *args, **kwargs):
