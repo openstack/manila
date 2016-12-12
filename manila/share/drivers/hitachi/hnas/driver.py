@@ -358,13 +358,17 @@ class HitachiHNASDriver(driver.ShareDriver):
         """
         hnas_share_id = self._get_hnas_share_id(snapshot['share_id'])
 
-        LOG.debug("The snapshot of share %(ss_sid)s will be created with "
-                  "id %(ss_id)s.", {'ss_sid': snapshot['share_id'],
-                                    'ss_id': snapshot['id']})
+        LOG.debug("The snapshot of share %(snap_share_id)s will be created "
+                  "with id %(snap_id)s.",
+                  {'snap_share_id': snapshot['share_id'],
+                   'snap_id': snapshot['id']})
 
         self._create_snapshot(hnas_share_id, snapshot)
         LOG.info(_LI("Snapshot %(id)s successfully created."),
                  {'id': snapshot['id']})
+
+        return {'provider_location': os.path.join('/snapshots', hnas_share_id,
+                                                  snapshot['id'])}
 
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes snapshot.
@@ -375,12 +379,15 @@ class HitachiHNASDriver(driver.ShareDriver):
             Not used by this driver.
         """
         hnas_share_id = self._get_hnas_share_id(snapshot['share_id'])
+        hnas_snapshot_id = self._get_hnas_snapshot_id(snapshot)
 
-        LOG.debug("The snapshot %(ss_sid)s will be deleted. The related "
-                  "share ID is %(ss_id)s.",
-                  {'ss_sid': snapshot['share_id'], 'ss_id': snapshot['id']})
+        LOG.debug("The snapshot %(snap_id)s will be deleted. The related "
+                  "share ID is %(snap_share_id)s.",
+                  {'snap_id': snapshot['id'],
+                   'snap_share_id': snapshot['share_id']})
 
-        self._delete_snapshot(hnas_share_id, snapshot['id'])
+        self._delete_snapshot(hnas_share_id, hnas_snapshot_id)
+
         LOG.info(_LI("Snapshot %(id)s successfully deleted."),
                  {'id': snapshot['id']})
 
@@ -432,9 +439,10 @@ class HitachiHNASDriver(driver.ShareDriver):
                   {'ss_id': snapshot['id']})
 
         hnas_src_share_id = self._get_hnas_share_id(snapshot['share_id'])
+        hnas_src_snap_id = self._get_hnas_snapshot_id(snapshot)
 
         export_list = self._create_share_from_snapshot(
-            share, hnas_src_share_id, snapshot)
+            share, hnas_src_share_id, hnas_src_snap_id)
 
         LOG.debug("Share %(share)s created successfully on path(s): "
                   "%(paths)s.",
@@ -707,6 +715,18 @@ class HitachiHNASDriver(driver.ShareDriver):
 
         return hnas_id
 
+    def _get_hnas_snapshot_id(self, snapshot):
+        hnas_snapshot_id = snapshot['id']
+
+        if snapshot['provider_location']:
+            LOG.debug("Snapshot %(snap_id)s with provider_location: "
+                      "%(p_loc)s.",
+                      {'snap_id': hnas_snapshot_id,
+                       'p_loc': snapshot['provider_location']})
+            hnas_snapshot_id = snapshot['provider_location'].split('/')[-1]
+
+        return hnas_snapshot_id
+
     def _create_share(self, share_id, share_size, share_proto):
         """Creates share.
 
@@ -914,7 +934,8 @@ class HitachiHNASDriver(driver.ShareDriver):
         path = os.path.join('/snapshots', hnas_share_id)
         self.hnas.delete_directory(path)
 
-    def _create_share_from_snapshot(self, share, src_hnas_share_id, snapshot):
+    def _create_share_from_snapshot(self, share, src_hnas_share_id,
+                                    hnas_snapshot_id):
         """Creates a new share from snapshot.
 
         It copies everything from snapshot directory to a new vvol,
@@ -922,14 +943,14 @@ class HitachiHNASDriver(driver.ShareDriver):
         :param share: a dict from new share.
         :param src_hnas_share_id: HNAS ID of share from which snapshot was
             taken.
-        :param snapshot: a dict from snapshot that will be copied to
+        :param hnas_snapshot_id: HNAS ID from snapshot that will be copied to
             new share.
         :returns: Returns a list of dicts containing the new share's export
             locations.
         """
         dest_path = os.path.join('/shares', share['id'])
         src_path = os.path.join('/snapshots', src_hnas_share_id,
-                                snapshot['id'])
+                                hnas_snapshot_id)
 
         # Before copying everything to new vvol, we need to create it,
         # because we only can transform an empty directory into a vvol.
@@ -959,7 +980,7 @@ class HitachiHNASDriver(driver.ShareDriver):
                 msg = _LE('Failed to create share %(share_id)s from snapshot '
                           '%(snap)s.')
                 LOG.exception(msg, {'share_id': share['id'],
-                                    'snap': snapshot['id']})
+                                    'snap': hnas_snapshot_id})
                 self.hnas.vvol_delete(share['id'])
 
         return self._get_export_locations(
@@ -992,3 +1013,78 @@ class HitachiHNASDriver(driver.ShareDriver):
         else:
             export = r'\\%s\%s' % (ip, hnas_share_id)
         return export
+
+    def manage_existing_snapshot(self, snapshot, driver_options):
+        """Manages a snapshot that exists only in HNAS.
+
+        The snapshot to be managed should be in the path
+        /snapshots/SHARE_ID/SNAPSHOT_ID. Also, the size of snapshot should be
+        provided as --driver_options size=<size>.
+        :param snapshot: snapshot that will be managed.
+        :param driver_options: expects only one key 'size'. It must be
+        provided in order to manage a snapshot.
+
+        :returns: Returns a dict with size of snapshot managed
+        """
+        try:
+            snapshot_size = int(driver_options.get("size", 0))
+        except (ValueError, TypeError):
+            msg = _("The size in driver options to manage snapshot "
+                    "%(snap_id)s should be an integer, in format "
+                    "driver-options size=<SIZE>. Value passed: "
+                    "%(size)s.") % {'snap_id': snapshot['id'],
+                                    'size': driver_options.get("size")}
+            raise exception.ManageInvalidShareSnapshot(reason=msg)
+
+        if snapshot_size == 0:
+            msg = _("Snapshot %(snap_id)s has no size specified for manage. "
+                    "Please, provide the size with parameter driver-options "
+                    "size=<SIZE>.") % {'snap_id': snapshot['id']}
+            raise exception.ManageInvalidShareSnapshot(reason=msg)
+
+        hnas_share_id = self._get_hnas_share_id(snapshot['share_id'])
+
+        LOG.debug("Path provided to manage snapshot: %(path)s.",
+                  {'path': snapshot['provider_location']})
+
+        path_info = snapshot['provider_location'].split('/')
+
+        if len(path_info) == 4 and path_info[1] == 'snapshots':
+            path_share_id = path_info[2]
+            hnas_snapshot_id = path_info[3]
+        else:
+            msg = (_("Incorrect path %(path)s for manage snapshot "
+                     "%(snap_id)s. It should have the following format: "
+                     "/snapshots/SHARE_ID/SNAPSHOT_ID.") %
+                   {'path': snapshot['provider_location'],
+                    'snap_id': snapshot['id']})
+            raise exception.ManageInvalidShareSnapshot(reason=msg)
+
+        if hnas_share_id != path_share_id:
+            msg = _("The snapshot %(snap_id)s does not belong to share "
+                    "%(share_id)s.") % {'snap_id': snapshot['id'],
+                                        'share_id': snapshot['share_id']}
+            raise exception.ManageInvalidShareSnapshot(reason=msg)
+
+        if not self.hnas.check_snapshot(snapshot['provider_location']):
+            msg = _("Snapshot %(snap_id)s does not exist in "
+                    "HNAS.") % {'snap_id': hnas_snapshot_id}
+            raise exception.ManageInvalidShareSnapshot(reason=msg)
+
+        LOG.info(_LI("Snapshot %(snap_path)s for share %(shr_id)s was "
+                     "successfully managed with ID %(snap_id)s."),
+                 {'snap_path': snapshot['provider_location'],
+                  'shr_id': snapshot['share_id'], 'snap_id': snapshot['id']})
+
+        return {'size': snapshot_size}
+
+    def unmanage_snapshot(self, snapshot):
+        """Unmanage a share snapshot
+
+        :param snapshot: Snapshot that will be unmanaged.
+        """
+        LOG.info(_LI("The snapshot with ID %(snap_id)s from share "
+                     "%(share_id)s is no longer being managed by Manila. "
+                     "However, it is not deleted and can be found in HNAS."),
+                 {'snap_id': snapshot['id'],
+                  'share_id': snapshot['share_id']})

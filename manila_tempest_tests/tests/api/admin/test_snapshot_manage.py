@@ -81,7 +81,10 @@ class ManageNFSSnapshotTest(base.BaseSharesAdminTest):
             snapshot['provider_location'],
             name=name,
             description=description,
-            driver_options={},
+            # Some drivers require additional parameters passed as driver
+            # options, as follows:
+            # - size: Hitachi HNAS Driver
+            driver_options={'size': snapshot['size']},
             version=version,
         )
 

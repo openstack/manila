@@ -93,12 +93,24 @@ snapshot_nfs = {
     'id': 'abba6d9b-f29c-4bf7-aac1-618cda7aaf0f',
     'share_id': 'aa4a7710-f326-41fb-ad18-b4ad587fc87a',
     'share': share_nfs,
+    'provider_location': '/snapshots/aa4a7710-f326-41fb-ad18-b4ad587fc87a/'
+                         'abba6d9b-f29c-4bf7-aac1-618cda7aaf0f',
 }
 
 snapshot_cifs = {
     'id': '91bc6e1b-1ba5-f29c-abc1-da7618cabf0a',
     'share_id': 'f5cadaf2-afbe-4cc4-9021-85491b6b76f7',
     'share': share_cifs,
+    'provider_location': '/snapshots/f5cadaf2-afbe-4cc4-9021-85491b6b76f7/'
+                         '91bc6e1b-1ba5-f29c-abc1-da7618cabf0a',
+}
+
+manage_snapshot = {
+    'id': 'bc168eb-fa71-beef-153a-3d451aa1351f',
+    'share_id': 'aa4a7710-f326-41fb-ad18-b4ad587fc87a',
+    'share': share_nfs,
+    'provider_location': '/snapshots/aa4a7710-f326-41fb-ad18-b4ad587fc87a'
+                         '/snapshot18-05-2106',
 }
 
 invalid_share = {
@@ -433,6 +445,9 @@ class HitachiHNASTestCase(test.TestCase):
     @ddt.data(snapshot_nfs, snapshot_cifs)
     def test_create_snapshot(self, snapshot):
         hnas_id = snapshot['share_id']
+        p_location = {'provider_location': '/snapshots/' + hnas_id + '/' +
+                                           snapshot['id']}
+
         self.mock_object(ssh.HNASSSHBackend, "get_nfs_host_list", mock.Mock(
             return_value=['172.24.44.200(rw)']))
         self.mock_object(ssh.HNASSSHBackend, "update_nfs_access_rule",
@@ -441,11 +456,12 @@ class HitachiHNASTestCase(test.TestCase):
             return_value=False))
         self.mock_object(ssh.HNASSSHBackend, "tree_clone", mock.Mock())
 
-        self._driver.create_snapshot('context', snapshot)
+        out = self._driver.create_snapshot('context', snapshot)
 
         ssh.HNASSSHBackend.tree_clone.assert_called_once_with(
             '/shares/' + hnas_id, '/snapshots/' + hnas_id + '/' +
             snapshot['id'])
+        self.assertEqual(p_location, out)
 
         if snapshot['share']['share_proto'].lower() == 'nfs':
             ssh.HNASSSHBackend.get_nfs_host_list.assert_called_once_with(
@@ -513,6 +529,22 @@ class HitachiHNASTestCase(test.TestCase):
         driver.HitachiHNASDriver._check_fs_mounted.assert_called_once_with()
         ssh.HNASSSHBackend.tree_delete.assert_called_once_with(
             '/snapshots/' + hnas_id + '/' + snapshot_nfs['id'])
+        ssh.HNASSSHBackend.delete_directory.assert_called_once_with(
+            '/snapshots/' + hnas_id)
+
+    def test_delete_managed_snapshot(self):
+        hnas_id = manage_snapshot['share_id']
+        self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted")
+        self.mock_object(ssh.HNASSSHBackend, "tree_delete")
+        self.mock_object(ssh.HNASSSHBackend, "delete_directory")
+
+        self._driver.delete_snapshot('context', manage_snapshot)
+
+        self.assertTrue(self.mock_log.debug.called)
+        self.assertTrue(self.mock_log.info.called)
+        driver.HitachiHNASDriver._check_fs_mounted.assert_called_once_with()
+        ssh.HNASSSHBackend.tree_delete.assert_called_once_with(
+            manage_snapshot['provider_location'])
         ssh.HNASSSHBackend.delete_directory.assert_called_once_with(
             '/snapshots/' + hnas_id)
 
@@ -816,4 +848,53 @@ class HitachiHNASTestCase(test.TestCase):
         self.assertTrue(self._driver.hnas.get_stats.called)
         (manila.share.driver.ShareDriver._update_share_stats.
          assert_called_once_with(fake_data))
+        self.assertTrue(self.mock_log.info.called)
+
+    def test_manage_existing_snapshot(self):
+        self.mock_object(ssh.HNASSSHBackend, 'check_snapshot',
+                         mock.Mock(return_value=True))
+
+        out = self._driver.manage_existing_snapshot(manage_snapshot,
+                                                    {'size': 20})
+
+        ssh.HNASSSHBackend.check_snapshot.assert_called_with(
+            '/snapshots/aa4a7710-f326-41fb-ad18-b4ad587fc87a'
+            '/snapshot18-05-2106')
+        self.assertEqual(20, out['size'])
+        self.assertTrue(self.mock_log.debug.called)
+        self.assertTrue(self.mock_log.info.called)
+
+    @ddt.data('fake_size', '128GB', '512 GB', {'size': 128})
+    def test_manage_snapshot_invalid_size_exception(self, size):
+        self.assertRaises(exception.ManageInvalidShareSnapshot,
+                          self._driver.manage_existing_snapshot,
+                          manage_snapshot, {'size': size})
+
+    def test_manage_snapshot_size_not_provided_exception(self):
+        self.assertRaises(exception.ManageInvalidShareSnapshot,
+                          self._driver.manage_existing_snapshot,
+                          manage_snapshot, {})
+
+    @ddt.data('/root/snapshot_id', '/snapshots/share1/snapshot_id',
+              '/directory1', 'snapshots/share1/snapshot_id')
+    def test_manage_snapshot_invalid_path_exception(self, path):
+        snap_copy = manage_snapshot.copy()
+        snap_copy['provider_location'] = path
+
+        self.assertRaises(exception.ManageInvalidShareSnapshot,
+                          self._driver.manage_existing_snapshot,
+                          snap_copy, {'size': 20})
+        self.assertTrue(self.mock_log.debug.called)
+
+    def test_manage_inexistent_snapshot_exception(self):
+        self.mock_object(ssh.HNASSSHBackend, 'check_snapshot',
+                         mock.Mock(return_value=False))
+
+        self.assertRaises(exception.ManageInvalidShareSnapshot,
+                          self._driver.manage_existing_snapshot,
+                          manage_snapshot, {'size': 20})
+        self.assertTrue(self.mock_log.debug.called)
+
+    def test_unmanage_snapshot(self):
+        self._driver.unmanage_snapshot(snapshot_nfs)
         self.assertTrue(self.mock_log.info.called)

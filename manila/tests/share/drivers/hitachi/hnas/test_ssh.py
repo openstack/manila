@@ -466,6 +466,10 @@ X    Allow Change & Read Unix user\\1090
 
 """
 
+HNAS_RESULT_check_snap_error = """ \
+path-to-object-number/FS-TestCG: Unable to locate component: share1
+path-to-object-number/FS-TestCG: Failed to resolve object number"""
+
 
 @ddt.ddt
 class HNASSSHTestCase(test.TestCase):
@@ -879,6 +883,46 @@ class HNASSSHTestCase(test.TestCase):
 
         self._driver_ssh._locked_selectfs.assert_called_with(
             *locked_selectfs_args)
+
+    def test_check_snapshot(self):
+        path = ("/snapshots/" + self.snapshot['share_id'] + "/" +
+                self.snapshot['id'])
+        check_snap_args = ['path-to-object-number', '-f', self.fs_name, path]
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute')
+
+        out = self._driver_ssh.check_snapshot(path)
+
+        self.assertTrue(out)
+        self._driver_ssh._execute.assert_called_with(check_snap_args)
+
+    def test_check_inexistent_snapshot(self):
+        path = "/path/snap1/snapshot07-08-2016"
+
+        check_snap_args = ['path-to-object-number', '-f', self.fs_name, path]
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute',
+                         mock.Mock(side_effect=putils.ProcessExecutionError(
+                             stdout=HNAS_RESULT_check_snap_error)))
+
+        out = self._driver_ssh.check_snapshot(path)
+
+        self.assertFalse(out)
+        self._driver_ssh._execute.assert_called_with(check_snap_args)
+
+    def test_check_snapshot_error(self):
+        path = "/path/snap1/snapshot07-08-2016"
+
+        check_snap_args = ['path-to-object-number', '-f', self.fs_name, path]
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute',
+                         mock.Mock(side_effect=putils.ProcessExecutionError(
+                             stdout="Internal Server Error.")))
+
+        self.assertRaises(putils.ProcessExecutionError,
+                          self._driver_ssh.check_snapshot, path)
+
+        self._driver_ssh._execute.assert_called_with(check_snap_args)
 
     def test_check_fs_mounted_true(self):
         self.mock_object(ssh.HNASSSHBackend, "_execute",

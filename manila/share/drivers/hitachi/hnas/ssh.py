@@ -239,7 +239,7 @@ class HNASSSHBackend(object):
                 job_status.files_missing) == ("Job was completed",
                                               "Success", '0', '0'):
 
-                LOG.debug("Snapshot of source path %(src)s to destination"
+                LOG.debug("Snapshot of source path %(src)s to destination "
                           "path %(dest)s created successfully.",
                           {'src': src_path,
                            'dest': dest_path})
@@ -269,6 +269,20 @@ class HNASSSHBackend(object):
 
     def delete_directory(self, path):
         self._locked_selectfs('delete', path)
+
+    def check_snapshot(self, path):
+        command = ['path-to-object-number', '-f', self.fs_name, path]
+
+        try:
+            self._execute(command)
+        except processutils.ProcessExecutionError as e:
+            if 'Unable to locate component:' in e.stdout:
+                LOG.debug("Cannot find %(path)s: %(out)s",
+                          {'path': path, 'out': e.stdout})
+                return False
+            else:
+                raise
+        return True
 
     def check_fs_mounted(self):
         command = ['df', '-a', '-f', self.fs_name]
