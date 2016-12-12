@@ -25,7 +25,7 @@ import six
 import webob
 
 from manila.api.openstack import wsgi
-import manila.api.v2.cgsnapshots as cgs
+from manila.api.v2 import share_group_snapshots
 from manila.common import constants
 from manila import context
 from manila import db
@@ -43,7 +43,7 @@ class CGSnapshotApiTest(test.TestCase):
 
     def setUp(self):
         super(self.__class__, self).setUp()
-        self.controller = cgs.CGSnapshotController()
+        self.controller = share_group_snapshots.CGSnapshotController()
         self.resource_name = self.controller.resource_name
         self.api_version = '2.4'
         self.mock_policy_check = self.mock_object(

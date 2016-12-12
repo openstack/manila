@@ -23,12 +23,12 @@ from webob import exc
 
 from manila.api import common
 from manila.api.openstack import wsgi
-import manila.api.views.consistency_groups as cg_views
-import manila.consistency_group.api as cg_api
+import manila.api.views.share_groups as share_group_views
 from manila import db
 from manila import exception
 from manila.i18n import _, _LI
 from manila.share import share_types
+import manila.share_group.api as sg_api
 
 LOG = log.getLogger(__name__)
 
@@ -37,12 +37,12 @@ class CGController(wsgi.Controller, wsgi.AdminActionsMixin):
     """The Consistency Groups API controller for the OpenStack API."""
 
     resource_name = 'consistency_group'
-    _view_builder_class = cg_views.CGViewBuilder
+    _view_builder_class = share_group_views.CGViewBuilder
     resource_name = 'consistency_group'
 
     def __init__(self):
         super(CGController, self).__init__()
-        self.cg_api = cg_api.API()
+        self.cg_api = sg_api.API()
 
     @wsgi.Controller.api_version('2.4', experimental=True)
     @wsgi.Controller.authorize('get')
