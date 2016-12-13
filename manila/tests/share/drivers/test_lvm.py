@@ -166,11 +166,12 @@ class LVMShareDriverTestCase(test.TestCase):
         self.assertEqual('/dev/mapper/fake--vg-fake--sharename', ret)
 
     def test_create_share(self):
-        self._helper_nfs.create_export.return_value = 'fakelocation'
+        CONF.set_default('lvm_share_mirrors', 0)
         self._driver._mount_device = mock.Mock()
+
         ret = self._driver.create_share(self._context, self.share,
                                         self.share_server)
-        CONF.set_default('lvm_share_mirrors', 0)
+
         self._driver._mount_device.assert_called_with(
             self.share, '/dev/mapper/fakevg-fakename')
         expected_exec = [
@@ -178,7 +179,7 @@ class LVMShareDriverTestCase(test.TestCase):
             'mkfs.ext4 /dev/mapper/fakevg-fakename',
         ]
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
-        self.assertEqual('fakelocation', ret)
+        self.assertEqual(self._helper_nfs.create_exports.return_value, ret)
 
     def test_create_share_from_snapshot(self):
         CONF.set_default('lvm_share_mirrors', 0)
@@ -209,13 +210,13 @@ class LVMShareDriverTestCase(test.TestCase):
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
 
     def test_create_share_mirrors(self):
-
         share = fake_share(size='2048')
         CONF.set_default('lvm_share_mirrors', 2)
-        self._helper_nfs.create_export.return_value = 'fakelocation'
         self._driver._mount_device = mock.Mock()
+
         ret = self._driver.create_share(self._context, share,
                                         self.share_server)
+
         self._driver._mount_device.assert_called_with(
             share, '/dev/mapper/fakevg-fakename')
         expected_exec = [
@@ -223,7 +224,7 @@ class LVMShareDriverTestCase(test.TestCase):
             'mkfs.ext4 /dev/mapper/fakevg-fakename',
         ]
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
-        self.assertEqual('fakelocation', ret)
+        self.assertEqual(self._helper_nfs.create_exports.return_value, ret)
 
     def test_deallocate_container(self):
         expected_exec = ['lvremove -f fakevg/fakename']
@@ -335,7 +336,7 @@ class LVMShareDriverTestCase(test.TestCase):
                                       self.share_server)
             self._driver._mount_device.assert_called_with(self.share,
                                                           device_name)
-            self._helper_nfs.create_export.assert_called_once_with(
+            self._helper_nfs.create_exports.assert_called_once_with(
                 self.server, self.share['name'], recreate=True)
 
     def test_delete_share(self):
@@ -361,7 +362,7 @@ class LVMShareDriverTestCase(test.TestCase):
             mock.Mock(side_effect=exception.ProcessExecutionError))
 
         self._driver._delete_share(self._context, self.share)
-        self._helper_nfs.remove_export.assert_called_once_with(
+        self._helper_nfs.remove_exports.assert_called_once_with(
             self.server,
             self.share['name'])
 

@@ -317,35 +317,19 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_create_share(self):
         volume = 'fake_volume'
         volume2 = 'fake_volume2'
-        location = (
-            '%s:/fake/path' % self.server['backend_details']['public_address'])
-        self._helper_nfs.create_export.return_value = location
         self.mock_object(self._driver, '_allocate_container',
                          mock.Mock(return_value=volume))
         self.mock_object(self._driver, '_attach_volume',
                          mock.Mock(return_value=volume2))
         self.mock_object(self._driver, '_format_device')
         self.mock_object(self._driver, '_mount_device')
-        expected_el = [
-            {'is_admin_only': False,
-             'path': location,
-             'metadata': {'export_location_metadata_example': 'example'}},
-            {'is_admin_only': True,
-             'path': location.replace(
-                 self.server['backend_details']['public_address'],
-                 self.server['backend_details']['ip']),
-             'metadata': {'export_location_metadata_example': 'example'}},
-        ]
 
         result = self._driver.create_share(
             self._context, self.share, share_server=self.server)
 
-        self.assertIsInstance(result, list)
-        self.assertEqual(2, len(result))
-        for el in expected_el:
-            self.assertIn(el, result)
+        self.assertEqual(self._helper_nfs.create_exports.return_value, result)
         self._driver._allocate_container.assert_called_once_with(
-            self._driver.admin_context, self.share)
+            self._driver.admin_context, self.share, snapshot=None)
         self._driver._attach_volume.assert_called_once_with(
             self._driver.admin_context, self.share,
             self.server['backend_details']['instance_id'],
@@ -990,12 +974,6 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_create_share_from_snapshot(self):
         vol1 = 'fake_vol1'
         vol2 = 'fake_vol2'
-        self._helper_nfs.create_export.return_value = 'fakelocation'
-        expected_el = [{
-            'is_admin_only': False,
-            'path': 'fakelocation',
-            'metadata': {'export_location_metadata_example': 'example'},
-        }]
         self.mock_object(self._driver, '_allocate_container',
                          mock.Mock(return_value=vol1))
         self.mock_object(self._driver, '_attach_volume',
@@ -1008,15 +986,15 @@ class GenericShareDriverTestCase(test.TestCase):
             self.snapshot,
             share_server=self.server)
 
-        self.assertEqual(expected_el, result)
+        self.assertEqual(self._helper_nfs.create_exports.return_value, result)
         self._driver._allocate_container.assert_called_once_with(
-            self._driver.admin_context, self.share, self.snapshot)
+            self._driver.admin_context, self.share, snapshot=self.snapshot)
         self._driver._attach_volume.assert_called_once_with(
             self._driver.admin_context, self.share,
             self.server['backend_details']['instance_id'], vol1)
         self._driver._mount_device.assert_called_once_with(
             self.share, self.server['backend_details'], vol2)
-        self._helper_nfs.create_export.assert_called_once_with(
+        self._helper_nfs.create_exports.assert_called_once_with(
             self.server['backend_details'], self.share['name'])
 
     def test_create_share_from_snapshot_invalid_helper(self):
@@ -1055,7 +1033,7 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver.delete_share(
             self._context, self.share, share_server=self.server)
 
-        self._helper_nfs.remove_export.assert_called_once_with(
+        self._helper_nfs.remove_exports.assert_called_once_with(
             self.server['backend_details'], self.share['name'])
         self._driver._unmount_device.assert_called_once_with(
             self.share, self.server['backend_details'])
@@ -1214,7 +1192,7 @@ class GenericShareDriverTestCase(test.TestCase):
             self.server['backend_details']['instance_id'], vol1)
         self._driver._mount_device.assert_called_once_with(
             self.share, self.server['backend_details'], vol2)
-        self._helper_nfs.create_export.assert_called_once_with(
+        self._helper_nfs.create_exports.assert_called_once_with(
             self.server['backend_details'], self.share['name'], recreate=True)
 
     def test_ensure_share_volume_is_absent(self):
