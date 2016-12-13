@@ -259,22 +259,6 @@ function configure_manila {
 }
 
 
-function configure_manila_ui {
-    if is_service_enabled horizon && [ "$MANILA_UI_ENABLED" = "True" ]; then
-        # NOTE(vponomaryov): workaround for devstack bug: 1540328
-        # where devstack install 'test-requirements' but should not do it
-        # for manila-ui project as it installs Horizon from url.
-        # Remove following two 'mv' commands when mentioned bug is fixed.
-        mv $MANILA_UI_DIR/test-requirements.txt $MANILA_UI_DIR/_test-requirements.txt
-
-        setup_develop $MANILA_UI_DIR
-        cp $MANILA_UI_DIR/manila_ui/enabled/_90_manila_*.py $HORIZON_DIR/openstack_dashboard/local/enabled
-
-        mv $MANILA_UI_DIR/_test-requirements.txt $MANILA_UI_DIR/test-requirements.txt
-    fi
-}
-
-
 function create_manila_service_keypair {
     if is_service_enabled nova; then
         local keypair_exists=$( openstack keypair list | grep " $MANILA_SERVICE_KEYPAIR_NAME " )
@@ -710,10 +694,6 @@ function install_manila {
         fi
     fi
 
-    # install manila-ui if horizon is enabled
-    if is_service_enabled horizon && [ "$MANILA_UI_ENABLED" = "True" ]; then
-        git_clone $MANILA_UI_REPO $MANILA_UI_DIR $MANILA_UI_BRANCH
-    fi
 }
 
 #configure_samba - Configure node as Samba server
@@ -750,11 +730,6 @@ function configure_samba {
 
 # start_manila - Start running processes, including screen
 function start_manila {
-    # restart apache to reload running horizon if manila-ui is enabled
-    if is_service_enabled horizon && [ "$MANILA_UI_ENABLED" = "True" ]; then
-        restart_apache_server
-        sleep 3 # Wait for 3 sec to ensure that apache is running
-    fi
 
     run_process m-api "$MANILA_BIN_DIR/manila-api --config-file $MANILA_CONF"
     run_process m-shr "$MANILA_BIN_DIR/manila-share --config-file $MANILA_CONF"
@@ -936,8 +911,10 @@ elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
     echo_summary "Creating Manila custom share types"
     create_custom_share_types
 
-    echo_summary "Configuring Manila UI"
-    configure_manila_ui
+    echo_summary "Manila UI is no longer enabled by default. \
+        Add enable_plugin manila-ui github.com/openstack/manila-ui \
+        to your local.conf file to enable Manila UI"
+
 elif [[ "$1" == "stack" && "$2" == "test-config" ]]; then
     echo_summary "Update Tempest config"
     update_tempest
