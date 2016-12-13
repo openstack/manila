@@ -39,7 +39,6 @@ from manila import utils
 
 LOG = log.getLogger(__name__)
 NEUTRON_NAME = "neutron"
-NOVA_NAME = "nova"
 
 share_servers_handling_mode_opts = [
     cfg.StrOpt(
@@ -102,11 +101,6 @@ share_servers_handling_mode_opts = [
         help="Attach share server directly to share network. "
              "Used only with Neutron and "
              "if driver_handles_share_servers=True."),
-    cfg.StrOpt(
-        "service_instance_network_helper_type",
-        default=NEUTRON_NAME,
-        help="Allowed values are %s. " % [NOVA_NAME, NEUTRON_NAME] +
-             "Only used if driver_handles_share_servers=True."),
     cfg.StrOpt(
         "admin_network_id",
         help="ID of neutron network used to communicate with admin network,"
@@ -183,22 +177,12 @@ class ServiceInstanceManager(object):
         return CONF.get(key)
 
     def _get_network_helper(self):
-        network_helper_type = (
-            self.get_config_option(
-                "service_instance_network_helper_type").lower())
-        if network_helper_type == NEUTRON_NAME:
-            return NeutronNetworkHelper(self)
-        elif network_helper_type == NOVA_NAME:
-            return NovaNetworkHelper(self)
-        else:
-            raise exception.ManilaException(
-                _("Wrong value '%(provided)s' for config opt "
-                  "'service_instance_network_helper_type'. "
-                  "Allowed values are %(allowed)s.") % dict(
-                      provided=network_helper_type,
-                      allowed=[NOVA_NAME, NEUTRON_NAME]))
+        # Historically, there were multiple types of network helper,
+        # but currently the only network helper type is Neutron.
+        return NeutronNetworkHelper(self)
 
     def __init__(self, driver_config=None):
+
         super(ServiceInstanceManager, self).__init__()
         self.driver_config = driver_config
 
@@ -558,32 +542,20 @@ class ServiceInstanceManager(object):
 
             security_group = self._get_or_create_security_group(context)
             if security_group:
-                if self.network_helper.NAME == NOVA_NAME:
-                    # NOTE(vponomaryov): Nova-network allows to assign
-                    #                    secgroups only by names.
-                    sg_id = security_group.name
-                else:
-                    sg_id = security_group.id
+                sg_id = security_group.id
                 LOG.debug(
                     "Adding security group '%(sg)s' to server '%(si)s'.",
                     dict(sg=sg_id, si=service_instance["id"]))
                 self.compute_api.add_security_group_to_server(
                     context, service_instance["id"], sg_id)
 
-            if self.network_helper.NAME == NEUTRON_NAME:
-                ip = (network_data.get('service_port',
-                                       network_data.get(
-                                           'admin_port'))['fixed_ips'])
-                service_instance['ip'] = ip[0]['ip_address']
-                public_ip = (network_data.get(
-                    'public_port', network_data.get(
-                        'service_port'))['fixed_ips'])
-                service_instance['public_address'] = public_ip[0]['ip_address']
-            else:
-                net_name = self.network_helper.get_network_name(network_info)
-                service_instance['ip'] = self._get_server_ip(
-                    service_instance, net_name)
-                service_instance['public_address'] = service_instance['ip']
+            ip = (network_data.get('service_port',
+                                   network_data.get(
+                                       'admin_port'))['fixed_ips'])
+            service_instance['ip'] = ip[0]['ip_address']
+            public_ip = (network_data.get('public_port', network_data.get(
+                'service_port'))['fixed_ips'])
+            service_instance['public_address'] = public_ip[0]['ip_address']
 
         except Exception as e:
             e.detail_data = {'server_details': fail_safe_data}
@@ -1087,50 +1059,3 @@ class NeutronNetworkHelper(BaseNetworkhelper):
         for subnet_id in service_network['subnets']:
             subnets.append(self.neutron_api.get_subnet(subnet_id))
         return subnets
-
-
-class NovaNetworkHelper(BaseNetworkhelper):
-    """Nova network helper for Manila service instances.
-
-    All security-group rules are applied to all interfaces of Nova VM
-    using Nova-network. In that case there is no need to create additional
-    service network. Only one thing should be satisfied - Manila host
-    should have access to all tenant networks.
-    This network helper does not create resources.
-    """
-
-    def __init__(self, service_instance_manager):
-        self.compute_api = service_instance_manager.compute_api
-        self.admin_context = service_instance_manager.admin_context
-
-    @property
-    def NAME(self):
-        return NOVA_NAME
-
-    def setup_network(self, network_info):
-        net = self._get_nova_network(network_info['nova_net_id'])
-        network_info['nics'] = [{'net-id': net['id']}]
-        return network_info
-
-    def get_network_name(self, network_info):
-        """Returns name of network for service instance."""
-        return self._get_nova_network(network_info['nova_net_id'])['label']
-
-    def teardown_network(self, server_details):
-        """Nothing to do. Placeholder."""
-
-    def setup_connectivity_with_service_instances(self):
-        """Nothing to do. Placeholder."""
-
-    def _get_nova_network(self, nova_network_id):
-        """Returns network to be used for service instance.
-
-        :param nova_network_id: string with id of network.
-        :returns: dict -- network data as dict
-        :raises: exception.ManilaException
-        """
-        if not nova_network_id:
-            raise exception.ManilaException(
-                _('Nova network for service instance is not provided.'))
-        net = self.compute_api.network_get(self.admin_context, nova_network_id)
-        return net

@@ -1,0 +1,5 @@
+---
+upgrade:
+  - Removed nova net support from the service instance module since
+    legacy nova networking was deprecated in Newton and is no longer
+    supported in regular deployments in Ocata.
