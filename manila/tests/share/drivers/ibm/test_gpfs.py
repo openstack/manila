@@ -56,6 +56,20 @@ class GPFSShareDriverTestCase(test.TestCase):
         self.fakefspath = "/gpfs0"
         self.fakesharepath = "/gpfs0/share-fakeid"
         self.fakesnapshotpath = "/gpfs0/.snapshots/snapshot-fakesnapshotid"
+
+        self.fake_ces_exports = """
+mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Clients:Access_Type:Protocols:Transports:Squash:Anonymous_uid:Anonymous_gid:SecType:PrivilegedPort:DefaultDelegations:Manage_Gids:NFS_Commit:
+mmcesnfslsexport:nfsexports:0:1:::/gpfs0/share-fakeid:none:44.3.2.11:RW:3,4:TCP:ROOT_SQUASH:-2:-2:SYS:FALSE:none:FALSE:FALSE:
+mmcesnfslsexport:nfsexports:0:1:::/gpfs0/share-fakeid:none:1:2:3:4:5:6:7:8:RW:3,4:TCP:ROOT_SQUASH:-2:-2:SYS:FALSE:none:FALSE:FALSE:
+mmcesnfslsexport:nfsexports:0:1:::/gpfs0/share-fakeid:none:10.0.0.1:RW:3,4:TCP:ROOT_SQUASH:-2:-2:SYS:FALSE:none:FALSE:FALSE:
+
+        """
+        self.fake_ces_exports_not_found = """
+
+mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Clients:Access_Type:Protocols:Transports:Squash:Anonymous_uid:Anonymous_gid:SecType:PrivilegedPort:DefaultDelegations:Manage_Gids:NFS_Commit:
+
+        """
+
         self.mock_object(gpfs.os.path, 'exists', mock.Mock(return_value=True))
         self._driver._helpers = {
             'KNFS': self._helper_fake
@@ -860,24 +874,49 @@ class GPFSShareDriverTestCase(test.TestCase):
                           self._ces_helper.get_export_options,
                           share, access, 'CES', options_not_allowed)
 
-    def test_ces_remove_export(self):
-        mock_out = "Path Delegations Clients\n\
-                    ------------------------\n\
-                    /gpfs0/share-fakeid none *"
+    @ddt.data((None, True),
+              ('44.3.2.11', True),
+              ('44.3.2.1', False),
+              ('4.3.2.1', False),
+              ('4.3.2.11', False),
+              ('1.2.3.4', False),
+              ('1:2:3:4:5:6:7:8', True))
+    @ddt.unpack
+    def test_ces__has_client_access(self, ip, has_access):
+        mock_out = self.fake_ces_exports
         self._ces_helper._execute = mock.Mock(
-            return_value=[mock_out, 0])
-
-        mock_search_out = "/gpfs0/share-fakeid"
-        self.mock_object(re, 'search', mock.Mock(return_value=mock_search_out))
+            return_value=(mock_out, ''))
 
         local_path = self.fakesharepath
+        self.assertEqual(has_access,
+                         self._ces_helper._has_client_access(local_path, ip))
 
+        self._ces_helper._execute.assert_called_once_with(
+            'mmnfs', 'export', 'list', '-n', local_path, '-Y')
+
+    def test_ces_remove_export_no_exports(self):
+        mock_out = self.fake_ces_exports_not_found
+        self._ces_helper._execute = mock.Mock(
+            return_value=(mock_out, ''))
+
+        local_path = self.fakesharepath
         self._ces_helper.remove_export(local_path, self.share)
 
-        self._ces_helper._execute.assert_any_call('mmnfs', 'export', 'list',
-                                                  '-n', local_path)
-        self._ces_helper._execute.assert_any_call('mmnfs', 'export', 'remove',
-                                                  local_path)
+        self._ces_helper._execute.assert_called_once_with(
+            'mmnfs', 'export', 'list', '-n', local_path, '-Y')
+
+    def test_ces_remove_export_existing_exports(self):
+        mock_out = self.fake_ces_exports
+        self._ces_helper._execute = mock.Mock(
+            return_value=(mock_out, ''))
+
+        local_path = self.fakesharepath
+        self._ces_helper.remove_export(local_path, self.share)
+
+        self._ces_helper._execute.assert_has_calls([
+            mock.call('mmnfs', 'export', 'list', '-n', local_path, '-Y'),
+            mock.call('mmnfs', 'export', 'remove', local_path),
+        ])
 
     def test_ces_remove_export_exception(self):
         local_path = self.fakesharepath
@@ -888,52 +927,42 @@ class GPFSShareDriverTestCase(test.TestCase):
                           local_path, self.share)
 
     def test_ces_allow_access(self):
-        mock_out = "Path Delegations Clients\n\
-                    ------------------------"
+        mock_out = self.fake_ces_exports_not_found
         self._ces_helper._execute = mock.Mock(
-            return_value=[mock_out, 0])
+            return_value=(mock_out, ''))
 
         export_opts = "access_type=rw"
         self._ces_helper.get_export_options = mock.Mock(
             return_value=export_opts)
-        self.mock_object(re, 'search', mock.Mock(return_value=None))
 
         access = self.access
         local_path = self.fakesharepath
 
         self._ces_helper.allow_access(local_path, self.share, access)
 
-        self._ces_helper._execute.assert_any_call('mmnfs', 'export', 'list',
-                                                  '-n', local_path)
-        self._ces_helper._execute.assert_any_call('mmnfs', 'export', 'add',
-                                                  local_path, '-c',
-                                                  access['access_to']
-                                                  + '(' + export_opts + ')')
+        self._ces_helper._execute.assert_has_calls([
+            mock.call('mmnfs', 'export', 'list', '-n', local_path, '-Y'),
+            mock.call('mmnfs', 'export', 'add', local_path, '-c',
+                      access['access_to'] + '(' + export_opts + ')')])
 
-    def test_ces_allow_access_existing_export(self):
-        mock_out = "Path Delegations Clients\n\
-                    ------------------------\n\
-                    /gpfs0/share-fakeid none *"
+    def test_ces_allow_access_existing_exports(self):
+        mock_out = self.fake_ces_exports
         self._ces_helper._execute = mock.Mock(
-            return_value=[mock_out, 0])
+            return_value=(mock_out, ''))
 
         export_opts = "access_type=rw"
         self._ces_helper.get_export_options = mock.Mock(
             return_value=export_opts)
-        mock_search_out = "/gpfs0/share-fakeid"
-        self.mock_object(re, 'search', mock.Mock(return_value=mock_search_out))
 
         access = self.access
         local_path = self.fakesharepath
 
         self._ces_helper.allow_access(local_path, self.share, access)
 
-        self._ces_helper._execute.assert_any_call('mmnfs', 'export', 'list',
-                                                  '-n', local_path)
-        self._ces_helper._execute.assert_any_call('mmnfs', 'export', 'change',
-                                                  local_path, '--nfsadd',
-                                                  access['access_to']
-                                                  + '(' + export_opts + ')')
+        self._ces_helper._execute.assert_has_calls([
+            mock.call('mmnfs', 'export', 'list', '-n', local_path, '-Y'),
+            mock.call('mmnfs', 'export', 'change', local_path, '--nfsadd',
+                      access['access_to'] + '(' + export_opts + ')')])
 
     def test_ces_allow_access_invalid_access_type(self):
         access = fake_share.fake_access(access_type='test')
@@ -952,25 +981,19 @@ class GPFSShareDriverTestCase(test.TestCase):
                           self.share, access)
 
     def test_ces_deny_access(self):
-        mock_out = "Path Delegations Clients\n\
-                    ------------------------\n\
-                    /gpfs0/share-fakeid none *"
+        mock_out = self.fake_ces_exports
         self._ces_helper._execute = mock.Mock(
-            return_value=[mock_out, 0])
-
-        mock_search_out = "/gpfs0/share-fakeid"
-        self.mock_object(re, 'search', mock.Mock(return_value=mock_search_out))
+            return_value=(mock_out, ''))
 
         access = self.access
         local_path = self.fakesharepath
 
         self._ces_helper.deny_access(local_path, self.share, access)
 
-        self._ces_helper._execute.assert_any_call('mmnfs', 'export', 'list',
-                                                  '-n', local_path)
-        self._ces_helper._execute.assert_any_call('mmnfs', 'export', 'change',
-                                                  local_path, '--nfsremove',
-                                                  access['access_to'])
+        self._ces_helper._execute.assert_has_calls([
+            mock.call('mmnfs', 'export', 'list', '-n', local_path, '-Y'),
+            mock.call('mmnfs', 'export', 'change', local_path, '--nfsremove',
+                      access['access_to'])])
 
     def test_ces_deny_access_exception(self):
         access = self.access
