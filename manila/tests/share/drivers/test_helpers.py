@@ -247,11 +247,32 @@ class NFSHelperTestCase(test.TestCase):
 
         self.assertEqual('/foo/bar', result)
 
-    def test_disable_access_for_maintenance(self):
+    @ddt.data(
+        ('/shares/fake_share1\n\t\t1.1.1.10\n'
+         '/shares/fake_share2\n\t\t1.1.1.16\n'
+         '/mnt/fake_share1 1.1.1.11', False),
+        ('/shares/fake_share_name\n\t\t1.1.1.10\n'
+         '/shares/fake_share_name\n\t\t1.1.1.16\n'
+         '/mnt/fake_share1\n\t\t1.1.1.11', True),
+        ('/mnt/fake_share_name\n\t\t1.1.1.11\n'
+         '/shares/fake_share_name\n\t\t1.1.1.10\n'
+         '/shares/fake_share_name\n\t\t1.1.1.16\n', True))
+    @ddt.unpack
+    def test_disable_access_for_maintenance(self, output, hosts_match):
         fake_maintenance_path = "fake.path"
-        share_mount_path = os.path.join(
-            self._helper.configuration.share_mount_path, self.share_name)
-        self.mock_object(self._helper, '_ssh_exec')
+        self._helper.configuration.share_mount_path = '/shares'
+        local_path = os.path.join(self._helper.configuration.share_mount_path,
+                                  self.share_name)
+
+        def fake_ssh_exec(*args, **kwargs):
+            if 'exportfs' in args[1] and '-u' not in args[1]:
+                return output, ''
+            else:
+                return '', ''
+
+        self.mock_object(self._helper, '_ssh_exec',
+                         mock.Mock(side_effect=fake_ssh_exec))
+
         self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
         self.mock_object(self._helper, '_get_maintenance_file_path',
                          mock.Mock(return_value=fake_maintenance_path))
@@ -265,10 +286,18 @@ class NFSHelperTestCase(test.TestCase):
              '|', 'grep', self.share_name,
              '|', 'sudo', 'tee', fake_maintenance_path]
         )
-        self._helper._ssh_exec.assert_any_call(
-            self.server,
-            ['sudo', 'exportfs', '-u', share_mount_path]
-        )
+        self._helper._ssh_exec.assert_has_calls([
+            mock.call(self.server, ['sudo', 'exportfs']),
+        ])
+
+        if hosts_match:
+            self._helper._ssh_exec.assert_has_calls([
+                mock.call(self.server, ['sudo', 'exportfs', '-u',
+                                        ':'.join(['1.1.1.10', local_path])]),
+                mock.call(self.server, ['sudo', 'exportfs', '-u',
+                                        ':'.join(['1.1.1.16', local_path])]),
+            ])
+
         self._helper._sync_nfs_temp_and_perm_files.assert_called_once_with(
             self.server
         )
