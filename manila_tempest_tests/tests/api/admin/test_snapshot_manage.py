@@ -164,3 +164,7 @@ class ManageGLUSTERFSSnapshotTest(ManageNFSSnapshotTest):
 
 class ManageHDFSSnapshotTest(ManageNFSSnapshotTest):
     protocol = 'hdfs'
+
+
+class ManageMapRFSSnapshotTest(ManageNFSSnapshotTest):
+    protocol = 'maprfs'

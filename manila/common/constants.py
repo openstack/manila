@@ -89,7 +89,7 @@ UPDATING_RULES_STATUSES = (
 )
 
 SUPPORTED_SHARE_PROTOCOLS = (
-    'NFS', 'CIFS', 'GLUSTERFS', 'HDFS', 'CEPHFS')
+    'NFS', 'CIFS', 'GLUSTERFS', 'HDFS', 'CEPHFS', 'MAPRFS')
 
 SECURITY_SERVICES_ALLOWED_TYPES = ['active_directory', 'ldap', 'kerberos']
 

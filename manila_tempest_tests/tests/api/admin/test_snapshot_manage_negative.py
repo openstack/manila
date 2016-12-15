@@ -109,3 +109,7 @@ class ManageGLUSTERFSSnapshotNegativeTest(ManageNFSSnapshotNegativeTest):
 
 class ManageHDFSSnapshotNegativeTest(ManageNFSSnapshotNegativeTest):
     protocol = 'hdfs'
+
+
+class ManageMapRFSSnapshotNegativeTest(ManageNFSSnapshotNegativeTest):
+    protocol = 'maprfs'

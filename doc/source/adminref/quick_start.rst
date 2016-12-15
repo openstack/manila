@@ -310,7 +310,7 @@ outlining some core sections.
 
     # Enable protocols ‘NFS’ and ‘CIFS’ as those are the only supported
     # by Generic driver that we are configuring in this set up.
-    # All available values are (‘NFS’, ‘CIFS’, ‘GlusterFS’, ‘HDFS’, 'CEPHFS')
+    # All available values are (‘NFS’, ‘CIFS’, ‘GlusterFS’, ‘HDFS’, 'CEPHFS', ‘MapRFS’)
     enabled_share_protocols = NFS,CIFS
 
     # Manila requires ‘share-type’ for share creation.

@@ -44,6 +44,7 @@ protocols is as follows:
 - CIFS
 - GlusterFS
 - HDFS
+- MapRFS
 - CephFS
 
 Access rules

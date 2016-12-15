@@ -246,3 +246,7 @@ class ManageHDFSShareTest(ManageNFSShareTest):
 
 class ManageCephFSShareTest(ManageNFSShareTest):
     protocol = 'cephfs'
+
+
+class ManageMapRFSShareTest(ManageNFSShareTest):
+    protocol = 'maprfs'
