@@ -27,6 +27,7 @@ Programming HowTos and Tutorials
     :maxdepth: 3
 
     development.environment
+    development-environment-devstack
     unit_tests
     tempest_tests
     addmethod.openstackapi

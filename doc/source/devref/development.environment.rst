@@ -21,15 +21,19 @@ Setting Up a Development Environment
 This page describes how to setup a working Python development
 environment that can be used in developing manila on Ubuntu, Fedora or
 Mac OS X. These instructions assume you're already familiar with
-git. Refer to GettingTheCode_ for additional information.
+git. Refer to `Getting the code`_ for additional information.
 
-.. _GettingTheCode: http://wiki.openstack.org/GettingTheCode
+.. _Getting the code: http://wiki.openstack.org/GettingTheCode
 
 Following these instructions will allow you to run the manila unit
 tests. If you want to be able to run manila (i.e., create NFS/CIFS shares),
-you will also need to install dependent projects: Nova, Neutron, Cinder and Glance.
-For this purpose 'devstack' project can be used (A documented shell script to build complete OpenStack development environments).
+you will also need to install dependent projects: nova, neutron, cinder and glance.
+For this purpose 'devstack' project can be used (A documented shell script to build
+complete OpenStack development environments).
+You can check out `Setting up a development environment with devstack`_ for instructions
+on how to enable manila on devstack.
 
+.. _Setting up a development environment with devstack: http://docs.openstack.org/developer/manila/devref/development_environment_devstack.html
 
 Virtual environments
 --------------------
