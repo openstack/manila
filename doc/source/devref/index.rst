@@ -84,6 +84,7 @@ Module Reference
    manila
    ganesha
    share_replication
+   driver_filter_goodness_weigher
 
 Capabilities and Extra-Specs
 ----------------------------
