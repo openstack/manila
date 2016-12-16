@@ -325,7 +325,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 LOG.error(
                     _LE("Caught exception trying ensure share '%(s_id)s'. "
                         "Exception: \n%(e)s."),
-                    {'s_id': share_instance['id'], 'e': six.text_type(e)},
+                    {'s_id': share_instance['id'], 'e': e},
                 )
                 continue
 
@@ -344,7 +344,7 @@ class ShareManager(manager.SchedulerDependentManager):
                         _LE("Unexpected error occurred while updating access "
                             "rules for share instance %(s_id)s. "
                             "Exception: \n%(e)s."),
-                        {'s_id': share_instance['id'], 'e': six.text_type(e)},
+                        {'s_id': share_instance['id'], 'e': e},
                     )
 
         self.publish_service_capabilities(ctxt)
@@ -2071,8 +2071,7 @@ class ShareManager(manager.SchedulerDependentManager):
             # Quota reservation errors here are not fatal, because
             # unmanage is administrator API and he/she could update user
             # quota usages later if it's required.
-            LOG.warning(_LW("Failed to update quota usages: %s."),
-                        six.text_type(e))
+            LOG.warning(_LW("Failed to update quota usages: %s."), e)
 
         if self.configuration.safe_get('unmanage_remove_access_rules'):
             try:

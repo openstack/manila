@@ -721,9 +721,7 @@ class API(base.Base):
         except Exception as e:
             reservations = None
             LOG.exception(
-                _LE("Failed to update quota for deleting share: %s"),
-                six.text_type(e)
-            )
+                _LE("Failed to update quota for deleting share: %s"), e)
 
         for share_instance in share.instances:
             if share_instance['host']:
