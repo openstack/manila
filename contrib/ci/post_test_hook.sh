@@ -283,6 +283,8 @@ iniset $TEMPEST_CONFIG share capability_revert_to_snapshot_support $CAPABILITY_R
 iniset $TEMPEST_CONFIG validation ip_version_for_ssh 4
 iniset $TEMPEST_CONFIG validation network_for_ssh ${PRIVATE_NETWORK_NAME:-"private"}
 
+iniset $TEMPEST_CONFIG share default_share_type_name ${MANILA_DEFAULT_SHARE_TYPE:-default}
+
 # check if tempest plugin was installed correctly
 echo 'import pkg_resources; print list(pkg_resources.iter_entry_points("tempest.test_plugins"))' | python
 
