@@ -640,7 +640,7 @@ function _install_nfs_and_samba {
         install_package nfs-kernel-server nfs-common samba
         check_nfs_kernel_service_state_ubuntu
     elif is_fedora; then
-        install_package nfs-utils nfs-utils-lib samba
+        install_package nfs-utils samba
     elif is_suse; then
         install_package nfs-kernel-server nfs-utils samba
     else:
