@@ -51,7 +51,7 @@ Copy the local.conf sample file to the upper level directory:
 
 ::
 
-    cp sample/local.conf ../
+    cp samples/local.conf .
 
 Enable the manila plugin adding the following line to the end of the local.conf file:
 
