@@ -153,12 +153,16 @@ elif [[ "$DRIVER" == "generic" ]]; then
 fi
 
 if [[ "$DRIVER" == "lvm" ]]; then
+    MANILA_TESTS="(^manila_tempest_tests.tests)(?=.*\[.*\bbackend\b.*\])"
     MANILA_TEMPEST_CONCURRENCY=8
     RUN_MANILA_CG_TESTS=False
     RUN_MANILA_MANAGE_TESTS=False
     iniset $TEMPEST_CONFIG share run_shrink_tests False
     iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
     iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
+    iniset $TEMPEST_CONFIG share image_with_share_tools 'manila-service-image-master'
+    iniset $TEMPEST_CONFIG auth use_dynamic_credentials True
+    iniset $TEMPEST_CONFIG share capability_snapshot_support True
     if ! grep $USERNAME_FOR_USER_RULES "/etc/passwd"; then
         sudo useradd $USERNAME_FOR_USER_RULES
     fi
@@ -170,6 +174,7 @@ if [[ "$DRIVER" == "lvm" ]]; then
     fi
     sudo service $samba_daemon_name restart
 elif [[ "$DRIVER" == "zfsonlinux" ]]; then
+    MANILA_TESTS="(^manila_tempest_tests.tests)(?=.*\[.*\bbackend\b.*\])"
     MANILA_TEMPEST_CONCURRENCY=8
     RUN_MANILA_CG_TESTS=False
     RUN_MANILA_MANAGE_TESTS=True
@@ -191,6 +196,9 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     iniset $TEMPEST_CONFIG share multitenancy_enabled False
     iniset $TEMPEST_CONFIG share multi_backend True
     iniset $TEMPEST_CONFIG share backend_replication_type 'readable'
+    iniset $TEMPEST_CONFIG share image_with_share_tools 'manila-service-image-master'
+    iniset $TEMPEST_CONFIG auth use_dynamic_credentials True
+    iniset $TEMPEST_CONFIG share capability_snapshot_support True
 elif [[ "$DRIVER" == "dummy" ]]; then
     MANILA_TEMPEST_CONCURRENCY=24
     RUN_MANILA_CG_TESTS=True
@@ -251,6 +259,18 @@ export OS_USER_DOMAIN_NAME=$ADMIN_DOMAIN_NAME
 # before running Tempest tests using Generic driver in DHSS=False mode.
 source $BASE/new/manila/contrib/ci/common.sh
 manila_wait_for_drivers_init $MANILA_CONF
+
+# (aovchinnikov): extra rules are needed to allow instances talk to host.
+sudo iptables -N manila-nfs
+sudo iptables -I INPUT 1 -j manila-nfs
+TCP_PORTS=(2049 111 32803 892 875 662)
+UDP_PORTS=(111 32769 892 875 662)
+for port in ${TCP_PORTS[*]}; do
+    sudo iptables -A manila-nfs -m tcp -p tcp --dport $port -j ACCEPT
+done
+for port in ${UDP_PORTS[*]}; do
+    sudo iptables -A manila-nfs -m udp -p udp --dport $port -j ACCEPT
+done
 
 echo "Running tempest manila test suites"
 sudo -H -u jenkins tox -eall-plugin $MANILA_TESTS -- --concurrency=$MANILA_TEMPEST_CONCURRENCY

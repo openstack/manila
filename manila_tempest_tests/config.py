@@ -189,7 +189,7 @@ ShareGroup = [
                      "careful enabling this opt."),
 
     cfg.StrOpt("image_with_share_tools",
-               default="manila-service-image",
+               default="manila-service-image-master",
                help="Image name for vm booting with nfs/smb clients tool."),
     cfg.StrOpt("image_username",
                default="manila",
