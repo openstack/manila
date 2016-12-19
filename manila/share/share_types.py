@@ -88,12 +88,10 @@ def get_all_types(context, inactive=0, search_opts=None):
             required_extra_specs = get_valid_required_extra_specs(
                 type_args['extra_specs'])
         except exception.InvalidExtraSpec as e:
-            values = {
-                'share_type': type_name,
-                'error': six.text_type(e)
-            }
             LOG.exception(_LE('Share type %(share_type)s has invalid required'
-                              ' extra specs: %(error)s'), values)
+                              ' extra specs: %(error)s'),
+                          {'share_type': type_name,
+                           'error': e})
 
         type_args['required_extra_specs'] = required_extra_specs
 

@@ -23,7 +23,6 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
-import six
 
 from manila.common import constants
 from manila import context
@@ -189,7 +188,7 @@ class SchedulerManager(manager.Manager):
                                     request_spec):
 
         LOG.error(_LE("Failed to schedule %(method)s: %(ex)s"),
-                  {"method": method, "ex": six.text_type(ex)})
+                  {"method": method, "ex": ex})
 
         properties = request_spec.get('share_properties', {})
 

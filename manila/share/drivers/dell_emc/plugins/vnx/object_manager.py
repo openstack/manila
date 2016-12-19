@@ -24,7 +24,7 @@ import six
 
 from manila.common import constants as const
 from manila import exception
-from manila.i18n import _, _LI, _LW
+from manila.i18n import _, _LE, _LI, _LW
 from manila.share.drivers.dell_emc.plugins.vnx import connector
 from manila.share.drivers.dell_emc.plugins.vnx import constants
 from manila.share.drivers.dell_emc.plugins.vnx import utils as vnx_utils
@@ -439,13 +439,12 @@ class FileSystem(StorageObject):
 
         try:
             self._execute_cmd(copy_ckpt_cmd, check_exit_code=True)
-        except processutils.ProcessExecutionError as expt:
-            message = (_("Failed to copy content from snapshot %(snap)s to "
-                         "file system %(filesystem)s. Reason: %(err)s.") %
-                       {'snap': snap_name,
-                        'filesystem': name,
-                        'err': six.text_type(expt)})
-            LOG.error(message)
+        except processutils.ProcessExecutionError as e:
+            LOG.error(_LE("Failed to copy content from snapshot %(snap)s to "
+                          "file system %(filesystem)s. Reason: %(err)s."),
+                      {'snap': snap_name,
+                       'filesystem': name,
+                       'err': e})
 
         # When an error happens during nas_copy, we need to continue
         # deleting the checkpoint of the target file system if it exists.

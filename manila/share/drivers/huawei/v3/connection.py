@@ -452,11 +452,10 @@ class V3StorageConnection(driver.HuaweiBase):
                 try:
                     os.rmdir(item['mount_src'])
                 except Exception as err:
-                    err_msg = (_('Failed to remove temp file. '
-                                 'File path: %(file_path)s. Reason: %(err)s.')
-                               % {'file_path': item['mount_src'],
-                                  'err': six.text_type(err)})
-                    LOG.warning(err_msg)
+                    LOG.warning(_LW('Failed to remove temp file. File path: '
+                                    '%(file_path)s. Reason: %(err)s.'),
+                                {'file_path': item['mount_src'],
+                                 'err': err})
 
         return new_share_path
 
@@ -471,7 +470,7 @@ class V3StorageConnection(driver.HuaweiBase):
                     LOG.error(_LE('Failed to add access to share %(name)s. '
                                   'Reason: %(err)s.'),
                               {'name': old_share['name'],
-                               'err': six.text_type(err)})
+                               'err': err})
 
         new_access = self.get_access(new_share)
         try:
@@ -482,7 +481,7 @@ class V3StorageConnection(driver.HuaweiBase):
                     LOG.error(_LE('Failed to mount old share %(name)s. '
                                   'Reason: %(err)s.'),
                               {'name': old_share['name'],
-                               'err': six.text_type(err)})
+                               'err': err})
 
             try:
                 self.allow_access(new_share, new_access)
@@ -493,7 +492,7 @@ class V3StorageConnection(driver.HuaweiBase):
                     LOG.error(_LE('Failed to mount new share %(name)s. '
                                   'Reason: %(err)s.'),
                               {'name': new_share['name'],
-                               'err': six.text_type(err)})
+                               'err': err})
 
             copied = self.copy_snapshot_data(old_share, new_share)
 
@@ -504,7 +503,7 @@ class V3StorageConnection(driver.HuaweiBase):
                     LOG.warning(_LW('Failed to unmount share %(name)s. '
                                     'Reason: %(err)s.'),
                                 {'name': item['name'],
-                                 'err': six.text_type(err)})
+                                 'err': err})
 
             self.deny_access(new_share, new_access)
 
@@ -574,9 +573,7 @@ class V3StorageConnection(driver.HuaweiBase):
             if copy.get_progress()['total_progress'] == 100:
                 copy_finish = True
         except Exception as err:
-            err_msg = (_("Failed to copy data, reason: %s.")
-                       % six.text_type(err))
-            LOG.error(err_msg)
+            LOG.error(_LE("Failed to copy data, reason: %s."), err)
 
         return copy_finish
 
