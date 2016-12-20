@@ -1,0 +1,6 @@
+---
+fixes:
+  - Fixed GPFS CES to allow adding a first access rule to a share.
+  - Fixed GPFS CES to allow deleting a share with no access rules.
+  - Fixed GPFS CES to allow deletion of a failed access rule
+    when there are no successful access rules.

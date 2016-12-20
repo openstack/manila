@@ -769,14 +769,19 @@ class CESHelper(NASHelperBase):
             raise exception.GPFSException(msg)
         return out
 
+    def _has_client_access(self, local_path, access_to=None):
+        """Check path for any export or for one with a specific IP address."""
+        err_msg = 'Failed to check exports on the system.'
+        out = self._execute_mmnfs_command(('list', '-n', local_path, '-Y'),
+                                          err_msg)
+        if access_to:
+            return ':' + access_to + ':' in out
+        else:
+            return ':' + local_path + ':' in out
+
     def remove_export(self, local_path, share):
         """Remove export."""
-        err_msg = 'Failed to check exports on the system.'
-        out = self._execute_mmnfs_command(('list', '-n', local_path), err_msg)
-
-        out = re.search(re.escape(local_path), out)
-
-        if out is not None:
+        if self._has_client_access(local_path):
             err_msg = ('Failed to remove export for share %s.'
                        % share['name'])
             self._execute_mmnfs_command(('remove', local_path), err_msg)
@@ -787,16 +792,13 @@ class CESHelper(NASHelperBase):
         if access['access_type'] != 'ip':
             raise exception.InvalidShareAccess(reason='Only ip access type '
                                                       'supported.')
-        err_msg = 'Failed to check exports on the system.'
-        out = self._execute_mmnfs_command(('list', '-n', local_path), err_msg)
+        has_exports = self._has_client_access(local_path)
 
         options_not_allowed = ['access_type=ro', 'access_type=rw']
         export_opts = self.get_export_options(share, access, 'CES',
                                               options_not_allowed)
 
-        out = re.search(re.escape(local_path), out)
-
-        if out is None:
+        if not has_exports:
             cmd = ['add', local_path, '-c',
                    access['access_to'] +
                    '(' + export_opts + ')']
@@ -811,12 +813,9 @@ class CESHelper(NASHelperBase):
 
     def deny_access(self, local_path, share, access, force=False):
         """Deny access to the host."""
-        err_msg = 'Failed to check exports on the system.'
-        out = self._execute_mmnfs_command(('list', '-n', local_path), err_msg)
+        has_export = self._has_client_access(local_path, access['access_to'])
 
-        out = re.search(re.escape(access['access_to']), out)
-
-        if out is not None:
+        if has_export:
             err_msg = ('Failed to remove access for share %s.'
                        % share['name'])
             self._execute_mmnfs_command(('change', local_path,
