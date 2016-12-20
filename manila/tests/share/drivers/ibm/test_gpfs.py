@@ -85,7 +85,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self.snapshot = fake_share.fake_snapshot()
         self.local_ip = "192.11.22.1"
         self.remote_ip = "192.11.22.2"
-        gpfs_nfs_server_list = [self.local_ip, self.remote_ip]
+        self.remote_ip2 = "2.2.2.2"
+        gpfs_nfs_server_list = [self.remote_ip, self.local_ip, self.remote_ip2]
         self._knfs_helper.configuration.gpfs_nfs_server_list = \
             gpfs_nfs_server_list
         self._ces_helper.configuration.gpfs_nfs_server_list = \
@@ -810,28 +811,41 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
 
     def test_knfs__publish_access(self):
         self.mock_object(utils, 'execute')
-        cmd = ['fakecmd']
+
+        fake_command = 'fakecmd'
+        cmd = [fake_command]
         self._knfs_helper._publish_access(*cmd)
+
         utils.execute.assert_any_call(*cmd, run_as_root=True,
                                       check_exit_code=True)
         remote_login = self.sshlogin + '@' + self.remote_ip
-        cmd = ['ssh', remote_login] + list(cmd)
-        utils.execute.assert_any_call(*cmd, run_as_root=False,
-                                      check_exit_code=True)
+        remote_login2 = self.sshlogin + '@' + self.remote_ip2
+        utils.execute.assert_has_calls([
+            mock.call('ssh', remote_login, fake_command,
+                      check_exit_code=True, run_as_root=False),
+            mock.call(fake_command, check_exit_code=True, run_as_root=True),
+            mock.call('ssh', remote_login2, fake_command,
+                      check_exit_code=True, run_as_root=False)])
         self.assertTrue(socket.gethostbyname_ex.called)
         self.assertTrue(socket.gethostname.called)
 
     def test_knfs__publish_access_exception(self):
         self.mock_object(
             utils, 'execute',
-            mock.Mock(side_effect=exception.ProcessExecutionError))
-        cmd = ['fakecmd']
+            mock.Mock(side_effect=(0, exception.ProcessExecutionError)))
+
+        fake_command = 'fakecmd'
+        cmd = [fake_command]
         self.assertRaises(exception.ProcessExecutionError,
                           self._knfs_helper._publish_access, *cmd)
+
         self.assertTrue(socket.gethostbyname_ex.called)
         self.assertTrue(socket.gethostname.called)
-        utils.execute.assert_called_once_with(*cmd, run_as_root=True,
-                                              check_exit_code=True)
+        remote_login = self.sshlogin + '@' + self.remote_ip
+        utils.execute.assert_has_calls([
+            mock.call('ssh', remote_login, fake_command,
+                      check_exit_code=True, run_as_root=False),
+            mock.call(fake_command, check_exit_code=True, run_as_root=True)])
 
     def test_ces_get_export_options(self):
         mock_out = {"ces:export_options": "squash=no_root_squash"}

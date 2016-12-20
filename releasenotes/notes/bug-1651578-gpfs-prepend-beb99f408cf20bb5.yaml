@@ -1,0 +1,6 @@
+---
+fixes:
+  - Fixed GPFS KNFS generation of NFS server allow/deny commands
+    when there are multiple servers in gpfs_nfs_server_list
+    so that the remote ssh login prefix used for one server is
+    not carried over to the commands for following servers.

@@ -679,17 +679,18 @@ class KNFSHelper(NASHelperBase):
             raise exception.GPFSException(msg)
 
     def _publish_access(self, *cmd):
+        localserver_iplist = socket.gethostbyname_ex(socket.gethostname())[2]
         for server in self.configuration.gpfs_nfs_server_list:
-            localserver_iplist = socket.gethostbyname_ex(
-                socket.gethostname())[2]
-            run_local = True
-            if server not in localserver_iplist:
+            if server in localserver_iplist:
+                run_command = cmd
+                run_local = True
+            else:
                 sshlogin = self.configuration.gpfs_ssh_login
                 remote_login = sshlogin + '@' + server
-                cmd = ['ssh', remote_login] + list(cmd)
+                run_command = ['ssh', remote_login] + list(cmd)
                 run_local = False
             try:
-                utils.execute(*cmd,
+                utils.execute(*run_command,
                               run_as_root=run_local,
                               check_exit_code=True)
             except exception.ProcessExecutionError:
