@@ -34,6 +34,9 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.mock_object(client_base.LOG,
                          'error',
                          mock.Mock(side_effect=mock_logger.error))
+        self.mock_object(client_base.LOG,
+                         'exception',
+                         mock.Mock(side_effect=mock_logger.error))
 
         self.client = client_base.NetAppBaseClient(**fake.CONNECTION_INFO)
         self.client.connection = mock.MagicMock()
@@ -133,7 +136,7 @@ class NetAppBaseClientTestCase(test.TestCase):
                          mock.Mock(side_effect=netapp_api.NaApiError))
 
         self.assertRaises(netapp_api.NaApiError, self.client.get_licenses)
-        self.assertEqual(1, client_base.LOG.error.call_count)
+        self.assertEqual(1, client_base.LOG.exception.call_count)
 
     def test_send_ems_log_message(self):
 

@@ -82,8 +82,8 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
         except exception.GlusterfsException:
             if (self.gluster_manager.
                     get_vol_option('features.quota')) != 'on':
-                LOG.error(_LE("Error in tuning GlusterFS volume to enable "
-                              "creation of shares of specific size."))
+                LOG.exception(_LE("Error in tuning GlusterFS volume to enable "
+                                  "creation of shares of specific size."))
                 raise
 
         self._ensure_gluster_vol_mounted()
@@ -106,8 +106,8 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
                                       self.gluster_manager.export, mount_path,
                                       ensure=True)
         except exception.GlusterfsException:
-            LOG.error(_LE('Could not mount the Gluster volume %s'),
-                      self.gluster_manager.volume)
+            LOG.exception(_LE('Could not mount the Gluster volume %s'),
+                          self.gluster_manager.volume)
             raise
 
     def _get_local_share_path(self, share):
@@ -182,7 +182,7 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
         try:
             self.driver._execute(*cmd, run_as_root=True)
         except exception.ProcessExecutionError:
-            LOG.error(_LE('Unable to delete share %s'), share['name'])
+            LOG.exception(_LE('Unable to delete share %s'), share['name'])
             raise
 
     def ensure_share(self, context, share, share_server=None):

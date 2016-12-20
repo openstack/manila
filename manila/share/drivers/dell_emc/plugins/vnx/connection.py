@@ -691,9 +691,9 @@ class VNXStorageConnection(driver.StorageConnection):
                 'nfs_if': nfs_interface['ip'],
             }
 
-        except Exception as ex:
+        except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Could not setup server. Reason: %s.'), ex)
+                LOG.exception(_LE('Could not setup server.'))
                 server_details = self._construct_backend_details(
                     vdm_name, allocated_interfaces)
                 self.teardown_server(

@@ -54,8 +54,8 @@ def create(context, name, extra_specs=None, is_public=True, projects=None):
                                              extra_specs=extra_specs,
                                              is_public=is_public),
                                         projects=projects)
-    except db_exception.DBError as e:
-        LOG.exception(_LE('DB error: %s'), e)
+    except db_exception.DBError:
+        LOG.exception(_LE('DB error.'))
         raise exception.ShareTypeCreateFailed(name=name,
                                               extra_specs=extra_specs)
     return type_ref
@@ -87,11 +87,9 @@ def get_all_types(context, inactive=0, search_opts=None):
         try:
             required_extra_specs = get_valid_required_extra_specs(
                 type_args['extra_specs'])
-        except exception.InvalidExtraSpec as e:
+        except exception.InvalidExtraSpec:
             LOG.exception(_LE('Share type %(share_type)s has invalid required'
-                              ' extra specs: %(error)s'),
-                          {'share_type': type_name,
-                           'error': e})
+                              ' extra specs.'), {'share_type': type_name})
 
         type_args['required_extra_specs'] = required_extra_specs
 

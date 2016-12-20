@@ -87,9 +87,9 @@ class NetAppBaseClient(object):
     def get_licenses(self):
         try:
             result = self.send_request('license-v2-list-info')
-        except netapp_api.NaApiError as e:
+        except netapp_api.NaApiError:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Could not get licenses list. %s."), e)
+                LOG.exception(_LE("Could not get licenses list."))
 
         return sorted(
             [l.get_child_content('package').lower()

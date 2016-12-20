@@ -26,7 +26,7 @@ import six
 from manila.data import utils as data_utils
 from manila import exception
 from manila import utils
-from manila.i18n import _, _LI, _LW, _LE
+from manila.i18n import _, _LE, _LI, _LW
 
 hpe3parclient = importutils.try_import("hpe3parclient")
 if hpe3parclient:
@@ -1210,11 +1210,10 @@ class HPE3ParMediator(object):
         # Try to reclaim the space
         try:
             self._client.startfsnapclean(fpg, reclaimStrategy='maxspeed')
-        except Exception as e:
+        except Exception:
             # Remove already happened so only log this.
-            msg = (_('Unexpected exception calling startfsnapclean for FPG '
-                     '%(fpg)s: %(e)s') % {'fpg': fpg, 'e': six.text_type(e)})
-            LOG.exception(msg)
+            LOG.exception(_LE('Unexpected exception calling startfsnapclean '
+                              'for FPG %(fpg)s.'), {'fpg': fpg})
 
     @staticmethod
     def _validate_access_type(protocol, access_type):
@@ -1655,8 +1654,7 @@ class HPE3ParMediator(object):
         try:
             result = self._client.getfsip(vfs, fpg=fpg)
             LOG.debug("getfsip result: %s", result)
-        except Exception as e:
-            LOG.exception(e)
+        except Exception:
             msg = (_('Failed to get FSIPs for FPG/VFS %(fspool)s/%(vfs)s.') %
                    fsip)
             LOG.exception(msg)
@@ -1681,8 +1679,7 @@ class HPE3ParMediator(object):
                                              vlantag=vlantag_str)
             LOG.debug("createfsip result: %s", result)
 
-        except Exception as e:
-            LOG.exception(e)
+        except Exception:
             msg = (_('Failed to create FSIP for %s') % ip)
             LOG.exception(msg)
             raise exception.ShareBackendException(msg=msg)
@@ -1713,8 +1710,7 @@ class HPE3ParMediator(object):
             result = self._client.removefsip(vfs, ip, fpg=fpg)
             LOG.debug("removefsip result: %s", result)
 
-        except Exception as e:
-            LOG.exception(e)
+        except Exception:
             msg = (_('Failed to remove FSIP %s') % ip)
             LOG.exception(msg)
             raise exception.ShareBackendException(msg=msg)

@@ -439,12 +439,11 @@ class FileSystem(StorageObject):
 
         try:
             self._execute_cmd(copy_ckpt_cmd, check_exit_code=True)
-        except processutils.ProcessExecutionError as e:
-            LOG.error(_LE("Failed to copy content from snapshot %(snap)s to "
-                          "file system %(filesystem)s. Reason: %(err)s."),
-                      {'snap': snap_name,
-                       'filesystem': name,
-                       'err': e})
+        except processutils.ProcessExecutionError:
+            LOG.exception(_LE("Failed to copy content from snapshot %(snap)s "
+                              "to file system %(filesystem)s."),
+                          {'snap': snap_name,
+                           'filesystem': name})
 
         # When an error happens during nas_copy, we need to continue
         # deleting the checkpoint of the target file system if it exists.

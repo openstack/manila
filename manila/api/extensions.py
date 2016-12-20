@@ -181,8 +181,8 @@ class ExtensionManager(object):
             LOG.debug('Ext description: %s',
                       ' '.join(extension.__doc__.strip().split()))
             LOG.debug('Ext updated: %s', extension.updated)
-        except AttributeError as ex:
-            LOG.exception(_LE("Exception loading extension: %s"), ex)
+        except AttributeError:
+            LOG.exception(_LE("Exception loading extension."))
             return False
 
         return True
