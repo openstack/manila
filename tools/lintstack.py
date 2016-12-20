@@ -19,10 +19,11 @@
 
 from __future__ import print_function
 
-import cStringIO as StringIO
 import json
 import re
 import sys
+
+import six
 
 from pylint import lint
 from pylint.reporters import text
@@ -136,7 +137,7 @@ class ErrorKeys(object):
 
 
 def run_pylint():
-    buff = StringIO.StringIO()
+    buff = six.StringIO()
     reporter = text.ParseableTextReporter(output=buff)
     args = ["--include-ids=y", "-E", "manila"]
     lint.Run(args, reporter=reporter, exit=False)
