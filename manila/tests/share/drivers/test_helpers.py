@@ -180,7 +180,7 @@ class NFSHelperTestCase(test.TestCase):
                          '/shares/share-3\n\t\t30.0.0.4\n'
                          '/shares/share-3\n\t\t30.0.0.7\n')
         expected = ['20.0.0.3', '20.0.0.6']
-        result = self._helper._get_host_list(fake_exportfs, '/shares/share-1')
+        result = self._helper.get_host_list(fake_exportfs, '/shares/share-1')
         self.assertEqual(expected, result)
 
     @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
@@ -192,7 +192,7 @@ class NFSHelperTestCase(test.TestCase):
         access_rules = [test_generic.get_fake_access_rule(
             '1.1.1.1', access_level), ]
         self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
-        self.mock_object(self._helper, '_get_host_list',
+        self.mock_object(self._helper, 'get_host_list',
                          mock.Mock(return_value=['1.1.1.1']))
         self._helper.update_access(self.server, self.share_name, access_rules,
                                    [], [])

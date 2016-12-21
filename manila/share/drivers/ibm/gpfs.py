@@ -46,6 +46,7 @@ from manila.common import constants
 from manila import exception
 from manila.i18n import _
 from manila.share import driver
+from manila.share.drivers.helpers import NFSHelper
 from manila.share import share_types
 from manila import utils
 
@@ -678,7 +679,10 @@ class KNFSHelper(NASHelperBase):
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
-    def _publish_access(self, *cmd):
+    def _publish_access(self, *cmd, **kwargs):
+        check_exit_code = kwargs.get('check_exit_code', True)
+
+        outs = []
         localserver_iplist = socket.gethostbyname_ex(socket.gethostname())[2]
         for server in self.configuration.gpfs_nfs_server_list:
             if server in localserver_iplist:
@@ -690,11 +694,40 @@ class KNFSHelper(NASHelperBase):
                 run_command = ['ssh', remote_login] + list(cmd)
                 run_local = False
             try:
-                utils.execute(*run_command,
-                              run_as_root=run_local,
-                              check_exit_code=True)
+                out = utils.execute(*run_command,
+                                    run_as_root=run_local,
+                                    check_exit_code=check_exit_code)
             except exception.ProcessExecutionError:
                 raise
+            outs.append(out)
+        return outs
+
+    def _verify_denied_access(self, local_path, share, ip):
+        try:
+            cmd = ['exportfs']
+            outs = self._publish_access(*cmd)
+        except exception.ProcessExecutionError:
+            msg = _('Failed to verify denied access for '
+                    'share %s.') % share['name']
+            LOG.exception(msg)
+            raise exception.GPFSException(msg)
+
+        for stdout, stderr in outs:
+            if stderr and stderr.strip():
+                msg = ('Log/ignore stderr during _validate_denied_access for '
+                       'share %(sharename)s. Return code OK. '
+                       'Stderr: %(stderr)s' % {'sharename': share['name'],
+                                               'stderr': stderr})
+                LOG.debug(msg)
+
+            gpfs_ips = NFSHelper.get_host_list(stdout, local_path)
+            if ip in gpfs_ips:
+                msg = (_('Failed to deny access for share %(sharename)s. '
+                         'IP %(ip)s still has access.') %
+                       {'sharename': share['name'],
+                        'ip': ip})
+                LOG.error(msg)
+                raise exception.GPFSException(msg)
 
     def remove_export(self, local_path, share):
         """Remove export."""
@@ -741,16 +774,22 @@ class KNFSHelper(NASHelperBase):
 
     def deny_access(self, local_path, share, access, force=False):
         """Remove access for one or more vm instances."""
-        cmd = ['exportfs', '-u', ':'.join([access['access_to'], local_path])]
+        ip = access['access_to']
+        cmd = ['exportfs', '-u', ':'.join([ip, local_path])]
         try:
-            self._publish_access(*cmd)
-        except exception.ProcessExecutionError as e:
-            msg = (_('Failed to deny access for share %(sharename)s. '
-                     'Error: %(excmsg)s.') %
-                   {'sharename': share['name'],
-                    'excmsg': e})
-            LOG.error(msg)
+            # Can get exit code 0 for success or 1 for already gone (also
+            # potentially get 1 due to exportfs bug). So allow
+            # _publish_access to continue with [0, 1] and then verify after
+            # it is done.
+            self._publish_access(*cmd, check_exit_code=[0, 1])
+        except exception.ProcessExecutionError:
+            msg = _('Failed to deny access for share %s.') % share['name']
+            LOG.exception(msg)
             raise exception.GPFSException(msg)
+
+        # Error code (0 or 1) makes deny IP success indeterminate.
+        # So, verify that the IP access was completely removed.
+        self._verify_denied_access(local_path, share, ip)
 
 
 class CESHelper(NASHelperBase):

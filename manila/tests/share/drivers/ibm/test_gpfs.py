@@ -789,25 +789,95 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self._knfs_helper._execute.assert_called_once_with('exportfs',
                                                            run_as_root=True)
 
+    def test_knfs__verify_denied_access_pass(self):
+        local_path = self.fakesharepath
+        ip = self.access['access_to']
+        fake_exportfs = ('/shares/share-1\n\t\t1.1.1.1\n'
+                         '/shares/share-2\n\t\t2.2.2.2\n')
+        self._knfs_helper._publish_access = mock.Mock(
+            return_value=[(fake_exportfs, '')])
+
+        self._knfs_helper._verify_denied_access(local_path, self.share, ip)
+
+        self._knfs_helper._publish_access.assert_called_once_with('exportfs')
+
+    def test_knfs__verify_denied_access_fail(self):
+        local_path = self.fakesharepath
+        ip = self.access['access_to']
+        data = {'path': local_path, 'ip': ip}
+        fake_exportfs = ('/shares/share-1\n\t\t1.1.1.1\n'
+                         '%(path)s\n\t\t%(ip)s\n'
+                         '/shares/share-2\n\t\t2.2.2.2\n') % data
+        self._knfs_helper._publish_access = mock.Mock(
+            return_value=[(fake_exportfs, '')])
+
+        self.assertRaises(exception.GPFSException,
+                          self._knfs_helper._verify_denied_access,
+                          local_path,
+                          self.share,
+                          ip)
+
+        self._knfs_helper._publish_access.assert_called_once_with('exportfs')
+
+    def test_knfs__verify_denied_access_exception(self):
+        self._knfs_helper._publish_access = mock.Mock(
+            side_effect=exception.ProcessExecutionError
+        )
+
+        ip = self.access['access_to']
+        local_path = self.fakesharepath
+
+        self.assertRaises(exception.GPFSException,
+                          self._knfs_helper._verify_denied_access,
+                          local_path,
+                          self.share,
+                          ip)
+
+        self._knfs_helper._publish_access.assert_called_once_with('exportfs')
+
+    @ddt.data((None, False),
+              ('', False),
+              (' ', False),
+              ('Some error to log', True))
+    @ddt.unpack
+    def test_knfs__verify_denied_access_stderr(self, stderr, is_logged):
+        """Stderr debug logging should only happen when not empty."""
+        outputs = [('', stderr)]
+        self._knfs_helper._publish_access = mock.Mock(return_value=outputs)
+        gpfs.LOG.debug = mock.Mock()
+
+        self._knfs_helper._verify_denied_access(
+            self.fakesharepath, self.share, self.remote_ip)
+
+        self._knfs_helper._publish_access.assert_called_once_with('exportfs')
+        self.assertEqual(is_logged, gpfs.LOG.debug.called)
+
     def test_knfs_deny_access(self):
-        self._knfs_helper._publish_access = mock.Mock()
+        self._knfs_helper._publish_access = mock.Mock(return_value=[('', '')])
+
         access = self.access
         local_path = self.fakesharepath
         self._knfs_helper.deny_access(local_path, self.share, access)
-        cmd = ['exportfs', '-u', ':'.join([access['access_to'], local_path])]
-        self._knfs_helper._publish_access.assert_called_once_with(*cmd)
+
+        deny = ['exportfs', '-u', ':'.join([access['access_to'], local_path])]
+        self._knfs_helper._publish_access.assert_has_calls([
+            mock.call(*deny, check_exit_code=[0, 1]),
+            mock.call('exportfs')])
 
     def test_knfs_deny_access_exception(self):
         self._knfs_helper._publish_access = mock.Mock(
             side_effect=exception.ProcessExecutionError
         )
+
         access = self.access
         local_path = self.fakesharepath
         cmd = ['exportfs', '-u', ':'.join([access['access_to'], local_path])]
         self.assertRaises(exception.GPFSException,
                           self._knfs_helper.deny_access, local_path,
                           self.share, access)
-        self._knfs_helper._publish_access.assert_called_once_with(*cmd)
+
+        self._knfs_helper._publish_access.assert_called_once_with(
+            *cmd, check_exit_code=[0, 1])
 
     def test_knfs__publish_access(self):
         self.mock_object(utils, 'execute')
