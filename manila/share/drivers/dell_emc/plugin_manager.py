@@ -22,10 +22,10 @@ class EMCPluginManager(object):
 
         self.extension_manager = extension.ExtensionManager(namespace)
 
-    def load_plugin(self, name, logger=None):
+    def load_plugin(self, name, *args, **kwargs):
         for ext in self.extension_manager.extensions:
             if ext.name == name:
-                storage_conn = ext.plugin(logger)
+                storage_conn = ext.plugin(*args, **kwargs)
                 return storage_conn
 
         return None

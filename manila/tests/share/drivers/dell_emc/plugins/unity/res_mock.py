@@ -87,12 +87,13 @@ class FakeEMCShareDriver(object):
     def __init__(self):
         self.configuration = conf.Configuration(None)
         self.configuration.emc_share_backend = 'unity'
-        self.configuration.emc_nas_server_container = 'SPA'
+        self.configuration.unity_server_container = 'SPA'
         self.configuration.emc_nas_server = '192.168.1.1'
         self.configuration.emc_nas_login = 'fake_user'
         self.configuration.emc_nas_password = 'fake_password'
         self.configuration.share_backend_name = 'EMC_NAS_Storage'
-        self.configuration.emc_nas_server_pool = 'nas_server_pool'
+        self.configuration.vnx_server_meta_pool = 'nas_server_pool'
+        self.configuration.unity_server_meta_pool = 'nas_server_pool'
         self.configuration.local_conf.max_over_subscription_ratio = 20
 
 

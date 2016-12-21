@@ -14,6 +14,7 @@
 #    under the License.
 """Unity backend for the EMC Manila driver."""
 
+from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
@@ -39,6 +40,27 @@ VERSION = "1.0.0"
 LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
 
+UNITY_OPTS = [
+    cfg.StrOpt('unity_server_meta_pool',
+               deprecated_name='emc_nas_server_pool',
+               help='Pool to persist the meta-data of NAS server.'),
+    cfg.StrOpt('unity_server_container',
+               deprecated_name='emc_nas_server_container',
+               help='Storage processor to host the NAS server.'),
+    cfg.ListOpt('unity_share_data_pools',
+                deprecated_name='emc_nas_pool_names',
+                help='Comma separated list of pools that can be used to '
+                     'persist share data.'),
+    cfg.ListOpt('unity_ethernet_ports',
+                deprecated_name='emc_interface_ports',
+                help='Comma separated list of ports that can be used for '
+                     'share server interfaces. Members of the list '
+                     'can be Unix-style glob expressions.')
+]
+
+CONF = cfg.CONF
+CONF.register_opts(UNITY_OPTS)
+
 
 @emc_utils.decorate_all_methods(emc_utils.log_enter_exit,
                                 debug_only=True)
@@ -50,6 +72,9 @@ class UnityStorageConnection(driver.StorageConnection):
     @emc_utils.log_enter_exit
     def __init__(self, *args, **kwargs):
         super(UnityStorageConnection, self).__init__(*args, **kwargs)
+        if 'configuration' in kwargs:
+            kwargs['configuration'].append_config_values(UNITY_OPTS)
+
         self.client = None
         self.pool_set = None
         self.port_set = None
@@ -67,11 +92,10 @@ class UnityStorageConnection(driver.StorageConnection):
         storage_ip = config.emc_nas_server
         username = config.emc_nas_login
         password = config.emc_nas_password
-        sp_name = config.emc_nas_server_container
+        sp_name = config.unity_server_container
         self.client = client.UnityClient(storage_ip, username, password)
 
-        pool_conf = config.safe_get(
-            'emc_nas_pool_names')
+        pool_conf = config.safe_get('unity_share_data_pools')
         self.pool_set = self._get_managed_pools(pool_conf)
 
         self.reserved_percentage = config.safe_get(
@@ -84,12 +108,11 @@ class UnityStorageConnection(driver.StorageConnection):
 
         self._config_sp(sp_name)
 
-        port_conf = config.safe_get(
-            'emc_interface_ports')
+        port_conf = config.safe_get('unity_ethernet_ports')
         self.port_set = self._get_managed_ports(
             port_conf, self.storage_processor)
 
-        pool_name = config.emc_nas_server_pool
+        pool_name = config.unity_server_meta_pool
         self._config_pool(pool_name)
 
     def check_for_setup_error(self):
@@ -489,7 +512,7 @@ class UnityStorageConnection(driver.StorageConnection):
         if not matched_ports:
             msg = (_("All the specified storage ports to be managed "
                      "do not exist. Please check your configuration "
-                     "emc_interface_ports in manila.conf. "
+                     "unity_ethernet_ports in manila.conf. "
                      "The available ports in the backend are %s") %
                    ",".join(real_ports))
             raise exception.BadConfigurationException(reason=msg)

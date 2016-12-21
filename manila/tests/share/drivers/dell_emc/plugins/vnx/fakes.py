@@ -1462,7 +1462,7 @@ class FakeEMCShareDriver(object):
         self.configuration = conf.Configuration(None)
         self.configuration.append_config_values = mock.Mock(return_value=0)
         self.configuration.emc_share_backend = FakeData.emc_share_backend
-        self.configuration.emc_nas_server_container = FakeData.mover_name
+        self.configuration.vnx_server_container = FakeData.mover_name
         self.configuration.emc_nas_server = FakeData.emc_nas_server
         self.configuration.emc_nas_login = FakeData.emc_nas_login
         self.configuration.emc_nas_password = FakeData.emc_nas_password
