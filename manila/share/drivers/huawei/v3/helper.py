@@ -698,10 +698,10 @@ class RestHelper(object):
         return share_url_type
 
     def get_fsid_by_name(self, share_name):
-        url = "/FILESYSTEM?range=[0-8191]"
+        share_name = share_name.replace("-", "_")
+        url = "/FILESYSTEM?filter=NAME::%s&range=[0-8191]" % share_name
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, 'Get filesystem by name error!')
-        share_name = share_name.replace("-", "_")
 
         for item in result.get('data', []):
             if share_name == item['NAME']:
