@@ -1185,6 +1185,8 @@ class AdminActionsMixin(object):
             constants.STATUS_DELETING,
             constants.STATUS_ERROR,
             constants.STATUS_ERROR_DELETING,
+            constants.STATUS_MIGRATING,
+            constants.STATUS_MIGRATING_TO,
         ]),
         'replica_state': set([
             constants.REPLICA_STATE_ACTIVE,

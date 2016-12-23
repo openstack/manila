@@ -277,6 +277,24 @@ fixture_invalid_reset_status_body = (
 )
 
 
+fixture_valid_reset_status_body = (
+    ({'os-reset_status': {'status': 'creating'}}, '2.6'),
+    ({'os-reset_status': {'status': 'available'}}, '2.6'),
+    ({'os-reset_status': {'status': 'deleting'}}, '2.6'),
+    ({'os-reset_status': {'status': 'error_deleting'}}, '2.6'),
+    ({'os-reset_status': {'status': 'error'}}, '2.6'),
+    ({'os-reset_status': {'status': 'migrating'}}, '2.6'),
+    ({'os-reset_status': {'status': 'migrating_to'}}, '2.6'),
+    ({'reset_status': {'status': 'creating'}}, '2.7'),
+    ({'reset_status': {'status': 'available'}}, '2.7'),
+    ({'reset_status': {'status': 'deleting'}}, '2.7'),
+    ({'reset_status': {'status': 'error_deleting'}}, '2.7'),
+    ({'reset_status': {'status': 'error'}}, '2.7'),
+    ({'reset_status': {'status': 'migrating'}}, '2.7'),
+    ({'reset_status': {'status': 'migrating_to'}}, '2.7'),
+)
+
+
 def mock_fake_admin_check(context, resource_name, action, *args, **kwargs):
     if context.is_admin:
         return
