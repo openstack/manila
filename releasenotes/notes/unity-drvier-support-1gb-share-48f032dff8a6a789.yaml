@@ -1,0 +1,5 @@
+---
+fixes:
+  - Shares under 3 GB cannot be created on the Dell EMC Unity back end. If users
+    create shares smaller than 3 GB, they will be allocated a 3 GB file system on
+    the Unity system.

@@ -13,11 +13,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
+from oslo_utils import units
+
 from manila import exception
 from manila import test
 from manila.tests.share.drivers.dell_emc.plugins.unity import res_mock
 
 
+@ddt.ddt
 class TestClient(test.TestCase):
     @res_mock.mock_client_input
     @res_mock.patch_client
@@ -166,3 +170,20 @@ class TestClient(test.TestCase):
         sp = client.get_storage_processor(sp_id='SPA')
 
         self.assertEqual('SPA', sp.name)
+
+    @ddt.data((1, 3), (2, 3), (3, 3), (4, 4), (10, 10))
+    @ddt.unpack
+    @res_mock.patch_client
+    def test_get_valid_fs_size(self, client, share_size_gb, fs_size_gb):
+        size = client.get_valid_fs_size_in_byte(share_size_gb)
+
+        self.assertEqual(fs_size_gb * units.Gi, size)
+
+    @res_mock.mock_client_input
+    @res_mock.patch_client
+    def test_extend_filesystem(self, client, mocked_input):
+        fs = mocked_input['fs']
+
+        size = client.extend_filesystem(fs, 5)
+
+        self.assertEqual(5 * units.Gi, size)

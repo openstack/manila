@@ -972,3 +972,11 @@ test_get_storage_processor:
   unity:
     _methods:
       get_sp: *sp_a
+
+test_extend_filesystem:
+  fs:
+    _methods:
+      get_id: 'svc_12'
+      extend:
+        _raise:
+          UnityNothingToModifyError:

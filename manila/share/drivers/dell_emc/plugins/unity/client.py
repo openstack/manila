@@ -18,6 +18,7 @@ import six
 
 from oslo_log import log
 from oslo_utils import importutils
+from oslo_utils import units
 
 storops = importutils.try_import('storops')
 if storops:
@@ -29,6 +30,9 @@ from manila import exception
 from manila.i18n import _, _LI, _LE
 
 LOG = log.getLogger(__name__)
+
+# Minimun file system size in Unity
+MIN_FS_SIZE_IN_GB = 3
 
 
 class UnityClient(object):
@@ -69,16 +73,16 @@ class UnityClient(object):
         except storops_ex.UnityNfsShareNameExistedError:
             return self.get_share(share_name, 'NFS')
 
-    @staticmethod
-    def create_nfs_filesystem_and_share(
-            pool, nas_server, share_name, size):
+    def create_nfs_filesystem_and_share(self, pool, nas_server,
+                                        share_name, size_gb):
         """Create filesystem and share from pool/NAS server.
 
         :param pool: pool for file system creation
         :param nas_server: nas server for file system creation
         :param share_name: file system and share name
-        :param size: file system size
+        :param size_gb: file system size
         """
+        size = self.get_valid_fs_size_in_byte(size_gb)
         pool.create_nfs_share(
             nas_server, share_name, size)
 
@@ -98,8 +102,9 @@ class UnityClient(object):
     def delete_share(share):
         share.delete()
 
-    def create_filesystem(self, pool, nas_server, share_name, size, proto):
+    def create_filesystem(self, pool, nas_server, share_name, size_gb, proto):
         try:
+            size = self.get_valid_fs_size_in_byte(size_gb)
             return pool.create_filesystem(nas_server,
                                           share_name,
                                           size,
@@ -272,3 +277,20 @@ class UnityClient(object):
                 link_up_ports.append(port)
 
         return link_up_ports
+
+    @staticmethod
+    def get_valid_fs_size_in_byte(size_gb):
+        if size_gb < MIN_FS_SIZE_IN_GB:
+            LOG.debug('Using %(min_size)s GB file system for shares less than '
+                      '%(min_size)s GB.', {'min_size': MIN_FS_SIZE_IN_GB})
+            size_gb = MIN_FS_SIZE_IN_GB
+        return size_gb * units.Gi
+
+    def extend_filesystem(self, fs, new_size_gb):
+        size = self.get_valid_fs_size_in_byte(new_size_gb)
+        try:
+            fs.extend(size)
+        except storops_ex.UnityNothingToModifyError:
+            LOG.debug('The size of the file system %(id)s is %(size)s '
+                      'bytes.', {'id': fs.get_id(), 'size': size})
+        return size
