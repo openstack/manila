@@ -389,10 +389,16 @@ function create_manila_service_image {
 # create_manila_service_secgroup - creates security group that is used by
 # Nova VMs when generic driver is configured.
 function create_manila_service_secgroup {
+    # TODO(vponomaryov): replace usage of novaclient with openstackclient back
+    # right after bug #1652317 is fixed.
+
     # Create a secgroup
-    if ! openstack security group list | grep -q $MANILA_SERVICE_SECGROUP; then
-        openstack security group create $MANILA_SERVICE_SECGROUP --description "$MANILA_SERVICE_SECGROUP description"
-        if ! timeout 30 sh -c "while ! openstack security group list | grep -q $MANILA_SERVICE_SECGROUP; do sleep 1; done"; then
+    # if ! openstack security group list | grep -q $MANILA_SERVICE_SECGROUP; then
+    if ! nova secgroup-list | grep -q $MANILA_SERVICE_SECGROUP; then
+        # openstack security group create $MANILA_SERVICE_SECGROUP --description "$MANILA_SERVICE_SECGROUP description"
+        nova secgroup-create $MANILA_SERVICE_SECGROUP "$MANILA_SERVICE_SECGROUP description"
+        # if ! timeout 30 sh -c "while ! openstack security group list | grep -q $MANILA_SERVICE_SECGROUP; do sleep 1; done"; then
+        if ! timeout 30 sh -c "while ! nova secgroup-list | grep -q $MANILA_SERVICE_SECGROUP; do sleep 1; done"; then
             echo "Security group not created"
             exit 1
         fi
@@ -425,7 +431,8 @@ function create_manila_service_secgroup {
     fi
 
     # List secgroup rules
-    openstack security group rule list $MANILA_SERVICE_SECGROUP
+    # openstack security group rule list $MANILA_SERVICE_SECGROUP
+    nova secgroup-list-rules $MANILA_SERVICE_SECGROUP
 }
 
 # create_manila_accounts - Set up common required manila accounts
