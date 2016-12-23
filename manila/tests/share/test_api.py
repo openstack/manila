@@ -596,6 +596,51 @@ class ShareAPITestCase(test.TestCase):
         self.assertSubDictMatch(share_data,
                                 db_api.share_create.call_args[0][1])
 
+    @ddt.data(
+        {},
+        {
+            constants.ExtraSpecs.SNAPSHOT_SUPPORT: True,
+        },
+        {
+            constants.ExtraSpecs.SNAPSHOT_SUPPORT: False,
+            constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT: False,
+        },
+        {
+            constants.ExtraSpecs.SNAPSHOT_SUPPORT: True,
+            constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT: False,
+        },
+        {
+            constants.ExtraSpecs.SNAPSHOT_SUPPORT: True,
+            constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT: True,
+        }
+    )
+    def test_create_default_snapshot_semantics(self, extra_specs):
+        share, share_data = self._setup_create_mocks(is_public=False)
+        az = share_data.pop('availability_zone')
+        share_type = fakes.fake_share_type(extra_specs=extra_specs)
+
+        self.api.create(
+            self.context,
+            share_data['share_proto'],
+            share_data['size'],
+            share_data['display_name'],
+            share_data['display_description'],
+            availability_zone=az,
+            share_type=share_type
+        )
+
+        share['status'] = constants.STATUS_CREATING
+        share['host'] = None
+
+        share_data.update(extra_specs)
+        if extra_specs.get('snapshot_support') is None:
+            share_data['snapshot_support'] = False
+        if extra_specs.get('create_share_from_snapshot_support') is None:
+            share_data['create_share_from_snapshot_support'] = False
+
+        self.assertSubDictMatch(share_data,
+                                db_api.share_create.call_args[0][1])
+
     @ddt.data('', 'fake', 'Truebar', 'Bartrue')
     def test_create_share_with_invalid_is_public_value(self, is_public):
         self.assertRaises(exception.InvalidParameterValue,
@@ -767,6 +812,40 @@ class ShareAPITestCase(test.TestCase):
         self.assertFalse(mock_scheduler_rpcapi_call.called)
         self.assertFalse(mock_share_rpcapi_call.called)
 
+    def test_get_share_attributes_from_share_type(self):
+
+        share_type = {
+            'extra_specs': {
+                'snapshot_support': True,
+                'create_share_from_snapshot_support': False,
+                'replication_type': 'dr',
+            }
+        }
+
+        result = self.api._get_share_attributes_from_share_type(share_type)
+
+        self.assertEqual(share_type['extra_specs'], result)
+
+    @ddt.data({}, {'extra_specs': {}}, None)
+    def test_get_share_attributes_from_share_type_defaults(self, share_type):
+
+        result = self.api._get_share_attributes_from_share_type(share_type)
+
+        expected = {
+            'snapshot_support': False,
+            'create_share_from_snapshot_support': False,
+            'replication_type': None,
+        }
+        self.assertEqual(expected, result)
+
+    @ddt.data({'extra_specs': {'snapshot_support': 'fake'}},
+              {'extra_specs': {'create_share_from_snapshot_support': 'fake'}})
+    def test_get_share_attributes_from_share_type_invalid(self, share_type):
+
+        self.assertRaises(exception.InvalidParameterValue,
+                          self.api._get_share_attributes_from_share_type,
+                          share_type)
+
     @ddt.data('dr', 'readable', None)
     def test_manage_new(self, replication_type):
         share_data = {
@@ -787,6 +866,7 @@ class ShareAPITestCase(test.TestCase):
             'extra_specs': {
                 'snapshot_support': False,
                 'replication_type': replication_type,
+                'create_share_from_snapshot_support': False,
             },
         }
 
@@ -811,6 +891,8 @@ class ShareAPITestCase(test.TestCase):
             'status': constants.STATUS_MANAGING,
             'scheduled_at': date,
             'snapshot_support': fake_type['extra_specs']['snapshot_support'],
+            'create_share_from_snapshot_support':
+                fake_type['extra_specs']['create_share_from_snapshot_support'],
             'replication_type': replication_type,
         })
 
@@ -841,6 +923,7 @@ class ShareAPITestCase(test.TestCase):
             'id': 'fake_type_id',
             'extra_specs': {
                 'snapshot_support': False,
+                'create_share_from_snapshot_support': False,
             },
         }
         shares = [{'id': 'fake', 'status': status}]
@@ -865,6 +948,10 @@ class ShareAPITestCase(test.TestCase):
             'snapshot_support': kwargs.get(
                 'snapshot_support',
                 share_type['extra_specs']['snapshot_support']),
+            'create_share_from_snapshot_support': kwargs.get(
+                'create_share_from_snapshot_support',
+                share_type['extra_specs']
+                ['create_share_from_snapshot_support']),
             'share_proto': kwargs.get('share_proto', share.get('share_proto')),
             'share_type_id': share_type['id'],
             'is_public': kwargs.get('is_public', share.get('is_public')),
@@ -2032,6 +2119,7 @@ class ShareAPITestCase(test.TestCase):
             'id': 'fake_type_id',
             'extra_specs': {
                 'snapshot_support': False,
+                'create_share_from_snapshot_support': False,
                 'driver_handles_share_servers': dhss,
             },
         }
@@ -2041,6 +2129,7 @@ class ShareAPITestCase(test.TestCase):
                 'id': 'fake_type_2_id',
                 'extra_specs': {
                     'snapshot_support': False,
+                    'create_share_from_snapshot_support': False,
                     'driver_handles_share_servers': dhss,
                 },
             }

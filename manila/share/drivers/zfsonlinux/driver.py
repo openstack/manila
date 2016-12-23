@@ -377,6 +377,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                 self.configuration.reserved_share_percentage,
             'consistency_group_support': None,
             'snapshot_support': True,
+            'create_share_from_snapshot_support': True,
             'driver_name': 'ZFS',
             'pools': self._get_pools_info(),
         }

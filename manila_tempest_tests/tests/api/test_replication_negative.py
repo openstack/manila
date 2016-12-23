@@ -48,7 +48,7 @@ class ReplicationNegativeTest(base.BaseSharesMixedTest):
         cls.share_zone = cls.zones[0]
         cls.replica_zone = cls.zones[-1]
 
-        cls.extra_specs = cls.add_required_extra_specs_to_dict(
+        cls.extra_specs = cls.add_extra_specs_to_dict(
             {"replication_type": cls.replication_type})
         share_type = cls.create_share_type(
             name,
@@ -80,7 +80,7 @@ class ReplicationNegativeTest(base.BaseSharesMixedTest):
         # Create share without replication type
         share_type = self.create_share_type(
             data_utils.rand_name(constants.TEMPEST_MANILA_PREFIX),
-            extra_specs=self.add_required_extra_specs_to_dict(),
+            extra_specs=self.add_extra_specs_to_dict(),
             client=self.admin_client)["share_type"]
         share = self.create_share(share_type_id=share_type["id"])
         self.assertRaises(lib_exc.BadRequest,

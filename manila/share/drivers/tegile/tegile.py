@@ -458,6 +458,7 @@ class TegileShareDriver(driver.ShareDriver):
             data['driver_version'] = VERSION
             data['storage_protocol'] = 'NFS_CIFS'
             data['snapshot_support'] = True
+            data['create_share_from_snapshot_support'] = True
             data['qos'] = False
 
             super(TegileShareDriver, self)._update_share_stats(data)

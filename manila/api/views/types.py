@@ -14,6 +14,7 @@
 # under the License.
 
 from manila.api import common
+from manila.common import constants
 from manila.share import share_types
 
 
@@ -24,6 +25,7 @@ class ViewBuilder(common.ViewBuilder):
     _detail_version_modifiers = [
         "add_is_public_attr_core_api_like",
         "add_is_public_attr_extension_like",
+        "add_inferred_optional_extra_specs",
     ]
 
     def show(self, request, share_type, brief=False):
@@ -63,6 +65,20 @@ class ViewBuilder(common.ViewBuilder):
                                           share_type):
         share_type_dict['os-share-type-access:is_public'] = share_type.get(
             'is_public', True)
+
+    @common.ViewBuilder.versioned_method("2.24")
+    def add_inferred_optional_extra_specs(self, context, share_type_dict,
+                                          share_type):
+
+        # NOTE(cknight): The admin sees exactly which extra specs have been set
+        # on the type, but in order to know how shares of a type will behave,
+        # the user must also see the default values of any public extra specs
+        # that aren't explicitly set on the type.
+        if not context.is_admin:
+            for extra_spec in constants.ExtraSpecs.INFERRED_OPTIONAL_MAP:
+                if extra_spec not in share_type_dict['extra_specs']:
+                    share_type_dict['extra_specs'][extra_spec] = (
+                        constants.ExtraSpecs.INFERRED_OPTIONAL_MAP[extra_spec])
 
     def index(self, request, share_types):
         """Index over trimmed share types."""

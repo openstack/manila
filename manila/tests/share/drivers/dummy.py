@@ -337,6 +337,7 @@ class DummyDriver(driver.ShareDriver):
                 self.configuration.reserved_share_percentage,
             "consistency_group_support": "pool",
             "snapshot_support": True,
+            "create_share_from_snapshot_support": True,
             "driver_name": "Dummy",
             "pools": self._get_pools_info(),
         }

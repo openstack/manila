@@ -58,20 +58,23 @@ class SharesActionsTest(base.BaseSharesTest):
             cls.snap = cls.create_snapshot_wait_for_active(
                 cls.shares[0]["id"], cls.snap_name, cls.snap_desc)
 
-            # create second share from snapshot for purposes of sorting and
-            # snapshot filtering
-            cls.share_name2 = data_utils.rand_name("tempest-share-name")
-            cls.share_desc2 = data_utils.rand_name("tempest-share-description")
-            cls.metadata2 = {
-                'foo_key_share_2': 'foo_value_share_2',
-                'bar_key_share_2': 'foo_value_share_2',
-            }
-            cls.shares.append(cls.create_share(
-                name=cls.share_name2,
-                description=cls.share_desc2,
-                metadata=cls.metadata2,
-                snapshot_id=cls.snap['id'],
-            ))
+            if CONF.share.capability_create_share_from_snapshot_support:
+
+                # create second share from snapshot for purposes of sorting and
+                # snapshot filtering
+                cls.share_name2 = data_utils.rand_name("tempest-share-name")
+                cls.share_desc2 = data_utils.rand_name(
+                    "tempest-share-description")
+                cls.metadata2 = {
+                    'foo_key_share_2': 'foo_value_share_2',
+                    'bar_key_share_2': 'foo_value_share_2',
+                }
+                cls.shares.append(cls.create_share(
+                    name=cls.share_name2,
+                    description=cls.share_desc2,
+                    metadata=cls.metadata2,
+                    snapshot_id=cls.snap['id'],
+                ))
 
     def _get_share(self, version):
 
@@ -101,6 +104,8 @@ class SharesActionsTest(base.BaseSharesTest):
             expected_keys.append("replication_type")
         if utils.is_microversion_ge(version, '2.16'):
             expected_keys.append("user_id")
+        if utils.is_microversion_ge(version, '2.24'):
+            expected_keys.append("create_share_from_snapshot_support")
         actual_keys = list(share.keys())
         [self.assertIn(key, actual_keys) for key in expected_keys]
 
@@ -158,6 +163,11 @@ class SharesActionsTest(base.BaseSharesTest):
         self._get_share('2.16')
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    @utils.skip_if_microversion_not_supported('2.24')
+    def test_get_share_with_create_share_from_snapshot_support(self):
+        self._get_share('2.24')
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_list_shares(self):
 
         # list shares
@@ -201,6 +211,8 @@ class SharesActionsTest(base.BaseSharesTest):
             keys.append("replication_type")
         if utils.is_microversion_ge(version, '2.16'):
             keys.append("user_id")
+        if utils.is_microversion_ge(version, '2.24'):
+            keys.append("create_share_from_snapshot_support")
         [self.assertIn(key, sh.keys()) for sh in shares for key in keys]
 
         # our shares in list and have no duplicates
@@ -248,6 +260,11 @@ class SharesActionsTest(base.BaseSharesTest):
         self._list_shares_with_detail('2.16')
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    def test_list_shares_with_detail_and_create_share_from_snapshot_support(
+            self):
+        self._list_shares_with_detail('2.24')
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_list_shares_with_detail_filter_by_metadata(self):
         filters = {'metadata': self.metadata}
 
@@ -259,7 +276,7 @@ class SharesActionsTest(base.BaseSharesTest):
         for share in shares:
             self.assertDictContainsSubset(
                 filters['metadata'], share['metadata'])
-        if CONF.share.run_snapshot_tests:
+        if CONF.share.capability_create_share_from_snapshot_support:
             self.assertFalse(self.shares[1]['id'] in [s['id'] for s in shares])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
@@ -294,6 +311,9 @@ class SharesActionsTest(base.BaseSharesTest):
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
+    @testtools.skipUnless(
+        CONF.share.capability_create_share_from_snapshot_support,
+        "Create share from snapshot tests are disabled.")
     def test_list_shares_with_detail_filter_by_snapshot_id(self):
         filters = {'snapshot_id': self.snap['id']}
 

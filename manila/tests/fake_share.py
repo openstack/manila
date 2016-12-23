@@ -76,7 +76,6 @@ def fake_share_type(**kwargs):
         'is_public': False,
         'extra_specs': {
             'driver_handles_share_servers': 'False',
-            'snapshot_support': 'True',
         }
     }
 

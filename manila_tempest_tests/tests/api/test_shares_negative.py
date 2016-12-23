@@ -60,6 +60,9 @@ class SharesNegativeTest(base.BaseSharesTest):
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
+    @testtools.skipUnless(
+        CONF.share.capability_create_share_from_snapshot_support,
+        "Create share from snapshot tests are disabled.")
     def test_create_share_from_snap_with_less_size(self):
         # requires minimum 5Gb available space
 
@@ -96,7 +99,13 @@ class SharesNegativeTest(base.BaseSharesTest):
                       "Only for multitenancy.")
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
+    @testtools.skipUnless(
+        CONF.share.capability_create_share_from_snapshot_support,
+        "Create share from snapshot tests are disabled.")
     def test_create_share_from_snap_with_different_share_network(self):
+        # We can't create a share from a snapshot whose base share does not
+        # have 'create_share_from_snapshot_support'.
+
         # create share
         share = self.create_share(cleanup_in_class=False)
 

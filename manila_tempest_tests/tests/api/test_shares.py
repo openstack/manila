@@ -92,6 +92,12 @@ class SharesNFSTest(base.BaseSharesTest):
             detailed_elements.add('user_id')
             self.assertTrue(detailed_elements.issubset(share.keys()), msg)
 
+        # In v 2.24 and beyond, we add create_share_from_snapshot_support in
+        # show/create/manage share echo.
+        if utils.is_microversion_supported('2.24'):
+            detailed_elements.add('create_share_from_snapshot_support')
+            self.assertTrue(detailed_elements.issubset(share.keys()), msg)
+
         # Delete share
         self.shares_v2_client.delete_share(share['id'])
         self.shares_v2_client.wait_for_resource_deletion(share_id=share['id'])
@@ -136,6 +142,9 @@ class SharesNFSTest(base.BaseSharesTest):
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
+    @testtools.skipUnless(
+        CONF.share.capability_create_share_from_snapshot_support,
+        "Create share from snapshot tests are disabled.")
     def test_create_share_from_snapshot(self):
         # If multitenant driver used, share_network will be provided by default
 
@@ -164,9 +173,13 @@ class SharesNFSTest(base.BaseSharesTest):
                       "Only for multitenancy.")
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
+    @testtools.skipUnless(
+        CONF.share.capability_create_share_from_snapshot_support,
+        "Create share from snapshot tests are disabled.")
     def test_create_share_from_snapshot_share_network_not_provided(self):
         # We expect usage of share network from parent's share
-        # when creating share from snapshot using multitenant driver.
+        # when creating share from snapshot using a driver that supports
+        # multi-tenancy.
 
         # get parent share
         parent = self.shares_client.get_share(self.share["id"])

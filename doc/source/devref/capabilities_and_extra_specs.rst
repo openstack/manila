@@ -1,3 +1,5 @@
+.. _capabilities_and_extra_specs:
+
 Capabilities and Extra-Specs
 ============================
 Manila Administrators create share types with extra-specs to allow users
@@ -86,7 +88,8 @@ indicator of vendor capabilities vs. common capabilities.
 Common Capabilities
 -------------------
 For capabilities that apply to multiple backends a common capability can
-be created.
+be created. Like all other backend reported capabilities, these capabilities
+can be used verbatim as extra_specs in share types used to create shares.
 
 * `driver_handles_share_servers` is a special, required, user-visible common
   capability. Added in Kilo.
@@ -156,6 +159,19 @@ be created.
   the `active` replica can be mounted, read from and written into. Added in
   Mitaka.
 
+* `snapshot_support` - indicates whether snapshots are supported for shares
+  created on the pool/backend. When administrators do not set this capability
+  as an extra-spec in a share type, the scheduler can place new shares of that
+  type in pools without regard for whether snapshots are supported, and those
+  shares will not support snapshots.
+
+* `create_share_from_snapshot_support` - indicates whether a backend can create
+  a new share from a snapshot. When administrators do not set this capability
+  as an extra-spec in a share type, the scheduler can place new shares of that
+  type in pools without regard for whether creating shares from snapshots is
+  supported, and those shares will not support creating shares from snapshots.
+
+
 Reporting Capabilities
 ----------------------
 Drivers report capabilities as part of the updated stats (e.g. capacity)
@@ -174,47 +190,54 @@ example vendor prefix:
 ::
 
     {
-        'driver_handles_share_servers': 'False', #\
-        'share_backend_name': 'My Backend',      # backend level
-        'vendor_name': 'MY',                     # mandatory/fixed
-        'driver_version': '1.0',                 # stats & capabilities
-        'storage_protocol': 'NFS_CIFS',          #/
-                                                 #\
-        'my_capability_1': 'custom_val',         # "my" optional vendor
-        'my_capability_2': True,                 # stats & capabilities
-                                                 #/
+        'driver_handles_share_servers': 'False',  #\
+        'share_backend_name': 'My Backend',       # backend level
+        'vendor_name': 'MY',                      # mandatory/fixed
+        'driver_version': '1.0',                  # stats & capabilities
+        'storage_protocol': 'NFS_CIFS',           #/
+                                                  #\
+        'my_capability_1': 'custom_val',          # "my" optional vendor
+        'my_capability_2': True,                  # stats & capabilities
+                                                  #/
         'pools': [
             {'pool_name':
-               'thin-dedupe-compression pool',   #\
-             'total_capacity_gb': 500,           #  mandatory stats for
-             'free_capacity_gb': 230,            #  pools
-             'reserved_percentage': 0,           #/
-                                                 #\
-             'dedupe': True,                     # common capabilities
-             'compression': True,                #
-             'qos': True,                        # this backend supports QoS
-             'thin_provisioning': True,          #
-             'max_over_subscription_ratio': 10,  # (mandatory for thin)
-             'provisioned_capacity_gb': 270,     # (mandatory for thin)
-                                                 #
-                                                 #
-             'replication_type': 'dr',           # this backend supports
-                                                 # replication_type 'dr'
-                                                 #/
-             'my_dying_disks': 100,              #\
-             'my_super_hero_1': 'Hulk',          #  "my" optional vendor
-             'my_super_hero_2': 'Spider-Man',    #  stats & capabilities
-                                                 #/
-                                                 #\
-                                                 # can replicate to other
-             'replication_domain': 'asgard',     # backends in
-                                                 # replication_domain 'asgard'
-                                                 #/
+               'thin-dedupe-compression pool',    #\
+             'total_capacity_gb': 500,            #  mandatory stats for
+             'free_capacity_gb': 230,             #  pools
+             'reserved_percentage': 0,            #/
+                                                  #\
+             'dedupe': True,                      # common capabilities
+             'compression': True,                 #
+             'snapshot_support': True,            #
+             'create_share_from_snapshot_support': True,
+             'qos': True,                         # this backend supports QoS
+             'thin_provisioning': True,           #
+             'max_over_subscription_ratio': 10,   # (mandatory for thin)
+             'provisioned_capacity_gb': 270,      # (mandatory for thin)
+                                                  #
+                                                  #
+             'replication_type': 'dr',            # this backend supports
+                                                  # replication_type 'dr'
+                                                  #/
+             'my_dying_disks': 100,               #\
+             'my_super_hero_1': 'Hulk',           #  "my" optional vendor
+             'my_super_hero_2': 'Spider-Man',     #  stats & capabilities
+                                                  #/
+                                                  #\
+                                                  # can replicate to other
+             'replication_domain': 'asgard',      # backends in
+                                                  # replication_domain 'asgard'
+                                                  #/
             },
             {'pool_name': 'thick pool',
              'total_capacity_gb': 1024,
              'free_capacity_gb': 1024,
              'qos': False,
+             'snapshot_support': True,
+             'create_share_from_snapshot_support': False, # this pool does not
+                                                          # allow creating
+                                                          # shares from
+                                                          # snapshots
              'reserved_percentage': 0,
              'dedupe': False,
              'compression': False,

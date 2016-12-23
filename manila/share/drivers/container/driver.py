@@ -110,6 +110,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
                 self.configuration.reserved_share_percentage,
             'consistency_group_support': None,
             'snapshot_support': False,
+            'create_share_from_snapshot_support': False,
             'driver_name': 'ContainerShareDriver',
             'pools': self.storage.get_share_server_pools()
         }

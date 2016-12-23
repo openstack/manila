@@ -727,17 +727,30 @@ class BaseSharesTest(test.BaseTestCase):
         return share_type
 
     @staticmethod
-    def add_required_extra_specs_to_dict(extra_specs=None):
+    def add_extra_specs_to_dict(extra_specs=None):
+        """Add any required extra-specs to share type dictionary"""
         dhss = six.text_type(CONF.share.multitenancy_enabled)
         snapshot_support = six.text_type(
             CONF.share.capability_snapshot_support)
-        required = {
+        create_from_snapshot_support = six.text_type(
+            CONF.share.capability_create_share_from_snapshot_support)
+
+        extra_specs_dict = {
             "driver_handles_share_servers": dhss,
-            "snapshot_support": snapshot_support,
         }
+
+        optional = {
+            "snapshot_support": snapshot_support,
+            "create_share_from_snapshot_support": create_from_snapshot_support,
+        }
+        # NOTE(gouthamr): In micro-versions < 2.24, snapshot_support is a
+        # required extra-spec
+        extra_specs_dict.update(optional)
+
         if extra_specs:
-            required.update(extra_specs)
-        return required
+            extra_specs_dict.update(extra_specs)
+
+        return extra_specs_dict
 
     @classmethod
     def clear_isolated_creds(cls, creds=None):

@@ -2424,6 +2424,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             "free_capacity_gb": 0.0,
             "qos": True,
             "snapshot_support": snapshot_support,
+            "create_share_from_snapshot_support": snapshot_support,
             "replication_domain": None,
             "filter_function": None,
             "goodness_function": None,

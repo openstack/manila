@@ -357,7 +357,7 @@ class FilterScheduler(base.Scheduler):
         share_type['extra_specs'] = share_type.get('extra_specs', {})
 
         if share_type['extra_specs']:
-            for spec_name in share_types.get_undeletable_extra_specs():
+            for spec_name in share_types.get_required_extra_specs():
                 extra_spec = share_type['extra_specs'].get(spec_name)
 
                 if extra_spec is not None:

@@ -77,6 +77,10 @@ MANILA_CONF=${MANILA_CONF:-/etc/manila/manila.conf}
 RUN_MANILA_REPLICATION_TESTS=${RUN_MANILA_REPLICATION_TESTS:-False}
 iniset $TEMPEST_CONFIG share run_replication_tests $RUN_MANILA_REPLICATION_TESTS
 
+# Capability "create_share_from_snapshot_support"
+CAPABILITY_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT=${CAPABILITY_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT:-True}
+iniset $TEMPEST_CONFIG share capability_create_share_from_snapshot_support $CAPABILITY_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT
+
 if [[ -z "$MULTITENANCY_ENABLED" ]]; then
     # Define whether share drivers handle share servers or not.
     # Requires defined config option 'driver_handles_share_servers'.
@@ -163,6 +167,7 @@ if [[ "$DRIVER" == "lvm" ]]; then
     iniset $TEMPEST_CONFIG share image_with_share_tools 'manila-service-image-master'
     iniset $TEMPEST_CONFIG auth use_dynamic_credentials True
     iniset $TEMPEST_CONFIG share capability_snapshot_support True
+    iniset $TEMPEST_CONFIG share capability_create_share_from_snapshot_support True
     if ! grep $USERNAME_FOR_USER_RULES "/etc/passwd"; then
         sudo useradd $USERNAME_FOR_USER_RULES
     fi
@@ -190,6 +195,7 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     iniset $TEMPEST_CONFIG share enable_ro_access_level_for_protocols 'nfs'
     iniset $TEMPEST_CONFIG share build_timeout 180
     iniset $TEMPEST_CONFIG share share_creation_retry_number 0
+    iniset $TEMPEST_CONFIG share capability_create_share_from_snapshot_support True
     iniset $TEMPEST_CONFIG share capability_storage_protocol 'NFS'
     iniset $TEMPEST_CONFIG share enable_protocols 'nfs'
     iniset $TEMPEST_CONFIG share suppress_errors_in_cleanup False
@@ -214,6 +220,7 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     iniset $TEMPEST_CONFIG share enable_ro_access_level_for_protocols 'nfs,cifs'
     iniset $TEMPEST_CONFIG share build_timeout 180
     iniset $TEMPEST_CONFIG share share_creation_retry_number 0
+    iniset $TEMPEST_CONFIG share capability_create_share_from_snapshot_support True
     iniset $TEMPEST_CONFIG share capability_storage_protocol 'NFS_CIFS'
     iniset $TEMPEST_CONFIG share enable_protocols 'nfs,cifs'
     iniset $TEMPEST_CONFIG share suppress_errors_in_cleanup False
@@ -230,6 +237,7 @@ elif [[ "$DRIVER" == "container" ]]; then
     iniset $TEMPEST_CONFIG share run_replication_tests False
     iniset $TEMPEST_CONFIG share run_shrink_tests False
     iniset $TEMPEST_CONFIG share run_snapshot_tests False
+    iniset $TEMPEST_CONFIG share capability_create_share_from_snapshot_support False
     iniset $TEMPEST_CONFIG share capability_storage_protocol 'CIFS'
     iniset $TEMPEST_CONFIG share enable_protocols 'cifs'
     iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'

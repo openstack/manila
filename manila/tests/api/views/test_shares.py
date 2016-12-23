@@ -13,36 +13,69 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
+
 from manila.api.views import shares
 from manila import test
+from manila.tests.api.contrib import stubs
 from manila.tests.api import fakes
 
 
+@ddt.ddt
 class ViewBuilderTestCase(test.TestCase):
 
     def setUp(self):
         super(ViewBuilderTestCase, self).setUp()
         self.builder = shares.ViewBuilder()
-        self.req = fakes.HTTPRequest.blank('/shares', version="2.6")
+        self.fake_share = self._get_fake_share()
+
+    def _get_fake_share(self):
+
+        fake_share = {
+            'share_type_id': 'fake_share_type_id',
+            'share_type': {
+                'name': 'fake_share_type_name',
+            },
+            'export_location': 'fake_export_location',
+            'export_locations': ['fake_export_location'],
+            'access_rules_status': 'fake_rule_status',
+            'instance': {},
+            'replication_type': 'fake_replication_type',
+            'has_replicas': False,
+            'user_id': 'fake_userid',
+            'snapshot_support': True,
+            'create_share_from_snapshot_support': True,
+        }
+        return stubs.stub_share('fake_id', **fake_share)
 
     def test__collection_name(self):
         self.assertEqual('shares', self.builder._collection_name)
 
-    def test_detail_v_2_6(self):
-        fake_share = {
-            'id': 'fake_id',
-            'share_type_id': 'fake_share_type_id',
-            'share_type': {'name': 'fake_share_type_name'},
-            'instance': {},
+    @ddt.data('2.6', '2.9', '2.10', '2.11', '2.16', '2.24')
+    def test_detail(self, microversion):
+        req = fakes.HTTPRequest.blank('/shares', version=microversion)
+
+        result = self.builder.detail(req, self.fake_share)
+
+        expected = {
+            'id': self.fake_share['id'],
+            'share_type': self.fake_share['share_type_id'],
+            'share_type_name': self.fake_share['share_type']['name'],
+            'export_location': 'fake_export_location',
+            'export_locations': ['fake_export_location'],
+            'snapshot_support': True,
         }
+        if self.is_microversion_ge(microversion, '2.9'):
+            expected.pop('export_location')
+            expected.pop('export_locations')
+        if self.is_microversion_ge(microversion, '2.10'):
+            expected['access_rules_status'] = 'fake_rule_status'
+        if self.is_microversion_ge(microversion, '2.11'):
+            expected['replication_type'] = 'fake_replication_type'
+            expected['has_replicas'] = False
+        if self.is_microversion_ge(microversion, '2.16'):
+            expected['user_id'] = 'fake_userid'
+        if self.is_microversion_ge(microversion, '2.24'):
+            expected['create_share_from_snapshot_support'] = True
 
-        actual_result = self.builder.detail(self.req, fake_share)
-
-        self.assertSubDictMatch(
-            {
-                'id': fake_share['id'],
-                'share_type': fake_share['share_type_id'],
-                'share_type_name': fake_share['share_type']['name'],
-            },
-            actual_result['share']
-        )
+        self.assertSubDictMatch(expected, result['share'])

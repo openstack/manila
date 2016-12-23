@@ -23,6 +23,7 @@ from webob import exc
 
 from manila.api.openstack import wsgi
 from manila.api.views import types as views_types
+from manila.common import constants
 from manila import exception
 from manila.i18n import _
 from manila import rpc
@@ -127,9 +128,18 @@ class ShareTypesController(wsgi.Controller):
                 msg = _('Invalid is_public filter [%s]') % is_public
                 raise exc.HTTPBadRequest(explanation=msg)
 
+    @wsgi.Controller.api_version("1.0", "2.23")
     @wsgi.action("create")
+    def create(self, req, body):
+        return self._create(req, body, set_defaults=True)
+
+    @wsgi.Controller.api_version("2.24")  # noqa
+    @wsgi.action("create")
+    def create(self, req, body):  # pylint: disable=E0102
+        return self._create(req, body, set_defaults=False)
+
     @wsgi.Controller.authorize('create')
-    def _create(self, req, body):
+    def _create(self, req, body, set_defaults=False):
         """Creates a new share type."""
         context = req.environ['manila.context']
 
@@ -152,14 +162,16 @@ class ShareTypesController(wsgi.Controller):
             msg = _("Type name is not valid.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
+        # Note(cknight): Set the default extra spec value for snapshot_support
+        # for API versions before it was required.
+        if set_defaults:
+            if constants.ExtraSpecs.SNAPSHOT_SUPPORT not in specs:
+                specs[constants.ExtraSpecs.SNAPSHOT_SUPPORT] = True
+
         try:
             required_extra_specs = (
                 share_types.get_valid_required_extra_specs(specs)
             )
-        except exception.InvalidExtraSpec as e:
-            raise webob.exc.HTTPBadRequest(explanation=six.text_type(e))
-
-        try:
             share_types.create(context, name, specs, is_public)
             share_type = share_types.get_share_type_by_name(context, name)
             share_type['required_extra_specs'] = required_extra_specs
@@ -168,6 +180,8 @@ class ShareTypesController(wsgi.Controller):
             rpc.get_notifier('shareType').info(
                 context, 'share_type.create', notifier_info)
 
+        except exception.InvalidExtraSpec as e:
+            raise webob.exc.HTTPBadRequest(explanation=six.text_type(e))
         except exception.ShareTypeExists as err:
             notifier_err = dict(share_types=share_type,
                                 error_message=six.text_type(err))

@@ -30,7 +30,7 @@ ShareGroup = [
                help="The minimum api microversion is configured to be the "
                     "value of the minimum microversion supported by Manila."),
     cfg.StrOpt("max_api_microversion",
-               default="2.23",
+               default="2.24",
                help="The maximum api microversion is configured to be the "
                     "value of the latest microversion supported by Manila."),
     cfg.StrOpt("region",
@@ -96,6 +96,13 @@ ShareGroup = [
                      "capability called 'snapshot_support' and will be used "
                      "for setting up custom share type. Defaults to value of "
                      "other config option 'run_snapshot_tests'."),
+    cfg.BoolOpt("capability_create_share_from_snapshot_support",
+                help="Defines extra spec that satisfies specific back end "
+                     "capability called 'create_share_from_snapshot_support' "
+                     "and will be used for setting up a custom share type. "
+                     "Defaults to the value of run_snapshot_tests. Set it to "
+                     "False if the driver being tested does not support "
+                     "creating shares from snapshots."),
 
     cfg.StrOpt("share_network_id",
                default="",

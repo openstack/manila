@@ -40,11 +40,9 @@ def create(context, name, extra_specs=None, is_public=True, projects=None):
     extra_specs = extra_specs or {}
     projects = projects or []
 
-    if constants.ExtraSpecs.SNAPSHOT_SUPPORT not in list(extra_specs):
-        extra_specs[constants.ExtraSpecs.SNAPSHOT_SUPPORT] = 'True'
-
     try:
         get_valid_required_extra_specs(extra_specs)
+        get_valid_optional_extra_specs(extra_specs)
     except exception.InvalidExtraSpec as e:
         raise exception.InvalidShareType(reason=six.text_type(e))
 
@@ -198,8 +196,8 @@ def get_required_extra_specs():
     return constants.ExtraSpecs.REQUIRED
 
 
-def get_undeletable_extra_specs():
-    return constants.ExtraSpecs.UNDELETABLE
+def get_optional_extra_specs():
+    return constants.ExtraSpecs.OPTIONAL
 
 
 def get_tenant_visible_extra_specs():
@@ -228,10 +226,10 @@ def is_valid_required_extra_spec(key, value):
 
 
 def get_valid_required_extra_specs(extra_specs):
-    """Returns required extra specs from dict.
+    """Validates and returns required extra specs from dict.
 
-    Returns None if extra specs are not valid, or if
-    some required extras specs is missed.
+    Raises InvalidExtraSpec if extra specs are not valid, or if any required
+    extra specs are missing.
     """
     extra_specs = extra_specs or {}
 
@@ -255,6 +253,50 @@ def get_valid_required_extra_specs(extra_specs):
     return required_extra_specs
 
 
+def is_valid_optional_extra_spec(key, value):
+    """Validates optional but standardized extra_spec value.
+
+    :param key: extra_spec name
+    :param value: extra_spec value
+    :return: None if provided extra_spec is not required
+             True/False if extra_spec is required and valid or not.
+    """
+    if key not in get_optional_extra_specs():
+        return
+
+    if key == constants.ExtraSpecs.SNAPSHOT_SUPPORT:
+        return parse_boolean_extra_spec(key, value) is not None
+    elif key == constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT:
+        return parse_boolean_extra_spec(key, value) is not None
+    elif key == constants.ExtraSpecs.REPLICATION_TYPE_SPEC:
+        return value in constants.ExtraSpecs.REPLICATION_TYPES
+
+    return False
+
+
+def get_valid_optional_extra_specs(extra_specs):
+    """Validates and returns optional/standard extra specs from dict.
+
+    Raises InvalidExtraSpec if extra specs are not valid.
+    """
+
+    extra_specs = extra_specs or {}
+    present_optional_extra_spec_keys = set(extra_specs).intersection(
+        set(get_optional_extra_specs()))
+
+    optional_extra_specs = {}
+
+    for key in present_optional_extra_spec_keys:
+        value = extra_specs.get(key, '')
+        if not is_valid_optional_extra_spec(key, value):
+            msg = _("Value of optional extra_spec %s is not valid.") % key
+            raise exception.InvalidExtraSpec(reason=msg)
+
+        optional_extra_specs[key] = value
+
+    return optional_extra_specs
+
+
 def add_share_type_access(context, share_type_id, project_id):
     """Add access to share type for project_id."""
     if share_type_id is None:
@@ -271,49 +313,6 @@ def remove_share_type_access(context, share_type_id, project_id):
     return db.share_type_access_remove(context, share_type_id, project_id)
 
 
-def share_types_diff(context, share_type_id1, share_type_id2):
-    """Returns a 'diff' of two share types and whether they are equal.
-
-    Returns a tuple of (diff, equal), where 'equal' is a boolean indicating
-    whether there is any difference, and 'diff' is a dictionary with the
-    following format:
-    {'extra_specs': {
-    'key1': (value_in_1st_share_type, value_in_2nd_share_type),
-    'key2': (value_in_1st_share_type, value_in_2nd_share_type),
-    ...}
-    """
-
-    def _dict_diff(dict1, dict2):
-        res = {}
-        equal = True
-        if dict1 is None:
-            dict1 = {}
-        if dict2 is None:
-            dict2 = {}
-        for k, v in dict1.items():
-            res[k] = (v, dict2.get(k))
-            if k not in dict2 or res[k][0] != res[k][1]:
-                equal = False
-        for k, v in dict2.items():
-            res[k] = (dict1.get(k), v)
-            if k not in dict1 or res[k][0] != res[k][1]:
-                equal = False
-        return (res, equal)
-
-    all_equal = True
-    diff = {}
-    share_type1 = get_share_type(context, share_type_id1)
-    share_type2 = get_share_type(context, share_type_id2)
-
-    extra_specs1 = share_type1.get('extra_specs')
-    extra_specs2 = share_type2.get('extra_specs')
-    diff['extra_specs'], equal = _dict_diff(extra_specs1, extra_specs2)
-    if not equal:
-        all_equal = False
-
-    return (diff, all_equal)
-
-
 def get_extra_specs_from_share(share):
     type_id = share.get('share_type_id', None)
     return get_share_type_extra_specs(type_id)
@@ -326,18 +325,16 @@ def parse_boolean_extra_spec(extra_spec_key, extra_spec_value):
     the value does not conform to the standard boolean pattern, it raises
     an InvalidExtraSpec exception.
     """
+    if not isinstance(extra_spec_value, six.string_types):
+        extra_spec_value = six.text_type(extra_spec_value)
 
+    match = re.match(r'^<is>\s*(?P<value>True|False)$',
+                     extra_spec_value.strip(),
+                     re.IGNORECASE)
+    if match:
+        extra_spec_value = match.group('value')
     try:
-        if not isinstance(extra_spec_value, six.string_types):
-            raise ValueError
-
-        match = re.match(r'^<is>\s*(?P<value>True|False)$',
-                         extra_spec_value.strip(),
-                         re.IGNORECASE)
-        if not match:
-            raise ValueError
-        else:
-            return strutils.bool_from_string(match.group('value'), strict=True)
+        return strutils.bool_from_string(extra_spec_value, strict=True)
     except ValueError:
         msg = (_('Invalid boolean extra spec %(key)s : %(value)s') %
                {'key': extra_spec_key, 'value': extra_spec_value})

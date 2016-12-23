@@ -15,10 +15,16 @@
 
 import copy
 
+import ddt
+from tempest import config
 from tempest.lib.common.utils import data_utils
 from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
+
+
+CONF = config.CONF
+LATEST_MICROVERSION = CONF.share.max_api_microversion
 
 
 class ExtraSpecsReadAdminTest(base.BaseSharesAdminTest):
@@ -27,7 +33,7 @@ class ExtraSpecsReadAdminTest(base.BaseSharesAdminTest):
     def resource_setup(cls):
         super(ExtraSpecsReadAdminTest, cls).resource_setup()
         cls.share_type_name = data_utils.rand_name("share-type")
-        cls.required_extra_specs = cls.add_required_extra_specs_to_dict()
+        cls.required_extra_specs = cls.add_extra_specs_to_dict()
 
         cls.share_type = cls.create_share_type(
             cls.share_type_name, extra_specs=cls.required_extra_specs)
@@ -54,11 +60,12 @@ class ExtraSpecsReadAdminTest(base.BaseSharesAdminTest):
         self.assertEqual(self.expected_extra_specs, es_get_all)
 
 
+@ddt.ddt
 class ExtraSpecsWriteAdminTest(base.BaseSharesAdminTest):
 
     def setUp(self):
         super(ExtraSpecsWriteAdminTest, self).setUp()
-        self.required_extra_specs = self.add_required_extra_specs_to_dict()
+        self.required_extra_specs = self.add_extra_specs_to_dict()
         self.custom_extra_specs = {"key1": "value1", "key2": "value2"}
         self.share_type_name = data_utils.rand_name("share-type")
 
@@ -109,3 +116,17 @@ class ExtraSpecsWriteAdminTest(base.BaseSharesAdminTest):
         get = self.shares_client.get_share_type_extra_specs(self.st_id)
 
         self.assertNotIn('key1', get)
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    @ddt.data(*set(['2.24', LATEST_MICROVERSION]))
+    def test_delete_snapshot_support_extra_spec(self, version):
+        self.skip_if_microversion_not_supported(version)
+        # Delete one extra spec for share type
+        self.shares_v2_client.delete_share_type_extra_spec(
+            self.st_id, 'snapshot_support', version=version)
+
+        # Get metadata
+        share_type_extra_specs = self.shares_client.get_share_type_extra_specs(
+            self.st_id)
+
+        self.assertNotIn('snapshot_support', share_type_extra_specs)

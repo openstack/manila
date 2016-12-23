@@ -51,7 +51,7 @@ class ReplicationTest(base.BaseSharesMixedTest):
         cls.share_zone = cls.zones[0]
         cls.replica_zone = cls.zones[-1]
 
-        cls.extra_specs = cls.add_required_extra_specs_to_dict(
+        cls.extra_specs = cls.add_extra_specs_to_dict(
             {"replication_type": cls.replication_type})
         share_type = cls.create_share_type(
             name,
@@ -307,7 +307,7 @@ class ReplicationActionsTest(base.BaseSharesMixedTest):
         cls.share_zone = cls.zones[0]
         cls.replica_zone = cls.zones[-1]
 
-        cls.extra_specs = cls.add_required_extra_specs_to_dict(
+        cls.extra_specs = cls.add_extra_specs_to_dict(
             {"replication_type": cls.replication_type})
         share_type = cls.create_share_type(
             name,

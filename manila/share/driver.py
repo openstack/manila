@@ -908,16 +908,27 @@ class ShareDriver(object):
     @property
     def snapshots_are_supported(self):
         if not hasattr(self, '_snapshots_are_supported'):
-            methods = (
-                "create_snapshot",
-                "delete_snapshot",
-                "create_share_from_snapshot")
+            methods = ('create_snapshot', 'delete_snapshot')
             # NOTE(vponomaryov): calculate default value for
             # stat 'snapshot_support' based on implementation of
             # appropriate methods of this base driver class.
             self._snapshots_are_supported = self._has_redefined_driver_methods(
                 methods)
         return self._snapshots_are_supported
+
+    @property
+    def creating_shares_from_snapshots_is_supported(self):
+        """Calculate default value for create_share_from_snapshot_support."""
+
+        if not hasattr(self, '_creating_shares_from_snapshots_is_supported'):
+            methods = ('create_share_from_snapshot', )
+            self._creating_shares_from_snapshots_is_supported = (
+                self._has_redefined_driver_methods(methods))
+
+        return (
+            self._creating_shares_from_snapshots_is_supported and
+            self.snapshots_are_supported
+        )
 
     def _update_share_stats(self, data=None):
         """Retrieve stats info from share group.
@@ -944,6 +955,8 @@ class ShareDriver(object):
             qos=False,
             pools=self.pools or None,
             snapshot_support=self.snapshots_are_supported,
+            create_share_from_snapshot_support=(
+                self.creating_shares_from_snapshots_is_supported),
             replication_domain=self.replication_domain,
             filter_function=self.get_filter_function(),
             goodness_function=self.get_goodness_function(),

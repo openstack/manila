@@ -43,8 +43,7 @@ class ShareDriverWithExecuteMixin(driver.ShareDriver, driver.ExecuteMixin):
 
 @ddt.ddt
 class ShareDriverTestCase(test.TestCase):
-    _SNAPSHOT_METHOD_NAMES = ["create_snapshot", "delete_snapshot",
-                              "create_share_from_snapshot"]
+    _SNAPSHOT_METHOD_NAMES = ["create_snapshot", "delete_snapshot"]
 
     def setUp(self):
         super(ShareDriverTestCase, self).setUp()
@@ -257,7 +256,6 @@ class ShareDriverTestCase(test.TestCase):
         child_methods = {
             "create_snapshot": fake_method,
             "delete_snapshot": fake_method,
-            "create_share_from_snapshot": fake_method,
         }
         child_class_instance = type(
             "NotRedefined", (driver.ShareDriver, ), child_methods)(True)
@@ -272,11 +270,8 @@ class ShareDriverTestCase(test.TestCase):
         ([], [], False),
         (_SNAPSHOT_METHOD_NAMES, [], True),
         (_SNAPSHOT_METHOD_NAMES, _SNAPSHOT_METHOD_NAMES, True),
-        (_SNAPSHOT_METHOD_NAMES[0:1], _SNAPSHOT_METHOD_NAMES[1:],
-            True),
+        (_SNAPSHOT_METHOD_NAMES[0:1], _SNAPSHOT_METHOD_NAMES[1:], True),
         ([], _SNAPSHOT_METHOD_NAMES, True),
-        (_SNAPSHOT_METHOD_NAMES[0:1], _SNAPSHOT_METHOD_NAMES[1:2],
-            False),
     )
     @ddt.unpack
     def test_check_redefined_driver_methods(self, common_drv_meth_names,
@@ -308,14 +303,7 @@ class ShareDriverTestCase(test.TestCase):
         (),
         ("create_snapshot"),
         ("delete_snapshot"),
-        ("create_share_from_snapshot"),
-        ("create_snapshot", "delete_snapshot"),
-        ("create_snapshot", "create_share_from_snapshot"),
-        ("delete_snapshot", "create_share_from_snapshot"),
-        ("create_snapshot", "delete_snapshot",
-         "create_share_from_snapshotFOO"),
-        ("create_snapshot", "delete_snapshot",
-         "FOOcreate_share_from_snapshot"),
+        ("create_snapshot", "delete_snapshotFOO"),
     )
     def test_snapshot_support_absent(self, methods):
         driver.CONF.set_default('driver_handles_share_servers', True)
@@ -329,8 +317,7 @@ class ShareDriverTestCase(test.TestCase):
 
         child_class_instance._update_share_stats()
 
-        self.assertEqual(
-            False, child_class_instance._stats["snapshot_support"])
+        self.assertFalse(child_class_instance._stats["snapshot_support"])
         self.assertTrue(child_class_instance.configuration.safe_get.called)
 
     @ddt.data(True, False)
@@ -357,7 +344,6 @@ class ShareDriverTestCase(test.TestCase):
         child_methods = {
             "create_snapshot": fake_method,
             "delete_snapshot": fake_method,
-            "create_share_from_snapshot": fake_method,
         }
         child_class_instance = type(
             "NotRedefined", (driver.ShareDriver, ), child_methods)(True)
@@ -369,6 +355,83 @@ class ShareDriverTestCase(test.TestCase):
         self.assertEqual(
             snapshots_are_supported,
             child_class_instance._stats["snapshot_support"])
+        self.assertTrue(child_class_instance.configuration.safe_get.called)
+
+    def test_create_share_from_snapshot_support_exists(self):
+        driver.CONF.set_default('driver_handles_share_servers', True)
+        fake_method = lambda *args, **kwargs: None
+        child_methods = {
+            "create_share_from_snapshot": fake_method,
+            "create_snapshot": fake_method,
+            "delete_snapshot": fake_method,
+        }
+        child_class_instance = type(
+            "NotRedefined", (driver.ShareDriver, ), child_methods)(True)
+        self.mock_object(child_class_instance, "configuration")
+
+        child_class_instance._update_share_stats()
+
+        self.assertTrue(
+            child_class_instance._stats["create_share_from_snapshot_support"])
+        self.assertTrue(child_class_instance.configuration.safe_get.called)
+
+    @ddt.data(
+        (),
+        ("create_snapshot"),
+        ("create_share_from_snapshotFOO"),
+    )
+    def test_create_share_from_snapshot_support_absent(self, methods):
+        driver.CONF.set_default('driver_handles_share_servers', True)
+        fake_method = lambda *args, **kwargs: None
+        child_methods = {}
+        for method in methods:
+            child_methods[method] = fake_method
+        child_class_instance = type(
+            "NotRedefined", (driver.ShareDriver, ), child_methods)(True)
+        self.mock_object(child_class_instance, "configuration")
+
+        child_class_instance._update_share_stats()
+
+        self.assertFalse(
+            child_class_instance._stats["create_share_from_snapshot_support"])
+        self.assertTrue(child_class_instance.configuration.safe_get.called)
+
+    @ddt.data(True, False)
+    def test_create_share_from_snapshot_not_exists_and_set_explicitly(
+            self, creating_shares_from_snapshot_is_supported):
+        driver.CONF.set_default('driver_handles_share_servers', True)
+        child_class_instance = type(
+            "NotRedefined", (driver.ShareDriver, ), {})(True)
+        self.mock_object(child_class_instance, "configuration")
+
+        child_class_instance._update_share_stats({
+            "create_share_from_snapshot_support":
+                creating_shares_from_snapshot_is_supported,
+        })
+
+        self.assertEqual(
+            creating_shares_from_snapshot_is_supported,
+            child_class_instance._stats["create_share_from_snapshot_support"])
+        self.assertTrue(child_class_instance.configuration.safe_get.called)
+
+    @ddt.data(True, False)
+    def test_create_share_from_snapshot_exists_and_set_explicitly(
+            self, create_share_from_snapshot_supported):
+        driver.CONF.set_default('driver_handles_share_servers', True)
+        fake_method = lambda *args, **kwargs: None
+        child_methods = {"create_share_from_snapshot": fake_method}
+        child_class_instance = type(
+            "NotRedefined", (driver.ShareDriver, ), child_methods)(True)
+        self.mock_object(child_class_instance, "configuration")
+
+        child_class_instance._update_share_stats({
+            "create_share_from_snapshot_support":
+                create_share_from_snapshot_supported,
+        })
+
+        self.assertEqual(
+            create_share_from_snapshot_supported,
+            child_class_instance._stats["create_share_from_snapshot_support"])
         self.assertTrue(child_class_instance.configuration.safe_get.called)
 
     def test_get_periodic_hook_data(self):

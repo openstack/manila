@@ -25,7 +25,7 @@ class ShareTypesNegativeTest(base.BaseSharesMixedTest):
     @classmethod
     def _create_share_type(cls):
         name = data_utils.rand_name("unique_st_name")
-        extra_specs = cls.add_required_extra_specs_to_dict()
+        extra_specs = cls.add_extra_specs_to_dict()
         return cls.create_share_type(
             name, extra_specs=extra_specs,
             client=cls.admin_client)

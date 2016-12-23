@@ -256,6 +256,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             'free_capacity_gb': 'unknown',
             'pools': None,
             'snapshot_support': True,
+            'create_share_from_snapshot_support': True,
             'replication_domain': None,
             'filter_function': None,
             'goodness_function': None,

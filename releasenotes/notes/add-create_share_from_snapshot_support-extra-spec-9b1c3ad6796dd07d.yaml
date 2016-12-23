@@ -1,0 +1,7 @@
+---
+features:
+  - Added optional create_share_from_snapshot_support extra spec, which was
+    previously implied by the overloaded snapshot_support extra spec.
+upgrade:
+  - The snapshot_support extra spec is now optional and has no default value
+    set when creating share types.

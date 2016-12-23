@@ -443,7 +443,7 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
         request_spec = {'share_types': [{'name': 'NFS',
                                          'extra_specs': {
-                                             SNAPSHOT_SUPPORT: True,
+                                             SNAPSHOT_SUPPORT: 'True',
                                          }}]}
 
         hosts = sched._get_weighted_candidates_cg(fake_context,
@@ -460,7 +460,7 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
         request_spec = {'share_types': [{'name': 'NFS',
                                          'extra_specs': {
-                                             SNAPSHOT_SUPPORT: False
+                                             SNAPSHOT_SUPPORT: 'False',
                                          }}]}
 
         hosts = sched._get_weighted_candidates_cg(fake_context,
@@ -477,7 +477,7 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
         request_spec = {'share_types': [{'name': 'NFS',
                                          'extra_specs': {
-                                             SNAPSHOT_SUPPORT: True
+                                             SNAPSHOT_SUPPORT: 'True',
                                          }}]}
 
         hosts = sched._get_weighted_candidates_cg(fake_context,
