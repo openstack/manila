@@ -512,15 +512,20 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
     def ensure_share(self, ctx, share, share_server=None):
         """Ensure that storage are mounted and exported."""
 
-    def allow_access(self, ctx, share, access, share_server=None):
-        """Allow access to the share."""
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
+        """Update access rules for given share."""
+        helper = self._get_helper(share)
         location = self._get_share_path(share)
-        self._get_helper(share).allow_access(location, share, access)
 
-    def deny_access(self, ctx, share, access, share_server=None):
-        """Deny access to the share."""
-        location = self._get_share_path(share)
-        self._get_helper(share).deny_access(location, share, access)
+        for access in delete_rules:
+            helper.deny_access(location, share, access)
+
+        for access in add_rules:
+            helper.allow_access(location, share, access)
+
+        if not (add_rules or delete_rules):
+            helper.resync_access(location, share, access_rules)
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -787,7 +792,7 @@ class NASHelperBase(object):
         """Construct location of new export."""
         return ':'.join([self.configuration.gpfs_share_export_ip, local_path])
 
-    def get_export_options(self, share, access, helper, options_not_allowed):
+    def get_export_options(self, share, access, helper):
         """Get the export options."""
         extra_specs = share_types.get_extra_specs_from_share(share)
         if helper == 'KNFS':
@@ -797,11 +802,13 @@ class NASHelperBase(object):
         else:
             export_options = None
 
-        if export_options:
-            options = export_options.lower().split(',')
-        else:
-            options = []
+        options = self._get_validated_opt_list(export_options)
+        options.append(self.get_access_option(access))
+        return ','.join(options)
 
+    def _validate_export_options(self, options):
+        """Validate the export options."""
+        options_not_allowed = self._get_options_not_allowed()
         invalid_options = [
             option for option in options if option in options_not_allowed
         ]
@@ -811,31 +818,38 @@ class NASHelperBase(object):
                                                 'it is set by access_type.'
                                                 % invalid_options)
 
-        if access['access_level'] == constants.ACCESS_LEVEL_RO:
-            if helper == 'KNFS':
-                options.append(constants.ACCESS_LEVEL_RO)
-            elif helper == 'CES':
-                options.append('access_type=ro')
+    def _get_validated_opt_list(self, export_options):
+        """Validate the export options and return an option list."""
+        if export_options:
+            options = export_options.lower().split(',')
+            self._validate_export_options(options)
         else:
-            if helper == 'KNFS':
-                options.append(constants.ACCESS_LEVEL_RW)
-            elif helper == 'CES':
-                options.append('access_type=rw')
+            options = []
+        return options
 
-        return ','.join(options)
+    @abc.abstractmethod
+    def get_access_option(self, access):
+        """Get access option string based on access level."""
+
+    @abc.abstractmethod
+    def _get_options_not_allowed(self):
+        """Get access options that are not allowed in extra-specs."""
 
     @abc.abstractmethod
     def remove_export(self, local_path, share):
         """Remove export."""
 
     @abc.abstractmethod
-    def allow_access(self, local_path, share, access_type, access):
+    def allow_access(self, local_path, share, access):
         """Allow access to the host."""
 
     @abc.abstractmethod
-    def deny_access(self, local_path, share, access_type, access,
-                    force=False):
+    def deny_access(self, local_path, share, access):
         """Deny access to the host."""
+
+    @abc.abstractmethod
+    def resync_access(self, local_path, share, access_rules):
+        """Re-sync all access rules for given share."""
 
 
 class KNFSHelper(NASHelperBase):
@@ -921,39 +935,56 @@ class KNFSHelper(NASHelperBase):
     def remove_export(self, local_path, share):
         """Remove export."""
 
-    def allow_access(self, local_path, share, access):
+    def get_access_option(self, access):
+        """Get access option string based on access level."""
+        return access['access_level']
+
+    def _get_options_not_allowed(self):
+        """Get access options that are not allowed in extra-specs."""
+        return list(constants.ACCESS_LEVELS)
+
+    def _get_exports(self):
+        """Get exportfs output."""
+        try:
+            out, __ = self._execute('exportfs', run_as_root=True)
+        except exception.ProcessExecutionError as e:
+            msg = (_('Failed to check exports on the systems. '
+                     ' Error: %s.') % e)
+            LOG.error(msg)
+            raise exception.GPFSException(msg)
+        return out
+
+    def allow_access(self, local_path, share, access, error_on_exists=True):
         """Allow access to one or more vm instances."""
 
         if access['access_type'] != 'ip':
             raise exception.InvalidShareAccess(reason='Only ip access type '
                                                       'supported.')
 
-        out = self._has_client_access(local_path, access['access_to'])
+        if error_on_exists:
+            # check if present in export
+            out = re.search(
+                re.escape(local_path) + '[\s\n]*'
+                + re.escape(access['access_to']), self._get_exports())
 
-        if out:
-            access_type = access['access_type']
-            access_to = access['access_to']
-            raise exception.ShareAccessExists(access_type=access_type,
-                                              access=access_to)
+            if out is not None:
+                access_type = access['access_type']
+                access_to = access['access_to']
+                raise exception.ShareAccessExists(access_type=access_type,
+                                                  access=access_to)
 
-        options_not_allowed = list(constants.ACCESS_LEVELS)
-        export_opts = self.get_export_options(share, access, 'KNFS',
-                                              options_not_allowed)
+        export_opts = self.get_export_options(share, access, 'KNFS')
         cmd = ['exportfs', '-o', export_opts,
                ':'.join([access['access_to'], local_path])]
         try:
             self._publish_access(*cmd)
-        except exception.ProcessExecutionError as e:
-            msg = (_('Failed to allow access for share %(sharename)s. '
-                     'Error: %(excmsg)s.') %
-                   {'sharename': share['name'],
-                    'excmsg': e})
-            LOG.error(msg)
+        except exception.ProcessExecutionError:
+            msg = _('Failed to allow access for share %s.') % share['name']
+            LOG.exception(msg)
             raise exception.GPFSException(msg)
 
-    def deny_access(self, local_path, share, access, force=False):
+    def _deny_ip(self, local_path, share, ip):
         """Remove access for one or more vm instances."""
-        ip = access['access_to']
         cmd = ['exportfs', '-u', ':'.join([ip, local_path])]
         try:
             # Can get exit code 0 for success or 1 for already gone (also
@@ -969,6 +1000,25 @@ class KNFSHelper(NASHelperBase):
         # Error code (0 or 1) makes deny IP success indeterminate.
         # So, verify that the IP access was completely removed.
         self._verify_denied_access(local_path, share, ip)
+
+    def deny_access(self, local_path, share, access):
+        """Remove access for one or more vm instances."""
+        self._deny_ip(local_path, share, access['access_to'])
+
+    def _remove_other_access(self, local_path, share, access_rules):
+        """Remove any client access that is not in access_rules."""
+        exports = self._get_exports()
+        gpfs_ips = set(NFSHelper.get_host_list(exports, local_path))
+        manila_ips = set([x['access_to'] for x in access_rules])
+        remove_ips = gpfs_ips - manila_ips
+        for ip in remove_ips:
+            self._deny_ip(local_path, share, ip)
+
+    def resync_access(self, local_path, share, access_rules):
+        """Re-sync all access rules for given share."""
+        for access in access_rules:
+            self.allow_access(local_path, share, access, error_on_exists=False)
+        self._remove_other_access(local_path, share, access_rules)
 
 
 class CESHelper(NASHelperBase):
@@ -988,15 +1038,64 @@ class CESHelper(NASHelperBase):
             raise exception.GPFSException(msg)
         return out
 
+    @staticmethod
+    def _fix_export_data(data, headers):
+        """Export data split by ':' may need fixing if client had colons."""
+
+        # If an IPv6 client shows up then ':' delimiters don't work.
+        # So use header positions to get data before/after Clients.
+        # Then what is left in between can be joined back into a client IP.
+        client_index = headers.index('Clients')
+        # reverse_client_index is distance from end.
+        reverse_client_index = len(headers) - (client_index + 1)
+        after_client_index = len(data) - reverse_client_index
+
+        before_client = data[:client_index]
+        client = data[client_index: after_client_index]
+        after_client = data[after_client_index:]
+
+        result_data = before_client
+        result_data.append(':'.join(client))  # Fixes colons in client IP
+        result_data.extend(after_client)
+        return result_data
+
+    def _get_nfs_client_exports(self, local_path):
+        """Get the current NFS client export details from GPFS."""
+
+        out = self._execute_mmnfs_command(
+            ('list', '-n', local_path, '-Y'),
+            'Failed to get exports from the system.')
+
+        # Remove the header line and use the headers to describe the data
+        lines = out.splitlines()
+        for line in lines:
+            data = line.split(':')
+            if "HEADER" in data:
+                headers = data
+                lines.remove(line)
+                break
+        else:
+            msg = _('Failed to parse exports for path %s. '
+                    'No HEADER found.') % local_path
+            LOG.error(msg)
+            raise exception.GPFSException(msg)
+
+        exports = []
+        for line in lines:
+            data = line.split(':')
+            if len(data) < 3:
+                continue  # Skip empty lines (and anything less than minimal).
+
+            result_data = self._fix_export_data(data, headers)
+            exports.append(dict(zip(headers, result_data)))
+
+        return exports
+
     def _has_client_access(self, local_path, access_to=None):
         """Check path for any export or for one with a specific IP address."""
-        err_msg = 'Failed to check exports on the system.'
-        out = self._execute_mmnfs_command(('list', '-n', local_path, '-Y'),
-                                          err_msg)
-        if access_to:
-            return ':' + access_to + ':' in out
-        else:
-            return ':' + local_path + ':' in out
+        gpfs_clients = self._get_nfs_client_exports(local_path)
+        return gpfs_clients and (access_to is None or access_to in [
+            x['Clients'] for x in gpfs_clients])
 
     def remove_export(self, local_path, share):
         """Remove export."""
@@ -1004,6 +1103,17 @@ class CESHelper(NASHelperBase):
             err_msg = ('Failed to remove export for share %s.'
                        % share['name'])
             self._execute_mmnfs_command(('remove', local_path), err_msg)
+
+    def _get_options_not_allowed(self):
+        """Get access options that are not allowed in extra-specs."""
+        return ['access_type=ro', 'access_type=rw']
+
+    def get_access_option(self, access):
+        """Get access option string based on access level."""
+        if access['access_level'] == constants.ACCESS_LEVEL_RO:
+            return 'access_type=ro'
+        else:
+            return 'access_type=rw'
 
     def allow_access(self, local_path, share, access):
         """Allow access to the host."""
@@ -1013,9 +1123,7 @@ class CESHelper(NASHelperBase):
                                                       'supported.')
         has_exports = self._has_client_access(local_path)
 
-        options_not_allowed = ['access_type=ro', 'access_type=rw']
-        export_opts = self.get_export_options(share, access, 'CES',
-                                              options_not_allowed)
+        export_opts = self.get_export_options(share, access, 'CES')
 
         if not has_exports:
             cmd = ['add', local_path, '-c',
@@ -1040,3 +1148,80 @@ class CESHelper(NASHelperBase):
             self._execute_mmnfs_command(('change', local_path,
                                          '--nfsremove', access['access_to']),
                                         err_msg)
+
+    def _get_client_opts(self, access, opts_list):
+        """Get client options string for access rule and NFS options."""
+        nfs_opts = ','.join([self.get_access_option(access)] + opts_list)
+
+        return '%(ip)s(%(nfs_opts)s)' % {'ip': access['access_to'],
+                                         'nfs_opts': nfs_opts}
+
+    def _get_share_opts(self, share):
+        """Get a list of NFS options from the share's share type."""
+        extra_specs = share_types.get_extra_specs_from_share(share)
+        opts_list = self._get_validated_opt_list(
+            extra_specs.get('ces:export_options'))
+        return opts_list
+
+    def _nfs_change(self, local_path, share, access_rules, gpfs_clients):
+        """Bulk add/update/remove of access rules for share."""
+        opts_list = self._get_share_opts(share)
+
+        # Create a map of existing client access rules from GPFS.
+        # Key from 'Clients' is an IP address or
+        # Value from 'Access_Type' is RW|RO (case varies)
+        gpfs_map = {
+            x['Clients']: x['Access_Type'].lower() for x in gpfs_clients}
+        gpfs_ips = set(gpfs_map.keys())
+
+        manila_ips = set([x['access_to'] for x in access_rules])
+        add_ips = manila_ips - gpfs_ips
+        update_ips = gpfs_ips.intersection(manila_ips)
+        remove_ips = gpfs_ips - manila_ips
+
+        adds = []
+        updates = []
+        if add_ips or update_ips:
+            for access in access_rules:
+                ip = access['access_to']
+                if ip in add_ips:
+                    adds.append(self._get_client_opts(access, opts_list))
+                elif (ip in update_ips
+                      and access['access_level'] != gpfs_map[ip]):
+                    updates.append(self._get_client_opts(access, opts_list))
+
+        if remove_ips or adds or updates:
+            cmd = ['change', local_path]
+            if remove_ips:
+                cmd.append('--nfsremove')
+                cmd.append(','.join(remove_ips))
+            if adds:
+                cmd.append('--nfsadd')
+                cmd.append(';'.join(adds))
+            if updates:
+                cmd.append('--nfschange')
+                cmd.append(';'.join(updates))
+            err_msg = ('Failed to resync access for share %s.' % share['name'])
+            self._execute_mmnfs_command(cmd, err_msg)
+
+    def _nfs_add(self, access_rules, local_path, share):
+        """Bulk add of access rules to share."""
+        if not access_rules:
+            return
+
+        opts_list = self._get_share_opts(share)
+        client_options = []
+        for access in access_rules:
+            client_options.append(self._get_client_opts(access, opts_list))
+
+        cmd = ['add', local_path, '-c', ';'.join(client_options)]
+        err_msg = ('Failed to resync access for share %s.' % share['name'])
+        self._execute_mmnfs_command(cmd, err_msg)
+
+    def resync_access(self, local_path, share, access_rules):
+        """Re-sync all access rules for given share."""
+        gpfs_clients = self._get_nfs_client_exports(local_path)
+        if not gpfs_clients:
+            self._nfs_add(access_rules, local_path, share)
+        else:
+            self._nfs_change(local_path, share, access_rules, gpfs_clients)

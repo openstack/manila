@@ -447,25 +447,88 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                                                            '0:10G')
         self._driver._get_gpfs_device.assert_called_once_with()
 
-    def test_allow_access(self):
+    def test_update_access_allow(self):
+        """Test allow_access functionality via update_access."""
         self._driver._get_share_path = mock.Mock(
             return_value=self.fakesharepath
         )
         self._helper_fake.allow_access = mock.Mock()
-        self._driver.allow_access(self._context, self.share,
-                                  self.access, share_server=None)
+
+        self._driver.update_access(self._context,
+                                   self.share,
+                                   ["ignored"],
+                                   [self.access],
+                                   [],
+                                   share_server=None)
+
         self._helper_fake.allow_access.assert_called_once_with(
             self.fakesharepath, self.share, self.access)
+        self.assertFalse(self._helper_fake.resync_access.called)
         self._driver._get_share_path.assert_called_once_with(self.share)
 
-    def test_deny_access(self):
+    def test_update_access_deny(self):
+        """Test deny_access functionality via update_access."""
         self._driver._get_share_path = mock.Mock(return_value=self.
                                                  fakesharepath)
         self._helper_fake.deny_access = mock.Mock()
-        self._driver.deny_access(self._context, self.share,
-                                 self.access, share_server=None)
+
+        self._driver.update_access(self._context,
+                                   self.share,
+                                   ["ignored"],
+                                   [],
+                                   [self.access],
+                                   share_server=None)
+
         self._helper_fake.deny_access.assert_called_once_with(
             self.fakesharepath, self.share, self.access)
+        self.assertFalse(self._helper_fake.resync_access.called)
+        self._driver._get_share_path.assert_called_once_with(self.share)
+
+    def test_update_access_both(self):
+        """Test update_access with allow and deny lists."""
+        self._driver._get_share_path = mock.Mock(return_value=self.
+                                                 fakesharepath)
+        self._helper_fake.deny_access = mock.Mock()
+        self._helper_fake.allow_access = mock.Mock()
+        self._helper_fake.resync_access = mock.Mock()
+
+        access_1 = fake_share.fake_access(access_to="1.1.1.1")
+        access_2 = fake_share.fake_access(access_to="2.2.2.2")
+        self._driver.update_access(self._context,
+                                   self.share,
+                                   ["ignore"],
+                                   [access_1],
+                                   [access_2],
+                                   share_server=None)
+
+        self.assertFalse(self._helper_fake.resync_access.called)
+        self._helper_fake.allow_access.assert_called_once_with(
+            self.fakesharepath, self.share, access_1)
+        self._helper_fake.deny_access.assert_called_once_with(
+            self.fakesharepath, self.share, access_2)
+        self._driver._get_share_path.assert_called_once_with(self.share)
+
+    def test_update_access_resync(self):
+        """Test recovery mode update_access."""
+        self._driver._get_share_path = mock.Mock(return_value=self.
+                                                 fakesharepath)
+        self._helper_fake.deny_access = mock.Mock()
+        self._helper_fake.allow_access = mock.Mock()
+        self._helper_fake.resync_access = mock.Mock()
+
+        access_1 = fake_share.fake_access(access_to="1.1.1.1")
+        access_2 = fake_share.fake_access(access_to="2.2.2.2")
+        self._driver.update_access(self._context,
+                                   self.share,
+                                   [access_1, access_2],
+                                   [],
+                                   [],
+                                   share_server=None)
+
+        self._helper_fake.resync_access.assert_called_once_with(
+            self.fakesharepath, self.share, [access_1, access_2])
+        self.assertFalse(self._helper_fake.allow_access.called)
+        self.assertFalse(self._helper_fake.allow_access.called)
         self._driver._get_share_path.assert_called_once_with(self.share)
 
     def test__check_gpfs_state_active(self):
@@ -1020,23 +1083,49 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         )
         self._driver.configuration.gpfs_share_export_ip = orig_value
 
-    def test_knfs_get_export_options(self):
+    def test_knfs_resync_access(self):
+        self._knfs_helper.allow_access = mock.Mock()
+        path = self.fakesharepath
+        to_remove = '3.3.3.3'
+        fake_exportfs_before = ('%(path)s\n\t\t%(ip)s\n'
+                                '/other/path\n\t\t4.4.4.4\n' %
+                                {'path': path, 'ip': to_remove})
+        fake_exportfs_after = '/other/path\n\t\t4.4.4.4\n'
+        self._knfs_helper._execute = mock.Mock(
+            return_value=(fake_exportfs_before, ''))
+        self._knfs_helper._publish_access = mock.Mock(
+            side_effect=[[(fake_exportfs_before, '')],
+                         [(fake_exportfs_after, '')]])
+
+        access_1 = fake_share.fake_access(access_to="1.1.1.1")
+        access_2 = fake_share.fake_access(access_to="2.2.2.2")
+        self._knfs_helper.resync_access(path, self.share, [access_1, access_2])
+
+        self._knfs_helper.allow_access.assert_has_calls([
+            mock.call(path, self.share, access_1, error_on_exists=False),
+            mock.call(path, self.share, access_2, error_on_exists=False)])
+        self._knfs_helper._execute.assert_called_once_with(
+            'exportfs', run_as_root=True)
+        self._knfs_helper._publish_access.assert_has_calls([
+            mock.call('exportfs', '-u',
+                      '%(ip)s:%(path)s' % {'ip': to_remove, 'path': path},
+                      check_exit_code=[0, 1]),
+            mock.call('exportfs')])
+
+    @ddt.data('rw', 'ro')
+    def test_knfs_get_export_options(self, access_level):
         mock_out = {"knfs:export_options": "no_root_squash"}
         self.mock_object(share_types, 'get_extra_specs_from_share',
                          mock.Mock(return_value=mock_out))
-        access = self.access
-        options_not_allowed = ['rw', 'ro']
-        out = self._knfs_helper.get_export_options(self.share, access,
-                                                   'KNFS', options_not_allowed)
-        self.assertEqual("no_root_squash,rw", out)
+        access = fake_share.fake_access(access_level=access_level)
+        out = self._knfs_helper.get_export_options(self.share, access, 'KNFS')
+        self.assertEqual("no_root_squash,%s" % access_level, out)
 
     def test_knfs_get_export_options_default(self):
         self.mock_object(share_types, 'get_extra_specs_from_share',
                          mock.Mock(return_value={}))
         access = self.access
-        options_not_allowed = ['rw', 'ro']
-        out = self._knfs_helper.get_export_options(self.share, access,
-                                                   'KNFS', options_not_allowed)
+        out = self._knfs_helper.get_export_options(self.share, access, 'KNFS')
         self.assertEqual("rw", out)
 
     def test_knfs_get_export_options_invalid_option_ro(self):
@@ -1044,22 +1133,20 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self.mock_object(share_types, 'get_extra_specs_from_share',
                          mock.Mock(return_value=mock_out))
         access = self.access
-        options_not_allowed = ['rw', 'ro']
         share = fake_share.fake_share(share_type="fake_share_type")
         self.assertRaises(exception.InvalidInput,
                           self._knfs_helper.get_export_options,
-                          share, access, 'KNFS', options_not_allowed)
+                          share, access, 'KNFS')
 
     def test_knfs_get_export_options_invalid_option_rw(self):
         mock_out = {"knfs:export_options": "rw"}
         self.mock_object(share_types, 'get_extra_specs_from_share',
                          mock.Mock(return_value=mock_out))
         access = self.access
-        options_not_allowed = ['rw', 'ro']
         share = fake_share.fake_share(share_type="fake_share_type")
         self.assertRaises(exception.InvalidInput,
                           self._knfs_helper.get_export_options,
-                          share, access, 'KNFS', options_not_allowed)
+                          share, access, 'KNFS')
 
     @ddt.data(("/gpfs0/share-fakeid\t10.0.0.1", None),
               ("", None),
@@ -1094,15 +1181,13 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         )
         self._knfs_helper._publish_access = mock.Mock()
         access = self.access
-        options_not_allowed = ['rw', 'ro']
         local_path = self.fakesharepath
         self._knfs_helper.allow_access(local_path, self.share, access)
         self._knfs_helper._execute.assert_called_once_with('exportfs',
                                                            run_as_root=True)
         self.assertTrue(re.search.called)
         self._knfs_helper.get_export_options.assert_any_call(
-            self.share, access, 'KNFS',
-            options_not_allowed)
+            self.share, access, 'KNFS')
         cmd = ['exportfs', '-o', export_opts, ':'.join([access['access_to'],
                                                        local_path])]
         self._knfs_helper._publish_access.assert_called_once_with(*cmd)
@@ -1121,6 +1206,21 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                                                    run_as_root=True)
         self.assertTrue(re.search.called)
         self.assertFalse(self._knfs_helper.get_export_options.called)
+
+    def test_knfs_allow_access_publish_exception(self):
+        self._knfs_helper.get_export_options = mock.Mock()
+        self._knfs_helper._publish_access = mock.Mock(
+            side_effect=exception.ProcessExecutionError('boom'))
+
+        self.assertRaises(exception.GPFSException,
+                          self._knfs_helper.allow_access,
+                          self.fakesharepath,
+                          self.share,
+                          self.access,
+                          error_on_exists=False)
+
+        self.assertTrue(self._knfs_helper.get_export_options.called)
+        self.assertTrue(self._knfs_helper._publish_access.called)
 
     def test_knfs_allow_access_invalid_access(self):
         access = fake_share.fake_access(access_type='test')
@@ -1270,23 +1370,22 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                       check_exit_code=True, run_as_root=False),
             mock.call(fake_command, check_exit_code=True, run_as_root=True)])
 
-    def test_ces_get_export_options(self):
+    @ddt.data('rw', 'ro')
+    def test_ces_get_export_options(self, access_level):
         mock_out = {"ces:export_options": "squash=no_root_squash"}
         self.mock_object(share_types, 'get_extra_specs_from_share',
                          mock.Mock(return_value=mock_out))
-        access = self.access
-        options_not_allowed = ['access_type=ro', 'access_type=rw']
-        out = self._ces_helper.get_export_options(self.share, access,
-                                                  'CES', options_not_allowed)
-        self.assertEqual("squash=no_root_squash,access_type=rw", out)
+        access = fake_share.fake_access(access_level=access_level)
+        out = self._ces_helper.get_export_options(self.share, access, 'CES')
+        self.assertEqual("squash=no_root_squash,access_type=%s" % access_level,
+                         out)
 
     def test_ces_get_export_options_default(self):
         self.mock_object(share_types, 'get_extra_specs_from_share',
                          mock.Mock(return_value={}))
         access = self.access
-        options_not_allowed = ['access_type=ro', 'access_type=rw']
         out = self._ces_helper.get_export_options(self.share, access,
-                                                  'CES', options_not_allowed)
+                                                  'CES')
         self.assertEqual("access_type=rw", out)
 
     def test_ces_get_export_options_invalid_option_ro(self):
@@ -1294,22 +1393,47 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self.mock_object(share_types, 'get_extra_specs_from_share',
                          mock.Mock(return_value=mock_out))
         access = self.access
-        options_not_allowed = ['access_type=ro', 'access_type=rw']
         share = fake_share.fake_share(share_type="fake_share_type")
         self.assertRaises(exception.InvalidInput,
                           self._ces_helper.get_export_options,
-                          share, access, 'CES', options_not_allowed)
+                          share, access, 'CES')
 
     def test_ces_get_export_options_invalid_option_rw(self):
         mock_out = {"ces:export_options": "access_type=rw"}
         self.mock_object(share_types, 'get_extra_specs_from_share',
                          mock.Mock(return_value=mock_out))
         access = self.access
-        options_not_allowed = ['access_type=ro', 'access_type=rw']
         share = fake_share.fake_share(share_type="fake_share_type")
         self.assertRaises(exception.InvalidInput,
                           self._ces_helper.get_export_options,
-                          share, access, 'CES', options_not_allowed)
+                          share, access, 'CES')
+
+    def test__get_nfs_client_exports_exception(self):
+        self._ces_helper._execute = mock.Mock(return_value=('junk', ''))
+
+        local_path = self.fakesharepath
+        self.assertRaises(exception.GPFSException,
+                          self._ces_helper._get_nfs_client_exports,
+                          local_path)
+
+        self._ces_helper._execute.assert_called_once_with(
+            'mmnfs', 'export', 'list', '-n', local_path, '-Y')
+
+    @ddt.data('44.3.2.11', '1:2:3:4:5:6:7:8')
+    def test__fix_export_data(self, ip):
+        data = None
+        for line in self.fake_ces_exports.splitlines():
+            if "HEADER" in line:
+                headers = line.split(':')
+            if ip in line:
+                data = line.split(':')
+                break
+        self.assertIsNotNone(
+            data, "Test data did not contain a line with the test IP.")
+
+        result_data = self._ces_helper._fix_export_data(data, headers)
+
+        self.assertEqual(ip, result_data[headers.index('Clients')])
 
     @ddt.data((None, True),
               ('44.3.2.11', True),
@@ -1317,6 +1441,9 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
               ('4.3.2.1', False),
               ('4.3.2.11', False),
               ('1.2.3.4', False),
+              ('', False),
+              ('*', False),
+              ('.', False),
               ('1:2:3:4:5:6:7:8', True))
     @ddt.unpack
     def test_ces__has_client_access(self, ip, has_access):
@@ -1441,3 +1568,70 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self.assertRaises(exception.GPFSException,
                           self._ces_helper.deny_access, local_path,
                           self.share, access)
+
+    def test_ces_resync_access_add(self):
+        mock_out = self.fake_ces_exports_not_found
+        self._ces_helper._execute = mock.Mock(return_value=(mock_out, ''))
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value={}))
+
+        access_rules = [self.access]
+        local_path = self.fakesharepath
+        self._ces_helper.resync_access(local_path, self.share, access_rules)
+
+        self._ces_helper._execute.assert_has_calls([
+            mock.call('mmnfs', 'export', 'list', '-n', local_path, '-Y'),
+            mock.call('mmnfs', 'export', 'add', local_path, '-c',
+                      self.access['access_to'] + '(' + "access_type=rw" + ')')
+        ])
+        share_types.get_extra_specs_from_share.assert_called_once_with(
+            self.share)
+
+    def test_ces_resync_access_change(self):
+
+        class SortedMatch(object):
+            def __init__(self, f, expected):
+                self.assertEqual = f
+                self.expected = expected
+
+            def __eq__(self, actual):
+                expected_list = self.expected.split(',')
+                actual_list = actual.split(',')
+                self.assertEqual(sorted(expected_list), sorted(actual_list))
+                return True
+
+        mock_out = self.fake_ces_exports
+        self._ces_helper._execute = mock.Mock(
+            return_value=(mock_out, ''))
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value={}))
+
+        access_rules = [fake_share.fake_access(access_to='1.1.1.1'),
+                        fake_share.fake_access(
+                            access_to='10.0.0.1', access_level='ro')]
+        local_path = self.fakesharepath
+        self._ces_helper.resync_access(local_path, self.share, access_rules)
+
+        share_types.get_extra_specs_from_share.assert_called_once_with(
+            self.share)
+        to_remove = '1:2:3:4:5:6:7:8,44.3.2.11'
+        to_add = access_rules[0]['access_to'] + '(' + "access_type=rw" + ')'
+        to_change = access_rules[1]['access_to'] + '(' + "access_type=ro" + ')'
+        self._ces_helper._execute.assert_has_calls([
+            mock.call('mmnfs', 'export', 'list', '-n', local_path, '-Y'),
+            mock.call('mmnfs', 'export', 'change', local_path,
+                      '--nfsremove', SortedMatch(self.assertEqual, to_remove),
+                      '--nfsadd', to_add,
+                      '--nfschange', to_change)
+        ])
+
+    def test_ces_resync_nothing(self):
+        """Test that hits the add-no-rules case."""
+        mock_out = self.fake_ces_exports_not_found
+        self._ces_helper._execute = mock.Mock(return_value=(mock_out, ''))
+
+        local_path = self.fakesharepath
+        self._ces_helper.resync_access(local_path, None, [])
+
+        self._ces_helper._execute.assert_called_once_with(
+            'mmnfs', 'export', 'list', '-n', local_path, '-Y')
