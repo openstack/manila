@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed GPFS KNFS deny access so that it will not fail when
+    the access can be verified to not exist.

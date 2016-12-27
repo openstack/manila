@@ -210,7 +210,7 @@ class NFSHelper(NASHelperBase):
                 access_rules, ('ip',),
                 (const.ACCESS_LEVEL_RO, const.ACCESS_LEVEL_RW))
 
-            hosts = self._get_host_list(out, local_path)
+            hosts = self.get_host_list(out, local_path)
             for host in hosts:
                 self._ssh_exec(server, ['sudo', 'exportfs', '-u',
                                         ':'.join((host, local_path))])
@@ -279,7 +279,8 @@ class NFSHelper(NASHelperBase):
             if add_rules:
                 self._sync_nfs_temp_and_perm_files(server)
 
-    def _get_host_list(self, output, local_path):
+    @staticmethod
+    def get_host_list(output, local_path):
         entries = []
         output = output.replace('\n\t\t', ' ')
         lines = output.split('\n')
