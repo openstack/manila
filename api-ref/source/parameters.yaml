@@ -44,7 +44,7 @@ consistency_group_id_7:
   in: path
   required: true
   type: string
-export_location_id:
+export_location_id_path:
   description: |
     The UUID of the export location.
   in: path
@@ -476,12 +476,12 @@ access_list:
   type: string
 access_rules_status:
   description: |
-    (Since API v2.10) The share instance access rules
-    status. Valid value are ``active``, ``error``, and
-    ``out_of_sync``.
+    The share instance access rules status. Valid value are ``active``,
+    ``error``, and ``out_of_sync``.
   in: body
   required: true
   type: string
+  min_version: 2.10
 access_rules_status_1:
   description: |
     (Since API v2.10) The share access rules status.
@@ -1330,26 +1330,101 @@ driver_version:
   type: string
 export_location:
   description: |
-    (Only for API v1.0-2.8) The export location.  For
-    newer API versions it is available in separate APIs. See
-    sections `Share export locations <#share-share-export-locations>`_
-    and `Share instance export locations <#share-share-instance-
-    export- locations>`_.
+    The export location.  For newer API versions it is available in
+    separate APIs. See sections `Share export locations
+    <#share-share-export-locations>`_ and `Share instance export
+    locations <#share-share-instance-export- locations>`_.
   in: body
   required: false
   type: string
+  max_version: 2.8
+export_location_created_at:
+  description: |
+    The date and time stamp when the share export location was
+    created.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2016-12-31T13:14:15-05:00``.
+  in: body
+  required: true
+  type: string
+export_location_id:
+  description: |
+    The share export location UUID.
+  in: body
+  required: true
+  type: string
+export_location_is_admin_only:
+  description: |
+    Defines purpose of an export location. If set to
+    ``true``, then it is expected to be used for service needs and by
+    administrators only. If it is set to ``false``, then this export
+    location can be used by end users.
+  in: body
+  required: true
+  type: boolean
+export_location_path:
+  description: |
+    The export location path that should be used for mout operation.
+  in: body
+  required: true
+  type: string
+export_location_preferred:
+  description: |
+    Drivers may use this field to identify which export locations
+    are most efficient and should be used preferentially by clients.
+    By default it is set to ``false`` value.
+  in: body
+  required: true
+  type: boolean
+  min_version: 2.14
+export_location_share_instance_id:
+  description: |
+    The UUID of the share instance that this
+    export location belongs to.
+  in: body
+  required: true
+  type: string
+export_location_updated_at:
+  description: |
+    The date and time stamp when the share export location was
+    updated.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2016-12-31T13:14:15-05:00``.
+  in: body
+  required: true
+  type: string
 export_locations:
   description: |
-    (Only for API v1.0-2.8) A list of export
-    locations. For example, when a share server has more than one
-    network interface, it can have multiple export locations.  For
-    newer API versions it is available in separate APIs. See
-    sections `Share export locations <#share-share-export-locations>`_
+    A list of export locations. For example, when a share server
+    has more than one network interface, it can have multiple export
+    locations.  For newer API versions it is available in separate APIs.
+    See sections `Share export locations <#share-share-export-locations>`_
     and `Share instance export locations <#share-share-instance-
     export- locations>`_.
   in: body
   required: false
   type: array
+  max_version: 2.8
 export_path:
   description: |
     The share export path in the format appropriate
@@ -1983,10 +2058,16 @@ os-share-type-access:is_public:
   in: body
   required: false
   type: boolean
-path:
+export_location_path:
   description: |
     The export location path that should be used for
     mount operation.
+  in: body
+  required: true
+  type: string
+path:
+  description: |
+    The export location path that should be used for mout operation.
   in: body
   required: true
   type: string
@@ -2007,13 +2088,13 @@ pools:
   type: string
 preferred:
   description: |
-    (Since API v2.14) Drivers may use this field to
-    identify which export locations are most efficient and should be
-    used preferentially by clients. By default it is set to ``false``
-    value.
+    Drivers may use this field to identify which export locations
+    are most efficient and should be used preferentially by clients.
+    By default it is set to ``false`` value.
   in: body
   required: true
   type: boolean
+  min_version: 2.14
 project:
   description: |
     The UUID of the project to which access to the

@@ -27,18 +27,18 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - share_id: share_id
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Response parameters
 -------------------
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id_5
-   - share_instance_id: share_instance_id_1
-   - path: path
-   - is_admin_only: is_admin_only
-   - preferred: preferred
+   - id: export_location_id
+   - share_instance_id: export_location_share_instance_id
+   - path: export_location_path
+   - is_admin_only: export_location_is_admin_only
+   - preferred: export_location_preferred
 
 Response example
 ----------------
@@ -64,7 +64,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - share_id: share_id
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - export_location_id: export_location_id
 
 Response parameters
@@ -72,13 +72,13 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id_5
-   - share_instance_id: share_instance_id_1
-   - path: path
-   - is_admin_only: is_admin_only
-   - preferred: preferred
-   - created_at: created_at_5
-   - updated_at: updated_at_2
+   - id: export_location_id
+   - share_instance_id: export_location_share_instance_id
+   - path: export_location_path
+   - is_admin_only: export_location_is_admin_only
+   - preferred: export_location_preferred
+   - created_at: export_location_created_at
+   - updated_at: export_location_updated_at
 
 Response example
 ----------------
