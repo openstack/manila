@@ -453,24 +453,54 @@ access_level:
   in: body
   required: true
   type: string
-access_level_1:
-  description: |
-    The share access level. A valid value is either:
-    - ``rw``. Read and write (RW) access.  - ``ro``. Read-only (RO)
-    access.
-  in: body
-  required: true
-  type: string
-access_level_2:
-  description: |
-    The share access level.
-  in: body
-  required: true
-  type: string
 access_list:
   description: |
     The object of the access rule. To list access
     rules, set this value to ``null``.
+  in: body
+  required: true
+  type: string
+access_rule_created_at:
+  description: |
+    The date and time stamp when the access rule was created.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+  in: body
+  required: true
+  type: string
+access_rule_id:
+  description: |
+    The access rule ID.
+  in: body
+  required: true
+  type: string
+access_rule_updated_at:
+  description: |
+    The date and time stamp when the access rule was updated.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+
+    If the access rule was never updated, this value is ``null``.
   in: body
   required: true
   type: string
@@ -486,6 +516,20 @@ access_rules_status_1:
   description: |
     (Since API v2.10) The share access rules status.
     Valid values are ``active``, ``error``, and ``out_of_sync``.
+  in: body
+  required: true
+  type: string
+access_share_id:
+  description: |
+    The UUID of the share to which you are granted
+    or denied access.
+  in: body
+  required: true
+  type: string
+access_status:
+  description: |
+    The share access status, which is ``new``,
+    ``error``, ``active``.
   in: body
   required: true
   type: string
@@ -506,23 +550,6 @@ access_to:
   in: body
   required: true
   type: string
-access_to_1:
-  description: |
-    The access that the back end grants or denies.  A
-    valid value for the share access rule type is one of these values:
-    - ``ip``. Authenticates an instance through its IP address. A
-    valid   format is ``XX.XX.XX.XX`` or ``XX.XX.XX.XX/XX``. For
-    example   ``0.0.0.0/0``.  - ``cert``. Authenticates an instance
-    through a TLS certificate.   Specify the TLS identity as the
-    IDENTKEY. A valid value is any   string up to 64 characters long
-    in the common name (CN) of the   certificate. The meaning of a
-    string depends on its   interpretation.  - ``user``. Authenticates
-    by a user or group name. A valid value is   an alphanumeric string
-    that can contain some special characters   and is from 4 to 32
-    characters long.
-  in: body
-  required: true
-  type: string
 access_type:
   description: |
     The access rule type.  A valid value for the
@@ -537,18 +564,6 @@ access_type:
     group name. A valid value is   an alphanumeric string that can
     contain some special characters   and is from 4 to 32 characters
     long.
-  in: body
-  required: true
-  type: string
-access_type_1:
-  description: |
-    The access type of an access rule.
-  in: body
-  required: true
-  type: string
-access_type_2:
-  description: |
-    The rule access type.
   in: body
   required: true
   type: string
@@ -1101,24 +1116,6 @@ created_at_5:
   in: body
   required: true
   type: string
-created_at_6:
-  description: |
-    The date and time stamp when the access rule was created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
 created_at_8:
   description: |
     The date and time stamp when the member was
@@ -1460,14 +1457,6 @@ force_delete_2:
   in: body
   required: true
   type: string
-force_delete_3:
-  description: |
-    To force-delete a share, set this value to
-    ``null``. The force- delete action, unlike the delete action,
-    ignores the share status.
-  in: body
-  required: true
-  type: string
 force_host_copy:
   description: |
     Enables or disables generic host-based forced
@@ -1637,12 +1626,6 @@ id_6:
   description: |
     The UUID of the export location that belongs to
     share instance.
-  in: body
-  required: true
-  type: string
-id_7:
-  description: |
-    The access rule ID.
   in: body
   required: true
   type: string
@@ -1914,12 +1897,6 @@ neutron_subnet_id_1:
   in: body
   required: false
   type: string
-new_size:
-  description: |
-    New size of the share, in GBs.
-  in: body
-  required: true
-  type: integer
 next-available:
   description: |
     The date and time stamp when next issues are available.
@@ -2572,6 +2549,14 @@ share_backend_name:
   in: body
   required: true
   type: string
+share_force_delete:
+  description: |
+    To force-delete a share, set this value to
+    ``null``. The force-delete action, unlike the delete action,
+    ignores the share status.
+  in: body
+  required: true
+  type: string
 share_id_1:
   description: |
     The ID of the share that is a consistency group
@@ -2590,13 +2575,6 @@ share_id_4:
   description: |
     The UUID of the share from which to create a
     snapshot.
-  in: body
-  required: true
-  type: string
-share_id_7:
-  description: |
-    The UUID of the share to which you are granted
-    or denied access.
   in: body
   required: true
   type: string
@@ -2656,6 +2634,12 @@ share_network_name:
   in: body
   required: true
   type: string
+share_new_size:
+  description: |
+    New size of the share, in GBs.
+  in: body
+  required: true
+  type: integer
 share_proto:
   description: |
     The Shared File Systems protocol. A valid value
@@ -2732,6 +2716,12 @@ share_types_1:
   in: body
   required: true
   type: array
+share_unmanage:
+  description: |
+    To unmanage a share, set this value to ``null``.
+  in: body
+  required: true
+  type: string
 shrink:
   description: |
     The ``shrink`` object.
@@ -3028,13 +3018,6 @@ status_10:
   in: body
   required: true
   type: string
-status_11:
-  description: |
-    The share status, which is ``creating``,
-    ``error``, ``available``, ``deleting``, or ``error_deleting``.
-  in: body
-  required: true
-  type: string
 status_15:
   description: |
     The share server status, which is ``active``,
@@ -3047,7 +3030,7 @@ status_16:
     The share status, which is ``creating``,
     ``error``, ``available``, ``deleting``, ``error_deleting``,
     ``manage_starting``, ``manage_error``, ``unmanage_starting``,
-    ``unmanage_error``, ``unmanaged``, ``extending``,
+    ``unmanage_error``, ``unmanaged``, ``extend``,
     ``extending_error``, ``shrinking``, ``shrinking_error``, or
     ``shrinking_possible_data_loss_error``.
   in: body
@@ -3204,12 +3187,6 @@ unmanage:
   in: body
   required: true
   type: string
-unmanage_1:
-  description: |
-    To unmanage a share, set this value to ``null``.
-  in: body
-  required: true
-  type: string
 updated:
   description: |
     The date and time stamp when the extension was last updated.
@@ -3262,26 +3239,6 @@ updated_at_2:
     offset from UTC.
 
     For example, ``2016-12-31T13:14:15-05:00``.
-  in: body
-  required: true
-  type: string
-updated_at_3:
-  description: |
-    The date and time stamp when the access rule was updated.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-
-    If the access rule was never updated, this value is ``null``.
   in: body
   required: true
   type: string
