@@ -1,0 +1,8 @@
+---
+features:
+  - Added manila manage/unmanage feature support for
+    GPFS driver.
+    The existing fileset should be an independent fileset
+    and should not have any NFS export over the fileset
+    path. With this prerequisite existing GPFS filesets
+    can be brought under Manila management.
