@@ -79,7 +79,7 @@ Request
    - access_type: access_type
    - access_to: access_to
    - share_id: share_id
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Request example
 ---------------
@@ -92,15 +92,15 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - share_id: share_id_7
-   - created_at: created_at_6
-   - updated_at: updated_at_3
-   - access_type: access_type_2
-   - access_to: access_to_1
+   - share_id: access_share_id
+   - created_at: access_rule_created_at
+   - updated_at: access_rule_updated_at
+   - access_type: access_type
+   - access_to: access_to
    - access_key: access_key
    - access: access
-   - access_level: access_level_2
-   - id: id_7
+   - access_level: access_level
+   - id: access_rule_id
 
 Response example
 ----------------
@@ -128,7 +128,7 @@ Request
    - deny_access: deny_access
    - access_id: access_id
    - share_id: share_id
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Request example
 ---------------
@@ -155,7 +155,7 @@ Request
 
    - access_list: access_list
    - share_id: share_id
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Request example
 ---------------
@@ -169,13 +169,13 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - access_type: access_type_1
+   - access_type: access_type
    - access_key: access_key
-   - access_to: access_to_1
+   - access_to: access_to
    - access_level: access_level
    - state: state
    - access_list: access_list
-   - id: id_8
+   - id: access_rule_id
 
 Response example
 ----------------
@@ -204,9 +204,9 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - reset_status: reset_status
-   - status: status_11
+   - status: access_status
    - share_id: share_id
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Request example
 ---------------
@@ -234,9 +234,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - force_delete: force_delete
+   - force_delete: share_force_delete
    - share_id: share_id
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Request example
 ---------------
@@ -262,9 +262,9 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - extend: extend
-   - new_size: new_size
+   - new_size: share_new_size
    - share_id: share_id
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Request example
 ---------------
@@ -290,9 +290,9 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - shrink: shrink
-   - new_size: new_size
+   - new_size: share_new_size
    - share_id: share_id
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Request example
 ---------------
@@ -317,9 +317,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - unmanage: unmanage
+   - unmanage: share_unmanage
    - share_id: share_id
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Request example
 ---------------
