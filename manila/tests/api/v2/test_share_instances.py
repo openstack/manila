@@ -232,6 +232,20 @@ class ShareInstancesAPITest(test.TestCase):
         self._reset_status(ctxt, instance, req, db.share_instance_get,
                            valid_code, valid_status, version=version)
 
+    @ddt.data(*fakes.fixture_valid_reset_status_body)
+    @ddt.unpack
+    def test_share_instance_reset_status(self, body, version):
+        instance, req = self._setup_share_instance_data()
+        req.headers['X-Openstack-Manila-Api-Version'] = version
+
+        if float(version) > 2.6:
+            state = body['reset_status']['status']
+        else:
+            state = body['os-reset_status']['status']
+        self._reset_status(self.admin_context, instance, req,
+                           db.share_instance_get, 202,
+                           state, body, version=version)
+
     @ddt.data(
         ({'os-reset_status': {'x-status': 'bad'}}, '2.6'),
         ({'os-reset_status': {'status': 'invalid'}}, '2.6'),
