@@ -1,0 +1,7 @@
+---
+features:
+  - The NetApp cDOT drivers now include the cluster node utilization
+    metrics for each pool reported to the manila scheduler. These
+    values are designed to be included in the filter & goodness functions
+    used by the scheduler, so the cDOT drivers now also report those
+    functions to the scheduler for each pool.

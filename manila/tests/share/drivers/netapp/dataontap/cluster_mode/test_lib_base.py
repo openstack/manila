@@ -36,6 +36,7 @@ from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
+from manila.share.drivers.netapp.dataontap.cluster_mode import performance
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode
 from manila.share.drivers.netapp import utils as na_utils
@@ -82,6 +83,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library = lib_base.NetAppCmodeFileStorageLibrary(fake.DRIVER_NAME,
                                                               **kwargs)
         self.library._client = mock.Mock()
+        self.library._perf_library = mock.Mock()
         self.client = self.library._client
         self.context = mock.Mock()
         self.fake_replica = copy.deepcopy(fake.SHARE)
@@ -105,12 +107,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_do_setup(self):
         mock_get_api_client = self.mock_object(self.library, '_get_api_client')
+        self.mock_object(
+            performance, 'PerformanceLibrary',
+            mock.Mock(return_value='fake_perf_library'))
 
         self.library.do_setup(self.context)
 
         mock_get_api_client.assert_called_once_with()
         self.library._client.check_for_cluster_credentials.\
             assert_called_once_with()
+        self.assertEqual('fake_perf_library', self.library._perf_library)
 
     def test_check_for_setup_error(self):
 
@@ -331,13 +337,26 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertFalse(self.library._client.get_node_for_aggregate.called)
         self.assertIsNone(result)
 
+    def test_get_default_filter_function(self):
+
+        result = self.library.get_default_filter_function()
+
+        self.assertEqual(self.library.DEFAULT_FILTER_FUNCTION, result)
+
+    def test_get_default_goodness_function(self):
+
+        result = self.library.get_default_goodness_function()
+
+        self.assertEqual(self.library.DEFAULT_GOODNESS_FUNCTION, result)
+
     def test_get_share_stats(self):
 
-        self.mock_object(self.library,
-                         '_get_pools',
-                         mock.Mock(return_value=fake.POOLS))
+        mock_get_pools = self.mock_object(
+            self.library, '_get_pools',
+            mock.Mock(return_value=fake.POOLS))
 
-        result = self.library.get_share_stats()
+        result = self.library.get_share_stats(filter_function='filter',
+                                              goodness_function='goodness')
 
         expected = {
             'share_backend_name': fake.BACKEND_NAME,
@@ -350,15 +369,18 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'pools': fake.POOLS,
         }
         self.assertDictEqual(expected, result)
+        mock_get_pools.assert_called_once_with(filter_function='filter',
+                                               goodness_function='goodness')
 
     def test_get_share_stats_with_replication(self):
 
         self.library.configuration.replication_domain = "fake_domain"
-        self.mock_object(self.library,
-                         '_get_pools',
-                         mock.Mock(return_value=fake.POOLS))
+        mock_get_pools = self.mock_object(
+            self.library, '_get_pools',
+            mock.Mock(return_value=fake.POOLS))
 
-        result = self.library.get_share_stats()
+        result = self.library.get_share_stats(filter_function='filter',
+                                              goodness_function='goodness')
 
         expected = {
             'share_backend_name': fake.BACKEND_NAME,
@@ -373,6 +395,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'pools': fake.POOLS,
         }
         self.assertDictEqual(expected, result)
+        mock_get_pools.assert_called_once_with(filter_function='filter',
+                                               goodness_function='goodness')
 
     def test_get_share_server_pools(self):
 
@@ -391,8 +415,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
         self.library._have_cluster_creds = True
         self.library._ssc_stats = fake.SSC_INFO
+        self.library._perf_library.get_node_utilization_for_pool = (
+            mock.Mock(side_effect=[30.0, 42.0]))
 
-        result = self.library._get_pools()
+        result = self.library._get_pools(filter_function='filter',
+                                         goodness_function='goodness')
 
         self.assertListEqual(fake.POOLS, result)
 
@@ -402,6 +429,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library, '_get_aggregate_space',
             mock.Mock(return_value=fake.AGGREGATE_CAPACITIES_VSERVER_CREDS))
         self.library._have_cluster_creds = False
+        self.library._ssc_stats = fake.SSC_INFO_VSERVER_CREDS
+        self.library._perf_library.get_node_utilization_for_pool = (
+            mock.Mock(side_effect=[50.0, 50.0]))
 
         result = self.library._get_pools()
 
@@ -2171,8 +2201,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._update_ssc_info()
 
         expected = {
-            fake.AGGREGATES[0]: {},
-            fake.AGGREGATES[1]: {}
+            fake.AGGREGATES[0]: {
+                'netapp_aggregate': fake.AGGREGATES[0],
+            },
+            fake.AGGREGATES[1]: {
+                'netapp_aggregate': fake.AGGREGATES[1],
+            }
         }
 
         self.assertDictEqual(expected, self.library._ssc_stats)
@@ -2201,8 +2235,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.client, 'get_aggregate_disk_types',
             mock.Mock(side_effect=fake.SSC_DISK_TYPES))
         ssc_stats = {
-            fake.AGGREGATES[0]: {},
-            fake.AGGREGATES[1]: {},
+            fake.AGGREGATES[0]: {
+                'netapp_aggregate': fake.AGGREGATES[0],
+            },
+            fake.AGGREGATES[1]: {
+                'netapp_aggregate': fake.AGGREGATES[1],
+            },
         }
 
         self.library._update_ssc_aggr_info(fake.AGGREGATES, ssc_stats)
