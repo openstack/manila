@@ -9,7 +9,7 @@ These APIs help in interacting with the Shared File Systems services,
 
 .. important::
 
-    For API versions 2.6 and prior, replace ``services``` in the URLs
+    For API versions 2.6 and prior, replace ``services`` in the URLs
     with ``os-services``.
 
 
