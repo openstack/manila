@@ -36,7 +36,6 @@ import manila.network
 import manila.network.linux.interface
 import manila.network.neutron.api
 import manila.network.neutron.neutron_network_plugin
-import manila.network.nova_network_plugin
 import manila.network.standalone_network_plugin
 import manila.quota
 import manila.scheduler.drivers.base
@@ -104,7 +103,6 @@ _global_opt_lists = [
     neutron_bind_network_plugin_opts,
     manila.network.neutron.neutron_network_plugin.
     neutron_single_network_plugin_opts,
-    manila.network.nova_network_plugin.nova_single_network_plugin_opts,
     manila.network.standalone_network_plugin.standalone_network_plugin_opts,
     manila.quota.quota_opts,
     manila.scheduler.drivers.base.scheduler_driver_opts,

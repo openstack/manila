@@ -612,22 +612,6 @@ class NeutronSingleNetworkPluginTest(test.TestCase):
             self.context, share_network)
         self.assertFalse(instance.db.share_network_update.called)
 
-    def test___update_share_network_net_data_nova_net_id_present(self):
-        instance = self._get_neutron_network_plugin_instance()
-        share_network = {
-            'id': 'fake_share_network_id',
-            'nova_net_id': 'foo',
-        }
-        self.mock_object(
-            instance.db, 'share_network_update',
-            mock.Mock(return_value=share_network))
-
-        self.assertRaises(
-            exception.NetworkBadConfigurationException,
-            instance._update_share_network_net_data,
-            self.context, share_network)
-        self.assertFalse(instance.db.share_network_update.called)
-
     def test_allocate_network(self):
         self.mock_object(plugin.NeutronNetworkPlugin, 'allocate_network')
         plugin.NeutronNetworkPlugin.allocate_network.return_value = [
@@ -1185,22 +1169,6 @@ class NeutronBindSingleNetworkPluginTest(test.TestCase):
             'id': 'fake_share_network_id',
             'neutron_net_id': n,
             'neutron_subnet_id': s,
-        }
-        self.mock_object(
-            instance.db, 'share_network_update',
-            mock.Mock(return_value=share_network))
-
-        self.assertRaises(
-            exception.NetworkBadConfigurationException,
-            instance._update_share_network_net_data,
-            self.context, share_network)
-        self.assertFalse(instance.db.share_network_update.called)
-
-    def test___update_share_network_net_data_nova_net_id_present(self):
-        instance = self._get_neutron_single_network_plugin_instance()
-        share_network = {
-            'id': 'fake_share_network_id',
-            'nova_net_id': 'foo',
         }
         self.mock_object(
             instance.db, 'share_network_update',

@@ -320,10 +320,6 @@ class NeutronSingleNetworkPlugin(NeutronNetworkPlugin):
     def _update_share_network_net_data(self, context, share_network):
         upd = dict()
 
-        if share_network.get('nova_net_id') is not None:
-            raise exception.NetworkBadConfigurationException(
-                "Share network has nova_net_id set.")
-
         if not share_network.get('neutron_net_id') == self.net:
             if share_network.get('neutron_net_id') is not None:
                 raise exception.NetworkBadConfigurationException(

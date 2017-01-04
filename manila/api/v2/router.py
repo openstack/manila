@@ -27,7 +27,6 @@ from manila.api.v1 import scheduler_stats
 from manila.api.v1 import security_service
 from manila.api.v1 import share_manage
 from manila.api.v1 import share_metadata
-from manila.api.v1 import share_networks
 from manila.api.v1 import share_servers
 from manila.api.v1 import share_types_extra_specs
 from manila.api.v1 import share_unmanage
@@ -40,6 +39,7 @@ from manila.api.v2 import services
 from manila.api.v2 import share_export_locations
 from manila.api.v2 import share_instance_export_locations
 from manila.api.v2 import share_instances
+from manila.api.v2 import share_networks
 from manila.api.v2 import share_replicas
 from manila.api.v2 import share_snapshot_instances
 from manila.api.v2 import share_snapshots

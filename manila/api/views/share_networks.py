@@ -20,7 +20,7 @@ class ViewBuilder(common.ViewBuilder):
     """Model a server API response as a python dictionary."""
 
     _collection_name = 'share_networks'
-    _detail_version_modifiers = ["add_gateway", "add_mtu"]
+    _detail_version_modifiers = ["add_gateway", "add_mtu", "add_nova_net_id"]
 
     def build_share_network(self, request, share_network):
         """View of a share network."""
@@ -47,7 +47,6 @@ class ViewBuilder(common.ViewBuilder):
                 'updated_at': share_network.get('updated_at'),
                 'neutron_net_id': share_network.get('neutron_net_id'),
                 'neutron_subnet_id': share_network.get('neutron_subnet_id'),
-                'nova_net_id': share_network.get('nova_net_id'),
                 'network_type': share_network.get('network_type'),
                 'segmentation_id': share_network.get('segmentation_id'),
                 'cidr': share_network.get('cidr'),
@@ -65,3 +64,7 @@ class ViewBuilder(common.ViewBuilder):
     @common.ViewBuilder.versioned_method("2.20")
     def add_mtu(self, context, network_dict, network):
         network_dict['mtu'] = network.get('mtu')
+
+    @common.ViewBuilder.versioned_method("1.0", "2.25")
+    def add_nova_net_id(self, context, network_dict, network):
+        network_dict['nova_net_id'] = None

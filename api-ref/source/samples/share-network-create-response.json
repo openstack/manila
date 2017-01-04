@@ -8,7 +8,6 @@
         "id": "77eb3421-4549-4789-ac39-0d5185d68c29",
         "neutron_net_id": "998b42ee-2cee-4d36-8b95-67b5ca1f2109",
         "ip_version": null,
-        "nova_net_id": null,
         "cidr": null,
         "project_id": "e10a683c20da41248cfd5e1ab3d88c62",
         "network_type": null,

@@ -2796,7 +2796,6 @@ class ShareManagerTestCase(test.TestCase):
             cidr='fake_cidr',
             neutron_net_id='fake_neutron_net_id',
             neutron_subnet_id='fake_neutron_subnet_id',
-            nova_net_id='fake_nova_net_id',
             security_services='fake_security_services',
             network_type='fake_network_type')
         expected = dict(
@@ -2805,7 +2804,6 @@ class ShareManagerTestCase(test.TestCase):
             cidr=fake_share_network['cidr'],
             neutron_net_id=fake_share_network['neutron_net_id'],
             neutron_subnet_id=fake_share_network['neutron_subnet_id'],
-            nova_net_id=fake_share_network['nova_net_id'],
             security_services=fake_share_network['security_services'],
             network_allocations=(
                 fake_network_allocations_get_for_share_server()),

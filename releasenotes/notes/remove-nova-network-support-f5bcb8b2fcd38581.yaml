@@ -1,0 +1,5 @@
+---
+upgrade:
+  - Removed support for ``nova_net_id`` in share_networks API and in the
+    ShareNetwork DB model.  Also removed the nova network plugins themselves
+    and corresponding manila.conf options.

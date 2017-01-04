@@ -30,7 +30,7 @@ ShareGroup = [
                help="The minimum api microversion is configured to be the "
                     "value of the minimum microversion supported by Manila."),
     cfg.StrOpt("max_api_microversion",
-               default="2.25",
+               default="2.26",
                help="The maximum api microversion is configured to be the "
                     "value of the latest microversion supported by Manila."),
     cfg.StrOpt("region",

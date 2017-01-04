@@ -20,7 +20,8 @@ from oslo_utils import timeutils
 from six.moves.urllib import parse
 from webob import exc as webob_exc
 
-from manila.api.v1 import share_networks
+from manila.api.openstack import api_version_request as api_version
+from manila.api.v2 import share_networks
 from manila.db import api as db_api
 from manila import exception
 from manila import quota
@@ -113,7 +114,6 @@ class ShareNetworkAPITest(test.TestCase):
         self.assertNotIn('security_services', view)
 
     @ddt.data(
-        {'nova_net_id': 'fake_nova_net_id'},
         {'neutron_net_id': 'fake_neutron_net_id'},
         {'neutron_subnet_id': 'fake_neutron_subnet_id'},
         {'neutron_net_id': 'fake', 'neutron_subnet_id': 'fake'})
@@ -129,7 +129,8 @@ class ShareNetworkAPITest(test.TestCase):
         {'nova_net_id': 'foo', 'neutron_net_id': 'bar'},
         {'nova_net_id': 'foo', 'neutron_subnet_id': 'quuz'},
         {'nova_net_id': 'foo', 'neutron_net_id': 'bar',
-         'neutron_subnet_id': 'quuz'})
+         'neutron_subnet_id': 'quuz'},
+        {'nova_net_id': 'fake_nova_net_id'})
     def test_create_invalid_cases(self, data):
         data.update({'user_id': 'fake_user_id'})
         body = {share_networks.RESOURCE_NAME: data}
@@ -137,7 +138,6 @@ class ShareNetworkAPITest(test.TestCase):
             webob_exc.HTTPBadRequest, self.controller.create, self.req, body)
 
     @ddt.data(
-        {'nova_net_id': 'fake_nova_net_id'},
         {'neutron_net_id': 'fake_neutron_net_id'},
         {'neutron_subnet_id': 'fake_neutron_subnet_id'},
         {'neutron_net_id': 'fake', 'neutron_subnet_id': 'fake'})
@@ -160,7 +160,9 @@ class ShareNetworkAPITest(test.TestCase):
         {'nova_net_id': 'foo', 'neutron_net_id': 'bar'},
         {'nova_net_id': 'foo', 'neutron_subnet_id': 'quuz'},
         {'nova_net_id': 'foo', 'neutron_net_id': 'bar',
-         'neutron_subnet_id': 'quuz'})
+         'neutron_subnet_id': 'quuz'},
+        {'nova_net_id': 'fake_nova_net_id'},
+    )
     def test_update_invalid_cases(self, data):
         body = {share_networks.RESOURCE_NAME: {'user_id': 'fake_user'}}
         created = self.controller.create(self.req, body)
@@ -570,17 +572,19 @@ class ShareNetworkAPITest(test.TestCase):
                               share_nw,
                               body)
 
-    def test_action_add_security_service(self):
+    @ddt.data(*set(("1.0", "2.25", "2.26", api_version._MAX_API_VERSION)))
+    def test_action_add_security_service(self, microversion):
         share_network_id = 'fake network id'
         security_service_id = 'fake ss id'
         body = {'add_security_service': {'security_service_id':
                                          security_service_id}}
 
+        req = fakes.HTTPRequest.blank('/share-networks', version=microversion)
         with mock.patch.object(self.controller, '_add_security_service',
                                mock.Mock()):
-            self.controller.action(self.req, share_network_id, body)
+            self.controller.action(req, share_network_id, body)
             self.controller._add_security_service.assert_called_once_with(
-                self.req, share_network_id, body['add_security_service'])
+                req, share_network_id, body['add_security_service'])
 
     @mock.patch.object(db_api, 'share_network_get', mock.Mock())
     @mock.patch.object(db_api, 'security_service_get', mock.Mock())
@@ -612,17 +616,19 @@ class ShareNetworkAPITest(test.TestCase):
                 'add_security_service',
             )
 
-    def test_action_remove_security_service(self):
+    @ddt.data(*set(("1.0", "2.25", "2.26", api_version._MAX_API_VERSION)))
+    def test_action_remove_security_service(self, microversion):
         share_network_id = 'fake network id'
         security_service_id = 'fake ss id'
         body = {'remove_security_service': {'security_service_id':
                                             security_service_id}}
 
+        req = fakes.HTTPRequest.blank('/share-networks', version=microversion)
         with mock.patch.object(self.controller, '_remove_security_service',
                                mock.Mock()):
-            self.controller.action(self.req, share_network_id, body)
+            self.controller.action(req, share_network_id, body)
             self.controller._remove_security_service.assert_called_once_with(
-                self.req, share_network_id, body['remove_security_service'])
+                req, share_network_id, body['remove_security_service'])
 
     @mock.patch.object(db_api, 'share_network_get', mock.Mock())
     @mock.patch.object(share_networks.policy, 'check_policy', mock.Mock())

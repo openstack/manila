@@ -1331,3 +1331,38 @@ class CreateFromSnapshotExtraSpecAndShareColumn(BaseMigrationChecks):
                               if x['spec_key'] == self.expected_attr
                               and x['share_type_id'] == share_type_id]
             self.test_case.assertEqual(0, len(new_extra_spec))
+
+
+@map_to_migration('95e3cf760840')
+class RemoveNovaNetIdColumnFromShareNetworks(BaseMigrationChecks):
+    table_name = 'share_networks'
+    nova_net_column_name = 'nova_net_id'
+
+    def setup_upgrade_data(self, engine):
+        user_id = 'user_id'
+        project_id = 'project_id'
+        nova_net_id = 'foo_nova_net_id'
+
+        share_network_data = {
+            'id': 'foo_share_network_id_3',
+            'user_id': user_id,
+            'project_id': project_id,
+            'nova_net_id': nova_net_id,
+        }
+        sn_table = utils.load_table(self.table_name, engine)
+        engine.execute(sn_table.insert(share_network_data))
+
+    def check_upgrade(self, engine, data):
+        sn_table = utils.load_table(self.table_name, engine)
+        rows = engine.execute(sn_table.select())
+        self.test_case.assertGreater(rows.rowcount, 0)
+        for row in rows:
+            self.test_case.assertFalse(hasattr(row, self.nova_net_column_name))
+
+    def check_downgrade(self, engine):
+        sn_table = utils.load_table(self.table_name, engine)
+        rows = engine.execute(sn_table.select())
+        self.test_case.assertGreater(rows.rowcount, 0)
+        for row in rows:
+            self.test_case.assertTrue(hasattr(row, self.nova_net_column_name))
+            self.test_case.assertIsNone(row[self.nova_net_column_name])

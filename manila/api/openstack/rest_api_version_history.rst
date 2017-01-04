@@ -151,3 +151,8 @@ user documentation.
 2.25
 ----
   Added quota-show detail API.
+
+2.26
+----
+  Removed nova-net plugin support and removed 'nova_net_id' parameter from
+  share_network API.
