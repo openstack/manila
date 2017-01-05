@@ -707,7 +707,7 @@ class ShareSnapshotInstanceNewProviderLocationColumnChecks(
 
 
 @map_to_migration('221a83cfd85b')
-class ShareNetwoksFieldLengthChecks(BaseMigrationChecks):
+class ShareNetworksFieldLengthChecks(BaseMigrationChecks):
     def setup_upgrade_data(self, engine):
         user_id = '123456789123456789'
         project_id = 'project_id'
@@ -1180,154 +1180,154 @@ class MoveShareTypeIdToInstancesCheck(BaseMigrationChecks):
                      None)['share_type_id'],
                 share['share_type_id'])
 
-    @map_to_migration('3e7d62517afa')
-    class CreateFromSnapshotExtraSpecAndShareColumn(BaseMigrationChecks):
 
-        expected_attr = constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT
-        snap_support_attr = constants.ExtraSpecs.SNAPSHOT_SUPPORT
+@map_to_migration('3e7d62517afa')
+class CreateFromSnapshotExtraSpecAndShareColumn(BaseMigrationChecks):
 
-        def _get_fake_data(self):
-            extra_specs = []
-            shares = []
-            share_instances = []
-            share_types = [
-                {
-                    'id': uuidutils.generate_uuid(),
-                    'deleted': 'False',
-                    'name': 'share-type-1',
-                    'is_public': False,
-                },
-                {
-                    'id': uuidutils.generate_uuid(),
-                    'deleted': 'False',
-                    'name': 'share-type-2',
-                    'is_public': True,
+    expected_attr = constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT
+    snap_support_attr = constants.ExtraSpecs.SNAPSHOT_SUPPORT
 
-                },
-            ]
-            snapshot_support = ('0', '1')
-            dhss = ('True', 'False')
-            for idx, share_type in enumerate(share_types):
-                extra_specs.append({
-                    'share_type_id': share_type['id'],
-                    'spec_key': 'snapshot_support',
-                    'spec_value': snapshot_support[idx],
-                    'deleted': 0,
-                })
-                extra_specs.append({
-                    'share_type_id': share_type['id'],
-                    'spec_key': 'driver_handles_share_servers',
-                    'spec_value': dhss[idx],
-                    'deleted': 0,
-                })
-                share = fake_share(snapshot_support=snapshot_support[idx])
-                shares.append(share)
-                share_instances.append(
-                    fake_instance(share_id=share['id'],
-                                  share_type_id=share_type['id'])
-                )
+    def _get_fake_data(self):
+        extra_specs = []
+        shares = []
+        share_instances = []
+        share_types = [
+            {
+                'id': uuidutils.generate_uuid(),
+                'deleted': 'False',
+                'name': 'share-type-1',
+                'is_public': False,
+            },
+            {
+                'id': uuidutils.generate_uuid(),
+                'deleted': 'False',
+                'name': 'share-type-2',
+                'is_public': True,
+            },
+        ]
+        snapshot_support = ('0', '1')
+        dhss = ('True', 'False')
+        for idx, share_type in enumerate(share_types):
+            extra_specs.append({
+                'share_type_id': share_type['id'],
+                'spec_key': 'snapshot_support',
+                'spec_value': snapshot_support[idx],
+                'deleted': 0,
+            })
+            extra_specs.append({
+                'share_type_id': share_type['id'],
+                'spec_key': 'driver_handles_share_servers',
+                'spec_value': dhss[idx],
+                'deleted': 0,
+            })
+            share = fake_share(snapshot_support=snapshot_support[idx])
+            shares.append(share)
+            share_instances.append(
+                fake_instance(share_id=share['id'],
+                              share_type_id=share_type['id'])
+            )
 
-            return share_types, extra_specs, shares, share_instances
+        return share_types, extra_specs, shares, share_instances
 
-        def setup_upgrade_data(self, engine):
+    def setup_upgrade_data(self, engine):
 
-            (self.share_types, self.extra_specs, self.shares,
-             self.share_instances) = self._get_fake_data()
+        (self.share_types, self.extra_specs, self.shares,
+         self.share_instances) = self._get_fake_data()
 
-            share_types_table = utils.load_table('share_types', engine)
-            engine.execute(share_types_table.insert(self.share_types))
-            extra_specs_table = utils.load_table('share_type_extra_specs',
-                                                 engine)
-            engine.execute(extra_specs_table.insert(self.extra_specs))
-            shares_table = utils.load_table('shares', engine)
-            engine.execute(shares_table.insert(self.shares))
-            share_instances_table = utils.load_table('share_instances', engine)
-            engine.execute(share_instances_table.insert(self.share_instances))
+        share_types_table = utils.load_table('share_types', engine)
+        engine.execute(share_types_table.insert(self.share_types))
+        extra_specs_table = utils.load_table('share_type_extra_specs',
+                                             engine)
+        engine.execute(extra_specs_table.insert(self.extra_specs))
+        shares_table = utils.load_table('shares', engine)
+        engine.execute(shares_table.insert(self.shares))
+        share_instances_table = utils.load_table('share_instances', engine)
+        engine.execute(share_instances_table.insert(self.share_instances))
 
-        def check_upgrade(self, engine, data):
-            share_type_ids = [st['id'] for st in self.share_types]
-            share_ids = [s['id'] for s in self.shares]
-            shares_table = utils.load_table('shares', engine)
-            share_types_table = utils.load_table('share_types', engine)
-            extra_specs_table = utils.load_table('share_type_extra_specs',
-                                                 engine)
+    def check_upgrade(self, engine, data):
+        share_type_ids = [st['id'] for st in self.share_types]
+        share_ids = [s['id'] for s in self.shares]
+        shares_table = utils.load_table('shares', engine)
+        share_types_table = utils.load_table('share_types', engine)
+        extra_specs_table = utils.load_table('share_type_extra_specs',
+                                             engine)
 
-            # Pre-existing Shares must be present
-            shares_in_db = engine.execute(shares_table.select()).fetchall()
-            share_ids_in_db = [s['id'] for s in shares_in_db]
-            for share_id in share_ids:
-                self.test_case.assertIn(share_id, share_ids_in_db)
+        # Pre-existing Shares must be present
+        shares_in_db = engine.execute(shares_table.select()).fetchall()
+        share_ids_in_db = [s['id'] for s in shares_in_db]
+        for share_id in share_ids:
+            self.test_case.assertIn(share_id, share_ids_in_db)
 
-            # new shares attr must match snapshot support
-            for share in shares_in_db:
-                self.test_case.assertTrue(hasattr(share, self.expected_attr))
-                self.test_case.assertEqual(share[self.snap_support_attr],
-                                           share[self.expected_attr])
+        # new shares attr must match snapshot support
+        for share in shares_in_db:
+            self.test_case.assertTrue(hasattr(share, self.expected_attr))
+            self.test_case.assertEqual(share[self.snap_support_attr],
+                                       share[self.expected_attr])
 
-            # Pre-existing Share types must be present
-            share_types_in_db = (
-                engine.execute(share_types_table.select()).fetchall())
-            share_type_ids_in_db = [s['id'] for s in share_types_in_db]
-            for share_type_id in share_type_ids:
-                self.test_case.assertIn(share_type_id, share_type_ids_in_db)
+        # Pre-existing Share types must be present
+        share_types_in_db = (
+            engine.execute(share_types_table.select()).fetchall())
+        share_type_ids_in_db = [s['id'] for s in share_types_in_db]
+        for share_type_id in share_type_ids:
+            self.test_case.assertIn(share_type_id, share_type_ids_in_db)
 
-            # Pre-existing extra specs must be present
-            extra_specs_in_db = (
-                engine.execute(extra_specs_table.select().where(
-                    extra_specs_table.c.deleted == 0)).fetchall())
-            self.test_case.assertGreaterEqual(len(extra_specs_in_db),
-                                              len(self.extra_specs))
+        # Pre-existing extra specs must be present
+        extra_specs_in_db = (
+            engine.execute(extra_specs_table.select().where(
+                extra_specs_table.c.deleted == 0)).fetchall())
+        self.test_case.assertGreaterEqual(len(extra_specs_in_db),
+                                          len(self.extra_specs))
 
-            # New Extra spec for share types must match snapshot support
-            for share_type_id in share_type_ids:
-                new_extra_spec = [x for x in extra_specs_in_db
-                                  if x['spec_key'] == self.expected_attr
-                                  and x['share_type_id'] == share_type_id]
-                snapshot_support_spec = [
-                    x for x in extra_specs_in_db
-                    if x['spec_key'] == self.snap_support_attr
-                    and x['share_type_id'] == share_type_id]
-                self.test_case.assertEqual(1, len(new_extra_spec))
-                self.test_case.assertEqual(1, len(snapshot_support_spec))
-                self.test_case.assertEqual(
-                    snapshot_support_spec[0]['spec_value'],
-                    new_extra_spec[0]['spec_value'])
+        # New Extra spec for share types must match snapshot support
+        for share_type_id in share_type_ids:
+            new_extra_spec = [x for x in extra_specs_in_db
+                              if x['spec_key'] == self.expected_attr
+                              and x['share_type_id'] == share_type_id]
+            snapshot_support_spec = [
+                x for x in extra_specs_in_db
+                if x['spec_key'] == self.snap_support_attr
+                and x['share_type_id'] == share_type_id]
+            self.test_case.assertEqual(1, len(new_extra_spec))
+            self.test_case.assertEqual(1, len(snapshot_support_spec))
+            self.test_case.assertEqual(
+                snapshot_support_spec[0]['spec_value'],
+                new_extra_spec[0]['spec_value'])
 
-        def check_downgrade(self, engine):
-            share_type_ids = [st['id'] for st in self.share_types]
-            share_ids = [s['id'] for s in self.shares]
-            shares_table = utils.load_table('shares', engine)
-            share_types_table = utils.load_table('share_types', engine)
-            extra_specs_table = utils.load_table('share_type_extra_specs',
-                                                 engine)
+    def check_downgrade(self, engine):
+        share_type_ids = [st['id'] for st in self.share_types]
+        share_ids = [s['id'] for s in self.shares]
+        shares_table = utils.load_table('shares', engine)
+        share_types_table = utils.load_table('share_types', engine)
+        extra_specs_table = utils.load_table('share_type_extra_specs',
+                                             engine)
 
-            # Pre-existing Shares must be present
-            shares_in_db = engine.execute(shares_table.select()).fetchall()
-            share_ids_in_db = [s['id'] for s in shares_in_db]
-            for share_id in share_ids:
-                self.test_case.assertIn(share_id, share_ids_in_db)
+        # Pre-existing Shares must be present
+        shares_in_db = engine.execute(shares_table.select()).fetchall()
+        share_ids_in_db = [s['id'] for s in shares_in_db]
+        for share_id in share_ids:
+            self.test_case.assertIn(share_id, share_ids_in_db)
 
-            # Shares should have no attr to create share from snapshot
-            for share in shares_in_db:
-                self.test_case.assertFalse(hasattr(share, self.expected_attr))
+        # Shares should have no attr to create share from snapshot
+        for share in shares_in_db:
+            self.test_case.assertFalse(hasattr(share, self.expected_attr))
 
-            # Pre-existing Share types must be present
-            share_types_in_db = (
-                engine.execute(share_types_table.select()).fetchall())
-            share_type_ids_in_db = [s['id'] for s in share_types_in_db]
-            for share_type_id in share_type_ids:
-                self.test_case.assertIn(share_type_id, share_type_ids_in_db)
+        # Pre-existing Share types must be present
+        share_types_in_db = (
+            engine.execute(share_types_table.select()).fetchall())
+        share_type_ids_in_db = [s['id'] for s in share_types_in_db]
+        for share_type_id in share_type_ids:
+            self.test_case.assertIn(share_type_id, share_type_ids_in_db)
 
-            # Pre-existing extra specs must be present
-            extra_specs_in_db = (
-                engine.execute(extra_specs_table.select().where(
-                    extra_specs_table.c.deleted == 0)).fetchall())
-            self.test_case.assertGreaterEqual(len(extra_specs_in_db),
-                                              len(self.extra_specs))
+        # Pre-existing extra specs must be present
+        extra_specs_in_db = (
+            engine.execute(extra_specs_table.select().where(
+                extra_specs_table.c.deleted == 0)).fetchall())
+        self.test_case.assertGreaterEqual(len(extra_specs_in_db),
+                                          len(self.extra_specs))
 
-            # Share types must not have create share from snapshot extra spec
-            for share_type_id in share_type_ids:
-                new_extra_spec = [x for x in extra_specs_in_db
-                                  if x['spec_key'] == self.expected_attr
-                                  and x['share_type_id'] == share_type_id]
-                self.test_case.assertEqual(0, len(new_extra_spec))
+        # Share types must not have create share from snapshot extra spec
+        for share_type_id in share_type_ids:
+            new_extra_spec = [x for x in extra_specs_in_db
+                              if x['spec_key'] == self.expected_attr
+                              and x['share_type_id'] == share_type_id]
+            self.test_case.assertEqual(0, len(new_extra_spec))
