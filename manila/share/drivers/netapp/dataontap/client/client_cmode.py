@@ -35,7 +35,6 @@ from manila.share.drivers.netapp import utils as na_utils
 LOG = log.getLogger(__name__)
 DELETED_PREFIX = 'deleted_manila_'
 DEFAULT_IPSPACE = 'Default'
-DEFAULT_BROADCAST_DOMAIN = 'OpenStack'
 DEFAULT_MAX_PAGE_LENGTH = 50
 
 
@@ -605,7 +604,6 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def _ensure_broadcast_domain_for_port(self, node, port, mtu,
-                                          domain=DEFAULT_BROADCAST_DOMAIN,
                                           ipspace=DEFAULT_IPSPACE):
         """Ensure a port is in a broadcast domain.  Create one if necessary.
 
@@ -613,9 +611,13 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         happens in multi-node clusters, then there isn't anything to do.
         Otherwise, we can assume the IPspace is correct and extant by this
         point, so the remaining task is to remove the port from any domain it
-        is already in, create the desired domain if it doesn't exist, and add
-        the port to the desired domain.
+        is already in, create the domain for the IPspace if it doesn't exist,
+        and add the port to this domain.
         """
+
+        # Derive the broadcast domain name from the IPspace name since they
+        # need to be 1-1 and the default for both is the same name, 'Default'.
+        domain = re.sub(r'ipspace', 'domain', ipspace)
 
         port_info = self._get_broadcast_domain_for_port(node, port)
 
