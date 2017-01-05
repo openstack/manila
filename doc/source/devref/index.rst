@@ -55,7 +55,6 @@ Other Resources
 
    launchpad
    gerrit
-   jenkins
 
 API Reference
 -------------
