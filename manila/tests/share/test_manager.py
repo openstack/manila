@@ -236,8 +236,7 @@ class ShareManagerTestCase(test.TestCase):
 
         manager.LOG.exception.assert_called_once_with(
             mock.ANY, {'name': self.share_manager.driver.__class__.__name__,
-                       'host': self.share_manager.host,
-                       'exc': mock.ANY})
+                       'host': self.share_manager.host})
         self.assertFalse(self.share_manager.driver.initialized)
 
     def _setup_init_mocks(self, setup_access_rules=True):
@@ -425,7 +424,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(smanager, '_get_share_server',
                          mock.Mock(return_value=share_server))
         self.mock_object(smanager, 'publish_service_capabilities')
-        self.mock_object(manager.LOG, 'error')
+        self.mock_object(manager.LOG, 'exception')
         self.mock_object(manager.LOG, 'info')
         self.mock_object(smanager.db, 'share_access_get_all_for_share',
                          mock.Mock(return_value=rules))
@@ -472,7 +471,7 @@ class ShareManagerTestCase(test.TestCase):
             mock.call(utils.IsAMatcher(context.RequestContext),
                       instances[4]['id'], share_server=share_server),
         ])
-        manager.LOG.error.assert_has_calls([
+        manager.LOG.exception.assert_has_calls([
             mock.call(mock.ANY, mock.ANY),
         ])
 
@@ -2778,7 +2777,7 @@ class ShareManagerTestCase(test.TestCase):
             with mock.patch.object(manager, 'LOG') as mock_LOG:
                 self.share_manager._ensure_share_instance_has_pool(
                     context.get_admin_context(), fake_share)
-                self.assertEqual(1, mock_LOG.error.call_count)
+                self.assertEqual(1, mock_LOG.exception.call_count)
 
     def test__form_server_setup_info(self):
         def fake_network_allocations_get_for_share_server(*args, **kwargs):

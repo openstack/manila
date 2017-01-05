@@ -45,10 +45,9 @@ class OVSBridge(object):
         full_args = ["ovs-vsctl", "--timeout=2"] + args
         try:
             return utils.execute(*full_args, run_as_root=True)
-        except Exception as e:
-            LOG.error(_LE("Unable to execute %(cmd)s. Exception: "
-                          "%(exception)s"),
-                      {'cmd': full_args, 'exception': e})
+        except Exception:
+            LOG.exception(_LE("Unable to execute %(cmd)s."),
+                          {'cmd': full_args})
 
     def reset_bridge(self):
         self.run_vsctl(["--", "--if-exists", "del-br", self.br_name])

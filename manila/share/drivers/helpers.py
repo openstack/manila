@@ -379,10 +379,9 @@ class CIFSHelperIPAccess(NASHelperBase):
             # Share does not exist, create it
             try:
                 self._ssh_exec(server, create_cmd)
-            except Exception as child_e:
+            except Exception:
                 msg = _("Could not create CIFS export %s.") % share_name
-                LOG.exception(child_e)
-                LOG.error(msg)
+                LOG.exception(msg)
                 raise exception.ManilaException(reason=msg)
         else:
             # Share exists
@@ -391,10 +390,9 @@ class CIFSHelperIPAccess(NASHelperBase):
                     server, ['sudo', 'net', 'conf', 'delshare', share_name, ])
                 try:
                     self._ssh_exec(server, create_cmd)
-                except Exception as e:
+                except Exception:
                     msg = _("Could not create CIFS export %s.") % share_name
-                    LOG.exception(e)
-                    LOG.error(msg)
+                    LOG.exception(msg)
                     raise exception.ManilaException(reason=msg)
             else:
                 msg = _('Share section %s already defined.') % share_name

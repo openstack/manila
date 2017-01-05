@@ -113,10 +113,10 @@ class UnityStorageConnection(driver.StorageConnection):
         try:
             nas_server = self.client.get_nas_server(server_name)
         except storops_ex.UnityResourceNotFoundError:
-            message = (_LE("Failed to get NAS server %(server)s when "
-                           "creating the share %(share)s.") %
+            message = (_("Failed to get NAS server %(server)s when "
+                         "creating the share %(share)s.") %
                        {'server': server_name, 'share': share_name})
-            LOG.error(message)
+            LOG.exception(message)
             raise exception.EMCUnityError(err=message)
 
         locations = None
@@ -153,10 +153,10 @@ class UnityStorageConnection(driver.StorageConnection):
         try:
             nas_server = self.client.get_nas_server(server_name)
         except storops_ex.UnityResourceNotFoundError:
-            message = (_LE("Failed to get NAS server %(server)s when "
-                           "creating the share %(share)s.") %
+            message = (_("Failed to get NAS server %(server)s when "
+                         "creating the share %(share)s.") %
                        {'server': server_name, 'share': share_name})
-            LOG.error(message)
+            LOG.exception(message)
             raise exception.EMCUnityError(err=message)
 
         backend_snap = self.client.create_snap_of_snap(snapshot['id'],
@@ -324,7 +324,7 @@ class UnityStorageConnection(driver.StorageConnection):
                 stats_dict['pools'].append(pool_stat)
 
         if not stats_dict.get('pools'):
-            message = _LE("Failed to update storage pool.")
+            message = _("Failed to update storage pool.")
             LOG.error(message)
             raise exception.EMCUnityError(err=message)
 
@@ -355,9 +355,9 @@ class UnityStorageConnection(driver.StorageConnection):
 
             return {'share_server_name': server_name}
 
-        except Exception as ex:
+        except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Could not setup server. Reason: %s.'), ex)
+                LOG.exception(_LE('Could not setup server.'))
                 server_details = {'share_server_name': server_name}
                 self.teardown_server(
                     server_details, network_info['security_services'])
@@ -397,18 +397,18 @@ class UnityStorageConnection(driver.StorageConnection):
         try:
             self.nas_server_pool = self.client.get_pool(pool_name)
         except storops_ex.UnityResourceNotFoundError:
-            message = (_LE("The storage pools %s to store NAS server "
-                           "configuration do not exist.") % pool_name)
-            LOG.error(message)
+            message = (_("The storage pools %s to store NAS server "
+                         "configuration do not exist.") % pool_name)
+            LOG.exception(message)
             raise exception.BadConfigurationException(reason=message)
 
     def _config_sp(self, sp_name):
         self.storage_processor = self.client.get_storage_processor(
             sp_name.lower())
         if self.storage_processor is None:
-            message = (_LE("The storage processor %s does not exist or "
-                           "is unavailable. Please reconfigure it in "
-                           "manila.conf.") % sp_name)
+            message = (_("The storage processor %s does not exist or "
+                         "is unavailable. Please reconfigure it in "
+                         "manila.conf.") % sp_name)
             LOG.error(message)
             raise exception.BadConfigurationException(reason=message)
 
@@ -547,7 +547,7 @@ class UnityStorageConnection(driver.StorageConnection):
             'backend_details', {}).get('share_server_name')
 
         if server_name is None:
-            msg = (_LE("Name of the share server %s not found.")
+            msg = (_("Name of the share server %s not found.")
                    % share_server['id'])
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)

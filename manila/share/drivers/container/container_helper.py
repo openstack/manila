@@ -18,7 +18,7 @@ import uuid
 from oslo_log import log
 
 from manila import exception
-from manila.i18n import _, _LI
+from manila.i18n import _, _LE, _LI
 from manila.share import driver
 
 
@@ -93,8 +93,8 @@ class DockerExecHelper(driver.ExecuteMixin):
         LOG.debug("Executing command: %s.", " ".join(cmd))
         try:
             result = self._execute(*cmd, run_as_root=True)
-        except Exception as e:
-            LOG.exception(e)
+        except Exception:
+            LOG.exception(_LE("Executing command failed."))
             return None
         LOG.debug("Execution result: %s.", result)
         return result

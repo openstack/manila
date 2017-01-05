@@ -243,10 +243,10 @@ class ShareManager(manager.SchedulerDependentManager):
             # knowledge and update the DB.
             try:
                 pool = self.driver.get_pool(share_instance)
-            except Exception as err:
-                LOG.error(_LE("Failed to fetch pool name for share: "
-                              "%(share)s. Error: %(error)s."),
-                          {'share': share_instance['id'], 'error': err})
+            except Exception:
+                LOG.exception(_LE("Failed to fetch pool name for share: "
+                                  "%(share)s."),
+                              {'share': share_instance['id']})
                 return
 
             if pool:
@@ -269,13 +269,12 @@ class ShareManager(manager.SchedulerDependentManager):
         try:
             self.driver.do_setup(ctxt)
             self.driver.check_for_setup_error()
-        except Exception as e:
+        except Exception:
             LOG.exception(
                 _LE("Error encountered during initialization of driver "
-                    "'%(name)s' on '%(host)s' host. %(exc)s"), {
+                    "'%(name)s' on '%(host)s' host."), {
                         "name": self.driver.__class__.__name__,
                         "host": self.host,
-                        "exc": e,
                 }
             )
             self.driver.initialized = False
@@ -321,12 +320,10 @@ class ShareManager(manager.SchedulerDependentManager):
             try:
                 export_locations = self.driver.ensure_share(
                     ctxt, share_instance, share_server=share_server)
-            except Exception as e:
-                LOG.error(
-                    _LE("Caught exception trying ensure share '%(s_id)s'. "
-                        "Exception: \n%(e)s."),
-                    {'s_id': share_instance['id'], 'e': e},
-                )
+            except Exception:
+                LOG.exception(_LE("Caught exception trying ensure "
+                                  "share '%(s_id)s'."), {'s_id':
+                                                         share_instance['id']})
                 continue
 
             if export_locations:
@@ -339,12 +336,11 @@ class ShareManager(manager.SchedulerDependentManager):
                 try:
                     self.access_helper.update_access_rules(
                         ctxt, share_instance['id'], share_server=share_server)
-                except Exception as e:
-                    LOG.error(
+                except Exception:
+                    LOG.exception(
                         _LE("Unexpected error occurred while updating access "
-                            "rules for share instance %(s_id)s. "
-                            "Exception: \n%(e)s."),
-                        {'s_id': share_instance['id'], 'e': e},
+                            "rules for share instance %(s_id)s."),
+                        {'s_id': share_instance['id']},
                     )
 
         self.publish_service_capabilities(ctxt)

@@ -28,7 +28,7 @@ import six
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LI, _LW
+from manila.i18n import _, _LE, _LI, _LW
 from manila.share import driver
 from manila.share.drivers.ganesha import utils as ganesha_utils
 from manila import utils
@@ -214,9 +214,8 @@ class NFSviaZFSHelper(ExecuteMixin, NASHelperBase):
                 msg=_("Utility 'exportfs' is not installed."))
         try:
             self.execute('sudo', 'exportfs')
-        except exception.ProcessExecutionError as e:
-            msg = _("Call of 'exportfs' utility returned error: %s")
-            LOG.exception(msg, e)
+        except exception.ProcessExecutionError:
+            LOG.exception(_LE("Call of 'exportfs' utility returned error."))
             raise
 
         # Init that class instance attribute on start of manila-share service

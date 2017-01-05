@@ -113,7 +113,7 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
                  'gluster_call.side_effect': exception.GlusterfsException,
                  'get_vol_option.return_value': 'off'}
         fake_gluster_manager = mock.Mock(**attrs)
-        self.mock_object(layout_directory.LOG, 'error')
+        self.mock_object(layout_directory.LOG, 'exception')
         methods = ('_check_mount_glusterfs', '_ensure_gluster_vol_mounted')
         for method in methods:
             self.mock_object(self._layout, method)
@@ -133,7 +133,7 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
             'volume', 'quota', 'testvol', 'enable')
         (self._layout.gluster_manager.get_vol_option.
          assert_called_once_with('features.quota'))
-        layout_directory.LOG.error.assert_called_once_with(mock.ANY)
+        layout_directory.LOG.exception.assert_called_once_with(mock.ANY)
         self._layout._check_mount_glusterfs.assert_called_once_with()
         self.assertFalse(self._layout._ensure_gluster_vol_mounted.called)
 

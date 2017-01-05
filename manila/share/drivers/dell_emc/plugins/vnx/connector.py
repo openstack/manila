@@ -152,12 +152,10 @@ class SSHConnector(object):
                 self.log_request(command, out, err)
 
                 return out, err
-            except processutils.ProcessExecutionError as e:
+            except processutils.ProcessExecutionError:
                 with excutils.save_and_reraise_exception():
-                    msg = (_LE('Error running SSH command: %(cmd)s. '
-                               'Error: %(excmsg)s.'),
-                           {'cmd': command, 'excmsg': six.text_type(e)})
-                    LOG.error(msg)
+                    LOG.exception(_LE('Error running SSH command: %(cmd)s.'),
+                                  {'cmd': command})
 
     def log_request(self, cmd, out, err):
         if not self.debug:
