@@ -47,9 +47,6 @@ if [[ "$DRIVER" == "dummy" ]]; then
     export BACKENDS_NAMES="ALPHA,BETA"
 elif [[ "$BACK_END_TYPE" == "multibackend" ]]; then
     iniset $TEMPEST_CONFIG share multi_backend True
-    iniset $TEMPEST_CONFIG share run_host_assisted_migration_tests $(trueorfalse True RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS)
-    iniset $TEMPEST_CONFIG share run_driver_assisted_migration_tests $(trueorfalse False RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS)
-
     # Set share backends names, they are defined within pre_test_hook
     export BACKENDS_NAMES="LONDON,PARIS"
 else
@@ -67,19 +64,22 @@ iniset $TEMPEST_CONFIG share suppress_errors_in_cleanup $SUPPRESS_ERRORS
 USERNAME_FOR_USER_RULES=${USERNAME_FOR_USER_RULES:-"manila"}
 PASSWORD_FOR_SAMBA_USER=${PASSWORD_FOR_SAMBA_USER:-$USERNAME_FOR_USER_RULES}
 
+# Enable feature tests:
+# Default options are as specified in tempest.
+RUN_MANILA_QUOTA_TESTS=${RUN_MANILA_QUOTA_TESTS:-True}
+RUN_MANILA_SHRINK_TESTS=${RUN_MANILA_SHRINK_TESTS:-True}
+RUN_MANILA_SNAPSHOT_TESTS=${RUN_MANILA_SNAPSHOT_TESTS:-True}
 RUN_MANILA_CG_TESTS=${RUN_MANILA_CG_TESTS:-True}
 RUN_MANILA_MANAGE_TESTS=${RUN_MANILA_MANAGE_TESTS:-True}
 RUN_MANILA_MANAGE_SNAPSHOT_TESTS=${RUN_MANILA_MANAGE_SNAPSHOT_TESTS:-False}
+RUN_MANILA_REPLICATION_TESTS=${RUN_MANILA_REPLICATION_TESTS:-False}
+RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=${RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS:-False}
+RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS=${RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS:-False}
 
 MANILA_CONF=${MANILA_CONF:-/etc/manila/manila.conf}
 
-# Enable replication tests
-RUN_MANILA_REPLICATION_TESTS=${RUN_MANILA_REPLICATION_TESTS:-False}
-iniset $TEMPEST_CONFIG share run_replication_tests $RUN_MANILA_REPLICATION_TESTS
-
-# Capability "create_share_from_snapshot_support"
+# Capabilitities
 CAPABILITY_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT=${CAPABILITY_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT:-True}
-iniset $TEMPEST_CONFIG share capability_create_share_from_snapshot_support $CAPABILITY_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT
 
 if [[ -z "$MULTITENANCY_ENABLED" ]]; then
     # Define whether share drivers handle share servers or not.
@@ -142,7 +142,9 @@ if [[ "$TEST_TYPE" == "scenario" ]]; then
     MANILA_TESTS='manila_tempest_tests.tests.scenario'
     iniset $TEMPEST_CONFIG auth use_dynamic_credentials True
 elif [[ "$DRIVER" == "generic" ]]; then
+    RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=True
     RUN_MANILA_MANAGE_SNAPSHOT_TESTS=True
+    RUN_MANILA_CG_TESTS=False
     if [[ "$POSTGRES_ENABLED" == "True" ]]; then
         # Run only CIFS tests on PostgreSQL DB backend
         # to reduce amount of tests per job using 'generic' share driver.
@@ -153,7 +155,6 @@ elif [[ "$DRIVER" == "generic" ]]; then
         iniset $TEMPEST_CONFIG share enable_protocols nfs
     fi
     MANILA_TESTS="(^manila_tempest_tests.tests.api)(?=.*\[.*\bbackend\b.*\])"
-    RUN_MANILA_CG_TESTS=False
 fi
 
 if [[ "$DRIVER" == "lvm" ]]; then
@@ -161,13 +162,13 @@ if [[ "$DRIVER" == "lvm" ]]; then
     MANILA_TEMPEST_CONCURRENCY=8
     RUN_MANILA_CG_TESTS=False
     RUN_MANILA_MANAGE_TESTS=False
-    iniset $TEMPEST_CONFIG share run_shrink_tests False
+    RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=True
+    RUN_MANILA_SHRINK_TESTS=False
     iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
     iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
     iniset $TEMPEST_CONFIG share image_with_share_tools 'manila-service-image-master'
     iniset $TEMPEST_CONFIG auth use_dynamic_credentials True
     iniset $TEMPEST_CONFIG share capability_snapshot_support True
-    iniset $TEMPEST_CONFIG share capability_create_share_from_snapshot_support True
     if ! grep $USERNAME_FOR_USER_RULES "/etc/passwd"; then
         sudo useradd $USERNAME_FOR_USER_RULES
     fi
@@ -184,18 +185,14 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     RUN_MANILA_CG_TESTS=False
     RUN_MANILA_MANAGE_TESTS=True
     RUN_MANILA_MANAGE_SNAPSHOT_TESTS=True
-    iniset $TEMPEST_CONFIG share run_host_assisted_migration_tests False
-    iniset $TEMPEST_CONFIG share run_driver_assisted_migration_tests True
-    iniset $TEMPEST_CONFIG share run_quota_tests True
-    iniset $TEMPEST_CONFIG share run_replication_tests True
-    iniset $TEMPEST_CONFIG share run_shrink_tests True
+    RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS=True
+    RUN_MANILA_REPLICATION_TESTS=True
     iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
     iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols ''
     iniset $TEMPEST_CONFIG share enable_cert_rules_for_protocols ''
     iniset $TEMPEST_CONFIG share enable_ro_access_level_for_protocols 'nfs'
     iniset $TEMPEST_CONFIG share build_timeout 180
     iniset $TEMPEST_CONFIG share share_creation_retry_number 0
-    iniset $TEMPEST_CONFIG share capability_create_share_from_snapshot_support True
     iniset $TEMPEST_CONFIG share capability_storage_protocol 'NFS'
     iniset $TEMPEST_CONFIG share enable_protocols 'nfs'
     iniset $TEMPEST_CONFIG share suppress_errors_in_cleanup False
@@ -209,18 +206,13 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     MANILA_TEMPEST_CONCURRENCY=24
     RUN_MANILA_CG_TESTS=True
     RUN_MANILA_MANAGE_TESTS=False
-    iniset $TEMPEST_CONFIG share run_host_assisted_migration_tests False
-    iniset $TEMPEST_CONFIG share run_driver_assisted_migration_tests True
-    iniset $TEMPEST_CONFIG share run_quota_tests True
-    iniset $TEMPEST_CONFIG share run_replication_tests False
-    iniset $TEMPEST_CONFIG share run_shrink_tests True
+    RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS=True
     iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
     iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
     iniset $TEMPEST_CONFIG share enable_cert_rules_for_protocols ''
     iniset $TEMPEST_CONFIG share enable_ro_access_level_for_protocols 'nfs,cifs'
     iniset $TEMPEST_CONFIG share build_timeout 180
     iniset $TEMPEST_CONFIG share share_creation_retry_number 0
-    iniset $TEMPEST_CONFIG share capability_create_share_from_snapshot_support True
     iniset $TEMPEST_CONFIG share capability_storage_protocol 'NFS_CIFS'
     iniset $TEMPEST_CONFIG share enable_protocols 'nfs,cifs'
     iniset $TEMPEST_CONFIG share suppress_errors_in_cleanup False
@@ -232,17 +224,24 @@ elif [[ "$DRIVER" == "container" ]]; then
     MANILA_TEMPEST_CONCURRENCY=8
     RUN_MANILA_CG_TESTS=False
     RUN_MANILA_MANAGE_TESTS=False
-    iniset $TEMPEST_CONFIG share run_host_assisted_migration_tests False
-    iniset $TEMPEST_CONFIG share run_quota_tests False
-    iniset $TEMPEST_CONFIG share run_replication_tests False
-    iniset $TEMPEST_CONFIG share run_shrink_tests False
-    iniset $TEMPEST_CONFIG share run_snapshot_tests False
-    iniset $TEMPEST_CONFIG share capability_create_share_from_snapshot_support False
+    RUN_MANILA_QUOTA_TESTS=False
+    RUN_MANILA_SHRINK_TESTS=False
+    RUN_MANILA_SNAPSHOT_TESTS=False
+    CAPABILITY_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT=False
     iniset $TEMPEST_CONFIG share capability_storage_protocol 'CIFS'
     iniset $TEMPEST_CONFIG share enable_protocols 'cifs'
     iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
     iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols ''
 fi
+
+# Enable quota tests
+iniset $TEMPEST_CONFIG share run_quota_tests $RUN_MANILA_QUOTA_TESTS
+
+# Enable shrink tests
+iniset $TEMPEST_CONFIG share run_shrink_tests $RUN_MANILA_SHRINK_TESTS
+
+# Enable snapshot tests
+iniset $TEMPEST_CONFIG share run_snapshot_tests $RUN_MANILA_SNAPSHOT_TESTS
 
 # Enable consistency group tests
 iniset $TEMPEST_CONFIG share run_consistency_group_tests $RUN_MANILA_CG_TESTS
@@ -252,6 +251,16 @@ iniset $TEMPEST_CONFIG share run_manage_unmanage_tests $RUN_MANILA_MANAGE_TESTS
 
 # Enable manage/unmanage snapshot tests
 iniset $TEMPEST_CONFIG share run_manage_unmanage_snapshot_tests $RUN_MANILA_MANAGE_SNAPSHOT_TESTS
+
+# Enable replication tests
+iniset $TEMPEST_CONFIG share run_replication_tests $RUN_MANILA_REPLICATION_TESTS
+
+# Enable migration tests
+iniset $TEMPEST_CONFIG share run_host_assisted_migration_tests $RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS
+iniset $TEMPEST_CONFIG share run_driver_assisted_migration_tests $RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS
+
+# Create share from snapshot support
+iniset $TEMPEST_CONFIG share capability_create_share_from_snapshot_support $CAPABILITY_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT
 
 iniset $TEMPEST_CONFIG validation ip_version_for_ssh 4
 iniset $TEMPEST_CONFIG validation network_for_ssh ${PRIVATE_NETWORK_NAME:-"private"}
@@ -284,6 +293,9 @@ echo "Running tempest manila test suites"
 sudo -H -u jenkins tox -eall-plugin $MANILA_TESTS -- --concurrency=$MANILA_TEMPEST_CONCURRENCY
 RETVAL=$?
 
+
+# If using the dummy driver, configure the second run. We can't use the
+# devstack variables RUN_MANILA_* now, we'll directly iniset tempest options.
 if [[ "$DRIVER" == "dummy" ]]; then
     save_tempest_results 1
     echo "First tempest run (DHSS=True) returned '$RETVAL'"
