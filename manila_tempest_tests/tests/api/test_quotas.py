@@ -64,3 +64,28 @@ class SharesQuotasTest(base.BaseSharesTest):
         self.assertGreater(int(quotas["shares"]), -2)
         self.assertGreater(int(quotas["snapshots"]), -2)
         self.assertGreater(int(quotas["share_networks"]), -2)
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    @base.skip_if_microversion_not_supported("2.25")
+    def test_show_quotas_detail(self):
+        quotas = self.shares_v2_client.detail_quotas(self.tenant_id)
+        quota_keys = list(quotas.keys())
+        for outer in ('gigabytes', 'snapshot_gigabytes', 'shares',
+                      'snapshots', 'share_networks'):
+            self.assertIn(outer, quota_keys)
+            for inner in ('in_use', 'limit', 'reserved'):
+                self.assertIn(inner, list(quotas[outer].keys()))
+                self.assertGreater(int(quotas[outer][inner]), -2)
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    @base.skip_if_microversion_not_supported("2.25")
+    def test_show_quotas_detail_for_user(self):
+        quotas = self.shares_v2_client.detail_quotas(self.tenant_id,
+                                                     self.user_id)
+        quota_keys = list(quotas.keys())
+        for outer in ('gigabytes', 'snapshot_gigabytes', 'shares',
+                      'snapshots', 'share_networks'):
+            self.assertIn(outer, quota_keys)
+            for inner in ('in_use', 'limit', 'reserved'):
+                self.assertIn(inner, list(quotas[outer].keys()))
+                self.assertGreater(int(quotas[outer][inner]), -2)

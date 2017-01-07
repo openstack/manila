@@ -203,3 +203,15 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
             self.shares_v2_client.tenant_id,
             version=version, url=url,
         )
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
+    def test_show_quota_detail_with_wrong_versions(self):
+        version = '2.24'
+        url = 'quota-sets'
+
+        self.assertRaises(
+            lib_exc.NotFound,
+            self.shares_v2_client.detail_quotas,
+            self.shares_v2_client.tenant_id,
+            version=version, url=url,
+        )

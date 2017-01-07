@@ -785,6 +785,17 @@ class SharesV2Client(shares_client.SharesClient):
         self.expected_success(202, resp.status)
         return body
 
+    def detail_quotas(self, tenant_id, user_id=None, url=None,
+                      version=LATEST_MICROVERSION):
+        if url is None:
+            url = self._get_quotas_url(version)
+        url += '/%s/detail' % tenant_id
+        if user_id is not None:
+            url += "?user_id=%s" % user_id
+        resp, body = self.get(url, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
     def update_quotas(self, tenant_id, user_id=None, shares=None,
                       snapshots=None, gigabytes=None, snapshot_gigabytes=None,
                       share_networks=None, force=True, url=None,

@@ -2182,6 +2182,14 @@ quota_gigabytes:
   in: body
   required: true
   type: integer
+quota_gigabytes_detail:
+  description: |
+    The limit, in_use, reserved number of gigabytes allowed
+    for each tenant.
+  in: body
+  min_version: 2.25
+  required: true
+  type: object
 quota_gigabytes_request:
   description: |
     The number of gigabytes for the tenant.
@@ -2201,6 +2209,14 @@ quota_share_networks:
   in: body
   required: true
   type: integer
+quota_share_networks_detail:
+  description: |
+    The limit, in_use, reserved number of share networks
+    allowed for each tenant.
+  in: body
+  min_version: 2.25
+  required: true
+  type: object
 quota_share_networks_request:
   description: |
     The number of share networks for the tenant.
@@ -2213,6 +2229,14 @@ quota_shares:
   in: body
   required: true
   type: integer
+quota_shares_detail:
+  description: |
+    The limit, in_use, reserved number of shares allowed
+    for each tenant.
+  in: body
+  min_version: 2.25
+  required: true
+  type: object
 quota_shares_request:
   description: |
     The number of shares for the tenant.
@@ -2226,6 +2250,14 @@ quota_snapshot_gigabytes:
   in: body
   required: true
   type: integer
+quota_snapshot_gigabytes_detail:
+  description: |
+    The limit, in_use, reserved number of gigabytes for the
+    snapshots allowed for each tenant.
+  in: body
+  min_version: 2.25
+  required: true
+  type: object
 quota_snapshot_gigabytes_request:
   description: |
     The number of gigabytes for the snapshots for the
@@ -2239,6 +2271,14 @@ quota_snapshots:
   in: body
   required: true
   type: integer
+quota_snapshots_detail:
+  description: |
+    The limit, in_use, reserved number of snapshots allowed
+    for each tenant.
+  in: body
+  min_version: 2.25
+  required: true
+  type: object
 quota_snapshots_request:
   description: |
     The number of snapshots for the tenant.
