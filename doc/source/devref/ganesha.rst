@@ -33,7 +33,18 @@ Supported operations
 Requirements
 ------------
 
-`NFS-Ganesha <https://github.com/nfs-ganesha/nfs-ganesha/wiki>`__ 2.1 or newer.
+- Preferred:
+
+  `NFS-Ganesha <https://github.com/nfs-ganesha/nfs-ganesha/wiki>`_ v2.4 or
+  later, which allows dynamic update of access rules. And use manila's
+  ``ganesha.GaneshaNASHelper2`` class as described later in
+  :ref:`ganesha_using_library`.
+
+- For use with limitations documented in :ref:`ganesha_known_issues`:
+
+  `NFS-Ganesha <https://github.com/nfs-ganesha/nfs-ganesha/wiki>`_ v2.1 to
+  v2.3. And use manila's ``ganesha.GaneshaNASHelper`` class as described later
+  in :ref:`ganesha_using_library`.
 
 NFS-Ganesha configuration
 -------------------------
@@ -82,19 +93,30 @@ These are:
 - `ganesha_export_template_dir` = directory from where Ganesha loads
     export customizations (cf. "Customizing Ganesha exports").
 
+.. _ganesha_using_library:
+
 Using Ganesha Library in drivers
 --------------------------------
 
 A driver that wants to use the Ganesha Library has to inherit
 from ``driver.GaneshaMixin``.
 
-The driver has to contain a subclass of ``ganesha.GaneshaNASHelper``,
+The driver has to contain a subclass of ``ganesha.GaneshaNASHelper2``,
 instantiate it along with the driver instance and delegate
-``allow_access`` and ``deny_access`` methods to it (when appropriate,
-ie. when ``access_proto`` is NFS).
+``update_access`` method to it (when appropriate, i.e., when ``access_proto``
+is NFS).
+
+.. note::
+
+    You can also subclass ``ganesha.GaneshaNASHelper``. It works with
+    NFS-Ganesha v2.1 to v2.3 that doesn't support dynamic update of exports.
+    To update access rules without having to restart NFS-Ganesha server, the
+    class manipulates exports created per share access rule (rather than per
+    share) introducing limitations documented in :ref:`ganesha_known_issues`.
+
 
 In the following we explain what has to be implemented by the
-``ganesha.GaneshaNASHelper`` subclass (to which we refer as "helper
+``ganesha.GaneshaNASHelper2`` subclass (to which we refer as "helper
 class").
 
 Ganesha exports are described by so-called *Ganesha export blocks*
@@ -107,7 +129,7 @@ subblock*. The helper class has to implement the ``_fsal_hook``
 method which returns the FSAL subblock (in Python represented as
 a dict with string keys and values). It has one mandatory key,
 ``Name``, to which the value should be the name of the FSAL
-(eg.: ``{"Name": "GLUSTER"}``). Further content of it is
+(eg.: ``{"Name": "CEPH"}``). Further content of it is
 optional and FSAL specific.
 
 Customizing Ganesha exports
@@ -189,6 +211,9 @@ Known Restrictions
 
 Known Issues
 ------------
+
+Following issues concern only users of `ganesha.GaneshaNASHelper` class that
+works with NFS-Ganesha v2.1 to v2.3.
 
 - The export location for shares of a driver that uses the Ganesha Library
   will be of the format ``<ganesha-server>:/share-<share-id>``. However,

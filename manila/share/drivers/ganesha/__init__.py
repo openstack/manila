@@ -50,13 +50,13 @@ class NASHelperBase(object):
         """Initializes protocol-specific NAS drivers."""
 
     @abc.abstractmethod
-    def update_access(self, base_path, share, add_rules, delete_rules,
-                      recovery=False):
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
         """Update access rules of share."""
 
 
 class GaneshaNASHelper(NASHelperBase):
-    """Execute commands relating to Shares."""
+    """Perform share access changes using Ganesha version < 2.4."""
 
     supported_access_types = ('ip', )
     supported_access_levels = (constants.ACCESS_LEVEL_RW, )
@@ -146,15 +146,96 @@ class GaneshaNASHelper(NASHelperBase):
         """Deny access to the share."""
         self.ganesha.remove_export("%s--%s" % (share['name'], access['id']))
 
-    def update_access(self, base_path, share, add_rules, delete_rules,
-                      recovery=False):
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
         """Update access rules of share."""
-
-        if recovery:
+        if not (add_rules or delete_rules):
+            add_rules = access_rules
             self.ganesha.reset_exports()
             self.ganesha.restart_service()
 
         for rule in add_rules:
-            self._allow_access(base_path, share, rule)
+            self._allow_access('/', share, rule)
         for rule in delete_rules:
-            self._deny_access(base_path, share, rule)
+            self._deny_access('/', share, rule)
+
+
+class GaneshaNASHelper2(GaneshaNASHelper):
+    """Perform share access changes using Ganesha version >= 2.4."""
+
+    def _get_export_path(self, share):
+        """Subclass this to return export path."""
+        raise NotImplementedError()
+
+    def _get_export_pseudo_path(self, share):
+        """Subclass this to return export pseudo path."""
+        raise NotImplementedError()
+
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
+        """Update access rules of share.
+
+        Creates an export per share. Modifies access rules of shares by
+        dynamically updating exports via DBUS.
+        """
+
+        confdict = {}
+        existing_access_rules = []
+
+        if self.ganesha._check_export_file_exists(share['name']):
+            confdict = self.ganesha._read_export_file(share['name'])
+            existing_access_rules = confdict["EXPORT"]["CLIENT"]
+            if not isinstance(existing_access_rules, list):
+                existing_access_rules = [existing_access_rules]
+        else:
+            if not access_rules:
+                LOG.warning("Trying to remove export file '%s' but it's "
+                            "already gone",
+                            self.ganesha._getpath(share['name']))
+                return
+
+        wanted_rw_clients, wanted_ro_clients = [], []
+        for rule in access_rules:
+            if rule['access_level'] == 'rw':
+                wanted_rw_clients.append(rule['access_to'])
+            elif rule['access_level'] == 'ro':
+                wanted_ro_clients.append(rule['access_to'])
+
+        if access_rules:
+            # Add or Update export.
+            clients = []
+            if wanted_ro_clients:
+                clients.append({
+                    'Access_Type': 'ro',
+                    'Clients': ','.join(wanted_ro_clients)
+                })
+            if wanted_rw_clients:
+                clients.append({
+                    'Access_Type': 'rw',
+                    'Clients': ','.join(wanted_rw_clients)
+                })
+
+            if existing_access_rules:
+                # Update existing export.
+                ganesha_utils.patch(confdict, {
+                    'EXPORT': {
+                        'CLIENT': clients
+                    }
+                })
+                self.ganesha.update_export(share['name'], confdict)
+            else:
+                # Add new export.
+                ganesha_utils.patch(confdict, self.export_template, {
+                    'EXPORT': {
+                        'Export_Id': self.ganesha.get_export_id(),
+                        'Path': self._get_export_path(share),
+                        'Pseudo': self._get_export_pseudo_path(share),
+                        'Tag': share['name'],
+                        'CLIENT': clients,
+                        'FSAL': self._fsal_hook(None, share, None)
+                    }
+                })
+                self.ganesha.add_export(share['name'], confdict)
+        else:
+            # No clients have access to the share. Remove export.
+            self.ganesha.remove_export(share['name'])

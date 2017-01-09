@@ -21,6 +21,7 @@ import ddt
 import mock
 from oslo_config import cfg
 
+from manila import context
 from manila import exception
 from manila.share import configuration as config
 from manila.share.drivers import ganesha
@@ -61,6 +62,7 @@ class GaneshaNASHelperTestCase(test.TestCase):
         CONF.set_default('ganesha_export_template_dir',
                          '/fakedir2/faketempl.d')
         CONF.set_default('ganesha_service_name', 'ganesha.fakeservice')
+        self._context = context.get_admin_context()
         self._execute = mock.Mock(return_value=('', ''))
         self.fake_conf = config.Configuration(None)
         self.fake_conf_dir_path = '/fakedir0/exports.d'
@@ -256,17 +258,16 @@ class GaneshaNASHelperTestCase(test.TestCase):
             'fakename--fakeaccid')
         self.assertIsNone(ret)
 
-    @ddt.data({}, {'recovery': False})
-    def test_update_access_for_allow(self, kwargs):
+    def test_update_access_for_allow(self):
         self.mock_object(self._helper, '_allow_access')
         self.mock_object(self._helper, '_deny_access')
 
         self._helper.update_access(
-            '/some/path', 'aShare', add_rules=["example.com"], delete_rules=[],
-            **kwargs)
+            self._context, self.share, access_rules=[self.access],
+            add_rules=[self.access], delete_rules=[])
 
         self._helper._allow_access.assert_called_once_with(
-            '/some/path', 'aShare', 'example.com')
+            '/', self.share, self.access)
 
         self.assertFalse(self._helper._deny_access.called)
         self.assertFalse(self._helper.ganesha.reset_exports.called)
@@ -277,10 +278,11 @@ class GaneshaNASHelperTestCase(test.TestCase):
         self.mock_object(self._helper, '_deny_access')
 
         self._helper.update_access(
-            '/some/path', 'aShare', [], delete_rules=["example.com"])
+            self._context, self.share, access_rules=[],
+            add_rules=[], delete_rules=[self.access])
 
         self._helper._deny_access.assert_called_once_with(
-            '/some/path', 'aShare', 'example.com')
+            '/', self.share, self.access)
 
         self.assertFalse(self._helper._allow_access.called)
         self.assertFalse(self._helper.ganesha.reset_exports.called)
@@ -291,12 +293,143 @@ class GaneshaNASHelperTestCase(test.TestCase):
         self.mock_object(self._helper, '_deny_access')
 
         self._helper.update_access(
-            '/some/path', 'aShare', add_rules=["example.com"], delete_rules=[],
-            recovery=True)
+            self._context, self.share, access_rules=[self.access],
+            add_rules=[], delete_rules=[])
 
         self._helper._allow_access.assert_called_once_with(
-            '/some/path', 'aShare', 'example.com')
+            '/', self.share, self.access)
 
         self.assertFalse(self._helper._deny_access.called)
         self.assertTrue(self._helper.ganesha.reset_exports.called)
         self.assertTrue(self._helper.ganesha.restart_service.called)
+
+
+@ddt.ddt
+class GaneshaNASHelper2TestCase(test.TestCase):
+    """Tests GaneshaNASHelper2."""
+
+    def setUp(self):
+        super(GaneshaNASHelper2TestCase, self).setUp()
+
+        CONF.set_default('ganesha_config_path', '/fakedir0/fakeconfig')
+        CONF.set_default('ganesha_db_path', '/fakedir1/fake.db')
+        CONF.set_default('ganesha_export_dir', '/fakedir0/export.d')
+        CONF.set_default('ganesha_export_template_dir',
+                         '/fakedir2/faketempl.d')
+        CONF.set_default('ganesha_service_name', 'ganesha.fakeservice')
+        self._context = context.get_admin_context()
+        self._execute = mock.Mock(return_value=('', ''))
+        self.fake_conf = config.Configuration(None)
+        self.fake_conf_dir_path = '/fakedir0/exports.d'
+        self._helper = ganesha.GaneshaNASHelper2(
+            self._execute, self.fake_conf, tag='faketag')
+        self._helper.ganesha = mock.Mock()
+        self._helper.export_template = {}
+        self.share = fake_share.fake_share()
+        self.rule1 = fake_share.fake_access(access_level='ro')
+        self.rule2 = fake_share.fake_access(access_level='rw',
+                                            access_to='10.0.0.2')
+
+    def test_update_access_add_export(self):
+        mock_gh = self._helper.ganesha
+        self.mock_object(mock_gh, '_check_export_file_exists',
+                         mock.Mock(return_value=False))
+        self.mock_object(mock_gh, 'get_export_id',
+                         mock.Mock(return_value=100))
+        self.mock_object(self._helper, '_get_export_path',
+                         mock.Mock(return_value='/fakepath'))
+        self.mock_object(self._helper, '_get_export_pseudo_path',
+                         mock.Mock(return_value='/fakepath'))
+        self.mock_object(self._helper, '_fsal_hook',
+                         mock.Mock(return_value={'Name': 'fake'}))
+        result_confdict = {
+            'EXPORT': {
+                'Export_Id': 100,
+                'Path': '/fakepath',
+                'Pseudo': '/fakepath',
+                'Tag': 'fakename',
+                'CLIENT': [{
+                    'Access_Type': 'ro',
+                    'Clients': '10.0.0.1'}],
+                'FSAL': {'Name': 'fake'}
+            }
+        }
+
+        self._helper.update_access(
+            self._context, self.share, access_rules=[self.rule1],
+            add_rules=[], delete_rules=[])
+
+        mock_gh._check_export_file_exists.assert_called_once_with('fakename')
+        mock_gh.get_export_id.assert_called_once_with()
+        self._helper._get_export_path.assert_called_once_with(self.share)
+        (self._helper._get_export_pseudo_path.assert_called_once_with(
+            self.share))
+        self._helper._fsal_hook.assert_called_once_with(
+            None, self.share, None)
+        mock_gh.add_export.assert_called_once_with(
+            'fakename', result_confdict)
+        self.assertFalse(mock_gh.update_export.called)
+        self.assertFalse(mock_gh.remove_export.called)
+
+    @ddt.data({'Access_Type': 'ro', 'Clients': '10.0.0.1'},
+              [{'Access_Type': 'ro', 'Clients': '10.0.0.1'}])
+    def test_update_access_update_export(self, client):
+        mock_gh = self._helper.ganesha
+        self.mock_object(mock_gh, '_check_export_file_exists',
+                         mock.Mock(return_value=True))
+        self.mock_object(
+            mock_gh, '_read_export_file',
+            mock.Mock(return_value={'EXPORT': {'CLIENT': client}})
+        )
+        result_confdict = {
+            'EXPORT': {
+                'CLIENT': [
+                    {'Access_Type': 'ro', 'Clients': '10.0.0.1'},
+                    {'Access_Type': 'rw', 'Clients': '10.0.0.2'}]
+            }
+        }
+
+        self._helper.update_access(
+            self._context, self.share, access_rules=[self.rule1, self.rule2],
+            add_rules=[self.rule2], delete_rules=[])
+
+        mock_gh._check_export_file_exists.assert_called_once_with('fakename')
+        mock_gh.update_export.assert_called_once_with('fakename',
+                                                      result_confdict)
+        self.assertFalse(mock_gh.add_export.called)
+        self.assertFalse(mock_gh.remove_export.called)
+
+    def test_update_access_remove_export(self):
+        mock_gh = self._helper.ganesha
+        self.mock_object(mock_gh, '_check_export_file_exists',
+                         mock.Mock(return_value=True))
+        client = {'Access_Type': 'ro', 'Clients': '10.0.0.1'}
+        self.mock_object(
+            mock_gh, '_read_export_file',
+            mock.Mock(return_value={'EXPORT': {'CLIENT': client}})
+        )
+
+        self._helper.update_access(
+            self._context, self.share, access_rules=[],
+            add_rules=[], delete_rules=[self.rule1])
+
+        mock_gh._check_export_file_exists.assert_called_once_with('fakename')
+        mock_gh.remove_export.assert_called_once_with('fakename')
+        self.assertFalse(mock_gh.add_export.called)
+        self.assertFalse(mock_gh.update_export.called)
+
+    def test_update_access_export_file_already_removed(self):
+        mock_gh = self._helper.ganesha
+        self.mock_object(mock_gh, '_check_export_file_exists',
+                         mock.Mock(return_value=False))
+        self.mock_object(ganesha.LOG, 'warning')
+
+        self._helper.update_access(
+            self._context, self.share, access_rules=[],
+            add_rules=[], delete_rules=[self.rule1])
+
+        mock_gh._check_export_file_exists.assert_called_once_with('fakename')
+        ganesha.LOG.warning.assert_called_once_with(mock.ANY, mock.ANY)
+        self.assertFalse(mock_gh.add_export.called)
+        self.assertFalse(mock_gh.update_export.called)
+        self.assertFalse(mock_gh.remove_export.called)
