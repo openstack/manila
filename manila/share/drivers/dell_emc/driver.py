@@ -140,7 +140,9 @@ class EMCShareDriver(driver.ShareDriver):
         data = dict(
             share_backend_name=backend_name,
             vendor_name='Dell EMC',
-            storage_protocol='NFS_CIFS')
+            storage_protocol='NFS_CIFS',
+            snapshot_support=True,
+            create_share_from_snapshot_support=True)
         self.plugin.update_share_stats(data)
         super(EMCShareDriver, self)._update_share_stats(data)
 
