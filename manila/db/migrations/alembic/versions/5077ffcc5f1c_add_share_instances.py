@@ -179,7 +179,7 @@ def create_snapshot_instances_table(connection):
             'snapshot_id': snapshot.id,
             'status': snapshot.status,
             'progress': snapshot.progress,
-            'snapshot_instance_id': share_instances_rows.first().id,
+            'share_instance_id': share_instances_rows.first().id,
         })
     op.bulk_insert(snapshot_instances_table, snapshot_instances)
 
