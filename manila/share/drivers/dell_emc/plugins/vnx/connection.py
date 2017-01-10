@@ -17,6 +17,7 @@
 import copy
 import random
 
+from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import units
@@ -35,6 +36,24 @@ VERSION = "2.0.0"
 
 LOG = log.getLogger(__name__)
 
+VNX_OPTS = [
+    cfg.StrOpt('vnx_server_container',
+               deprecated_name='emc_nas_server_container',
+               help='Data mover to host the NAS server.'),
+    cfg.ListOpt('vnx_share_data_pools',
+                deprecated_name='emc_nas_pool_names',
+                help='Comma separated list of pools that can be used to '
+                     'persist share data.'),
+    cfg.ListOpt('vnx_ethernet_ports',
+                deprecated_name='emc_interface_ports',
+                help='Comma separated list of ports that can be used for '
+                     'share server interfaces. Members of the list '
+                     'can be Unix-style glob expressions.')
+]
+
+CONF = cfg.CONF
+CONF.register_opts(VNX_OPTS)
+
 
 @vnx_utils.decorate_all_methods(vnx_utils.log_enter_exit,
                                 debug_only=True)
@@ -44,6 +63,9 @@ class VNXStorageConnection(driver.StorageConnection):
     @vnx_utils.log_enter_exit
     def __init__(self, *args, **kwargs):
         super(VNXStorageConnection, self).__init__(*args, **kwargs)
+        if 'configuration' in kwargs:
+            kwargs['configuration'].append_config_values(VNX_OPTS)
+
         self.mover_name = None
         self.pools = None
         self.manager = None
@@ -518,7 +540,7 @@ class VNXStorageConnection(driver.StorageConnection):
             if not matched_pools:
                 msg = (_("None of the specified storage pools to be managed "
                          "exist. Please check your configuration "
-                         "emc_nas_pool_names in manila.conf. "
+                         "vnx_share_data_pools in manila.conf. "
                          "The available pools in the backend are %s.") %
                        ",".join(real_pools))
                 raise exception.InvalidParameterValue(err=msg)
@@ -532,22 +554,18 @@ class VNXStorageConnection(driver.StorageConnection):
 
     def connect(self, emc_share_driver, context):
         """Connect to VNX NAS server."""
-        self.mover_name = (
-            emc_share_driver.configuration.emc_nas_server_container)
+        config = emc_share_driver.configuration
+        config.append_config_values(VNX_OPTS)
+        self.mover_name = config.vnx_server_container
 
-        self.pool_conf = emc_share_driver.configuration.safe_get(
-            'emc_nas_pool_names')
+        self.pool_conf = config.safe_get('vnx_share_data_pools')
 
-        self.reserved_percentage = emc_share_driver.configuration.safe_get(
-            'reserved_share_percentage')
+        self.reserved_percentage = config.safe_get('reserved_share_percentage')
         if self.reserved_percentage is None:
             self.reserved_percentage = 0
 
-        configuration = emc_share_driver.configuration
-
-        self.manager = manager.StorageObjectManager(configuration)
-        self.port_conf = emc_share_driver.configuration.safe_get(
-            'emc_interface_ports')
+        self.manager = manager.StorageObjectManager(config)
+        self.port_conf = config.safe_get('vnx_ethernet_ports')
 
     def get_managed_ports(self):
         # Get the real ports(devices) list from the backend storage
@@ -563,7 +581,7 @@ class VNXStorageConnection(driver.StorageConnection):
 
         if not matched_ports:
             msg = (_("None of the specified network ports exist. "
-                     "Please check your configuration emc_interface_ports "
+                     "Please check your configuration vnx_ethernet_ports "
                      "in manila.conf. The available ports on the Data Mover "
                      "are %s.") %
                    ",".join(real_ports))

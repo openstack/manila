@@ -21,12 +21,9 @@ to specify, which backend plugins to use.
 """
 
 from oslo_config import cfg
-from oslo_log import log
 
 from manila.share import driver
 from manila.share.drivers.dell_emc import plugin_manager as manager
-
-LOG = log.getLogger(__name__)
 
 EMC_NAS_OPTS = [
     cfg.StrOpt('emc_nas_login',
@@ -45,19 +42,8 @@ EMC_NAS_OPTS = [
                ignore_case=True,
                choices=['isilon', 'vnx', 'unity'],
                help='Share backend.'),
-    cfg.StrOpt('emc_nas_server_container',
-               help='Container of share servers.'),
-    cfg.ListOpt('emc_nas_pool_names',
-                deprecated_name='emc_nas_pool_name',
-                help='EMC pool names.'),
     cfg.StrOpt('emc_nas_root_dir',
-               help='The root directory where shares will be located.'),
-    cfg.StrOpt('emc_nas_server_pool',
-               help='Pool to persist the meta-data of NAS server.'),
-    cfg.ListOpt('emc_interface_ports',
-                help='Comma separated list specifying the ports that can be '
-                     'used for share server interfaces. Members of the list '
-                     'can be Unix-style glob expressions.'),
+               help='The root directory where shares will be located.')
 ]
 
 CONF = cfg.CONF
@@ -78,7 +64,9 @@ class EMCShareDriver(driver.ShareDriver):
         self.backend_name = self.backend_name or 'EMC_NAS_Storage'
         self.plugin_manager = manager.EMCPluginManager(
             namespace='manila.share.drivers.dell_emc.plugins')
-        self.plugin = self.plugin_manager.load_plugin(self.backend_name, LOG)
+        self.plugin = self.plugin_manager.load_plugin(
+            self.backend_name,
+            configuration=self.configuration)
         super(EMCShareDriver, self).__init__(
             self.plugin.driver_handles_share_servers, *args, **kwargs)
 

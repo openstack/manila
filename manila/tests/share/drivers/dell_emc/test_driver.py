@@ -24,8 +24,8 @@ from manila import test
 
 
 class FakeConnection(base.StorageConnection):
-    def __init__(self, logger):
-        self.logger = logger
+    def __init__(self, *args, **kwargs):
+        pass
 
     @property
     def driver_handles_share_servers(self):

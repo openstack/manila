@@ -23,8 +23,7 @@ import six
 class StorageConnection(object):
     """Subclasses should implement storage backend specific functionality."""
 
-    def __init__(self, logger):
-        self.logger = logger
+    def __init__(self, *args, **kwargs):
         # NOTE(vponomaryov): redefine 'driver_handles_share_servers' within
         #                    plugin.
         self.driver_handles_share_servers = None
