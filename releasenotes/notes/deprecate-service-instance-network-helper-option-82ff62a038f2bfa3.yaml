@@ -1,0 +1,5 @@
+---
+upgrade:
+  - Deprecated the ``service_instance_network_helper_type`` option
+    for removal.  This option is no longer used for anything since
+    nova networking is no longer supported.
