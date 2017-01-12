@@ -50,6 +50,12 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         cls.shares_admin_v2_client = shares_v2_client.SharesV2Client(
             cls.os_admin.auth_provider)
 
+    @classmethod
+    def skip_checks(cls):
+        super(ShareScenarioTest, cls).skip_checks()
+        if not CONF.service_available.manila:
+            raise cls.skipException("Manila support is required")
+
     def _create_share(self, share_protocol=None, size=1, name=None,
                       snapshot_id=None, description=None, metadata=None,
                       share_network_id=None, share_type_id=None,
