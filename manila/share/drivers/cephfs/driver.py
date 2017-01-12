@@ -14,6 +14,8 @@
 #    under the License.
 
 
+import sys
+
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import units
@@ -22,6 +24,7 @@ from manila.common import constants
 from manila import exception
 from manila.i18n import _
 from manila.share import driver
+from manila.share.drivers import ganesha
 from manila.share import share_types
 
 
@@ -41,7 +44,7 @@ CEPH_DEFAULT_AUTH_ID = "admin"
 
 LOG = log.getLogger(__name__)
 
-cephfs_native_opts = [
+cephfs_opts = [
     cfg.StrOpt('cephfs_conf_path',
                default="",
                help="Fully qualified path to the ceph.conf file."),
@@ -57,35 +60,50 @@ cephfs_native_opts = [
                 default=False,
                 help="Whether to enable snapshots in this driver."
                 ),
+    cfg.StrOpt('cephfs_protocol_helper_type',
+               default="CEPHFS",
+               # TODO(rraja): Add 'NFS' once CephFS/Ganesha support is
+               #              is available in manila.
+               choices=['CEPHFS', ],
+               ignore_case=True,
+               help="The type of protocol helper to use. Default is "
+                    "CEPHFS."
+               ),
 ]
 
 
 CONF = cfg.CONF
-CONF.register_opts(cephfs_native_opts)
+CONF.register_opts(cephfs_opts)
 
 
-class CephFSNativeDriver(driver.ShareDriver,):
-    """Driver for the Ceph Filesystem.
+def cephfs_share_path(share):
+    """Get VolumePath from Share."""
+    return ceph_volume_client.VolumePath(
+        share['share_group_id'], share['id'])
 
-    This driver is 'native' in the sense that it exposes a CephFS filesystem
-    for use directly by guests, with no intermediate layer like NFS.
-    """
 
-    supported_protocols = ('CEPHFS',)
+class CephFSDriver(driver.ShareDriver,):
+    """Driver for the Ceph Filesystem."""
 
     def __init__(self, *args, **kwargs):
-        super(CephFSNativeDriver, self).__init__(False, *args, **kwargs)
+        super(CephFSDriver, self).__init__(False, *args, **kwargs)
         self.backend_name = self.configuration.safe_get(
-            'share_backend_name') or 'CephFS-Native'
+            'share_backend_name') or 'CephFS'
 
         self._volume_client = None
 
-        self.configuration.append_config_values(cephfs_native_opts)
+        self.configuration.append_config_values(cephfs_opts)
 
-    def check_for_setup_error(self):
-        # NOTE: make sure that we can really connect to the ceph,
-        # otherwise an exception is raised
-        self.volume_client
+    def do_setup(self, context):
+        protocol_helper_class = getattr(sys.modules[__name__],
+                                        'NativeProtocolHelper')
+
+        self.protocol_helper = protocol_helper_class(
+            None,
+            self.configuration,
+            volume_client=self.volume_client)
+
+        self.protocol_helper.init_helper()
 
     def _update_share_stats(self):
         stats = self.volume_client.rados.get_cluster_stats()
@@ -97,7 +115,8 @@ class CephFSNativeDriver(driver.ShareDriver,):
             'vendor_name': 'Ceph',
             'driver_version': '1.0',
             'share_backend_name': self.backend_name,
-            'storage_protocol': "CEPHFS",
+            'storage_protocol': self.configuration.safe_get(
+                'cephfs_protocol_helper_type'),
             'pools': [
                 {
                     'pool_name': 'cephfs',
@@ -115,7 +134,7 @@ class CephFSNativeDriver(driver.ShareDriver,):
             'snapshot_support': self.configuration.safe_get(
                 'cephfs_enable_snapshots'),
         }
-        super(CephFSNativeDriver, self)._update_share_stats(data)
+        super(CephFSDriver, self)._update_share_stats(data)
 
     def _to_bytes(self, gigs):
         """Convert a Manila size into bytes.
@@ -162,11 +181,6 @@ class CephFSNativeDriver(driver.ShareDriver,):
 
         return self._volume_client
 
-    def _share_path(self, share):
-        """Get VolumePath from Share."""
-        return ceph_volume_client.VolumePath(
-            share['share_group_id'], share['id'])
-
     def create_share(self, context, share, share_server=None):
         """Create a CephFS volume.
 
@@ -175,6 +189,12 @@ class CephFSNativeDriver(driver.ShareDriver,):
         :param share_server: Always None for CephFS native.
         :return: The export locations dictionary.
         """
+        requested_proto = share['share_proto'].upper()
+        supported_proto = (
+            self.configuration.cephfs_protocol_helper_type.upper())
+        if (requested_proto != supported_proto):
+            msg = _("Share protocol %s is not supported.") % requested_proto
+            raise exception.ShareBackendException(msg=msg)
 
         # `share` is a Share
         msg = _("create_share {be} name={id} size={size}"
@@ -189,15 +209,111 @@ class CephFSNativeDriver(driver.ShareDriver,):
         size = self._to_bytes(share['size'])
 
         # Create the CephFS volume
-        volume = self.volume_client.create_volume(
-            self._share_path(share), size=size, data_isolated=data_isolated)
+        cephfs_volume = self.volume_client.create_volume(
+            cephfs_share_path(share), size=size, data_isolated=data_isolated)
 
+        return self.protocol_helper.get_export_locations(share, cephfs_volume)
+
+    def delete_share(self, context, share, share_server=None):
+        extra_specs = share_types.get_extra_specs_from_share(share)
+        data_isolated = extra_specs.get("cephfs:data_isolated", False)
+
+        self.volume_client.delete_volume(cephfs_share_path(share),
+                                         data_isolated=data_isolated)
+        self.volume_client.purge_volume(cephfs_share_path(share),
+                                        data_isolated=data_isolated)
+
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
+        return self.protocol_helper.update_access(
+            context, share, access_rules, add_rules, delete_rules,
+            share_server=share_server)
+
+    def ensure_share(self, context, share, share_server=None):
+        # Creation is idempotent
+        return self.create_share(context, share, share_server)
+
+    def extend_share(self, share, new_size, share_server=None):
+        LOG.debug("extend_share {id} {size}".format(
+            id=share['id'], size=new_size))
+        self.volume_client.set_max_bytes(cephfs_share_path(share),
+                                         self._to_bytes(new_size))
+
+    def shrink_share(self, share, new_size, share_server=None):
+        LOG.debug("shrink_share {id} {size}".format(
+            id=share['id'], size=new_size))
+        new_bytes = self._to_bytes(new_size)
+        used = self.volume_client.get_used_bytes(cephfs_share_path(share))
+        if used > new_bytes:
+            # While in fact we can "shrink" our volumes to less than their
+            # used bytes (it's just a quota), raise error anyway to avoid
+            # confusing API consumers that might depend on typical shrink
+            # behaviour.
+            raise exception.ShareShrinkingPossibleDataLoss(
+                share_id=share['id'])
+
+        self.volume_client.set_max_bytes(cephfs_share_path(share), new_bytes)
+
+    def create_snapshot(self, context, snapshot, share_server=None):
+        self.volume_client.create_snapshot_volume(
+            cephfs_share_path(snapshot['share']),
+            '_'.join([snapshot['snapshot_id'], snapshot['id']]))
+
+    def delete_snapshot(self, context, snapshot, share_server=None):
+        self.volume_client.destroy_snapshot_volume(
+            cephfs_share_path(snapshot['share']),
+            '_'.join([snapshot['snapshot_id'], snapshot['id']]))
+
+    def create_share_group(self, context, sg_dict, share_server=None):
+        self.volume_client.create_group(sg_dict['id'])
+
+    def delete_share_group(self, context, sg_dict, share_server=None):
+        self.volume_client.destroy_group(sg_dict['id'])
+
+    def delete_share_group_snapshot(self, context, snap_dict,
+                                    share_server=None):
+        self.volume_client.destroy_snapshot_group(
+            snap_dict['share_group_id'],
+            snap_dict['id'])
+
+        return None, []
+
+    def create_share_group_snapshot(self, context, snap_dict,
+                                    share_server=None):
+        self.volume_client.create_snapshot_group(
+            snap_dict['share_group_id'],
+            snap_dict['id'])
+
+        return None, []
+
+    def __del__(self):
+        if self._volume_client:
+            self._volume_client.disconnect()
+            self._volume_client = None
+
+
+class NativeProtocolHelper(ganesha.NASHelperBase):
+    """Helper class for native CephFS protocol"""
+
+    supported_access_types = (CEPHX_ACCESS_TYPE, )
+    supported_access_levels = (constants.ACCESS_LEVEL_RW,
+                               constants.ACCESS_LEVEL_RO)
+
+    def __init__(self, execute, config, **kwargs):
+        self.volume_client = kwargs.pop('volume_client')
+        super(NativeProtocolHelper, self).__init__(execute, config,
+                                                   **kwargs)
+
+    def _init_helper(self):
+        pass
+
+    def get_export_locations(self, share, cephfs_volume):
         # To mount this you need to know the mon IPs and the path to the volume
         mon_addrs = self.volume_client.get_mon_addrs()
 
         export_location = "{addrs}:{path}".format(
             addrs=",".join(mon_addrs),
-            path=volume['mount_path'])
+            path=cephfs_volume['mount_path'])
 
         LOG.info("Calculated export location for share %(id)s: %(loc)s",
                  {"id": share['id'], "loc": export_location})
@@ -233,11 +349,11 @@ class CephFSNativeDriver(driver.ShareDriver,):
                 raise exception.InvalidShareAccessLevel(
                     level=constants.ACCESS_LEVEL_RO)
             auth_result = self.volume_client.authorize(
-                self._share_path(share), ceph_auth_id)
+                cephfs_share_path(share), ceph_auth_id)
         else:
             readonly = access['access_level'] == constants.ACCESS_LEVEL_RO
             auth_result = self.volume_client.authorize(
-                self._share_path(share), ceph_auth_id, readonly=readonly,
+                cephfs_share_path(share), ceph_auth_id, readonly=readonly,
                 tenant_id=share['project_id'])
 
         return auth_result['auth_key']
@@ -249,11 +365,11 @@ class CephFSNativeDriver(driver.ShareDriver,):
                         {"type": access['access_type']})
             return
 
-        self.volume_client.deauthorize(self._share_path(share),
+        self.volume_client.deauthorize(cephfs_share_path(share),
                                        access['access_to'])
         self.volume_client.evict(
             access['access_to'],
-            volume_path=self._share_path(share))
+            volume_path=cephfs_share_path(share))
 
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
@@ -268,7 +384,7 @@ class CephFSNativeDriver(driver.ShareDriver,):
             # the list of auth IDs that have share access.
             if getattr(self.volume_client, 'version', None):
                 existing_auths = self.volume_client.get_authorized_ids(
-                    self._share_path(share))
+                    cephfs_share_path(share))
 
             if existing_auths:
                 existing_auth_ids = set(
@@ -296,74 +412,3 @@ class CephFSNativeDriver(driver.ShareDriver,):
             self._deny_access(context, share, rule)
 
         return access_keys
-
-    def delete_share(self, context, share, share_server=None):
-        extra_specs = share_types.get_extra_specs_from_share(share)
-        data_isolated = extra_specs.get("cephfs:data_isolated", False)
-
-        self.volume_client.delete_volume(self._share_path(share),
-                                         data_isolated=data_isolated)
-        self.volume_client.purge_volume(self._share_path(share),
-                                        data_isolated=data_isolated)
-
-    def ensure_share(self, context, share, share_server=None):
-        # Creation is idempotent
-        return self.create_share(context, share, share_server)
-
-    def extend_share(self, share, new_size, share_server=None):
-        LOG.debug("extend_share {id} {size}".format(
-            id=share['id'], size=new_size))
-        self.volume_client.set_max_bytes(self._share_path(share),
-                                         self._to_bytes(new_size))
-
-    def shrink_share(self, share, new_size, share_server=None):
-        LOG.debug("shrink_share {id} {size}".format(
-            id=share['id'], size=new_size))
-        new_bytes = self._to_bytes(new_size)
-        used = self.volume_client.get_used_bytes(self._share_path(share))
-        if used > new_bytes:
-            # While in fact we can "shrink" our volumes to less than their
-            # used bytes (it's just a quota), raise error anyway to avoid
-            # confusing API consumers that might depend on typical shrink
-            # behaviour.
-            raise exception.ShareShrinkingPossibleDataLoss(
-                share_id=share['id'])
-
-        self.volume_client.set_max_bytes(self._share_path(share), new_bytes)
-
-    def create_snapshot(self, context, snapshot, share_server=None):
-        self.volume_client.create_snapshot_volume(
-            self._share_path(snapshot['share']),
-            '_'.join([snapshot['snapshot_id'], snapshot['id']]))
-
-    def delete_snapshot(self, context, snapshot, share_server=None):
-        self.volume_client.destroy_snapshot_volume(
-            self._share_path(snapshot['share']),
-            '_'.join([snapshot['snapshot_id'], snapshot['id']]))
-
-    def create_share_group(self, context, sg_dict, share_server=None):
-        self.volume_client.create_group(sg_dict['id'])
-
-    def delete_share_group(self, context, sg_dict, share_server=None):
-        self.volume_client.destroy_group(sg_dict['id'])
-
-    def delete_share_group_snapshot(self, context, snap_dict,
-                                    share_server=None):
-        self.volume_client.destroy_snapshot_group(
-            snap_dict['share_group_id'],
-            snap_dict['id'])
-
-        return None, []
-
-    def create_share_group_snapshot(self, context, snap_dict,
-                                    share_server=None):
-        self.volume_client.create_snapshot_group(
-            snap_dict['share_group_id'],
-            snap_dict['id'])
-
-        return None, []
-
-    def __del__(self):
-        if self._volume_client:
-            self._volume_client.disconnect()
-            self._volume_client = None

@@ -50,7 +50,7 @@ import manila.scheduler.weighers.pool
 import manila.service
 import manila.share.api
 import manila.share.driver
-import manila.share.drivers.cephfs.cephfs_native
+import manila.share.drivers.cephfs.driver
 import manila.share.drivers.container.driver
 import manila.share.drivers.container.storage_helper
 import manila.share.drivers.dell_emc.driver
@@ -123,7 +123,7 @@ _global_opt_lists = [
     manila.share.driver.share_opts,
     manila.share.driver.ssh_opts,
     manila.share.drivers_private_data.private_data_opts,
-    manila.share.drivers.cephfs.cephfs_native.cephfs_native_opts,
+    manila.share.drivers.cephfs.driver.cephfs_opts,
     manila.share.drivers.container.driver.container_opts,
     manila.share.drivers.container.storage_helper.lv_opts,
     manila.share.drivers.dell_emc.driver.EMC_NAS_OPTS,

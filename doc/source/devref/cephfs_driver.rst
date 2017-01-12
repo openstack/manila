@@ -14,10 +14,10 @@
       License for the specific language governing permissions and limitations
       under the License.
 
-CephFS Native driver
-====================
+CephFS driver
+=============
 
-The CephFS Native driver enables manila to export shared filesystems to guests
+The CephFS driver enables manila to export shared filesystems to guests
 using the Ceph network protocol.  Guests require a Ceph client in order to
 mount the filesystem.
 
@@ -140,7 +140,7 @@ Create a section like this to define a CephFS backend:
     [cephfs1]
     driver_handles_share_servers = False
     share_backend_name = CEPHFS1
-    share_driver = manila.share.drivers.cephfs.cephfs_native.CephFSNativeDriver
+    share_driver = manila.share.drivers.cephfs.driver.CephFSDriver
     cephfs_conf_path = /etc/ceph/ceph.conf
     cephfs_auth_id = manila
     cephfs_cluster_name = ceph
@@ -153,6 +153,12 @@ related operations, set ``cephfs_enable_snapshots`` to True.
 Then edit ``enabled_share_backends`` to point to the driver's backend section
 using the section name.  In this example we are also including another backend
 ("generic1"), you would include whatever other backends you have configured.
+
+
+.. note::
+
+    For Mitaka, Newton, and Ocata releases, the ``share_driver`` path
+    was ``manila.share.drivers.cephfs.cephfs_native.CephFSNativeDriver``
 
 
 .. code-block:: ini
@@ -312,10 +318,10 @@ Security
   public network.
 
 
-The :mod:`manila.share.drivers.cephfs.cephfs_native` Module
+The :mod:`manila.share.drivers.cephfs.driver` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.share.drivers.cephfs.cephfs_native
+.. automodule:: manila.share.drivers.cephfs.driver
     :noindex:
     :members:
     :undoc-members:

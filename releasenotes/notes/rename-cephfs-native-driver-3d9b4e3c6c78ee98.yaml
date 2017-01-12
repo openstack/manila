@@ -1,0 +1,9 @@
+---
+upgrade:
+  - To use the CephFS driver, which enables CephFS access via the native Ceph
+    protocol, set the `share_driver` in the driver section of the config file
+    as `manila.share.drivers.cephfs.driver.CephFSDriver`. The previous
+    `share_driver` setting in Mitaka/Newton/Ocata releases
+    `manila.share.drivers.cephfs.cephfs_native.CephFSNativeDriver` would still
+    work (usually until one more release, Queens, as part of standard deprecation
+    process.), but it's usage is no longer preferred.
