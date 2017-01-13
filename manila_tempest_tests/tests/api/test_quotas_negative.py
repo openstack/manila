@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 from tempest import config
 from tempest.lib import exceptions as lib_exc
 from testtools import testcase as tc
@@ -22,6 +23,7 @@ from manila_tempest_tests.tests.api import base
 CONF = config.CONF
 
 
+@ddt.ddt
 class SharesQuotasNegativeTest(base.BaseSharesTest):
 
     @classmethod
@@ -48,3 +50,11 @@ class SharesQuotasNegativeTest(base.BaseSharesTest):
                           self.shares_v2_client.update_quotas,
                           self.shares_v2_client.tenant_id,
                           shares=9)
+
+    @ddt.data("2.6", "2.7", "2.24")
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
+    def test_get_quotas_detail_with_wrong_version(self, microversion):
+        self.assertRaises(lib_exc.NotFound,
+                          self.shares_v2_client.detail_quotas,
+                          self.shares_v2_client.tenant_id,
+                          version=microversion)

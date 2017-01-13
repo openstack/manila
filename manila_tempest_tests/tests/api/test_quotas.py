@@ -14,6 +14,7 @@
 #    under the License.
 
 import ddt
+import itertools
 from tempest import config
 from testtools import testcase as tc
 
@@ -65,27 +66,23 @@ class SharesQuotasTest(base.BaseSharesTest):
         self.assertGreater(int(quotas["snapshots"]), -2)
         self.assertGreater(int(quotas["share_networks"]), -2)
 
+    @ddt.data(
+        *itertools.product(set(("2.25", CONF.share.max_api_microversion)),
+                           (True, False))
+    )
+    @ddt.unpack
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     @base.skip_if_microversion_not_supported("2.25")
-    def test_show_quotas_detail(self):
-        quotas = self.shares_v2_client.detail_quotas(self.tenant_id)
+    def test_show_quotas_detail(self, microversion, with_user):
+        quota_args = {"tenant_id": self.tenant_id, "version": microversion, }
+        if with_user:
+            quota_args.update({"user_id": self.user_id})
+        quotas = self.shares_v2_client.detail_quotas(**quota_args)
         quota_keys = list(quotas.keys())
         for outer in ('gigabytes', 'snapshot_gigabytes', 'shares',
                       'snapshots', 'share_networks'):
             self.assertIn(outer, quota_keys)
+            outer_keys = list(quotas[outer].keys())
             for inner in ('in_use', 'limit', 'reserved'):
-                self.assertIn(inner, list(quotas[outer].keys()))
-                self.assertGreater(int(quotas[outer][inner]), -2)
-
-    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
-    @base.skip_if_microversion_not_supported("2.25")
-    def test_show_quotas_detail_for_user(self):
-        quotas = self.shares_v2_client.detail_quotas(self.tenant_id,
-                                                     self.user_id)
-        quota_keys = list(quotas.keys())
-        for outer in ('gigabytes', 'snapshot_gigabytes', 'shares',
-                      'snapshots', 'share_networks'):
-            self.assertIn(outer, quota_keys)
-            for inner in ('in_use', 'limit', 'reserved'):
-                self.assertIn(inner, list(quotas[outer].keys()))
+                self.assertIn(inner, outer_keys)
                 self.assertGreater(int(quotas[outer][inner]), -2)
