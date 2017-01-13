@@ -221,6 +221,12 @@ class BaseSharesTest(test.BaseTestCase):
         return client
 
     @classmethod
+    def skip_checks(cls):
+        super(BaseSharesTest, cls).skip_checks()
+        if not CONF.service_available.manila:
+            raise cls.skipException("Manila support is required")
+
+    @classmethod
     def verify_nonempty(cls, *args):
         if not all(args):
             msg = "Missing API credentials in configuration."
