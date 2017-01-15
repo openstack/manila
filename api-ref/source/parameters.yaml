@@ -1951,9 +1951,9 @@ neutron_net_id:
   type: string
 neutron_net_id_1:
   description: |
-    The UUID of the neutron network to set up for
-    share servers. You can set up either a neutron network and subnet
-    or a nova network.
+    The UUID of a neutron network when setting up a share network
+    with neutron.  Specify both a neutron network and a neutron
+    subnet that belongs to that neutron network.
   in: body
   required: false
   type: string
@@ -1965,10 +1965,9 @@ neutron_subnet_id:
   type: string
 neutron_subnet_id_1:
   description: |
-    The UUID of the neutron subnet to set up for
-    share servers. This subnet must be part of the neutron network.
-    You can set up either a neutron network and subnet or a nova
-    network.
+    The UUID of the neutron subnet when setting up a share network
+    with neutron.  Specify both a neutron network and a neutron
+    subnet that belongs to that neutron network.
   in: body
   required: false
   type: string
@@ -1995,20 +1994,6 @@ notify:
     Enables or disables notification of data copying completed
   in: body
   required: true
-  type: string
-nova_net_id:
-  description: |
-    The nova network ID.
-  in: body
-  required: true
-  type: string
-nova_net_id_1:
-  description: |
-    The UUID of the nova network to set up for share
-    servers. You can set up either a neutron network and subnet or a
-    nova network.
-  in: body
-  required: false
   type: string
 os-force_delete:
   description: |

@@ -83,7 +83,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
     This network plugin can be used with any network platform.
     It can serve flat networks as well as segmented.
     It does not require some specific network services in OpenStack like
-    Neutron or Nova.
+    the Neutron plugin.
     The only thing that plugin does is reservation and release of IP addresses
     from some network.
     """

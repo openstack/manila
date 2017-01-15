@@ -1187,7 +1187,6 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'cidr': '111.111.111.0/24',
             'neutron_net_id': 'fake_neutron_net_id',
             'neutron_subnet_id': 'fake_neutron_subnet_id',
-            'nova_net_id': '',
             'security_services': '',
             'network_allocations': self.fake_network_allocations,
             'network_type': 'vlan',

@@ -12,12 +12,11 @@ access the share.
 
 You can create, update, view, and delete a share network.
 
-When you create a share network, you can specify only one type of
-network:
+When you create a share network, you may optionally specify an associated
+neutron network and subnetwork:
 
 - Neutron network. Specify a network ID and subnet ID.
 
-- Nova network. Specify a network ID.
 
 For more information about supported plug-ins for share networks,
 see `Manila Network Plugins <http://docs.openstack.org/developer/ma
@@ -97,7 +96,6 @@ Response parameters
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
-   - nova_net_id: nova_net_id
    - network_type: network_type
    - segmentation_id: segmentation_id
    - cidr: cidr
@@ -142,7 +140,6 @@ Response parameters
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
-   - nova_net_id: nova_net_id
    - network_type: network_type
    - segmentation_id: segmentation_id
    - cidr: cidr
@@ -179,7 +176,6 @@ Request
    - tenant_id: tenant_id_1
    - neutron_net_id: neutron_net_id_1
    - neutron_subnet_id: neutron_subnet_id_1
-   - nova_net_id: nova_net_id_1
    - name: name
    - description: description
 
@@ -198,7 +194,6 @@ Response parameters
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
-   - nova_net_id: nova_net_id
    - network_type: network_type_1
    - segmentation_id: segmentation_id_1
    - cidr: cidr_1
@@ -251,7 +246,6 @@ Response parameters
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
-   - nova_net_id: nova_net_id
    - network_type: network_type
    - segmentation_id: segmentation_id
    - cidr: cidr
@@ -305,7 +299,6 @@ Response parameters
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
-   - nova_net_id: nova_net_id
    - network_type: network_type
    - segmentation_id: segmentation_id
    - cidr: cidr
@@ -361,7 +354,6 @@ Response parameters
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
-   - nova_net_id: nova_net_id
    - network_type: network_type
    - segmentation_id: segmentation_id
    - cidr: cidr

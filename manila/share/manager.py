@@ -2655,7 +2655,6 @@ class ShareManager(manager.SchedulerDependentManager):
             'cidr': share_network['cidr'],
             'neutron_net_id': share_network['neutron_net_id'],
             'neutron_subnet_id': share_network['neutron_subnet_id'],
-            'nova_net_id': share_network['nova_net_id'],
             'security_services': share_network['security_services'],
             'network_allocations': network_allocations,
             'admin_network_allocations': admin_network_allocations,

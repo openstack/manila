@@ -420,17 +420,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertEqual('Default', result)
 
-    def test_create_ipspace_not_neutron(self):
-
-        self.library._client.features.IPSPACES = True
-        network_info = copy.deepcopy(fake.NETWORK_INFO)
-        network_info['neutron_subnet_id'] = None
-        network_info['nova_net_id'] = 'fake_nova_net_id'
-
-        result = self.library._create_ipspace(network_info)
-
-        self.assertEqual('Default', result)
-
     def test_create_ipspace_already_present(self):
 
         self.library._client.features.IPSPACES = True
