@@ -201,8 +201,8 @@ class ShareNetworkController(wsgi.Controller):
         update_values = body[RESOURCE_NAME]
 
         if 'nova_net_id' in update_values:
-            raise exc.HTTPBadRequest("``nova`` networking is not supported "
-                                     "starting in ocata.")
+            msg = _("nova networking is not supported starting in Ocata.")
+            raise exc.HTTPBadRequest(explanation=msg)
 
         if share_network['share_servers']:
             for value in update_values:
@@ -236,8 +236,8 @@ class ShareNetworkController(wsgi.Controller):
         values['user_id'] = context.user_id
 
         if 'nova_net_id' in values:
-            raise exc.HTTPBadRequest("``nova`` networking is not supported "
-                                     "starting in ocata.")
+            msg = _("nova networking is not supported starting in Ocata.")
+            raise exc.HTTPBadRequest(explanation=msg)
 
         try:
             reservations = QUOTAS.reserve(context, share_networks=1)
