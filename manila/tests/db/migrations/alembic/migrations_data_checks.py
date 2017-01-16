@@ -249,6 +249,122 @@ class ShareTypeMigrationChecks(BaseMigrationChecks):
         self.test_case.assertEqual(4, len(extra_specs))
 
 
+@map_to_migration('5077ffcc5f1c')
+class ShareInstanceMigrationChecks(BaseMigrationChecks):
+    def _prepare_fake_data(self):
+        time = datetime.datetime(2017, 1, 12, 12, 12, 12)
+        self.share = {
+            'id': uuidutils.generate_uuid(),
+            'host': 'fake_host',
+            'status': 'fake_status',
+            'scheduled_at': time,
+            'launched_at': time,
+            'terminated_at': time,
+            'availability_zone': 'fake_az'}
+        self.share_snapshot = {
+            'id': uuidutils.generate_uuid(),
+            'status': 'fake_status',
+            'share_id': self.share['id'],
+            'progress': 'fake_progress'}
+        self.share_export_location = {
+            'id': 1001,
+            'share_id': self.share['id']}
+
+    def setup_upgrade_data(self, engine):
+        self._prepare_fake_data()
+        share_table = utils.load_table('shares', engine)
+        engine.execute(share_table.insert(self.share))
+        snapshot_table = utils.load_table('share_snapshots', engine)
+        engine.execute(snapshot_table.insert(self.share_snapshot))
+        el_table = utils.load_table('share_export_locations', engine)
+        engine.execute(el_table.insert(self.share_export_location))
+
+    def check_upgrade(self, engine, data):
+        share_table = utils.load_table('shares', engine)
+        s_instance_table = utils.load_table('share_instances', engine)
+        ss_instance_table = utils.load_table('share_snapshot_instances',
+                                             engine)
+        snapshot_table = utils.load_table('share_snapshots', engine)
+        instance_el_table = utils.load_table('share_instance_export_locations',
+                                             engine)
+        # Check shares table
+        for column in ['host', 'status', 'scheduled_at', 'launched_at',
+                       'terminated_at', 'share_network_id', 'share_server_id',
+                       'availability_zone']:
+            rows = engine.execute(share_table.select())
+            for row in rows:
+                self.test_case.assertFalse(hasattr(row, column))
+
+        # Check share instance table
+        s_instance_record = engine.execute(s_instance_table.select().where(
+            s_instance_table.c.share_id == self.share['id'])).first()
+        self.test_case.assertTrue(s_instance_record is not None)
+        for column in ['host', 'status', 'scheduled_at', 'launched_at',
+                       'terminated_at', 'availability_zone']:
+            self.test_case.assertEqual(self.share[column],
+                                       s_instance_record[column])
+
+        # Check snapshot table
+        for column in ['status', 'progress']:
+            rows = engine.execute(snapshot_table.select())
+            for row in rows:
+                self.test_case.assertFalse(hasattr(row, column))
+
+        # Check snapshot instance table
+        ss_instance_record = engine.execute(ss_instance_table.select().where(
+            ss_instance_table.c.snapshot_id == self.share_snapshot['id'])
+        ).first()
+        self.test_case.assertEqual(s_instance_record['id'],
+                                   ss_instance_record['share_instance_id'])
+        for column in ['status', 'progress']:
+            self.test_case.assertEqual(self.share_snapshot[column],
+                                       ss_instance_record[column])
+
+        # Check share export location table
+        self.test_case.assertRaises(
+            sa_exc.NoSuchTableError,
+            utils.load_table, 'share_export_locations', engine)
+
+        # Check share instance export location table
+        el_record = engine.execute(instance_el_table.select().where(
+            instance_el_table.c.share_instance_id == s_instance_record['id'])
+        ).first()
+        self.test_case.assertFalse(el_record is None)
+        self.test_case.assertTrue(hasattr(el_record, 'share_instance_id'))
+        self.test_case.assertFalse(hasattr(el_record, 'share_id'))
+
+    def check_downgrade(self, engine):
+        self.test_case.assertRaises(
+            sa_exc.NoSuchTableError,
+            utils.load_table, 'share_snapshot_instances', engine)
+        self.test_case.assertRaises(
+            sa_exc.NoSuchTableError,
+            utils.load_table, 'share_instances', engine)
+        self.test_case.assertRaises(
+            sa_exc.NoSuchTableError,
+            utils.load_table, 'share_instance_export_locations', engine)
+        share_table = utils.load_table('shares', engine)
+        snapshot_table = utils.load_table('share_snapshots', engine)
+        share_el_table = utils.load_table('share_export_locations',
+                                          engine)
+        for column in ['host', 'status', 'scheduled_at', 'launched_at',
+                       'terminated_at', 'share_network_id', 'share_server_id',
+                       'availability_zone']:
+            rows = engine.execute(share_table.select())
+            for row in rows:
+                self.test_case.assertTrue(hasattr(row, column))
+
+        for column in ['status', 'progress']:
+            rows = engine.execute(snapshot_table.select())
+            for row in rows:
+                self.test_case.assertTrue(hasattr(row, column))
+        rows = engine.execute(share_el_table.select())
+        for row in rows:
+            self.test_case.assertFalse(hasattr(row, 'share_instance_id'))
+            self.test_case.assertTrue(
+                hasattr(row, 'share_id'))
+
+
 @map_to_migration('1f0bd302c1a6')
 class AvailabilityZoneMigrationChecks(BaseMigrationChecks):
 
@@ -689,20 +805,20 @@ class ShareSnapshotInstanceNewProviderLocationColumnChecks(
 
     def check_upgrade(self, engine, data):
         ss_table = utils.load_table(self.table_name, engine)
-        db_result = engine.execute(ss_table.select())
+        db_result = engine.execute(ss_table.select().where(
+            ss_table.c.id == 'new_snapshot_instance_id'))
         self.test_case.assertTrue(db_result.rowcount > 0)
         for ss in db_result:
             self.test_case.assertTrue(hasattr(ss, 'provider_location'))
-            self.test_case.assertEqual('new_snapshot_instance_id', ss.id)
             self.test_case.assertEqual('new_snapshot_id', ss.snapshot_id)
 
     def check_downgrade(self, engine):
         ss_table = utils.load_table(self.table_name, engine)
-        db_result = engine.execute(ss_table.select())
+        db_result = engine.execute(ss_table.select().where(
+            ss_table.c.id == 'new_snapshot_instance_id'))
         self.test_case.assertTrue(db_result.rowcount > 0)
         for ss in db_result:
             self.test_case.assertFalse(hasattr(ss, 'provider_location'))
-            self.test_case.assertEqual('new_snapshot_instance_id', ss.id)
             self.test_case.assertEqual('new_snapshot_id', ss.snapshot_id)
 
 
