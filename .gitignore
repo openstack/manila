@@ -11,13 +11,13 @@
 .tox
 .venv
 .idea
+*.egg*
 AUTHORS
 Authors
 build/*
 build-stamp
 CA/
 ChangeLog
-manila.egg-info
 cover/*
 covhtml
 dist/*
