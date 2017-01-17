@@ -707,6 +707,10 @@ class HDFSException(ManilaException):
     message = _("HDFS exception occurred!")
 
 
+class MapRFSException(ManilaException):
+    message = _("MapRFS exception occurred: %(msg)s")
+
+
 class ZFSonLinuxException(ManilaException):
     message = _("ZFSonLinux exception occurred: %(msg)s")
 

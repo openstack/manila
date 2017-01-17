@@ -229,3 +229,8 @@ class SharesHDFSTest(SharesNFSTest):
 class SharesCephFSTest(SharesNFSTest):
     """Covers share functionality that is related to CEPHFS share type."""
     protocol = "cephfs"
+
+
+class SharesMapRFSTest(SharesNFSTest):
+    """Covers share functionality that is related to MapRFS share type."""
+    protocol = "maprfs"

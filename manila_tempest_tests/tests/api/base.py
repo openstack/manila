@@ -123,7 +123,7 @@ class BaseSharesTest(test.BaseTestCase):
 
     credentials = ('primary', )
     force_tenant_isolation = False
-    protocols = ["nfs", "cifs", "glusterfs", "hdfs", "cephfs"]
+    protocols = ["nfs", "cifs", "glusterfs", "hdfs", "cephfs", "maprfs"]
 
     # Will be cleaned up in resource_cleanup
     class_resources = []

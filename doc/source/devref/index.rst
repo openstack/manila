@@ -121,6 +121,7 @@ Share backends
    hitachi_hnas_driver
    hpe_3par_driver
    tegile_driver
+   maprfs_native_driver
 
 Indices and tables
 ------------------
