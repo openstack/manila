@@ -1205,8 +1205,10 @@ def share_instance_delete(context, instance_id, session=None):
         instance_ref.soft_delete(session=session, update_status=True)
         share = share_get(context, instance_ref['share_id'], session=session)
         if len(share.instances) == 0:
-            share.soft_delete(session=session)
             share_access_delete_all_by_share(context, share['id'])
+            session.query(models.ShareMetadata).filter_by(
+                share_id=share['id']).soft_delete()
+            share.soft_delete(session=session)
 
 
 def _set_instances_share_data(context, instances, session):

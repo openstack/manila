@@ -194,9 +194,14 @@ class ShareDatabaseAPITestCase(test.TestCase):
     def test_share_instance_delete_with_share(self):
         share = db_utils.create_share()
 
+        self.assertIsNotNone(db_api.share_get(self.ctxt, share['id']))
+        self.assertIsNotNone(db_api.share_metadata_get(self.ctxt, share['id']))
+
         db_api.share_instance_delete(self.ctxt, share.instance['id'])
 
         self.assertRaises(exception.NotFound, db_api.share_get,
+                          self.ctxt, share['id'])
+        self.assertRaises(exception.NotFound, db_api.share_metadata_get,
                           self.ctxt, share['id'])
 
     def test_share_instance_get(self):
