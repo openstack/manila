@@ -1163,7 +1163,7 @@ class ShareAPITestCase(test.TestCase):
             self.api, '_revert_to_snapshot')
         snapshot = fakes.fake_snapshot(share_id=share['id'])
 
-        self.api.revert_to_snapshot(self.context, snapshot)
+        self.api.revert_to_snapshot(self.context, share, snapshot)
 
         mock_handle_revert_to_snapshot_quotas.assert_called_once_with(
             self.context, share, snapshot)
@@ -1195,6 +1195,7 @@ class ShareAPITestCase(test.TestCase):
         self.assertRaises(exception.ReplicationException,
                           self.api.revert_to_snapshot,
                           self.context,
+                          share,
                           snapshot)
 
         if reservations is not None:

@@ -84,7 +84,6 @@ REST_API_VERSION_HISTORY = """
              spec. Also made the 'snapshot_support' extra spec optional.
     * 2.25 - Added quota-show detail API.
     * 2.26 - Removed 'nova_net_id' parameter from share_network API.
-
     * 2.27 - Added share revert to snapshot API.
 """
 

@@ -729,10 +729,9 @@ class API(base.Base):
 
         self.share_rpcapi.unmanage_snapshot(context, snapshot_ref, host)
 
-    def revert_to_snapshot(self, context, snapshot):
+    def revert_to_snapshot(self, context, share, snapshot):
         """Revert a share to a snapshot."""
 
-        share = self.db.share_get(context, snapshot['share_id'])
         reservations = self._handle_revert_to_snapshot_quotas(
             context, share, snapshot)
 

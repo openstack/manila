@@ -15,7 +15,7 @@
 """add_revert_to_snapshot_support
 
 Revision ID: 87ce15c59bbe
-Revises: 3e7d62517afa
+Revises: 95e3cf760840
 Create Date: 2016-08-18 00:12:34.587018
 
 """
