@@ -327,7 +327,11 @@ class NFSHelper(NASHelperBase):
 
         local_path = os.path.join(self.configuration.share_mount_path,
                                   share_name)
-        self._ssh_exec(server, ['sudo', 'exportfs', '-u', local_path])
+        out, err = self._ssh_exec(server, ['sudo', 'exportfs'])
+        hosts = self.get_host_list(out, local_path)
+        for host in hosts:
+            self._ssh_exec(server, ['sudo', 'exportfs', '-u',
+                                    ':'.join((host, local_path))])
         self._sync_nfs_temp_and_perm_files(server)
 
     @nfs_synchronized
