@@ -279,6 +279,10 @@ class DummyDriver(driver.ShareDriver):
         """Removes the specified snapshot from Manila management."""
 
     @slow_me_down
+    def revert_to_snapshot(self, context, snapshot, share_server=None):
+        """Reverts a share (in place) to the specified snapshot."""
+
+    @slow_me_down
     def extend_share(self, share, new_size, share_server=None):
         """Extends size of existing share."""
 
@@ -338,6 +342,7 @@ class DummyDriver(driver.ShareDriver):
             "consistency_group_support": "pool",
             "snapshot_support": True,
             "create_share_from_snapshot_support": True,
+            "revert_to_snapshot_support": True,
             "driver_name": "Dummy",
             "pools": self._get_pools_info(),
         }
@@ -442,6 +447,12 @@ class DummyDriver(driver.ShareDriver):
             return_replica_snapshots.append(
                 {"id": r["id"], "status": constants.STATUS_AVAILABLE})
         return return_replica_snapshots
+
+    @slow_me_down
+    def revert_to_replicated_snapshot(self, context, active_replica,
+                                      replica_list, active_replica_snapshot,
+                                      replica_snapshots, share_server=None):
+        """Reverts a replicated share (in place) to the specified snapshot."""
 
     @slow_me_down
     def delete_replicated_snapshot(self, context, replica_list,

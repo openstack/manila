@@ -749,6 +749,7 @@ class ShareAPITestCase(test.TestCase):
             'extra_specs': {
                 'snapshot_support': True,
                 'create_share_from_snapshot_support': False,
+                'revert_to_snapshot_support': False,
                 'replication_type': 'dr',
             }
         }
@@ -765,6 +766,7 @@ class ShareAPITestCase(test.TestCase):
         expected = {
             'snapshot_support': False,
             'create_share_from_snapshot_support': False,
+            'revert_to_snapshot_support': False,
             'replication_type': None,
         }
         self.assertEqual(expected, result)
@@ -773,7 +775,7 @@ class ShareAPITestCase(test.TestCase):
               {'extra_specs': {'create_share_from_snapshot_support': 'fake'}})
     def test_get_share_attributes_from_share_type_invalid(self, share_type):
 
-        self.assertRaises(exception.InvalidParameterValue,
+        self.assertRaises(exception.InvalidExtraSpec,
                           self.api._get_share_attributes_from_share_type,
                           share_type)
 
@@ -798,6 +800,7 @@ class ShareAPITestCase(test.TestCase):
                 'snapshot_support': False,
                 'replication_type': replication_type,
                 'create_share_from_snapshot_support': False,
+                'revert_to_snapshot_support': False,
             },
         }
 
@@ -824,6 +827,8 @@ class ShareAPITestCase(test.TestCase):
             'snapshot_support': fake_type['extra_specs']['snapshot_support'],
             'create_share_from_snapshot_support':
                 fake_type['extra_specs']['create_share_from_snapshot_support'],
+            'revert_to_snapshot_support':
+                fake_type['extra_specs']['revert_to_snapshot_support'],
             'replication_type': replication_type,
         })
 
@@ -883,6 +888,9 @@ class ShareAPITestCase(test.TestCase):
                 'create_share_from_snapshot_support',
                 share_type['extra_specs']
                 ['create_share_from_snapshot_support']),
+            'revert_to_snapshot_support': kwargs.get(
+                'revert_to_snapshot_support',
+                share_type['extra_specs']['revert_to_snapshot_support']),
             'share_proto': kwargs.get('share_proto', share.get('share_proto')),
             'share_type_id': share_type['id'],
             'is_public': kwargs.get('is_public', share.get('is_public')),
@@ -982,6 +990,48 @@ class ShareAPITestCase(test.TestCase):
                 self.context, 'reservation')
             db_api.share_snapshot_create.assert_called_once_with(
                 self.context, options)
+
+    def test_create_snapshot_space_quota_exceeded(self):
+
+        share = fakes.fake_share(
+            id=uuidutils.generate_uuid(), size=1, project_id='fake_project',
+            user_id='fake_user', has_replicas=False, status='available')
+        usages = {'gigabytes': {'reserved': 10, 'in_use': 0}}
+        quotas = {'snapshot_gigabytes': 10}
+        side_effect = exception.OverQuota(
+            overs='snapshot_gigabytes', usages=usages, quotas=quotas)
+        self.mock_object(
+            quota.QUOTAS, 'reserve', mock.Mock(side_effect=side_effect))
+        mock_snap_create = self.mock_object(db_api, 'share_snapshot_create')
+
+        self.assertRaises(exception.SnapshotSizeExceedsAvailableQuota,
+                          self.api.create_snapshot,
+                          self.context,
+                          share,
+                          'fake_name',
+                          'fake_description')
+        mock_snap_create.assert_not_called()
+
+    def test_create_snapshot_count_quota_exceeded(self):
+
+        share = fakes.fake_share(
+            id=uuidutils.generate_uuid(), size=1, project_id='fake_project',
+            user_id='fake_user', has_replicas=False, status='available')
+        usages = {'snapshots': {'reserved': 10, 'in_use': 0}}
+        quotas = {'snapshots': 10}
+        side_effect = exception.OverQuota(
+            overs='snapshots', usages=usages, quotas=quotas)
+        self.mock_object(
+            quota.QUOTAS, 'reserve', mock.Mock(side_effect=side_effect))
+        mock_snap_create = self.mock_object(db_api, 'share_snapshot_create')
+
+        self.assertRaises(exception.SnapshotLimitExceeded,
+                          self.api.create_snapshot,
+                          self.context,
+                          share,
+                          'fake_name',
+                          'fake_description')
+        mock_snap_create.assert_not_called()
 
     def test_manage_snapshot_share_not_found(self):
         snapshot = fakes.fake_snapshot(share_id='fake_share',
@@ -1097,6 +1147,218 @@ class ShareAPITestCase(test.TestCase):
             self.context, snapshot['id'], snapshot_data)
         mock_rpc_call.assert_called_once_with(
             self.context, snapshot, fake_host)
+
+    @ddt.data(True, False)
+    def test_revert_to_snapshot(self, has_replicas):
+
+        share = fakes.fake_share(id=uuidutils.generate_uuid(),
+                                 has_replicas=has_replicas)
+        self.mock_object(db_api, 'share_get', mock.Mock(return_value=share))
+        mock_handle_revert_to_snapshot_quotas = self.mock_object(
+            self.api, '_handle_revert_to_snapshot_quotas',
+            mock.Mock(return_value='fake_reservations'))
+        mock_revert_to_replicated_snapshot = self.mock_object(
+            self.api, '_revert_to_replicated_snapshot')
+        mock_revert_to_snapshot = self.mock_object(
+            self.api, '_revert_to_snapshot')
+        snapshot = fakes.fake_snapshot(share_id=share['id'])
+
+        self.api.revert_to_snapshot(self.context, snapshot)
+
+        mock_handle_revert_to_snapshot_quotas.assert_called_once_with(
+            self.context, share, snapshot)
+        if not has_replicas:
+            self.assertFalse(mock_revert_to_replicated_snapshot.called)
+            mock_revert_to_snapshot.assert_called_once_with(
+                self.context, share, snapshot, 'fake_reservations')
+        else:
+            mock_revert_to_replicated_snapshot.assert_called_once_with(
+                self.context, share, snapshot, 'fake_reservations')
+            self.assertFalse(mock_revert_to_snapshot.called)
+
+    @ddt.data(None, 'fake_reservations')
+    def test_revert_to_snapshot_exception(self, reservations):
+
+        share = fakes.fake_share(id=uuidutils.generate_uuid(),
+                                 has_replicas=False)
+        self.mock_object(db_api, 'share_get', mock.Mock(return_value=share))
+        self.mock_object(
+            self.api, '_handle_revert_to_snapshot_quotas',
+            mock.Mock(return_value=reservations))
+        side_effect = exception.ReplicationException(reason='error')
+        self.mock_object(
+            self.api, '_revert_to_snapshot',
+            mock.Mock(side_effect=side_effect))
+        mock_quotas_rollback = self.mock_object(quota.QUOTAS, 'rollback')
+        snapshot = fakes.fake_snapshot(share_id=share['id'])
+
+        self.assertRaises(exception.ReplicationException,
+                          self.api.revert_to_snapshot,
+                          self.context,
+                          snapshot)
+
+        if reservations is not None:
+            mock_quotas_rollback.assert_called_once_with(
+                self.context, reservations)
+        else:
+            self.assertFalse(mock_quotas_rollback.called)
+
+    def test_handle_revert_to_snapshot_quotas(self):
+
+        share = fakes.fake_share(
+            id=uuidutils.generate_uuid(), size=1, project_id='fake_project',
+            user_id='fake_user', has_replicas=False)
+        snapshot = fakes.fake_snapshot(
+            id=uuidutils.generate_uuid(), share_id=share['id'], size=1)
+        mock_quotas_reserve = self.mock_object(quota.QUOTAS, 'reserve')
+
+        result = self.api._handle_revert_to_snapshot_quotas(
+            self.context, share, snapshot)
+
+        self.assertIsNone(result)
+        self.assertFalse(mock_quotas_reserve.called)
+
+    def test_handle_revert_to_snapshot_quotas_different_size(self):
+
+        share = fakes.fake_share(
+            id=uuidutils.generate_uuid(), size=1, project_id='fake_project',
+            user_id='fake_user', has_replicas=False)
+        snapshot = fakes.fake_snapshot(
+            id=uuidutils.generate_uuid(), share_id=share['id'], size=2)
+        mock_quotas_reserve = self.mock_object(
+            quota.QUOTAS, 'reserve',
+            mock.Mock(return_value='fake_reservations'))
+
+        result = self.api._handle_revert_to_snapshot_quotas(
+            self.context, share, snapshot)
+
+        self.assertEqual('fake_reservations', result)
+        mock_quotas_reserve.assert_called_once_with(
+            self.context, project_id='fake_project', gigabytes=1,
+            user_id='fake_user')
+
+    def test_handle_revert_to_snapshot_quotas_quota_exceeded(self):
+
+        share = fakes.fake_share(
+            id=uuidutils.generate_uuid(), size=1, project_id='fake_project',
+            user_id='fake_user', has_replicas=False)
+        snapshot = fakes.fake_snapshot(
+            id=uuidutils.generate_uuid(), share_id=share['id'], size=2)
+        usages = {'gigabytes': {'reserved': 10, 'in_use': 0}}
+        quotas = {'gigabytes': 10}
+        side_effect = exception.OverQuota(
+            overs='fake', usages=usages, quotas=quotas)
+        self.mock_object(
+            quota.QUOTAS, 'reserve', mock.Mock(side_effect=side_effect))
+
+        self.assertRaises(exception.ShareSizeExceedsAvailableQuota,
+                          self.api._handle_revert_to_snapshot_quotas,
+                          self.context,
+                          share,
+                          snapshot)
+
+    def test__revert_to_snapshot(self):
+
+        share = fakes.fake_share(
+            id=uuidutils.generate_uuid(), size=1, project_id='fake_project',
+            user_id='fake_user', has_replicas=False)
+        snapshot = fakes.fake_snapshot(
+            id=uuidutils.generate_uuid(), share_id=share['id'], size=2)
+        mock_share_update = self.mock_object(db_api, 'share_update')
+        mock_share_snapshot_update = self.mock_object(
+            db_api, 'share_snapshot_update')
+        mock_revert_rpc_call = self.mock_object(
+            self.share_rpcapi, 'revert_to_snapshot')
+
+        self.api._revert_to_snapshot(
+            self.context, share, snapshot, 'fake_reservations')
+
+        mock_share_update.assert_called_once_with(
+            self.context, share['id'], {'status': constants.STATUS_REVERTING})
+        mock_share_snapshot_update.assert_called_once_with(
+            self.context, snapshot['id'],
+            {'status': constants.STATUS_RESTORING})
+        mock_revert_rpc_call.assert_called_once_with(
+            self.context, share, snapshot, share['instance']['host'],
+            'fake_reservations')
+
+    def test_revert_to_replicated_snapshot(self):
+
+        share = fakes.fake_share(
+            has_replicas=True, status=constants.STATUS_AVAILABLE)
+        snapshot = fakes.fake_snapshot(share_instance_id='id1')
+        snapshot_instance = fakes.fake_snapshot_instance(
+            base_snapshot=snapshot, id='sid1')
+        replicas = [
+            fakes.fake_replica(
+                id='rid1', replica_state=constants.REPLICA_STATE_ACTIVE),
+            fakes.fake_replica(
+                id='rid2', replica_state=constants.REPLICA_STATE_IN_SYNC),
+        ]
+        self.mock_object(
+            db_api, 'share_replicas_get_available_active_replica',
+            mock.Mock(return_value=replicas[0]))
+        self.mock_object(
+            db_api, 'share_snapshot_instance_get_all_with_filters',
+            mock.Mock(return_value=[snapshot_instance]))
+        mock_share_replica_update = self.mock_object(
+            db_api, 'share_replica_update')
+        mock_share_snapshot_instance_update = self.mock_object(
+            db_api, 'share_snapshot_instance_update')
+        mock_revert_rpc_call = self.mock_object(
+            self.share_rpcapi, 'revert_to_snapshot')
+
+        self.api._revert_to_replicated_snapshot(
+            self.context, share, snapshot, 'fake_reservations')
+
+        mock_share_replica_update.assert_called_once_with(
+            self.context, 'rid1', {'status': constants.STATUS_REVERTING})
+        mock_share_snapshot_instance_update.assert_called_once_with(
+            self.context, 'sid1', {'status': constants.STATUS_RESTORING})
+        mock_revert_rpc_call.assert_called_once_with(
+            self.context, share, snapshot, replicas[0]['host'],
+            'fake_reservations')
+
+    def test_revert_to_replicated_snapshot_no_active_replica(self):
+
+        share = fakes.fake_share(
+            has_replicas=True, status=constants.STATUS_AVAILABLE)
+        snapshot = fakes.fake_snapshot(share_instance_id='id1')
+        self.mock_object(
+            db_api, 'share_replicas_get_available_active_replica',
+            mock.Mock(return_value=None))
+
+        self.assertRaises(exception.ReplicationException,
+                          self.api._revert_to_replicated_snapshot,
+                          self.context,
+                          share,
+                          snapshot,
+                          'fake_reservations')
+
+    def test_revert_to_replicated_snapshot_no_snapshot_instance(self):
+
+        share = fakes.fake_share(
+            has_replicas=True, status=constants.STATUS_AVAILABLE)
+        snapshot = fakes.fake_snapshot(share_instance_id='id1')
+        replicas = [
+            fakes.fake_replica(
+                id='rid1', replica_state=constants.REPLICA_STATE_ACTIVE),
+            fakes.fake_replica(
+                id='rid2', replica_state=constants.REPLICA_STATE_IN_SYNC),
+        ]
+        self.mock_object(
+            db_api, 'share_replicas_get_available_active_replica',
+            mock.Mock(return_value=replicas[0]))
+        self.mock_object(
+            db_api, 'share_snapshot_instance_get_all_with_filters',
+            mock.Mock(return_value=[None]))
+
+        self.assertRaises(exception.ReplicationException,
+                          self.api._revert_to_replicated_snapshot,
+                          self.context,
+                          share,
+                          snapshot,
+                          'fake_reservations')
 
     def test_create_snapshot_for_replicated_share(self):
         share = fakes.fake_share(
@@ -2051,6 +2313,7 @@ class ShareAPITestCase(test.TestCase):
             'extra_specs': {
                 'snapshot_support': False,
                 'create_share_from_snapshot_support': False,
+                'revert_to_snapshot_support': False,
                 'driver_handles_share_servers': dhss,
             },
         }
@@ -2061,6 +2324,7 @@ class ShareAPITestCase(test.TestCase):
                 'extra_specs': {
                     'snapshot_support': False,
                     'create_share_from_snapshot_support': False,
+                    'revert_to_snapshot_support': False,
                     'driver_handles_share_servers': dhss,
                 },
             }

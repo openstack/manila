@@ -22,6 +22,7 @@ from oslo_config import cfg
 from oslo_serialization import jsonutils
 import six
 import webob
+import webob.exc
 
 from manila.api import common
 from manila.api.openstack import api_version_request as api_version
@@ -38,6 +39,7 @@ from manila import test
 from manila.tests.api.contrib import stubs
 from manila.tests.api import fakes
 from manila.tests import db_utils
+from manila.tests import fake_share
 from manila import utils
 
 CONF = cfg.CONF
@@ -61,12 +63,14 @@ class ShareAPITest(test.TestCase):
                          stubs.stub_snapshot_get)
         self.maxDiff = None
         self.share = {
+            "id": "1",
             "size": 100,
             "display_name": "Share Test Name",
             "display_description": "Share Test Desc",
             "share_proto": "fakeproto",
             "availability_zone": "zone1:host1",
             "is_public": False,
+            "task_state": None,
         }
         self.create_mock = mock.Mock(
             return_value=stubs.stub_share(
@@ -83,6 +87,12 @@ class ShareAPITest(test.TestCase):
             'id': 'fake_volume_type_id',
             'name': 'fake_volume_type_name',
         }
+        self.snapshot = {
+            'id': '2',
+            'share_id': '1',
+            'status': constants.STATUS_AVAILABLE,
+        }
+
         CONF.set_default("default_share_type", None)
 
     def _get_expected_share_detailed_response(self, values=None, admin=False):
@@ -132,6 +142,256 @@ class ShareAPITest(test.TestCase):
         if admin:
             share['share_server_id'] = 'fake_share_server_id'
         return {'share': share}
+
+    def test__revert(self):
+
+        share = copy.deepcopy(self.share)
+        share['status'] = constants.STATUS_AVAILABLE
+        share['revert_to_snapshot_support'] = True
+        share = fake_share.fake_share(**share)
+        snapshot = copy.deepcopy(self.snapshot)
+        snapshot['status'] = constants.STATUS_AVAILABLE
+        body = {'revert': {'snapshot_id': '2'}}
+        req = fakes.HTTPRequest.blank(
+            '/shares/1/action', use_admin_context=False, version='2.27')
+        mock_validate_revert_parameters = self.mock_object(
+            self.controller, '_validate_revert_parameters',
+            mock.Mock(return_value=body['revert']))
+        mock_get = self.mock_object(
+            share_api.API, 'get', mock.Mock(return_value=share))
+        mock_get_snapshot = self.mock_object(
+            share_api.API, 'get_snapshot', mock.Mock(return_value=snapshot))
+        mock_get_latest_snapshot_for_share = self.mock_object(
+            share_api.API, 'get_latest_snapshot_for_share',
+            mock.Mock(return_value=snapshot))
+        mock_revert_to_snapshot = self.mock_object(
+            share_api.API, 'revert_to_snapshot')
+
+        response = self.controller._revert(req, '1', body=body)
+
+        self.assertEqual(202, response.status_int)
+        mock_validate_revert_parameters.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), body)
+        mock_get.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), '1')
+        mock_get_snapshot.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), '2')
+        mock_get_latest_snapshot_for_share.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), '1')
+        mock_revert_to_snapshot.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), snapshot)
+
+    def test__revert_not_supported(self):
+
+        share = copy.deepcopy(self.share)
+        share['revert_to_snapshot_support'] = False
+        share = fake_share.fake_share(**share)
+        snapshot = copy.deepcopy(self.snapshot)
+        snapshot['status'] = constants.STATUS_AVAILABLE
+        snapshot['share_id'] = 'wrong_id'
+        body = {'revert': {'snapshot_id': '2'}}
+        req = fakes.HTTPRequest.blank(
+            '/shares/1/action', use_admin_context=False, version='2.27')
+        self.mock_object(
+            self.controller, '_validate_revert_parameters',
+            mock.Mock(return_value=body['revert']))
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+        self.mock_object(
+            share_api.API, 'get_snapshot', mock.Mock(return_value=snapshot))
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._revert,
+                          req,
+                          '1',
+                          body=body)
+
+    def test__revert_id_mismatch(self):
+
+        share = copy.deepcopy(self.share)
+        share['status'] = constants.STATUS_AVAILABLE
+        share['revert_to_snapshot_support'] = True
+        share = fake_share.fake_share(**share)
+        snapshot = copy.deepcopy(self.snapshot)
+        snapshot['status'] = constants.STATUS_AVAILABLE
+        snapshot['share_id'] = 'wrong_id'
+        body = {'revert': {'snapshot_id': '2'}}
+        req = fakes.HTTPRequest.blank(
+            '/shares/1/action', use_admin_context=False, version='2.27')
+        self.mock_object(
+            self.controller, '_validate_revert_parameters',
+            mock.Mock(return_value=body['revert']))
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+        self.mock_object(
+            share_api.API, 'get_snapshot', mock.Mock(return_value=snapshot))
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._revert,
+                          req,
+                          '1',
+                          body=body)
+
+    @ddt.data(
+        {
+            'share_status': constants.STATUS_ERROR,
+            'share_is_busy': False,
+            'snapshot_status': constants.STATUS_AVAILABLE,
+        }, {
+            'share_status': constants.STATUS_AVAILABLE,
+            'share_is_busy': True,
+            'snapshot_status': constants.STATUS_AVAILABLE,
+        }, {
+            'share_status': constants.STATUS_AVAILABLE,
+            'share_is_busy': False,
+            'snapshot_status': constants.STATUS_ERROR,
+        })
+    @ddt.unpack
+    def test__revert_invalid_status(self, share_status, share_is_busy,
+                                    snapshot_status):
+
+        share = copy.deepcopy(self.share)
+        share['status'] = share_status
+        share['is_busy'] = share_is_busy
+        share['revert_to_snapshot_support'] = True
+        share = fake_share.fake_share(**share)
+        snapshot = copy.deepcopy(self.snapshot)
+        snapshot['status'] = snapshot_status
+        body = {'revert': {'snapshot_id': '2'}}
+        req = fakes.HTTPRequest.blank(
+            '/shares/1/action', use_admin_context=False, version='2.27')
+        self.mock_object(
+            self.controller, '_validate_revert_parameters',
+            mock.Mock(return_value=body['revert']))
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+        self.mock_object(
+            share_api.API, 'get_snapshot', mock.Mock(return_value=snapshot))
+
+        self.assertRaises(webob.exc.HTTPConflict,
+                          self.controller._revert,
+                          req,
+                          '1',
+                          body=body)
+
+    def test__revert_snapshot_latest_not_found(self):
+
+        share = copy.deepcopy(self.share)
+        share['status'] = constants.STATUS_AVAILABLE
+        share['revert_to_snapshot_support'] = True
+        share = fake_share.fake_share(**share)
+        snapshot = copy.deepcopy(self.snapshot)
+        snapshot['status'] = constants.STATUS_AVAILABLE
+        body = {'revert': {'snapshot_id': '2'}}
+        req = fakes.HTTPRequest.blank(
+            '/shares/1/action', use_admin_context=False, version='2.27')
+        self.mock_object(
+            self.controller, '_validate_revert_parameters',
+            mock.Mock(return_value=body['revert']))
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+        self.mock_object(
+            share_api.API, 'get_snapshot', mock.Mock(return_value=snapshot))
+        self.mock_object(
+            share_api.API, 'get_latest_snapshot_for_share',
+            mock.Mock(return_value=None))
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._revert,
+                          req,
+                          '1',
+                          body=body)
+
+    def test__revert_snapshot_not_latest(self):
+
+        share = copy.deepcopy(self.share)
+        share['status'] = constants.STATUS_AVAILABLE
+        share['revert_to_snapshot_support'] = True
+        share = fake_share.fake_share(**share)
+        snapshot = copy.deepcopy(self.snapshot)
+        snapshot['status'] = constants.STATUS_AVAILABLE
+        latest_snapshot = copy.deepcopy(self.snapshot)
+        latest_snapshot['status'] = constants.STATUS_AVAILABLE
+        latest_snapshot['id'] = '3'
+        body = {'revert': {'snapshot_id': '2'}}
+        req = fakes.HTTPRequest.blank(
+            '/shares/1/action', use_admin_context=False, version='2.27')
+        self.mock_object(
+            self.controller, '_validate_revert_parameters',
+            mock.Mock(return_value=body['revert']))
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+        self.mock_object(
+            share_api.API, 'get_snapshot', mock.Mock(return_value=snapshot))
+        self.mock_object(
+            share_api.API, 'get_latest_snapshot_for_share',
+            mock.Mock(return_value=latest_snapshot))
+
+        self.assertRaises(webob.exc.HTTPConflict,
+                          self.controller._revert,
+                          req,
+                          '1',
+                          body=body)
+
+    @ddt.data(
+        {
+            'caught': exception.ShareNotFound,
+            'exc_args': {
+                'share_id': '1',
+            },
+            'thrown': webob.exc.HTTPNotFound,
+        }, {
+            'caught': exception.ShareSnapshotNotFound,
+            'exc_args': {
+                'snapshot_id': '2',
+            },
+            'thrown': webob.exc.HTTPBadRequest,
+        }, {
+            'caught': exception.ShareSizeExceedsAvailableQuota,
+            'exc_args': {},
+            'thrown': webob.exc.HTTPForbidden,
+        }, {
+            'caught': exception.ReplicationException,
+            'exc_args': {
+                'reason': 'catastrophic failure',
+            },
+            'thrown': webob.exc.HTTPBadRequest,
+        })
+    @ddt.unpack
+    def test__revert_exception(self, caught, exc_args, thrown):
+
+        body = {'revert': {'snapshot_id': '2'}}
+        req = fakes.HTTPRequest.blank(
+            '/shares/1/action', use_admin_context=False, version='2.27')
+        self.mock_object(
+            self.controller, '_validate_revert_parameters',
+            mock.Mock(return_value=body['revert']))
+        self.mock_object(
+            share_api.API, 'get', mock.Mock(side_effect=caught(**exc_args)))
+
+        self.assertRaises(thrown,
+                          self.controller._revert,
+                          req,
+                          '1',
+                          body=body)
+
+    def test_validate_revert_parameters(self):
+
+        body = {'revert': {'snapshot_id': 'fake_snapshot_id'}}
+
+        result = self.controller._validate_revert_parameters(
+            'fake_context', body)
+
+        self.assertEqual(body['revert'], result)
+
+    @ddt.data(
+        None,
+        {},
+        {'manage': {'snapshot_id': 'fake_snapshot_id'}},
+        {'revert': {'share_id': 'fake_snapshot_id'}},
+        {'revert': {'snapshot_id': ''}},
+    )
+    def test_validate_revert_parameters_invalid(self, body):
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._validate_revert_parameters,
+                          'fake_context',
+                          body)
 
     @ddt.data("2.0", "2.1")
     def test_share_create_original(self, microversion):
@@ -2071,3 +2331,28 @@ class ShareManageTest(test.TestCase):
                           self.controller.manage,
                           req,
                           share_id)
+
+    def test_revert(self):
+
+        mock_revert = self.mock_object(
+            self.controller, '_revert',
+            mock.Mock(return_value='fake_response'))
+        req = fakes.HTTPRequest.blank(
+            '/shares/fake_id/action', use_admin_context=False, version='2.27')
+
+        result = self.controller.revert(req, 'fake_id', 'fake_body')
+
+        self.assertEqual('fake_response', result)
+        mock_revert.assert_called_once_with(
+            req, 'fake_id', 'fake_body')
+
+    def test_revert_unsupported(self):
+
+        req = fakes.HTTPRequest.blank(
+            '/shares/fake_id/action', use_admin_context=False, version='2.24')
+
+        self.assertRaises(exception.VersionNotFoundForAPIMethod,
+                          self.controller.revert,
+                          req,
+                          'fake_id',
+                          'fake_body')

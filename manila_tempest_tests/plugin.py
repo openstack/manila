@@ -50,6 +50,12 @@ class ManilaTempestPlugin(plugins.TempestPlugin):
                 conf.share.run_snapshot_tests,
                 group="share",
             )
+        if conf.share.capability_revert_to_snapshot_support is None:
+            conf.set_default(
+                "capability_revert_to_snapshot_support",
+                conf.share.run_revert_to_snapshot_tests,
+                group="share",
+            )
 
     def get_opt_lists(self):
         return [(config_share.share_group.name, config_share.ShareGroup),

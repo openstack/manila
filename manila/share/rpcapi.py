@@ -64,6 +64,7 @@ class ShareAPI(object):
             update migration_cancel(), migration_complete() and
             migration_get_progress method signature, rename
             migration_get_info() to connection_get_info()
+        1.13 - Introduce share revert to snapshot: revert_to_snapshot()
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -72,7 +73,7 @@ class ShareAPI(object):
         super(ShareAPI, self).__init__()
         target = messaging.Target(topic=CONF.share_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.12')
+        self.client = rpc.get_client(target, version_cap='1.13')
 
     def create_share_instance(self, context, share_instance, host,
                               request_spec, filter_properties,
@@ -115,6 +116,15 @@ class ShareAPI(object):
         call_context.cast(context,
                           'unmanage_snapshot',
                           snapshot_id=snapshot['id'])
+
+    def revert_to_snapshot(self, context, share, snapshot, host, reservations):
+        host = utils.extract_host(host)
+        call_context = self.client.prepare(server=host, version='1.13')
+        call_context.cast(context,
+                          'revert_to_snapshot',
+                          share_id=share['id'],
+                          snapshot_id=snapshot['id'],
+                          reservations=reservations)
 
     def delete_share_instance(self, context, share_instance, force=False):
         host = utils.extract_host(share_instance['host'])

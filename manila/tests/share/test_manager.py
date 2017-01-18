@@ -1367,7 +1367,8 @@ class ShareManagerTestCase(test.TestCase):
         self.assertIsNone(retval)
         self.assertTrue(replica_update_call.called)
 
-    def _get_snapshot_instance_dict(self, snapshot_instance, share):
+    def _get_snapshot_instance_dict(self, snapshot_instance, share,
+                                    snapshot=None):
         expected_snapshot_instance_dict = {
             'status': constants.STATUS_CREATING,
             'share_id': share['id'],
@@ -1384,6 +1385,10 @@ class ShareManagerTestCase(test.TestCase):
             'deleted_at': snapshot_instance['deleted_at'],
             'provider_location': snapshot_instance['provider_location'],
         }
+        if snapshot:
+            expected_snapshot_instance_dict.update({
+                'size': snapshot['size'],
+            })
         return expected_snapshot_instance_dict
 
     def test_create_snapshot_driver_exception(self):
@@ -4837,6 +4842,162 @@ class ShareManagerTestCase(test.TestCase):
         if quota_error:
             self.assertTrue(mock_log_warning.called)
 
+    @ddt.data(True, False)
+    def test_revert_to_snapshot(self, has_replicas):
+
+        reservations = 'fake_reservations'
+        share_id = 'fake_share_id'
+        snapshot_id = 'fake_snapshot_id'
+        share = fakes.fake_share(
+            id=share_id, instance={'id': 'fake_instance_id'},
+            project_id='fake_project', user_id='fake_user', size=2,
+            has_replicas=has_replicas)
+        snapshot_instance = fakes.fake_snapshot_instance(
+            share_id=share_id, share=share, name='fake_snapshot')
+        snapshot = fakes.fake_snapshot(
+            id=snapshot_id, share_id=share_id, share=share,
+            instance=snapshot_instance, project_id='fake_project',
+            user_id='fake_user', size=1)
+
+        mock_share_snapshot_get = self.mock_object(
+            self.share_manager.db, 'share_snapshot_get',
+            mock.Mock(return_value=snapshot))
+        mock_revert_to_snapshot = self.mock_object(
+            self.share_manager, '_revert_to_snapshot')
+        mock_revert_to_replicated_snapshot = self.mock_object(
+            self.share_manager, '_revert_to_replicated_snapshot')
+
+        self.share_manager.revert_to_snapshot(
+            self.context, snapshot_id, reservations, share_id=share_id)
+
+        mock_share_snapshot_get.assert_called_once_with(mock.ANY, snapshot_id)
+
+        if not has_replicas:
+            mock_revert_to_snapshot.assert_called_once_with(
+                mock.ANY, share, snapshot, reservations)
+            self.assertFalse(mock_revert_to_replicated_snapshot.called)
+        else:
+            self.assertFalse(mock_revert_to_snapshot.called)
+            mock_revert_to_replicated_snapshot.assert_called_once_with(
+                mock.ANY, share, snapshot, reservations, share_id=share_id)
+
+    @ddt.data(None, 'fake_reservations')
+    def test__revert_to_snapshot(self, reservations):
+
+        mock_quotas_rollback = self.mock_object(quota.QUOTAS, 'rollback')
+        mock_quotas_commit = self.mock_object(quota.QUOTAS, 'commit')
+        self.mock_object(
+            self.share_manager, '_get_share_server',
+            mock.Mock(return_value=None))
+        mock_driver = self.mock_object(self.share_manager, 'driver')
+
+        share_id = 'fake_share_id'
+        share = fakes.fake_share(
+            id=share_id, instance={'id': 'fake_instance_id'},
+            project_id='fake_project', user_id='fake_user', size=2)
+        snapshot_instance = fakes.fake_snapshot_instance(
+            share_id=share_id, share=share, name='fake_snapshot')
+        snapshot = fakes.fake_snapshot(
+            id='fake_snapshot_id', share_id=share_id, share=share,
+            instance=snapshot_instance, project_id='fake_project',
+            user_id='fake_user', size=1)
+
+        self.mock_object(
+            self.share_manager.db, 'share_snapshot_get',
+            mock.Mock(return_value=snapshot))
+        self.mock_object(
+            self.share_manager.db, 'share_snapshot_instance_get',
+            mock.Mock(return_value=snapshot_instance))
+        mock_share_update = self.mock_object(
+            self.share_manager.db, 'share_update')
+        mock_share_snapshot_update = self.mock_object(
+            self.share_manager.db, 'share_snapshot_update')
+
+        self.share_manager._revert_to_snapshot(
+            self.context, share, snapshot, reservations)
+
+        mock_driver.revert_to_snapshot.assert_called_once_with(
+            mock.ANY,
+            self._get_snapshot_instance_dict(
+                snapshot_instance, share, snapshot=snapshot),
+            share_server=None)
+
+        self.assertFalse(mock_quotas_rollback.called)
+        if reservations:
+            mock_quotas_commit.assert_called_once_with(
+                mock.ANY, reservations, project_id='fake_project',
+                user_id='fake_user')
+        else:
+            self.assertFalse(mock_quotas_commit.called)
+
+        mock_share_update.assert_called_once_with(
+            mock.ANY, share_id,
+            {'status': constants.STATUS_AVAILABLE, 'size': snapshot['size']})
+        mock_share_snapshot_update.assert_called_once_with(
+            mock.ANY, 'fake_snapshot_id',
+            {'status': constants.STATUS_AVAILABLE})
+
+    @ddt.data(None, 'fake_reservations')
+    def test__revert_to_snapshot_driver_exception(self, reservations):
+
+        mock_quotas_rollback = self.mock_object(quota.QUOTAS, 'rollback')
+        mock_quotas_commit = self.mock_object(quota.QUOTAS, 'commit')
+        self.mock_object(
+            self.share_manager, '_get_share_server',
+            mock.Mock(return_value=None))
+        mock_driver = self.mock_object(self.share_manager, 'driver')
+        mock_driver.revert_to_snapshot.side_effect = exception.ManilaException
+
+        share_id = 'fake_share_id'
+        share = fakes.fake_share(
+            id=share_id, instance={'id': 'fake_instance_id'},
+            project_id='fake_project', user_id='fake_user', size=2)
+        snapshot_instance = fakes.fake_snapshot_instance(
+            share_id=share_id, share=share, name='fake_snapshot')
+        snapshot = fakes.fake_snapshot(
+            id='fake_snapshot_id', share_id=share_id, share=share,
+            instance=snapshot_instance, project_id='fake_project',
+            user_id='fake_user', size=1)
+
+        self.mock_object(
+            self.share_manager.db, 'share_snapshot_get',
+            mock.Mock(return_value=snapshot))
+        self.mock_object(
+            self.share_manager.db, 'share_snapshot_instance_get',
+            mock.Mock(return_value=snapshot_instance))
+        mock_share_update = self.mock_object(
+            self.share_manager.db, 'share_update')
+        mock_share_snapshot_update = self.mock_object(
+            self.share_manager.db, 'share_snapshot_update')
+
+        self.assertRaises(exception.ManilaException,
+                          self.share_manager._revert_to_snapshot,
+                          self.context,
+                          share,
+                          snapshot,
+                          reservations)
+
+        mock_driver.revert_to_snapshot.assert_called_once_with(
+            mock.ANY,
+            self._get_snapshot_instance_dict(
+                snapshot_instance, share, snapshot=snapshot),
+            share_server=None)
+
+        self.assertFalse(mock_quotas_commit.called)
+        if reservations:
+            mock_quotas_rollback.assert_called_once_with(
+                mock.ANY, reservations, project_id='fake_project',
+                user_id='fake_user')
+        else:
+            self.assertFalse(mock_quotas_rollback.called)
+
+        mock_share_update.assert_called_once_with(
+            mock.ANY, share_id,
+            {'status': constants.STATUS_REVERTING_ERROR})
+        mock_share_snapshot_update.assert_called_once_with(
+            mock.ANY, 'fake_snapshot_id',
+            {'status': constants.STATUS_AVAILABLE})
+
     def _setup_crud_replicated_snapshot_data(self):
         snapshot = fakes.fake_snapshot(create_instance=True)
         snapshot_instance = fakes.fake_snapshot_instance(
@@ -4927,6 +5088,135 @@ class ShareManagerTestCase(test.TestCase):
         self.assertIsNone(return_value)
         mock_db_update_call.assert_called_once_with(
             self.context, snapshot['instance']['id'], snapshot_dict)
+
+    @ddt.data(None, 'fake_reservations')
+    def test_revert_to_replicated_snapshot(self, reservations):
+
+        share_id = 'id1'
+        mock_quotas_rollback = self.mock_object(quota.QUOTAS, 'rollback')
+        mock_quotas_commit = self.mock_object(quota.QUOTAS, 'commit')
+        share = fakes.fake_share(
+            id=share_id, project_id='fake_project', user_id='fake_user')
+        snapshot = fakes.fake_snapshot(
+            create_instance=True, share=share, size=1)
+        snapshot_instance = fakes.fake_snapshot_instance(
+            base_snapshot=snapshot)
+        snapshot_instances = [snapshot['instance'], snapshot_instance]
+        active_replica = fake_replica(
+            id='rid1', share_id=share_id, host=self.share_manager.host,
+            replica_state=constants.REPLICA_STATE_ACTIVE, as_primitive=False)
+        replica = fake_replica(
+            id='rid2', share_id=share_id, host='secondary',
+            replica_state=constants.REPLICA_STATE_IN_SYNC, as_primitive=False)
+        replicas = [active_replica, replica]
+        self.mock_object(
+            db, 'share_snapshot_get', mock.Mock(return_value=snapshot))
+        self.mock_object(
+            self.share_manager, '_get_share_server',
+            mock.Mock(return_value=None))
+        self.mock_object(
+            db, 'share_replicas_get_all_by_share',
+            mock.Mock(return_value=replicas))
+        self.mock_object(
+            db, 'share_snapshot_instance_get_all_with_filters',
+            mock.Mock(side_effect=[snapshot_instances,
+                                   [snapshot_instances[0]]]))
+        mock_driver = self.mock_object(self.share_manager, 'driver')
+        mock_share_update = self.mock_object(
+            self.share_manager.db, 'share_update')
+        mock_share_replica_update = self.mock_object(
+            self.share_manager.db, 'share_replica_update')
+        mock_share_snapshot_instance_update = self.mock_object(
+            self.share_manager.db, 'share_snapshot_instance_update')
+
+        self.share_manager._revert_to_replicated_snapshot(
+            self.context, share, snapshot, reservations, share_id=share_id)
+
+        self.assertTrue(mock_driver.revert_to_replicated_snapshot.called)
+        self.assertFalse(mock_quotas_rollback.called)
+        if reservations:
+            mock_quotas_commit.assert_called_once_with(
+                mock.ANY, reservations, project_id='fake_project',
+                user_id='fake_user')
+        else:
+            self.assertFalse(mock_quotas_commit.called)
+
+        mock_share_update.assert_called_once_with(
+            mock.ANY, share_id, {'size': snapshot['size']})
+        mock_share_replica_update.assert_called_once_with(
+            mock.ANY, active_replica['id'],
+            {'status': constants.STATUS_AVAILABLE})
+        mock_share_snapshot_instance_update.assert_called_once_with(
+            mock.ANY, snapshot['instance']['id'],
+            {'status': constants.STATUS_AVAILABLE})
+
+    @ddt.data(None, 'fake_reservations')
+    def test_revert_to_replicated_snapshot_driver_exception(
+            self, reservations):
+
+        mock_quotas_rollback = self.mock_object(quota.QUOTAS, 'rollback')
+        mock_quotas_commit = self.mock_object(quota.QUOTAS, 'commit')
+        share_id = 'id1'
+        share = fakes.fake_share(
+            id=share_id, project_id='fake_project', user_id='fake_user')
+        snapshot = fakes.fake_snapshot(
+            create_instance=True, share=share, size=1)
+        snapshot_instance = fakes.fake_snapshot_instance(
+            base_snapshot=snapshot)
+        snapshot_instances = [snapshot['instance'], snapshot_instance]
+        active_replica = fake_replica(
+            id='rid1', share_id=share_id, host=self.share_manager.host,
+            replica_state=constants.REPLICA_STATE_ACTIVE, as_primitive=False)
+        replica = fake_replica(
+            id='rid2', share_id=share_id, host='secondary',
+            replica_state=constants.REPLICA_STATE_IN_SYNC, as_primitive=False)
+        replicas = [active_replica, replica]
+        self.mock_object(
+            db, 'share_snapshot_get', mock.Mock(return_value=snapshot))
+        self.mock_object(
+            self.share_manager, '_get_share_server',
+            mock.Mock(return_value=None))
+        self.mock_object(
+            db, 'share_replicas_get_all_by_share',
+            mock.Mock(return_value=replicas))
+        self.mock_object(
+            db, 'share_snapshot_instance_get_all_with_filters',
+            mock.Mock(side_effect=[snapshot_instances,
+                                   [snapshot_instances[0]]]))
+        mock_driver = self.mock_object(self.share_manager, 'driver')
+        mock_driver.revert_to_replicated_snapshot.side_effect = (
+            exception.ManilaException)
+        mock_share_update = self.mock_object(
+            self.share_manager.db, 'share_update')
+        mock_share_replica_update = self.mock_object(
+            self.share_manager.db, 'share_replica_update')
+        mock_share_snapshot_instance_update = self.mock_object(
+            self.share_manager.db, 'share_snapshot_instance_update')
+
+        self.assertRaises(exception.ManilaException,
+                          self.share_manager._revert_to_replicated_snapshot,
+                          self.context,
+                          share,
+                          snapshot,
+                          reservations,
+                          share_id=share_id)
+
+        self.assertTrue(mock_driver.revert_to_replicated_snapshot.called)
+        self.assertFalse(mock_quotas_commit.called)
+        if reservations:
+            mock_quotas_rollback.assert_called_once_with(
+                mock.ANY, reservations, project_id='fake_project',
+                user_id='fake_user')
+        else:
+            self.assertFalse(mock_quotas_rollback.called)
+
+        self.assertFalse(mock_share_update.called)
+        mock_share_replica_update.assert_called_once_with(
+            mock.ANY, active_replica['id'],
+            {'status': constants.STATUS_REVERTING_ERROR})
+        mock_share_snapshot_instance_update.assert_called_once_with(
+            mock.ANY, snapshot['instance']['id'],
+            {'status': constants.STATUS_AVAILABLE})
 
     def delete_replicated_snapshot_driver_exception(self):
         snapshot, snapshot_instances, replicas = (

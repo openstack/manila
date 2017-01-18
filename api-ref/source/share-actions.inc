@@ -326,3 +326,31 @@ Request example
 
 .. literalinclude:: samples/share-actions-unmanage-request.json
    :language: javascript
+
+
+Revert share to snapshot
+========================
+
+.. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
+
+Reverts a share to the specified snapshot, which must be the most recent one
+known to manila. This API is available in versions later than or equal to 2.27.
+
+Normal response codes: 202
+Error response codes: badRequest(400), unauthorized(401), forbidden(403),
+itemNotFound(404), conflict(409)
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - snapshot_id: snapshot_id
+   - share_id: share_id
+   - tenant_id: tenant_id_path
+
+Request example
+---------------
+
+.. literalinclude:: samples/share-actions-revert-to-snapshot-request.json
+   :language: javascript

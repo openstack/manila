@@ -188,7 +188,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.12'
+    RPC_API_VERSION = '1.13'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -2142,6 +2142,76 @@ class ShareManager(manager.SchedulerDependentManager):
 
     @add_hooks
     @utils.require_driver_initialized
+    def revert_to_snapshot(self, context, snapshot_id, reservations,
+                           share_id=None):
+
+        context = context.elevated()
+        snapshot = self.db.share_snapshot_get(context, snapshot_id)
+        share = snapshot['share']
+        share_id = share['id']
+
+        if share.get('has_replicas'):
+            self._revert_to_replicated_snapshot(
+                context, share, snapshot, reservations, share_id=share_id)
+        else:
+            self._revert_to_snapshot(context, share, snapshot, reservations)
+
+    def _revert_to_snapshot(self, context, share, snapshot, reservations):
+
+        share_server = self._get_share_server(context, share)
+        share_id = share['id']
+        snapshot_id = snapshot['id']
+        project_id = share['project_id']
+        user_id = share['user_id']
+
+        snapshot_instance = self.db.share_snapshot_instance_get(
+            context, snapshot.instance['id'], with_share_data=True)
+
+        # Make primitive to pass the information to the driver
+        snapshot_instance_dict = self._get_snapshot_instance_dict(
+            context, snapshot_instance, snapshot=snapshot)
+
+        try:
+            self.driver.revert_to_snapshot(context,
+                                           snapshot_instance_dict,
+                                           share_server=share_server)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+
+                msg = _LE('Share %(share)s could not be reverted '
+                          'to snapshot %(snap)s.')
+                msg_args = {'share': share_id, 'snap': snapshot_id}
+                LOG.exception(msg, msg_args)
+
+                if reservations:
+                    QUOTAS.rollback(
+                        context, reservations, project_id=project_id,
+                        user_id=user_id)
+
+                self.db.share_update(
+                    context, share_id,
+                    {'status': constants.STATUS_REVERTING_ERROR})
+                self.db.share_snapshot_update(
+                    context, snapshot_id,
+                    {'status': constants.STATUS_AVAILABLE})
+
+        if reservations:
+            QUOTAS.commit(
+                context, reservations, project_id=project_id, user_id=user_id)
+
+        self.db.share_update(
+            context, share_id,
+            {'status': constants.STATUS_AVAILABLE, 'size': snapshot['size']})
+        self.db.share_snapshot_update(
+            context, snapshot_id, {'status': constants.STATUS_AVAILABLE})
+
+        msg = _LI('Share %(share)s reverted to snapshot %(snap)s '
+                  'successfully.')
+        msg_args = {'share': share_id, 'snap': snapshot_id}
+        LOG.info(msg, msg_args)
+
+    @add_hooks
+    @utils.require_driver_initialized
     def delete_share_instance(self, context, share_instance_id, force=False):
         """Delete a share instance."""
         context = context.elevated()
@@ -2358,6 +2428,90 @@ class ShareManager(manager.SchedulerDependentManager):
                 instance.update({'progress': '100%'})
             self.db.share_snapshot_instance_update(
                 context, instance['id'], instance)
+
+    def _find_active_replica_on_host(self, replica_list):
+        """Find the active replica matching this manager's host."""
+        for replica in replica_list:
+            if (replica['replica_state'] == constants.REPLICA_STATE_ACTIVE and
+                    share_utils.extract_host(replica['host']) == self.host):
+                return replica
+
+    @locked_share_replica_operation
+    def _revert_to_replicated_snapshot(self, context, share, snapshot,
+                                       reservations, share_id=None):
+
+        share_server = self._get_share_server(context, share)
+        snapshot_id = snapshot['id']
+        project_id = share['project_id']
+        user_id = share['user_id']
+
+        # Get replicas, including an active replica
+        replica_list = self.db.share_replicas_get_all_by_share(
+            context, share_id, with_share_data=True, with_share_server=True)
+        active_replica = self._find_active_replica_on_host(replica_list)
+
+        # Get snapshot instances, including one on an active replica
+        replica_snapshots = (
+            self.db.share_snapshot_instance_get_all_with_filters(
+                context, {'snapshot_ids': snapshot_id},
+                with_share_data=True))
+        snapshot_instance_filters = {
+            'share_instance_ids': active_replica['id'],
+            'snapshot_ids': snapshot_id,
+        }
+        active_replica_snapshot = (
+            self.db.share_snapshot_instance_get_all_with_filters(
+                context, snapshot_instance_filters))[0]
+
+        # Make primitives to pass the information to the driver
+        replica_list = [self._get_share_replica_dict(context, replica)
+                        for replica in replica_list]
+        active_replica = self._get_share_replica_dict(context, active_replica)
+        replica_snapshots = [self._get_snapshot_instance_dict(context, s)
+                             for s in replica_snapshots]
+        active_replica_snapshot = self._get_snapshot_instance_dict(
+            context, active_replica_snapshot, snapshot=snapshot)
+
+        try:
+            self.driver.revert_to_replicated_snapshot(
+                context, active_replica, replica_list, active_replica_snapshot,
+                replica_snapshots, share_server=share_server)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+
+                msg = _LE('Share %(share)s could not be reverted '
+                          'to snapshot %(snap)s.')
+                msg_args = {'share': share_id, 'snap': snapshot_id}
+                LOG.exception(msg, msg_args)
+
+                if reservations:
+                    QUOTAS.rollback(
+                        context, reservations, project_id=project_id,
+                        user_id=user_id)
+
+                self.db.share_replica_update(
+                    context, active_replica['id'],
+                    {'status': constants.STATUS_REVERTING_ERROR})
+                self.db.share_snapshot_instance_update(
+                    context, active_replica_snapshot['id'],
+                    {'status': constants.STATUS_AVAILABLE})
+
+        if reservations:
+            QUOTAS.commit(
+                context, reservations, project_id=project_id, user_id=user_id)
+
+        self.db.share_update(context, share_id, {'size': snapshot['size']})
+        self.db.share_replica_update(
+            context, active_replica['id'],
+            {'status': constants.STATUS_AVAILABLE})
+        self.db.share_snapshot_instance_update(
+            context, active_replica_snapshot['id'],
+            {'status': constants.STATUS_AVAILABLE})
+
+        msg = _LI('Share %(share)s reverted to snapshot %(snap)s '
+                  'successfully.')
+        msg_args = {'share': share_id, 'snap': snapshot_id}
+        LOG.info(msg, msg_args)
 
     @add_hooks
     @utils.require_driver_initialized
@@ -3236,7 +3390,8 @@ class ShareManager(manager.SchedulerDependentManager):
 
         return share_replica_ref
 
-    def _get_snapshot_instance_dict(self, context, snapshot_instance):
+    def _get_snapshot_instance_dict(self, context, snapshot_instance,
+                                    snapshot=None):
         # TODO(gouthamr): remove method when the db layer returns primitives
         snapshot_instance_ref = {
             'name': snapshot_instance.get('name'),
@@ -3254,5 +3409,10 @@ class ShareManager(manager.SchedulerDependentManager):
             'deleted_at': snapshot_instance.get('deleted_at'),
             'provider_location': snapshot_instance.get('provider_location'),
         }
+
+        if snapshot:
+            snapshot_instance_ref.update({
+                'size': snapshot.get('size'),
+            })
 
         return snapshot_instance_ref

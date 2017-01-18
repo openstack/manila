@@ -108,7 +108,7 @@ class LVMMixin(driver.ExecuteMixin):
                 raise
             LOG.warning(_LW("Volume not found: %s") % exc.stderr)
 
-    def create_snapshot(self, context, snapshot, share_server=None):
+    def _create_snapshot(self, context, snapshot):
         """Creates a snapshot."""
         orig_lv_name = "%s/%s" % (self.configuration.lvm_share_volume_group,
                                   snapshot['share_name'])
@@ -120,6 +120,9 @@ class LVMMixin(driver.ExecuteMixin):
         self._execute(
             'tune2fs', '-U', 'random', snapshot_device_name, run_as_root=True,
         )
+
+    def create_snapshot(self, context, snapshot, share_server=None):
+        self._create_snapshot(context, snapshot)
 
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes a snapshot."""
@@ -188,6 +191,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
             'consistency_group_support': None,
             'snapshot_support': True,
             'create_share_from_snapshot_support': True,
+            'revert_to_snapshot_support': True,
             'driver_name': 'LVMShareDriver',
             'pools': self.get_share_server_pools()
         }
@@ -356,3 +360,25 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         device_name = self._get_local_path(share)
         self._extend_container(share, device_name, new_size)
         self._execute('resize2fs', device_name, run_as_root=True)
+
+    def revert_to_snapshot(self, context, snapshot, share_server=None):
+        # First we merge the snapshot LV and the share LV
+        # This won't actually do anything until the LV is reactivated
+        snap_lv_name = "%s/%s" % (self.configuration.lvm_share_volume_group,
+                                  snapshot['name'])
+        self._execute('lvconvert', '--merge', snap_lv_name, run_as_root=True)
+        # Unmount the share so we can deactivate it
+        share = snapshot['share']
+        self._unmount_device(share)
+        # Deactivate the share LV
+        share_lv_name = "%s/%s" % (self.configuration.lvm_share_volume_group,
+                                   share['name'])
+        self._execute('lvchange', '-an', share_lv_name, run_as_root=True)
+        # Reactivate the share LV. This will trigger the merge and delete the
+        # snapshot.
+        self._execute('lvchange', '-ay', share_lv_name, run_as_root=True)
+        # Now recreate the snapshot that was destroyed by the merge
+        self._create_snapshot(context, snapshot)
+        # Finally we can mount the share again
+        device_name = self._get_local_path(share)
+        self._mount_device(share, device_name)

@@ -264,7 +264,8 @@ class Share(BASE, ManilaBase):
         # preferred.
         result = None
         if len(self.instances) > 0:
-            order = (constants.STATUS_REPLICATION_CHANGE,
+            order = (constants.STATUS_REVERTING,
+                     constants.STATUS_REPLICATION_CHANGE,
                      constants.STATUS_MIGRATING, constants.STATUS_AVAILABLE,
                      constants.STATUS_ERROR)
             other_statuses = (
@@ -303,6 +304,7 @@ class Share(BASE, ManilaBase):
     snapshot_id = Column(String(36))
     snapshot_support = Column(Boolean, default=True)
     create_share_from_snapshot_support = Column(Boolean, default=True)
+    revert_to_snapshot_support = Column(Boolean, default=False)
     replication_type = Column(String(255), nullable=True)
     share_proto = Column(String(255))
     is_public = Column(Boolean, default=False)

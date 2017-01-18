@@ -266,40 +266,49 @@ class API(base.Base):
         """
 
         inferred_map = constants.ExtraSpecs.INFERRED_OPTIONAL_MAP
-        snapshot_support_default = inferred_map.get(
-            constants.ExtraSpecs.SNAPSHOT_SUPPORT)
-        create_share_from_snapshot_support_default = inferred_map.get(
-            constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT)
+        snapshot_support_key = constants.ExtraSpecs.SNAPSHOT_SUPPORT
         create_share_from_snapshot_key = (
             constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT)
+        revert_to_snapshot_key = (
+            constants.ExtraSpecs.REVERT_TO_SNAPSHOT_SUPPORT)
 
-        try:
-            if share_type:
-                snapshot_support = share_types.parse_boolean_extra_spec(
-                    constants.ExtraSpecs.SNAPSHOT_SUPPORT,
+        snapshot_support_default = inferred_map.get(snapshot_support_key)
+        create_share_from_snapshot_support_default = inferred_map.get(
+            create_share_from_snapshot_key)
+        revert_to_snapshot_support_default = inferred_map.get(
+            revert_to_snapshot_key)
+
+        if share_type:
+            snapshot_support = share_types.parse_boolean_extra_spec(
+                snapshot_support_key,
+                share_type.get('extra_specs', {}).get(
+                    snapshot_support_key, snapshot_support_default))
+            create_share_from_snapshot_support = (
+                share_types.parse_boolean_extra_spec(
+                    create_share_from_snapshot_key,
                     share_type.get('extra_specs', {}).get(
-                        constants.ExtraSpecs.SNAPSHOT_SUPPORT,
-                        snapshot_support_default))
-                create_share_from_snapshot_support = (
-                    share_types.parse_boolean_extra_spec(
-                        create_share_from_snapshot_key, share_type.get(
-                            'extra_specs', {}).get(
-                            create_share_from_snapshot_key,
-                            create_share_from_snapshot_support_default)))
-                replication_type = share_type.get('extra_specs', {}).get(
-                    'replication_type')
-            else:
-                snapshot_support = snapshot_support_default
-                create_share_from_snapshot_support = (
-                    create_share_from_snapshot_support_default)
-                replication_type = None
-        except Exception as e:
-            raise exception.InvalidParameterValue(six.text_type(e))
+                        create_share_from_snapshot_key,
+                        create_share_from_snapshot_support_default)))
+            revert_to_snapshot_support = (
+                share_types.parse_boolean_extra_spec(
+                    revert_to_snapshot_key,
+                    share_type.get('extra_specs', {}).get(
+                        revert_to_snapshot_key,
+                        revert_to_snapshot_support_default)))
+            replication_type = share_type.get('extra_specs', {}).get(
+                'replication_type')
+        else:
+            snapshot_support = snapshot_support_default
+            create_share_from_snapshot_support = (
+                create_share_from_snapshot_support_default)
+            revert_to_snapshot_support = revert_to_snapshot_support_default
+            replication_type = None
 
         return {
             'snapshot_support': snapshot_support,
             'create_share_from_snapshot_support':
                 create_share_from_snapshot_support,
+            'revert_to_snapshot_support': revert_to_snapshot_support,
             'replication_type': replication_type,
         }
 
@@ -382,6 +391,7 @@ class API(base.Base):
             'snapshot_support': share['snapshot_support'],
             'create_share_from_snapshot_support':
                 share['create_share_from_snapshot_support'],
+            'revert_to_snapshot_support': share['revert_to_snapshot_support'],
             'share_proto': share['share_proto'],
             'share_type_id': share_type_id,
             'is_public': share['is_public'],
@@ -614,6 +624,12 @@ class API(base.Base):
                 share_type.get('extra_specs', {}).get(
                     'create_share_from_snapshot_support')
             ),
+            'revert_to_snapshot_support': kwargs.get(
+                'revert_to_snapshot_support',
+                share_type.get('extra_specs', {}).get(
+                    'revert_to_snapshot_support')
+            ),
+
             'share_proto': kwargs.get('share_proto', share.get('share_proto')),
             'share_type_id': share_type['id'],
             'is_public': kwargs.get('is_public', share.get('is_public')),
@@ -712,6 +728,120 @@ class API(base.Base):
                                                      update_data)
 
         self.share_rpcapi.unmanage_snapshot(context, snapshot_ref, host)
+
+    def revert_to_snapshot(self, context, snapshot):
+        """Revert a share to a snapshot."""
+
+        share = self.db.share_get(context, snapshot['share_id'])
+        reservations = self._handle_revert_to_snapshot_quotas(
+            context, share, snapshot)
+
+        try:
+            if share.get('has_replicas'):
+                self._revert_to_replicated_snapshot(
+                    context, share, snapshot, reservations)
+            else:
+                self._revert_to_snapshot(
+                    context, share, snapshot, reservations)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                if reservations:
+                    QUOTAS.rollback(context, reservations)
+
+    def _handle_revert_to_snapshot_quotas(self, context, share, snapshot):
+        """Reserve extra quota if a revert will result in a larger share."""
+
+        # Note(cknight): This value may be positive or negative.
+        size_increase = snapshot['size'] - share['size']
+        if not size_increase:
+            return None
+
+        try:
+            return QUOTAS.reserve(context,
+                                  project_id=share['project_id'],
+                                  gigabytes=size_increase,
+                                  user_id=share['user_id'])
+        except exception.OverQuota as exc:
+            usages = exc.kwargs['usages']
+            quotas = exc.kwargs['quotas']
+            consumed_gb = (usages['gigabytes']['reserved'] +
+                           usages['gigabytes']['in_use'])
+
+            msg = _("Quota exceeded for %(s_pid)s. Reverting share "
+                    "%(s_sid)s to snapshot %(s_ssid)s will increase the "
+                    "share's size by %(s_size)sG, "
+                    "(%(d_consumed)dG of %(d_quota)dG already consumed).")
+            msg_args = {
+                's_pid': context.project_id,
+                's_sid': share['id'],
+                's_ssid': snapshot['id'],
+                's_size': size_increase,
+                'd_consumed': consumed_gb,
+                'd_quota': quotas['gigabytes'],
+            }
+            message = msg % msg_args
+            LOG.error(message)
+            raise exception.ShareSizeExceedsAvailableQuota(message=message)
+
+    def _revert_to_snapshot(self, context, share, snapshot, reservations):
+        """Revert a non-replicated share to a snapshot."""
+
+        # Set status of share to 'reverting'
+        self.db.share_update(
+            context, snapshot['share_id'],
+            {'status': constants.STATUS_REVERTING})
+
+        # Set status of snapshot to 'restoring'
+        self.db.share_snapshot_update(
+            context, snapshot['id'],
+            {'status': constants.STATUS_RESTORING})
+
+        # Send revert API to share host
+        self.share_rpcapi.revert_to_snapshot(
+            context, share, snapshot, share['instance']['host'], reservations)
+
+    def _revert_to_replicated_snapshot(self, context, share, snapshot,
+                                       reservations):
+        """Revert a replicated share to a snapshot."""
+
+        # Get active replica
+        active_replica = self.db.share_replicas_get_available_active_replica(
+            context, share['id'])
+
+        if not active_replica:
+            msg = _('Share %s has no active replica in available state.')
+            raise exception.ReplicationException(reason=msg % share['id'])
+
+        # Get snapshot instance on active replica
+        snapshot_instance_filters = {
+            'share_instance_ids': active_replica['id'],
+            'snapshot_ids': snapshot['id'],
+        }
+        snapshot_instances = (
+            self.db.share_snapshot_instance_get_all_with_filters(
+                context, snapshot_instance_filters))
+        active_snapshot_instance = (
+            snapshot_instances[0] if snapshot_instances else None)
+
+        if not active_snapshot_instance:
+            msg = _('Share %(share)s has no snapshot %(snap)s associated with '
+                    'its active replica.')
+            msg_args = {'share': share['id'], 'snap': snapshot['id']}
+            raise exception.ReplicationException(reason=msg % msg_args)
+
+        # Set active replica to 'reverting'
+        self.db.share_replica_update(
+            context, active_replica['id'],
+            {'status': constants.STATUS_REVERTING})
+
+        # Set snapshot instance on active replica to 'restoring'
+        self.db.share_snapshot_instance_update(
+            context, active_snapshot_instance['id'],
+            {'status': constants.STATUS_RESTORING})
+
+        # Send revert API to active replica host
+        self.share_rpcapi.revert_to_snapshot(
+            context, share, snapshot, active_replica['host'], reservations)
 
     @policy.wrap_check_policy('share')
     def delete(self, context, share, force=False):
@@ -1378,6 +1508,10 @@ class API(base.Base):
                     results.append(snapshot)
             snapshots = results
         return snapshots
+
+    def get_latest_snapshot_for_share(self, context, share_id):
+        """Get the newest snapshot of a share."""
+        return self.db.share_snapshot_get_latest_for_share(context, share_id)
 
     def allow_access(self, ctx, share, access_type, access_to,
                      access_level=None):

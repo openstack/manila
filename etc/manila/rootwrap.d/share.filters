@@ -171,5 +171,12 @@ brctl: CommandFilter, brctl, root
 # manila/share/drivers/container/container.py: e2fsck <whatever>
 e2fsck: CommandFilter, e2fsck, root
 
+# manila/share/drivers/lvm.py: lvconvert --merge %s
+lvconvert: CommandFilter, lvconvert, root
+
+# manila/share/drivers/lvm.py: lvchange -an %s
+# manila/share/drivers/lvm.py: lvchange -ay %s
+lvchange: CommandFilter, lvchange, root
+
 # manila/data/utils.py: 'sha256sum', '%s'
 sha256sum: CommandFilter, sha256sum, root

@@ -233,6 +233,8 @@ class ShareTypesAPITest(test.TestCase):
         ('2.23', 'share_type_access', False),
         ('2.24', 'share_type_access', True),
         ('2.24', 'share_type_access', False),
+        ('2.27', 'share_type_access', True),
+        ('2.27', 'share_type_access', False),
     )
     @ddt.unpack
     def test_view_builder_show(self, version, prefix, admin):
@@ -284,6 +286,8 @@ class ShareTypesAPITest(test.TestCase):
         ('2.23', 'share_type_access', False),
         ('2.24', 'share_type_access', True),
         ('2.24', 'share_type_access', False),
+        ('2.27', 'share_type_access', True),
+        ('2.27', 'share_type_access', False),
     )
     @ddt.unpack
     def test_view_builder_list(self, version, prefix, admin):
@@ -292,6 +296,7 @@ class ShareTypesAPITest(test.TestCase):
         extra_specs = {
             constants.ExtraSpecs.SNAPSHOT_SUPPORT: True,
             constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT: False,
+            constants.ExtraSpecs.REVERT_TO_SNAPSHOT_SUPPORT: True,
         }
 
         now = timeutils.utcnow().isoformat()

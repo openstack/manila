@@ -266,6 +266,8 @@ def is_valid_optional_extra_spec(key, value):
         return parse_boolean_extra_spec(key, value) is not None
     elif key == constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT:
         return parse_boolean_extra_spec(key, value) is not None
+    elif key == constants.ExtraSpecs.REVERT_TO_SNAPSHOT_SUPPORT:
+        return parse_boolean_extra_spec(key, value) is not None
     elif key == constants.ExtraSpecs.REPLICATION_TYPE_SPEC:
         return value in constants.ExtraSpecs.REPLICATION_TYPES
 

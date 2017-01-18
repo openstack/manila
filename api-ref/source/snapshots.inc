@@ -8,7 +8,8 @@ Use the shared file service to make snapshots of shares. A share
 snapshot is a point-in-time, read-only copy of the data that is
 contained in a share. You can create, manage, update, and delete
 share snapshots. After you create or manage a share snapshot, you
-can create a share from it.
+can create a share from it.  You can also revert a share to its most
+recent snapshot.
 
 You can update a share snapshot to rename it, change its
 description, or update its state to one of these supported states:
@@ -30,6 +31,8 @@ description, or update its state to one of these supported states:
 - ``unmanage_starting``
 
 - ``unmanage_error``
+
+- ``restoring``
 
 As administrator, you can also reset the state of a snapshot and
 force-delete a share snapshot in any state. Use the ``policy.json``

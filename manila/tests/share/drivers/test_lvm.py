@@ -54,7 +54,11 @@ def fake_snapshot(**kwargs):
         'name': 'fakesnapshotname',
         'share_proto': 'NFS',
         'export_location': '127.0.0.1:/mnt/nfs/volume-00002',
-        'share': {'size': 1},
+        'share': {
+            'id': 'fakeid',
+            'name': 'fakename',
+            'size': 1
+        },
     }
     snapshot.update(kwargs)
     return db_fakes.FakeModel(snapshot)
@@ -520,3 +524,26 @@ class LVMShareDriverTestCase(test.TestCase):
         self.assertTrue(self._driver._stats['snapshot_support'])
         self.assertEqual('LVMShareDriver', self._driver._stats['driver_name'])
         self.assertEqual('test-pool', self._driver._stats['pools'])
+
+    def test_revert_to_snapshot(self):
+        self._driver.revert_to_snapshot(self._context, self.snapshot,
+                                        self.share_server)
+        snap_lv = "%s/fakesnapshotname" % (CONF.lvm_share_volume_group)
+        share_lv = "%s/fakename" % (CONF.lvm_share_volume_group)
+        mount_path = self._get_mount_path(self.snapshot['share'])
+        expected_exec = [
+            ("lvconvert --merge %s" % snap_lv),
+            ("umount %s" % mount_path),
+            ("rmdir %s" % mount_path),
+            ("lvchange -an %s" % share_lv),
+            ("lvchange -ay %s" % share_lv),
+            ("lvcreate -L 1G --name fakesnapshotname --snapshot %s" %
+                share_lv),
+            ('tune2fs -U random /dev/mapper/%s-fakesnapshotname' %
+                CONF.lvm_share_volume_group),
+            ("mkdir -p %s" % mount_path),
+            ("mount /dev/mapper/%s-fakename %s" %
+                (CONF.lvm_share_volume_group, mount_path)),
+            ("chmod 777 %s" % mount_path),
+        ]
+        self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())

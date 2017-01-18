@@ -20,6 +20,7 @@ from tempest.lib.common.utils import data_utils
 import testtools
 from testtools import testcase as tc
 
+from manila_tempest_tests.common import constants
 from manila_tempest_tests.tests.api import base
 from manila_tempest_tests import utils
 
@@ -106,6 +107,9 @@ class SharesActionsTest(base.BaseSharesTest):
             expected_keys.append("user_id")
         if utils.is_microversion_ge(version, '2.24'):
             expected_keys.append("create_share_from_snapshot_support")
+        if utils.is_microversion_ge(version,
+                                    constants.REVERT_TO_SNAPSHOT_MICROVERSION):
+            expected_keys.append("revert_to_snapshot_support")
         actual_keys = list(share.keys())
         [self.assertIn(key, actual_keys) for key in expected_keys]
 
@@ -168,6 +172,12 @@ class SharesActionsTest(base.BaseSharesTest):
         self._get_share('2.24')
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    @utils.skip_if_microversion_not_supported(
+        constants.REVERT_TO_SNAPSHOT_MICROVERSION)
+    def test_get_share_with_revert_to_snapshot_support(self):
+        self._get_share(constants.REVERT_TO_SNAPSHOT_MICROVERSION)
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_list_shares(self):
 
         # list shares
@@ -213,6 +223,9 @@ class SharesActionsTest(base.BaseSharesTest):
             keys.append("user_id")
         if utils.is_microversion_ge(version, '2.24'):
             keys.append("create_share_from_snapshot_support")
+        if utils.is_microversion_ge(version,
+                                    constants.REVERT_TO_SNAPSHOT_MICROVERSION):
+            keys.append("revert_to_snapshot_support")
         [self.assertIn(key, sh.keys()) for sh in shares for key in keys]
 
         # our shares in list and have no duplicates
@@ -263,6 +276,13 @@ class SharesActionsTest(base.BaseSharesTest):
     def test_list_shares_with_detail_and_create_share_from_snapshot_support(
             self):
         self._list_shares_with_detail('2.24')
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    @utils.skip_if_microversion_not_supported(
+        constants.REVERT_TO_SNAPSHOT_MICROVERSION)
+    def test_list_shares_with_detail_with_revert_to_snapshot_support(self):
+        self._list_shares_with_detail(
+            constants.REVERT_TO_SNAPSHOT_MICROVERSION)
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_list_shares_with_detail_filter_by_metadata(self):

@@ -78,6 +78,7 @@ class ShareTypesTestCase(test.TestCase):
     fake_optional_extra_specs = {
         constants.ExtraSpecs.SNAPSHOT_SUPPORT: 'true',
         constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT: 'false',
+        constants.ExtraSpecs.REVERT_TO_SNAPSHOT_SUPPORT: 'false',
     }
 
     fake_type_w_valid_extra = {
@@ -237,7 +238,8 @@ class ShareTypesTestCase(test.TestCase):
     @ddt.data(*(
         list(itertools.product(
              (constants.ExtraSpecs.SNAPSHOT_SUPPORT,
-              constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT),
+              constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT,
+              constants.ExtraSpecs.REVERT_TO_SNAPSHOT_SUPPORT),
              strutils.TRUE_STRINGS + strutils.FALSE_STRINGS))) +
         list(itertools.product(
              (constants.ExtraSpecs.REPLICATION_TYPE_SPEC,),

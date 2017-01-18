@@ -10,11 +10,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+# Shares
 STATUS_ERROR = 'error'
 STATUS_AVAILABLE = 'available'
 STATUS_ERROR_DELETING = 'error_deleting'
-
 TEMPEST_MANILA_PREFIX = 'tempest-manila'
+
+# Replication
 REPLICATION_STYLE_READABLE = 'readable'
 REPLICATION_STYLE_WRITABLE = 'writable'
 REPLICATION_STYLE_DR = 'dr'
@@ -31,6 +33,7 @@ REPLICATION_STATE_ACTIVE = 'active'
 REPLICATION_STATE_IN_SYNC = 'in_sync'
 REPLICATION_STATE_OUT_OF_SYNC = 'out_of_sync'
 
+# Access Rules
 RULE_STATE_ACTIVE = 'active'
 RULE_STATE_OUT_OF_SYNC = 'out_of_sync'
 RULE_STATE_ERROR = 'error'
@@ -50,3 +53,10 @@ TASK_STATE_DATA_COPYING_COMPLETING = 'data_copying_completing'
 TASK_STATE_DATA_COPYING_COMPLETED = 'data_copying_completed'
 TASK_STATE_DATA_COPYING_CANCELLED = 'data_copying_cancelled'
 TASK_STATE_DATA_COPYING_ERROR = 'data_copying_error'
+
+# Revert to snapshot
+REVERT_TO_SNAPSHOT_MICROVERSION = '2.27'
+REVERT_TO_SNAPSHOT_SUPPORT = 'revert_to_snapshot_support'
+STATUS_RESTORING = 'restoring'
+STATUS_REVERTING = 'reverting'
+STATUS_REVERTING_ERROR = 'reverting_error'

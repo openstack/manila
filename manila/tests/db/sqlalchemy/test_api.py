@@ -17,6 +17,8 @@
 
 """Testing of SQLAlchemy backend."""
 
+import copy
+
 import ddt
 import mock
 
@@ -898,6 +900,35 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
 
         self.assertEqual(1, len(actual_result.instances))
         self.assertSubDictMatch(values, actual_result.to_dict())
+
+    def test_share_snapshot_get_latest_for_share(self):
+
+        share = db_utils.create_share(size=1)
+        values = {
+            'share_id': share['id'],
+            'size': share['size'],
+            'user_id': share['user_id'],
+            'project_id': share['project_id'],
+            'status': constants.STATUS_CREATING,
+            'progress': '0%',
+            'share_size': share['size'],
+            'display_description': 'fake',
+            'share_proto': share['share_proto'],
+        }
+        values1 = copy.deepcopy(values)
+        values1['display_name'] = 'snap1'
+        db_api.share_snapshot_create(self.ctxt, values1)
+        values2 = copy.deepcopy(values)
+        values2['display_name'] = 'snap2'
+        db_api.share_snapshot_create(self.ctxt, values2)
+        values3 = copy.deepcopy(values)
+        values3['display_name'] = 'snap3'
+        db_api.share_snapshot_create(self.ctxt, values3)
+
+        result = db_api.share_snapshot_get_latest_for_share(self.ctxt,
+                                                            share['id'])
+
+        self.assertSubDictMatch(values3, result.to_dict())
 
     def test_get_instance(self):
         snapshot = db_utils.create_snapshot(with_share=True)

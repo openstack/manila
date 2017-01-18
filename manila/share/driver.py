@@ -855,6 +855,24 @@ class ShareDriver(object):
         the failure.
         """
 
+    def revert_to_snapshot(self, context, snapshot, share_server=None):
+        """Reverts a share (in place) to the specified snapshot.
+
+        Does not delete the share snapshot.  The share and snapshot must both
+        be 'available' for the restore to be attempted.  The snapshot must be
+        the most recent one taken by Manila; the API layer performs this check
+        so the driver doesn't have to.
+
+        The share must be reverted in place to the contents of the snapshot.
+        Application admins should quiesce or otherwise prepare the application
+        for the shared file system contents to change suddenly.
+
+        :param context: Current context
+        :param snapshot: The snapshot to be restored
+        :param share_server: Optional -- Share server model or None
+        """
+        raise NotImplementedError()
+
     def extend_share(self, share, new_size, share_server=None):
         """Extends size of existing share.
 
@@ -957,6 +975,7 @@ class ShareDriver(object):
             snapshot_support=self.snapshots_are_supported,
             create_share_from_snapshot_support=(
                 self.creating_shares_from_snapshots_is_supported),
+            revert_to_snapshot_support=False,
             replication_domain=self.replication_domain,
             filter_function=self.get_filter_function(),
             goodness_function=self.get_goodness_function(),
@@ -1785,6 +1804,38 @@ class ShareDriver(object):
             database for the snapshot instances being created.
         :raises: Exception.
             Any exception in this method will set all instances to 'error'.
+        """
+        raise NotImplementedError()
+
+    def revert_to_replicated_snapshot(self, context, active_replica,
+                                      replica_list, active_replica_snapshot,
+                                      replica_snapshots, share_server=None):
+        """Reverts a replicated share (in place) to the specified snapshot.
+
+        .. note::
+            This call is made on the 'active' replica's host, since drivers may
+            not be able to revert snapshots on individual replicas.
+
+        Does not delete the share snapshot.  The share and snapshot must both
+        be 'available' for the restore to be attempted.  The snapshot must be
+        the most recent one taken by Manila; the API layer performs this check
+        so the driver doesn't have to.
+
+        The share must be reverted in place to the contents of the snapshot.
+        Application admins should quiesce or otherwise prepare the application
+        for the shared file system contents to change suddenly.
+
+        :param context: Current context
+        :param active_replica: The current active replica
+        :param replica_list: List of all replicas for a particular share
+            The 'active' replica will have its 'replica_state' attr set to
+            'active' and its 'status' set to 'reverting'.
+        :param active_replica_snapshot: snapshot to be restored
+        :param replica_snapshots: List of dictionaries of snapshot instances.
+            These snapshot instances track the snapshot across the replicas.
+            The snapshot of the active replica to be restored with have its
+            status attribute set to 'restoring'.
+        :param share_server: Optional -- Share server model
         """
         raise NotImplementedError()
 

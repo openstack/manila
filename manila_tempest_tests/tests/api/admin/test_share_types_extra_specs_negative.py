@@ -14,11 +14,16 @@
 #    under the License.
 
 import ddt
+from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions as lib_exc
 from testtools import testcase as tc
 
+from manila_tempest_tests.common import constants
 from manila_tempest_tests.tests.api import base
+from manila_tempest_tests import utils
+
+CONF = config.CONF
 
 
 @ddt.ddt
@@ -69,8 +74,12 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesMixedTest):
         share_type = self.shares_v2_client.get_share_type(
             st['share_type']['id'])
         # Verify a non-admin can only read the required extra-specs
-        expected_keys = ['driver_handles_share_servers', 'snapshot_support',
-                         'create_share_from_snapshot_support']
+        expected_keys = ['driver_handles_share_servers', 'snapshot_support']
+        if utils.is_microversion_ge(CONF.share.max_api_microversion, '2.24'):
+            expected_keys.append('create_share_from_snapshot_support')
+        if utils.is_microversion_ge(CONF.share.max_api_microversion,
+                                    constants.REVERT_TO_SNAPSHOT_MICROVERSION):
+            expected_keys.append('revert_to_snapshot_support')
         actual_keys = share_type['share_type']['extra_specs'].keys()
         self.assertEqual(sorted(expected_keys), sorted(actual_keys),
                          'Incorrect extra specs visible to non-admin user; '

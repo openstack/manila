@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log
 import six
 import webob
 from webob import exc
@@ -25,11 +26,14 @@ from manila.api.v1 import shares
 from manila.api.views import share_accesses as share_access_views
 from manila.api.views import share_migration as share_migration_views
 from manila.api.views import shares as share_views
+from manila.common import constants
 from manila import db
 from manila import exception
-from manila.i18n import _
+from manila.i18n import _, _LI
 from manila import share
 from manila import utils
+
+LOG = log.getLogger(__name__)
 
 
 class ShareController(shares.ShareMixin,
@@ -46,6 +50,118 @@ class ShareController(shares.ShareMixin,
         self.share_api = share.API()
         self._access_view_builder = share_access_views.ViewBuilder()
         self._migration_view_builder = share_migration_views.ViewBuilder()
+
+    @wsgi.Controller.authorize('revert_to_snapshot')
+    def _revert(self, req, id, body=None):
+        """Revert a share to a snapshot."""
+        context = req.environ['manila.context']
+        revert_data = self._validate_revert_parameters(context, body)
+
+        try:
+            share_id = id
+            snapshot_id = revert_data['snapshot_id']
+
+            share = self.share_api.get(context, share_id)
+            snapshot = self.share_api.get_snapshot(context, snapshot_id)
+
+            # Ensure share supports reverting to a snapshot
+            if not share['revert_to_snapshot_support']:
+                msg_args = {'share_id': share_id, 'snap_id': snapshot_id}
+                msg = _('Share %(share_id)s may not be reverted to snapshot '
+                        '%(snap_id)s, because the share does not have that '
+                        'capability.')
+                raise exc.HTTPBadRequest(explanation=msg % msg_args)
+
+            # Ensure requested share & snapshot match.
+            if share['id'] != snapshot['share_id']:
+                msg_args = {'share_id': share_id, 'snap_id': snapshot_id}
+                msg = _('Snapshot %(snap_id)s is not associated with share '
+                        '%(share_id)s.')
+                raise exc.HTTPBadRequest(explanation=msg % msg_args)
+
+            # Ensure share status is 'available'.
+            if share['status'] != constants.STATUS_AVAILABLE:
+                msg_args = {
+                    'share_id': share_id,
+                    'state': share['status'],
+                    'available': constants.STATUS_AVAILABLE,
+                }
+                msg = _("Share %(share_id)s is in '%(state)s' state, but it "
+                        "must be in '%(available)s' state to be reverted to a "
+                        "snapshot.")
+                raise exc.HTTPConflict(explanation=msg % msg_args)
+
+            # Ensure snapshot status is 'available'.
+            if snapshot['status'] != constants.STATUS_AVAILABLE:
+                msg_args = {
+                    'snap_id': snapshot_id,
+                    'state': snapshot['status'],
+                    'available': constants.STATUS_AVAILABLE,
+                }
+                msg = _("Snapshot %(snap_id)s is in '%(state)s' state, but it "
+                        "must be in '%(available)s' state to be restored.")
+                raise exc.HTTPConflict(explanation=msg % msg_args)
+
+            # Ensure a long-running task isn't active on the share
+            if share.is_busy:
+                msg_args = {'share_id': share_id}
+                msg = _("Share %(share_id)s may not be reverted while it has "
+                        "an active task.")
+                raise exc.HTTPConflict(explanation=msg % msg_args)
+
+            # Ensure the snapshot is the most recent one.
+            latest_snapshot = self.share_api.get_latest_snapshot_for_share(
+                context, share_id)
+            if not latest_snapshot:
+                msg_args = {'share_id': share_id}
+                msg = _("Could not determine the latest snapshot for share "
+                        "%(share_id)s.")
+                raise exc.HTTPBadRequest(explanation=msg % msg_args)
+            if latest_snapshot['id'] != snapshot_id:
+                msg_args = {
+                    'share_id': share_id,
+                    'snap_id': snapshot_id,
+                    'latest_snap_id': latest_snapshot['id'],
+                }
+                msg = _("Snapshot %(snap_id)s may not be restored because "
+                        "it is not the most recent snapshot of share "
+                        "%(share_id)s. Currently the latest snapshot is "
+                        "%(latest_snap_id)s.")
+                raise exc.HTTPConflict(explanation=msg % msg_args)
+
+            msg_args = {'share_id': share_id, 'snap_id': snapshot_id}
+            msg = _LI('Reverting share %(share_id)s to snapshot %(snap_id)s.')
+            LOG.info(msg, msg_args)
+
+            self.share_api.revert_to_snapshot(context, snapshot)
+        except exception.ShareNotFound as e:
+            raise exc.HTTPNotFound(explanation=six.text_type(e))
+        except exception.ShareSnapshotNotFound as e:
+            raise exc.HTTPBadRequest(explanation=six.text_type(e))
+        except exception.ShareSizeExceedsAvailableQuota as e:
+            raise exc.HTTPForbidden(explanation=six.text_type(e))
+        except exception.ReplicationException as e:
+            raise exc.HTTPBadRequest(explanation=six.text_type(e))
+
+        return webob.Response(status_int=202)
+
+    def _validate_revert_parameters(self, context, body):
+        if not (body and self.is_valid_body(body, 'revert')):
+            msg = _("Revert entity not found in request body.")
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        required_parameters = ('snapshot_id',)
+        data = body['revert']
+
+        for parameter in required_parameters:
+            if parameter not in data:
+                msg = _("Required parameter %s not found.") % parameter
+                raise exc.HTTPBadRequest(explanation=msg)
+            if not data.get(parameter):
+                msg = _("Required parameter %s is empty.") % parameter
+                raise exc.HTTPBadRequest(explanation=msg)
+
+        return data
 
     @wsgi.Controller.api_version("2.0", "2.3")
     def create(self, req, body):
@@ -275,6 +391,11 @@ class ShareController(shares.ShareMixin,
     @wsgi.action('unmanage')
     def unmanage(self, req, id, body=None):
         return self._unmanage(req, id, body)
+
+    @wsgi.Controller.api_version('2.27')
+    @wsgi.action('revert')
+    def revert(self, req, id, body=None):
+        return self._revert(req, id, body)
 
 
 def create_resource():

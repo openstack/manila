@@ -46,6 +46,7 @@ def generate_stats(host_state, properties):
         'snapshot_support': host_state.snapshot_support,
         'create_share_from_snapshot_support':
             host_state.create_share_from_snapshot_support,
+        'revert_to_snapshot_support': host_state.revert_to_snapshot_support,
         'replication_domain': host_state.replication_domain,
         'replication_type': host_state.replication_type,
         'provisioned_capacity_gb': host_state.provisioned_capacity_gb,

@@ -30,7 +30,7 @@ ShareGroup = [
                help="The minimum api microversion is configured to be the "
                     "value of the minimum microversion supported by Manila."),
     cfg.StrOpt("max_api_microversion",
-               default="2.26",
+               default="2.27",
                help="The maximum api microversion is configured to be the "
                     "value of the latest microversion supported by Manila."),
     cfg.StrOpt("region",
@@ -103,7 +103,11 @@ ShareGroup = [
                      "Defaults to the value of run_snapshot_tests. Set it to "
                      "False if the driver being tested does not support "
                      "creating shares from snapshots."),
-
+    cfg.BoolOpt("capability_revert_to_snapshot_support",
+                help="Defines extra spec that satisfies specific back end "
+                     "capability called 'revert_to_snapshot_support' "
+                     "and will be used for setting up custom share type. "
+                     "Defaults to the value of run_revert_to_snapshot_tests."),
     cfg.StrOpt("share_network_id",
                default="",
                help="Some backend drivers requires share network "
@@ -161,6 +165,11 @@ ShareGroup = [
                 help="Defines whether to run tests that use share snapshots "
                      "or not. Disable this feature if used driver doesn't "
                      "support it."),
+    cfg.BoolOpt("run_revert_to_snapshot_tests",
+                default=False,
+                help="Defines whether to run tests that revert shares "
+                     "to snapshots or not. Enable this feature if used "
+                     "driver supports it."),
     cfg.BoolOpt("run_consistency_group_tests",
                 default=True,
                 help="Defines whether to run consistency group tests or not. "

@@ -530,6 +530,11 @@ def share_snapshot_get_all_for_share(context, share_id, filters=None,
     )
 
 
+def share_snapshot_get_latest_for_share(context, share_id):
+    """Get the most recent snapshot for a share."""
+    return IMPL.share_snapshot_get_latest_for_share(context, share_id)
+
+
 def share_snapshot_update(context, snapshot_id, values):
     """Set the given properties on an snapshot and update it.
 

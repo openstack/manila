@@ -1371,6 +1371,7 @@ class CreateFromSnapshotExtraSpecAndShareColumn(BaseMigrationChecks):
         # Pre-existing Shares must be present
         shares_in_db = engine.execute(shares_table.select()).fetchall()
         share_ids_in_db = [s['id'] for s in shares_in_db]
+        self.test_case.assertTrue(len(share_ids_in_db) > 1)
         for share_id in share_ids:
             self.test_case.assertIn(share_id, share_ids_in_db)
 
@@ -1420,6 +1421,7 @@ class CreateFromSnapshotExtraSpecAndShareColumn(BaseMigrationChecks):
         # Pre-existing Shares must be present
         shares_in_db = engine.execute(shares_table.select()).fetchall()
         share_ids_in_db = [s['id'] for s in shares_in_db]
+        self.test_case.assertTrue(len(share_ids_in_db) > 1)
         for share_id in share_ids:
             self.test_case.assertIn(share_id, share_ids_in_db)
 
@@ -1447,6 +1449,102 @@ class CreateFromSnapshotExtraSpecAndShareColumn(BaseMigrationChecks):
                               if x['spec_key'] == self.expected_attr
                               and x['share_type_id'] == share_type_id]
             self.test_case.assertEqual(0, len(new_extra_spec))
+
+
+@map_to_migration('87ce15c59bbe')
+class RevertToSnapshotShareColumn(BaseMigrationChecks):
+
+    expected_attr = constants.ExtraSpecs.REVERT_TO_SNAPSHOT_SUPPORT
+
+    def _get_fake_data(self):
+        extra_specs = []
+        shares = []
+        share_instances = []
+        share_types = [
+            {
+                'id': uuidutils.generate_uuid(),
+                'deleted': 'False',
+                'name': 'revert-1',
+                'is_public': False,
+            },
+            {
+                'id': uuidutils.generate_uuid(),
+                'deleted': 'False',
+                'name': 'revert-2',
+                'is_public': True,
+
+            },
+        ]
+        snapshot_support = ('0', '1')
+        dhss = ('True', 'False')
+        for idx, share_type in enumerate(share_types):
+            extra_specs.append({
+                'share_type_id': share_type['id'],
+                'spec_key': 'snapshot_support',
+                'spec_value': snapshot_support[idx],
+                'deleted': 0,
+            })
+            extra_specs.append({
+                'share_type_id': share_type['id'],
+                'spec_key': 'driver_handles_share_servers',
+                'spec_value': dhss[idx],
+                'deleted': 0,
+            })
+            share = fake_share(snapshot_support=snapshot_support[idx])
+            shares.append(share)
+            share_instances.append(
+                fake_instance(share_id=share['id'],
+                              share_type_id=share_type['id'])
+            )
+
+        return share_types, extra_specs, shares, share_instances
+
+    def setup_upgrade_data(self, engine):
+
+        (self.share_types, self.extra_specs, self.shares,
+            self.share_instances) = self._get_fake_data()
+
+        share_types_table = utils.load_table('share_types', engine)
+        engine.execute(share_types_table.insert(self.share_types))
+        extra_specs_table = utils.load_table('share_type_extra_specs',
+                                             engine)
+        engine.execute(extra_specs_table.insert(self.extra_specs))
+        shares_table = utils.load_table('shares', engine)
+        engine.execute(shares_table.insert(self.shares))
+        share_instances_table = utils.load_table('share_instances', engine)
+        engine.execute(share_instances_table.insert(self.share_instances))
+
+    def check_upgrade(self, engine, data):
+        share_ids = [s['id'] for s in self.shares]
+        shares_table = utils.load_table('shares', engine)
+
+        # Pre-existing Shares must be present
+        shares_in_db = engine.execute(shares_table.select().where(
+            shares_table.c.deleted == 'False')).fetchall()
+        share_ids_in_db = [s['id'] for s in shares_in_db]
+        self.test_case.assertTrue(len(share_ids_in_db) > 1)
+        for share_id in share_ids:
+            self.test_case.assertIn(share_id, share_ids_in_db)
+
+        # New shares attr must be present and set to False
+        for share in shares_in_db:
+            self.test_case.assertTrue(hasattr(share, self.expected_attr))
+            self.test_case.assertEqual(False, share[self.expected_attr])
+
+    def check_downgrade(self, engine):
+        share_ids = [s['id'] for s in self.shares]
+        shares_table = utils.load_table('shares', engine)
+
+        # Pre-existing Shares must be present
+        shares_in_db = engine.execute(shares_table.select()).fetchall()
+        share_ids_in_db = [s['id'] for s in shares_in_db]
+        self.test_case.assertTrue(len(share_ids_in_db) > 1)
+        for share_id in share_ids:
+            self.test_case.assertIn(share_id, share_ids_in_db)
+
+        # Shares should have no attr to revert share to snapshot
+        for share in shares_in_db:
+            self.test_case.assertFalse(hasattr(share, self.expected_attr))
 
 
 @map_to_migration('95e3cf760840')

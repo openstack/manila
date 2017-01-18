@@ -267,8 +267,10 @@ class ShareMixin(object):
             # Verify that share can be created from a snapshot
             if (check_create_share_from_snapshot_support and
                     not parent_share['create_share_from_snapshot_support']):
-                msg = _("Share cannot be created from snapshot '%s', because "
-                        "share back end does not support it.") % snapshot_id
+                msg = (_("A new share may not be created from snapshot '%s', "
+                         "because the snapshot's parent share does not have "
+                         "that capability.")
+                       % snapshot_id)
                 LOG.error(msg)
                 raise exc.HTTPBadRequest(explanation=msg)
 
