@@ -179,7 +179,7 @@ class ShareAPITest(test.TestCase):
         mock_get_latest_snapshot_for_share.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), '1')
         mock_revert_to_snapshot.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), snapshot)
+            utils.IsAMatcher(context.RequestContext), share, snapshot)
 
     def test__revert_not_supported(self):
 

@@ -133,7 +133,7 @@ class ShareController(shares.ShareMixin,
             msg = _LI('Reverting share %(share_id)s to snapshot %(snap_id)s.')
             LOG.info(msg, msg_args)
 
-            self.share_api.revert_to_snapshot(context, snapshot)
+            self.share_api.revert_to_snapshot(context, share, snapshot)
         except exception.ShareNotFound as e:
             raise exc.HTTPNotFound(explanation=six.text_type(e))
         except exception.ShareSnapshotNotFound as e:
