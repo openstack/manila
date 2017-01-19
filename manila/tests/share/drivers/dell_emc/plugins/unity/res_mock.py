@@ -87,7 +87,6 @@ class FakeEMCShareDriver(object):
     def __init__(self):
         self.configuration = conf.Configuration(None)
         self.configuration.emc_share_backend = 'unity'
-        self.configuration.unity_server_container = 'SPA'
         self.configuration.emc_nas_server = '192.168.1.1'
         self.configuration.emc_nas_login = 'fake_user'
         self.configuration.emc_nas_password = 'fake_password'
@@ -218,7 +217,7 @@ class StorageMethodMock(mock.Mock):
             super(StorageMethodMock, self).__init__(
                 name=name,
                 side_effect=_build_mock_object(side_effect))
-        elif return_value:
+        elif return_value is not None:
             super(StorageMethodMock, self).__init__(
                 name=name,
                 return_value=_build_mock_object(return_value))
@@ -322,6 +321,20 @@ def patch_connection_init(func):
     return connection_decorator
 
 
+def do_connection_connect(conn, res):
+    conn.config = None
+    conn.client = client.UnityClient(host='fake_host',
+                                     username='fake_user',
+                                     password='fake_passwd')
+    conn.pool_conf = ['pool_1', 'pool_2']
+    conn.pool_set = set(['pool_1', 'pool_2'])
+    conn.reserved_percentage = 0
+    conn.max_over_subscription_ratio = 20
+    conn.port_set = set(['spa_eth1', 'spa_eth2'])
+    conn.nas_server_pool = StorageObjectMock(res['nas_server_pool'])
+    conn.storage_processor = StorageObjectMock(res['sp_a'])
+
+
 def patch_connection(func):
     def connection_decorator(cls, *args, **kwargs):
         storage_res = {}
@@ -329,10 +342,11 @@ def patch_connection(func):
             storage_res = (
                 STORAGE_RES_MAPPING[cls.__class__.__name__][func.__name__])
         with utils.patch_system as patched_system:
+            conn = connection.UnityStorageConnection(LOG)
             if 'unity' in storage_res:
                 patched_system.return_value = storage_res['unity']
-            conn = connection.UnityStorageConnection(LOG)
-            conn.connect(FakeEMCShareDriver(), None)
+            do_connection_connect(
+                conn, STORAGE_RES_MAPPING[cls.__class__.__name__])
             return func(cls, conn, *args, **kwargs)
 
     return connection_decorator

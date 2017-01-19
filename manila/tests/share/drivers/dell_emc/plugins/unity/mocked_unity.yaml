@@ -3,12 +3,16 @@ sp_a: &sp_a
       name: 'SPA'
       id: 'SPA'
       existed: true
+  _methods:
+      get_id: 'SPA'
 
 sp_b: &sp_b
   _properties:
       name: 'SPB'
       id: 'SPB'
       existed: true
+  _methods:
+      get_id: 'SPB'
 
 sp_c: &sp_invalid
   _properties:
@@ -28,6 +32,7 @@ nas_server: &nas_server
       name: '78fd845f-8e7d-487f-bfde-051d83e78103'
       file_interface: [*interface_1, *interface_2]
       current_sp: *sp_a
+      home_sp: *sp_a
 
 filesystem_base: &filesystem_base
   _properties: &filesystem_base_prop
@@ -101,35 +106,65 @@ port_base:
   _properties: &port_base_prop
     is_link_up: true
     id: 'fake_name'
-    sp: *sp_a
+    parent_storage_processor: *sp_a
 
 port_1: &port_1
   _properties:
     <<: *port_base_prop
     is_link_up: true
     id: 'spa_eth1'
-    sp: *sp_a
+    parent_storage_processor: *sp_a
+  _methods:
+      get_id: 'spa_eth1'
 
 port_2: &port_2
   _properties:
     <<: *port_base_prop
     is_link_up: true
     id: 'spa_eth2'
-    sp: *sp_a
+    parent_storage_processor: *sp_a
+  _methods:
+      get_id: 'spa_eth2'
 
 port_3: &port_internal_port
   _properties:
     <<: *port_base_prop
     is_link_up: true
     id: 'internal_port'
-    sp: *sp_a
+    parent_storage_processor: *sp_a
+  _methods:
+      get_id: 'internal_port'
+
+port_4: &port_4
+  _properties:
+    <<: *port_base_prop
+    is_link_up: true
+    id: 'spb_eth1'
+    parent_storage_processor: *sp_b
+  _methods:
+      get_id: 'spb_eth1'
+
+la_port: &la_port
+  _properties:
+    is_link_up: true
+    id: 'spa_la_4'
+    parent_storage_processor: *sp_a
+  _methods:
+    get_id: 'spa_la_4'
+
+tenant_1: &tenant_1
+  _properties:
+    id: "tenant_1"
+    name: "Tenant1"
+    uuid: "173ca6c3-5952-427d-82a6-df88f49e3926"
+    vlans: [2]
 
 unity_base: &unity_base
   _methods: &unity_base_method
       get_sp: *sp_a
       get_pool:
         _side_effect: [[*pool_1, *pool_2, *nas_server_pool], *nas_server_pool]
-      get_ip_port: [*port_1, *port_2]
+      get_file_port: [*port_1, *port_2]
 
 test_connect: &test_connect
   unity: *unity_base
@@ -159,8 +194,7 @@ test_create_nfs_share:
     _methods:
       <<: *unity_base_method
       get_pool:
-        _side_effect: [[*pool_1, *pool_2, *nas_server_pool],
-        *nas_server_pool, *pool__test_create_nfs_share]
+        _side_effect: [*pool__test_create_nfs_share]
       get_nas_server: *nas_server
 
 test_create_cifs_share:
@@ -189,8 +223,7 @@ test_create_cifs_share:
     _methods:
       <<: *unity_base_method
       get_pool:
-        _side_effect: [[*pool_1, *pool_2, *nas_server_pool], *nas_server_pool,
-         *pool__test_create_cifs_share]
+        _side_effect: [*pool__test_create_cifs_share]
       get_nas_server: *nas_server
 
 test_create_share_with_invalid_share_server:
@@ -203,8 +236,7 @@ test_create_share_with_invalid_share_server:
     _methods:
       <<: *unity_base_method
       get_pool:
-        _side_effect: [[*pool_1, *pool_2, *nas_server_pool], *nas_server_pool,
-        *pool__test_create_share_with_invalid_share_server]
+        _side_effect: [*pool__test_create_share_with_invalid_share_server]
       get_nas_server:
         _raise:
           UnityResourceNotFoundError: 'Failed to get NAS server.'
@@ -460,14 +492,14 @@ test_update_share_stats:
     _methods:
       <<: *unity_base_method
       get_pool:
-        _side_effect: [[*pool_1, *pool_2], *pool_1, [*pool_1, *pool_2]]
+        _side_effect: [[*pool_1, *pool_2]]
 
 test_update_share_stats__nonexistent_pools:
   unity:
     _methods:
       <<: *unity_base_method
       get_pool:
-        _side_effect: [[*pool_1, *pool_2], *pool_1, []]
+        _side_effect: [[]]
 
 test_get_pool:
   filesystem: &filesystem__test_get_pool
@@ -492,7 +524,10 @@ test_setup_server: &test_setup_server
     _properties:
       <<: *nas_server_prop
       existed: false
-
+      home_sp: *sp_a
+  ip_port: &ip_port
+    _methods:
+      set_mtu:
   nas_server_2: &nas_server_2__test_setup_server
     _properties:
       <<: *nas_server_prop
@@ -505,6 +540,7 @@ test_setup_server: &test_setup_server
       <<: *unity_base_method
       get_nas_server: *nas_server_1__test_setup_server
       create_nas_server: *nas_server_2__test_setup_server
+      get_ip_port: *ip_port
 
 test_setup_server__vlan_network:
   <<: *test_setup_server
@@ -521,6 +557,20 @@ test_setup_server__vlan_network:
     _methods:
       <<: *unity_method__test_setup_server
       get_nas_server: *nas_server__test_setup_server_flat_network
+      create_tenant: *tenant_1
+
+test_setup_server__vxlan_network:
+  <<: *test_setup_server
+  nas_server_2: &nas_server_2__test_setup_server__vxlan_network
+    _properties:
+      <<: *nas_server_prop
+    _methods:
+      delete:
+
+  unity:
+    _methods:
+      <<: *unity_method__test_setup_server
+      get_nas_server: *nas_server_2__test_setup_server__vxlan_network
 
 test_setup_server__active_directory:
   <<: *test_setup_server
@@ -537,6 +587,7 @@ test_setup_server__active_directory:
     _methods: &unity_method__test_setup_server__active_directory
       <<: *unity_method__test_setup_server
       create_nas_server: *nas_server_2__test_setup_server__active_directory
+      create_tenant: *tenant_1
 
 test_setup_server__kerberos: *test_setup_server
 
@@ -550,6 +601,7 @@ test_setup_server__throw_exception:
   nas_server_2: &nas_server_2__test_setup_server__throw_exception
     _properties:
       <<: *nas_server_prop
+      tenant:
     _methods:
       create_file_interface:
       create_dns_server:
@@ -564,11 +616,18 @@ test_setup_server__throw_exception:
       <<: *unity_method__test_setup_server
       get_nas_server: *nas_server_2__test_setup_server__throw_exception
       create_nas_server: *nas_server_2__test_setup_server__throw_exception
+      create_tenant: *tenant_1
 
 test_teardown_server:
+  tenant:
+    _properties:
+      nas_servers: []
+    _methods:
+      delete:
   nas_server: &nas_server__test_teardown_server
     _properties:
       <<: *nas_server_prop
+      tenant:
     _methods:
       delete:
 
@@ -585,14 +644,15 @@ test__get_managed_pools: &test__get_managed_pools
 
 test__get_managed_pools__invalid_pool_configuration: *test__get_managed_pools
 
-test__get_managed_ports: &test__get_managed_ports
+test_validate_port_configuration: &test_validate_port_configuration
   unity:
     _methods:
       <<: *unity_base_method
-      get_pool: [*pool_1, *pool_2, *nas_server_pool]
-      get_ip_port: [*port_1, *port_2, *port_internal_port]
+      get_file_port: [*port_1, *port_2, *port_internal_port, *port_4, *la_port]
 
-test__get_managed_pools__invalid_port_configuration: *test__get_managed_ports
+test_validate_port_configuration_exception: *test_validate_port_configuration
+
+test__get_managed_pools__invalid_port_configuration: *test_validate_port_configuration
 
 
 test_create_cifs_share_from_snapshot:
@@ -878,6 +938,7 @@ test_delete_nas_server__nonexistent_expt:
   nas_server: &nas_server__test_delete_nas_server__nonexistent_expt
     _properties:
       <<: *nas_server_prop
+      tenant:
     _methods:
       delete:
         _raise:
@@ -980,3 +1041,44 @@ test_extend_filesystem:
       extend:
         _raise:
           UnityNothingToModifyError:
+
+test_get_tenant:
+  unity:
+    _methods:
+      create_tenant: *tenant_1
+
+test_get_tenant_preexist:
+  unity:
+    _methods:
+      create_tenant:
+        _raise:
+          UnityVLANUsedByOtherTenantError:
+      get_tenant_use_vlan: *tenant_1
+
+test_get_tenant_name_inuse_but_vlan_not_used:
+  unity:
+    _methods:
+      create_tenant:
+        _raise:
+          UnityTenantNameInUseError:
+      get_tenant_use_vlan:
+
+test_get_tenant_for_vlan_already_has_interfaces:
+  unity:
+    _methods:
+      create_tenant:
+        _raise:
+          UnityVLANAlreadyHasInterfaceError:
+      get_tenant_use_vlan: *tenant_1
+
+test_get_file_ports:
+  link_down_port: &down_port
+    _properties:
+      <<: *port_base_prop
+      is_link_up: false
+      id: 'down_port'
+      _methods:
+        get_id: 'down_port'
+  unity:
+    _methods:
+      get_file_port: [*port_1, *port_internal_port, *down_port, *la_port]

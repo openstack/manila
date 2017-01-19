@@ -15,7 +15,6 @@
 
 import copy
 import ddt
-import mock
 from oslo_utils import units
 import six
 
@@ -23,6 +22,7 @@ from manila import exception
 from manila import test
 from manila.tests.share.drivers.dell_emc.plugins.unity import fake_exceptions
 from manila.tests.share.drivers.dell_emc.plugins.unity import res_mock
+from manila.tests.share.drivers.dell_emc.plugins.unity import utils
 
 
 @ddt.ddt
@@ -36,12 +36,6 @@ class TestConnection(test.TestCase):
     @res_mock.patch_connection_init
     def test_connect(self, connection):
         connection.connect(res_mock.FakeEMCShareDriver(), None)
-
-    @res_mock.patch_connection_init
-    def test_connect__invalid_sp_configuration(self, connection):
-        self.assertRaises(exception.BadConfigurationException,
-                          connection.connect,
-                          res_mock.FakeEMCShareDriver(), None)
 
     @res_mock.patch_connection
     def test_connect__invalid_pool_configuration(self, connection):
@@ -256,7 +250,6 @@ class TestConnection(test.TestCase):
     @res_mock.patch_connection
     def test_update_share_stats(self, connection):
         stat_dict = copy.deepcopy(res_mock.STATS)
-
         connection.update_share_stats(stat_dict)
         self.assertEqual(5, len(stat_dict))
         pool = stat_dict['pools'][0]
@@ -285,46 +278,71 @@ class TestConnection(test.TestCase):
 
         connection.get_pool(share)
 
+    @utils.patch_find_ports_by_mtu
     @res_mock.mock_manila_input
     @res_mock.patch_connection
-    def test_setup_server(self, connection, mocked_input):
+    def test_setup_server(self, connection, mocked_input, find_ports):
+        find_ports.return_value = {'SPA': {'spa_eth1'}}
         network_info = mocked_input['network_info__flat']
+        server_info = connection.setup_server(network_info)
+        self.assertEqual(
+            {'share_server_name':
+             '78fd845f-8e7d-487f-bfde-051d83e78103'},
+            server_info)
+        self.assertIsNone(connection.client.system.create_nas_server.
+                          call_args[1]['tenant'])
 
-        connection.setup_server(network_info)
-
+    @utils.patch_find_ports_by_mtu
     @res_mock.mock_manila_input
     @res_mock.patch_connection
-    def test_setup_server__vlan_network(self, connection, mocked_input):
+    def test_setup_server__vlan_network(self, connection, mocked_input,
+                                        find_ports):
+        find_ports.return_value = {'SPA': {'spa_eth1'}}
         network_info = mocked_input['network_info__vlan']
 
         connection.setup_server(network_info)
+        self.assertEqual('tenant_1',
+                         connection.client.system.create_nas_server
+                         .call_args[1]['tenant'].id)
 
+    @utils.patch_find_ports_by_mtu
     @res_mock.mock_manila_input
     @res_mock.patch_connection
-    def test_setup_server__vxlan_network(self, connection, mocked_input):
+    def test_setup_server__vxlan_network(self, connection, mocked_input,
+                                         find_ports):
+        find_ports.return_value = {'SPA': {'spa_eth1'}}
         network_info = mocked_input['network_info__vxlan']
 
         self.assertRaises(exception.NetworkBadConfigurationException,
                           connection.setup_server,
                           network_info)
 
+    @utils.patch_find_ports_by_mtu
     @res_mock.mock_manila_input
     @res_mock.patch_connection
-    def test_setup_server__active_directory(self, connection, mocked_input):
+    def test_setup_server__active_directory(self, connection, mocked_input,
+                                            find_ports):
+        find_ports.return_value = {'SPA': {'spa_eth1'}}
         network_info = mocked_input['network_info__active_directory']
 
         connection.setup_server(network_info)
 
+    @utils.patch_find_ports_by_mtu
     @res_mock.mock_manila_input
     @res_mock.patch_connection
-    def test_setup_server__kerberos(self, connection, mocked_input):
+    def test_setup_server__kerberos(self, connection, mocked_input,
+                                    find_ports):
+        find_ports.return_value = {'SPA': {'spa_eth1'}}
         network_info = mocked_input['network_info__kerberos']
 
         connection.setup_server(network_info)
 
+    @utils.patch_find_ports_by_mtu
     @res_mock.mock_manila_input
     @res_mock.patch_connection
-    def test_setup_server__throw_exception(self, connection, mocked_input):
+    def test_setup_server__throw_exception(self, connection, mocked_input,
+                                           find_ports):
+        find_ports.return_value = {'SPA': {'spa_eth1'}}
         network_info = mocked_input['network_info__flat']
 
         self.assertRaises(fake_exceptions.UnityException,
@@ -385,40 +403,20 @@ class TestConnection(test.TestCase):
                           connection._get_managed_pools,
                           configured_pools)
 
-    @ddt.data({'configured_ports': None,
-               'matched_ports': {'spa_eth1', 'spa_eth2'}},
-              {'configured_ports': ['*'],
-               'matched_ports': {'spa_eth1', 'spa_eth2'}},
-              {'configured_ports': ['spa_*'],
-               'matched_ports': {'spa_eth1', 'spa_eth2'}},
-              {'configured_ports': ['*_eth1'],
-               'matched_ports': {'spa_eth1'}},
-              {'configured_ports': ['spa_eth1'],
-               'matched_ports': {'spa_eth1'}},
-              {'configured_ports': ['spa_eth1', 'spa_eth2'],
-               'matched_ports': {'spa_eth1', 'spa_eth2'}})
     @res_mock.patch_connection
-    @ddt.unpack
-    def test__get_managed_ports(self, connection, mocked_input):
-        sp = mock.Mock()
-        sp.id = 'SPA'
-        configured_ports = mocked_input['configured_ports']
-        matched_ports = mocked_input['matched_ports']
+    def test_validate_port_configuration(self, connection):
+        sp_ports_map = connection.validate_port_configuration(['sp*'])
 
-        ports = connection._get_managed_ports(configured_ports, sp)
-
-        self.assertEqual(matched_ports, ports)
+        self.assertEqual({'spa_eth1', 'spa_eth2', 'spa_la_4'},
+                         sp_ports_map['SPA'])
+        self.assertEqual({'spb_eth1'}, sp_ports_map['SPB'])
 
     @res_mock.patch_connection
-    def test__get_managed_ports__invalid_port_configuration(self, connection):
-        configured_ports = 'fake_port'
-        sp = mock.Mock()
-        sp.id = 'SPA'
+    def test_validate_port_configuration_exception(self, connection):
 
         self.assertRaises(exception.BadConfigurationException,
-                          connection._get_managed_ports,
-                          configured_ports,
-                          sp)
+                          connection.validate_port_configuration,
+                          ['xxxx*'])
 
     @res_mock.patch_connection
     def test__get_pool_name_from_host__no_pool_name(self, connection):

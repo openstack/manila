@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """Unity backend for the EMC Manila driver."""
+import random
 
 from oslo_config import cfg
 from oslo_log import log
@@ -34,7 +35,7 @@ from manila.share.drivers.dell_emc.plugins.vnx import utils as emc_utils
 from manila.share import utils as share_utils
 from manila import utils
 
-VERSION = "1.0.0"
+VERSION = "2.0.0"
 
 LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
@@ -43,9 +44,6 @@ UNITY_OPTS = [
     cfg.StrOpt('unity_server_meta_pool',
                deprecated_name='emc_nas_server_pool',
                help='Pool to persist the meta-data of NAS server.'),
-    cfg.StrOpt('unity_server_container',
-               deprecated_name='emc_nas_server_container',
-               help='Storage processor to host the NAS server.'),
     cfg.ListOpt('unity_share_data_pools',
                 deprecated_name='emc_nas_pool_names',
                 help='Comma separated list of pools that can be used to '
@@ -54,7 +52,12 @@ UNITY_OPTS = [
                 deprecated_name='emc_interface_ports',
                 help='Comma separated list of ports that can be used for '
                      'share server interfaces. Members of the list '
-                     'can be Unix-style glob expressions.')
+                     'can be Unix-style glob expressions.'),
+    cfg.StrOpt('emc_nas_server_container',
+               deprecated_for_removal=True,
+               deprecated_reason='Unity driver supports nas server auto load '
+                                 'balance.',
+               help='Storage processor to host the NAS server. Obsolete.'),
 ]
 
 CONF = cfg.CONF
@@ -76,11 +79,10 @@ class UnityStorageConnection(driver.StorageConnection):
 
         self.client = None
         self.pool_set = None
-        self.port_set = None
         self.nas_server_pool = None
-        self.storage_processor = None
         self.reserved_percentage = None
         self.max_over_subscription_ratio = None
+        self.port_ids_conf = None
 
         # props from super class.
         self.driver_handles_share_servers = True
@@ -91,7 +93,6 @@ class UnityStorageConnection(driver.StorageConnection):
         storage_ip = config.emc_nas_server
         username = config.emc_nas_login
         password = config.emc_nas_password
-        sp_name = config.unity_server_container
         self.client = client.UnityClient(storage_ip, username, password)
 
         pool_conf = config.safe_get('unity_share_data_pools')
@@ -104,15 +105,44 @@ class UnityStorageConnection(driver.StorageConnection):
 
         self.max_over_subscription_ratio = config.safe_get(
             'max_over_subscription_ratio')
-
-        self._config_sp(sp_name)
-
-        port_conf = config.safe_get('unity_ethernet_ports')
-        self.port_set = self._get_managed_ports(
-            port_conf, self.storage_processor)
-
+        self.port_ids_conf = config.safe_get('unity_ethernet_ports')
+        self.validate_port_configuration(self.port_ids_conf)
         pool_name = config.unity_server_meta_pool
         self._config_pool(pool_name)
+
+    def validate_port_configuration(self, port_ids_conf):
+        """Initializes the SP and ports based on the port option."""
+
+        ports = self.client.get_file_ports()
+
+        sp_ports_map, unmanaged_port_ids = unity_utils.match_ports(
+            ports, port_ids_conf)
+
+        if not sp_ports_map:
+            msg = (_("All the specified storage ports to be managed "
+                     "do not exist. Please check your configuration "
+                     "unity_ethernet_ports in manila.conf. "
+                     "The available ports in the backend are %s.") %
+                   ",".join([port.get_id() for port in ports]))
+            raise exception.BadConfigurationException(reason=msg)
+
+        if unmanaged_port_ids:
+            LOG.info(_LI("The following specified ports are not managed by "
+                         "the backend: %(unmanaged)s. This host will only "
+                         "manage the storage ports: %(exist)s"),
+                     {'unmanaged': ",".join(unmanaged_port_ids),
+                      'exist': ",".join(map(",".join,
+                                            sp_ports_map.values()))})
+        else:
+            LOG.debug("Ports: %s will be managed.",
+                      ",".join(map(",".join, sp_ports_map.values())))
+
+        if len(sp_ports_map) == 1:
+            LOG.info(_LI("Only ports of %s are configured. Configure ports "
+                         "of both SPA and SPB to use both of the SPs."),
+                     list(sp_ports_map)[0])
+
+        return sp_ports_map
 
     def check_for_setup_error(self):
         """Check for setup error."""
@@ -365,13 +395,25 @@ class UnityStorageConnection(driver.StorageConnection):
     def setup_server(self, network_info, metadata=None):
         """Set up and configures share server with given network parameters."""
         server_name = network_info['server_id']
-        nas_server = self.client.create_nas_server(server_name,
-                                                   self.storage_processor,
-                                                   self.nas_server_pool)
+        segmentation_id = network_info['segmentation_id']
+        network = self.validate_network(network_info)
+        mtu = network['mtu']
+        tenant = self.client.get_tenant(network_info['server_id'],
+                                        segmentation_id)
 
+        sp_ports_map = unity_utils.find_ports_by_mtu(
+            self.client.get_file_ports(),
+            self.port_ids_conf, mtu)
+
+        sp = self._choose_sp(sp_ports_map)
+        nas_server = self.client.create_nas_server(server_name,
+                                                   sp,
+                                                   self.nas_server_pool,
+                                                   tenant=tenant)
+        sp = nas_server.home_sp
+        port_id = self._choose_port(sp_ports_map, sp)
         try:
-            for network in network_info['network_allocations']:
-                self._create_network_interface(nas_server, network)
+            self._create_network_interface(nas_server, network, port_id)
 
             self._handle_security_services(
                 nas_server, network_info['security_services'])
@@ -425,34 +467,45 @@ class UnityStorageConnection(driver.StorageConnection):
             LOG.exception(message)
             raise exception.BadConfigurationException(reason=message)
 
-    def _config_sp(self, sp_name):
-        self.storage_processor = self.client.get_storage_processor(
-            sp_name.lower())
-        if self.storage_processor is None:
-            message = (_("The storage processor %s does not exist or "
-                         "is unavailable. Please reconfigure it in "
-                         "manila.conf.") % sp_name)
-            LOG.error(message)
-            raise exception.BadConfigurationException(reason=message)
-
-    def _create_network_interface(self, nas_server, network):
-        ip_addr = network['ip_address']
-        netmask = utils.cidr_to_netmask(network['cidr'])
-        gateway = network['gateway']
-        vlan_id = network['segmentation_id']
+    @staticmethod
+    def validate_network(network_info):
+        network = network_info['network_allocations'][0]
         if network['network_type'] not in SUPPORTED_NETWORK_TYPES:
             msg = _('The specified network type %s is unsupported by '
                     'the EMC Unity driver')
             raise exception.NetworkBadConfigurationException(
                 reason=msg % network['network_type'])
+        return network
 
+    def _create_network_interface(self, nas_server, network, port_id):
+        ip_addr = network['ip_address']
+        netmask = utils.cidr_to_netmask(network['cidr'])
+        gateway = network['gateway']
+        vlan_id = network['segmentation_id']
         # Create the interfaces on NAS server
         self.client.create_interface(nas_server,
                                      ip_addr,
                                      netmask,
                                      gateway,
-                                     ports=self.port_set,
+                                     port_id=port_id,
                                      vlan_id=vlan_id)
+
+    def _choose_sp(self, sp_ports_map):
+        sp = None
+        if len(sp_ports_map.keys()) == 1:
+            # Only one storage processor has usable ports,
+            # create NAS server on that SP.
+            sp = self.client.get_storage_processor(
+                sp_id=list(sp_ports_map.keys())[0])
+            LOG.debug('All the usable ports belong to  %s. '
+                      'Creating NAS server on this SP without '
+                      'load balance.', sp.get_id())
+        return sp
+
+    @staticmethod
+    def _choose_port(sp_ports_map, sp):
+        ports = sp_ports_map[sp.get_id()]
+        return random.choice(list(ports))
 
     @staticmethod
     def _get_cifs_location(file_interfaces, share_name):
@@ -466,7 +519,7 @@ class UnityStorageConnection(driver.StorageConnection):
 
     def _get_managed_pools(self, pool_conf):
         # Get the real pools from the backend storage
-        real_pools = set([pool.name for pool in self.client.get_pool()])
+        real_pools = set(pool.name for pool in self.client.get_pool())
 
         if not pool_conf:
             LOG.debug("No storage pool is specified, so all pools in storage "
@@ -496,39 +549,6 @@ class UnityStorageConnection(driver.StorageConnection):
                       ",".join(matched_pools))
 
         return matched_pools
-
-    def _get_managed_ports(self, port_conf, sp):
-        # Get the real ports from the backend storage
-        real_ports = set([port.id for port in self.client.get_ip_ports(sp)])
-
-        if not port_conf:
-            LOG.debug("No ports are specified, so all ports in storage "
-                      "system will be managed.")
-            return real_ports
-
-        matched_ports, unmanaged_ports = unity_utils.do_match(real_ports,
-                                                              port_conf)
-
-        if not matched_ports:
-            msg = (_("All the specified storage ports to be managed "
-                     "do not exist. Please check your configuration "
-                     "unity_ethernet_ports in manila.conf. "
-                     "The available ports in the backend are %s") %
-                   ",".join(real_ports))
-            raise exception.BadConfigurationException(reason=msg)
-
-        if unmanaged_ports:
-            LOG.info(_LI("The following specified ports "
-                         "are not managed by the backend: "
-                         "%(un_managed)s. This host will only manage "
-                         "the storage ports: %(exist)s"),
-                     {'un_managed': ",".join(unmanaged_ports),
-                      'exist': ",".join(matched_ports)})
-        else:
-            LOG.debug("Ports: %s will be managed.",
-                      ",".join(matched_ports))
-
-        return matched_ports
 
     @staticmethod
     def _get_nfs_location(file_interfaces, share_name):

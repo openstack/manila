@@ -7,12 +7,14 @@ network_allocations:
       segmentation_id: null
       gateway: '192.168.1.1'
       network_type: flat
+      mtu: 1500
     - id: '0cf87de7-5c65-4036-8b6a-e8176c356958'
       ip_address: 'fake_ip_addr_2'
       cidr: '192.168.1.0/24'
       segmentation_id: null
       gateway: '192.168.1.1'
       network_type: flat
+      mtu: 1500
 
 network_allocations_vlan:
   _type: 'network_allocations'
@@ -23,12 +25,14 @@ network_allocations_vlan:
       segmentation_id: 160
       gateway: '192.168.1.1'
       network_type: vlan
+      mtu: 1500
     - id: '0cf87de7-5c65-4036-8b6a-e8176c356958'
       ip_address: 'fake_ip_addr_2'
       cidr: '192.168.1.0/24'
       segmentation_id: 160
       gateway: '192.168.1.1'
       network_type: vlan
+      mtu: 1500
 
 network_allocations_vxlan:
   _type: 'network_allocations'
@@ -39,6 +43,7 @@ network_allocations_vxlan:
       segmentation_id: 123
       gateway: '192.168.1.1'
       network_type: vxlan
+      mtu: 1500
 
 active_directory:
   _type: 'security_service'
@@ -71,8 +76,10 @@ network_info__flat:
     neutron_net_id: 'e6c96730-2bcf-4ce3-86fa-7cb7740086cb'
     ip_version: 4
     id: '232d8218-2743-41d1-832b-4194626e691e'
+    mtu: 1500
     network_allocations: *network_allocations_prop
     server_id: '78fd845f-8e7d-487f-bfde-051d83e78103'
+    segmentation_id: 0
     security_services: []
 
 network_info__vlan:
@@ -81,6 +88,7 @@ network_info__vlan:
     <<: *network_info_flat_prop
     network_type: 'vlan'
     network_allocations: *network_allocations_vlan_prop
+    segmentation_id: 160
 
 network_info__vxlan:
   _type: 'network_info'
