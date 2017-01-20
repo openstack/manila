@@ -350,23 +350,27 @@ class ShareDriver(object):
 
             Example::
 
-            {
-                'compatible': True,
-                'writable': True,
-                'preserve_metadata': True,
-                'nondisruptive': True,
-            }
+                {
+                    'compatible': True,
+                    'writable': True,
+                    'preserve_metadata': True,
+                    'nondisruptive': True,
+                    'preserve_snapshots': True,
+                }
+
         """
         return {
             'compatible': False,
             'writable': False,
             'preserve_metadata': False,
             'nondisruptive': False,
+            'preserve_snapshots': False,
         }
 
     def migration_start(
             self, context, source_share, destination_share,
-            share_server=None, destination_share_server=None):
+            source_snapshots, snapshot_mappings, share_server=None,
+            destination_share_server=None):
         """Starts migration of a given share to another host.
 
         .. note::
@@ -382,6 +386,9 @@ class ShareDriver(object):
         :param source_share: Reference to the original share model.
         :param destination_share: Reference to the share model to be used by
             migrated share.
+        :param source_snapshots: List of snapshots owned by the source share.
+        :param snapshot_mappings: Mapping of source snapshot IDs to
+            destination snapshot models.
         :param share_server: Share server model or None.
         :param destination_share_server: Destination Share server model or
             None.
@@ -389,8 +396,9 @@ class ShareDriver(object):
         raise NotImplementedError()
 
     def migration_continue(
-            self, context, source_share, destination_share,
-            share_server=None, destination_share_server=None):
+            self, context, source_share, destination_share, source_snapshots,
+            snapshot_mappings, share_server=None,
+            destination_share_server=None):
         """Continues migration of a given share to another host.
 
         .. note::
@@ -404,6 +412,9 @@ class ShareDriver(object):
         :param source_share: Reference to the original share model.
         :param destination_share: Reference to the share model to be used by
             migrated share.
+        :param source_snapshots: List of snapshots owned by the source share.
+        :param snapshot_mappings: Mapping of source snapshot IDs to
+            destination snapshot models.
         :param share_server: Share server model or None.
         :param destination_share_server: Destination Share server model or
             None.
@@ -412,8 +423,9 @@ class ShareDriver(object):
         raise NotImplementedError()
 
     def migration_complete(
-            self, context, source_share, destination_share,
-            share_server=None, destination_share_server=None):
+            self, context, source_share, destination_share, source_snapshots,
+            snapshot_mappings, share_server=None,
+            destination_share_server=None):
         """Completes migration of a given share to another host.
 
         .. note::
@@ -428,16 +440,54 @@ class ShareDriver(object):
         :param source_share: Reference to the original share model.
         :param destination_share: Reference to the share model to be used by
             migrated share.
+        :param source_snapshots: List of snapshots owned by the source share.
+        :param snapshot_mappings: Mapping of source snapshot IDs to
+            destination snapshot models.
         :param share_server: Share server model or None.
         :param destination_share_server: Destination Share server model or
             None.
-        :return: List of export locations to update the share with.
+        :return: If the migration changes the export locations or snapshot
+            provider locations, this method should return a dictionary with
+            the relevant info. In such case, a dictionary containing a list of
+            export locations and a list of model updates for each snapshot
+            indexed by their IDs.
+
+            Example::
+
+                {
+                    'export_locations':
+                    [
+                        {
+                        'path': '1.2.3.4:/foo',
+                        'metadata': {},
+                        'is_admin_only': False
+                        },
+                        {
+                        'path': '5.6.7.8:/foo',
+                        'metadata': {},
+                        'is_admin_only': True
+                        },
+                    ],
+                    'snapshot_updates':
+                    {
+                        'bc4e3b28-0832-4168-b688-67fdc3e9d408':
+                        {
+                        'provider_location': '/snapshots/foo/bar_1'
+                        },
+                        '2e62b7ea-4e30-445f-bc05-fd523ca62941':
+                        {
+                        'provider_location': '/snapshots/foo/bar_2'
+                        },
+                    },
+                }
+
         """
         raise NotImplementedError()
 
     def migration_cancel(
-            self, context, source_share, destination_share,
-            share_server=None, destination_share_server=None):
+            self, context, source_share, destination_share, source_snapshots,
+            snapshot_mappings, share_server=None,
+            destination_share_server=None):
         """Cancels migration of a given share to another host.
 
         .. note::
@@ -450,6 +500,9 @@ class ShareDriver(object):
         :param source_share: Reference to the original share model.
         :param destination_share: Reference to the share model to be used by
             migrated share.
+        :param source_snapshots: List of snapshots owned by the source share.
+        :param snapshot_mappings: Mapping of source snapshot IDs to
+            destination snapshot models.
         :param share_server: Share server model or None.
         :param destination_share_server: Destination Share server model or
             None.
@@ -457,8 +510,9 @@ class ShareDriver(object):
         raise NotImplementedError()
 
     def migration_get_progress(
-            self, context, source_share, destination_share,
-            share_server=None, destination_share_server=None):
+            self, context, source_share, destination_share, source_snapshots,
+            snapshot_mappings, share_server=None,
+            destination_share_server=None):
         """Obtains progress of migration of a given share to another host.
 
         .. note::
@@ -466,10 +520,14 @@ class ShareDriver(object):
 
         If possible, driver can implement a way to return migration progress
         information.
+
         :param context: The 'context.RequestContext' object for the request.
         :param source_share: Reference to the original share model.
         :param destination_share: Reference to the share model to be used by
             migrated share.
+        :param source_snapshots: List of snapshots owned by the source share.
+        :param snapshot_mappings: Mapping of source snapshot IDs to
+            destination snapshot models.
         :param share_server: Share server model or None.
         :param destination_share_server: Destination Share server model or
             None.

@@ -212,10 +212,13 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
 
         return linux_client
 
-    def _migrate_share(self, share_id, dest_host, status, client=None):
+    def _migrate_share(self, share_id, dest_host, status, force_host_assisted,
+                       client=None):
         client = client or self.shares_admin_v2_client
-        client.migrate_share(share_id, dest_host, writable=False,
-                             preserve_metadata=False, nondisruptive=False)
+        client.migrate_share(
+            share_id, dest_host, writable=False, preserve_metadata=False,
+            nondisruptive=False, preserve_snapshots=False,
+            force_host_assisted_migration=force_host_assisted)
         share = client.wait_for_migration_status(share_id, dest_host, status)
         return share
 

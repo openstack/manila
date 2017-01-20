@@ -550,7 +550,7 @@ class ShareAPITest(test.TestCase):
         share_network = db_utils.create_share_network()
         share_type = {'share_type_id': 'fake_type_id'}
         req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.22')
+                                      use_admin_context=True, version='2.29')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -564,13 +564,18 @@ class ShareAPITest(test.TestCase):
         body = {
             'migration_start': {
                 'host': 'fake_host',
+                'preserve_metadata': True,
+                'preserve_snapshots': True,
+                'writable': True,
+                'nondisruptive': True,
                 'new_share_network_id': 'fake_net_id',
                 'new_share_type_id': 'fake_type_id',
             }
         }
         method = 'migration_start'
 
-        self.mock_object(share_api.API, 'migration_start')
+        self.mock_object(share_api.API, 'migration_start',
+                         mock.Mock(return_value=202))
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
 
         response = getattr(self.controller, method)(req, share['id'], body)
@@ -579,22 +584,32 @@ class ShareAPITest(test.TestCase):
 
         share_api.API.get.assert_called_once_with(context, share['id'])
         share_api.API.migration_start.assert_called_once_with(
-            context, share, 'fake_host', False, True, True, False,
+            context, share, 'fake_host', False, True, True, True, True,
             new_share_network=share_network, new_share_type=share_type)
         db.share_network_get.assert_called_once_with(
             context, 'fake_net_id')
         db.share_type_get.assert_called_once_with(
             context, 'fake_type_id')
 
-    def test_migration_start_has_replicas(self):
+    def test_migration_start_conflict(self):
         share = db_utils.create_share()
         req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
                                       use_admin_context=True)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.api_version_request = api_version.APIVersionRequest('2.22')
+        req.api_version_request = api_version.APIVersionRequest('2.29')
         req.api_version_request.experimental = True
-        body = {'migration_start': {'host': 'fake_host'}}
+
+        body = {
+            'migration_start': {
+                'host': 'fake_host',
+                'preserve_metadata': True,
+                'preserve_snapshots': True,
+                'writable': True,
+                'nondisruptive': True,
+            }
+        }
+
         self.mock_object(share_api.API, 'migration_start',
                          mock.Mock(side_effect=exception.Conflict(err='err')))
 
@@ -602,9 +617,78 @@ class ShareAPITest(test.TestCase):
                           self.controller.migration_start,
                           req, share['id'], body)
 
+    @ddt.data('nondisruptive', 'writable', 'preserve_metadata',
+              'preserve_snapshots', 'host', 'body')
+    def test_migration_start_missing_mandatory(self, param):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True,
+                                      version='2.29')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request.experimental = True
+
+        body = {
+            'migration_start': {
+                'host': 'fake_host',
+                'preserve_metadata': True,
+                'preserve_snapshots': True,
+                'writable': True,
+                'nondisruptive': True,
+            }
+        }
+
+        if param == 'body':
+            body.pop('migration_start')
+        else:
+            body['migration_start'].pop(param)
+
+        method = 'migration_start'
+
+        self.mock_object(share_api.API, 'migration_start')
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(return_value=share))
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          getattr(self.controller, method),
+                          req, 'fake_id', body)
+
+    @ddt.data('nondisruptive', 'writable', 'preserve_metadata',
+              'preserve_snapshots', 'force_host_assisted_migration')
+    def test_migration_start_non_boolean(self, param):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True,
+                                      version='2.29')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request.experimental = True
+
+        body = {
+            'migration_start': {
+                'host': 'fake_host',
+                'preserve_metadata': True,
+                'preserve_snapshots': True,
+                'writable': True,
+                'nondisruptive': True,
+            }
+        }
+
+        body['migration_start'][param] = None
+
+        method = 'migration_start'
+
+        self.mock_object(share_api.API, 'migration_start')
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(return_value=share))
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          getattr(self.controller, method),
+                          req, 'fake_id', body)
+
     def test_migration_start_no_share_id(self):
         req = fakes.HTTPRequest.blank('/shares/%s/action' % 'fake_id',
-                                      use_admin_context=True, version='2.22')
+                                      use_admin_context=True, version='2.29')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -618,32 +702,23 @@ class ShareAPITest(test.TestCase):
                           getattr(self.controller, method),
                           req, 'fake_id', body)
 
-    def test_migration_start_no_host(self):
-        share = db_utils.create_share()
-        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.22')
-        req.method = 'POST'
-        req.headers['content-type'] = 'application/json'
-        req.api_version_request.experimental = True
-
-        body = {'migration_start': {}}
-        method = 'migration_start'
-
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          getattr(self.controller, method),
-                          req, share['id'], body)
-
     def test_migration_start_new_share_network_not_found(self):
         share = db_utils.create_share()
         req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.22')
+                                      use_admin_context=True, version='2.29')
         context = req.environ['manila.context']
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
 
-        body = {'migration_start': {'host': 'fake_host',
-                                    'new_share_network_id': 'nonexistent'}}
+        body = {
+            'migration_start': {
+                'host': 'fake_host',
+                'preserve_metadata': True,
+                'preserve_snapshots': True,
+                'writable': True,
+                'nondisruptive': True,
+                'new_share_network_id': 'nonexistent'}}
 
         self.mock_object(db, 'share_network_get',
                          mock.Mock(side_effect=exception.NotFound()))
@@ -655,14 +730,20 @@ class ShareAPITest(test.TestCase):
     def test_migration_start_new_share_type_not_found(self):
         share = db_utils.create_share()
         req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.22')
+                                      use_admin_context=True, version='2.29')
         context = req.environ['manila.context']
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
 
-        body = {'migration_start': {'host': 'fake_host',
-                                    'new_share_type_id': 'nonexistent'}}
+        body = {
+            'migration_start': {
+                'host': 'fake_host',
+                'preserve_metadata': True,
+                'preserve_snapshots': True,
+                'writable': True,
+                'nondisruptive': True,
+                'new_share_type_id': 'nonexistent'}}
 
         self.mock_object(db, 'share_type_get',
                          mock.Mock(side_effect=exception.NotFound()))
@@ -674,7 +755,7 @@ class ShareAPITest(test.TestCase):
     def test_migration_start_invalid_force_host_assisted_migration(self):
         share = db_utils.create_share()
         req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.22')
+                                      use_admin_context=True, version='2.29')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
@@ -692,7 +773,7 @@ class ShareAPITest(test.TestCase):
             self, parameter):
         share = db_utils.create_share()
         req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.22')
+                                      use_admin_context=True, version='2.29')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True

@@ -1,0 +1,26 @@
+---
+prelude: >
+    The share migration feature was improved to support
+    migrating snapshots where possible and provide a more
+    deterministic user experience.
+features:
+  - Added 'preserve_snapshots' parameter to share migration API.
+upgrade:
+  - All share migration driver-assisted API parameters are
+    now mandatory.
+  - Improvements to the share migration API have been qualified
+    with the driver assisted migration support that exists in the
+    ZFSOnLinux driver. However, this driver does not currently
+    support preserving snapshots on migration.
+  - Snapshot restriction in share migration API has been
+    changed to return error only when parameter
+    force-host-assisted-migration is True.
+deprecations:
+  - Support for the experimental share migration APIs has been
+    dropped for API microversions prior to 2.29.
+fixes:
+  - Added check to validate that host assisted migration cannot
+    be forced while specifying driver assisted migration options.
+  - The share migration API can only be invoked when at least one
+    parameter within (host, share-network, share-type) is expected
+    to be changed.

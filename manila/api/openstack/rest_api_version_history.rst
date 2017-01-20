@@ -133,7 +133,7 @@ user documentation.
 
 2.22
 ----
-  Updated migration_start API with 'preserve-metadata', 'writable',
+  Updated migration_start API with 'preserve_metadata', 'writable',
   'nondisruptive' and 'new_share_network_id' parameters, renamed
   'force_host_copy' to 'force_host_assisted_migration', removed 'notify'
   parameter and removed previous migrate_share API support. Updated
@@ -172,3 +172,10 @@ user documentation.
   values for the 'access_rules_status' field of shares, they have
   been collapsed into the transitional state 'syncing'. Access rule changes
   can be made independent of a share's 'access_rules_status'.
+
+2.29
+----
+  Updated migration_start API adding mandatory parameter 'preserve_snapshots'
+  and changed 'preserve_metadata', 'writable', 'nondisruptive' to be mandatory
+  as well. All previous migration_start APIs prior to this microversion are now
+  unsupported.

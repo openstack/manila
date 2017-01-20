@@ -36,7 +36,8 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
     1) Driver-assisted migration: force_host_assisted_migration, nondisruptive,
     writable and preserve-metadata are False.
     2) Host-assisted migration: force_host_assisted_migration is True,
-    nondisruptive, writable and preserve-metadata are False.
+    nondisruptive, writable, preserve-metadata and preserve-snapshots are
+    False.
     3) 2-phase migration of both Host-assisted and Driver-assisted.
     4) Cancelling migration past first phase.
     5) Changing driver modes through migration.
@@ -75,7 +76,7 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
                 variation='opposite_driver_modes'))
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
-    @base.skip_if_microversion_lt("2.22")
+    @base.skip_if_microversion_lt("2.29")
     @ddt.data(True, False)
     def test_migration_cancel(self, force_host_assisted):
 
@@ -112,7 +113,7 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
             complete=False)
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
-    @base.skip_if_microversion_lt("2.22")
+    @base.skip_if_microversion_lt("2.29")
     @ddt.data(True, False)
     def test_migration_opposite_driver_modes(self, force_host_assisted):
 
@@ -172,7 +173,7 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
             share_type_id=new_share_type_id)
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
-    @base.skip_if_microversion_lt("2.22")
+    @base.skip_if_microversion_lt("2.29")
     @ddt.data(True, False)
     def test_migration_2phase(self, force_host_assisted):
 

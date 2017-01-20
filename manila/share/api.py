@@ -226,7 +226,7 @@ class API(base.Base):
             'is_public': is_public,
             'consistency_group_id': consistency_group_id,
         }
-        options.update(self._get_share_attributes_from_share_type(share_type))
+        options.update(self.get_share_attributes_from_share_type(share_type))
 
         if cgsnapshot_member:
             options['source_cgsnapshot_member_id'] = cgsnapshot_member['id']
@@ -259,7 +259,7 @@ class API(base.Base):
 
         return share
 
-    def _get_share_attributes_from_share_type(self, share_type):
+    def get_share_attributes_from_share_type(self, share_type):
         """Determine share attributes from the share type.
 
         The share type can change any time after shares of that type are
@@ -579,7 +579,7 @@ class API(base.Base):
             'scheduled_at': timeutils.utcnow(),
         })
         share_data.update(
-            self._get_share_attributes_from_share_type(share_type))
+            self.get_share_attributes_from_share_type(share_type))
 
         LOG.debug("Manage: Found shares %s.", len(shares))
 
@@ -1049,9 +1049,19 @@ class API(base.Base):
 
     def migration_start(
             self, context, share, dest_host, force_host_assisted_migration,
-            preserve_metadata=True, writable=True, nondisruptive=False,
+            preserve_metadata, writable, nondisruptive, preserve_snapshots,
             new_share_network=None, new_share_type=None):
         """Migrates share to a new host."""
+
+        if force_host_assisted_migration and (
+                preserve_metadata or writable or nondisruptive or
+                preserve_snapshots):
+            msg = _('Invalid parameter combination. Cannot set parameters '
+                    '"nondisruptive", "writable", "preserve_snapshots" or '
+                    '"preserve_metadata" to True when enabling the '
+                    '"force_host_assisted_migration" option.')
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
 
         share_instance = share.instance
 
@@ -1071,29 +1081,31 @@ class API(base.Base):
                 'instance_status': share_instance['status']}
             raise exception.InvalidShare(reason=msg)
 
+        # Access rules status must not be error
+        if share_instance['access_rules_status'] == constants.STATUS_ERROR:
+            msg = _('Share instance %(instance_id)s access rules status must '
+                    'not be in %(error)s when attempting to start a '
+                    'migration.') % {
+                'instance_id': share_instance['id'],
+                'error': constants.STATUS_ERROR}
+            raise exception.InvalidShare(reason=msg)
+
         self._check_is_share_busy(share)
 
-        # Make sure the destination host is different than the current one
-        if dest_host == share_instance['host']:
-            msg = _('Destination host %(dest_host)s must be different '
-                    'than the current host %(src_host)s.') % {
-                'dest_host': dest_host,
-                'src_host': share_instance['host']}
-            raise exception.InvalidHost(reason=msg)
-
-        # We only handle shares without snapshots for now
-        snaps = self.db.share_snapshot_get_all_for_share(context, share['id'])
-        if snaps:
-            msg = _("Share %s must not have snapshots.") % share['id']
-            raise exception.InvalidShare(reason=msg)
+        if force_host_assisted_migration:
+            # We only handle shares without snapshots for
+            # host-assisted migration
+            snaps = self.db.share_snapshot_get_all_for_share(context,
+                                                             share['id'])
+            if snaps:
+                msg = _("Share %s must not have snapshots when using "
+                        "host-assisted migration.") % share['id']
+                raise exception.Conflict(err=msg)
 
         dest_host_host = share_utils.extract_host(dest_host)
 
         # Make sure the host is in the list of available hosts
         utils.validate_service_host(context, dest_host_host)
-
-        service = self.db.service_get_by_args(
-            context, dest_host_host, 'manila-share')
 
         if new_share_type:
             share_type = new_share_type
@@ -1132,6 +1144,30 @@ class API(base.Base):
 
             new_share_network_id = None
 
+        # Make sure the destination is different than the source
+        if (new_share_network_id == share_instance['share_network_id'] and
+                new_share_type_id == share_instance['share_type_id'] and
+                dest_host == share_instance['host']):
+            msg = _LI("Destination host (%(dest_host)s), share network "
+                      "(%(dest_sn)s) or share type (%(dest_st)s) are the same "
+                      "as the current host's '%(src_host)s', '%(src_sn)s' and "
+                      "'%(src_st)s' respectively. Nothing to be done.") % {
+                'dest_host': dest_host,
+                'dest_sn': new_share_network_id,
+                'dest_st': new_share_type_id,
+                'src_host': share_instance['host'],
+                'src_sn': share_instance['share_network_id'],
+                'src_st': share_instance['share_type_id'],
+            }
+            LOG.info(msg)
+            self.db.share_update(
+                context, share['id'],
+                {'task_state': constants.TASK_STATE_MIGRATION_SUCCESS})
+            return 200
+
+        service = self.db.service_get_by_args(
+            context, dest_host_host, 'manila-share')
+
         request_spec = self._get_request_spec_dict(
             share,
             share_type,
@@ -1147,8 +1183,10 @@ class API(base.Base):
 
         self.scheduler_rpcapi.migrate_share_to_host(
             context, share['id'], dest_host, force_host_assisted_migration,
-            preserve_metadata, writable, nondisruptive, new_share_network_id,
-            new_share_type_id, request_spec)
+            preserve_metadata, writable, nondisruptive, preserve_snapshots,
+            new_share_network_id, new_share_type_id, request_spec)
+
+        return 202
 
     def migration_complete(self, context, share):
 

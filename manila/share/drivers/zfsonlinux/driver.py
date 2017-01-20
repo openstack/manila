@@ -1372,8 +1372,9 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
 
     @ensure_share_server_not_provided
     def migration_start(
-            self, context, source_share, destination_share,
-            share_server=None, destination_share_server=None):
+            self, context, source_share, destination_share, source_snapshots,
+            snapshot_mappings, share_server=None,
+            destination_share_server=None):
         """Is called to start share migration."""
 
         src_dataset_name = self.private_storage.get(
@@ -1431,8 +1432,9 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
 
     @ensure_share_server_not_provided
     def migration_continue(
-            self, context, source_share, destination_share,
-            share_server=None, destination_share_server=None):
+            self, context, source_share, destination_share, source_snapshots,
+            snapshot_mappings, share_server=None,
+            destination_share_server=None):
         """Is called in source share's backend to continue migration."""
 
         snapshot_tag = self.private_storage.get(
@@ -1456,8 +1458,9 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
 
     @ensure_share_server_not_provided
     def migration_complete(
-            self, context, source_share, destination_share,
-            share_server=None, destination_share_server=None):
+            self, context, source_share, destination_share, source_snapshots,
+            snapshot_mappings, share_server=None,
+            destination_share_server=None):
         """Is called to perform 2nd phase of driver migration of a given share.
 
         """
@@ -1490,12 +1493,13 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
         # Destroy src share and temporary migration snapshot on src (this) host
         self.delete_share(context, source_share)
 
-        return export_locations
+        return {'export_locations': export_locations}
 
     @ensure_share_server_not_provided
     def migration_cancel(
-            self, context, source_share, destination_share,
-            share_server=None, destination_share_server=None):
+            self, context, source_share, destination_share, source_snapshots,
+            snapshot_mappings, share_server=None,
+            destination_share_server=None):
         """Is called to cancel driver migration."""
 
         src_dataset_name = self.private_storage.get(

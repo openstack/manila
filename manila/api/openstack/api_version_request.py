@@ -90,13 +90,18 @@ REST_API_VERSION_HISTORY = """
              shares (share_instances) with 'syncing'. Share action API
              'access_allow' now accepts rules even when a share or any of
              its instances may have an access_rules_status set to 'error'.
+    * 2.29 - Updated migration_start API adding mandatory parameter
+             'preserve_snapshots' and changed 'preserve_metadata', 'writable',
+             'nondisruptive' to be mandatory as well. All previous
+             migration_start APIs prior to this microversion are now
+             unsupported.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.28"
+_MAX_API_VERSION = "2.29"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 
