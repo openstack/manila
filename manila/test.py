@@ -35,6 +35,7 @@ from oslo_utils import uuidutils
 import oslotest.base as base_test
 
 from manila.api.openstack import api_version_request as api_version
+from manila import coordination
 from manila.db import migration
 from manila.db.sqlalchemy import api as db_api
 from manila.db.sqlalchemy import models as db_models
@@ -144,6 +145,12 @@ class TestCase(base_test.BaseTestCase):
         mock.patch('keystoneauth1.loading.load_auth_from_conf_options').start()
 
         fake_notifier.stub_notifier(self)
+
+        # Locks must be cleaned up after tests
+        CONF.set_override('backend_url', 'file://' + lock_path,
+                          group='coordination')
+        coordination.LOCK_COORDINATOR.start()
+        self.addCleanup(coordination.LOCK_COORDINATOR.stop)
 
     def tearDown(self):
         """Runs after each test method to tear down test environment."""

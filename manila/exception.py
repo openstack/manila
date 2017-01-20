@@ -828,3 +828,12 @@ class HSPItemNotFoundException(ShareBackendException):
 
 class NexentaException(ShareBackendException):
     message = _("Exception due to Nexenta failure. %(reason)s")
+
+
+# Tooz locking
+class LockCreationFailed(ManilaException):
+    message = _('Unable to create lock. Coordination backend not started.')
+
+
+class LockingFailed(ManilaException):
+    message = _('Lock acquisition failed.')

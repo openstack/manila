@@ -27,6 +27,7 @@ import six
 
 from manila.common import constants
 from manila import context
+from manila import coordination
 from manila.data import rpcapi as data_rpc
 from manila import db
 from manila.db.sqlalchemy import models
@@ -65,7 +66,7 @@ class LockedOperationsTestCase(test.TestCase):
         self.manager = self.FakeManager()
         self.fake_context = test_fakes.FakeRequestContext
         self.lock_call = self.mock_object(
-            utils, 'synchronized', mock.Mock(return_value=lambda f: f))
+            coordination, 'synchronized', mock.Mock(return_value=lambda f: f))
 
     @ddt.data({'id': 'FAKE_REPLICA_ID'}, 'FAKE_REPLICA_ID')
     @ddt.unpack
@@ -94,7 +95,7 @@ class ShareManagerTestCase(test.TestCase):
         mock.patch.object(
             lockutils, 'lock', fake_utils.get_fake_lock_context())
         self.synchronized_lock_decorator_call = self.mock_object(
-            utils, 'synchronized', mock.Mock(return_value=lambda f: f))
+            coordination, 'synchronized', mock.Mock(return_value=lambda f: f))
 
     def test_share_manager_instance(self):
         fake_service_name = "fake_service"
