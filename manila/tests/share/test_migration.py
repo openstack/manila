@@ -22,6 +22,7 @@ from manila.common import constants
 from manila import context
 from manila import db
 from manila import exception
+from manila.share import access as access_helper
 from manila.share import api as share_api
 from manila.share import migration
 from manila import test
@@ -39,9 +40,10 @@ class ShareMigrationHelperTestCase(test.TestCase):
         self.share_instance = db_utils.create_share_instance(
             share_id=self.share['id'],
             share_network_id='fake_network_id')
+        self.access_helper = access_helper.ShareInstanceAccess(db, None)
         self.context = context.get_admin_context()
         self.helper = migration.ShareMigrationHelper(
-            self.context, db, self.share)
+            self.context, db, self.share, self.access_helper)
 
     def test_delete_instance_and_wait(self):
 
@@ -260,38 +262,31 @@ class ShareMigrationHelperTestCase(test.TestCase):
         server = db_utils.create_share_server(share_id=self.share['id'])
 
         # mocks
-        share_driver = mock.Mock()
-        self.mock_object(share_driver, 'update_access')
-
-        self.mock_object(db, 'share_access_get_all_for_instance',
-                         mock.Mock(return_value=[access]))
+        self.mock_object(self.access_helper, 'update_access_rules')
+        get_and_update_call = self.mock_object(
+            self.access_helper, 'get_and_update_share_instance_access_rules',
+            mock.Mock(return_value=[access]))
 
         # run
-        self.helper.revert_access_rules(share_instance, server, share_driver)
+        self.helper.revert_access_rules(share_instance, server)
 
         # asserts
-        db.share_access_get_all_for_instance.assert_called_once_with(
-            self.context, share_instance['id'])
-        share_driver.update_access.assert_called_once_with(
-            self.context, share_instance, [access], add_rules=[],
-            delete_rules=[], share_server=server)
+        get_and_update_call.assert_called_once_with(
+            self.context, share_instance_id=share_instance['id'],
+            updates={'state': constants.ACCESS_STATE_QUEUED_TO_APPLY})
+        self.access_helper.update_access_rules.assert_called_once_with(
+            self.context, share_instance['id'], share_server=server)
 
     def test_apply_new_access_rules(self):
 
         new_share_instance = db_utils.create_share_instance(
             share_id=self.share['id'], status=constants.STATUS_AVAILABLE,
             access_rules_status='active')
-
-        access = db_utils.create_access(share_id=self.share['id'],
-                                        access_to='fake_ip',
-                                        access_level='rw')
+        db_utils.create_access(
+            share_id=self.share['id'], access_to='fake_ip', access_level='rw')
 
         # mocks
-        self.mock_object(db, 'share_instance_get',
-                         mock.Mock(return_value=new_share_instance))
         self.mock_object(db, 'share_instance_access_copy')
-        self.mock_object(db, 'share_access_get_all_for_instance',
-                         mock.Mock(return_value=[access]))
         self.mock_object(share_api.API, 'allow_access_to_instance')
         self.mock_object(utils, 'wait_for_access_update')
 
@@ -299,14 +294,10 @@ class ShareMigrationHelperTestCase(test.TestCase):
         self.helper.apply_new_access_rules(new_share_instance)
 
         # asserts
-        db.share_instance_get.assert_called_once_with(
-            self.context, new_share_instance['id'], with_share_data=True)
         db.share_instance_access_copy(self.context, self.share['id'],
                                       new_share_instance['id'])
-        db.share_access_get_all_for_instance.assert_called_once_with(
-            self.context, new_share_instance['id'])
         share_api.API.allow_access_to_instance.assert_called_with(
-            self.context, new_share_instance, [access])
+            self.context, new_share_instance)
         utils.wait_for_access_update.assert_called_with(
             self.context, db, new_share_instance,
             self.helper.migration_wait_access_rules_timeout)
@@ -335,7 +326,6 @@ class ShareMigrationHelperTestCase(test.TestCase):
 
         # mocks
         server = db_utils.create_share_server()
-        share_driver = mock.Mock()
         self.mock_object(self.helper, 'revert_access_rules',
                          mock.Mock(side_effect=exc))
         self.mock_object(self.helper.db, 'share_instance_update')
@@ -343,12 +333,11 @@ class ShareMigrationHelperTestCase(test.TestCase):
         self.mock_object(migration.LOG, 'warning')
 
         # run
-        self.helper.cleanup_access_rules(self.share_instance, server,
-                                         share_driver)
+        self.helper.cleanup_access_rules(self.share_instance, server)
 
         # asserts
         self.helper.revert_access_rules.assert_called_once_with(
-            self.share_instance, server, share_driver)
+            self.share_instance, server)
         self.helper.db.share_instance_update.assert_called_once_with(
             self.context, self.share_instance['id'],
             {'status': constants.STATUS_INACTIVE})

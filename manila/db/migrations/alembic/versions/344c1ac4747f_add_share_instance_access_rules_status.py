@@ -42,14 +42,6 @@ upgrade_data_mapping = {
     'error': 'error',
 }
 
-downgrade_data_mapping = {
-    'active': 'active',
-    # NOTE(u_glide): We cannot determine is it applied rule or not in Manila,
-    # so administrator should manually handle such access rules.
-    'out_of_sync': 'error',
-    'error': 'error',
-}
-
 
 def upgrade():
     """Transform individual access rules states to 'access_rules_status'.
@@ -120,7 +112,12 @@ def downgrade():
 
     for instance in connection.execute(instances_query):
 
-        state = downgrade_data_mapping[instance['access_rules_status']]
+        # NOTE(u_glide): We cannot determine if a rule is applied or not in
+        # Manila, so administrator should manually handle such access rules.
+        if instance['access_rules_status'] == 'active':
+            state = 'active'
+        else:
+            state = 'error'
 
         op.execute(
             instance_access_table.update().where(

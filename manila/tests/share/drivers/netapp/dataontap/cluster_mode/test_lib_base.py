@@ -2946,7 +2946,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          actual_replica_2['replica_state'])
         self.assertEqual('fake_export_location',
                          actual_replica_2['export_locations'])
-        self.assertEqual(constants.STATUS_OUT_OF_SYNC,
+        self.assertEqual(constants.SHARE_INSTANCE_RULES_SYNCING,
                          actual_replica_2['access_rules_status'])
 
     def test_convert_destination_replica_to_independent_with_access_rules(
@@ -2982,7 +2982,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          replica['export_locations'])
         self.assertEqual(constants.REPLICA_STATE_ACTIVE,
                          replica['replica_state'])
-        self.assertEqual(constants.STATUS_OUT_OF_SYNC,
+        self.assertEqual(constants.SHARE_INSTANCE_RULES_SYNCING,
                          replica['access_rules_status'])
 
     def test_convert_destination_replica_to_independent_failed_access_rules(

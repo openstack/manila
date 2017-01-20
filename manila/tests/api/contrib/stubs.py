@@ -52,6 +52,7 @@ def stub_share(id, **kwargs):
         'availability_zone': 'fakeaz',
         'share_network_id': None,
         'share_server_id': 'fake_share_server_id',
+        'access_rules_status': 'active',
     }
     if 'instance' in kwargs:
         share_instance.update(kwargs.pop('instance'))
@@ -91,6 +92,8 @@ def stub_share(id, **kwargs):
         fake_share.is_busy = True
     else:
         fake_share.is_busy = False
+
+    fake_share.instances = [fake_share.instance]
 
     return fake_share
 

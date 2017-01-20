@@ -15,6 +15,7 @@
 
 import copy
 import datetime
+import itertools
 
 import ddt
 import mock
@@ -1174,6 +1175,24 @@ class ShareAPITest(test.TestCase):
 
         self.assertEqual(expected, res_dict)
 
+    @ddt.data(('2.10', True), ('2.27', True), ('2.28', False))
+    @ddt.unpack
+    def test_share_show_access_rules_status_translated(self, version,
+                                                       translated):
+        share = db_utils.create_share(
+            access_rules_status=constants.SHARE_INSTANCE_RULES_SYNCING,
+            status=constants.STATUS_AVAILABLE)
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+        req = fakes.HTTPRequest.blank(
+            '/shares/%s' % share['id'], version=version)
+
+        res_dict = self.controller.show(req, share['id'])
+
+        expected = (constants.STATUS_OUT_OF_SYNC if translated else
+                    constants.SHARE_INSTANCE_RULES_SYNCING)
+
+        self.assertEqual(expected, res_dict['share']['access_rules_status'])
+
     def test_share_delete(self):
         req = fakes.HTTPRequest.blank('/shares/1')
         resp = self.controller.delete(req, 1)
@@ -1626,13 +1645,14 @@ class ShareActionsTest(test.TestCase):
         self.mock_object(self.controller._access_view_builder, 'view',
                          mock.Mock(return_value={'access':
                                                  {'fake': 'fake'}}))
-
         id = 'fake_share_id'
         body = {'allow_access': access}
         expected = {'access': {'fake': 'fake'}}
         req = fakes.HTTPRequest.blank(
             '/v2/tenant1/shares/%s/action' % id, version="2.7")
+
         res = self.controller.allow_access(req, id, body)
+
         self.assertEqual(expected, res)
 
     @ddt.data(
@@ -1689,6 +1709,124 @@ class ShareActionsTest(test.TestCase):
             expected = {'access': {'fake': 'fake'}}
             res = self.controller.allow_access(req, id, body)
             self.assertEqual(expected, res)
+
+    @ddt.data('2.1', '2.27')
+    def test_allow_access_access_rules_status_is_in_error(self, version):
+        share = db_utils.create_share(
+            access_rules_status=constants.SHARE_INSTANCE_RULES_ERROR)
+
+        req = fakes.HTTPRequest.blank(
+            '/v2/shares/%s/action' % share['id'], version=version)
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+        self.mock_object(share_api.API, 'allow_access')
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.7')):
+            key = 'allow_access'
+            method = self.controller.allow_access
+        else:
+            key = 'os-allow_access'
+            method = self.controller.allow_access_legacy
+
+        body = {
+            key: {
+                'access_type': 'user',
+                'access_to': 'crimsontide',
+                'access_level': 'rw',
+            }
+        }
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          method, req, share['id'], body)
+        self.assertFalse(share_api.API.allow_access.called)
+
+    @ddt.data(*itertools.product(
+        ('2.1', '2.27'), (constants.SHARE_INSTANCE_RULES_SYNCING,
+                          constants.STATUS_ACTIVE)))
+    @ddt.unpack
+    def test_allow_access_no_transitional_states(self, version, status):
+        share = db_utils.create_share(access_rules_status=status,
+                                      status=constants.STATUS_AVAILABLE)
+        req = fakes.HTTPRequest.blank(
+            '/v2/shares/%s/action' % share['id'], version=version)
+        ctxt = req.environ['manila.context']
+        access = {
+            'access_type': 'user',
+            'access_to': 'clemsontigers',
+            'access_level': 'rw',
+        }
+        expected_mapping = {
+            constants.SHARE_INSTANCE_RULES_SYNCING: constants.STATUS_NEW,
+            constants.SHARE_INSTANCE_RULES_ERROR:
+                constants.ACCESS_STATE_ERROR,
+            constants.STATUS_ACTIVE: constants.ACCESS_STATE_ACTIVE,
+        }
+        share = db.share_get(ctxt, share['id'])
+        updated_access = db_utils.create_access(share_id=share['id'], **access)
+        expected_access = access
+        expected_access.update(
+            {
+                'id': updated_access['id'],
+                'state': expected_mapping[share['access_rules_status']],
+                'share_id': updated_access['share_id'],
+            })
+
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.7')):
+            key = 'allow_access'
+            method = self.controller.allow_access
+        else:
+            key = 'os-allow_access'
+            method = self.controller.allow_access_legacy
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.13')):
+            expected_access['access_key'] = None
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+        self.mock_object(share_api.API, 'allow_access',
+                         mock.Mock(return_value=updated_access))
+        body = {key: access}
+
+        access = method(req, share['id'], body)
+
+        self.assertEqual(expected_access, access['access'])
+        share_api.API.allow_access.assert_called_once_with(
+            req.environ['manila.context'], share, 'user',
+            'clemsontigers', 'rw')
+
+    @ddt.data(*itertools.product(
+        set(['2.28', api_version._MAX_API_VERSION]),
+        (constants.SHARE_INSTANCE_RULES_ERROR,
+         constants.SHARE_INSTANCE_RULES_SYNCING, constants.STATUS_ACTIVE)))
+    @ddt.unpack
+    def test_allow_access_access_rules_status_dont_care(self, version, status):
+        access = {
+            'access_type': 'user',
+            'access_to': 'clemsontigers',
+            'access_level': 'rw',
+        }
+        updated_access = db_utils.create_access(**access)
+        expected_access = access
+        expected_access.update(
+            {
+                'id': updated_access['id'],
+                'state': updated_access['state'],
+                'share_id': updated_access['share_id'],
+                'access_key': None,
+            })
+
+        share = db_utils.create_share(access_rules_status=status)
+        req = fakes.HTTPRequest.blank(
+            '/v2/shares/%s/action' % share['id'], version=version)
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+        self.mock_object(share_api.API, 'allow_access',
+                         mock.Mock(return_value=updated_access))
+        body = {'allow_access': access}
+
+        access = self.controller.allow_access(req, share['id'], body)
+
+        self.assertEqual(expected_access, access['access'])
+        share_api.API.allow_access.assert_called_once_with(
+            req.environ['manila.context'], share, 'user',
+            'clemsontigers', 'rw')
 
     def test_deny_access(self):
         def _stub_deny_access(*args, **kwargs):

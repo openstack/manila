@@ -13,18 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-STATUS_NEW = 'new'
+# SHARE AND GENERAL STATUSES
 STATUS_CREATING = 'creating'
 STATUS_DELETING = 'deleting'
 STATUS_DELETED = 'deleted'
 STATUS_ERROR = 'error'
 STATUS_ERROR_DELETING = 'error_deleting'
 STATUS_AVAILABLE = 'available'
-STATUS_ACTIVE = 'active'
 STATUS_INACTIVE = 'inactive'
-STATUS_OUT_OF_SYNC = 'out_of_sync'
-STATUS_UPDATING = 'updating'
-STATUS_UPDATING_MULTIPLE = 'updating_multiple'
 STATUS_MANAGING = 'manage_starting'
 STATUS_MANAGE_ERROR = 'manage_error'
 STATUS_UNMANAGING = 'unmanage_starting'
@@ -43,6 +39,23 @@ STATUS_REPLICATION_CHANGE = 'replication_change'
 STATUS_RESTORING = 'restoring'
 STATUS_REVERTING = 'reverting'
 STATUS_REVERTING_ERROR = 'reverting_error'
+
+# Access rule states
+ACCESS_STATE_QUEUED_TO_APPLY = 'queued_to_apply'
+ACCESS_STATE_QUEUED_TO_DENY = 'queued_to_deny'
+ACCESS_STATE_APPLYING = 'applying'
+ACCESS_STATE_DENYING = 'denying'
+ACCESS_STATE_ACTIVE = 'active'
+ACCESS_STATE_ERROR = 'error'
+
+# Share instance "access_rules_status" field values
+SHARE_INSTANCE_RULES_SYNCING = 'syncing'
+SHARE_INSTANCE_RULES_ERROR = 'error'
+
+# States/statuses for multiple resources
+STATUS_NEW = 'new'
+STATUS_OUT_OF_SYNC = 'out_of_sync'
+STATUS_ACTIVE = 'active'
 
 TASK_STATE_MIGRATION_STARTING = 'migration_starting'
 TASK_STATE_MIGRATION_IN_PROGRESS = 'migration_in_progress'
@@ -87,9 +100,8 @@ TRANSITIONAL_STATUSES = (
     STATUS_RESTORING, STATUS_REVERTING,
 )
 
-UPDATING_RULES_STATUSES = (
-    STATUS_UPDATING,
-    STATUS_UPDATING_MULTIPLE,
+INVALID_SHARE_INSTANCE_STATUSES_FOR_ACCESS_RULE_UPDATES = (
+    TRANSITIONAL_STATUSES + (STATUS_ERROR,)
 )
 
 SUPPORTED_SHARE_PROTOCOLS = (

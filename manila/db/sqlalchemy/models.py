@@ -364,17 +364,13 @@ class ShareInstance(BASE, ManilaBase):
 
     ACCESS_STATUS_PRIORITIES = {
         constants.STATUS_ACTIVE: 0,
-        constants.STATUS_OUT_OF_SYNC: 1,
-        constants.STATUS_UPDATING: 2,
-        constants.STATUS_UPDATING_MULTIPLE: 3,
-        constants.STATUS_ERROR: 4,
+        constants.SHARE_INSTANCE_RULES_SYNCING: 1,
+        constants.SHARE_INSTANCE_RULES_ERROR: 2,
     }
 
     access_rules_status = Column(Enum(constants.STATUS_ACTIVE,
-                                      constants.STATUS_OUT_OF_SYNC,
-                                      constants.STATUS_UPDATING,
-                                      constants.STATUS_UPDATING_MULTIPLE,
-                                      constants.STATUS_ERROR),
+                                      constants.SHARE_INSTANCE_RULES_SYNCING,
+                                      constants.SHARE_INSTANCE_RULES_ERROR),
                                  default=constants.STATUS_ACTIVE)
 
     scheduled_at = Column(DateTime)
@@ -546,6 +542,28 @@ class ShareAccessMapping(BASE, ManilaBase):
     access_level = Column(Enum(*constants.ACCESS_LEVELS),
                           default=constants.ACCESS_LEVEL_RW)
 
+    @property
+    def state(self):
+        """Get the aggregated 'state' from all the instance mapping states.
+
+        An access rule is supposed to be truly 'active' when it has been
+        applied across all of the share instances of the parent share object.
+        """
+        state = None
+        if len(self.instance_mappings) > 0:
+            order = (constants.ACCESS_STATE_ERROR,
+                     constants.ACCESS_STATE_DENYING,
+                     constants.ACCESS_STATE_QUEUED_TO_DENY,
+                     constants.ACCESS_STATE_QUEUED_TO_APPLY,
+                     constants.ACCESS_STATE_APPLYING,
+                     constants.ACCESS_STATE_ACTIVE)
+
+            sorted_instance_mappings = sorted(
+                self.instance_mappings, key=lambda x: order.index(x['state']))
+
+            state = sorted_instance_mappings[0].state
+        return state
+
     instance_mappings = orm.relationship(
         "ShareInstanceAccessMapping",
         lazy='immediate',
@@ -557,28 +575,23 @@ class ShareAccessMapping(BASE, ManilaBase):
         )
     )
 
-    @property
-    def state(self):
-        instances = [im.instance for im in self.instance_mappings]
-        access_rules_status = get_access_rules_status(instances)
-
-        if access_rules_status in (
-                constants.STATUS_OUT_OF_SYNC,
-                constants.STATUS_UPDATING,
-                constants.STATUS_UPDATING_MULTIPLE):
-            return constants.STATUS_NEW
-        else:
-            return access_rules_status
-
 
 class ShareInstanceAccessMapping(BASE, ManilaBase):
     """Represents access to individual share instances."""
 
     __tablename__ = 'share_instance_access_map'
+    _proxified_properties = ('share_id', 'access_type', 'access_key',
+                             'access_to', 'access_level')
+
+    def set_share_access_data(self, share_access):
+        for share_access_attr in self._proxified_properties:
+            setattr(self, share_access_attr, share_access[share_access_attr])
+
     id = Column(String(36), primary_key=True)
     deleted = Column(String(36), default='False')
     share_instance_id = Column(String(36), ForeignKey('share_instances.id'))
     access_id = Column(String(36), ForeignKey('share_access_map.id'))
+    state = Column(String(255), default=constants.ACCESS_STATE_QUEUED_TO_APPLY)
 
     instance = orm.relationship(
         "ShareInstance",
@@ -1019,7 +1032,7 @@ def get_access_rules_status(instances):
                 share_access_status):
             share_access_status = instance_access_status
 
-        if share_access_status == constants.STATUS_ERROR:
+        if share_access_status == constants.SHARE_INSTANCE_RULES_ERROR:
             break
 
     return share_access_status

@@ -1086,7 +1086,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                 'id': r['id'],
                 # NOTE(vponomaryov): access rules will be updated in next
                 # 'sync' operation.
-                'access_rules_status': constants.STATUS_OUT_OF_SYNC,
+                'access_rules_status': constants.SHARE_INSTANCE_RULES_SYNCING,
             }
             for r in replica_list
         }

@@ -249,24 +249,26 @@ class CephFSNativeDriverTestCase(test.TestCase):
 
     def test_update_access_add_rm(self):
         alice = {
-            'id': 'accessid1',
+            'id': 'instance_mapping_id1',
+            'access_id': 'accessid1',
             'access_level': 'rw',
             'access_type': 'cephx',
             'access_to': 'alice'
         }
         bob = {
-            'id': 'accessid2',
+            'id': 'instance_mapping_id2',
+            'access_id': 'accessid2',
             'access_level': 'rw',
             'access_type': 'cephx',
             'access_to': 'bob'
         }
 
-        access_keys = self._driver.update_access(self._context, self._share,
-                                                 access_rules=[alice],
-                                                 add_rules=[alice],
-                                                 delete_rules=[bob])
+        access_updates = self._driver.update_access(
+            self._context, self._share, access_rules=[alice],
+            add_rules=[alice], delete_rules=[bob])
 
-        self.assertEqual({'accessid1': 'abc123'}, access_keys)
+        self.assertEqual(
+            {'accessid1': {'access_key': 'abc123'}}, access_updates)
         self._driver._volume_client.authorize.assert_called_once_with(
             self._driver._share_path(self._share),
             "alice",
@@ -279,19 +281,21 @@ class CephFSNativeDriverTestCase(test.TestCase):
     @ddt.data(None, 1)
     def test_update_access_all(self, volume_client_version):
         alice = {
-            'id': 'accessid1',
+            'id': 'instance_mapping_id1',
+            'access_id': 'accessid1',
             'access_level': 'rw',
             'access_type': 'cephx',
             'access_to': 'alice'
         }
         self._driver.volume_client.version = volume_client_version
 
-        access_keys = self._driver.update_access(self._context, self._share,
-                                                 access_rules=[alice],
-                                                 add_rules=[],
-                                                 delete_rules=[])
+        access_updates = self._driver.update_access(self._context, self._share,
+                                                    access_rules=[alice],
+                                                    add_rules=[],
+                                                    delete_rules=[])
 
-        self.assertEqual({'accessid1': 'abc123'}, access_keys)
+        self.assertEqual(
+            {'accessid1': {'access_key': 'abc123'}}, access_updates)
         if volume_client_version:
             (self._driver._volume_client.get_authorized_ids.
              assert_called_once_with(self._driver._share_path(self._share)))

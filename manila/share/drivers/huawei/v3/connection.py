@@ -1810,8 +1810,9 @@ class V3StorageConnection(driver.HuaweiBase):
             'replica_state': common_constants.REPLICA_STATE_ACTIVE,
         }
         new_active_update['access_rules_status'] = (
-            common_constants.STATUS_ACTIVE if updated_new_active_access
-            else common_constants.STATUS_OUT_OF_SYNC)
+            common_constants.STATUS_ACTIVE
+            if updated_new_active_access
+            else common_constants.SHARE_INSTANCE_RULES_SYNCING)
 
         # get replica state for new secondary after switch over
         replica_state = self.replica_mgr.get_replica_state(replica_pair_id)
@@ -1821,7 +1822,8 @@ class V3StorageConnection(driver.HuaweiBase):
             'replica_state': replica_state,
         }
         old_active_update['access_rules_status'] = (
-            common_constants.STATUS_OUT_OF_SYNC if cleared_old_active_access
+            common_constants.SHARE_INSTANCE_RULES_SYNCING
+            if cleared_old_active_access
             else common_constants.STATUS_ACTIVE)
 
         return [new_active_update, old_active_update]

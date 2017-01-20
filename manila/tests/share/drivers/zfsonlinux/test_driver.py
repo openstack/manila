@@ -1738,13 +1738,15 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             'fake_context', replica_list, replica, access_rules)
 
         expected = [
-            {'access_rules_status': zfs_driver.constants.STATUS_OUT_OF_SYNC,
+            {'access_rules_status':
+                zfs_driver.constants.SHARE_INSTANCE_RULES_SYNCING,
              'id': 'fake_active_replica_id',
              'replica_state': zfs_driver.constants.REPLICA_STATE_IN_SYNC},
             {'access_rules_status': zfs_driver.constants.STATUS_ACTIVE,
              'id': 'fake_first_replica_id',
              'replica_state': zfs_driver.constants.REPLICA_STATE_ACTIVE},
-            {'access_rules_status': zfs_driver.constants.STATUS_OUT_OF_SYNC,
+            {'access_rules_status':
+                zfs_driver.constants.SHARE_INSTANCE_RULES_SYNCING,
              'id': 'fake_second_replica_id',
              'replica_state': zfs_driver.constants.REPLICA_STATE_OUT_OF_SYNC},
         ]
@@ -1838,15 +1840,18 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             'fake_context', replica_list, replica, access_rules)
 
         expected = [
-            {'access_rules_status': zfs_driver.constants.STATUS_OUT_OF_SYNC,
+            {'access_rules_status':
+                zfs_driver.constants.SHARE_INSTANCE_RULES_SYNCING,
              'id': 'fake_active_replica_id',
              'replica_state': zfs_driver.constants.REPLICA_STATE_OUT_OF_SYNC},
             {'access_rules_status': zfs_driver.constants.STATUS_ACTIVE,
              'id': 'fake_first_replica_id',
              'replica_state': zfs_driver.constants.REPLICA_STATE_ACTIVE},
-            {'access_rules_status': zfs_driver.constants.STATUS_OUT_OF_SYNC,
+            {'access_rules_status':
+                zfs_driver.constants.SHARE_INSTANCE_RULES_SYNCING,
              'id': 'fake_second_replica_id'},
-            {'access_rules_status': zfs_driver.constants.STATUS_OUT_OF_SYNC,
+            {'access_rules_status':
+                zfs_driver.constants.SHARE_INSTANCE_RULES_SYNCING,
              'id': 'fake_third_replica_id',
              'replica_state': zfs_driver.constants.REPLICA_STATE_OUT_OF_SYNC},
         ]

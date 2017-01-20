@@ -39,7 +39,6 @@ class ShareRpcAPITestCase(test.TestCase):
             availability_zone=CONF.storage_availability_zone,
             status=constants.STATUS_AVAILABLE
         )
-        access = db_utils.create_access(share_id=share['id'])
         snapshot = db_utils.create_snapshot(share_id=share['id'])
         share_replica = db_utils.create_share_replica(
             id='fake_replica',
@@ -55,7 +54,6 @@ class ShareRpcAPITestCase(test.TestCase):
         # doesn't know about those extra attributes to pull in
         self.fake_share['instance'] = jsonutils.to_primitive(share.instance)
         self.fake_share_replica = jsonutils.to_primitive(share_replica)
-        self.fake_access = jsonutils.to_primitive(access)
         self.fake_snapshot = jsonutils.to_primitive(snapshot)
         self.fake_share_server = jsonutils.to_primitive(share_server)
         self.fake_cg = jsonutils.to_primitive(cg)
@@ -89,10 +87,6 @@ class ShareRpcAPITestCase(test.TestCase):
             snap = expected_msg['cgsnapshot']
             del expected_msg['cgsnapshot']
             expected_msg['cgsnapshot_id'] = snap['id']
-        if 'access' in expected_msg:
-            access = expected_msg['access']
-            del expected_msg['access']
-            expected_msg['access_rules'] = [access['id']]
         if 'host' in expected_msg:
             del expected_msg['host']
         if 'snapshot' in expected_msg:
@@ -113,6 +107,9 @@ class ShareRpcAPITestCase(test.TestCase):
         if 'src_share_instance' in expected_msg:
             share_instance = expected_msg.pop('src_share_instance', None)
             expected_msg['src_instance_id'] = share_instance['id']
+        if 'update_access' in expected_msg:
+            share_instance = expected_msg.pop('share_instance', None)
+            expected_msg['share_instance_id'] = share_instance['id']
 
         if 'host' in kwargs:
             host = kwargs['host']
@@ -177,19 +174,11 @@ class ShareRpcAPITestCase(test.TestCase):
                              share_instance=self.fake_share,
                              force=False)
 
-    def test_allow_access(self):
-        self._test_share_api('allow_access',
+    def test_update_access(self):
+        self._test_share_api('update_access',
                              rpc_method='cast',
-                             version='1.7',
-                             share_instance=self.fake_share,
-                             access=self.fake_access)
-
-    def test_deny_access(self):
-        self._test_share_api('deny_access',
-                             rpc_method='cast',
-                             version='1.7',
-                             share_instance=self.fake_share,
-                             access=self.fake_access)
+                             version='1.14',
+                             share_instance=self.fake_share)
 
     def test_create_snapshot(self):
         self._test_share_api('create_snapshot',

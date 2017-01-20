@@ -1580,3 +1580,139 @@ class RemoveNovaNetIdColumnFromShareNetworks(BaseMigrationChecks):
         for row in rows:
             self.test_case.assertTrue(hasattr(row, self.nova_net_column_name))
             self.test_case.assertIsNone(row[self.nova_net_column_name])
+
+
+@map_to_migration('54667b9cade7')
+class RestoreStateToShareInstanceAccessMap(BaseMigrationChecks):
+    new_instance_mapping_state = {
+        constants.STATUS_ACTIVE: constants.STATUS_ACTIVE,
+        constants.SHARE_INSTANCE_RULES_SYNCING:
+            constants.ACCESS_STATE_QUEUED_TO_APPLY,
+        constants.STATUS_OUT_OF_SYNC: constants.ACCESS_STATE_QUEUED_TO_APPLY,
+        'updating': constants.ACCESS_STATE_QUEUED_TO_APPLY,
+        'updating_multiple': constants.ACCESS_STATE_QUEUED_TO_APPLY,
+        constants.SHARE_INSTANCE_RULES_ERROR: constants.ACCESS_STATE_ERROR,
+    }
+
+    new_access_rules_status = {
+        constants.STATUS_ACTIVE: constants.STATUS_ACTIVE,
+        constants.STATUS_OUT_OF_SYNC: constants.SHARE_INSTANCE_RULES_SYNCING,
+        'updating': constants.SHARE_INSTANCE_RULES_SYNCING,
+        'updating_multiple': constants.SHARE_INSTANCE_RULES_SYNCING,
+        constants.SHARE_INSTANCE_RULES_ERROR:
+            constants.SHARE_INSTANCE_RULES_ERROR,
+    }
+
+    @staticmethod
+    def generate_share_instance(sid, access_rules_status):
+        share_instance_data = {
+            'id': uuidutils.generate_uuid(),
+            'deleted': 'False',
+            'host': 'fake',
+            'share_id': sid,
+            'status': constants.STATUS_AVAILABLE,
+            'access_rules_status': access_rules_status
+        }
+        return share_instance_data
+
+    @staticmethod
+    def generate_share_instance_access_map(share_access_data_id,
+                                           share_instance_id):
+        share_instance_access_data = {
+            'id': uuidutils.generate_uuid(),
+            'share_instance_id': share_instance_id,
+            'access_id': share_access_data_id,
+            'deleted': 'False'
+        }
+        return share_instance_access_data
+
+    def setup_upgrade_data(self, engine):
+        share_data = {
+            'id': uuidutils.generate_uuid(),
+            'share_proto': 'fake',
+            'size': 1,
+            'snapshot_id': None,
+            'user_id': 'fake',
+            'project_id': 'fake'
+        }
+        share_table = utils.load_table('shares', engine)
+        engine.execute(share_table.insert(share_data))
+
+        share_instances = [
+            self.generate_share_instance(
+                share_data['id'], constants.STATUS_ACTIVE),
+            self.generate_share_instance(
+                share_data['id'], constants.STATUS_OUT_OF_SYNC),
+            self.generate_share_instance(
+                share_data['id'], constants.STATUS_ERROR),
+            self.generate_share_instance(
+                share_data['id'], 'updating'),
+            self.generate_share_instance(
+                share_data['id'], 'updating_multiple'),
+        ]
+        self.updating_share_instance = share_instances[3]
+        self.updating_multiple_share_instance = share_instances[4]
+
+        share_instance_table = utils.load_table('share_instances', engine)
+        for share_instance_data in share_instances:
+            engine.execute(share_instance_table.insert(share_instance_data))
+
+        share_access_data = {
+            'id': uuidutils.generate_uuid(),
+            'share_id': share_data['id'],
+            'access_type': 'fake',
+            'access_to': 'alice',
+            'deleted': 'False'
+        }
+        share_access_table = utils.load_table('share_access_map', engine)
+        engine.execute(share_access_table.insert(share_access_data))
+
+        share_instance_access_data = []
+        for share_instance in share_instances:
+            sia_map = self.generate_share_instance_access_map(
+                share_access_data['id'], share_instance['id'])
+            share_instance_access_data.append(sia_map)
+
+        share_instance_access_table = utils.load_table(
+            'share_instance_access_map', engine)
+        for sia_map in share_instance_access_data:
+            engine.execute(share_instance_access_table.insert(sia_map))
+
+    def check_upgrade(self, engine, data):
+        share_instance_table = utils.load_table('share_instances', engine)
+        sia_table = utils.load_table('share_instance_access_map', engine)
+
+        for rule in engine.execute(sia_table.select()):
+            self.test_case.assertTrue(hasattr(rule, 'state'))
+            correlated_share_instances = engine.execute(
+                share_instance_table.select().where(
+                    share_instance_table.c.id == rule['share_instance_id']))
+            access_rules_status = getattr(correlated_share_instances.first(),
+                                          'access_rules_status')
+            self.test_case.assertEqual(
+                self.new_instance_mapping_state[access_rules_status],
+                rule['state'])
+
+        for instance in engine.execute(share_instance_table.select()):
+            self.test_case.assertTrue(instance['access_rules_status']
+                                      not in ('updating',
+                                              'updating_multiple',
+                                              constants.STATUS_OUT_OF_SYNC))
+            if instance['id'] in (self.updating_share_instance['id'],
+                                  self.updating_multiple_share_instance['id']):
+                self.test_case.assertEqual(
+                    constants.SHARE_INSTANCE_RULES_SYNCING,
+                    instance['access_rules_status'])
+
+    def check_downgrade(self, engine):
+        share_instance_table = utils.load_table('share_instances', engine)
+        sia_table = utils.load_table('share_instance_access_map', engine)
+        for rule in engine.execute(sia_table.select()):
+            self.test_case.assertFalse(hasattr(rule, 'state'))
+
+        for instance in engine.execute(share_instance_table.select()):
+            if instance['id'] in (self.updating_share_instance['id'],
+                                  self.updating_multiple_share_instance['id']):
+                self.test_case.assertEqual(
+                    constants.STATUS_OUT_OF_SYNC,
+                    instance['access_rules_status'])

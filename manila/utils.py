@@ -550,7 +550,8 @@ def wait_for_access_update(context, db, share_instance,
 
         tries += 1
         now = time.time()
-        if instance['access_rules_status'] == constants.STATUS_ERROR:
+        if (instance['access_rules_status'] ==
+                constants.SHARE_INSTANCE_RULES_ERROR):
             msg = _("Failed to update access rules"
                     " on share instance %s") % share_instance['id']
             raise exception.ShareMigrationFailed(reason=msg)

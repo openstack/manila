@@ -4,35 +4,9 @@
 Share actions
 =============
 
-Grants or revokes share access, lists the permissions for a share,
-and explicitly updates the state of a share.
-
-To grant or revoke share access, specify one of these supported
-share access levels:
-
-- ``rw``. Read and write (RW) access.
-
-- ``ro``. Read-only (RO) access.
-
-You must also specify one of these supported authentication
-methods:
-
-- ``ip``. Authenticates an instance through its IP address. A valid
-  format is ``XX.XX.XX.XX`` or ``XX.XX.XX.XX/XX``. For example
-  ``0.0.0.0/0``.
-
-- ``cert``. Authenticates an instance through a TLS certificate.
-  Specify the TLS identity as the IDENTKEY. A valid value is any
-  string up to 64 characters long in the common name (CN) of the
-  certificate. The meaning of a string depends on its
-  interpretation.
-
-- ``user``. Authenticates by a user or group name. A valid value is
-  an alphanumeric string that can contain some special characters
-  and is from 4 to 32 characters long.
-
-To verify that the access rules (ACL) were configured correctly for
-a share, you list permissions for a share.
+Share actions include granting or revoking share access, listing the
+available access rules for a share, explicitly updating the state of a
+share, resizing a share and un-managing a share.
 
 As administrator, you can reset the state of a share and force-
 delete a share in any state. Use the ``policy.json`` file to grant
@@ -61,11 +35,38 @@ access_list": null} is valid for v1.0-2.6
 Grant access
 ============
 
+All manila shares begin with no access. Clients must be provided with
+explicit access via this API.
+
+To grant access, specify one of these supported share access levels:
+
+- ``rw``. Read and write (RW) access.
+
+- ``ro``. Read-only (RO) access.
+
+You must also specify one of these supported authentication
+methods:
+
+- ``ip``. Authenticates an instance through its IP address. A valid
+  format is ``XX.XX.XX.XX`` or ``XX.XX.XX.XX/XX``. For example
+  ``0.0.0.0/0``.
+
+- ``cert``. Authenticates an instance through a TLS certificate.
+  Specify the TLS identity as the IDENTKEY. A valid value is any
+  string up to 64 characters long in the common name (CN) of the
+  certificate. The meaning of a string depends on its
+  interpretation.
+
+- ``user``. Authenticates by a user or group name. A valid value is
+  an alphanumeric string that can contain some special characters
+  and is from 4 to 32 characters long.
+
 .. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
 
 Grants access to a share.
 
 Normal response codes: 202
+
 Error response codes: badRequest(400), unauthorized(401), forbidden(403),
 itemNotFound(404)
 
@@ -114,9 +115,12 @@ Revoke access
 
 .. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
 
-Revokes access from a share.
+The shared file systems service stores each access rule in its database and
+assigns it a unique ID. This ID can be used to revoke access after access
+has been requested.
 
 Normal response codes: 202
+
 Error response codes: badRequest(400), unauthorized(401), forbidden(403),
 itemNotFound(404)
 
@@ -142,9 +146,11 @@ List access rules
 
 .. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
 
-Lists access rules for a share.
+Lists access rules for a share. The Access ID returned is necessary to deny
+access.
 
 Normal response codes: 200
+
 Error response codes: badRequest(400), unauthorized(401), forbidden(403),
 itemNotFound(404)
 

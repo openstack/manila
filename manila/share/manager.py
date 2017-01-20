@@ -189,7 +189,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.13'
+    RPC_API_VERSION = '1.14'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -219,6 +219,8 @@ class ShareManager(manager.SchedulerDependentManager):
         )
 
         self.access_helper = access.ShareInstanceAccess(self.db, self.driver)
+        self.migration_wait_access_rules_timeout = (
+            CONF.migration_wait_access_rules_timeout)
 
         self.hooks = []
         self._init_hook_drivers()
@@ -331,10 +333,12 @@ class ShareManager(manager.SchedulerDependentManager):
                 self.db.share_export_locations_update(
                     ctxt, share_instance['id'], export_locations)
 
-            if share_instance['access_rules_status'] == (
-                    constants.STATUS_OUT_OF_SYNC):
-
+            if share_instance['access_rules_status'] != (
+                    constants.STATUS_ACTIVE):
                 try:
+                    # Cast any existing 'applying' rules to 'new'
+                    self.access_helper.reset_applying_rules(
+                        ctxt, share_instance['id'])
                     self.access_helper.update_access_rules(
                         ctxt, share_instance['id'], share_server=share_server)
                 except Exception:
@@ -689,7 +693,8 @@ class ShareManager(manager.SchedulerDependentManager):
         dest_share_instance = self.db.share_instance_get(
             context, dest_share_instance['id'], with_share_data=True)
 
-        helper = migration.ShareMigrationHelper(context, self.db, share_ref)
+        helper = migration.ShareMigrationHelper(
+            context, self.db, share_ref, self.access_helper)
 
         try:
             if dest_share_instance['share_network_id']:
@@ -740,14 +745,8 @@ class ShareManager(manager.SchedulerDependentManager):
                 raise exception.ShareMigrationFailed(reason=msg)
 
             if not compatibility.get('writable'):
-
-                self.db.share_instance_update_access_status(
-                    context, src_share_instance['id'],
-                    constants.STATUS_OUT_OF_SYNC)
-
-                self.access_helper.update_access_rules(
-                    context, src_share_instance['id'],
-                    share_server=share_server)
+                self._cast_access_rules_to_readonly(
+                    context, src_share_instance, share_server)
 
             LOG.debug("Initiating driver migration for share %s.",
                       share_ref['id'])
@@ -780,6 +779,27 @@ class ShareManager(manager.SchedulerDependentManager):
             raise exception.ShareMigrationFailed(reason=msg)
 
         return True
+
+    def _cast_access_rules_to_readonly(self, context, src_share_instance,
+                                       share_server):
+        # Set all 'applying' or 'active' rules to 'queued_to_apply'. Since the
+        # share has a status set to 'migrating', this will render rules
+        # read/only.
+        acceptable_past_states = (constants.ACCESS_STATE_APPLYING,
+                                  constants.ACCESS_STATE_ACTIVE)
+        new_state = constants.ACCESS_STATE_QUEUED_TO_APPLY
+        conditionally_change = {k: new_state for k in acceptable_past_states}
+        self.access_helper.get_and_update_share_instance_access_rules(
+            context, share_instance_id=src_share_instance['id'],
+            conditionally_change=conditionally_change)
+
+        self.access_helper.update_access_rules(
+            context, src_share_instance['id'],
+            share_server=share_server)
+
+        utils.wait_for_access_update(
+            context, self.db, src_share_instance,
+            self.migration_wait_access_rules_timeout)
 
     @periodic_task.periodic_task(
         spacing=CONF.migration_driver_continue_update_interval)
@@ -933,17 +953,14 @@ class ShareManager(manager.SchedulerDependentManager):
 
         rpcapi = share_rpcapi.ShareAPI()
 
-        helper = migration.ShareMigrationHelper(context, self.db, share)
+        helper = migration.ShareMigrationHelper(
+            context, self.db, share, self.access_helper)
 
         share_server = self._get_share_server(context.elevated(),
                                               src_share_instance)
 
-        self.db.share_instance_update_access_status(
-            context, src_share_instance['id'],
-            constants.STATUS_OUT_OF_SYNC)
-
-        self.access_helper.update_access_rules(
-            context, src_share_instance['id'], share_server=share_server)
+        self._cast_access_rules_to_readonly(
+            context, src_share_instance, share_server)
 
         try:
             dest_share_instance = helper.create_instance_and_wait(
@@ -958,8 +975,7 @@ class ShareManager(manager.SchedulerDependentManager):
             msg = _("Failed to create instance on destination "
                     "backend during migration of share %s.") % share['id']
             LOG.exception(msg)
-            helper.cleanup_access_rules(src_share_instance, share_server,
-                                        self.driver)
+            helper.cleanup_access_rules(src_share_instance, share_server)
             raise exception.ShareMigrationFailed(reason=msg)
 
         ignore_list = self.driver.configuration.safe_get(
@@ -988,8 +1004,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     "share %s.") % share['id']
             LOG.exception(msg)
             helper.cleanup_new_instance(dest_share_instance)
-            helper.cleanup_access_rules(src_share_instance, share_server,
-                                        self.driver)
+            helper.cleanup_access_rules(src_share_instance, share_server)
             raise exception.ShareMigrationFailed(reason=msg)
 
     def _migration_complete_driver(
@@ -1011,7 +1026,8 @@ class ShareManager(manager.SchedulerDependentManager):
             self.db.share_export_locations_update(
                 context, dest_share_instance['id'], export_locations)
 
-        helper = migration.ShareMigrationHelper(context, self.db, share_ref)
+        helper = migration.ShareMigrationHelper(
+            context, self.db, share_ref, self.access_helper)
 
         helper.apply_new_access_rules(dest_share_instance)
 
@@ -1033,15 +1049,11 @@ class ShareManager(manager.SchedulerDependentManager):
         self.db.share_instance_update(
             context, instance_id, {'status': constants.STATUS_INACTIVE})
 
-        rules = self.db.share_access_get_all_for_instance(
-            context, instance_id)
+        rules = self.access_helper.get_and_update_share_instance_access_rules(
+            context, share_instance_id=instance_id)
 
-        for rule in rules:
-            access_mapping = self.db.share_instance_access_get(
-                context, rule['id'], instance_id)
-
-            self.db.share_instance_access_delete(
-                context, access_mapping['id'])
+        self.access_helper.delete_share_instance_access_rules(
+            context, rules, instance_id)
 
         self.db.share_instance_delete(context, instance_id)
         LOG.info(_LI("Share instance %s: deleted successfully."),
@@ -1114,7 +1126,8 @@ class ShareManager(manager.SchedulerDependentManager):
 
         share_server = self._get_share_server(context, src_share_instance)
 
-        helper = migration.ShareMigrationHelper(context, self.db, share_ref)
+        helper = migration.ShareMigrationHelper(
+            context, self.db, share_ref, self.access_helper)
 
         task_state = share_ref['task_state']
         if task_state in (constants.TASK_STATE_DATA_COPYING_ERROR,
@@ -1124,8 +1137,7 @@ class ShareManager(manager.SchedulerDependentManager):
             LOG.warning(msg)
             helper.cleanup_new_instance(dest_share_instance)
 
-            helper.cleanup_access_rules(src_share_instance, share_server,
-                                        self.driver)
+            helper.cleanup_access_rules(src_share_instance, share_server)
             if task_state == constants.TASK_STATE_DATA_COPYING_CANCELLED:
                 self.db.share_instance_update(
                     context, src_instance_id,
@@ -1153,8 +1165,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     "of share %s.") % share_ref['id']
             LOG.exception(msg)
             helper.cleanup_new_instance(dest_share_instance)
-            helper.cleanup_access_rules(src_share_instance, share_server,
-                                        self.driver)
+            helper.cleanup_access_rules(src_share_instance, share_server)
             raise exception.ShareMigrationFailed(reason=msg)
 
         self.db.share_update(
@@ -1202,7 +1213,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 constants.TASK_STATE_DATA_COPYING_COMPLETED):
 
             helper = migration.ShareMigrationHelper(
-                context, self.db, share_ref)
+                context, self.db, share_ref, self.access_helper)
 
             self.db.share_instance_update(
                 context, dest_share_instance['id'],
@@ -1210,8 +1221,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
             helper.cleanup_new_instance(dest_share_instance)
 
-            helper.cleanup_access_rules(src_share_instance, share_server,
-                                        self.driver)
+            helper.cleanup_access_rules(src_share_instance, share_server)
         else:
             self.driver.migration_cancel(
                 context, src_share_instance, dest_share_instance,
@@ -1383,9 +1393,8 @@ class ShareManager(manager.SchedulerDependentManager):
     def _update_share_replica_access_rules_state(self, context,
                                                  share_replica_id, state):
         """Update the access_rules_status for the share replica."""
-
-        self.db.share_instance_update_access_status(
-            context, share_replica_id, state)
+        self.access_helper.get_and_update_share_instance_access_rules_status(
+            context, status=state, share_instance_id=share_replica_id)
 
     def _get_replica_snapshots_for_snapshot(self, context, snapshot_id,
                                             active_replica_id,
@@ -1550,7 +1559,8 @@ class ShareManager(manager.SchedulerDependentManager):
                 replica_ref.get('access_rules_status'))
         else:
             self._update_share_replica_access_rules_state(
-                context, share_replica['id'], constants.STATUS_ACTIVE)
+                context, share_replica['id'],
+                constants.STATUS_ACTIVE)
 
         LOG.info(_LI("Share replica %s created successfully."),
                  share_replica['id'])
@@ -1590,7 +1600,7 @@ class ShareManager(manager.SchedulerDependentManager):
             self.access_helper.update_access_rules(
                 context,
                 share_replica_id,
-                delete_rules="all",
+                delete_all_rules=True,
                 share_server=share_server
             )
         except Exception:
@@ -2075,7 +2085,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 self.access_helper.update_access_rules(
                     context,
                     share_instance['id'],
-                    delete_rules="all",
+                    delete_all_rules=True,
                     share_server=share_server
                 )
             except Exception as e:
@@ -2223,7 +2233,7 @@ class ShareManager(manager.SchedulerDependentManager):
             self.access_helper.update_access_rules(
                 context,
                 share_instance_id,
-                delete_rules="all",
+                delete_all_rules=True,
                 share_server=share_server
             )
         except exception.ShareResourceNotFound:
@@ -2712,42 +2722,18 @@ class ShareManager(manager.SchedulerDependentManager):
 
     @add_hooks
     @utils.require_driver_initialized
-    def allow_access(self, context, share_instance_id, access_rules):
-        """Allow access to some share instance."""
-        share_instance = self._get_share_instance(context, share_instance_id)
-        status = share_instance['access_rules_status']
-
-        if status not in (constants.STATUS_UPDATING,
-                          constants.STATUS_UPDATING_MULTIPLE,
-                          constants.STATUS_ACTIVE):
-            add_rules = [self.db.share_access_get(context, rule_id)
-                         for rule_id in access_rules]
-
-            share_server = self._get_share_server(context, share_instance)
-
-            return self.access_helper.update_access_rules(
-                context,
-                share_instance_id,
-                add_rules=add_rules,
-                share_server=share_server
-            )
-
-    @add_hooks
-    @utils.require_driver_initialized
-    def deny_access(self, context, share_instance_id, access_rules):
-        """Deny access to some share."""
-        delete_rules = [self.db.share_access_get(context, rule_id)
-                        for rule_id in access_rules]
-
+    def update_access(self, context, share_instance_id):
+        """Allow/Deny access to some share."""
         share_instance = self._get_share_instance(context, share_instance_id)
         share_server = self._get_share_server(context, share_instance)
 
-        return self.access_helper.update_access_rules(
+        LOG.debug("Received request to update access for share instance"
+                  " %s." % share_instance_id)
+
+        self.access_helper.update_access_rules(
             context,
             share_instance_id,
-            delete_rules=delete_rules,
-            share_server=share_server
-        )
+            share_server=share_server)
 
     @periodic_task.periodic_task(spacing=CONF.periodic_interval)
     @utils.require_driver_initialized

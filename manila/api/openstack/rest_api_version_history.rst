@@ -163,3 +163,12 @@ user documentation.
   snapshot. The share is reverted in place, and the snapshot must be the most
   recent one known to manila. The feature is controlled by a new standard
   optional extra spec, revert_to_snapshot_support.
+
+2.28
+----
+  Added transitional states ('queued_to_apply' - was previously 'new',
+  'queued_to_deny', 'applying' and 'denying') to access rules.
+  'updating', 'updating_multiple' and 'out_of_sync' are no longer valid
+  values for the 'access_rules_status' field of shares, they have
+  been collapsed into the transitional state 'syncing'. Access rule changes
+  can be made independent of a share's 'access_rules_status'.
