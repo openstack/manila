@@ -165,14 +165,17 @@ class ShareMigrationHelper(object):
 
     def apply_new_access_rules(self, new_share_instance):
 
-        self.db.share_instance_access_copy(self.context, self.share['id'],
-                                           new_share_instance['id'])
+        rules = self.db.share_instance_access_copy(
+            self.context, self.share['id'], new_share_instance['id'])
 
-        self.api.allow_access_to_instance(self.context, new_share_instance)
+        if rules:
+            self.api.allow_access_to_instance(self.context, new_share_instance)
 
-        utils.wait_for_access_update(
-            self.context, self.db, new_share_instance,
-            self.migration_wait_access_rules_timeout)
+            utils.wait_for_access_update(
+                self.context, self.db, new_share_instance,
+                self.migration_wait_access_rules_timeout)
+        else:
+            LOG.debug("No access rules to sync to destination share instance.")
 
     @utils.retry(exception.ShareServerNotReady, retries=8)
     def wait_for_share_server(self, share_server_id):

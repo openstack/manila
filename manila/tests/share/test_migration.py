@@ -277,16 +277,22 @@ class ShareMigrationHelperTestCase(test.TestCase):
         self.access_helper.update_access_rules.assert_called_once_with(
             self.context, share_instance['id'], share_server=server)
 
-    def test_apply_new_access_rules(self):
+    @ddt.data(True, False)
+    def test_apply_new_access_rules_there_are_rules(self, prior_rules):
 
         new_share_instance = db_utils.create_share_instance(
             share_id=self.share['id'], status=constants.STATUS_AVAILABLE,
             access_rules_status='active')
-        db_utils.create_access(
-            share_id=self.share['id'], access_to='fake_ip', access_level='rw')
+        rules = None
+        if prior_rules:
+            rules = [
+                db_utils.create_access(
+                    share_id=self.share['id'], access_to='fake_ip')
+            ]
 
         # mocks
-        self.mock_object(db, 'share_instance_access_copy')
+        self.mock_object(db, 'share_instance_access_copy', mock.Mock(
+            return_value=rules))
         self.mock_object(share_api.API, 'allow_access_to_instance')
         self.mock_object(utils, 'wait_for_access_update')
 
@@ -294,13 +300,17 @@ class ShareMigrationHelperTestCase(test.TestCase):
         self.helper.apply_new_access_rules(new_share_instance)
 
         # asserts
-        db.share_instance_access_copy(self.context, self.share['id'],
-                                      new_share_instance['id'])
-        share_api.API.allow_access_to_instance.assert_called_with(
-            self.context, new_share_instance)
-        utils.wait_for_access_update.assert_called_with(
-            self.context, db, new_share_instance,
-            self.helper.migration_wait_access_rules_timeout)
+        db.share_instance_access_copy.assert_called_once_with(
+            self.context, self.share['id'], new_share_instance['id'])
+        if prior_rules:
+            share_api.API.allow_access_to_instance.assert_called_with(
+                self.context, new_share_instance)
+            utils.wait_for_access_update.assert_called_with(
+                self.context, db, new_share_instance,
+                self.helper.migration_wait_access_rules_timeout)
+        else:
+            self.assertFalse(share_api.API.allow_access_to_instance.called)
+            self.assertFalse(utils.wait_for_access_update.called)
 
     @ddt.data(None, Exception('fake'))
     def test_cleanup_new_instance(self, exc):
