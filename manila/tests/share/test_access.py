@@ -622,29 +622,23 @@ class ShareInstanceAccessTestCase(test.TestCase):
             expected_access_rules_status,
             share_instance['access_rules_status'])
 
-    @ddt.data(True, False)
-    def test__update_access_rules_for_migration_driver_supports_ro_rules(
-            self, driver_supports_ro_rules):
-        self.mock_object(self.driver.configuration, 'safe_get', mock.Mock(
-            return_value=driver_supports_ro_rules))
-        share = db_utils.create_share(
+    def test__update_access_rules_for_migration(self):
+        share = db_utils.create_share()
+        instance = db_utils.create_share_instance(
             status=constants.STATUS_MIGRATING,
-            access_rules_status=constants.STATUS_ACTIVE)
-        share_instance_id = share['instance']['id']
+            access_rules_status=constants.STATUS_ACTIVE,
+            cast_rules_to_readonly=True,
+            share_id=share['id'])
         rule_kwargs = {'share_id': share['id'], 'access_level': 'rw'}
         rule_1 = db_utils.create_access(
             state=constants.ACCESS_STATE_ACTIVE, **rule_kwargs)
         rule_1 = db.share_instance_access_get(
-            self.context, rule_1['id'], share_instance_id)
+            self.context, rule_1['id'], instance['id'])
         rule_2 = db_utils.create_access(
             state=constants.ACCESS_STATE_APPLYING, share_id=share['id'],
             access_level='ro')
         rule_2 = db.share_instance_access_get(
-            self.context, rule_2['id'], share_instance_id)
-        rule_3 = db_utils.create_access(
-            state=constants.ACCESS_STATE_DENYING, **rule_kwargs)
-        rule_3 = db.share_instance_access_get(
-            self.context, rule_3['id'], share_instance_id)
+            self.context, rule_2['id'], instance['id'])
 
         driver_call = self.mock_object(
             self.access_helper.driver, 'update_access',
@@ -653,19 +647,16 @@ class ShareInstanceAccessTestCase(test.TestCase):
                          mock.Mock(return_value=False))
 
         retval = self.access_helper._update_access_rules(
-            self.context, share_instance_id, share_server='fake_server')
+            self.context, instance['id'], share_server='fake_server')
 
         call_args = driver_call.call_args_list[0][0]
         call_kwargs = driver_call.call_args_list[0][1]
         access_rules_to_be_on_share = [r['id'] for r in call_args[2]]
         access_levels = [r['access_level'] for r in call_args[2]]
-        expected_rules_to_be_on_share = (
-            [rule_1['id'], rule_2['id']]
-            if driver_supports_ro_rules else [rule_2['id']]
-        )
+        expected_rules_to_be_on_share = ([rule_1['id'], rule_2['id']])
 
         self.assertIsNone(retval)
-        self.assertEqual(share_instance_id, call_args[1]['id'])
+        self.assertEqual(instance['id'], call_args[1]['id'])
         self.assertEqual(sorted(expected_rules_to_be_on_share),
                          sorted(access_rules_to_be_on_share))
         self.assertEqual(['ro'] * len(expected_rules_to_be_on_share),

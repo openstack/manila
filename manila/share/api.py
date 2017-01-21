@@ -361,7 +361,7 @@ class API(base.Base):
     def create_share_instance_and_get_request_spec(
             self, context, share, availability_zone=None,
             consistency_group=None, host=None, share_network_id=None,
-            share_type_id=None):
+            share_type_id=None, cast_rules_to_readonly=False):
 
         availability_zone_id = None
         if availability_zone:
@@ -380,6 +380,7 @@ class API(base.Base):
                 'host': host if host else '',
                 'availability_zone_id': availability_zone_id,
                 'share_type_id': share_type_id,
+                'cast_rules_to_readonly': cast_rules_to_readonly,
             }
         )
 
@@ -449,11 +450,17 @@ class API(base.Base):
                     "state.")
             raise exception.ReplicationException(reason=msg % share['id'])
 
+        if share['replication_type'] == constants.REPLICATION_TYPE_READABLE:
+            cast_rules_to_readonly = True
+        else:
+            cast_rules_to_readonly = False
+
         request_spec, share_replica = (
             self.create_share_instance_and_get_request_spec(
                 context, share, availability_zone=availability_zone,
                 share_network_id=share_network_id,
-                share_type_id=share['instance']['share_type_id']))
+                share_type_id=share['instance']['share_type_id'],
+                cast_rules_to_readonly=cast_rules_to_readonly))
 
         all_replicas = self.db.share_replicas_get_all_by_share(
             context, share['id'])

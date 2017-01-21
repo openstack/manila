@@ -338,7 +338,6 @@ class ShareMigrationHelperTestCase(test.TestCase):
         server = db_utils.create_share_server()
         self.mock_object(self.helper, 'revert_access_rules',
                          mock.Mock(side_effect=exc))
-        self.mock_object(self.helper.db, 'share_instance_update')
 
         self.mock_object(migration.LOG, 'warning')
 
@@ -348,9 +347,6 @@ class ShareMigrationHelperTestCase(test.TestCase):
         # asserts
         self.helper.revert_access_rules.assert_called_once_with(
             self.share_instance, server)
-        self.helper.db.share_instance_update.assert_called_once_with(
-            self.context, self.share_instance['id'],
-            {'status': constants.STATUS_INACTIVE})
 
         if exc:
             self.assertEqual(1, migration.LOG.warning.call_count)

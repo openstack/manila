@@ -1716,3 +1716,125 @@ class RestoreStateToShareInstanceAccessMap(BaseMigrationChecks):
                 self.test_case.assertEqual(
                     constants.STATUS_OUT_OF_SYNC,
                     instance['access_rules_status'])
+
+
+@map_to_migration('e9f79621d83f')
+class AddCastRulesToReadonlyToInstances(BaseMigrationChecks):
+
+    share_type = {
+        'id': uuidutils.generate_uuid(),
+    }
+
+    shares = [
+        {
+            'id': uuidutils.generate_uuid(),
+            'replication_type': constants.REPLICATION_TYPE_READABLE,
+        },
+        {
+            'id': uuidutils.generate_uuid(),
+            'replication_type': constants.REPLICATION_TYPE_READABLE,
+        },
+        {
+            'id': uuidutils.generate_uuid(),
+            'replication_type': constants.REPLICATION_TYPE_WRITABLE,
+        },
+        {
+            'id': uuidutils.generate_uuid(),
+        },
+    ]
+    share_ids = [x['id'] for x in shares]
+
+    correct_instance = {
+        'id': uuidutils.generate_uuid(),
+        'share_id': share_ids[1],
+        'replica_state': constants.REPLICA_STATE_IN_SYNC,
+        'status': constants.STATUS_AVAILABLE,
+        'share_type_id': share_type['id'],
+    }
+
+    instances = [
+        {
+            'id': uuidutils.generate_uuid(),
+            'share_id': share_ids[0],
+            'replica_state': constants.REPLICA_STATE_ACTIVE,
+            'status': constants.STATUS_AVAILABLE,
+            'share_type_id': share_type['id'],
+        },
+        {
+            'id': uuidutils.generate_uuid(),
+            'share_id': share_ids[0],
+            'replica_state': constants.REPLICA_STATE_IN_SYNC,
+            'status': constants.STATUS_REPLICATION_CHANGE,
+            'share_type_id': share_type['id'],
+        },
+        {
+            'id': uuidutils.generate_uuid(),
+            'share_id': share_ids[1],
+            'replica_state': constants.REPLICA_STATE_ACTIVE,
+            'status': constants.STATUS_REPLICATION_CHANGE,
+            'share_type_id': share_type['id'],
+        },
+        correct_instance,
+        {
+            'id': uuidutils.generate_uuid(),
+            'share_id': share_ids[2],
+            'replica_state': constants.REPLICA_STATE_ACTIVE,
+            'status': constants.STATUS_REPLICATION_CHANGE,
+            'share_type_id': share_type['id'],
+        },
+        {
+            'id': uuidutils.generate_uuid(),
+            'share_id': share_ids[2],
+            'replica_state': constants.REPLICA_STATE_IN_SYNC,
+            'status': constants.STATUS_AVAILABLE,
+            'share_type_id': share_type['id'],
+        },
+        {
+            'id': uuidutils.generate_uuid(),
+            'share_id': share_ids[3],
+            'status': constants.STATUS_AVAILABLE,
+            'share_type_id': share_type['id'],
+        },
+    ]
+    instance_ids = share_ids = [x['id'] for x in instances]
+
+    def setup_upgrade_data(self, engine):
+        shares_table = utils.load_table('shares', engine)
+        share_instances_table = utils.load_table('share_instances', engine)
+        share_types_table = utils.load_table('share_types', engine)
+
+        engine.execute(share_types_table.insert(self.share_type))
+
+        for share in self.shares:
+            engine.execute(shares_table.insert(share))
+
+        for instance in self.instances:
+            engine.execute(share_instances_table.insert(instance))
+
+    def check_upgrade(self, engine, data):
+
+        shares_table = utils.load_table('shares', engine)
+        share_instances_table = utils.load_table('share_instances', engine)
+
+        for instance in engine.execute(share_instances_table.select().where(
+                share_instances_table.c.id in self.instance_ids)):
+            self.test_case.assertIn('cast_rules_to_readonly', instance)
+            share = engine.execute(shares_table.select().where(
+                instance['share_id'] == shares_table.c.id)).first()
+            if (instance['replica_state'] != constants.REPLICA_STATE_ACTIVE and
+                    share['replication_type'] ==
+                    constants.REPLICATION_TYPE_READABLE and
+                    instance['status'] != constants.STATUS_REPLICATION_CHANGE):
+                self.test_case.assertTrue(instance['cast_rules_to_readonly'])
+                self.test_case.assertEqual(instance['id'],
+                                           self.correct_instance['id'])
+            else:
+                self.test_case.assertEqual(
+                    False, instance['cast_rules_to_readonly'])
+
+    def check_downgrade(self, engine):
+
+        share_instances_table = utils.load_table('share_instances', engine)
+
+        for instance in engine.execute(share_instances_table.select()):
+            self.test_case.assertNotIn('cast_rules_to_readonly', instance)

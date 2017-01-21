@@ -682,6 +682,7 @@ class ShareAPITestCase(test.TestCase):
                 'host': host,
                 'availability_zone_id': 'fake_id',
                 'share_type_id': 'fake_share_type',
+                'cast_rules_to_readonly': False,
             }
         )
         db_api.share_type_get.assert_called_once_with(
@@ -2590,16 +2591,27 @@ class ShareAPITestCase(test.TestCase):
         self.assertFalse(mock_db_update_call.called)
         self.assertFalse(mock_scheduler_rpcapi_call.called)
 
-    @ddt.data(True, False)
-    def test_create_share_replica(self, has_snapshots):
+    @ddt.data({'has_snapshots': True,
+               'replication_type': constants.REPLICATION_TYPE_DR},
+              {'has_snapshots': False,
+               'replication_type': constants.REPLICATION_TYPE_DR},
+              {'has_snapshots': True,
+               'replication_type': constants.REPLICATION_TYPE_READABLE},
+              {'has_snapshots': False,
+               'replication_type': constants.REPLICATION_TYPE_READABLE})
+    @ddt.unpack
+    def test_create_share_replica(self, has_snapshots, replication_type):
         request_spec = fakes.fake_replica_request_spec()
         replica = request_spec['share_instance_properties']
         share = db_utils.create_share(
-            id=replica['share_id'], replication_type='dr')
+            id=replica['share_id'], replication_type=replication_type)
         snapshots = (
             [fakes.fake_snapshot(), fakes.fake_snapshot()]
             if has_snapshots else []
         )
+        cast_rules_to_readonly = (
+            replication_type == constants.REPLICATION_TYPE_READABLE)
+
         fake_replica = fakes.fake_replica(id=replica['id'])
         fake_request_spec = fakes.fake_replica_request_spec()
         self.mock_object(db_api, 'share_replicas_get_available_active_replica',
@@ -2626,6 +2638,11 @@ class ShareAPITestCase(test.TestCase):
             self.context, fake_replica['share_id'])
         self.assertEqual(expected_snap_instance_create_call_count,
                          mock_snapshot_instance_create_call.call_count)
+        (share_api.API.create_share_instance_and_get_request_spec.
+         assert_called_once_with(
+             self.context, share, availability_zone='FAKE_AZ',
+             share_network_id=None, share_type_id=None,
+             cast_rules_to_readonly=cast_rules_to_readonly))
 
     def test_delete_last_active_replica(self):
         fake_replica = fakes.fake_replica(

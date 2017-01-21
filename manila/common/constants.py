@@ -169,6 +169,10 @@ REPLICA_STATE_ACTIVE = 'active'
 REPLICA_STATE_IN_SYNC = 'in_sync'
 REPLICA_STATE_OUT_OF_SYNC = 'out_of_sync'
 
+REPLICATION_TYPE_READABLE = 'readable'
+REPLICATION_TYPE_WRITABLE = 'writable'
+REPLICATION_TYPE_DR = 'dr'
+
 
 class ExtraSpecs(object):
 

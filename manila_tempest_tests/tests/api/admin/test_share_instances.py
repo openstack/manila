@@ -76,6 +76,12 @@ class ShareInstancesTest(base.BaseSharesAdminTest):
             expected_keys.extend(["export_location", "export_locations"])
         if utils.is_microversion_ge(version, '2.10'):
             expected_keys.append("access_rules_status")
+        if utils.is_microversion_ge(version, '2.11'):
+            expected_keys.append("replica_state")
+        if utils.is_microversion_ge(version, '2.22'):
+            expected_keys.append("share_type_id")
+        if utils.is_microversion_ge(version, '2.30'):
+            expected_keys.append("cast_rules_to_readonly")
         expected_keys = sorted(expected_keys)
         actual_keys = sorted(si.keys())
         self.assertEqual(expected_keys, actual_keys,
@@ -94,3 +100,7 @@ class ShareInstancesTest(base.BaseSharesAdminTest):
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_get_share_instance_v2_10(self):
         self._get_share_instance('2.10')
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    def test_get_share_instance_v2_30(self):
+        self._get_share_instance('2.30')

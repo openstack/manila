@@ -179,3 +179,7 @@ user documentation.
   and changed 'preserve_metadata', 'writable', 'nondisruptive' to be mandatory
   as well. All previous migration_start APIs prior to this microversion are now
   unsupported.
+
+2.30
+----
+  Added cast_rules_to_readonly field to share_instances.

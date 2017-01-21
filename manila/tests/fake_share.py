@@ -252,6 +252,7 @@ def fake_replica(id=None, as_primitive=True, for_manager=False, **kwargs):
             'size': None,
             'display_name': None,
             'display_description': None,
+            'replication_type': None,
             'snapshot_id': None,
             'share_proto': None,
             'is_public': None,
