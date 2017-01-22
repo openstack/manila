@@ -26,6 +26,57 @@ from manila import utils
 CONF = cfg.CONF
 
 
+class NamedBinaryStr(six.binary_type):
+
+    """Wrapper for six.binary_type to facilitate overriding __name__."""
+
+
+class NamedUnicodeStr(six.text_type):
+
+    """Unicode string look-alike to facilitate overriding __name__."""
+
+    def __init__(self, value):
+        self._value = value
+
+    def __str__(self):
+        return self._value
+
+    def encode(self, enc):
+        return self._value.encode(enc)
+
+    def __format__(self, formatstr):
+        """Workaround for ddt bug.
+
+        DDT will always call __format__ even when __name__ exists,
+        which blows up for Unicode strings under Py2.
+        """
+        return ''
+
+
+class NamedDict(dict):
+
+    """Wrapper for dict to facilitate overriding __name__."""
+
+
+class NamedTuple(tuple):
+
+    """Wrapper for dict to facilitate overriding __name__."""
+
+
+def annotated(test_name, test_input):
+    if isinstance(test_input, dict):
+        annotated_input = NamedDict(test_input)
+    elif isinstance(test_input, six.text_type):
+        annotated_input = NamedUnicodeStr(test_input)
+    elif isinstance(test_input, tuple):
+        annotated_input = NamedTuple(test_input)
+    else:
+        annotated_input = NamedBinaryStr(test_input)
+
+    setattr(annotated_input, '__name__', test_name)
+    return annotated_input
+
+
 def get_test_admin_context():
     return context.get_admin_context()
 

@@ -36,6 +36,12 @@ LOG = log.getLogger(__name__)
 DELETED_PREFIX = 'deleted_manila_'
 DEFAULT_IPSPACE = 'Default'
 DEFAULT_MAX_PAGE_LENGTH = 50
+CUTOVER_ACTION_MAP = {
+    'defer': 'defer_on_failure',
+    'abort': 'abort_on_failure',
+    'force': 'force',
+    'wait': 'wait',
+}
 
 
 class NetAppCmodeClient(client_base.NetAppBaseClient):
@@ -3257,3 +3263,117 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             has_snapmirrors = False
 
         return has_snapmirrors
+
+    @na_utils.trace
+    def start_volume_move(self, volume_name, vserver, destination_aggregate,
+                          cutover_action='wait'):
+        """Moves a FlexVol across Vserver aggregates.
+
+        Requires cluster-scoped credentials.
+        """
+        self._send_volume_move_request(
+            volume_name, vserver, destination_aggregate,
+            cutover_action=cutover_action)
+
+    @na_utils.trace
+    def check_volume_move(self, volume_name, vserver, destination_aggregate):
+        """Moves a FlexVol across Vserver aggregates.
+
+        Requires cluster-scoped credentials.
+        """
+        self._send_volume_move_request(
+            volume_name, vserver, destination_aggregate, validation_only=True)
+
+    @na_utils.trace
+    def _send_volume_move_request(self, volume_name, vserver,
+                                  destination_aggregate,
+                                  cutover_action='wait',
+                                  validation_only=False):
+        """Send request to check if vol move is possible, or start it.
+
+        :param volume_name: Name of the FlexVol to be moved.
+        :param destination_aggregate: Name of the destination aggregate
+        :param cutover_action: can have one of ['force', 'defer', 'abort',
+            'wait']. 'force' will force a cutover despite errors (causing
+            possible client disruptions), 'wait' will wait for cutover to be
+            triggered manually. 'abort' will rollback move on errors on
+            cutover, 'defer' will attempt a cutover, but wait for manual
+            intervention in case of errors.
+        :param validation_only: If set to True, only validates if the volume
+            move is possible, does not trigger data copy.
+        """
+        api_args = {
+            'source-volume': volume_name,
+            'vserver': vserver,
+            'dest-aggr': destination_aggregate,
+            'cutover-action': CUTOVER_ACTION_MAP[cutover_action],
+        }
+        if validation_only:
+            api_args['perform-validation-only'] = 'true'
+        self.send_request('volume-move-start', api_args)
+
+    @na_utils.trace
+    def abort_volume_move(self, volume_name, vserver):
+        """Aborts an existing volume move operation."""
+        api_args = {
+            'source-volume': volume_name,
+            'vserver': vserver,
+        }
+        self.send_request('volume-move-trigger-abort', api_args)
+
+    @na_utils.trace
+    def trigger_volume_move_cutover(self, volume_name, vserver, force=True):
+        """Triggers the cut-over for a volume in data motion."""
+        api_args = {
+            'source-volume': volume_name,
+            'vserver': vserver,
+            'force': 'true' if force else 'false',
+        }
+        self.send_request('volume-move-trigger-cutover', api_args)
+
+    @na_utils.trace
+    def get_volume_move_status(self, volume_name, vserver):
+        """Gets the current state of a volume move operation."""
+        api_args = {
+            'query': {
+                'volume-move-info': {
+                    'volume': volume_name,
+                    'vserver': vserver,
+                },
+            },
+            'desired-attributes': {
+                'volume-move-info': {
+                    'percent-complete': None,
+                    'estimated-completion-time': None,
+                    'state': None,
+                    'details': None,
+                    'cutover-action': None,
+                    'phase': None,
+                },
+            },
+        }
+        result = self.send_iter_request('volume-move-get-iter', api_args)
+
+        if not self._has_records(result):
+            msg = _("Volume %(vol)s in Vserver %(server)s is not part of any "
+                    "data motion operations.")
+            msg_args = {'vol': volume_name, 'server': vserver}
+            raise exception.NetAppException(msg % msg_args)
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        volume_move_info = attributes_list.get_child_by_name(
+            'volume-move-info') or netapp_api.NaElement('none')
+
+        status_info = {
+            'percent-complete': volume_move_info.get_child_content(
+                'percent-complete'),
+            'estimated-completion-time': volume_move_info.get_child_content(
+                'estimated-completion-time'),
+            'state': volume_move_info.get_child_content('state'),
+            'details': volume_move_info.get_child_content('details'),
+            'cutover-action': volume_move_info.get_child_content(
+                'cutover-action'),
+            'phase': volume_move_info.get_child_content('phase'),
+        }
+        return status_info

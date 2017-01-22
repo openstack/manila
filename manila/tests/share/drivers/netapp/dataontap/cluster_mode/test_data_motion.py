@@ -51,7 +51,7 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
         self.config.append_config_values(na_opts.netapp_transport_opts)
         self.config.append_config_values(na_opts.netapp_support_opts)
         self.config.append_config_values(na_opts.netapp_provisioning_opts)
-        self.config.append_config_values(na_opts.netapp_replication_opts)
+        self.config.append_config_values(na_opts.netapp_data_motion_opts)
         CONF.set_override("share_backend_name", self.backend,
                           group=self.backend, enforce_type=True)
         CONF.set_override("netapp_transport_type", "https",
@@ -138,7 +138,7 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
         config.append_config_values(na_opts.netapp_transport_opts)
         config.append_config_values(na_opts.netapp_support_opts)
         config.append_config_values(na_opts.netapp_provisioning_opts)
-        config.append_config_values(na_opts.netapp_replication_opts)
+        config.append_config_values(na_opts.netapp_data_motion_opts)
 
         self.mock_object(data_motion, "get_backend_configuration",
                          mock.Mock(return_value=config))

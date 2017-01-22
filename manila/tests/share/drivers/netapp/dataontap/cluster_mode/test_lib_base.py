@@ -45,6 +45,7 @@ from manila.share import utils as share_utils
 from manila import test
 from manila.tests import fake_share
 from manila.tests.share.drivers.netapp.dataontap import fakes as fake
+from manila.tests import utils
 
 
 def fake_replica(**kwargs):
@@ -1075,7 +1076,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_export_addresses_with_metadata.assert_called_once_with(
             fake.SHARE, fake.SHARE_SERVER, fake.LIFS)
         protocol_helper.create_share.assert_called_once_with(
-            fake.SHARE, fake.SHARE_NAME)
+            fake.SHARE, fake.SHARE_NAME, clear_current_export_policy=True)
 
     def test_create_export_lifs_not_found(self):
 
@@ -3619,3 +3620,463 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             replica_list, self.fake_replica, [fake_snapshot], fake_snapshot)
 
         self.assertIsNone(model_update)
+
+    def test_migration_check_compatibility_no_cluster_credentials(self):
+        self.library._have_cluster_creds = False
+        self.mock_object(data_motion, 'get_backend_configuration')
+        mock_warning_log = self.mock_object(lib_base.LOG, 'warning')
+
+        migration_compatibility = self.library.migration_check_compatibility(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(), share_server=None,
+            destination_share_server=fake.SHARE_SERVER)
+
+        expected_compatibility = {
+            'compatible': False,
+            'writable': False,
+            'nondisruptive': False,
+            'preserve_metadata': False,
+            'preserve_snapshots': False,
+        }
+        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        mock_warning_log.assert_called_once()
+        self.assertFalse(data_motion.get_backend_configuration.called)
+
+    def test_migration_check_compatibility_destination_not_configured(self):
+        self.library._have_cluster_creds = True
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(
+            data_motion, 'get_backend_configuration',
+            mock.Mock(side_effect=exception.BadConfigurationException))
+        self.mock_object(self.library, '_get_vserver')
+        mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
+        self.mock_object(share_utils, 'extract_host', mock.Mock(
+            return_value='destination_backend'))
+        mock_vserver_compatibility_check = self.mock_object(
+            self.library, '_check_destination_vserver_for_vol_move')
+
+        migration_compatibility = self.library.migration_check_compatibility(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(), share_server=fake.SHARE_SERVER,
+            destination_share_server=None)
+
+        expected_compatibility = {
+            'compatible': False,
+            'writable': False,
+            'nondisruptive': False,
+            'preserve_metadata': False,
+            'preserve_snapshots': False,
+        }
+        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        mock_exception_log.assert_called_once()
+        data_motion.get_backend_configuration.assert_called_once_with(
+            'destination_backend')
+        self.assertFalse(mock_vserver_compatibility_check.called)
+        self.assertFalse(self.library._get_vserver.called)
+
+    @ddt.data(
+        utils.annotated(
+            'dest_share_server_not_expected',
+            (('src_vserver', None), exception.InvalidParameterValue)),
+        utils.annotated(
+            'src_share_server_not_expected',
+            (exception.InvalidParameterValue, ('dest_vserver', None))))
+    def test_migration_check_compatibility_errors(self, side_effects):
+        self.library._have_cluster_creds = True
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(data_motion, 'get_backend_configuration')
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(side_effect=side_effects))
+        mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
+        self.mock_object(share_utils, 'extract_host', mock.Mock(
+            return_value='destination_backend'))
+        mock_compatibility_check = self.mock_object(
+            self.client, 'check_volume_move')
+
+        migration_compatibility = self.library.migration_check_compatibility(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(), share_server=fake.SHARE_SERVER,
+            destination_share_server=None)
+
+        expected_compatibility = {
+            'compatible': False,
+            'writable': False,
+            'nondisruptive': False,
+            'preserve_metadata': False,
+            'preserve_snapshots': False,
+        }
+        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        mock_exception_log.assert_called_once()
+        data_motion.get_backend_configuration.assert_called_once_with(
+            'destination_backend')
+        self.assertFalse(mock_compatibility_check.called)
+
+    def test_migration_check_compatibility_incompatible_vservers(self):
+        self.library._have_cluster_creds = True
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(data_motion, 'get_backend_configuration')
+        mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
+        get_vserver_returns = [
+            (fake.VSERVER1, mock.Mock()),
+            (fake.VSERVER2, mock.Mock()),
+        ]
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(side_effect=get_vserver_returns))
+        self.mock_object(share_utils, 'extract_host', mock.Mock(
+            side_effect=['destination_backend', 'destination_pool']))
+        mock_move_check = self.mock_object(self.client, 'check_volume_move')
+
+        migration_compatibility = self.library.migration_check_compatibility(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(), share_server=fake.SHARE_SERVER,
+            destination_share_server='dst_srv')
+
+        expected_compatibility = {
+            'compatible': False,
+            'writable': False,
+            'nondisruptive': False,
+            'preserve_metadata': False,
+            'preserve_snapshots': False,
+        }
+        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        mock_exception_log.assert_called_once()
+        data_motion.get_backend_configuration.assert_called_once_with(
+            'destination_backend')
+        self.assertFalse(mock_move_check.called)
+        self.library._get_vserver.assert_has_calls(
+            [mock.call(share_server=fake.SHARE_SERVER),
+             mock.call(share_server='dst_srv')])
+
+    def test_migration_check_compatibility_client_error(self):
+        self.library._have_cluster_creds = True
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
+        self.mock_object(data_motion, 'get_backend_configuration')
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1, mock.Mock())))
+        self.mock_object(share_utils, 'extract_host', mock.Mock(
+            side_effect=['destination_backend', 'destination_pool']))
+        mock_move_check = self.mock_object(
+            self.client, 'check_volume_move',
+            mock.Mock(side_effect=netapp_api.NaApiError))
+
+        migration_compatibility = self.library.migration_check_compatibility(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(), share_server=fake.SHARE_SERVER,
+            destination_share_server='dst_srv')
+
+        expected_compatibility = {
+            'compatible': False,
+            'writable': False,
+            'nondisruptive': False,
+            'preserve_metadata': False,
+            'preserve_snapshots': False,
+        }
+        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        mock_exception_log.assert_called_once()
+        data_motion.get_backend_configuration.assert_called_once_with(
+            'destination_backend')
+        mock_move_check.assert_called_once_with(
+            fake.SHARE_NAME, fake.VSERVER1, 'destination_pool')
+        self.library._get_vserver.assert_has_calls(
+            [mock.call(share_server=fake.SHARE_SERVER),
+             mock.call(share_server='dst_srv')])
+
+    def test_migration_check_compatibility(self):
+        self.library._have_cluster_creds = True
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(data_motion, 'get_backend_configuration')
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1, mock.Mock())))
+        self.mock_object(share_utils, 'extract_host', mock.Mock(
+            side_effect=['destination_backend', 'destination_pool']))
+        mock_move_check = self.mock_object(self.client, 'check_volume_move')
+
+        migration_compatibility = self.library.migration_check_compatibility(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(), share_server=fake.SHARE_SERVER,
+            destination_share_server='dst_srv')
+
+        expected_compatibility = {
+            'compatible': True,
+            'writable': True,
+            'nondisruptive': True,
+            'preserve_metadata': True,
+            'preserve_snapshots': True,
+        }
+        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        data_motion.get_backend_configuration.assert_called_once_with(
+            'destination_backend')
+        mock_move_check.assert_called_once_with(
+            fake.SHARE_NAME, fake.VSERVER1, 'destination_pool')
+        self.library._get_vserver.assert_has_calls(
+            [mock.call(share_server=fake.SHARE_SERVER),
+             mock.call(share_server='dst_srv')])
+
+    def test_migration_start(self):
+        mock_info_log = self.mock_object(lib_base.LOG, 'info')
+        source_snapshots = mock.Mock()
+        snapshot_mappings = mock.Mock()
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1, mock.Mock())))
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(share_utils, 'extract_host',
+                         mock.Mock(return_value='destination_pool'))
+        mock_move = self.mock_object(self.client, 'start_volume_move')
+
+        retval = self.library.migration_start(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(),
+            source_snapshots, snapshot_mappings,
+            share_server=fake.SHARE_SERVER, destination_share_server='dst_srv')
+
+        self.assertIsNone(retval)
+        self.assertTrue(mock_info_log.called)
+        mock_move.assert_called_once_with(
+            fake.SHARE_NAME, fake.VSERVER1, 'destination_pool')
+
+    def test_migration_continue_volume_move_failed(self):
+        source_snapshots = mock.Mock()
+        snapshot_mappings = mock.Mock()
+        mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1, mock.Mock())))
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        mock_status_check = self.mock_object(
+            self.client, 'get_volume_move_status',
+            mock.Mock(return_value={'phase': 'failed', 'details': 'unknown'}))
+
+        self.assertRaises(exception.NetAppException,
+                          self.library.migration_continue,
+                          self.context, fake_share.fake_share_instance(),
+                          fake_share.fake_share_instance(),
+                          source_snapshots, snapshot_mappings,
+                          share_server=None, destination_share_server=None)
+
+        mock_status_check.assert_called_once_with(
+            fake.SHARE_NAME, fake.VSERVER1)
+        mock_exception_log.assert_called_once()
+
+    @ddt.data({'phase': 'Queued', 'completed': False},
+              {'phase': 'Finishing', 'completed': False},
+              {'phase': 'cutover_hard_deferred', 'completed': True},
+              {'phase': 'cutover_soft_deferred', 'completed': True},
+              {'phase': 'completed', 'completed': True})
+    @ddt.unpack
+    def test_migration_continue(self, phase, completed):
+        source_snapshots = mock.Mock()
+        snapshot_mappings = mock.Mock()
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1, mock.Mock())))
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(self.client, 'get_volume_move_status',
+                         mock.Mock(return_value={'phase': phase}))
+
+        migration_completed = self.library.migration_continue(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(), source_snapshots,
+            snapshot_mappings, share_server=fake.SHARE_SERVER,
+            destination_share_server='dst_srv')
+
+        self.assertEqual(completed, migration_completed)
+
+    @ddt.data('cutover_hard_deferred', 'cutover_soft_deferred',
+              'Queued', 'Replicating')
+    def test_migration_get_progress_at_phase(self, phase):
+        source_snapshots = mock.Mock()
+        snapshot_mappings = mock.Mock()
+        mock_info_log = self.mock_object(lib_base.LOG, 'info')
+        status = {
+            'state': 'healthy',
+            'details': '%s:: Volume move job in progress' % phase,
+            'phase': phase,
+            'estimated-completion-time': '1481919246',
+            'percent-complete': 80,
+        }
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1, mock.Mock())))
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(self.client, 'get_volume_move_status',
+                         mock.Mock(return_value=status))
+
+        migration_progress = self.library.migration_get_progress(
+            self.context, fake_share.fake_share_instance(),
+            source_snapshots, snapshot_mappings,
+            fake_share.fake_share_instance(), share_server=fake.SHARE_SERVER,
+            destination_share_server='dst_srv')
+
+        expected_progress = {
+            'total_progress': 100 if phase.startswith('cutover') else 80,
+            'state': 'healthy',
+            'estimated_completion_time': '1481919246',
+            'details': '%s:: Volume move job in progress' % phase,
+            'phase': phase,
+        }
+        self.assertDictMatch(expected_progress, migration_progress)
+        mock_info_log.assert_called_once()
+
+    @ddt.data(utils.annotated('already_canceled', (True, )),
+              utils.annotated('not_canceled_yet', (False, )))
+    def test_migration_cancel(self, already_canceled):
+        source_snapshots = mock.Mock()
+        snapshot_mappings = mock.Mock()
+        already_canceled = already_canceled[0]
+        mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
+        mock_info_log = self.mock_object(lib_base.LOG, 'info')
+        vol_move_side_effect = (exception.NetAppException
+                                if already_canceled else None)
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1, mock.Mock())))
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(self.client, 'abort_volume_move')
+        self.mock_object(self.client, 'get_volume_move_status',
+                         mock.Mock(side_effect=vol_move_side_effect))
+
+        retval = self.library.migration_cancel(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(), source_snapshots,
+            snapshot_mappings, share_server=fake.SHARE_SERVER,
+            destination_share_server='dst_srv')
+
+        self.assertIsNone(retval)
+        if already_canceled:
+            mock_exception_log.assert_called_once()
+        else:
+            mock_info_log.assert_called_once()
+        self.assertEqual(not already_canceled,
+                         self.client.abort_volume_move.called)
+
+    def test_migration_complete_invalid_phase(self):
+        source_snapshots = mock.Mock()
+        snapshot_mappings = mock.Mock()
+        status = {
+            'state': 'healthy',
+            'phase': 'Replicating',
+            'details': 'Replicating:: Volume move operation is in progress.',
+        }
+        mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
+        vserver_client = mock.Mock()
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
+        self.mock_object(
+            self.library, '_get_backend_share_name',
+            mock.Mock(side_effect=[fake.SHARE_NAME, 'new_share_name']))
+        self.mock_object(self.library, '_get_volume_move_status',
+                         mock.Mock(return_value=status))
+        self.mock_object(self.library, '_create_export')
+
+        self.assertRaises(
+            exception.NetAppException, self.library.migration_complete,
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance, source_snapshots,
+            snapshot_mappings, share_server=fake.SHARE_SERVER,
+            destination_share_server='dst_srv')
+        self.assertFalse(vserver_client.set_volume_name.called)
+        self.assertFalse(self.library._create_export.called)
+        mock_exception_log.assert_called_once()
+
+    def test_migration_complete_timeout(self):
+        source_snapshots = mock.Mock()
+        snapshot_mappings = mock.Mock()
+        self.library.configuration.netapp_volume_move_cutover_timeout = 15
+        vol_move_side_effects = [
+            {'phase': 'cutover_hard_deferred'},
+            {'phase': 'Cutover'},
+            {'phase': 'Finishing'},
+            {'phase': 'Finishing'},
+        ]
+        self.mock_object(time, 'sleep')
+        mock_warning_log = self.mock_object(lib_base.LOG, 'warning')
+        vserver_client = mock.Mock()
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
+        self.mock_object(
+            self.library, '_get_backend_share_name',
+            mock.Mock(side_effect=[fake.SHARE_NAME, 'new_share_name']))
+        self.mock_object(self.library, '_get_volume_move_status', mock.Mock(
+            side_effect=vol_move_side_effects))
+        self.mock_object(self.library, '_create_export')
+        src_share = fake_share.fake_share_instance(id='source-share-instance')
+        dest_share = fake_share.fake_share_instance(id='dest-share-instance')
+
+        self.assertRaises(
+            exception.NetAppException, self.library.migration_complete,
+            self.context, src_share, dest_share, source_snapshots,
+            snapshot_mappings, share_server=fake.SHARE_SERVER,
+            destination_share_server='dst_srv')
+        self.assertFalse(vserver_client.set_volume_name.called)
+        self.assertFalse(self.library._create_export.called)
+        self.assertEqual(3, mock_warning_log.call_count)
+
+    @ddt.data('cutover_hard_deferred', 'cutover_soft_deferred', 'completed')
+    def test_migration_complete(self, phase):
+        snap = fake_share.fake_snapshot_instance(
+            id='src-snapshot', provider_location='test-src-provider-location')
+        dest_snap = fake_share.fake_snapshot_instance(id='dest-snapshot',
+                                                      as_primitive=True)
+        source_snapshots = [snap]
+        snapshot_mappings = {snap['id']: dest_snap}
+        self.library.configuration.netapp_volume_move_cutover_timeout = 15
+        vol_move_side_effects = [
+            {'phase': phase},
+            {'phase': 'Cutover'},
+            {'phase': 'Finishing'},
+            {'phase': 'completed'},
+        ]
+        self.mock_object(time, 'sleep')
+        mock_debug_log = self.mock_object(lib_base.LOG, 'debug')
+        mock_info_log = self.mock_object(lib_base.LOG, 'info')
+        mock_warning_log = self.mock_object(lib_base.LOG, 'warning')
+        vserver_client = mock.Mock()
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
+        self.mock_object(
+            self.library, '_get_backend_share_name',
+            mock.Mock(side_effect=[fake.SHARE_NAME, 'new_share_name']))
+        self.mock_object(self.library, '_create_export', mock.Mock(
+            return_value=fake.NFS_EXPORTS))
+        mock_move_status_check = self.mock_object(
+            self.library, '_get_volume_move_status',
+            mock.Mock(side_effect=vol_move_side_effects))
+        src_share = fake_share.fake_share_instance(id='source-share-instance')
+        dest_share = fake_share.fake_share_instance(id='dest-share-instance')
+
+        data_updates = self.library.migration_complete(
+            self.context, src_share, dest_share, source_snapshots,
+            snapshot_mappings, share_server=fake.SHARE_SERVER,
+            destination_share_server='dst_srv')
+
+        self.assertEqual(fake.NFS_EXPORTS, data_updates['export_locations'])
+        expected_dest_snap_updates = {
+            'provider_location': snap['provider_location'],
+        }
+        self.assertIn(dest_snap['id'], data_updates['snapshot_updates'])
+        self.assertEqual(expected_dest_snap_updates,
+                         data_updates['snapshot_updates'][dest_snap['id']])
+        vserver_client.set_volume_name.assert_called_once_with(
+            fake.SHARE_NAME, 'new_share_name')
+        self.library._create_export.assert_called_once_with(
+            dest_share, fake.SHARE_SERVER, fake.VSERVER1, vserver_client,
+            clear_current_export_policy=False)
+        mock_info_log.assert_called_once()
+        if phase != 'completed':
+            self.assertEqual(2, mock_warning_log.call_count)
+            self.assertFalse(mock_debug_log.called)
+            self.assertEqual(4, mock_move_status_check.call_count)
+        else:
+            self.assertFalse(mock_warning_log.called)
+            mock_debug_log.assert_called_once()
+            mock_move_status_check.assert_called_once()

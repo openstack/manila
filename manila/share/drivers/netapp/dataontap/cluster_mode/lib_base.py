@@ -44,6 +44,7 @@ from manila.share.drivers.netapp import options as na_opts
 from manila.share.drivers.netapp import utils as na_utils
 from manila.share import share_types
 from manila.share import utils as share_utils
+from manila import utils as manila_utils
 
 LOG = log.getLogger(__name__)
 CONF = cfg.CONF
@@ -96,7 +97,7 @@ class NetAppCmodeFileStorageLibrary(object):
         self.configuration.append_config_values(
             na_opts.netapp_provisioning_opts)
         self.configuration.append_config_values(
-            na_opts.netapp_replication_opts)
+            na_opts.netapp_data_motion_opts)
 
         self._licenses = []
         self._client = None
@@ -675,7 +676,8 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver_client.delete_volume(share_name)
 
     @na_utils.trace
-    def _create_export(self, share, share_server, vserver, vserver_client):
+    def _create_export(self, share, share_server, vserver, vserver_client,
+                       clear_current_export_policy=True):
         """Creates NAS storage."""
         helper = self._get_helper(share)
         helper.set_client(vserver_client)
@@ -695,7 +697,9 @@ class NetAppCmodeFileStorageLibrary(object):
             share, share_server, interfaces)
 
         # Create the share and get a callback for generating export locations
-        callback = helper.create_share(share, share_name)
+        callback = helper.create_share(
+            share, share_name,
+            clear_current_export_policy=clear_current_export_policy)
 
         # Generate export locations using addresses, metadata and callback
         export_locations = [
@@ -1618,3 +1622,275 @@ class NetAppCmodeFileStorageLibrary(object):
         except netapp_api.NaApiError as e:
             if e.code != netapp_api.EOBJECTNOTFOUND:
                 raise
+
+    def _check_destination_vserver_for_vol_move(self, source_share,
+                                                source_vserver,
+                                                dest_share_server):
+        try:
+            destination_vserver, __ = self._get_vserver(
+                share_server=dest_share_server)
+        except exception.InvalidParameterValue:
+            destination_vserver = None
+
+        if source_vserver != destination_vserver:
+            msg = _("Cannot migrate %(shr)s efficiently from source "
+                    "VServer %(src)s to destination VServer %(dest)s.")
+            msg_args = {
+                'shr': source_share['id'],
+                'src': source_vserver,
+                'dest': destination_vserver,
+            }
+            raise exception.NetAppException(msg % msg_args)
+
+    def migration_check_compatibility(self, context, source_share,
+                                      destination_share, share_server=None,
+                                      destination_share_server=None):
+        """Checks compatibility between self.host and destination host."""
+        # We need cluster creds to perform an intra-cluster data motion
+        compatible = False
+        destination_host = destination_share['host']
+
+        if self._have_cluster_creds:
+            try:
+                backend = share_utils.extract_host(
+                    destination_host, level='backend_name')
+                data_motion.get_backend_configuration(backend)
+
+                source_vserver, __ = self._get_vserver(
+                    share_server=share_server)
+                share_volume = self._get_backend_share_name(
+                    source_share['id'])
+                destination_aggregate = share_utils.extract_host(
+                    destination_host, level='pool')
+
+                self._check_destination_vserver_for_vol_move(
+                    source_share, source_vserver, destination_share_server)
+
+                self._client.check_volume_move(
+                    share_volume, source_vserver, destination_aggregate)
+
+            except Exception:
+                msg = _LE("Cannot migrate share %(shr)s efficiently between "
+                          "%(src)s and %(dest)s.")
+                msg_args = {
+                    'shr': source_share['id'],
+                    'src': source_share['host'],
+                    'dest': destination_host,
+                }
+                LOG.exception(msg, msg_args)
+            else:
+                compatible = True
+        else:
+            msg = _LW("Cluster credentials have not been configured "
+                      "with this share driver. Cannot perform volume move "
+                      "operations.")
+            LOG.warning(msg)
+
+        compatibility = {
+            'compatible': compatible,
+            'writable': compatible,
+            'nondisruptive': compatible,
+            'preserve_metadata': compatible,
+            'preserve_snapshots': compatible,
+        }
+
+        return compatibility
+
+    def migration_start(self, context, source_share, destination_share,
+                        source_snapshots, snapshot_mappings,
+                        share_server=None, destination_share_server=None):
+        """Begins data motion from source_share to destination_share."""
+        # Intra-cluster migration
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
+        share_volume = self._get_backend_share_name(source_share['id'])
+        destination_aggregate = share_utils.extract_host(
+            destination_share['host'], level='pool')
+
+        self._client.start_volume_move(
+            share_volume, vserver, destination_aggregate)
+
+        msg = _LI("Began volume move operation of share %(shr)s from %(src)s "
+                  "to %(dest)s.")
+        msg_args = {
+            'shr': source_share['id'],
+            'src': source_share['host'],
+            'dest': destination_share['host'],
+        }
+        LOG.info(msg, msg_args)
+
+    def _get_volume_move_status(self, source_share, share_server):
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
+        share_volume = self._get_backend_share_name(source_share['id'])
+        status = self._client.get_volume_move_status(share_volume, vserver)
+        return status
+
+    def migration_continue(self, context, source_share, destination_share,
+                           source_snapshots, snapshot_mappings,
+                           share_server=None, destination_share_server=None):
+        """Check progress of migration, try to repair data motion errors."""
+        status = self._get_volume_move_status(source_share, share_server)
+        completed_phases = (
+            'cutover_hard_deferred', 'cutover_soft_deferred', 'completed')
+
+        move_phase = status['phase'].lower()
+        if move_phase == 'failed':
+            msg_args = {
+                'shr': source_share['id'],
+                'reason': status['details'],
+            }
+            msg = _("Volume move operation for share %(shr)s failed. Reason: "
+                    "%(reason)s") % msg_args
+            LOG.exception(msg)
+            raise exception.NetAppException(msg)
+        elif move_phase in completed_phases:
+            return True
+
+        return False
+
+    def migration_get_progress(self, context, source_share,
+                               destination_share, source_snapshots,
+                               snapshot_mappings, share_server=None,
+                               destination_share_server=None):
+        """Return detailed progress of the migration in progress."""
+        status = self._get_volume_move_status(source_share, share_server)
+
+        # NOTE (gouthamr): If the volume move is waiting for a manual
+        # intervention to cut-over, the copy is done with respect to the
+        # user. Volume move copies the rest of the data before cut-over anyway.
+        if status['phase'] in ('cutover_hard_deferred',
+                               'cutover_soft_deferred'):
+            status['percent-complete'] = 100
+
+        msg = _LI("Volume move status for share %(share)s: (State) %(state)s. "
+                  "(Phase) %(phase)s. Details: %(details)s")
+        msg_args = {
+            'state': status['state'],
+            'details': status['details'],
+            'share': source_share['id'],
+            'phase': status['phase'],
+        }
+        LOG.info(msg, msg_args)
+
+        return {
+            'total_progress': status['percent-complete'] or 0,
+            'state': status['state'],
+            'estimated_completion_time': status['estimated-completion-time'],
+            'phase': status['phase'],
+            'details': status['details'],
+        }
+
+    def migration_cancel(self, context, source_share, destination_share,
+                         source_snapshots, snapshot_mappings,
+                         share_server=None, destination_share_server=None):
+        """Abort an ongoing migration."""
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
+        share_volume = self._get_backend_share_name(source_share['id'])
+
+        try:
+            self._get_volume_move_status(source_share, share_server)
+        except exception.NetAppException:
+            LOG.exception(_LE("Could not get volume move status."))
+            return
+
+        self._client.abort_volume_move(share_volume, vserver)
+
+        msg = _LI("Share volume move operation for share %(shr)s from host "
+                  "%(src)s to %(dest)s was successfully aborted.")
+        msg_args = {
+            'shr': source_share['id'],
+            'src': source_share['host'],
+            'dest': destination_share['host'],
+        }
+        LOG.info(msg, msg_args)
+
+    def migration_complete(self, context, source_share, destination_share,
+                           source_snapshots, snapshot_mappings,
+                           share_server=None, destination_share_server=None):
+        """Initiate the cutover to destination share after move is complete."""
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
+        share_volume = self._get_backend_share_name(source_share['id'])
+
+        status = self._get_volume_move_status(source_share, share_server)
+
+        move_phase = status['phase'].lower()
+        if move_phase == 'completed':
+            LOG.debug("Volume move operation was already successfully "
+                      "completed for share %(shr)s.",
+                      {'shr': source_share['id']})
+        elif move_phase in ('cutover_hard_deferred', 'cutover_soft_deferred'):
+            self._client.trigger_volume_move_cutover(share_volume, vserver)
+            self._wait_for_cutover_completion(
+                source_share, share_server)
+        else:
+            msg_args = {
+                'shr': source_share['id'],
+                'status': status['state'],
+                'phase': status['phase'],
+                'details': status['details'],
+            }
+            msg = _("Cannot complete volume move operation for share %(shr)s. "
+                    "Current volume move status: %(status)s, phase: "
+                    "%(phase)s. Details: %(details)s") % msg_args
+            LOG.exception(msg)
+            raise exception.NetAppException(msg)
+
+        new_share_volume_name = self._get_backend_share_name(
+            destination_share['id'])
+        vserver_client.set_volume_name(share_volume, new_share_volume_name)
+
+        msg = _LI("Volume move operation for share %(shr)s has completed "
+                  "successfully. Share has been moved from %(src)s to "
+                  "%(dest)s.")
+        msg_args = {
+            'shr': source_share['id'],
+            'src': source_share['host'],
+            'dest': destination_share['host'],
+        }
+        LOG.info(msg, msg_args)
+
+        # NOTE(gouthamr): For nondisruptive migration, current export
+        # policy will not be cleared, the export policy will be renamed to
+        # match the name of the share.
+        export_locations = self._create_export(
+            destination_share, share_server, vserver, vserver_client,
+            clear_current_export_policy=False)
+        src_snaps_dict = {s['id']: s for s in source_snapshots}
+        snapshot_updates = {}
+
+        for source_snap_id, destination_snap in snapshot_mappings.items():
+            p_location = src_snaps_dict[source_snap_id]['provider_location']
+
+            snapshot_updates.update(
+                {destination_snap['id']: {'provider_location': p_location}})
+
+        return {
+            'export_locations': export_locations,
+            'snapshot_updates': snapshot_updates,
+        }
+
+    def _wait_for_cutover_completion(self, source_share, share_server):
+
+        retries = (self.configuration.netapp_volume_move_cutover_timeout / 5
+                   or 1)
+
+        @manila_utils.retry(exception.ShareBusyException, interval=5,
+                            retries=retries, backoff_rate=1)
+        def check_move_completion():
+            status = self._get_volume_move_status(source_share, share_server)
+            if status['phase'].lower() != 'completed':
+                msg_args = {
+                    'shr': source_share['id'],
+                    'phs': status['phase'],
+                }
+                msg = _('Volume move operation for share %(shr)s is not '
+                        'complete. Current Phase: %(phs)s. '
+                        'Retrying.') % msg_args
+                LOG.warning(msg)
+                raise exception.ShareBusyException(reason=msg)
+
+        try:
+            check_move_completion()
+        except exception.ShareBusyException:
+            msg = _("Volume move operation did not complete after cut-over "
+                    "was triggered. Retries exhausted. Not retrying.")
+            raise exception.NetAppException(message=msg)
