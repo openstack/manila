@@ -1821,6 +1821,14 @@ metadata_3:
   in: body
   required: true
   type: object
+metadata_key_request:
+  description: |
+    The key of a metadata item. For example, if share metadata is
+    as follows: ``"project": "my_test", "aim": "testing"``, the keys are
+    "project" and "aim".
+  in: body
+  required: false
+  type: object
 migrate-start:
   description: |
     The ``migrate-start`` object.

@@ -25,9 +25,9 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - tenant_id: tenant_id_path
-   - pool: backend_pool_query
-   - host: backend_host_query
-   - backend: backend_query
+   - pool_name: backend_pool_query
+   - host_name: backend_host_query
+   - backend_name: backend_query
    - capabilities: backend_capabilities_query
    - share_type: share_type_query
 
@@ -65,9 +65,9 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - tenant_id: tenant_id_path
-   - pool: backend_pool_query
-   - host: backend_host_query
-   - backend: backend_query
+   - pool_name: backend_pool_query
+   - host_name: backend_host_query
+   - backend_name: backend_query
    - capabilities: backend_capabilities_query
    - share_type: share_type_query
 
