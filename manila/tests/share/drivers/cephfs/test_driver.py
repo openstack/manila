@@ -63,6 +63,7 @@ class MockVolumeClientModule(object):
             self.create_volume = mock.Mock(return_value={
                 "mount_path": "/foo/bar"
             })
+            self._get_path = mock.Mock(return_value='/foo/bar')
             self.get_mon_addrs = mock.Mock(return_value=["1.2.3.4", "5.6.7.8"])
             self.get_authorized_ids = mock.Mock(
                 return_value=[('eve', 'rw')])
@@ -87,6 +88,7 @@ class CephFSDriverTestCase(test.TestCase):
 
     def setUp(self):
         super(CephFSDriverTestCase, self).setUp()
+        self._execute = mock.Mock()
         self.fake_conf = configuration.Configuration(None)
         self._context = context.get_admin_context()
         self._share = fake_share.fake_share(share_proto='CEPHFS')
@@ -99,20 +101,32 @@ class CephFSDriverTestCase(test.TestCase):
         self.mock_object(driver, "ceph_module_found", True)
         self.mock_object(driver, "cephfs_share_path")
         self.mock_object(driver, 'NativeProtocolHelper')
+        self.mock_object(driver, 'NFSProtocolHelper')
 
         self._driver = (
-            driver.CephFSDriver(configuration=self.fake_conf))
+            driver.CephFSDriver(execute=self._execute,
+                                configuration=self.fake_conf))
         self._driver.protocol_helper = mock.Mock()
 
         self.mock_object(share_types, 'get_share_type_extra_specs',
                          mock.Mock(return_value={}))
 
-    def test_do_setup(self):
+    @ddt.data('cephfs', 'nfs')
+    def test_do_setup(self, protocol_helper):
+        self._driver.configuration.cephfs_protocol_helper_type = (
+            protocol_helper)
+
         self._driver.do_setup(self._context)
 
-        driver.NativeProtocolHelper.assert_called_once_with(
-            None, self._driver.configuration,
-            volume_client=self._driver._volume_client)
+        if protocol_helper == 'cephfs':
+            driver.NativeProtocolHelper.assert_called_once_with(
+                self._execute, self._driver.configuration,
+                volume_client=self._driver._volume_client)
+        else:
+            driver.NFSProtocolHelper.assert_called_once_with(
+                self._execute, self._driver.configuration,
+                volume_client=self._driver._volume_client)
+
         self._driver.protocol_helper.init_helper.assert_called_once_with()
 
     def test_create_share(self):
@@ -507,3 +521,156 @@ class NativeProtocolHelperTestCase(test.TestCase):
             self.assertFalse(vc.get_authorized_ids.called)
             vc.authorize.assert_called_once_with(
                 driver.cephfs_share_path(self._share), "alice")
+
+
+@ddt.ddt
+class NFSProtocolHelperTestCase(test.TestCase):
+
+    def setUp(self):
+        super(NFSProtocolHelperTestCase, self).setUp()
+        self._execute = mock.Mock()
+        self._share = fake_share.fake_share(share_proto='NFS')
+        self._volume_client = MockVolumeClientModule.CephFSVolumeClient()
+        self.fake_conf = configuration.Configuration(None)
+
+        self.fake_conf.set_default('cephfs_ganesha_server_ip',
+                                   'fakeip')
+        self.mock_object(driver, "cephfs_share_path",
+                         mock.Mock(return_value='fakevolumepath'))
+        self.mock_object(driver.ganesha_utils, 'SSHExecutor')
+        self.mock_object(driver.ganesha_utils, 'RootExecutor')
+        self.mock_object(driver.socket, 'gethostname')
+
+        self._nfs_helper = driver.NFSProtocolHelper(
+            self._execute,
+            self.fake_conf,
+            volume_client=self._volume_client)
+
+    @ddt.data(False, True)
+    def test_init_executor_type(self, ganesha_server_is_remote):
+        fake_conf = configuration.Configuration(None)
+        conf_args_list = [
+            ('cephfs_ganesha_server_is_remote', ganesha_server_is_remote),
+            ('cephfs_ganesha_server_ip', 'fakeip'),
+            ('cephfs_ganesha_server_username', 'fake_username'),
+            ('cephfs_ganesha_server_password', 'fakepwd'),
+            ('cephfs_ganesha_path_to_private_key', 'fakepathtokey')]
+        for args in conf_args_list:
+            fake_conf.set_default(*args)
+
+        driver.NFSProtocolHelper(
+            self._execute,
+            fake_conf,
+            volume_client=MockVolumeClientModule.CephFSVolumeClient()
+        )
+
+        if ganesha_server_is_remote:
+            driver.ganesha_utils.SSHExecutor.assert_has_calls(
+                [mock.call('fakeip', 22, None, 'fake_username',
+                           password='fakepwd',
+                           privatekey='fakepathtokey')])
+        else:
+            driver.ganesha_utils.RootExecutor.assert_has_calls(
+                [mock.call(self._execute)])
+
+    @ddt.data('fakeip', None)
+    def test_init_identify_local_host(self, ganesha_server_ip):
+        self.mock_object(driver.LOG, 'info')
+        fake_conf = configuration.Configuration(None)
+        conf_args_list = [
+            ('cephfs_ganesha_server_ip', ganesha_server_ip),
+            ('cephfs_ganesha_server_username', 'fake_username'),
+            ('cephfs_ganesha_server_password', 'fakepwd'),
+            ('cephfs_ganesha_path_to_private_key', 'fakepathtokey')]
+        for args in conf_args_list:
+            fake_conf.set_default(*args)
+
+        driver.NFSProtocolHelper(
+            self._execute,
+            fake_conf,
+            volume_client=MockVolumeClientModule.CephFSVolumeClient()
+        )
+
+        driver.ganesha_utils.RootExecutor.assert_has_calls(
+            [mock.call(self._execute)])
+        if ganesha_server_ip:
+            self.assertFalse(driver.socket.gethostname.called)
+            self.assertFalse(driver.LOG.info.called)
+        else:
+            driver.socket.gethostname.assert_called_once_with()
+            driver.LOG.info.assert_called_once()
+
+    def test_get_export_locations(self):
+        cephfs_volume = {"mount_path": "/foo/bar"}
+
+        ret = self._nfs_helper.get_export_locations(self._share,
+                                                    cephfs_volume)
+        self.assertEqual(
+            {
+                'path': 'fakeip:/foo/bar',
+                'is_admin_only': False,
+                'metadata': {}
+            }, ret)
+
+    def test_default_config_hook(self):
+        fake_conf_dict = {'key': 'value1'}
+        self.mock_object(driver.ganesha.GaneshaNASHelper,
+                         '_default_config_hook',
+                         mock.Mock(return_value={}))
+        self.mock_object(driver.ganesha_utils, 'path_from',
+                         mock.Mock(return_value='/fakedir/cephfs/conf'))
+        self.mock_object(self._nfs_helper, '_load_conf_dir',
+                         mock.Mock(return_value=fake_conf_dict))
+
+        ret = self._nfs_helper._default_config_hook()
+
+        (driver.ganesha.GaneshaNASHelper._default_config_hook.
+            assert_called_once_with())
+        driver.ganesha_utils.path_from.assert_called_once_with(
+            driver.__file__, 'conf')
+        self._nfs_helper._load_conf_dir.assert_called_once_with(
+            '/fakedir/cephfs/conf')
+        self.assertEqual(fake_conf_dict, ret)
+
+    def test_fsal_hook(self):
+        expected_ret = {
+            'Name': 'Ceph',
+            'User_Id': 'ganesha-fakeid',
+            'Secret_Access_Key': 'fakekey'
+        }
+        self.mock_object(self._volume_client, 'authorize',
+                         mock.Mock(return_value={'auth_key': 'fakekey'}))
+
+        ret = self._nfs_helper._fsal_hook(None, self._share, None)
+
+        driver.cephfs_share_path.assert_called_once_with(self._share)
+        self._volume_client.authorize.assert_called_once_with(
+            'fakevolumepath', 'ganesha-fakeid', readonly=False,
+            tenant_id='fake_project_uuid')
+        self.assertEqual(expected_ret, ret)
+
+    def test_cleanup_fsal_hook(self):
+        self.mock_object(self._volume_client, 'deauthorize')
+
+        ret = self._nfs_helper._cleanup_fsal_hook(None, self._share, None)
+
+        driver.cephfs_share_path.assert_called_once_with(self._share)
+        self._volume_client.deauthorize.assert_called_once_with(
+            'fakevolumepath', 'ganesha-fakeid')
+        self.assertIsNone(ret)
+
+    def test_get_export_path(self):
+        ret = self._nfs_helper._get_export_path(self._share)
+
+        driver.cephfs_share_path.assert_called_once_with(self._share)
+        self._volume_client._get_path.assert_called_once_with(
+            'fakevolumepath')
+        self.assertEqual('/foo/bar', ret)
+
+    def test_get_export_pseudo_path(self):
+        ret = self._nfs_helper._get_export_pseudo_path(self._share)
+
+        driver.cephfs_share_path.assert_called_once_with(self._share)
+        self._volume_client._get_path.assert_called_once_with(
+            'fakevolumepath')
+        self.assertEqual('/foo/bar', ret)

@@ -220,6 +220,11 @@ class GaneshaNASHelperTestCase(test.TestCase):
         ret = self._helper._fsal_hook('/fakepath', self.share, self.access)
         self.assertEqual({}, ret)
 
+    def test_cleanup_fsal_hook(self):
+        ret = self._helper._cleanup_fsal_hook('/fakepath', self.share,
+                                              self.access)
+        self.assertIsNone(ret)
+
     def test_allow_access(self):
         mock_ganesha_utils_patch = mock.Mock()
 
@@ -403,6 +408,7 @@ class GaneshaNASHelper2TestCase(test.TestCase):
         mock_gh = self._helper.ganesha
         self.mock_object(mock_gh, '_check_export_file_exists',
                          mock.Mock(return_value=True))
+        self.mock_object(self._helper, '_cleanup_fsal_hook')
         client = {'Access_Type': 'ro', 'Clients': '10.0.0.1'}
         self.mock_object(
             mock_gh, '_read_export_file',
@@ -415,6 +421,8 @@ class GaneshaNASHelper2TestCase(test.TestCase):
 
         mock_gh._check_export_file_exists.assert_called_once_with('fakename')
         mock_gh.remove_export.assert_called_once_with('fakename')
+        self._helper._cleanup_fsal_hook.assert_called_once_with(
+            None, self.share, None)
         self.assertFalse(mock_gh.add_export.called)
         self.assertFalse(mock_gh.update_export.called)
 
@@ -423,6 +431,7 @@ class GaneshaNASHelper2TestCase(test.TestCase):
         self.mock_object(mock_gh, '_check_export_file_exists',
                          mock.Mock(return_value=False))
         self.mock_object(ganesha.LOG, 'warning')
+        self.mock_object(self._helper, '_cleanup_fsal_hook')
 
         self._helper.update_access(
             self._context, self.share, access_rules=[],
@@ -433,3 +442,4 @@ class GaneshaNASHelper2TestCase(test.TestCase):
         self.assertFalse(mock_gh.add_export.called)
         self.assertFalse(mock_gh.update_export.called)
         self.assertFalse(mock_gh.remove_export.called)
+        self.assertFalse(self._helper._cleanup_fsal_hook.called)

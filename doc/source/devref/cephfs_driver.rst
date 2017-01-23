@@ -14,38 +14,51 @@
       License for the specific language governing permissions and limitations
       under the License.
 
+=============
 CephFS driver
 =============
 
-The CephFS driver enables manila to export shared filesystems to guests
-using the Ceph network protocol.  Guests require a Ceph client in order to
-mount the filesystem.
+The CephFS driver enables manila to export shared filesystems backed by Ceph's
+File System (CephFS) using either the Ceph network protocol or NFS protocol.
+Guests require a native Ceph client or an NFS client in order to mount the
+filesystem.
 
-Access is controlled via Ceph's cephx authentication system.  When a user
-requests share access for an ID, Ceph creates a corresponding Ceph auth ID
-and a secret key, if they do not already exist, and authorizes the ID to access
-the share.  The client can then mount the share using the ID and the secret
-key.
+When guests access CephFS using the native Ceph protocol, access is
+controlled via Ceph's cephx authentication system. If a user requests
+share access for an ID, Ceph creates a corresponding Ceph auth ID and a secret
+key, if they do not already exist, and authorizes the ID to access the share.
+The client can then mount the share using the ID and the secret key. To learn
+more about configuring Ceph clients to access the shares created using this
+driver, please see the Ceph documentation (http://docs.ceph.com/docs/master/cephfs/).
+If you choose to use the kernel client rather than the FUSE client, the share
+size limits set in manila may not be obeyed.
 
-To learn more about configuring Ceph clients to access the shares created
-using this driver, please see the Ceph documentation(
-http://docs.ceph.com/docs/master/cephfs/).  If you choose to use the kernel
-client rather than the FUSE client, the share size limits set in manila
-may not be obeyed.
+And when guests access CephFS through NFS, an NFS-Ganesha server mediates
+access to CephFS. The driver enables access control by managing the NFS-Ganesha
+server's exports.
+
 
 Supported Operations
---------------------
+~~~~~~~~~~~~~~~~~~~~
 
 The following operations are supported with CephFS backend:
 
-- Create/delete CephFS share
-- Allow/deny CephFS share access
+- Create/delete share
+- Allow/deny CephFS native protocol access to share
 
-  * Only ``cephx`` access type is supported for CephFS protocol.
+  * Only ``cephx`` access type is supported for CephFS native protocol.
   * ``read-only`` access level is supported in Newton or later versions
     of manila.
   * ``read-write`` access level is supported in Mitaka or later versions
     of manila.
+
+  (or)
+
+  Allow/deny NFS access to share
+
+  * Only ``ip`` access type is supported for NFS protocol.
+  * ``read-only`` and ``read-write`` access levels are supported in Pike or
+    later versions of manila.
 
 - Extend/shrink share
 - Create/delete snapshot
@@ -60,8 +73,18 @@ The following operations are supported with CephFS backend:
     see
     (http://docs.ceph.com/docs/master/cephfs/experimental-features/#snapshots).
 
+
 Prerequisites
--------------
+~~~~~~~~~~~~~
+
+.. important:: A manila share backed by CephFS is only as good as the
+               underlying filesystem. Take care when configuring your Ceph
+               cluster, and consult the latest guidance on the use of
+               CephFS in the Ceph documentation (
+               http://docs.ceph.com/docs/master/cephfs/)
+
+For CephFS native shares
+------------------------
 
 - Mitaka or later versions of manila.
 - Jewel or later versions of Ceph.
@@ -74,17 +97,33 @@ Prerequisites
 - Network connectivity between your Ceph cluster's public network and the
   servers running the :term:`manila-share` service.
 - Network connectivity between your Ceph cluster's public network and guests.
+  See :ref:security_cephfs_native
 
-.. important:: A manila share backed onto CephFS is only as good as the
-               underlying filesystem.  Take care when configuring your Ceph
-               cluster, and consult the latest guidance on the use of
-               CephFS in the Ceph documentation (
-               http://docs.ceph.com/docs/master/cephfs/)
+For CephFS NFS shares
+---------------------
 
-Authorize the driver to communicate with Ceph
----------------------------------------------
+- Pike or later versions of manila.
+- Kraken or later versions of Ceph.
+- 2.5 or later versions of NFS-Ganesha.
+- A Ceph cluster with a filesystem configured (
+  http://docs.ceph.com/docs/master/cephfs/createfs/)
+- ``ceph-common`` package installed in the servers running the
+  :term:`manila-share` service.
+- NFS client installed in the guest.
+- Network connectivity between your Ceph cluster's public network and the
+  servers running the :term:`manila-share` service.
+- Network connectivity between your Ceph cluster's public network and
+  NFS-Ganesha server.
+- Network connectivity between your NFS-Ganesha server and the manila
+  guest.
 
-Run the following commands to create a Ceph identity for manila to use:
+.. _authorize_ceph_driver:
+
+Authorizing the driver to communicate with Ceph
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Run the following commands to create a Ceph identity for a driver instance
+to use:
 
 .. code-block:: console
 
@@ -105,23 +144,17 @@ Run the following commands to create a Ceph identity for manila to use:
 ``manila.keyring``, along with your ``ceph.conf`` file, will then need to be
 placed on the server running the :term:`manila-share` service.
 
-Enable snapshots in Ceph if you want to use them in manila:
+.. important::
 
-.. code-block:: console
-
-    ceph mds set allow_new_snaps true --yes-i-really-mean-it
-
-.. warning::
-    Note that the snapshot support for the CephFS Native driver is experimental
-    and is known to have several caveats for use. Only enable this and the
-    equivalent ``manila.conf`` option if you understand these risks. See
-    (http://docs.ceph.com/docs/master/cephfs/experimental-features/#snapshots)
-    for more details.
+    To communicate with the Ceph backend, a CephFS driver instance
+    (represented as a backend driver section in manila.conf) requires its own
+    Ceph auth ID that is not used by other CephFS driver instances running in
+    the same controller node.
 
 In the server running the :term:`manila-share` service, you can place the
-``ceph.conf`` and ``manila.keyring`` files in the /etc/ceph directory.  Set the
+``ceph.conf`` and ``manila.keyring`` files in the /etc/ceph directory. Set the
 same owner for the :term:`manila-share` process and the ``manila.keyring``
-file.  Add the following section to the ``ceph.conf`` file.
+file. Add the following section to the ``ceph.conf`` file.
 
 .. code-block:: ini
 
@@ -137,10 +170,30 @@ locations so that they are co-located with manila services's pid files and
 log files respectively.
 
 
-Configure CephFS backend in manila.conf
----------------------------------------
+Enabling snapshot support in Ceph backend
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Add CephFS to ``enabled_share_protocols`` (enforced at manila api layer).  In
+Enable snapshots in Ceph if you want to use them in manila:
+
+.. code-block:: console
+
+    ceph mds set allow_new_snaps true --yes-i-really-mean-it
+
+.. warning::
+    Note that the snapshot support for the CephFS driver is experimental and is
+    known to have several caveats for use. Only enable this and the
+    equivalent ``manila.conf`` option if you understand these risks. See
+    (http://docs.ceph.com/docs/master/cephfs/experimental-features/#snapshots)
+    for more details.
+
+
+Configuring CephFS backend in manila.conf
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Configure CephFS native share backend in manila.conf
+----------------------------------------------------
+
+Add CephFS to ``enabled_share_protocols`` (enforced at manila api layer). In
 this example we leave NFS and CIFS enabled, although you can remove these
 if you will only use CephFS:
 
@@ -148,25 +201,28 @@ if you will only use CephFS:
 
     enabled_share_protocols = NFS,CIFS,CEPHFS
 
-Create a section like this to define a CephFS backend:
+Create a section like this to define a CephFS native backend:
 
 .. code-block:: ini
 
-    [cephfs1]
+    [cephfsnative1]
     driver_handles_share_servers = False
-    share_backend_name = CEPHFS1
+    share_backend_name = CEPHFSNATIVE1
     share_driver = manila.share.drivers.cephfs.driver.CephFSDriver
     cephfs_conf_path = /etc/ceph/ceph.conf
+    cephfs_protocol_helper_type = CEPHFS
     cephfs_auth_id = manila
     cephfs_cluster_name = ceph
     cephfs_enable_snapshots = false
 
 Set ``driver-handles-share-servers`` to ``False`` as the driver does not
-manage the lifecycle of ``share-servers``.  To let the driver perform snapshot
-related operations, set ``cephfs_enable_snapshots`` to True.
+manage the lifecycle of ``share-servers``. To let the driver perform snapshot
+related operations, set ``cephfs_enable_snapshots`` to True. For the driver
+backend to expose shares via the the native Ceph protocol, set
+``cephfs_protocol_helper_type`` to ``CEPHFS``.
 
 Then edit ``enabled_share_backends`` to point to the driver's backend section
-using the section name.  In this example we are also including another backend
+using the section name. In this example we are also including another backend
 ("generic1"), you would include whatever other backends you have configured.
 
 
@@ -178,61 +234,150 @@ using the section name.  In this example we are also including another backend
 
 .. code-block:: ini
 
-    enabled_share_backends = generic1, cephfs1
+    enabled_share_backends = generic1, cephfsnative1
+
+
+Configure CephFS NFS share backend in manila.conf
+-------------------------------------------------
+
+Add NFS to ``enabled_share_protocols`` if it's not already there:
+
+.. code-block:: ini
+
+    enabled_share_protocols = NFS,CIFS,CEPHFS
+
+
+Create a section to define a CephFS NFS share backend:
+
+.. code-block:: ini
+
+    [cephfsnfs1]
+    driver_handles_share_servers = False
+    share_backend_name = CEPHFSNFS1
+    share_driver = manila.share.drivers.cephfs.driver.CephFSDriver
+    cephfs_protocol_helper_type = NFS
+    cephfs_conf_path = /etc/ceph/ceph.conf
+    cephfs_auth_id = manila1
+    cephfs_cluster_name = ceph
+    cephfs_enable_snapshots = False
+    cephfs_ganesha_server_is_remote= False
+    cephfs_ganesha_server_ip = 172.24.4.3
+
+
+The following options are set in the driver backend section above:
+
+* ``driver-handles-share-servers`` to ``False`` as the driver does not
+  manage the lifecycle of ``share-servers``.
+
+* ``cephfs_protocol_helper_type`` to ``NFS`` to allow NFS protocol access to
+  the CephFS backed shares.
+
+* ``ceph_auth_id`` to the ceph auth ID created in :ref:`authorize_ceph_driver`.
+
+* ``cephfs_ganesha_server_is_remote`` to False if the NFS-ganesha server is
+  co-located with the :term:`manila-share`  service. If the NFS-Ganesha
+  server is remote, then set the options to ``True``, and set other options
+  such as ``cephfs_ganesha_server_ip``, ``cephfs_ganesha_server_username``,
+  and ``cephfs_ganesha_server_password`` (or ``cephfs_ganesha_path_to_private_key``)
+  to allow the driver to manage the NFS-Ganesha export entries over SSH.
+
+* ``cephfs_ganesha_server_ip`` to the ganesha server IP address. It is
+  recommended to set this option even if the ganesha server is co-located
+  with the :term:`manila-share` service.
+
+Edit ``enabled_share_backends`` to point to the driver's backend section
+using the section name, ``cephfnfs1``.
+
+.. code-block:: ini
+
+    enabled_share_backends = generic1, cephfsnfs1
 
 
 Creating shares
----------------
+~~~~~~~~~~~~~~~
+
+Create CephFS native share
+--------------------------
 
 The default share type may have ``driver_handles_share_servers`` set to True.
-Configure a share type suitable for cephfs:
+Configure a share type suitable for CephFS native share:
 
 .. code-block:: console
 
-     manila type-create cephfstype false
+     manila type-create cephfsnativetype false
+     manila type-key cephfsnativetype set vendor_name=Ceph storage_protocol=CEPHFS
 
 Then create yourself a share:
 
 .. code-block:: console
 
-    manila create --share-type cephfstype --name cephshare1 cephfs 1
+    manila create --share-type cephfsnativetype --name cephnativeshare1 cephfs 1
 
 Note the export location of the share:
 
 .. code-block:: console
 
-    manila share-export-location-list cephshare1
+    manila share-export-location-list cephnativeshare1
 
 The export location of the share contains the Ceph monitor (mon) addresses and
-ports, and the path to be mounted.  It is of the form,
+ports, and the path to be mounted. It is of the form,
 ``{mon ip addr:port}[,{mon ip addr:port}]:{path to be mounted}``
+
+Create CephFS NFS share
+-----------------------
+
+Configure a share type suitable for CephFS NFS share:
+
+.. code-block:: console
+
+     manila type-create cephfsnfstype false
+     manila type-key cephfsnfstype set vendor_name=Ceph storage_protocol=NFS
+
+Then create a share:
+
+.. code-block:: console
+
+    manila create --share-type cephfsnfstype --name cephnfsshare1 nfs 1
+
+Note the export location of the share:
+
+.. code-block:: console
+
+    manila share-export-location-list cephnfsshare1
+
+The export location of the share contains the IP address of the NFS-Ganesha
+server and the path to be mounted. It is of the form,
+``{NFS-Ganesha server address}:{path to be mounted}``
 
 
 Allowing access to shares
---------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Allow access to CephFS native share
+-----------------------------------
 
 Allow Ceph auth ID ``alice`` access to the share using ``cephx`` access type.
 
 .. code-block:: console
 
-    manila access-allow cephshare1 cephx alice
+    manila access-allow cephnativeshare1 cephx alice
 
 Note the access status, and the access/secret key of ``alice``.
 
 .. code-block:: console
 
-    manila access-list cephshare1
+    manila access-list cephnativeshare1
 
 .. note::
 
-    In Mitaka release, the secret key is not exposed by any manila API.  The
+    In Mitaka release, the secret key is not exposed by any manila API. The
     Ceph storage admin needs to pass the secret key to the guest out of band of
-    manila.  You can refer to the link below to see how the storage admin
+    manila. You can refer to the link below to see how the storage admin
     could obtain the secret key of an ID.
     http://docs.ceph.com/docs/jewel/rados/operations/user-management/#get-a-user
 
     Alternatively, the cloud admin can create Ceph auth IDs for each of the
-    tenants.  The users can then request manila to authorize the pre-created
+    tenants. The users can then request manila to authorize the pre-created
     Ceph auth IDs, whose secret keys are already shared with them out of band
     of manila, to access the shares.
 
@@ -248,9 +393,21 @@ Note the access status, and the access/secret key of ``alice``.
     For more details, please see the Ceph documentation.
     http://docs.ceph.com/docs/jewel/rados/operations/user-management/#add-a-user
 
+Allow access to CephFS NFS share
+--------------------------------
 
-Mounting shares using FUSE client
----------------------------------
+Allow a guest access to the share using ``ip`` access type.
+
+.. code-block:: console
+
+    manila access-allow cephnfsshare1 ip 172.24.4.225
+
+
+Mounting CephFS shares
+~~~~~~~~~~~~~~~~~~~~~~
+
+Mounting CephFS native share using FUSE client
+----------------------------------------------
 
 Using the secret key of the authorized ID ``alice`` create a keyring file,
 ``alice.keyring`` like:
@@ -282,56 +439,72 @@ from the share's export location:
     --keyring=./alice.keyring \
     --client-mountpoint=/volumes/_nogroup/4c55ad20-9c55-4a5e-9233-8ac64566b98c
 
+Mount CephFS NFS share using NFS client
+---------------------------------------
+
+In the guest, mount the share using the NFS client and knowing the share's
+export location.
+
+.. code-block:: ini
+
+    sudo mount -t nfs 172.24.4.3:/volumes/_nogroup/6732900b-32c1-4816-a529-4d6d3f15811e /mnt/nfs/
 
 Known restrictions
-------------------
+~~~~~~~~~~~~~~~~~~
 
-Consider the driver as a building block for supporting multi-tenant
-workloads in the future.  However, it can be used in private cloud
-deployments.
-
-- The guests have direct access to Ceph's public network.
+- To communicate with the Ceph backend, a CephFS driver instance
+  (represented as a backend driver section in manila.conf) requires its own
+  Ceph auth ID that is not used by other CephFS driver instances running in
+  the same controller node.
 
 - The snapshot support of the driver is disabled by default. The
   ``cephfs_enable_snapshots`` configuration option needs to be set to ``True``
   to allow snapshot operations. Snapshot support will also need to be enabled
   on the backend CephFS storage.
 
-- Snapshots are read-only.  A user can read a snapshot's contents from the
+- Snapshots are read-only. A user can read a snapshot's contents from the
   ``.snap/{manila-snapshot-id}_{unknown-id}`` folder within the mounted
   share.
 
-- To restrict share sizes, CephFS uses quotas that are enforced in the client
-  side.  The CephFS clients are relied on to respect quotas.
 
-Mitaka release
+Restrictions with CephFS native share backend
+---------------------------------------------
+
+- To restrict share sizes, CephFS uses quotas that are enforced in the client
+  side. The CephFS FUSE clients are relied on to respect quotas.
+
+Mitaka release only
 
 - The secret-key of a Ceph auth ID required to mount a share is not exposed to
-  an user by a manila API.  To workaround this, the storage admin would need to
+  an user by a manila API. To workaround this, the storage admin would need to
   pass the key out of band of manila, or the user would need to use the Ceph ID
   and key already created and shared with her by the cloud admin.
 
 
 Security
---------
+~~~~~~~~
 
-- Each share's data is mapped to a distinct Ceph RADOS namespace.  A guest is
+- Each share's data is mapped to a distinct Ceph RADOS namespace. A guest is
   restricted to access only that particular RADOS namespace.
   http://docs.ceph.com/docs/master/cephfs/file-layouts/
 
 - An additional level of resource isolation can be provided by mapping a
-  share's contents to a separate RADOS pool.  This layout would be be preferred
+  share's contents to a separate RADOS pool. This layout would be be preferred
   only for cloud deployments with a limited number of shares needing strong
-  resource separation.  You can do this by setting a share type specification,
+  resource separation. You can do this by setting a share type specification,
   ``cephfs:data_isolated`` for the share type used by the cephfs driver.
 
   .. code-block:: console
 
        manila type-key cephfstype set cephfs:data_isolated=True
 
-- As mentioned earlier, untrusted manila guests pose security risks to the
-  Ceph storage cluster as they would have direct access to the cluster's
-  public network.
+.. _security_cephfs_native:
+
+Security with CephFS native share backend
+-----------------------------------------
+
+As the guests need direct access to Ceph's public network, CephFS native
+share backend is suitable only in private clouds where guests can be trusted.
 
 
 The :mod:`manila.share.drivers.cephfs.driver` Module
