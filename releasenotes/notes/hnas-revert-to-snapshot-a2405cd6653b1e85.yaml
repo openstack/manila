@@ -1,0 +1,9 @@
+---
+features:
+  - Added Revert-to-snapshot functionality to Hitachi NAS driver.
+upgrades:
+  - If using existing share types with the HNAS back end,
+    set the 'revert_to_snapshot_support' extra-spec to allow
+    creating shares that support in-place revert-to-snapshot
+    functionality. This modification will not affect existing
+    shares of such types.

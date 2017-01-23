@@ -95,6 +95,7 @@ snapshot_nfs = {
     'share': share_nfs,
     'provider_location': '/snapshots/aa4a7710-f326-41fb-ad18-b4ad587fc87a/'
                          'abba6d9b-f29c-4bf7-aac1-618cda7aaf0f',
+    'size': 2,
 }
 
 snapshot_cifs = {
@@ -103,6 +104,7 @@ snapshot_cifs = {
     'share': share_cifs,
     'provider_location': '/snapshots/f5cadaf2-afbe-4cc4-9021-85491b6b76f7/'
                          '91bc6e1b-1ba5-f29c-abc1-da7618cabf0a',
+    'size': 2,
 }
 
 manage_snapshot = {
@@ -834,6 +836,7 @@ class HitachiHNASTestCase(test.TestCase):
             'qos': False,
             'thin_provisioning': True,
             'dedupe': True,
+            'revert_to_snapshot_support': True,
         }
 
         self.mock_object(ssh.HNASSSHBackend, 'get_stats', mock.Mock(
@@ -897,4 +900,36 @@ class HitachiHNASTestCase(test.TestCase):
 
     def test_unmanage_snapshot(self):
         self._driver.unmanage_snapshot(snapshot_nfs)
+        self.assertTrue(self.mock_log.info.called)
+
+    @ddt.data({'snap': snapshot_nfs, 'exc': None},
+              {'snap': snapshot_cifs, 'exc': None},
+              {'snap': snapshot_nfs,
+               'exc': exception.HNASNothingToCloneException('fake')},
+              {'snap': snapshot_cifs,
+               'exc': exception.HNASNothingToCloneException('fake')})
+    @ddt.unpack
+    def test_revert_to_snapshot(self, exc, snap):
+        self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted")
+        self.mock_object(ssh.HNASSSHBackend, 'tree_delete')
+        self.mock_object(ssh.HNASSSHBackend, 'vvol_create')
+        self.mock_object(ssh.HNASSSHBackend, 'quota_add')
+        self.mock_object(ssh.HNASSSHBackend, 'tree_clone',
+                         mock.Mock(side_effect=exc))
+
+        self._driver.revert_to_snapshot('context', snap, None)
+
+        driver.HitachiHNASDriver._check_fs_mounted.assert_called_once_with()
+        ssh.HNASSSHBackend.tree_delete.assert_called_once_with(
+            '/'.join(('/shares', snap['share_id'])))
+        ssh.HNASSSHBackend.vvol_create.assert_called_once_with(
+            snap['share_id'])
+        ssh.HNASSSHBackend.quota_add.assert_called_once_with(
+            snap['share_id'], 2)
+        ssh.HNASSSHBackend.tree_clone.assert_called_once_with(
+            '/'.join(('/snapshots', snap['share_id'], snap['id'])),
+            '/'.join(('/shares', snap['share_id'])))
+
+        if exc:
+            self.assertTrue(self.mock_log.warning.called)
         self.assertTrue(self.mock_log.info.called)
