@@ -587,7 +587,7 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     "SUPPORTV4":"true"}}"""
                 self.setupserver_flag = True
 
-            if url == "/FILESYSTEM?range=[0-8191]":
+            if "/FILESYSTEM?filter=NAME::" in url:
                 data = """{"error":{"code":0},
                 "data":[{"ID":"4",
                 "NAME":"share_fake_uuid"},
@@ -4075,7 +4075,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
                          self.driver.plugin.private_storage.get(
                              'fake_share_id', 'replica_pair_id'))
 
-    @ddt.data({'url': '/FILESYSTEM?range=[0-8191]',
+    @ddt.data({'url': '/FILESYSTEM?filter=NAME::share_fake_uuid'
+                      '&range=[0-8191]',
                'url_result': '{"error":{"code":0}}',
                'expected_exception': exception.ReplicationException},
               {'url': '/NFSHARE',
