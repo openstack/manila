@@ -1,0 +1,4 @@
+fixes:
+  - |
+    The Windows driver issues regarding
+    share creation have been fixed.

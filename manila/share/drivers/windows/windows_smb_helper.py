@@ -27,7 +27,7 @@ from manila.share.drivers.windows import windows_utils
 LOG = log.getLogger(__name__)
 
 
-class WindowsSMBHelper(helpers.NASHelperBase):
+class WindowsSMBHelper(helpers.CIFSHelperBase):
     _SHARE_ACCESS_RIGHT_MAP = {
         constants.ACCESS_LEVEL_RW: "Change",
         constants.ACCESS_LEVEL_RO: "Read"}
@@ -64,7 +64,7 @@ class WindowsSMBHelper(helpers.NASHelperBase):
     def init_helper(self, server):
         self._remote_exec(server, "Get-SmbShare")
 
-    def create_export(self, server, share_name, recreate=False):
+    def create_exports(self, server, share_name, recreate=False):
         export_location = '\\\\%s\\%s' % (server['public_address'],
                                           share_name)
         if not self._share_exists(server, share_name):
@@ -80,9 +80,9 @@ class WindowsSMBHelper(helpers.NASHelperBase):
         else:
             LOG.info(_LI("Skipping creating export %s as it already exists."),
                      share_name)
-        return export_location
+        return self.get_exports_for_share(server, export_location)
 
-    def remove_export(self, server, share_name):
+    def remove_exports(self, server, share_name):
         if self._share_exists(server, share_name):
             cmd = ['Remove-SmbShare', '-Name', share_name, "-Force"]
             self._remote_exec(server, cmd)
@@ -244,10 +244,9 @@ class WindowsSMBHelper(helpers.NASHelperBase):
         return self._windows_utils.normalize_path(
             export_location).split('\\')[-1]
 
-    def get_exports_for_share(self, server, old_export_location):
+    def _get_export_location_template(self, old_export_location):
         share_name = self._get_share_name(old_export_location)
-        data = dict(ip=server['public_address'], share_name=share_name)
-        return ['\\\\%(ip)s\\%(share_name)s' % data]
+        return '\\\\%s' + ('\\%s' % share_name)
 
     def _get_share_path_by_name(self, server, share_name,
                                 ignore_missing=False):

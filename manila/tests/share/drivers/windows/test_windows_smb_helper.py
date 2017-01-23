@@ -64,11 +64,11 @@ class WindowsSMBHelperTestCase(test.TestCase):
 
     @ddt.data(True, False)
     @mock.patch.object(windows_smb_helper.WindowsSMBHelper, '_share_exists')
-    def test_create_export(self, share_exists, mock_share_exists):
+    def test_create_exports(self, share_exists, mock_share_exists):
         mock_share_exists.return_value = share_exists
 
-        result = self._win_smb_helper.create_export(self._FAKE_SERVER,
-                                                    self._FAKE_SHARE_NAME)
+        result = self._win_smb_helper.create_exports(self._FAKE_SERVER,
+                                                     self._FAKE_SHARE_NAME)
 
         if not share_exists:
             cmd = ['New-SmbShare', '-Name', self._FAKE_SHARE_NAME, '-Path',
@@ -79,14 +79,22 @@ class WindowsSMBHelperTestCase(test.TestCase):
         else:
             self.assertFalse(self._remote_exec.called)
 
-        self.assertEqual(self._FAKE_SHARE, result)
+        expected_exports = [
+            {
+                'is_admin_only': False,
+                'metadata': {'export_location_metadata_example': 'example'},
+                'path': self._FAKE_SHARE
+            },
+        ]
+
+        self.assertEqual(expected_exports, result)
 
     @mock.patch.object(windows_smb_helper.WindowsSMBHelper, '_share_exists')
-    def test_remove_export(self, mock_share_exists):
+    def test_remove_exports(self, mock_share_exists):
         mock_share_exists.return_value = True
 
-        self._win_smb_helper.remove_export(mock.sentinel.server,
-                                           mock.sentinel.share_name)
+        self._win_smb_helper.remove_exports(mock.sentinel.server,
+                                            mock.sentinel.share_name)
 
         cmd = ['Remove-SmbShare', '-Name', mock.sentinel.share_name, "-Force"]
         self._remote_exec.assert_called_once_with(mock.sentinel.server, cmd)
@@ -329,11 +337,6 @@ class WindowsSMBHelperTestCase(test.TestCase):
     def test_get_share_name(self):
         result = self._win_smb_helper._get_share_name(self._FAKE_SHARE)
         self.assertEqual(self._FAKE_SHARE_NAME, result)
-
-    def test_exports_for_share(self):
-        result = self._win_smb_helper.get_exports_for_share(
-            self._FAKE_SERVER, self._FAKE_SHARE_LOCATION)
-        self.assertEqual([self._FAKE_SHARE], result)
 
     def test_get_share_path_by_name(self):
         self._remote_exec.return_value = (self._FAKE_SHARE_LOCATION,
