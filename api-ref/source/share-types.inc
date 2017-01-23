@@ -327,7 +327,7 @@ Response example
 Unset an extra spec
 ===================
 
-.. rest_method::  DELETE /v2/{tenant_id}/types/{share_type_id}/extra_specs/{key}
+.. rest_method::  DELETE /v2/{tenant_id}/types/{share_type_id}/extra_specs/{extra-spec-key}
 
 Unsets an extra specification for the share type.
 
