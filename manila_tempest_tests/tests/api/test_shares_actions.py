@@ -94,9 +94,6 @@ class SharesActionsTest(base.BaseSharesTest):
             expected_keys.extend(["export_location", "export_locations"])
         if utils.is_microversion_ge(version, '2.2'):
             expected_keys.append("snapshot_support")
-        if utils.is_microversion_ge(version, '2.4'):
-            expected_keys.extend(["consistency_group_id",
-                                  "source_cgsnapshot_member_id"])
         if utils.is_microversion_ge(version, '2.5'):
             expected_keys.append("share_type_name")
         if utils.is_microversion_ge(version, '2.10'):
@@ -135,11 +132,6 @@ class SharesActionsTest(base.BaseSharesTest):
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_get_share_with_snapshot_support_key(self):
         self._get_share('2.2')
-
-    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
-    @utils.skip_if_microversion_not_supported('2.4')
-    def test_get_share_with_consistency_groups_keys(self):
-        self._get_share('2.4')
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @utils.skip_if_microversion_not_supported('2.6')
@@ -210,9 +202,6 @@ class SharesActionsTest(base.BaseSharesTest):
             keys.extend(["export_location", "export_locations"])
         if utils.is_microversion_ge(version, '2.2'):
             keys.append("snapshot_support")
-        if utils.is_microversion_ge(version, '2.4'):
-            keys.extend(["consistency_group_id",
-                         "source_cgsnapshot_member_id"])
         if utils.is_microversion_ge(version, '2.6'):
             keys.append("share_type_name")
         if utils.is_microversion_ge(version, '2.10'):
@@ -241,11 +230,6 @@ class SharesActionsTest(base.BaseSharesTest):
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_list_shares_with_detail_and_snapshot_support_key(self):
         self._list_shares_with_detail('2.2')
-
-    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
-    @utils.skip_if_microversion_not_supported('2.4')
-    def test_list_shares_with_detail_consistency_groups_keys(self):
-        self._list_shares_with_detail('2.4')
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @utils.skip_if_microversion_not_supported('2.6')

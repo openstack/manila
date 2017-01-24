@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""The consistency groups API."""
-
 from oslo_log import log
 from oslo_utils import uuidutils
 import six
@@ -23,155 +21,156 @@ from webob import exc
 
 from manila.api import common
 from manila.api.openstack import wsgi
-import manila.api.views.share_groups as share_group_views
+from manila.api.views import share_groups as share_group_views
 from manila import db
 from manila import exception
 from manila.i18n import _, _LI
 from manila.share import share_types
-import manila.share_group.api as sg_api
+from manila.share_group import api as share_group_api
+from manila.share_group import share_group_types
+
 
 LOG = log.getLogger(__name__)
 
 
-class CGController(wsgi.Controller, wsgi.AdminActionsMixin):
-    """The Consistency Groups API controller for the OpenStack API."""
+class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
+    """The Share Groups API controller for the OpenStack API."""
 
-    resource_name = 'consistency_group'
-    _view_builder_class = share_group_views.CGViewBuilder
-    resource_name = 'consistency_group'
+    resource_name = 'share_group'
+    _view_builder_class = share_group_views.ShareGroupViewBuilder
 
     def __init__(self):
-        super(CGController, self).__init__()
-        self.cg_api = sg_api.API()
+        super(ShareGroupController, self).__init__()
+        self.share_group_api = share_group_api.API()
 
-    @wsgi.Controller.api_version('2.4', experimental=True)
+    def _get_share_group(self, context, share_group_id):
+        try:
+            return self.share_group_api.get(context, share_group_id)
+        except exception.NotFound:
+            msg = _("Share group %s not found.") % share_group_id
+            raise exc.HTTPNotFound(explanation=msg)
+
+    @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.Controller.authorize('get')
     def show(self, req, id):
-        """Return data about the given CG."""
+        """Return data about the given share group."""
         context = req.environ['manila.context']
+        share_group = self._get_share_group(context, id)
+        return self._view_builder.detail(req, share_group)
 
-        try:
-            cg = self.cg_api.get(context, id)
-        except exception.NotFound:
-            msg = _("Consistency group %s not found.") % id
-            raise exc.HTTPNotFound(explanation=msg)
-
-        return self._view_builder.detail(req, cg)
-
-    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.Controller.authorize
     def delete(self, req, id):
-        """Delete a CG."""
+        """Delete a share group."""
         context = req.environ['manila.context']
 
-        LOG.info(_LI("Delete consistency group with id: %s"), id,
-                 context=context)
-
+        LOG.info(_LI("Delete share group with id: %s"), id, context=context)
+        share_group = self._get_share_group(context, id)
         try:
-            cg = self.cg_api.get(context, id)
-        except exception.NotFound:
-            msg = _("Consistency group %s not found.") % id
-            raise exc.HTTPNotFound(explanation=msg)
-
-        try:
-            self.cg_api.delete(context, cg)
-        except exception.InvalidConsistencyGroup as e:
+            self.share_group_api.delete(context, share_group)
+        except exception.InvalidShareGroup as e:
             raise exc.HTTPConflict(explanation=six.text_type(e))
-
         return webob.Response(status_int=202)
 
-    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.Controller.authorize('get_all')
     def index(self, req):
-        """Returns a summary list of shares."""
-        return self._get_cgs(req, is_detail=False)
+        """Returns a summary list of share groups."""
+        return self._get_share_groups(req, is_detail=False)
 
-    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.Controller.authorize('get_all')
     def detail(self, req):
-        """Returns a detailed list of shares."""
-        return self._get_cgs(req, is_detail=True)
+        """Returns a detailed list of share groups."""
+        return self._get_share_groups(req, is_detail=True)
 
-    def _get_cgs(self, req, is_detail):
-        """Returns a list of shares, transformed through view builder."""
+    def _get_share_groups(self, req, is_detail):
+        """Returns a list of share groups, transformed through view builder."""
         context = req.environ['manila.context']
 
         search_opts = {}
         search_opts.update(req.GET)
 
-        # Remove keys that are not related to cg attrs
+        # Remove keys that are not related to share group attrs
         search_opts.pop('limit', None)
         search_opts.pop('offset', None)
+        sort_key = search_opts.pop('sort_key', 'created_at')
+        sort_dir = search_opts.pop('sort_dir', 'desc')
+        if 'group_type_id' in search_opts:
+            search_opts['share_group_type_id'] = search_opts.pop(
+                'group_type_id')
 
-        cgs = self.cg_api.get_all(
-            context, detailed=is_detail, search_opts=search_opts)
+        share_groups = self.share_group_api.get_all(
+            context, detailed=is_detail, search_opts=search_opts,
+            sort_dir=sort_dir, sort_key=sort_key,
+        )
 
-        limited_list = common.limited(cgs, req)
+        limited_list = common.limited(share_groups, req)
 
         if is_detail:
-            cgs = self._view_builder.detail_list(req, limited_list)
+            share_groups = self._view_builder.detail_list(req, limited_list)
         else:
-            cgs = self._view_builder.summary_list(req, limited_list)
-        return cgs
+            share_groups = self._view_builder.summary_list(req, limited_list)
+        return share_groups
 
-    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.Controller.authorize
     def update(self, req, id, body):
-        """Update a share."""
+        """Update a share group."""
         context = req.environ['manila.context']
 
-        if not self.is_valid_body(body, 'consistency_group'):
-            msg = _("'consistency_group' is missing from the request body.")
+        if not self.is_valid_body(body, 'share_group'):
+            msg = _("'share_group' is missing from the request body.")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        cg_data = body['consistency_group']
-        valid_update_keys = {
-            'name',
-            'description',
-        }
-        invalid_fields = set(cg_data.keys()) - valid_update_keys
+        share_group_data = body['share_group']
+        valid_update_keys = {'name', 'description'}
+        invalid_fields = set(share_group_data.keys()) - valid_update_keys
         if invalid_fields:
             msg = _("The fields %s are invalid or not allowed to be updated.")
             raise exc.HTTPBadRequest(explanation=msg % invalid_fields)
 
-        try:
-            cg = self.cg_api.get(context, id)
-        except exception.NotFound:
-            msg = _("Consistency group %s not found.") % id
-            raise exc.HTTPNotFound(explanation=msg)
+        share_group = self._get_share_group(context, id)
+        share_group = self.share_group_api.update(
+            context, share_group, share_group_data)
+        return self._view_builder.detail(req, share_group)
 
-        cg = self.cg_api.update(context, cg, cg_data)
-        return self._view_builder.detail(req, cg)
-
-    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.response(202)
     @wsgi.Controller.authorize
     def create(self, req, body):
-        """Creates a new share."""
+        """Creates a new share group."""
         context = req.environ['manila.context']
 
-        if not self.is_valid_body(body, 'consistency_group'):
-            msg = _("'consistency_group' is missing from the request body.")
+        if not self.is_valid_body(body, 'share_group'):
+            msg = _("'share_group' is missing from the request body.")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        cg = body['consistency_group']
-
-        valid_fields = {'name', 'description', 'share_types',
-                        'source_cgsnapshot_id', 'share_network_id'}
-        invalid_fields = set(cg.keys()) - valid_fields
+        share_group = body['share_group']
+        valid_fields = {
+            'name',
+            'description',
+            'share_types',
+            'share_group_type_id',
+            'source_share_group_snapshot_id',
+            'share_network_id',
+        }
+        invalid_fields = set(share_group.keys()) - valid_fields
         if invalid_fields:
             msg = _("The fields %s are invalid.") % invalid_fields
             raise exc.HTTPBadRequest(explanation=msg)
 
-        if 'share_types' in cg and 'source_cgsnapshot_id' in cg:
+        if ('share_types' in share_group and
+                'source_share_group_snapshot_id' in share_group):
             msg = _("Cannot supply both 'share_types' and "
-                    "'source_cgsnapshot_id' attributes.")
+                    "'source_share_group_snapshot_id' attributes.")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        if not cg.get('share_types') and 'source_cgsnapshot_id' not in cg:
+        if not (share_group.get('share_types') or
+                'source_share_group_snapshot_id' in share_group):
             default_share_type = share_types.get_default_share_type()
             if default_share_type:
-                cg['share_types'] = [default_share_type['id']]
+                share_group['share_types'] = [default_share_type['id']]
             else:
                 msg = _("Must specify at least one share type as a default "
                         "share type has not been configured.")
@@ -179,76 +178,94 @@ class CGController(wsgi.Controller, wsgi.AdminActionsMixin):
 
         kwargs = {}
 
-        if 'name' in cg:
-            kwargs['name'] = cg.get('name')
-        if 'description' in cg:
-            kwargs['description'] = cg.get('description')
+        if 'name' in share_group:
+            kwargs['name'] = share_group.get('name')
+        if 'description' in share_group:
+            kwargs['description'] = share_group.get('description')
 
-        _share_types = cg.get('share_types')
+        _share_types = share_group.get('share_types')
         if _share_types:
             if not all([uuidutils.is_uuid_like(st) for st in _share_types]):
                 msg = _("The 'share_types' attribute must be a list of uuids")
                 raise exc.HTTPBadRequest(explanation=msg)
             kwargs['share_type_ids'] = _share_types
 
-        if 'share_network_id' in cg and 'source_cgsnapshot_id' in cg:
+        if ('share_network_id' in share_group and
+                'source_share_group_snapshot_id' in share_group):
             msg = _("Cannot supply both 'share_network_id' and "
-                    "'source_cgsnapshot_id' attributes as the share network "
-                    "is inherited from the source.")
+                    "'source_share_group_snapshot_id' attributes as the share "
+                    "network is inherited from the source.")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        if 'source_cgsnapshot_id' in cg:
-            source_cgsnapshot_id = cg.get('source_cgsnapshot_id')
-            if not uuidutils.is_uuid_like(source_cgsnapshot_id):
-                msg = _("The 'source_cgsnapshot_id' attribute must be a uuid.")
+        if 'source_share_group_snapshot_id' in share_group:
+            source_share_group_snapshot_id = share_group.get(
+                'source_share_group_snapshot_id')
+            if not uuidutils.is_uuid_like(source_share_group_snapshot_id):
+                msg = _("The 'source_share_group_snapshot_id' attribute "
+                        "must be a uuid.")
                 raise exc.HTTPBadRequest(explanation=six.text_type(msg))
-            kwargs['source_cgsnapshot_id'] = source_cgsnapshot_id
-
-        elif 'share_network_id' in cg:
-            share_network_id = cg.get('share_network_id')
+            kwargs['source_share_group_snapshot_id'] = (
+                source_share_group_snapshot_id)
+        elif 'share_network_id' in share_group:
+            share_network_id = share_group.get('share_network_id')
             if not uuidutils.is_uuid_like(share_network_id):
                 msg = _("The 'share_network_id' attribute must be a uuid.")
                 raise exc.HTTPBadRequest(explanation=six.text_type(msg))
             kwargs['share_network_id'] = share_network_id
 
+        if 'share_group_type_id' in share_group:
+            share_group_type_id = share_group.get('share_group_type_id')
+            if not uuidutils.is_uuid_like(share_group_type_id):
+                msg = _("The 'share_group_type_id' attribute must be a uuid.")
+                raise exc.HTTPBadRequest(explanation=six.text_type(msg))
+            kwargs['share_group_type_id'] = share_group_type_id
+        else:  # get default
+            def_share_group_type = share_group_types.get_default()
+            if def_share_group_type:
+                kwargs['share_group_type_id'] = def_share_group_type['id']
+            else:
+                msg = _("Must specify a share group type as a default "
+                        "share group type has not been configured.")
+                raise exc.HTTPBadRequest(explanation=msg)
+
         try:
-            new_cg = self.cg_api.create(context, **kwargs)
-        except exception.InvalidCGSnapshot as e:
+            new_share_group = self.share_group_api.create(context, **kwargs)
+        except exception.InvalidShareGroupSnapshot as e:
             raise exc.HTTPConflict(explanation=six.text_type(e))
-        except (exception.CGSnapshotNotFound, exception.InvalidInput) as e:
+        except (exception.ShareGroupSnapshotNotFound,
+                exception.InvalidInput) as e:
             raise exc.HTTPBadRequest(explanation=six.text_type(e))
 
-        return self._view_builder.detail(req, dict(new_cg.items()))
+        return self._view_builder.detail(
+            req, {k: v for k, v in new_share_group.items()})
 
     def _update(self, *args, **kwargs):
-        db.consistency_group_update(*args, **kwargs)
+        db.share_group_update(*args, **kwargs)
 
     def _get(self, *args, **kwargs):
-        return self.cg_api.get(*args, **kwargs)
+        return self.share_group_api.get(*args, **kwargs)
 
     def _delete(self, context, resource, force=True):
-        db.consistency_group_destroy(context.elevated(), resource['id'])
+        # Delete all share group snapshots
+        for snap in resource['snapshots']:
+            db.share_group_snapshot_destroy(context, snap['id'])
 
-    @wsgi.Controller.api_version('2.4', '2.6', experimental=True)
-    @wsgi.action('os-reset_status')
-    def cg_reset_status_legacy(self, req, id, body):
-        return self._reset_status(req, id, body)
+        # Delete all shares in share group
+        for share in db.get_all_shares_by_share_group(context, resource['id']):
+            db.share_delete(context, share['id'])
 
-    @wsgi.Controller.api_version('2.7', experimental=True)
+        db.share_group_destroy(context.elevated(), resource['id'])
+
+    @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.action('reset_status')
-    def cg_reset_status(self, req, id, body):
+    def share_group_reset_status(self, req, id, body):
         return self._reset_status(req, id, body)
 
-    @wsgi.Controller.api_version('2.4', '2.6', experimental=True)
-    @wsgi.action('os-force_delete')
-    def cg_force_delete_legacy(self, req, id, body):
-        return self._force_delete(req, id, body)
-
-    @wsgi.Controller.api_version('2.7', experimental=True)
+    @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.action('force_delete')
-    def cg_force_delete(self, req, id, body):
+    def share_group_force_delete(self, req, id, body):
         return self._force_delete(req, id, body)
 
 
 def create_resource():
-    return wsgi.Resource(CGController())
+    return wsgi.Resource(ShareGroupController())

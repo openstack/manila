@@ -94,7 +94,6 @@ class CephFSNativeDriver(driver.ShareDriver,):
         free_capacity_gb = stats['kb_avail'] * units.Mi
 
         data = {
-            'consistency_group_support': 'pool',
             'vendor_name': 'Ceph',
             'driver_version': '1.0',
             'share_backend_name': self.backend_name,
@@ -166,7 +165,7 @@ class CephFSNativeDriver(driver.ShareDriver,):
     def _share_path(self, share):
         """Get VolumePath from Share."""
         return ceph_volume_client.VolumePath(
-            share['consistency_group_id'], share['id'])
+            share['share_group_id'], share['id'])
 
     def create_share(self, context, share, share_server=None):
         """Create a CephFS volume.
@@ -178,9 +177,11 @@ class CephFSNativeDriver(driver.ShareDriver,):
         """
 
         # `share` is a Share
-        LOG.debug("create_share {be} name={id} size={size} cg_id={cg}".format(
+        msg = _("create_share {be} name={id} size={size}"
+                " share_group_id={group}")
+        LOG.debug(msg.format(
             be=self.backend_name, id=share['id'], size=share['size'],
-            cg=share['consistency_group_id']))
+            group=share['share_group_id']))
 
         extra_specs = share_types.get_extra_specs_from_share(share)
         data_isolated = extra_specs.get("cephfs:data_isolated", False)
@@ -340,22 +341,24 @@ class CephFSNativeDriver(driver.ShareDriver,):
             self._share_path(snapshot['share']),
             '_'.join([snapshot['snapshot_id'], snapshot['id']]))
 
-    def create_consistency_group(self, context, cg_dict, share_server=None):
+    def create_share_group(self, context, cg_dict, share_server=None):
         self.volume_client.create_group(cg_dict['id'])
 
-    def delete_consistency_group(self, context, cg_dict, share_server=None):
+    def delete_share_group(self, context, cg_dict, share_server=None):
         self.volume_client.destroy_group(cg_dict['id'])
 
-    def delete_cgsnapshot(self, context, snap_dict, share_server=None):
+    def delete_share_group_snapshot(self, context, snap_dict,
+                                    share_server=None):
         self.volume_client.destroy_snapshot_group(
-            snap_dict['consistency_group_id'],
+            snap_dict['share_group_id'],
             snap_dict['id'])
 
         return None, []
 
-    def create_cgsnapshot(self, context, snap_dict, share_server=None):
+    def create_share_group_snapshot(self, context, snap_dict,
+                                    share_server=None):
         self.volume_client.create_snapshot_group(
-            snap_dict['consistency_group_id'],
+            snap_dict['share_group_id'],
             snap_dict['id'])
 
         return None, []

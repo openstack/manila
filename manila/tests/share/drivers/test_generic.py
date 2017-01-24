@@ -66,84 +66,11 @@ def get_fake_snap_dict():
         'created_at': '2015-08-10 00:05:58',
         'updated_at': '2015-08-10 00:05:58',
         'consistency_group_id': None,
-        'cgsnapshot_members': [
-            {
-                'status': 'available',
-                'share_type_id': '1a9ed31e-ee70-483d-93ba-89690e028d7f',
-                'share_id': 'e14b5174-e534-4f35-bc4f-fe81c1575d6f',
-                'user_id': 'a0314a441ca842019b0952224aa39192',
-                'deleted': 'False',
-                'created_at': '2015-08-10 00:05:58',
-                'share': {
-                    'id': '03e2f06e-14f2-45a5-9631-0949d1937bd8',
-                    'deleted': False,
-                },
-                'updated_at': '2015-08-10 00:05:58',
-                'share_proto': 'NFS',
-                'project_id': '13c0be6290934bd98596cfa004650049',
-                'cgsnapshot_id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
-                'deleted_at': None,
-                'id': '03e2f06e-14f2-45a5-9631-0949d1937bd8',
-                'size': 1,
-            },
-        ],
         'deleted_at': None,
         'id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
         'name': None,
     }
     return snap_dict
-
-
-def get_fake_cg_dict():
-    cg_dict = {
-        'status': 'creating',
-        'project_id': '13c0be6290934bd98596cfa004650049',
-        'user_id': 'a0314a441ca842019b0952224aa39192',
-        'description': None,
-        'deleted': 'False',
-        'created_at': '2015-08-10 00:07:58',
-        'updated_at': None,
-        'source_cgsnapshot_id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
-        'host': 'openstack2@cmodeSSVMNFS',
-        'deleted_at': None,
-        'shares': [
-            {
-                'id': '02a32f06e-14f2-45a5-9631-7483f1937bd8',
-                'deleted': False,
-                'source_cgsnapshot_member_id':
-                    '03e2f06e-14f2-45a5-9631-0949d1937bd8',
-            },
-
-        ],
-        'share_types': [
-            {
-                'id': 'f6aa3b56-45a5-9631-02a32f06e1937b',
-                'deleted': False,
-                'consistency_group_id': None,
-                'share_type_id': '1a9ed31e-ee70-483d-93ba-89690e028d7f',
-            },
-        ],
-        'id': 'eda52174-0442-476d-9694-a58327466c14',
-        'name': None
-    }
-    return cg_dict
-
-
-def get_fake_collated_cg_snap_info():
-    fake_collated_cg_snap_info = [
-        {
-            'share': {
-                'id': '02a32f06e-14f2-45a5-9631-7483f1937bd8',
-                'deleted': False,
-                'source_cgsnapshot_member_id':
-                    '03e2f06e-14f2-45a5-9631-0949d1937bd8',
-            },
-            'snapshot': {
-                'id': '03e2f06e-14f2-45a5-9631-0949d1937bd8',
-            },
-        },
-    ]
-    return fake_collated_cg_snap_info
 
 
 def get_fake_access_rule(access_to, access_level, access_type='ip'):

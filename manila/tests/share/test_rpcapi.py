@@ -46,8 +46,8 @@ class ShareRpcAPITestCase(test.TestCase):
             host='fake_host',
         )
         share_server = db_utils.create_share_server()
-        cg = {'id': 'fake_cg_id', 'host': 'fake_host'}
-        cgsnapshot = {'id': 'fake_cg_id'}
+        share_group = {'id': 'fake_share_group_id', 'host': 'fake_host'}
+        share_group_snapshot = {'id': 'fake_share_group_id'}
         host = 'fake_host'
         self.fake_share = jsonutils.to_primitive(share)
         # mock out the getattr on the share db model object since jsonutils
@@ -56,8 +56,9 @@ class ShareRpcAPITestCase(test.TestCase):
         self.fake_share_replica = jsonutils.to_primitive(share_replica)
         self.fake_snapshot = jsonutils.to_primitive(snapshot)
         self.fake_share_server = jsonutils.to_primitive(share_server)
-        self.fake_cg = jsonutils.to_primitive(cg)
-        self.fake_cgsnapshot = jsonutils.to_primitive(cgsnapshot)
+        self.fake_share_group = jsonutils.to_primitive(share_group)
+        self.fake_share_group_snapshot = jsonutils.to_primitive(
+            share_group_snapshot)
         self.fake_host = jsonutils.to_primitive(host)
         self.ctxt = context.RequestContext('fake_user', 'fake_project')
         self.rpcapi = share_rpcapi.ShareAPI()
@@ -79,14 +80,14 @@ class ShareRpcAPITestCase(test.TestCase):
         if 'share_instance' in expected_msg:
             share_instance = expected_msg.pop('share_instance', None)
             expected_msg['share_instance_id'] = share_instance['id']
-        if 'cg' in expected_msg:
-            cg = expected_msg['cg']
-            del expected_msg['cg']
-            expected_msg['cg_id'] = cg['id']
-        if 'cgsnapshot' in expected_msg:
-            snap = expected_msg['cgsnapshot']
-            del expected_msg['cgsnapshot']
-            expected_msg['cgsnapshot_id'] = snap['id']
+        if 'share_group' in expected_msg:
+            share_group = expected_msg['share_group']
+            del expected_msg['share_group']
+            expected_msg['share_group_id'] = share_group['id']
+        if 'share_group_snapshot' in expected_msg:
+            snap = expected_msg['share_group_snapshot']
+            del expected_msg['share_group_snapshot']
+            expected_msg['share_group_snapshot_id'] = snap['id']
         if 'host' in expected_msg:
             del expected_msg['host']
         if 'snapshot' in expected_msg:
@@ -113,8 +114,8 @@ class ShareRpcAPITestCase(test.TestCase):
 
         if 'host' in kwargs:
             host = kwargs['host']
-        elif 'cg' in kwargs:
-            host = kwargs['cg']['host']
+        elif 'share_group' in kwargs:
+            host = kwargs['share_group']['host']
         elif 'share_instance' in kwargs:
             host = kwargs['share_instance']['host']
         elif 'share_server' in kwargs:
@@ -213,32 +214,34 @@ class ShareRpcAPITestCase(test.TestCase):
                              share=self.fake_share,
                              new_size=123)
 
-    def test_create_consistency_group(self):
-        self._test_share_api('create_consistency_group',
-                             version='1.5',
+    def test_create_share_group(self):
+        self._test_share_api('create_share_group',
+                             version='1.16',
                              rpc_method='cast',
-                             cg=self.fake_cg,
+                             share_group=self.fake_share_group,
                              host='fake_host1')
 
-    def test_delete_consistency_group(self):
-        self._test_share_api('delete_consistency_group',
-                             version='1.5',
+    def test_delete_share_group(self):
+        self._test_share_api('delete_share_group',
+                             version='1.16',
                              rpc_method='cast',
-                             cg=self.fake_cg)
+                             share_group=self.fake_share_group)
 
-    def test_create_cgsnapshot(self):
-        self._test_share_api('create_cgsnapshot',
-                             version='1.5',
-                             rpc_method='cast',
-                             cgsnapshot=self.fake_cgsnapshot,
-                             host='fake_host1')
+    def test_create_share_group_snapshot(self):
+        self._test_share_api(
+            'create_share_group_snapshot',
+            version='1.16',
+            rpc_method='cast',
+            share_group_snapshot=self.fake_share_group_snapshot,
+            host='fake_host1')
 
-    def test_delete_cgsnapshot(self):
-        self._test_share_api('delete_cgsnapshot',
-                             version='1.5',
-                             rpc_method='cast',
-                             cgsnapshot=self.fake_cgsnapshot,
-                             host='fake_host1')
+    def test_delete_share_group_snapshot(self):
+        self._test_share_api(
+            'delete_share_group_snapshot',
+            version='1.16',
+            rpc_method='cast',
+            share_group_snapshot=self.fake_share_group_snapshot,
+            host='fake_host1')
 
     def test_migration_start(self):
         self._test_share_api('migration_start',

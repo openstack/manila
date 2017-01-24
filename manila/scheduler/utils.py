@@ -40,7 +40,6 @@ def generate_stats(host_state, properties):
             host_state.driver_handles_share_servers,
         'thin_provisioning': host_state.thin_provisioning,
         'updated': host_state.updated,
-        'consistency_group_support': host_state.consistency_group_support,
         'dedupe': host_state.dedupe,
         'compression': host_state.compression,
         'snapshot_support': host_state.snapshot_support,

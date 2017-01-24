@@ -366,7 +366,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'driver_version': '1.0',
             'netapp_storage_family': 'ontap_cluster',
             'storage_protocol': 'NFS_CIFS',
-            'consistency_group_support': 'host',
             'pools': fake.POOLS,
         }
         self.assertDictEqual(expected, result)
@@ -390,7 +389,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'driver_version': '1.0',
             'netapp_storage_family': 'ontap_cluster',
             'storage_protocol': 'NFS_CIFS',
-            'consistency_group_support': 'host',
             'replication_type': 'dr',
             'replication_domain': 'fake_domain',
             'pools': fake.POOLS,
@@ -1825,7 +1823,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fake_cg_snapshot = copy.deepcopy(fake.CG_SNAPSHOT)
         fake_cg_snapshot['cgsnapshot_members'] = []
 
-        self.assertRaises(exception.InvalidConsistencyGroup,
+        self.assertRaises(exception.InvalidShareGroup,
                           self.library._collate_cg_snapshot_info,
                           fake.CONSISTENCY_GROUP_DEST, fake_cg_snapshot)
 

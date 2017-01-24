@@ -30,7 +30,7 @@ ShareGroup = [
                help="The minimum api microversion is configured to be the "
                     "value of the minimum microversion supported by Manila."),
     cfg.StrOpt("max_api_microversion",
-               default="2.30",
+               default="2.31",
                help="The maximum api microversion is configured to be the "
                     "value of the latest microversion supported by Manila."),
     cfg.StrOpt("region",
@@ -171,7 +171,7 @@ ShareGroup = [
                      "to snapshots or not. Enable this feature if used "
                      "driver supports it."),
     cfg.BoolOpt("run_consistency_group_tests",
-                default=True,
+                default=False,
                 help="Defines whether to run consistency group tests or not. "
                      "Disable this feature if used driver doesn't support "
                      "it."),

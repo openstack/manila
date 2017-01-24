@@ -1838,3 +1838,181 @@ class AddCastRulesToReadonlyToInstances(BaseMigrationChecks):
 
         for instance in engine.execute(share_instances_table.select()):
             self.test_case.assertNotIn('cast_rules_to_readonly', instance)
+
+
+@map_to_migration('03da71c0e321')
+class ShareGroupMigrationChecks(BaseMigrationChecks):
+
+    def setup_upgrade_data(self, engine):
+        # Create share type
+        self.share_type_id = uuidutils.generate_uuid()
+        st_fixture = {
+            'deleted': "False",
+            'id': self.share_type_id,
+        }
+        st_table = utils.load_table('share_types', engine)
+        engine.execute(st_table.insert(st_fixture))
+
+        # Create CG
+        self.cg_id = uuidutils.generate_uuid()
+        cg_fixture = {
+            'deleted': "False",
+            'id': self.cg_id,
+            'user_id': 'fake_user',
+            'project_id': 'fake_project_id',
+        }
+        cg_table = utils.load_table('consistency_groups', engine)
+        engine.execute(cg_table.insert(cg_fixture))
+
+        # Create share_type group mapping
+        self.mapping_id = uuidutils.generate_uuid()
+        mapping_fixture = {
+            'deleted': "False",
+            'id': self.mapping_id,
+            'consistency_group_id': self.cg_id,
+            'share_type_id': self.share_type_id,
+        }
+        mapping_table = utils.load_table(
+            'consistency_group_share_type_mappings', engine)
+        engine.execute(mapping_table.insert(mapping_fixture))
+
+        # Create share
+        self.share_id = uuidutils.generate_uuid()
+        share_fixture = {
+            'deleted': "False",
+            'id': self.share_id,
+            'consistency_group_id': self.cg_id,
+            'user_id': 'fake_user',
+            'project_id': 'fake_project_id',
+        }
+        share_table = utils.load_table('shares', engine)
+        engine.execute(share_table.insert(share_fixture))
+
+        # Create share instance
+        self.share_instance_id = uuidutils.generate_uuid()
+        share_instance_fixture = {
+            'deleted': "False",
+            'share_type_id': self.share_type_id,
+            'id': self.share_instance_id,
+            'share_id': self.share_id,
+            'cast_rules_to_readonly': False,
+        }
+        share_instance_table = utils.load_table('share_instances', engine)
+        engine.execute(share_instance_table.insert(share_instance_fixture))
+
+        # Create cgsnapshot
+        self.cgsnapshot_id = uuidutils.generate_uuid()
+        cg_snap_fixture = {
+            'deleted': "False",
+            'id': self.cgsnapshot_id,
+            'consistency_group_id': self.cg_id,
+            'user_id': 'fake_user',
+            'project_id': 'fake_project_id',
+        }
+        cgsnapshots_table = utils.load_table('cgsnapshots', engine)
+        engine.execute(cgsnapshots_table.insert(cg_snap_fixture))
+
+        # Create cgsnapshot member
+        self.cgsnapshot_member_id = uuidutils.generate_uuid()
+        cg_snap_member_fixture = {
+            'deleted': "False",
+            'id': self.cgsnapshot_member_id,
+            'cgsnapshot_id': self.cgsnapshot_id,
+            'share_type_id': self.share_type_id,
+            'share_instance_id': self.share_instance_id,
+            'share_id': self.share_id,
+            'user_id': 'fake_user',
+            'project_id': 'fake_project_id',
+        }
+        cgsnapshot_members_table = utils.load_table(
+            'cgsnapshot_members', engine)
+        engine.execute(cgsnapshot_members_table.insert(cg_snap_member_fixture))
+
+    def check_upgrade(self, engine, data):
+        sg_table = utils.load_table("share_groups", engine)
+        db_result = engine.execute(sg_table.select().where(
+            sg_table.c.id == self.cg_id))
+        self.test_case.assertEqual(1, db_result.rowcount)
+        sg = db_result.first()
+        self.test_case.assertIsNone(sg['source_share_group_snapshot_id'])
+
+        share_table = utils.load_table("shares", engine)
+        share_result = engine.execute(share_table.select().where(
+            share_table.c.id == self.share_id))
+        self.test_case.assertEqual(1, share_result.rowcount)
+        share = share_result.first()
+        self.test_case.assertEqual(self.cg_id, share['share_group_id'])
+        self.test_case.assertIsNone(
+            share['source_share_group_snapshot_member_id'])
+
+        mapping_table = utils.load_table(
+            "share_group_share_type_mappings", engine)
+        mapping_result = engine.execute(mapping_table.select().where(
+            mapping_table.c.id == self.mapping_id))
+        self.test_case.assertEqual(1, mapping_result.rowcount)
+        mapping_record = mapping_result.first()
+        self.test_case.assertEqual(
+            self.cg_id, mapping_record['share_group_id'])
+        self.test_case.assertEqual(
+            self.share_type_id, mapping_record['share_type_id'])
+
+        sgs_table = utils.load_table("share_group_snapshots", engine)
+        db_result = engine.execute(sgs_table.select().where(
+            sgs_table.c.id == self.cgsnapshot_id))
+        self.test_case.assertEqual(1, db_result.rowcount)
+        sgs = db_result.first()
+        self.test_case.assertEqual(self.cg_id, sgs['share_group_id'])
+
+        sgsm_table = utils.load_table("share_group_snapshot_members", engine)
+        db_result = engine.execute(sgsm_table.select().where(
+            sgsm_table.c.id == self.cgsnapshot_member_id))
+        self.test_case.assertEqual(1, db_result.rowcount)
+        sgsm = db_result.first()
+        self.test_case.assertEqual(
+            self.cgsnapshot_id, sgsm['share_group_snapshot_id'])
+        self.test_case.assertNotIn('share_type_id', sgsm)
+
+    def check_downgrade(self, engine):
+        cg_table = utils.load_table("consistency_groups", engine)
+        db_result = engine.execute(cg_table.select().where(
+            cg_table.c.id == self.cg_id))
+        self.test_case.assertEqual(1, db_result.rowcount)
+        cg = db_result.first()
+        self.test_case.assertIsNone(cg['source_cgsnapshot_id'])
+
+        share_table = utils.load_table("shares", engine)
+        share_result = engine.execute(share_table.select().where(
+            share_table.c.id == self.share_id))
+        self.test_case.assertEqual(1, share_result.rowcount)
+        share = share_result.first()
+        self.test_case.assertEqual(self.cg_id, share['consistency_group_id'])
+        self.test_case.assertIsNone(
+            share['source_cgsnapshot_member_id'])
+
+        mapping_table = utils.load_table(
+            "consistency_group_share_type_mappings", engine)
+        mapping_result = engine.execute(mapping_table.select().where(
+            mapping_table.c.id == self.mapping_id))
+        self.test_case.assertEqual(1, mapping_result.rowcount)
+        cg_st_mapping = mapping_result.first()
+        self.test_case.assertEqual(
+            self.cg_id, cg_st_mapping['consistency_group_id'])
+        self.test_case.assertEqual(
+            self.share_type_id, cg_st_mapping['share_type_id'])
+
+        cg_snapshots_table = utils.load_table("cgsnapshots", engine)
+        db_result = engine.execute(cg_snapshots_table.select().where(
+            cg_snapshots_table.c.id == self.cgsnapshot_id))
+        self.test_case.assertEqual(1, db_result.rowcount)
+        cgsnap = db_result.first()
+        self.test_case.assertEqual(self.cg_id, cgsnap['consistency_group_id'])
+
+        cg_snap_member_table = utils.load_table("cgsnapshot_members", engine)
+        db_result = engine.execute(cg_snap_member_table.select().where(
+            cg_snap_member_table.c.id == self.cgsnapshot_member_id))
+        self.test_case.assertEqual(1, db_result.rowcount)
+        member = db_result.first()
+        self.test_case.assertEqual(
+            self.cgsnapshot_id, member['cgsnapshot_id'])
+        self.test_case.assertIn('share_type_id', member)
+        self.test_case.assertEqual(self.share_type_id, member['share_type_id'])

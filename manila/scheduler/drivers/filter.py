@@ -169,17 +169,7 @@ class FilterScheduler(base.Scheduler):
 
         config_options = self._get_configuration_options()
 
-        # NOTE(ameade): If a consistency group is specified, pass the
-        # consistency group support level to the ConsistencyGroupFilter
-        # (host, pool, or False)
-        cg_support = None
-        cg = request_spec.get('consistency_group')
-        if cg:
-            temp_hosts = self.host_manager.get_all_host_states_share(elevated)
-            cg_host = next((host for host in temp_hosts
-                            if host.host == cg.get('host')), None)
-            if cg_host:
-                cg_support = cg_host.consistency_group_support
+        share_group = request_spec.get('share_group')
 
         # NOTE(gouthamr): If 'active_replica_host' is present in the request
         # spec, pass that host's 'replication_domain' to the
@@ -202,8 +192,7 @@ class FilterScheduler(base.Scheduler):
                                   'config_options': config_options,
                                   'share_type': share_type,
                                   'resource_type': resource_type,
-                                  'cg_support': cg_support,
-                                  'consistency_group': cg,
+                                  'share_group': share_group,
                                   'replication_domain': replication_domain,
                                   })
 
@@ -318,27 +307,24 @@ class FilterScheduler(base.Scheduler):
         filter_properties['user_id'] = shr.get('user_id')
         filter_properties['metadata'] = shr.get('metadata')
 
-    def schedule_create_consistency_group(self, context, group_id,
-                                          request_spec,
-                                          filter_properties):
+    def schedule_create_share_group(self, context, share_group_id,
+                                    request_spec, filter_properties):
 
-        LOG.info(_LI("Scheduling consistency group %s") % group_id)
-
-        host = self._get_best_host_for_consistency_group(
-            context,
-            request_spec)
+        LOG.info(_LI("Scheduling share group %s.") % share_group_id)
+        host = self._get_best_host_for_share_group(context, request_spec)
 
         if not host:
-            msg = _("No hosts available for consistency group %s") % group_id
+            msg = _("No hosts available for share group %s.") % share_group_id
             raise exception.NoValidHost(reason=msg)
 
-        msg = _LI("Chose host %(host)s for create_consistency_group %(cg_id)s")
-        LOG.info(msg % {'host': host, 'cg_id': group_id})
+        msg = _LI("Chose host %(host)s for create_share_group %(group)s.")
+        LOG.info(msg % {'host': host, 'group': share_group_id})
 
-        updated_group = base.cg_update_db(context, group_id, host)
+        updated_share_group = base.share_group_update_db(
+            context, share_group_id, host)
 
-        self.share_rpcapi.create_consistency_group(context,
-                                                   updated_group, host)
+        self.share_rpcapi.create_share_group(
+            context, updated_share_group, host)
 
     def _get_weighted_hosts_for_share_type(self, context, request_spec,
                                            share_type):
@@ -363,9 +349,6 @@ class FilterScheduler(base.Scheduler):
                 if extra_spec is not None:
                     share_type['extra_specs'][spec_name] = (
                         "<is> %s" % extra_spec)
-        # Only allow pools that support consistency groups
-        share_type['extra_specs']['consistency_group_support'] = (
-            "<or> host <or> pool")
 
         filter_properties = {
             'context': context,
@@ -393,8 +376,40 @@ class FilterScheduler(base.Scheduler):
 
         return weighed_hosts
 
-    def _get_weighted_candidates_cg(self, context, request_spec):
-        """Finds hosts that support the consistency group.
+    def _get_weighted_hosts_for_share_group_type(self, context, request_spec,
+                                                 share_group_type):
+        config_options = self._get_configuration_options()
+        all_hosts = self.host_manager.get_all_host_states_share(context)
+
+        if not all_hosts:
+            return []
+
+        filter_properties = {
+            'context': context,
+            'request_spec': request_spec,
+            'config_options': config_options,
+            'share_group_type': share_group_type,
+            'resource_type': share_group_type,
+        }
+
+        hosts = self.host_manager.get_filtered_hosts(
+            all_hosts, filter_properties)
+
+        if not hosts:
+            return []
+
+        LOG.debug("Filtered %s" % hosts)
+
+        weighed_hosts = self.host_manager.get_weighed_hosts(
+            hosts,
+            filter_properties)
+        if not weighed_hosts:
+            return []
+
+        return weighed_hosts
+
+    def _get_weighted_candidates_share_group(self, context, request_spec):
+        """Finds hosts that support the share group.
 
         Returns a list of hosts that meet the required specs,
         ordered by their fitness.
@@ -410,7 +425,7 @@ class FilterScheduler(base.Scheduler):
                 elevated, request_spec, share_type)
 
             # NOTE(ameade): Take the intersection of hosts so we have one that
-            # can support all share types of the CG
+            # can support all share types of the share group
             if iteration_count == 0:
                 weighed_hosts = temp_weighed_hosts
             else:
@@ -423,10 +438,22 @@ class FilterScheduler(base.Scheduler):
                 if not weighed_hosts:
                     return []
 
+        # NOTE(ameade): Ensure the hosts support the share group type
+        share_group_type = request_spec.get("resource_type", {})
+        temp_weighed_group_hosts = (
+            self._get_weighted_hosts_for_share_group_type(
+                elevated, request_spec, share_group_type))
+        new_weighed_hosts = []
+        for host1 in weighed_hosts:
+            for host2 in temp_weighed_group_hosts:
+                if host1.obj.host == host2.obj.host:
+                    new_weighed_hosts.append(host1)
+        weighed_hosts = new_weighed_hosts
+
         return weighed_hosts
 
-    def _get_best_host_for_consistency_group(self, context, request_spec):
-        weighed_hosts = self._get_weighted_candidates_cg(
+    def _get_best_host_for_share_group(self, context, request_spec):
+        weighed_hosts = self._get_weighted_candidates_share_group(
             context,
             request_spec)
 

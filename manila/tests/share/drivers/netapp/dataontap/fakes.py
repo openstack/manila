@@ -399,7 +399,7 @@ CG_SNAPSHOT_MEMBER_2 = {
 
 CG_SNAPSHOT = {
     'cgsnapshot_members': [CG_SNAPSHOT_MEMBER_1, CG_SNAPSHOT_MEMBER_2],
-    'consistency_group': CONSISTENCY_GROUP,
+    'share_group': CONSISTENCY_GROUP,
     'consistency_group_id': CONSISTENCY_GROUP_ID,
     'id': CG_SNAPSHOT_ID,
     'project_id': TENANT_ID,

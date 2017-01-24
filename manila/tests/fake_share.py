@@ -38,7 +38,7 @@ def fake_share(**kwargs):
         'snapshot_support': 'True',
         'replication_type': None,
         'is_busy': False,
-        'consistency_group_id': 'fakecgid',
+        'share_group_id': None,
         'instance': {'host': 'fakehost'},
     }
     share.update(kwargs)
@@ -256,8 +256,8 @@ def fake_replica(id=None, as_primitive=True, for_manager=False, **kwargs):
             'snapshot_id': None,
             'share_proto': None,
             'is_public': None,
-            'consistency_group_id': None,
-            'source_cgsnapshot_member_id': None,
+            'share_group_id': None,
+            'source_share_group_snapshot_member_id': None,
             'availability_zone': 'fake_az',
         })
     replica.update(kwargs)
@@ -278,7 +278,7 @@ def fake_replica_request_spec(as_primitive=True, **kwargs):
         'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
         'snapshot_id': None,
         'share_type': 'fake_share_type',
-        'consistency_group': None,
+        'share_group': None,
         'active_replica_host': 'fake_active_replica_host',
         'all_replica_hosts': all_replica_hosts,
     }

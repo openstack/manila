@@ -23,7 +23,6 @@ class ViewBuilder(common.ViewBuilder):
     _collection_name = 'shares'
     _detail_version_modifiers = [
         "add_snapshot_support_field",
-        "add_consistency_group_fields",
         "add_task_state_field",
         "modify_share_type_field",
         "remove_export_locations",
@@ -33,6 +32,7 @@ class ViewBuilder(common.ViewBuilder):
         "add_create_share_from_snapshot_support_field",
         "add_revert_to_snapshot_support_field",
         "translate_access_rules_status",
+        "add_share_group_fields",
     ]
 
     def summary_list(self, request, shares):
@@ -103,13 +103,6 @@ class ViewBuilder(common.ViewBuilder):
     def add_snapshot_support_field(self, context, share_dict, share):
         share_dict['snapshot_support'] = share.get('snapshot_support')
 
-    @common.ViewBuilder.versioned_method("2.4")
-    def add_consistency_group_fields(self, context, share_dict, share):
-        share_dict['consistency_group_id'] = share.get(
-            'consistency_group_id')
-        share_dict['source_cgsnapshot_member_id'] = share.get(
-            'source_cgsnapshot_member_id')
-
     @common.ViewBuilder.versioned_method("2.5")
     def add_task_state_field(self, context, share_dict, share):
         share_dict['task_state'] = share.get('task_state')
@@ -161,6 +154,13 @@ class ViewBuilder(common.ViewBuilder):
         if (share['access_rules_status'] ==
                 constants.SHARE_INSTANCE_RULES_SYNCING):
             share_dict['access_rules_status'] = constants.STATUS_OUT_OF_SYNC
+
+    @common.ViewBuilder.versioned_method("2.31")
+    def add_share_group_fields(self, context, share_dict, share):
+        share_dict['share_group_id'] = share.get(
+            'share_group_id')
+        share_dict['source_share_group_snapshot_member_id'] = share.get(
+            'source_share_group_snapshot_member_id')
 
     def _list_view(self, func, request, shares):
         """Provide a view for a list of shares."""

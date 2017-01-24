@@ -1,4 +1,4 @@
-# Copyright 2015 Alex Meade
+# Copyright 2016 Alex Meade
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -39,24 +39,23 @@ CONF = cfg.CONF
 
 
 @ddt.ddt
-class CGSnapshotApiTest(test.TestCase):
+class ShareGroupSnapshotAPITest(test.TestCase):
 
     def setUp(self):
         super(self.__class__, self).setUp()
-        self.controller = share_group_snapshots.CGSnapshotController()
+        self.controller = share_group_snapshots.ShareGroupSnapshotController()
         self.resource_name = self.controller.resource_name
-        self.api_version = '2.4'
+        self.api_version = '2.31'
         self.mock_policy_check = self.mock_object(
             policy, 'check_policy', mock.Mock(return_value=True))
-        self.request = fakes.HTTPRequest.blank('/consistency-groups',
-                                               version=self.api_version,
-                                               experimental=True)
+        self.request = fakes.HTTPRequest.blank(
+            '/share-groups', version=self.api_version, experimental=True)
         self.context = self.request.environ['manila.context']
         self.admin_context = context.RequestContext('admin', 'fake', True)
         self.member_context = context.RequestContext('fake', 'fake')
         self.flags(rpc_backend='manila.openstack.common.rpc.impl_fake')
 
-    def _get_fake_cgsnapshot(self, **values):
+    def _get_fake_share_group_snapshot(self, **values):
         snap = {
             'id': 'fake_id',
             'user_id': 'fakeuser',
@@ -64,18 +63,18 @@ class CGSnapshotApiTest(test.TestCase):
             'status': constants.STATUS_CREATING,
             'name': None,
             'description': None,
-            'consistency_group_id': None,
+            'share_group_id': None,
             'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'members': [],
         }
 
         snap.update(**values)
 
         expected_snap = copy.deepcopy(snap)
         del expected_snap['user_id']
-        expected_snap['links'] = mock.ANY
         return snap, expected_snap
 
-    def _get_fake_simple_cgsnapshot(self, **values):
+    def _get_fake_simple_share_group_snapshot(self, **values):
         snap = {
             'id': 'fake_id',
             'name': None,
@@ -83,18 +82,16 @@ class CGSnapshotApiTest(test.TestCase):
 
         snap.update(**values)
         expected_snap = copy.deepcopy(snap)
-        expected_snap['links'] = mock.ANY
         return snap, expected_snap
 
-    def _get_fake_cgsnapshot_member(self, **values):
+    def _get_fake_share_group_snapshot_member(self, **values):
         member = {
             'id': 'fake_id',
             'user_id': 'fakeuser',
             'project_id': 'fakeproject',
             'status': constants.STATUS_CREATING,
-            'cgsnapshot_id': None,
+            'share_group_snapshot_id': None,
             'share_proto': None,
-            'share_type_id': None,
             'share_id': None,
             'size': None,
             'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
@@ -110,110 +107,133 @@ class CGSnapshotApiTest(test.TestCase):
         return member, expected_member
 
     def test_create_invalid_body(self):
-        body = {"not_cg_snapshot": {}}
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
-                          self.request, body)
+        body = {"not_group_snapshot": {}}
+
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller.create, self.request, body)
+
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'create')
 
-    def test_create_no_consistency_group_id(self):
-        body = {"cgnapshot": {}}
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
-                          self.request, body)
+    def test_create_no_share_group_id(self):
+        body = {"share_group_snapshot": {}}
+
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller.create, self.request, body)
+
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'create')
 
     def test_create(self):
-        fake_snap, expected_snap = self._get_fake_cgsnapshot()
+        fake_snap, expected_snap = self._get_fake_share_group_snapshot()
         fake_id = six.text_type(uuidutils.generate_uuid())
-        self.mock_object(self.controller.cg_api, 'create_cgsnapshot',
-                         mock.Mock(return_value=fake_snap))
-
-        body = {"cgsnapshot": {"consistency_group_id": fake_id}}
+        body = {"share_group_snapshot": {"share_group_id": fake_id}}
+        mock_create = self.mock_object(
+            self.controller.share_group_api, 'create_share_group_snapshot',
+            mock.Mock(return_value=fake_snap))
 
         res_dict = self.controller.create(self.request, body)
 
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'create')
-        self.controller.cg_api.create_cgsnapshot.assert_called_once_with(
-            self.context, consistency_group_id=fake_id)
-        self.assertEqual(expected_snap, res_dict['cgsnapshot'])
+        mock_create.assert_called_once_with(
+            self.context, share_group_id=fake_id)
+        res_dict['share_group_snapshot'].pop('links')
 
-    def test_create_cg_does_not_exist(self):
+        self.assertEqual(expected_snap, res_dict['share_group_snapshot'])
+
+    def test_create_group_does_not_exist(self):
         fake_id = six.text_type(uuidutils.generate_uuid())
-        self.mock_object(self.controller.cg_api, 'create_cgsnapshot',
-                         mock.Mock(
-                             side_effect=exception.ConsistencyGroupNotFound(
-                                 consistency_group_id=six.text_type(
-                                     uuidutils.generate_uuid())
-                             )))
+        body = {"share_group_snapshot": {"share_group_id": fake_id}}
+        self.mock_object(
+            self.controller.share_group_api, 'create_share_group_snapshot',
+            mock.Mock(side_effect=exception.ShareGroupNotFound(
+                share_group_id=six.text_type(uuidutils.generate_uuid()))))
 
-        body = {"cgsnapshot": {"consistency_group_id": fake_id}}
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
-                          self.request, body)
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller.create, self.request, body)
+
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'create')
 
-    def test_create_cg_does_not_a_uuid(self):
-        self.mock_object(self.controller.cg_api, 'create_cgsnapshot',
-                         mock.Mock(
-                             side_effect=exception.ConsistencyGroupNotFound(
-                                 consistency_group_id='not_a_uuid'
-                             )))
+    def test_create_group_does_not_a_uuid(self):
+        self.mock_object(
+            self.controller.share_group_api, 'create_share_group_snapshot',
+            mock.Mock(side_effect=exception.ShareGroupNotFound(
+                share_group_id='not_a_uuid',
+            )))
+        body = {"share_group_snapshot": {"share_group_id": "not_a_uuid"}}
 
-        body = {"cgsnapshot": {"consistency_group_id": "not_a_uuid"}}
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
-                          self.request, body)
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller.create, self.request, body)
+
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'create')
 
-    def test_create_invalid_cg(self):
+    def test_create_invalid_share_group(self):
         fake_id = six.text_type(uuidutils.generate_uuid())
-        self.mock_object(self.controller.cg_api, 'create_cgsnapshot',
-                         mock.Mock(
-                             side_effect=exception.InvalidConsistencyGroup(
-                                 reason='bad_status'
-                             )))
+        body = {"share_group_snapshot": {"share_group_id": fake_id}}
+        self.mock_object(
+            self.controller.share_group_api, 'create_share_group_snapshot',
+            mock.Mock(side_effect=exception.InvalidShareGroup(
+                reason='bad_status')))
 
-        body = {"cgsnapshot": {"consistency_group_id": fake_id}}
-        self.assertRaises(webob.exc.HTTPConflict, self.controller.create,
-                          self.request, body)
+        self.assertRaises(
+            webob.exc.HTTPConflict, self.controller.create, self.request, body)
+
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'create')
 
     def test_create_with_name(self):
         fake_name = 'fake_name'
-        fake_snap, expected_snap = self._get_fake_cgsnapshot(name=fake_name)
+        fake_snap, expected_snap = self._get_fake_share_group_snapshot(
+            name=fake_name)
         fake_id = six.text_type(uuidutils.generate_uuid())
-        self.mock_object(self.controller.cg_api, 'create_cgsnapshot',
-                         mock.Mock(return_value=fake_snap))
-
-        body = {"cgsnapshot": {"consistency_group_id": fake_id,
-                               "name": fake_name}}
+        mock_create = self.mock_object(
+            self.controller.share_group_api, 'create_share_group_snapshot',
+            mock.Mock(return_value=fake_snap))
+        body = {
+            "share_group_snapshot": {
+                "share_group_id": fake_id,
+                "name": fake_name,
+            }
+        }
         res_dict = self.controller.create(self.request, body)
 
-        self.controller.cg_api.create_cgsnapshot.assert_called_once_with(
-            self.context, consistency_group_id=fake_id, name=fake_name)
-        self.assertEqual(expected_snap, res_dict['cgsnapshot'])
+        res_dict['share_group_snapshot'].pop('links')
+
+        mock_create.assert_called_once_with(
+            self.context, share_group_id=fake_id, name=fake_name)
+        self.assertEqual(expected_snap, res_dict['share_group_snapshot'])
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'create')
 
     def test_create_with_description(self):
         fake_description = 'fake_description'
-        fake_snap, expected_snap = self._get_fake_cgsnapshot(
+        fake_snap, expected_snap = self._get_fake_share_group_snapshot(
             description=fake_description)
         fake_id = six.text_type(uuidutils.generate_uuid())
-        self.mock_object(self.controller.cg_api, 'create_cgsnapshot',
-                         mock.Mock(return_value=fake_snap))
+        mock_create = self.mock_object(
+            self.controller.share_group_api, 'create_share_group_snapshot',
+            mock.Mock(return_value=fake_snap))
 
-        body = {"cgsnapshot": {"consistency_group_id": fake_id,
-                               "description": fake_description}}
+        body = {
+            "share_group_snapshot": {
+                "share_group_id": fake_id,
+                "description": fake_description,
+            }
+        }
         res_dict = self.controller.create(self.request, body)
 
-        self.controller.cg_api.create_cgsnapshot.assert_called_once_with(
-            self.context, consistency_group_id=fake_id,
-            description=fake_description)
-        self.assertEqual(expected_snap, res_dict['cgsnapshot'])
+        res_dict['share_group_snapshot'].pop('links')
+
+        mock_create.assert_called_once_with(
+            self.context, share_group_id=fake_id, description=fake_description)
+        self.assertEqual(expected_snap, res_dict['share_group_snapshot'])
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'create')
 
@@ -221,20 +241,27 @@ class CGSnapshotApiTest(test.TestCase):
         fake_name = 'fake_name'
         fake_description = 'fake_description'
         fake_id = six.text_type(uuidutils.generate_uuid())
-        fake_snap, expected_snap = self._get_fake_cgsnapshot(
+        fake_snap, expected_snap = self._get_fake_share_group_snapshot(
             description=fake_description, name=fake_name)
-        self.mock_object(self.controller.cg_api, 'create_cgsnapshot',
-                         mock.Mock(return_value=fake_snap))
+        mock_create = self.mock_object(
+            self.controller.share_group_api, 'create_share_group_snapshot',
+            mock.Mock(return_value=fake_snap))
 
-        body = {"cgsnapshot": {"consistency_group_id": fake_id,
-                               "description": fake_description,
-                               "name": fake_name}}
+        body = {
+            "share_group_snapshot": {
+                "share_group_id": fake_id,
+                "description": fake_description,
+                "name": fake_name,
+            }
+        }
         res_dict = self.controller.create(self.request, body)
 
-        self.controller.cg_api.create_cgsnapshot.assert_called_once_with(
-            self.context, consistency_group_id=fake_id, name=fake_name,
+        res_dict['share_group_snapshot'].pop('links')
+
+        mock_create.assert_called_once_with(
+            self.context, share_group_id=fake_id, name=fake_name,
             description=fake_description)
-        self.assertEqual(expected_snap, res_dict['cgsnapshot'])
+        self.assertEqual(expected_snap, res_dict['share_group_snapshot'])
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'create')
 
@@ -242,36 +269,47 @@ class CGSnapshotApiTest(test.TestCase):
         fake_name = 'fake_name'
         fake_description = 'fake_description'
         fake_id = six.text_type(uuidutils.generate_uuid())
-        fake_snap, expected_snap = self._get_fake_cgsnapshot(
+        fake_snap, expected_snap = self._get_fake_share_group_snapshot(
             description=fake_description, name=fake_name)
-        self.mock_object(self.controller.cg_api, 'get_cgsnapshot',
-                         mock.Mock(return_value=fake_snap))
-        self.mock_object(self.controller.cg_api, 'update_cgsnapshot',
-                         mock.Mock(return_value=fake_snap))
+        self.mock_object(
+            self.controller.share_group_api, 'get_share_group_snapshot',
+            mock.Mock(return_value=fake_snap))
+        mock_update = self.mock_object(
+            self.controller.share_group_api, 'update_share_group_snapshot',
+            mock.Mock(return_value=fake_snap))
 
-        body = {"cgsnapshot": {"description": fake_description,
-                               "name": fake_name}}
+        body = {
+            "share_group_snapshot": {
+                "description": fake_description,
+                "name": fake_name,
+            }
+        }
         res_dict = self.controller.update(self.request, fake_id, body)
 
-        self.controller.cg_api.update_cgsnapshot.assert_called_once_with(
+        res_dict['share_group_snapshot'].pop('links')
+
+        mock_update.assert_called_once_with(
             self.context, fake_snap,
-            dict(name=fake_name, description=fake_description))
-        self.assertEqual(expected_snap, res_dict['cgsnapshot'])
+            {"name": fake_name, "description": fake_description})
+        self.assertEqual(expected_snap, res_dict['share_group_snapshot'])
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'update')
 
     def test_update_snapshot_not_found(self):
-        body = {"cgsnapshot": {}}
-        self.mock_object(self.controller.cg_api, 'get_cgsnapshot',
-                         mock.Mock(side_effect=exception.NotFound))
-        self.assertRaises(webob.exc.HTTPNotFound,
-                          self.controller.update,
-                          self.request, 'fake_id', body)
+        body = {"share_group_snapshot": {}}
+        self.mock_object(
+            self.controller.share_group_api, 'get_share_group_snapshot',
+            mock.Mock(side_effect=exception.NotFound))
+
+        self.assertRaises(
+            webob.exc.HTTPNotFound,
+            self.controller.update, self.request, 'fake_id', body)
+
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'update')
 
     def test_update_invalid_body(self):
-        body = {"not_cgsnapshot": {}}
+        body = {"not_group_snapshot": {}}
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update,
                           self.request, 'fake_id', body)
@@ -279,7 +317,7 @@ class CGSnapshotApiTest(test.TestCase):
             self.context, self.resource_name, 'update')
 
     def test_update_invalid_body_invalid_field(self):
-        body = {"cgsnapshot": {"unknown_field": ""}}
+        body = {"share_group_snapshot": {"unknown_field": ""}}
         exc = self.assertRaises(webob.exc.HTTPBadRequest,
                                 self.controller.update,
                                 self.request, 'fake_id', body)
@@ -288,7 +326,7 @@ class CGSnapshotApiTest(test.TestCase):
             self.context, self.resource_name, 'update')
 
     def test_update_invalid_body_readonly_field(self):
-        body = {"cgsnapshot": {"created_at": []}}
+        body = {"share_group_snapshot": {"created_at": []}}
         exc = self.assertRaises(webob.exc.HTTPBadRequest,
                                 self.controller.update,
                                 self.request, 'fake_id', body)
@@ -297,116 +335,147 @@ class CGSnapshotApiTest(test.TestCase):
             self.context, self.resource_name, 'update')
 
     def test_list_index(self):
-        fake_snap, expected_snap = self._get_fake_simple_cgsnapshot()
-        self.mock_object(self.controller.cg_api, 'get_all_cgsnapshots',
-                         mock.Mock(return_value=[fake_snap]))
+        fake_snap, expected_snap = self._get_fake_simple_share_group_snapshot()
+        self.mock_object(
+            self.controller.share_group_api, 'get_all_share_group_snapshots',
+            mock.Mock(return_value=[fake_snap]))
+
         res_dict = self.controller.index(self.request)
-        self.assertEqual([expected_snap], res_dict['cgsnapshots'])
+
+        res_dict['share_group_snapshots'][0].pop('links')
+
+        self.assertEqual([expected_snap], res_dict['share_group_snapshots'])
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'get_all')
 
-    def test_list_index_no_cgs(self):
-        self.mock_object(self.controller.cg_api, 'get_all_cgsnapshots',
-                         mock.Mock(return_value=[]))
+    def test_list_index_no_share_groups(self):
+        self.mock_object(
+            self.controller.share_group_api, 'get_all_share_group_snapshots',
+            mock.Mock(return_value=[]))
+
         res_dict = self.controller.index(self.request)
-        self.assertEqual([], res_dict['cgsnapshots'])
+
+        self.assertEqual([], res_dict['share_group_snapshots'])
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'get_all')
 
     def test_list_index_with_limit(self):
-        fake_snap, expected_snap = self._get_fake_simple_cgsnapshot()
-        fake_snap2, expected_snap2 = self._get_fake_simple_cgsnapshot(
-            id="fake_id2")
-        self.mock_object(self.controller.cg_api, 'get_all_cgsnapshots',
-                         mock.Mock(return_value=[fake_snap, fake_snap2]))
-        req = fakes.HTTPRequest.blank('/cgsnapshots?limit=1',
+        fake_snap, expected_snap = self._get_fake_simple_share_group_snapshot()
+        fake_snap2, expected_snap2 = (
+            self._get_fake_simple_share_group_snapshot(
+                id="fake_id2"))
+        self.mock_object(
+            self.controller.share_group_api, 'get_all_share_group_snapshots',
+            mock.Mock(return_value=[fake_snap, fake_snap2]))
+        req = fakes.HTTPRequest.blank('/share-group-snapshots?limit=1',
                                       version=self.api_version,
                                       experimental=True)
         req_context = req.environ['manila.context']
 
         res_dict = self.controller.index(req)
 
-        self.assertEqual(1, len(res_dict['cgsnapshots']))
-        self.assertEqual([expected_snap], res_dict['cgsnapshots'])
+        res_dict['share_group_snapshots'][0].pop('links')
+
+        self.assertEqual(1, len(res_dict['share_group_snapshots']))
+        self.assertEqual([expected_snap], res_dict['share_group_snapshots'])
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'get_all')
 
     def test_list_index_with_limit_and_offset(self):
-        fake_snap, expected_snap = self._get_fake_simple_cgsnapshot()
-        fake_snap2, expected_snap2 = self._get_fake_simple_cgsnapshot(
-            id="fake_id2")
-        self.mock_object(self.controller.cg_api, 'get_all_cgsnapshots',
-                         mock.Mock(return_value=[fake_snap, fake_snap2]))
-        req = fakes.HTTPRequest.blank('/cgsnapshots?limit=1&offset=1',
-                                      version=self.api_version,
-                                      experimental=True)
+        fake_snap, expected_snap = self._get_fake_simple_share_group_snapshot()
+        fake_snap2, expected_snap2 = (
+            self._get_fake_simple_share_group_snapshot(id="fake_id2"))
+        self.mock_object(
+            self.controller.share_group_api, 'get_all_share_group_snapshots',
+            mock.Mock(return_value=[fake_snap, fake_snap2]))
+        req = fakes.HTTPRequest.blank(
+            '/share-group-snapshots?limit=1&offset=1',
+            version=self.api_version, experimental=True)
         req_context = req.environ['manila.context']
 
         res_dict = self.controller.index(req)
 
-        self.assertEqual(1, len(res_dict['cgsnapshots']))
-        self.assertEqual([expected_snap2], res_dict['cgsnapshots'])
+        res_dict['share_group_snapshots'][0].pop('links')
+
+        self.assertEqual(1, len(res_dict['share_group_snapshots']))
+        self.assertEqual([expected_snap2], res_dict['share_group_snapshots'])
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'get_all')
 
     def test_list_detail(self):
-        fake_snap, expected_snap = self._get_fake_cgsnapshot()
-        self.mock_object(self.controller.cg_api, 'get_all_cgsnapshots',
-                         mock.Mock(return_value=[fake_snap]))
+        fake_snap, expected_snap = self._get_fake_share_group_snapshot()
+        self.mock_object(
+            self.controller.share_group_api, 'get_all_share_group_snapshots',
+            mock.Mock(return_value=[fake_snap]))
+
         res_dict = self.controller.detail(self.request)
-        self.assertEqual([expected_snap], res_dict['cgsnapshots'])
+
+        res_dict['share_group_snapshots'][0].pop('links')
+
+        self.assertEqual(1, len(res_dict['share_group_snapshots']))
+        self.assertEqual(expected_snap, res_dict['share_group_snapshots'][0])
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'get_all')
 
-    def test_list_detail_no_cgs(self):
-        self.mock_object(self.controller.cg_api, 'get_all_cgsnapshots',
-                         mock.Mock(return_value=[]))
+    def test_list_detail_no_share_groups(self):
+        self.mock_object(
+            self.controller.share_group_api, 'get_all_share_group_snapshots',
+            mock.Mock(return_value=[]))
         res_dict = self.controller.detail(self.request)
-        self.assertEqual([], res_dict['cgsnapshots'])
+        self.assertEqual([], res_dict['share_group_snapshots'])
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'get_all')
 
     def test_list_detail_with_limit(self):
-        fake_snap, expected_snap = self._get_fake_cgsnapshot()
-        fake_snap2, expected_snap2 = self._get_fake_cgsnapshot(
+        fake_snap, expected_snap = self._get_fake_share_group_snapshot()
+        fake_snap2, expected_snap2 = self._get_fake_share_group_snapshot(
             id="fake_id2")
-        self.mock_object(self.controller.cg_api, 'get_all_cgsnapshots',
-                         mock.Mock(return_value=[fake_snap, fake_snap2]))
-        req = fakes.HTTPRequest.blank('/cgsnapshots?limit=1',
+        self.mock_object(
+            self.controller.share_group_api, 'get_all_share_group_snapshots',
+            mock.Mock(return_value=[fake_snap, fake_snap2]))
+        req = fakes.HTTPRequest.blank('/share-group-snapshots?limit=1',
                                       version=self.api_version,
                                       experimental=True)
         req_context = req.environ['manila.context']
 
         res_dict = self.controller.detail(req)
 
-        self.assertEqual(1, len(res_dict['cgsnapshots']))
-        self.assertEqual([expected_snap], res_dict['cgsnapshots'])
+        res_dict['share_group_snapshots'][0].pop('links')
+
+        self.assertEqual(1, len(res_dict['share_group_snapshots']))
+        self.assertEqual([expected_snap], res_dict['share_group_snapshots'])
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'get_all')
 
     def test_list_detail_with_limit_and_offset(self):
-        fake_snap, expected_snap = self._get_fake_cgsnapshot()
-        fake_snap2, expected_snap2 = self._get_fake_cgsnapshot(
+        fake_snap, expected_snap = self._get_fake_share_group_snapshot()
+        fake_snap2, expected_snap2 = self._get_fake_share_group_snapshot(
             id="fake_id2")
-        self.mock_object(self.controller.cg_api, 'get_all_cgsnapshots',
-                         mock.Mock(return_value=[fake_snap, fake_snap2]))
-        req = fakes.HTTPRequest.blank('/cgsnapshots?limit=1&offset=1',
-                                      version=self.api_version,
-                                      experimental=True)
+        self.mock_object(
+            self.controller.share_group_api, 'get_all_share_group_snapshots',
+            mock.Mock(return_value=[fake_snap, fake_snap2]))
+        req = fakes.HTTPRequest.blank(
+            '/share-group-snapshots?limit=1&offset=1',
+            version=self.api_version,
+            experimental=True)
         req_context = req.environ['manila.context']
 
         res_dict = self.controller.detail(req)
 
-        self.assertEqual(1, len(res_dict['cgsnapshots']))
-        self.assertEqual([expected_snap2], res_dict['cgsnapshots'])
+        res_dict['share_group_snapshots'][0].pop('links')
+
+        self.assertEqual(1, len(res_dict['share_group_snapshots']))
+        self.assertEqual([expected_snap2], res_dict['share_group_snapshots'])
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'get_all')
 
     def test_delete(self):
-        fake_snap, expected_snap = self._get_fake_cgsnapshot()
-        self.mock_object(self.controller.cg_api, 'get_cgsnapshot',
-                         mock.Mock(return_value=fake_snap))
-        self.mock_object(self.controller.cg_api, 'delete_cgsnapshot')
+        fake_snap, expected_snap = self._get_fake_share_group_snapshot()
+        self.mock_object(
+            self.controller.share_group_api, 'get_share_group_snapshot',
+            mock.Mock(return_value=fake_snap))
+        self.mock_object(
+            self.controller.share_group_api, 'delete_share_group_snapshot')
 
         res = self.controller.delete(self.request, fake_snap['id'])
 
@@ -415,134 +484,89 @@ class CGSnapshotApiTest(test.TestCase):
             self.context, self.resource_name, 'delete')
 
     def test_delete_not_found(self):
-        fake_snap, expected_snap = self._get_fake_cgsnapshot()
-        self.mock_object(self.controller.cg_api, 'get_cgsnapshot',
-                         mock.Mock(side_effect=exception.NotFound))
+        fake_snap, expected_snap = self._get_fake_share_group_snapshot()
+        self.mock_object(
+            self.controller.share_group_api, 'get_share_group_snapshot',
+            mock.Mock(side_effect=exception.NotFound))
 
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.delete,
-                          self.request, fake_snap['id'])
+        self.assertRaises(
+            webob.exc.HTTPNotFound,
+            self.controller.delete, self.request, fake_snap['id'])
+
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'delete')
 
     def test_delete_in_conflicting_status(self):
-        fake_snap, expected_snap = self._get_fake_cgsnapshot()
-        self.mock_object(self.controller.cg_api, 'get_cgsnapshot',
-                         mock.Mock(return_value=fake_snap))
-        self.mock_object(self.controller.cg_api, 'delete_cgsnapshot',
-                         mock.Mock(
-                             side_effect=exception.InvalidCGSnapshot(
-                                 reason='blah')))
+        fake_snap, expected_snap = self._get_fake_share_group_snapshot()
+        self.mock_object(
+            self.controller.share_group_api, 'get_share_group_snapshot',
+            mock.Mock(return_value=fake_snap))
+        self.mock_object(
+            self.controller.share_group_api, 'delete_share_group_snapshot',
+            mock.Mock(side_effect=exception.InvalidShareGroupSnapshot(
+                reason='blah')))
 
-        self.assertRaises(webob.exc.HTTPConflict, self.controller.delete,
-                          self.request, fake_snap['id'])
+        self.assertRaises(
+            webob.exc.HTTPConflict,
+            self.controller.delete, self.request, fake_snap['id'])
+
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'delete')
 
     def test_show(self):
-        fake_snap, expected_snap = self._get_fake_cgsnapshot()
-        self.mock_object(self.controller.cg_api, 'get_cgsnapshot',
-                         mock.Mock(return_value=fake_snap))
+        fake_snap, expected_snap = self._get_fake_share_group_snapshot()
+        self.mock_object(
+            self.controller.share_group_api, 'get_share_group_snapshot',
+            mock.Mock(return_value=fake_snap))
 
         res_dict = self.controller.show(self.request, fake_snap['id'])
 
-        self.assertEqual(expected_snap, res_dict['cgsnapshot'])
+        res_dict['share_group_snapshot'].pop('links')
+
+        self.assertEqual(expected_snap, res_dict['share_group_snapshot'])
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'get_cgsnapshot')
+            self.context, self.resource_name, 'get')
 
-    def test_show_cg_not_found(self):
-        fake_snap, expected_snap = self._get_fake_cgsnapshot()
-        self.mock_object(self.controller.cg_api, 'get_cgsnapshot',
-                         mock.Mock(side_effect=exception.NotFound))
+    def test_show_share_group_not_found(self):
+        fake_snap, expected_snap = self._get_fake_share_group_snapshot()
+        self.mock_object(
+            self.controller.share_group_api, 'get_share_group_snapshot',
+            mock.Mock(side_effect=exception.NotFound))
 
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
-                          self.request, fake_snap['id'])
+        self.assertRaises(
+            webob.exc.HTTPNotFound,
+            self.controller.show, self.request, fake_snap['id'])
+
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'get_cgsnapshot')
-
-    def test_members_empty(self):
-        self.mock_object(self.controller.cg_api, 'get_all_cgsnapshot_members',
-                         mock.Mock(return_value=[]))
-
-        res_dict = self.controller.members(self.request, 'fake_cg_id')
-
-        self.assertEqual([], res_dict['cgsnapshot_members'])
-        self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'get_cgsnapshot')
-
-    def test_members(self):
-        fake_member, expected_member = self._get_fake_cgsnapshot_member()
-        self.mock_object(self.controller.cg_api, 'get_all_cgsnapshot_members',
-                         mock.Mock(return_value=[fake_member]))
-
-        res_dict = self.controller.members(self.request, 'fake_cg_id')
-
-        self.assertEqual([expected_member], res_dict['cgsnapshot_members'])
-        self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'get_cgsnapshot')
-
-    def test_members_with_limit(self):
-        fake_member, expected_member = self._get_fake_cgsnapshot_member()
-        fake_member2, expected_member2 = self._get_fake_cgsnapshot_member(
-            id="fake_id2")
-        self.mock_object(self.controller.cg_api, 'get_all_cgsnapshot_members',
-                         mock.Mock(return_value=[fake_member, fake_member2]))
-        req = fakes.HTTPRequest.blank('/members?limit=1',
-                                      version=self.api_version,
-                                      experimental=True)
-        req_context = req.environ['manila.context']
-
-        res_dict = self.controller.members(req, 'fake_cg_id')
-
-        self.assertEqual(1, len(res_dict['cgsnapshot_members']))
-        self.mock_policy_check.assert_called_once_with(
-            req_context, self.resource_name, 'get_cgsnapshot')
-
-    def test_members_with_limit_and_offset(self):
-        fake_member, expected_member = self._get_fake_cgsnapshot_member()
-        fake_member2, expected_member2 = self._get_fake_cgsnapshot_member(
-            id="fake_id2")
-        self.mock_object(self.controller.cg_api, 'get_all_cgsnapshot_members',
-                         mock.Mock(return_value=[fake_member, fake_member2]))
-        req = fakes.HTTPRequest.blank('/members?limit=1&offset=1',
-                                      version=self.api_version,
-                                      experimental=True)
-        req_context = req.environ['manila.context']
-
-        res_dict = self.controller.members(req, 'fake_cg_id')
-
-        self.assertEqual(1, len(res_dict['cgsnapshot_members']))
-        self.assertEqual([expected_member2], res_dict['cgsnapshot_members'])
-        self.mock_policy_check.assert_called_once_with(
-            req_context, self.resource_name, 'get_cgsnapshot')
+            self.context, self.resource_name, 'get')
 
     def _get_context(self, role):
         return getattr(self, '%s_context' % role)
 
-    def _setup_cgsnapshot_data(self, cgsnapshot=None, version='2.7'):
-        if cgsnapshot is None:
-            cgsnapshot = db_utils.create_cgsnapshot(
+    def _setup_share_group_snapshot_data(self, share_group_snapshot=None,
+                                         version='2.31'):
+        if share_group_snapshot is None:
+            share_group_snapshot = db_utils.create_share_group_snapshot(
                 'fake_id', status=constants.STATUS_AVAILABLE)
-        req = fakes.HTTPRequest.blank('/v2/fake/cgsnapshots/%s/action' %
-                                      cgsnapshot['id'], version=version)
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/share-group-snapshots/%s/action' %
+            share_group_snapshot['id'], version=version)
         req.headers[wsgi.API_VERSION_REQUEST_HEADER] = version
         req.headers[wsgi.EXPERIMENTAL_API_REQUEST_HEADER] = 'True'
-        return cgsnapshot, req
+        return share_group_snapshot, req
 
     @ddt.data(*fakes.fixture_force_delete_with_different_roles)
     @ddt.unpack
-    def test_cgsnapshot_force_delete_with_different_roles(self, role,
-                                                          resp_code, version):
-        cgsnap, req = self._setup_cgsnapshot_data()
+    def test_share_group_snapshot_force_delete_with_different_roles(
+            self, role,  resp_code, version):
+        group_snap, req = self._setup_share_group_snapshot_data()
         ctxt = self._get_context(role)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        if float(version) > 2.6:
-            action_name = 'force_delete'
-        else:
-            action_name = 'os-force_delete'
+        action_name = 'force_delete'
         body = {action_name: {'status': constants.STATUS_ERROR}}
         req.body = six.b(jsonutils.dumps(body))
-        req.headers['X-Openstack-Manila-Api-Version'] = version
+        req.headers['X-Openstack-Manila-Api-Version'] = self.api_version
         req.environ['manila.context'] = ctxt
 
         with mock.patch.object(
@@ -554,19 +578,16 @@ class CGSnapshotApiTest(test.TestCase):
 
     @ddt.data(*fakes.fixture_reset_status_with_different_roles)
     @ddt.unpack
-    def test_cgsnapshot_reset_status_with_different_roles(
+    def test_share_group_snapshot_reset_status_with_different_roles(
             self, role, valid_code, valid_status, version):
         ctxt = self._get_context(role)
-        cgsnap, req = self._setup_cgsnapshot_data(version=version)
-        if float(version) > 2.6:
-            action_name = 'reset_status'
-        else:
-            action_name = 'os-reset_status'
+        group_snap, req = self._setup_share_group_snapshot_data()
+        action_name = 'reset_status'
         body = {action_name: {'status': constants.STATUS_ERROR}}
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.body = six.b(jsonutils.dumps(body))
-        req.headers['X-Openstack-Manila-Api-Version'] = version
+        req.headers['X-Openstack-Manila-Api-Version'] = self.api_version
         req.environ['manila.context'] = ctxt
 
         with mock.patch.object(
@@ -578,9 +599,9 @@ class CGSnapshotApiTest(test.TestCase):
 
         if valid_code == 404:
             self.assertRaises(exception.NotFound,
-                              db.cgsnapshot_get,
+                              db.share_group_snapshot_get,
                               ctxt,
-                              cgsnap['id'])
+                              group_snap['id'])
         else:
-            actual_model = db.cgsnapshot_get(ctxt, cgsnap['id'])
+            actual_model = db.share_group_snapshot_get(ctxt, group_snap['id'])
             self.assertEqual(valid_status, actual_model['status'])

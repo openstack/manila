@@ -616,7 +616,6 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             share_backend_name=self.backend_name,
             storage_protocol='NFS_CIFS',
             reserved_percentage=self.configuration.reserved_share_percentage,
-            consistency_group_support=None,
         )
         super(GenericShareDriver, self)._update_share_stats(data)
 

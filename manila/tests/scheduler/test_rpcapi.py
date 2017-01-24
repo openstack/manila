@@ -93,13 +93,13 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  filters=None,
                                  version='1.1')
 
-    def test_create_consistency_group(self):
-        self._test_scheduler_api('create_consistency_group',
+    def test_create_share_group(self):
+        self._test_scheduler_api('create_share_group',
                                  rpc_method='cast',
-                                 cg_id='cg_id',
+                                 share_group_id='fake_share_group_id',
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
-                                 version='1.3')
+                                 version='1.8')
 
     def test_migrate_share_to_host(self):
         self._test_scheduler_api('migrate_share_to_host',

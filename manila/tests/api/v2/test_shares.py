@@ -117,8 +117,6 @@ class ShareAPITest(test.TestCase):
             'volume_type': '1',
             'snapshot_support': True,
             'is_public': False,
-            'consistency_group_id': None,
-            'source_cgsnapshot_member_id': None,
             'task_state': None,
             'share_type_name': None,
             'links': [
@@ -406,8 +404,6 @@ class ShareAPITest(test.TestCase):
         expected['share'].pop('snapshot_support')
         expected['share'].pop('share_type_name')
         expected['share'].pop('task_state')
-        expected['share'].pop('consistency_group_id')
-        expected['share'].pop('source_cgsnapshot_member_id')
         self.assertEqual(expected, res_dict)
 
     @ddt.data("2.2", "2.3")
@@ -421,23 +417,28 @@ class ShareAPITest(test.TestCase):
         expected = self._get_expected_share_detailed_response(self.share)
         expected['share'].pop('share_type_name')
         expected['share'].pop('task_state')
-        expected['share'].pop('consistency_group_id')
-        expected['share'].pop('source_cgsnapshot_member_id')
         self.assertEqual(expected, res_dict)
 
-    @ddt.data("2.4", "2.5")
-    def test_share_create_with_consistency_group(self, microversion):
+    @ddt.data("2.31")
+    def test_share_create_with_share_group(self, microversion):
         self.mock_object(share_api.API, 'create', self.create_mock)
         body = {"share": copy.deepcopy(self.share)}
-        req = fakes.HTTPRequest.blank('/shares', version=microversion)
+        req = fakes.HTTPRequest.blank('/shares', version=microversion,
+                                      experimental=True)
 
         res_dict = self.controller.create(req, body)
 
         expected = self._get_expected_share_detailed_response(self.share)
-        expected['share'].pop('share_type_name')
-        if (api_version.APIVersionRequest(microversion) ==
-                api_version.APIVersionRequest('2.4')):
-            expected['share'].pop('task_state')
+        expected['share'].pop('export_location')
+        expected['share'].pop('export_locations')
+        expected['share']['access_rules_status'] = 'active'
+        expected['share']['replication_type'] = None
+        expected['share']['has_replicas'] = False
+        expected['share']['user_id'] = 'fakeuser'
+        expected['share']['create_share_from_snapshot_support'] = True
+        expected['share']['revert_to_snapshot_support'] = False
+        expected['share']['share_group_id'] = None
+        expected['share']['source_share_group_snapshot_member_id'] = None
         self.assertEqual(expected, res_dict)
 
     def test_share_create_with_valid_default_share_type(self):
@@ -479,8 +480,6 @@ class ShareAPITest(test.TestCase):
         expected = self._get_expected_share_detailed_response(self.share)
 
         expected['share']['task_state'] = None
-        expected['share']['consistency_group_id'] = None
-        expected['share']['source_cgsnapshot_member_id'] = None
         expected['share']['replication_type'] = None
         expected['share']['share_type_name'] = None
         expected['share']['has_replicas'] = False
@@ -515,7 +514,7 @@ class ShareAPITest(test.TestCase):
         res_dict = self.controller.create(req, body)
 
         expected = self._get_expected_share_detailed_response(shr)
-        self.assertEqual(expected, res_dict)
+        self.assertDictMatch(expected, res_dict)
         self.assertEqual("fakenetid",
                          create_mock.call_args[1]['share_network_id'])
 
@@ -534,8 +533,6 @@ class ShareAPITest(test.TestCase):
         else:
             self.assertNotIn('user_id', expected['share'])
         expected['share']['task_state'] = None
-        expected['share']['consistency_group_id'] = None
-        expected['share']['source_cgsnapshot_member_id'] = None
         expected['share']['replication_type'] = None
         expected['share']['share_type_name'] = None
         expected['share']['has_replicas'] = False
@@ -1084,7 +1081,7 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/shares', version='2.7')
         res_dict = self.controller.create(req, body)
         expected = self._get_expected_share_detailed_response(shr)
-        self.assertEqual(expected, res_dict)
+        self.assertDictMatch(expected, res_dict)
         self.assertEqual(parent_share_net,
                          create_mock.call_args[1]['share_network_id'])
 
@@ -1165,29 +1162,49 @@ class ShareAPITest(test.TestCase):
         expected['share'].pop('snapshot_support')
         expected['share'].pop('share_type_name')
         expected['share'].pop('task_state')
-        expected['share'].pop('consistency_group_id')
-        expected['share'].pop('source_cgsnapshot_member_id')
 
         res_dict = self.controller.show(req, '1')
 
         self.assertEqual(expected, res_dict)
 
-    def test_share_show_with_consistency_group(self):
-        req = fakes.HTTPRequest.blank('/shares/1', version='2.4')
+    def test_share_show_with_share_group(self):
+        req = fakes.HTTPRequest.blank(
+            '/shares/1', version='2.31', experimental=True)
         expected = self._get_expected_share_detailed_response()
-        expected['share'].pop('share_type_name')
-        expected['share'].pop('task_state')
+        expected['share'].pop('export_location')
+        expected['share'].pop('export_locations')
+        expected['share']['create_share_from_snapshot_support'] = True
+        expected['share']['revert_to_snapshot_support'] = False
+        expected['share']['share_group_id'] = None
+        expected['share']['source_share_group_snapshot_member_id'] = None
+        expected['share']['access_rules_status'] = 'active'
+        expected['share']['replication_type'] = None
+        expected['share']['has_replicas'] = False
+        expected['share']['user_id'] = 'fakeuser'
 
         res_dict = self.controller.show(req, '1')
 
-        self.assertEqual(expected, res_dict)
+        self.assertDictMatch(expected, res_dict)
+
+    def test_share_show_with_share_group_earlier_version(self):
+        req = fakes.HTTPRequest.blank(
+            '/shares/1', version='2.23', experimental=True)
+        expected = self._get_expected_share_detailed_response()
+        expected['share'].pop('export_location')
+        expected['share'].pop('export_locations')
+        expected['share']['access_rules_status'] = 'active'
+        expected['share']['replication_type'] = None
+        expected['share']['has_replicas'] = False
+        expected['share']['user_id'] = 'fakeuser'
+
+        res_dict = self.controller.show(req, '1')
+
+        self.assertDictMatch(expected, res_dict)
 
     def test_share_show_with_share_type_name(self):
         req = fakes.HTTPRequest.blank('/shares/1', version='2.6')
         res_dict = self.controller.show(req, '1')
         expected = self._get_expected_share_detailed_response()
-        expected['share']['consistency_group_id'] = None
-        expected['share']['source_cgsnapshot_member_id'] = None
         expected['share']['share_type_name'] = None
         expected['share']['task_state'] = None
         self.assertEqual(expected, res_dict)
@@ -1204,8 +1221,6 @@ class ShareAPITest(test.TestCase):
             expected['share']['user_id'] = 'fakeuser'
         else:
             self.assertNotIn('user_id', expected['share'])
-        expected['share']['consistency_group_id'] = None
-        expected['share']['source_cgsnapshot_member_id'] = None
         expected['share']['share_type_name'] = None
         expected['share']['task_state'] = None
         expected['share']['access_rules_status'] = 'active'
@@ -1222,8 +1237,6 @@ class ShareAPITest(test.TestCase):
         expected['share'].pop('snapshot_support')
         expected['share'].pop('share_type_name')
         expected['share'].pop('task_state')
-        expected['share'].pop('consistency_group_id')
-        expected['share'].pop('source_cgsnapshot_member_id')
 
         res_dict = self.controller.show(req, '1')
 
@@ -1245,8 +1258,6 @@ class ShareAPITest(test.TestCase):
         expected = self._get_expected_share_detailed_response()
 
         expected['share']['task_state'] = None
-        expected['share']['consistency_group_id'] = None
-        expected['share']['source_cgsnapshot_member_id'] = None
         expected['share']['access_rules_status'] = 'active'
         expected['share']['share_type_name'] = None
         expected['share']['replication_type'] = None
@@ -1289,32 +1300,32 @@ class ShareAPITest(test.TestCase):
         self.assertRaises(
             webob.exc.HTTPConflict, self.controller.delete, req, 1)
 
-    def test_share_delete_in_consistency_group_param_not_provided(self):
+    def test_share_delete_in_share_group_param_not_provided(self):
         fake_share = stubs.stub_share('fake_share',
-                                      consistency_group_id='fake_cg_id')
+                                      share_group_id='fake_group_id')
         self.mock_object(share_api.API, 'get',
                          mock.Mock(return_value=fake_share))
         req = fakes.HTTPRequest.blank('/shares/1')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.delete, req, 1)
 
-    def test_share_delete_in_consistency_group(self):
+    def test_share_delete_in_share_group(self):
         fake_share = stubs.stub_share('fake_share',
-                                      consistency_group_id='fake_cg_id')
+                                      share_group_id='fake_group_id')
         self.mock_object(share_api.API, 'get',
                          mock.Mock(return_value=fake_share))
         req = fakes.HTTPRequest.blank(
-            '/shares/1?consistency_group_id=fake_cg_id')
+            '/shares/1?share_group_id=fake_group_id')
         resp = self.controller.delete(req, 1)
         self.assertEqual(202, resp.status_int)
 
-    def test_share_delete_in_consistency_group_wrong_id(self):
+    def test_share_delete_in_share_group_wrong_id(self):
         fake_share = stubs.stub_share('fake_share',
-                                      consistency_group_id='fake_cg_id')
+                                      share_group_id='fake_group_id')
         self.mock_object(share_api.API, 'get',
                          mock.Mock(return_value=fake_share))
         req = fakes.HTTPRequest.blank(
-            '/shares/1?consistency_group_id=not_fake_cg_id')
+            '/shares/1?share_group_id=not_fake_group_id')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.delete, req, 1)
 
@@ -1330,14 +1341,18 @@ class ShareAPITest(test.TestCase):
         self.assertEqual(shr['is_public'],
                          res_dict['share']['is_public'])
 
-    def test_share_update_with_consistency_group(self):
+    def test_share_update_with_share_group(self):
         shr = self.share
         body = {"share": shr}
 
-        req = fakes.HTTPRequest.blank('/share/1', version="2.4")
+        req = fakes.HTTPRequest.blank(
+            '/share/1', version="2.31", experimental=True)
+
         res_dict = self.controller.update(req, 1, body)
-        self.assertIsNone(res_dict['share']["consistency_group_id"])
-        self.assertIsNone(res_dict['share']["source_cgsnapshot_member_id"])
+
+        self.assertIsNone(res_dict['share']["share_group_id"])
+        self.assertIsNone(
+            res_dict['share']["source_share_group_snapshot_member_id"])
 
     def test_share_not_updates_size(self):
         req = fakes.HTTPRequest.blank('/share/1')
@@ -1570,7 +1585,7 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'get_all',
                          stubs.stub_share_get_all_by_project)
         res_dict = self.controller.detail(req)
-        self.assertEqual(expected, res_dict)
+        self.assertDictListMatch(expected['shares'], res_dict['shares'])
         self.assertEqual(res_dict['shares'][0]['volume_type'],
                          res_dict['shares'][0]['share_type'])
 
@@ -1581,13 +1596,23 @@ class ShareAPITest(test.TestCase):
         expected['shares'][0].pop('snapshot_support')
         self._list_detail_test_common(req, expected)
 
-    def test_share_list_detail_with_consistency_group(self):
+    def test_share_list_detail_with_share_group(self):
         env = {'QUERY_STRING': 'name=Share+Test+Name'}
-        req = fakes.HTTPRequest.blank('/shares/detail', environ=env,
-                                      version="2.4")
+        req = fakes.HTTPRequest.blank(
+            '/shares/detail', environ=env, version="2.31", experimental=True)
         expected = self._list_detail_common_expected()
-        expected['shares'][0]['consistency_group_id'] = None
-        expected['shares'][0]['source_cgsnapshot_member_id'] = None
+        expected['shares'][0]['task_state'] = None
+        expected['shares'][0]['share_type_name'] = None
+        expected['shares'][0].pop('export_location')
+        expected['shares'][0].pop('export_locations')
+        expected['shares'][0]['access_rules_status'] = 'active'
+        expected['shares'][0]['replication_type'] = None
+        expected['shares'][0]['has_replicas'] = False
+        expected['shares'][0]['user_id'] = 'fakeuser'
+        expected['shares'][0]['create_share_from_snapshot_support'] = True
+        expected['shares'][0]['revert_to_snapshot_support'] = False
+        expected['shares'][0]['share_group_id'] = None
+        expected['shares'][0]['source_share_group_snapshot_member_id'] = None
         self._list_detail_test_common(req, expected)
 
     def test_share_list_detail_with_task_state(self):
@@ -1595,8 +1620,6 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/shares/detail', environ=env,
                                       version="2.5")
         expected = self._list_detail_common_expected()
-        expected['shares'][0]['consistency_group_id'] = None
-        expected['shares'][0]['source_cgsnapshot_member_id'] = None
         expected['shares'][0]['task_state'] = None
         self._list_detail_test_common(req, expected)
 
@@ -1605,8 +1628,6 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/shares/detail', environ=env,
                                       version="2.9")
         expected = self._list_detail_common_expected()
-        expected['shares'][0]['consistency_group_id'] = None
-        expected['shares'][0]['source_cgsnapshot_member_id'] = None
         expected['shares'][0]['task_state'] = None
         expected['shares'][0]['share_type_name'] = None
         expected['shares'][0].pop('export_location')
@@ -1642,8 +1663,6 @@ class ShareAPITest(test.TestCase):
                     'share_type': '1',
                     'volume_type': '1',
                     'is_public': False,
-                    'consistency_group_id': None,
-                    'source_cgsnapshot_member_id': None,
                     'snapshot_support': True,
                     'has_replicas': False,
                     'replication_type': None,
@@ -2463,8 +2482,6 @@ class ShareManageTest(test.TestCase):
                 'share_type': '1',
                 'volume_type': '1',
                 'is_public': False,
-                'consistency_group_id': None,
-                'source_cgsnapshot_member_id': None,
                 'snapshot_support': True,
                 'task_state': None,
                 'links': [

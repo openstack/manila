@@ -189,7 +189,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.15'
+    RPC_API_VERSION = '1.16'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -351,7 +351,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
     def _provide_share_server_for_share(self, context, share_network_id,
                                         share_instance, snapshot=None,
-                                        consistency_group=None,
+                                        share_group=None,
                                         create_on_backend=True):
         """Gets or creates share_server and updates share with its id.
 
@@ -442,7 +442,7 @@ class ShareManager(manager.SchedulerDependentManager):
                         self.driver.choose_share_server_compatible_with_share(
                             context, available_share_servers, share_instance,
                             snapshot=snapshot.instance if snapshot else None,
-                            consistency_group=consistency_group
+                            share_group=share_group
                         )
                     )
                 except Exception as e:
@@ -538,19 +538,20 @@ class ShareManager(manager.SchedulerDependentManager):
         if snapshot_id:
             snapshot_ref = self.db.share_snapshot_get(context, snapshot_id)
 
-        consistency_group_ref = None
-        if share_instance.get('consistency_group_id'):
-            consistency_group_ref = self.db.consistency_group_get(
-                context, share_instance['consistency_group_id'])
+        share_group_ref = None
+        if share_instance.get('share_group_id'):
+            share_group_ref = self.db.share_group_get(
+                context, share_instance['share_group_id'])
 
         share_server, share_instance = self._provide_share_server_for_share(
             context, share_network_id, share_instance, snapshot_ref,
-            consistency_group_ref, create_on_backend=False)
+            share_group_ref, create_on_backend=False)
 
         return share_server['id']
 
-    def _provide_share_server_for_cg(self, context, share_network_id,
-                                     cg_ref, cgsnapshot=None):
+    def _provide_share_server_for_share_group(self, context, share_network_id,
+                                              share_group_ref,
+                                              share_group_snapshot=None):
         """Gets or creates share_server and updates share with its id.
 
         Active share_server can be deleted if there are no dependent shares
@@ -567,27 +568,28 @@ class ShareManager(manager.SchedulerDependentManager):
                                  should be found or created. If
                                  share_network_id is None method use
                                  share_network_id from provided snapshot.
-        :param cg_ref: Consistency Group model
-        :param cgsnapshot: Optional -- CGSnapshot model
+        :param share_group_ref: Share Group model
+        :param share_group_snapshot: Optional -- ShareGroupSnapshot model
 
         :returns: dict, dict -- first value is share_server, that
-                  has been chosen for consistency group schedule.
-                  Second value is consistency group updated with
+                  has been chosen for share group schedule.
+                  Second value is share group updated with
                   share_server_id.
         """
-        if not (share_network_id or cgsnapshot):
+        if not (share_network_id or share_group_snapshot):
             msg = _("'share_network_id' parameter or 'snapshot'"
                     " should be provided. ")
             raise exception.InvalidInput(reason=msg)
 
         def error(msg, *args):
             LOG.error(msg, *args)
-            self.db.consistency_group_update(
-                context, cg_ref['id'], {'status': constants.STATUS_ERROR})
+            self.db.share_group_update(
+                context, share_group_ref['id'],
+                {'status': constants.STATUS_ERROR})
 
         @utils.synchronized("share_manager_%s" % share_network_id,
                             external=True)
-        def _provide_share_server_for_cg():
+        def _provide_share_server_for_share_group():
             try:
                 available_share_servers = (
                     self.db.share_server_get_all_by_host_and_share_net_valid(
@@ -596,14 +598,14 @@ class ShareManager(manager.SchedulerDependentManager):
                 available_share_servers = None
 
             compatible_share_server = None
+            choose_share_server = (
+                self.driver.choose_share_server_compatible_with_share_group)
 
             if available_share_servers:
                 try:
-                    compatible_share_server = (
-                        self.driver.choose_share_server_compatible_with_cg(
-                            context, available_share_servers, cg_ref,
-                            cgsnapshot=cgsnapshot
-                        )
+                    compatible_share_server = choose_share_server(
+                        context, available_share_servers, share_group_ref,
+                        share_group_snapshot=share_group_snapshot,
                     )
                 except Exception as e:
                     with excutils.save_and_reraise_exception():
@@ -620,16 +622,16 @@ class ShareManager(manager.SchedulerDependentManager):
                     }
                 )
 
-            msg = ("Using share_server %(share_server)s for consistency "
-                   "group %(cg_id)s")
+            msg = ("Using share_server %(share_server)s for share "
+                   "group %(group_id)s")
             LOG.debug(msg, {
                 'share_server': compatible_share_server['id'],
-                'cg_id': cg_ref['id']
+                'group_id': share_group_ref['id']
             })
 
-            updated_cg = self.db.consistency_group_update(
+            updated_share_group = self.db.share_group_update(
                 context,
-                cg_ref['id'],
+                share_group_ref['id'],
                 {'share_server_id': compatible_share_server['id']},
             )
 
@@ -642,9 +644,9 @@ class ShareManager(manager.SchedulerDependentManager):
                 LOG.info(_LI("Used preexisting share server "
                              "'%(share_server_id)s'"),
                          {'share_server_id': compatible_share_server['id']})
-            return compatible_share_server, updated_cg
+            return compatible_share_server, updated_share_group
 
-        return _provide_share_server_for_cg()
+        return _provide_share_server_for_share_group()
 
     def _get_share_server(self, context, share_instance):
         if share_instance['share_server_id']:
@@ -1526,10 +1528,10 @@ class ShareManager(manager.SchedulerDependentManager):
             snapshot_ref = None
             parent_share_server_id = None
 
-        consistency_group_ref = None
-        if share_instance.get('consistency_group_id'):
-            consistency_group_ref = self.db.consistency_group_get(
-                context, share_instance['consistency_group_id'])
+        share_group_ref = None
+        if share_instance.get('share_group_id'):
+            share_group_ref = self.db.share_group_get(
+                context, share_instance['share_group_id'])
 
         if share_network_id or parent_share_server_id:
             try:
@@ -1537,7 +1539,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     self._provide_share_server_for_share(
                         context, share_network_id, share_instance,
                         snapshot=snapshot_ref,
-                        consistency_group=consistency_group_ref
+                        share_group=share_group_ref,
                     )
                 )
             except Exception:
@@ -3313,30 +3315,32 @@ class ShareManager(manager.SchedulerDependentManager):
         LOG.info(_LI("Shrink share completed successfully."), resource=share)
 
     @utils.require_driver_initialized
-    def create_consistency_group(self, context, cg_id):
+    def create_share_group(self, context, share_group_id):
         context = context.elevated()
-        group_ref = self.db.consistency_group_get(context, cg_id)
-        group_ref['host'] = self.host
-        shares = self.db.share_instances_get_all_by_consistency_group_id(
-            context, cg_id)
+        share_group_ref = self.db.share_group_get(context, share_group_id)
+        share_group_ref['host'] = self.host
+        shares = self.db.share_instances_get_all_by_share_group_id(
+            context, share_group_id)
 
-        source_cgsnapshot_id = group_ref.get("source_cgsnapshot_id")
+        source_share_group_snapshot_id = share_group_ref.get(
+            "source_share_group_snapshot_id")
         snap_ref = None
         parent_share_server_id = None
-        if source_cgsnapshot_id:
-            snap_ref = self.db.cgsnapshot_get(context, source_cgsnapshot_id)
-            for member in snap_ref['cgsnapshot_members']:
+        if source_share_group_snapshot_id:
+            snap_ref = self.db.share_group_snapshot_get(
+                context, source_share_group_snapshot_id)
+            for member in snap_ref['share_group_snapshot_members']:
                 member['share'] = self.db.share_instance_get(
                     context, member['share_instance_id'], with_share_data=True)
                 member['share_id'] = member['share_instance_id']
-            if 'consistency_group' in snap_ref:
-                parent_share_server_id = snap_ref['consistency_group'][
+            if 'share_group' in snap_ref:
+                parent_share_server_id = snap_ref['share_group'][
                     'share_server_id']
 
         status = constants.STATUS_AVAILABLE
         model_update = False
 
-        share_network_id = group_ref.get('share_network_id', None)
+        share_network_id = share_group_ref.get('share_network_id')
         share_server = None
 
         if parent_share_server_id and self.driver.driver_handles_share_servers:
@@ -3345,44 +3349,47 @@ class ShareManager(manager.SchedulerDependentManager):
             share_network_id = share_server['share_network_id']
 
         if share_network_id and not self.driver.driver_handles_share_servers:
-            self.db.consistency_group_update(
-                context, cg_id, {'status': constants.STATUS_ERROR})
+            self.db.share_group_update(
+                context, share_group_id, {'status': constants.STATUS_ERROR})
             msg = _("Driver does not expect share-network to be provided "
                     "with current configuration.")
             raise exception.InvalidInput(reason=msg)
 
         if not share_server and share_network_id:
             try:
-                share_server, group_ref = self._provide_share_server_for_cg(
-                    context, share_network_id, group_ref, cgsnapshot=snap_ref
+                share_server, share_group_ref = (
+                    self._provide_share_server_for_share_group(
+                        context, share_network_id, share_group_ref,
+                        share_group_snapshot=snap_ref,
+                    )
                 )
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE("Failed to get share server"
-                                  " for consistency group creation."))
-                    self.db.consistency_group_update(
-                        context, cg_id, {'status': constants.STATUS_ERROR})
+                                  " for share group creation."))
+                    self.db.share_group_update(
+                        context, share_group_id,
+                        {'status': constants.STATUS_ERROR})
 
         try:
             # TODO(ameade): Add notification for create.start
-            LOG.info(_LI("Consistency group %s: creating"), cg_id)
+            LOG.info(_LI("Share group %s: creating"), share_group_id)
 
             model_update, share_update_list = None, None
 
-            group_ref['shares'] = shares
+            share_group_ref['shares'] = shares
             if snap_ref:
                 model_update, share_update_list = (
-                    self.driver.create_consistency_group_from_cgsnapshot(
-                        context, group_ref, snap_ref,
+                    self.driver.create_share_group_from_share_group_snapshot(
+                        context, share_group_ref, snap_ref,
                         share_server=share_server))
             else:
-                model_update = self.driver.create_consistency_group(
-                    context, group_ref, share_server=share_server)
+                model_update = self.driver.create_share_group(
+                    context, share_group_ref, share_server=share_server)
 
             if model_update:
-                group_ref = self.db.consistency_group_update(context,
-                                                             group_ref['id'],
-                                                             model_update)
+                share_group_ref = self.db.share_group_update(
+                    context, share_group_ref['id'], model_update)
 
             if share_update_list:
                 for share in share_update_list:
@@ -3396,134 +3403,133 @@ class ShareManager(manager.SchedulerDependentManager):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.consistency_group_update(
+                self.db.share_group_update(
                     context,
-                    group_ref['id'],
+                    share_group_ref['id'],
                     {'status': constants.STATUS_ERROR})
                 for share in shares:
                     self.db.share_instance_update(
                         context, share['id'],
                         {'status': constants.STATUS_ERROR})
-                LOG.error(_LE("Consistency group %s: create failed"), cg_id)
+                LOG.error(_LE("Share group %s: create failed"), share_group_id)
 
         now = timeutils.utcnow()
         for share in shares:
             self.db.share_instance_update(
                 context, share['id'], {'status': constants.STATUS_AVAILABLE})
-        self.db.consistency_group_update(context,
-                                         group_ref['id'],
-                                         {'status': status,
-                                          'created_at': now})
-        LOG.info(_LI("Consistency group %s: created successfully"), cg_id)
+        self.db.share_group_update(context,
+                                   share_group_ref['id'],
+                                   {'status': status,
+                                    'created_at': now})
+        LOG.info(_LI("Share group %s: created successfully"), share_group_id)
 
         # TODO(ameade): Add notification for create.end
 
-        return group_ref['id']
+        return share_group_ref['id']
 
     @utils.require_driver_initialized
-    def delete_consistency_group(self, context, cg_id):
+    def delete_share_group(self, context, share_group_id):
         context = context.elevated()
-        group_ref = self.db.consistency_group_get(context, cg_id)
-        group_ref['host'] = self.host
-        group_ref['shares'] = (
-            self.db.share_instances_get_all_by_consistency_group_id(
-                context, cg_id))
+        share_group_ref = self.db.share_group_get(context, share_group_id)
+        share_group_ref['host'] = self.host
+        share_group_ref['shares'] = (
+            self.db.share_instances_get_all_by_share_group_id(
+                context, share_group_id))
 
         model_update = False
 
         # TODO(ameade): Add notification for delete.start
 
         try:
-            LOG.info(_LI("Consistency group %s: deleting"), cg_id)
+            LOG.info(_LI("Share group %s: deleting"), share_group_id)
             share_server = None
-            if group_ref.get('share_server_id'):
+            if share_group_ref.get('share_server_id'):
                 share_server = self.db.share_server_get(
-                    context, group_ref['share_server_id'])
-            model_update = self.driver.delete_consistency_group(
-                context, group_ref, share_server=share_server)
+                    context, share_group_ref['share_server_id'])
+            model_update = self.driver.delete_share_group(
+                context, share_group_ref, share_server=share_server)
 
             if model_update:
-                group_ref = self.db.consistency_group_update(
-                    context, group_ref['id'], model_update)
+                share_group_ref = self.db.share_group_update(
+                    context, share_group_ref['id'], model_update)
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.consistency_group_update(
+                self.db.share_group_update(
                     context,
-                    group_ref['id'],
+                    share_group_ref['id'],
                     {'status': constants.STATUS_ERROR})
-                LOG.error(_LE("Consistency group %s: delete failed"),
-                          group_ref['id'])
+                LOG.error(_LE("Share group %s: delete failed"),
+                          share_group_ref['id'])
 
-        self.db.consistency_group_destroy(context,
-                                          cg_id)
-        LOG.info(_LI("Consistency group %s: deleted successfully"),
-                 cg_id)
+        self.db.share_group_destroy(context, share_group_id)
+        LOG.info(_LI("Share group %s: deleted successfully"), share_group_id)
 
         # TODO(ameade): Add notification for delete.end
 
     @utils.require_driver_initialized
-    def create_cgsnapshot(self, context, cgsnapshot_id):
+    def create_share_group_snapshot(self, context, share_group_snapshot_id):
         context = context.elevated()
-        snap_ref = self.db.cgsnapshot_get(context, cgsnapshot_id)
-        for member in snap_ref['cgsnapshot_members']:
+        snap_ref = self.db.share_group_snapshot_get(
+            context, share_group_snapshot_id)
+        for member in snap_ref['share_group_snapshot_members']:
             member['share'] = self.db.share_instance_get(
                 context, member['share_instance_id'], with_share_data=True)
             member['share_id'] = member['share_instance_id']
 
         status = constants.STATUS_AVAILABLE
-        snapshot_update = False
 
         try:
-            LOG.info(_LI("Consistency group snapshot %s: creating"),
-                     cgsnapshot_id)
+            LOG.info(_LI("Share group snapshot %s: creating"),
+                     share_group_snapshot_id)
             share_server = None
-            if snap_ref['consistency_group'].get('share_server_id'):
+            if snap_ref['share_group'].get('share_server_id'):
                 share_server = self.db.share_server_get(
-                    context, snap_ref['consistency_group']['share_server_id'])
+                    context, snap_ref['share_group']['share_server_id'])
             snapshot_update, member_update_list = (
-                self.driver.create_cgsnapshot(context, snap_ref,
-                                              share_server=share_server))
+                self.driver.create_share_group_snapshot(
+                    context, snap_ref, share_server=share_server))
 
             if member_update_list:
                 snapshot_update = snapshot_update or {}
-                snapshot_update['cgsnapshot_members'] = []
+                snapshot_update['share_group_snapshot_members'] = []
                 for update in (member_update_list or []):
-                    snapshot_update['cgsnapshot_members'].append(update)
+                    snapshot_update['share_group_snapshot_members'].append(
+                        update)
 
             if snapshot_update:
-                snap_ref = self.db.cgsnapshot_update(
+                snap_ref = self.db.share_group_snapshot_update(
                     context, snap_ref['id'], snapshot_update)
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.cgsnapshot_update(
+                self.db.share_group_snapshot_update(
                     context,
                     snap_ref['id'],
                     {'status': constants.STATUS_ERROR})
-                LOG.error(_LE("Consistency group snapshot %s: create failed"),
-                          cgsnapshot_id)
+                LOG.error(_LE("Share group snapshot %s: create failed"),
+                          share_group_snapshot_id)
 
         now = timeutils.utcnow()
-        for member in (snap_ref.get('cgsnapshot_members') or []):
+        for member in (snap_ref.get('share_group_snapshot_members') or []):
             update = {'status': status, 'created_at': now}
-            self.db.cgsnapshot_member_update(context, member['id'],
-                                             update)
+            self.db.share_group_snapshot_member_update(
+                context, member['id'], update)
 
-        self.db.cgsnapshot_update(context,
-                                  snap_ref['id'],
-                                  {'status': status,
-                                   'created_at': now})
-        LOG.info(_LI("Consistency group snapshot %s: created successfully"),
-                 cgsnapshot_id)
+        self.db.share_group_snapshot_update(
+            context, snap_ref['id'],
+            {'status': status, 'created_at': now})
+        LOG.info(_LI("Share group snapshot %s: created successfully"),
+                 share_group_snapshot_id)
 
         return snap_ref['id']
 
     @utils.require_driver_initialized
-    def delete_cgsnapshot(self, context, cgsnapshot_id):
+    def delete_share_group_snapshot(self, context, share_group_snapshot_id):
         context = context.elevated()
-        snap_ref = self.db.cgsnapshot_get(context, cgsnapshot_id)
-        for member in snap_ref['cgsnapshot_members']:
+        snap_ref = self.db.share_group_snapshot_get(
+            context, share_group_snapshot_id)
+        for member in snap_ref['share_group_snapshot_members']:
             member['share'] = self.db.share_instance_get(
                 context, member['share_instance_id'], with_share_data=True)
             member['share_id'] = member['share_instance_id']
@@ -3531,41 +3537,41 @@ class ShareManager(manager.SchedulerDependentManager):
         snapshot_update = False
 
         try:
-            LOG.info(_LI("Consistency group snapshot %s: deleting"),
-                     cgsnapshot_id)
+            LOG.info(_LI("Share group snapshot %s: deleting"),
+                     share_group_snapshot_id)
 
             share_server = None
-            if snap_ref['consistency_group'].get('share_server_id'):
+            if snap_ref['share_group'].get('share_server_id'):
                 share_server = self.db.share_server_get(
-                    context, snap_ref['consistency_group']['share_server_id'])
+                    context, snap_ref['share_group']['share_server_id'])
 
             snapshot_update, member_update_list = (
-                self.driver.delete_cgsnapshot(context, snap_ref,
-                                              share_server=share_server))
+                self.driver.delete_share_group_snapshot(
+                    context, snap_ref, share_server=share_server))
 
             if member_update_list:
                 snapshot_update = snapshot_update or {}
-                snapshot_update['cgsnapshot_members'] = []
+                snapshot_update['share_group_snapshot_members'] = []
             for update in (member_update_list or []):
-                snapshot_update['cgsnapshot_members'].append(update)
+                snapshot_update['share_group_snapshot_members'].append(update)
 
             if snapshot_update:
-                snap_ref = self.db.cgsnapshot_update(
+                snap_ref = self.db.share_group_snapshot_update(
                     context, snap_ref['id'], snapshot_update)
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.cgsnapshot_update(
+                self.db.share_group_snapshot_update(
                     context,
                     snap_ref['id'],
                     {'status': constants.STATUS_ERROR})
-                LOG.error(_LE("Consistency group snapshot %s: delete failed"),
+                LOG.error(_LE("Share group snapshot %s: delete failed"),
                           snap_ref['name'])
 
-        self.db.cgsnapshot_destroy(context, cgsnapshot_id)
+        self.db.share_group_snapshot_destroy(context, share_group_snapshot_id)
 
-        LOG.info(_LI("Consistency group snapshot %s: deleted successfully"),
-                 cgsnapshot_id)
+        LOG.info(_LI("Share group snapshot %s: deleted successfully"),
+                 share_group_snapshot_id)
 
     def _get_share_replica_dict(self, context, share_replica):
         # TODO(gouthamr): remove method when the db layer returns primitives
@@ -3596,9 +3602,9 @@ class ShareManager(manager.SchedulerDependentManager):
             'share_proto': share_replica.get('share_proto'),
             'share_type_id': share_replica.get('share_type_id'),
             'is_public': share_replica.get('is_public'),
-            'consistency_group_id': share_replica.get('consistency_group_id'),
-            'source_cgsnapshot_member_id': share_replica.get(
-                'source_cgsnapshot_member_id'),
+            'share_group_id': share_replica.get('share_group_id'),
+            'source_share_group_snapshot_member_id': share_replica.get(
+                'source_share_group_snapshot_member_id'),
         }
 
         return share_replica_ref

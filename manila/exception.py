@@ -478,6 +478,10 @@ class ShareSnapshotNotSupported(ManilaException):
     message = _("Share %(share_name)s does not support snapshots.")
 
 
+class ShareGroupSnapshotNotSupported(ManilaException):
+    message = _("Share group %(share_group)s does not support snapshots.")
+
+
 class ShareSnapshotIsBusy(ManilaException):
     message = _("Deleting snapshot %(snapshot_name)s that has "
                 "dependent shares.")
@@ -531,6 +535,10 @@ class InvalidShareType(Invalid):
     message = _("Invalid share type: %(reason)s.")
 
 
+class InvalidShareGroupType(Invalid):
+    message = _("Invalid share group type: %(reason)s.")
+
+
 class InvalidExtraSpec(Invalid):
     message = _("Invalid extra_spec: %(reason)s.")
 
@@ -547,8 +555,17 @@ class ShareTypeNotFound(NotFound):
     message = _("Share type %(share_type_id)s could not be found.")
 
 
+class ShareGroupTypeNotFound(NotFound):
+    message = _("Share group type %(type_id)s could not be found.")
+
+
 class ShareTypeAccessNotFound(NotFound):
     message = _("Share type access not found for %(share_type_id)s / "
+                "%(project_id)s combination.")
+
+
+class ShareGroupTypeAccessNotFound(NotFound):
+    message = _("Share group type access not found for %(type_id)s / "
                 "%(project_id)s combination.")
 
 
@@ -557,9 +574,19 @@ class ShareTypeNotFoundByName(ShareTypeNotFound):
                 "could not be found.")
 
 
+class ShareGroupTypeNotFoundByName(ShareTypeNotFound):
+    message = _("Share group type with name %(type_name)s "
+                "could not be found.")
+
+
 class ShareTypeExtraSpecsNotFound(NotFound):
     message = _("Share Type %(share_type_id)s has no extra specs with "
                 "key %(extra_specs_key)s.")
+
+
+class ShareGroupTypeSpecsNotFound(NotFound):
+    message = _("Share group type %(type_id)s has no group specs with "
+                "key %(specs_key)s.")
 
 
 class ShareTypeInUse(ManilaException):
@@ -571,8 +598,17 @@ class IPAddressInUse(InUse):
     message = _("IP address %(ip)s is already used.")
 
 
+class ShareGroupTypeInUse(ManilaException):
+    message = _("Share group Type %(type_id)s deletion is not allowed "
+                "with groups present with the type.")
+
+
 class ShareTypeExists(ManilaException):
     message = _("Share Type %(id)s already exists.")
+
+
+class ShareGroupTypeExists(ManilaException):
+    message = _("Share group type %(type_id)s already exists.")
 
 
 class ShareTypeAccessExists(ManilaException):
@@ -580,9 +616,19 @@ class ShareTypeAccessExists(ManilaException):
                 "%(project_id)s combination already exists.")
 
 
+class ShareGroupTypeAccessExists(ManilaException):
+    message = _("Share group type access for %(type_id)s / "
+                "%(project_id)s combination already exists.")
+
+
 class ShareTypeCreateFailed(ManilaException):
     message = _("Cannot create share_type with "
                 "name %(name)s and specs %(extra_specs)s.")
+
+
+class ShareGroupTypeCreateFailed(ManilaException):
+    message = _("Cannot create share group type with "
+                "name %(name)s and specs %(group_specs)s.")
 
 
 class ManageExistingShareTypeMismatch(ManilaException):
@@ -746,27 +792,27 @@ class HNASNothingToCloneException(ManilaException):
     message = _("HNAS Nothing To Clone Exception: %(msg)s")
 
 
-# ConsistencyGroup
-class ConsistencyGroupNotFound(NotFound):
-    message = _("ConsistencyGroup %(consistency_group_id)s could not be "
+# ShareGroup
+class ShareGroupNotFound(NotFound):
+    message = _("Share group %(share_group_id)s could not be found.")
+
+
+class ShareGroupSnapshotNotFound(NotFound):
+    message = _(
+        "Share group snapshot %(share_group_snapshot_id)s could not be found.")
+
+
+class ShareGroupSnapshotMemberNotFound(NotFound):
+    message = _("Share group snapshot member %(member_id)s could not be "
                 "found.")
 
 
-class CGSnapshotNotFound(NotFound):
-    message = _("Consistency group snapshot %(cgsnapshot_id)s could not be "
-                "found.")
+class InvalidShareGroup(Invalid):
+    message = _("Invalid share group: %(reason)s")
 
 
-class CGSnapshotMemberNotFound(NotFound):
-    message = _("CG snapshot %(member_id)s could not be found.")
-
-
-class InvalidConsistencyGroup(Invalid):
-    message = _("Invalid ConsistencyGroup: %(reason)s")
-
-
-class InvalidCGSnapshot(Invalid):
-    message = _("Invalid CGSnapshot: %(reason)s")
+class InvalidShareGroupSnapshot(Invalid):
+    message = _("Invalid share group snapshot: %(reason)s")
 
 
 class DriverNotInitialized(ManilaException):

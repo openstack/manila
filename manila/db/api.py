@@ -322,9 +322,10 @@ def share_instances_get_all_by_share(context, share_id):
     return IMPL.share_instances_get_all_by_share(context, share_id)
 
 
-def share_instances_get_all_by_consistency_group_id(context, cg_id):
-    """Returns list of share instances that belong to given cg."""
-    return IMPL.share_instances_get_all_by_consistency_group_id(context, cg_id)
+def share_instances_get_all_by_share_group_id(context, share_group_id):
+    """Returns list of share instances that belong to given share group."""
+    return IMPL.share_instances_get_all_by_share_group_id(
+        context, share_group_id)
 
 ###################
 
@@ -361,12 +362,12 @@ def share_get_all_by_project(context, project_id, filters=None,
     )
 
 
-def share_get_all_by_consistency_group_id(context, cg_id,
-                                          filters=None, sort_key=None,
-                                          sort_dir=None):
-    """Returns all shares with given project ID and CG id."""
-    return IMPL.share_get_all_by_consistency_group_id(
-        context, cg_id, filters=filters,
+def share_get_all_by_share_group_id(context, share_group_id,
+                                    filters=None, sort_key=None,
+                                    sort_dir=None):
+    """Returns all shares with given project ID and share group id."""
+    return IMPL.share_get_all_by_share_group_id(
+        context, share_group_id, filters=filters,
         sort_key=sort_key, sort_dir=sort_dir)
 
 
@@ -894,120 +895,148 @@ def availability_zone_get_all(context):
 
 ####################
 
-def consistency_group_get(context, consistency_group_id):
-    """Get a consistency group or raise if it does not exist."""
-    return IMPL.consistency_group_get(context, consistency_group_id)
+def share_group_get(context, share_group_id):
+    """Get a share group or raise if it does not exist."""
+    return IMPL.share_group_get(context, share_group_id)
 
 
-def consistency_group_get_all(context, detailed=True):
-    """Get all consistency groups."""
-    return IMPL.consistency_group_get_all(context, detailed=detailed)
+def share_group_get_all(context, detailed=True, filters=None, sort_key=None,
+                        sort_dir=None):
+    """Get all share groups."""
+    return IMPL.share_group_get_all(
+        context, detailed=detailed, filters=filters, sort_key=sort_key,
+        sort_dir=sort_dir)
 
 
-def consistency_group_create(context, values):
-    """Create a consistency group from the values dictionary."""
-    return IMPL.consistency_group_create(context, values)
+def share_group_get_all_by_host(context, host, detailed=True, filters=None,
+                                sort_key=None, sort_dir=None):
+    """Get all share groups belonging to a host."""
+    return IMPL.share_group_get_all_by_host(
+        context, host, detailed=detailed, filters=filters, sort_key=sort_key,
+        sort_dir=sort_dir)
 
 
-def consistency_group_get_all_by_share_server(context, share_server_id):
-    """Get all consistency groups associated with a share server."""
-    return IMPL.consistency_group_get_all_by_share_server(context,
-                                                          share_server_id)
+def share_group_create(context, values):
+    """Create a share group from the values dictionary."""
+    return IMPL.share_group_create(context, values)
 
 
-def consistency_group_get_all_by_project(context, project_id, detailed=True):
-    """Get all consistency groups belonging to a project."""
-    return IMPL.consistency_group_get_all_by_project(context, project_id,
-                                                     detailed=detailed)
+def share_group_get_all_by_share_server(context, share_server_id,
+                                        filters=None, sort_key=None,
+                                        sort_dir=None):
+    """Get all share groups associated with a share server."""
+    return IMPL.share_group_get_all_by_share_server(
+        context, share_server_id, filters=filters, sort_key=sort_key,
+        sort_dir=sort_dir)
 
 
-def consistency_group_update(context, consistency_group_id, values):
-    """Set the given properties on a consistency group and update it.
+def share_group_get_all_by_project(context, project_id, detailed=True,
+                                   filters=None, sort_key=None,
+                                   sort_dir=None):
+    """Get all share groups belonging to a project."""
+    return IMPL.share_group_get_all_by_project(
+        context, project_id, detailed=detailed, filters=filters,
+        sort_key=sort_key, sort_dir=sort_dir)
 
-    Raises NotFound if consistency group does not exist.
+
+def share_group_update(context, share_group_id, values):
+    """Set the given properties on a share group and update it.
+
+    Raises NotFound if share group does not exist.
     """
-    return IMPL.consistency_group_update(context, consistency_group_id, values)
+    return IMPL.share_group_update(context, share_group_id, values)
 
 
-def consistency_group_destroy(context, consistency_group_id):
-    """Destroy the consistency group or raise if it does not exist."""
-    return IMPL.consistency_group_destroy(context, consistency_group_id)
+def share_group_destroy(context, share_group_id):
+    """Destroy the share group or raise if it does not exist."""
+    return IMPL.share_group_destroy(context, share_group_id)
 
 
-def count_shares_in_consistency_group(context, consistency_group_id):
-    """Returns the number of undeleted shares with the specified cg."""
-    return IMPL.count_shares_in_consistency_group(context,
-                                                  consistency_group_id)
+def count_shares_in_share_group(context, share_group_id):
+    """Returns the number of undeleted shares with the specified group."""
+    return IMPL.count_shares_in_share_group(context, share_group_id)
 
 
-def count_cgsnapshots_in_consistency_group(context, consistency_group_id):
-    """Returns the number of undeleted cgsnapshots with the specified cg."""
-    return IMPL.count_cgsnapshots_in_consistency_group(context,
-                                                       consistency_group_id)
+def get_all_shares_by_share_group(context, share_group_id):
+    return IMPL.get_all_shares_by_share_group(context, share_group_id)
 
 
-def count_consistency_groups_in_share_network(context, share_network_id,
-                                              session=None):
-    """Returns the number of undeleted cgs with the specified share network."""
-    return IMPL.count_consistency_groups_in_share_network(context,
-                                                          share_network_id)
+def count_share_group_snapshots_in_share_group(context, share_group_id):
+    """Returns the number of sg snapshots with the specified share group."""
+    return IMPL.count_share_group_snapshots_in_share_group(
+        context, share_group_id)
 
 
-def count_cgsnapshot_members_in_share(context, share_id, session=None):
-    """Returns the number of cgsnapshot members linked to the share."""
-    return IMPL.count_cgsnapshot_members_in_share(context, share_id)
+def count_share_groups_in_share_network(context, share_network_id,
+                                        session=None):
+    """Return the number of groups with the specified share network."""
+    return IMPL.count_share_groups_in_share_network(context, share_network_id)
 
 
-def cgsnapshot_get(context, cgsnapshot_id):
-    """Get a cgsnapshot."""
-    return IMPL.cgsnapshot_get(context, cgsnapshot_id)
+def count_share_group_snapshot_members_in_share(context, share_id,
+                                                session=None):
+    """Returns the number of group snapshot members linked to the share."""
+    return IMPL.count_share_group_snapshot_members_in_share(context, share_id)
 
 
-def cgsnapshot_get_all(context, detailed=True):
-    """Get all cgsnapshots."""
-    return IMPL.cgsnapshot_get_all(context, detailed=detailed)
+def share_group_snapshot_get(context, share_group_snapshot_id):
+    """Get a share group snapshot."""
+    return IMPL.share_group_snapshot_get(context, share_group_snapshot_id)
 
 
-def cgsnapshot_get_all_by_project(context, project_id, detailed=True):
-    """Get all cgsnapshots belonging to a project."""
-    return IMPL.cgsnapshot_get_all_by_project(context, project_id,
-                                              detailed=detailed)
+def share_group_snapshot_get_all(context, detailed=True, filters=None,
+                                 sort_key=None, sort_dir=None):
+    """Get all share group snapshots."""
+    return IMPL.share_group_snapshot_get_all(
+        context, detailed=detailed, filters=filters, sort_key=sort_key,
+        sort_dir=sort_dir)
 
 
-def cgsnapshot_create(context, values):
-    """Create a cgsnapshot from the values dictionary."""
-    return IMPL.cgsnapshot_create(context, values)
+def share_group_snapshot_get_all_by_project(context, project_id, detailed=True,
+                                            filters=None, sort_key=None,
+                                            sort_dir=None):
+    """Get all share group snapshots belonging to a project."""
+    return IMPL.share_group_snapshot_get_all_by_project(
+        context, project_id, detailed=detailed, filters=filters,
+        sort_key=sort_key, sort_dir=sort_dir)
 
 
-def cgsnapshot_update(context, cgsnapshot_id, values):
-    """Set the given properties on a cgsnapshot and update it.
+def share_group_snapshot_create(context, values):
+    """Create a share group snapshot from the values dictionary."""
+    return IMPL.share_group_snapshot_create(context, values)
 
-    Raises NotFound if cgsnapshot does not exist.
+
+def share_group_snapshot_update(context, share_group_snapshot_id, values):
+    """Set the given properties on a share group snapshot and update it.
+
+    Raises NotFound if share group snapshot does not exist.
     """
-    return IMPL.cgsnapshot_update(context, cgsnapshot_id, values)
+    return IMPL.share_group_snapshot_update(
+        context, share_group_snapshot_id, values)
 
 
-def cgsnapshot_destroy(context, cgsnapshot_id):
-    """Destroy the cgsnapshot or raise if it does not exist."""
-    return IMPL.cgsnapshot_destroy(context, cgsnapshot_id)
+def share_group_snapshot_destroy(context, share_group_snapshot_id):
+    """Destroy the share_group_snapshot or raise if it does not exist."""
+    return IMPL.share_group_snapshot_destroy(context, share_group_snapshot_id)
 
 
-def cgsnapshot_members_get_all(context, cgsnapshot_id):
-    """Return the members of a cgsnapshot."""
-    return IMPL.cgsnapshot_members_get_all(context, cgsnapshot_id)
+def share_group_snapshot_members_get_all(context, share_group_snapshot_id):
+    """Return the members of a share group snapshot."""
+    return IMPL.share_group_snapshot_members_get_all(
+        context, share_group_snapshot_id)
 
 
-def cgsnapshot_member_create(context, values):
-    """Create a cgsnapshot member from the values dictionary."""
-    return IMPL.cgsnapshot_member_create(context, values)
+def share_group_snapshot_member_create(context, values):
+    """Create a share group snapshot member from the values dictionary."""
+    return IMPL.share_group_snapshot_member_create(context, values)
 
 
-def cgsnapshot_member_update(context, member_id, values):
-    """Set the given properties on a cgsnapshot member and update it.
+def share_group_snapshot_member_update(context, member_id, values):
+    """Set the given properties on a share group snapshot member and update it.
 
-    Raises NotFound if cgsnapshot member does not exist.
+    Raises NotFound if share_group_snapshot member does not exist.
     """
-    return IMPL.cgsnapshot_member_update(context, member_id, values)
+    return IMPL.share_group_snapshot_member_update(context, member_id, values)
 
 
 ####################
@@ -1063,3 +1092,88 @@ def purge_deleted_records(context, age_in_days):
     :raises: InvalidParameterValue if age_in_days is incorrect.
     """
     return IMPL.purge_deleted_records(context, age_in_days=age_in_days)
+
+
+####################
+
+
+def share_group_type_create(context, values, projects=None):
+    """Create a new share group type."""
+    return IMPL.share_group_type_create(context, values, projects)
+
+
+def share_group_type_get_all(context, inactive=False, filters=None):
+    """Get all share group types.
+
+    :param context: context to query under
+    :param inactive: Include inactive share group types to the result set
+    :param filters: Filters for the query in the form of key/value.
+        :is_public: Filter share group types based on visibility:
+
+            * **True**: List public group types only
+            * **False**: List private group types only
+            * **None**: List both public and private group types
+
+    :returns: list of matching share group types
+    """
+    return IMPL.share_group_type_get_all(context, inactive, filters)
+
+
+def share_group_type_get(context, type_id, inactive=False,
+                         expected_fields=None):
+    """Get share_group type by id.
+
+    :param context: context to query under
+    :param type_id: group type id to get.
+    :param inactive: Consider inactive group types when searching
+    :param expected_fields: Return those additional fields.
+                            Supported fields are: projects.
+    :returns: share group type
+    """
+    return IMPL.share_group_type_get(
+        context, type_id, inactive, expected_fields)
+
+
+def share_group_type_get_by_name(context, name):
+    """Get share group type by name."""
+    return IMPL.share_group_type_get_by_name(context, name)
+
+
+def share_group_type_access_get_all(context, type_id):
+    """Get all share group type access of a share group type."""
+    return IMPL.share_group_type_access_get_all(context, type_id)
+
+
+def share_group_type_access_add(context, type_id, project_id):
+    """Add share group type access for project."""
+    return IMPL.share_group_type_access_add(context, type_id, project_id)
+
+
+def share_group_type_access_remove(context, type_id, project_id):
+    """Remove share group type access for project."""
+    return IMPL.share_group_type_access_remove(context, type_id, project_id)
+
+
+def share_group_type_destroy(context, type_id):
+    """Delete a share group type."""
+    return IMPL.share_group_type_destroy(context, type_id)
+
+
+def share_group_type_specs_get(context, type_id):
+    """Get all group specs for a share group type."""
+    return IMPL.share_group_type_specs_get(context, type_id)
+
+
+def share_group_type_specs_delete(context, type_id, key):
+    """Delete the given group specs item."""
+    return IMPL.share_group_type_specs_delete(context, type_id, key)
+
+
+def share_group_type_specs_update_or_create(context, type_id, group_specs):
+    """Create or update share group type specs.
+
+    This adds or modifies the key/value pairs specified in the group
+    specs dict argument.
+    """
+    return IMPL.share_group_type_specs_update_or_create(
+        context, type_id, group_specs)

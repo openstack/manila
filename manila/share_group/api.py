@@ -14,7 +14,7 @@
 #    under the License.
 
 """
-Handles all requests relating to consistency groups.
+Handles all requests relating to share groups.
 """
 
 from oslo_config import cfg
@@ -48,28 +48,31 @@ class API(base.Base):
         super(API, self).__init__(db_driver)
 
     def create(self, context, name=None, description=None,
-               share_type_ids=None, source_cgsnapshot_id=None,
-               share_network_id=None):
-        """Create new consistency group."""
+               share_type_ids=None, source_share_group_snapshot_id=None,
+               share_network_id=None, share_group_type_id=None):
+        """Create new share group."""
 
-        cgsnapshot = None
-        original_cg = None
-        # NOTE(gouthamr): share_server_id is inherited from the parent CG if a
-        # CG snapshot is specified, else, it will be set in the share manager.
+        share_group_snapshot = None
+        original_share_group = None
+        # NOTE(gouthamr): share_server_id is inherited from the
+        # parent share group if a share group snapshot is specified,
+        # else, it will be set in the share manager.
         share_server_id = None
-        if source_cgsnapshot_id:
-            cgsnapshot = self.db.cgsnapshot_get(context, source_cgsnapshot_id)
-            if cgsnapshot['status'] != constants.STATUS_AVAILABLE:
-                msg = (_("Consistency group snapshot status must be %s")
+        if source_share_group_snapshot_id:
+            share_group_snapshot = self.db.share_group_snapshot_get(
+                context, source_share_group_snapshot_id)
+            if share_group_snapshot['status'] != constants.STATUS_AVAILABLE:
+                msg = (_("Share group snapshot status must be %s.")
                        % constants.STATUS_AVAILABLE)
-                raise exception.InvalidCGSnapshot(reason=msg)
+                raise exception.InvalidShareGroupSnapshot(reason=msg)
 
-            original_cg = self.db.consistency_group_get(context, cgsnapshot[
-                'consistency_group_id'])
-            share_type_ids = [s['share_type_id'] for s in original_cg[
-                'share_types']]
-            share_network_id = original_cg['share_network_id']
-            share_server_id = original_cg['share_server_id']
+            original_share_group = self.db.share_group_get(
+                context, share_group_snapshot['share_group_id'])
+            share_type_ids = [
+                s['share_type_id']
+                for s in original_share_group['share_types']]
+            share_network_id = original_share_group['share_network_id']
+            share_server_id = original_share_group['share_server_id']
 
         # Get share_type_objects
         share_type_objects = []
@@ -79,7 +82,7 @@ class API(base.Base):
                 share_type_object = share_types.get_share_type(
                     context, share_type_id)
             except exception.ShareTypeNotFound:
-                msg = _("Share type with id %s could not be found")
+                msg = _("Share type with id %s could not be found.")
                 raise exception.InvalidInput(msg % share_type_id)
             share_type_objects.append(share_type_object)
 
@@ -112,14 +115,30 @@ class API(base.Base):
             raise exception.InvalidInput(reason=msg)
 
         if (driver_handles_share_servers and
-                not (source_cgsnapshot_id or share_network_id)):
+                not (source_share_group_snapshot_id or share_network_id)):
             msg = _("When using a share type with the "
                     "driver_handles_share_servers extra spec as "
                     "True, a share_network_id must be provided.")
             raise exception.InvalidInput(reason=msg)
 
+        try:
+            share_group_type = self.db.share_group_type_get(
+                context, share_group_type_id)
+        except exception.ShareGroupTypeNotFound:
+            msg = _("The specified share group type %s does not exist.")
+            raise exception.InvalidInput(reason=msg % share_group_type_id)
+
+        supported_share_types = set(
+            [x['share_type_id'] for x in share_group_type['share_types']])
+
+        if not set(share_type_ids or []) <= supported_share_types:
+            msg = _("The specified share types must be a subset of the share "
+                    "types supported by the share group type.")
+            raise exception.InvalidInput(reason=msg)
+
         options = {
-            'source_cgsnapshot_id': source_cgsnapshot_id,
+            'share_group_type_id': share_group_type_id,
+            'source_share_group_snapshot_id': source_share_group_snapshot_id,
             'share_network_id': share_network_id,
             'share_server_id': share_server_id,
             'name': name,
@@ -127,210 +146,216 @@ class API(base.Base):
             'user_id': context.user_id,
             'project_id': context.project_id,
             'status': constants.STATUS_CREATING,
-            'share_types': share_type_ids
+            'share_types': share_type_ids or supported_share_types
         }
-        if original_cg:
-            options['host'] = original_cg['host']
+        if original_share_group:
+            options['host'] = original_share_group['host']
 
-        cg = self.db.consistency_group_create(context, options)
+        share_group = self.db.share_group_create(context, options)
 
         try:
-            if cgsnapshot:
-                members = self.db.cgsnapshot_members_get_all(
-                    context, source_cgsnapshot_id)
+            if share_group_snapshot:
+                members = self.db.share_group_snapshot_members_get_all(
+                    context, source_share_group_snapshot_id)
                 for member in members:
+                    share = self.db.share_get(context, member['share_id'])
                     share_type = share_types.get_share_type(
-                        context, member['share_type_id'])
+                        context, share['share_type_id'])
                     member['share_instance'] = self.db.share_instance_get(
                         context, member['share_instance_id'],
                         with_share_data=True)
                     self.share_api.create(context, member['share_proto'],
                                           member['size'], None, None,
-                                          consistency_group_id=cg['id'],
-                                          cgsnapshot_member=member,
+                                          share_group_id=share_group['id'],
+                                          share_group_snapshot_member=member,
                                           share_type=share_type,
                                           share_network_id=share_network_id)
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.consistency_group_destroy(context.elevated(), cg['id'])
+                self.db.share_group_destroy(
+                    context.elevated(), share_group['id'])
 
-        request_spec = {'consistency_group_id': cg['id']}
+        request_spec = {'share_group_id': share_group['id']}
         request_spec.update(options)
         request_spec['share_types'] = share_type_objects
+        request_spec['resource_type'] = share_group_type
 
-        if cgsnapshot and original_cg:
-            self.share_rpcapi.create_consistency_group(
-                context, cg, original_cg['host'])
+        if share_group_snapshot and original_share_group:
+            self.share_rpcapi.create_share_group(
+                context, share_group, original_share_group['host'])
         else:
-            self.scheduler_rpcapi.create_consistency_group(
-                context, cg_id=cg['id'], request_spec=request_spec,
-                filter_properties={})
+            self.scheduler_rpcapi.create_share_group(
+                context, share_group_id=share_group['id'],
+                request_spec=request_spec, filter_properties={})
 
-        return cg
+        return share_group
 
-    def delete(self, context, cg):
-        """Delete consistency group."""
+    def delete(self, context, share_group):
+        """Delete share group."""
 
-        cg_id = cg['id']
-        if not cg['host']:
-            self.db.consistency_group_destroy(context.elevated(), cg_id)
+        share_group_id = share_group['id']
+        if not share_group['host']:
+            self.db.share_group_destroy(context.elevated(), share_group_id)
             return
 
         statuses = (constants.STATUS_AVAILABLE, constants.STATUS_ERROR)
-        if not cg['status'] in statuses:
-            msg = (_("Consistency group status must be one of %(statuses)s")
+        if not share_group['status'] in statuses:
+            msg = (_("Share group status must be one of %(statuses)s")
                    % {"statuses": statuses})
-            raise exception.InvalidConsistencyGroup(reason=msg)
+            raise exception.InvalidShareGroup(reason=msg)
 
-        # NOTE(ameade): check for cgsnapshots in the CG
-        if self.db.count_cgsnapshots_in_consistency_group(context, cg_id):
-            msg = (_("Cannot delete a consistency group with cgsnapshots"))
-            raise exception.InvalidConsistencyGroup(reason=msg)
+        # NOTE(ameade): check for group_snapshots in the group
+        if self.db.count_share_group_snapshots_in_share_group(
+                context, share_group_id):
+            msg = (_("Cannot delete a share group with snapshots"))
+            raise exception.InvalidShareGroup(reason=msg)
 
-        # NOTE(ameade): check for shares in the CG
-        if self.db.count_shares_in_consistency_group(context, cg_id):
-            msg = (_("Cannot delete a consistency group with shares"))
-            raise exception.InvalidConsistencyGroup(reason=msg)
+        # NOTE(ameade): check for shares in the share group
+        if self.db.count_shares_in_share_group(context, share_group_id):
+            msg = (_("Cannot delete a share group with shares"))
+            raise exception.InvalidShareGroup(reason=msg)
 
-        cg = self.db.consistency_group_update(
-            context, cg_id, {'status': constants.STATUS_DELETING})
+        share_group = self.db.share_group_update(
+            context, share_group_id, {'status': constants.STATUS_DELETING})
 
-        self.share_rpcapi.delete_consistency_group(context, cg)
+        self.share_rpcapi.delete_share_group(context, share_group)
 
-    def update(self, context, cg, fields):
-        return self.db.consistency_group_update(context, cg['id'], fields)
+    def update(self, context, group, fields):
+        return self.db.share_group_update(context, group['id'], fields)
 
-    def get(self, context, cg_id):
-        return self.db.consistency_group_get(context, cg_id)
+    def get(self, context, share_group_id):
+        return self.db.share_group_get(context, share_group_id)
 
-    def get_all(self, context, detailed=True, search_opts=None):
+    def get_all(self, context, detailed=True, search_opts=None, sort_key=None,
+                sort_dir=None):
 
         if search_opts is None:
             search_opts = {}
 
-        LOG.debug("Searching for consistency_groups by: %s",
+        LOG.debug("Searching for share_groups by: %s",
                   six.text_type(search_opts))
 
-        # Get filtered list of consistency_groups
-        if context.is_admin and search_opts.get('all_tenants'):
-            consistency_groups = self.db.consistency_group_get_all(
-                context, detailed=detailed)
+        # Get filtered list of share_groups
+        if search_opts.pop('all_tenants', 0) and context.is_admin:
+            share_groups = self.db.share_group_get_all(
+                context, detailed=detailed, filters=search_opts,
+                sort_key=sort_key, sort_dir=sort_dir)
         else:
-            consistency_groups = self.db.consistency_group_get_all_by_project(
-                context, context.project_id, detailed=detailed)
+            share_groups = self.db.share_group_get_all_by_project(
+                context, context.project_id, detailed=detailed,
+                filters=search_opts, sort_key=sort_key, sort_dir=sort_dir)
 
-        return consistency_groups
+        return share_groups
 
-    def create_cgsnapshot(self, context, name=None, description=None,
-                          consistency_group_id=None):
-        """Create new cgsnapshot."""
-
+    def create_share_group_snapshot(self, context, name=None, description=None,
+                                    share_group_id=None):
+        """Create new share group snapshot."""
         options = {
-            'consistency_group_id': consistency_group_id,
+            'share_group_id': share_group_id,
             'name': name,
             'description': description,
             'user_id': context.user_id,
             'project_id': context.project_id,
             'status': constants.STATUS_CREATING,
         }
-
-        cg = self.db.consistency_group_get(context, consistency_group_id)
-        # Check status of CG, must be active
-        if not cg['status'] == constants.STATUS_AVAILABLE:
-            msg = (_("Consistency group status must be %s")
+        share_group = self.db.share_group_get(context, share_group_id)
+        # Check status of group, must be active
+        if not share_group['status'] == constants.STATUS_AVAILABLE:
+            msg = (_("Share group status must be %s")
                    % constants.STATUS_AVAILABLE)
-            raise exception.InvalidConsistencyGroup(reason=msg)
+            raise exception.InvalidShareGroup(reason=msg)
 
-        # Create members for every share in the CG
-        shares = self.db.share_get_all_by_consistency_group_id(
-            context, consistency_group_id)
+        # Create members for every share in the group
+        shares = self.db.share_get_all_by_share_group_id(
+            context, share_group_id)
 
         # Check status of all shares, they must be active in order to snap
-        # the CG
+        # the group
         for s in shares:
             if not s['status'] == constants.STATUS_AVAILABLE:
-                msg = (_("Share %(s)s in consistency group must have status "
-                         "of %(status)s in order to create a CG snapshot")
+                msg = (_("Share %(s)s in share group must have status "
+                         "of %(status)s in order to create a group snapshot")
                        % {"s": s['id'],
                           "status": constants.STATUS_AVAILABLE})
-                raise exception.InvalidConsistencyGroup(reason=msg)
+                raise exception.InvalidShareGroup(reason=msg)
 
-        snap = self.db.cgsnapshot_create(context, options)
-
+        snap = self.db.share_group_snapshot_create(context, options)
         try:
             members = []
             for s in shares:
                 member_options = {
-                    'cgsnapshot_id': snap['id'],
+                    'share_group_snapshot_id': snap['id'],
                     'user_id': context.user_id,
                     'project_id': context.project_id,
                     'status': constants.STATUS_CREATING,
                     'size': s['size'],
                     'share_proto': s['share_proto'],
-                    'share_type_id': s['share_type_id'],
                     'share_id': s['id'],
                     'share_instance_id': s.instance['id']
                 }
-                member = self.db.cgsnapshot_member_create(context,
-                                                          member_options)
+                member = self.db.share_group_snapshot_member_create(
+                    context, member_options)
                 members.append(member)
 
             # Cast to share manager
-            self.share_rpcapi.create_cgsnapshot(context, snap, cg['host'])
+            self.share_rpcapi.create_share_group_snapshot(
+                context, snap, share_group['host'])
         except Exception:
             with excutils.save_and_reraise_exception():
                 # This will delete the snapshot and all of it's members
-                self.db.cgsnapshot_destroy(context, snap['id'])
+                self.db.share_group_snapshot_destroy(context, snap['id'])
 
         return snap
 
-    def delete_cgsnapshot(self, context, snap):
-        """Delete consistency group snapshot."""
-
+    def delete_share_group_snapshot(self, context, snap):
+        """Delete share group snapshot."""
         snap_id = snap['id']
-
-        cg = self.db.consistency_group_get(context,
-                                           snap['consistency_group_id'])
-
         statuses = (constants.STATUS_AVAILABLE, constants.STATUS_ERROR)
+        share_group = self.db.share_group_get(context, snap['share_group_id'])
         if not snap['status'] in statuses:
-            msg = (_("Consistency group snapshot status must be one of"
-                     " %(statuses)s")
-                   % {"statuses": statuses})
-            raise exception.InvalidCGSnapshot(reason=msg)
+            msg = (_("Share group snapshot status must be one of"
+                     " %(statuses)s") % {"statuses": statuses})
+            raise exception.InvalidShareGroupSnapshot(reason=msg)
 
-        self.db.cgsnapshot_update(context, snap_id,
-                                  {'status': constants.STATUS_DELETING})
+        self.db.share_group_snapshot_update(
+            context, snap_id, {'status': constants.STATUS_DELETING})
 
         # Cast to share manager
-        self.share_rpcapi.delete_cgsnapshot(context, snap, cg['host'])
+        self.share_rpcapi.delete_share_group_snapshot(
+            context, snap, share_group['host'])
 
-    def update_cgsnapshot(self, context, cg, fields):
-        return self.db.cgsnapshot_update(context, cg['id'], fields)
+    def update_share_group_snapshot(self, context, share_group_snapshot,
+                                    fields):
+        return self.db.share_group_snapshot_update(
+            context, share_group_snapshot['id'], fields)
 
-    def get_cgsnapshot(self, context, snapshot_id):
-        return self.db.cgsnapshot_get(context, snapshot_id)
+    def get_share_group_snapshot(self, context, snapshot_id):
+        return self.db.share_group_snapshot_get(context, snapshot_id)
 
-    def get_all_cgsnapshots(self, context, detailed=True, search_opts=None):
-
+    def get_all_share_group_snapshots(self, context, detailed=True,
+                                      search_opts=None, sort_key=None,
+                                      sort_dir=None):
         if search_opts is None:
             search_opts = {}
-
-        LOG.debug("Searching for consistency group snapshots by: %s",
+        LOG.debug("Searching for share group snapshots by: %s",
                   six.text_type(search_opts))
 
-        # Get filtered list of consistency_groups
-        if context.is_admin and search_opts.get('all_tenants'):
-            cgsnapshots = self.db.cgsnapshot_get_all(
-                context, detailed=detailed)
+        # Get filtered list of share group snapshots
+        if search_opts.pop('all_tenants', 0) and context.is_admin:
+            share_group_snapshots = self.db.share_group_snapshot_get_all(
+                context, detailed=detailed, filters=search_opts,
+                sort_key=sort_key, sort_dir=sort_dir)
         else:
-            cgsnapshots = self.db.cgsnapshot_get_all_by_project(
-                context, context.project_id, detailed=detailed)
+            share_group_snapshots = (
+                self.db.share_group_snapshot_get_all_by_project(
+                    context, context.project_id, detailed=detailed,
+                    filters=search_opts, sort_key=sort_key, sort_dir=sort_dir,
+                )
+            )
+        return share_group_snapshots
 
-        return cgsnapshots
-
-    def get_all_cgsnapshot_members(self, context, cgsnapshot_id):
-        members = self.db.cgsnapshot_members_get_all(context,
-                                                     cgsnapshot_id)
-
+    def get_all_share_group_snapshot_members(self, context,
+                                             share_group_snapshot_id):
+        members = self.db.share_group_snapshot_members_get_all(
+            context,  share_group_snapshot_id)
         return members

@@ -70,7 +70,7 @@ class API(base.Base):
     def create(self, context, share_proto, size, name, description,
                snapshot_id=None, availability_zone=None, metadata=None,
                share_network_id=None, share_type=None, is_public=False,
-               consistency_group_id=None, cgsnapshot_member=None):
+               share_group_id=None, share_group_snapshot_member=None):
         """Create new share."""
         policy.check_policy(context, 'share', 'create')
 
@@ -171,47 +171,45 @@ class API(base.Base):
         except ValueError as e:
             raise exception.InvalidParameterValue(six.text_type(e))
 
-        consistency_group = None
-        if consistency_group_id:
+        share_group = None
+        if share_group_id:
             try:
-                consistency_group = self.db.consistency_group_get(
-                    context, consistency_group_id)
+                share_group = self.db.share_group_get(context, share_group_id)
             except exception.NotFound as e:
                 raise exception.InvalidParameterValue(six.text_type(e))
 
-            if (not cgsnapshot_member and
-                    not (consistency_group['status'] ==
-                         constants.STATUS_AVAILABLE)):
+            if (not share_group_snapshot_member and
+                    not (share_group['status'] == constants.STATUS_AVAILABLE)):
                 params = {
                     'avail': constants.STATUS_AVAILABLE,
-                    'cg_status': consistency_group['status'],
+                    'status': share_group['status'],
                 }
-                msg = _("Consistency group status must be %(avail)s, got"
-                        "%(cg_status)s.") % params
-                raise exception.InvalidConsistencyGroup(message=msg)
+                msg = _("Share group status must be %(avail)s, got"
+                        "%(status)s.") % params
+                raise exception.InvalidShareGroup(message=msg)
 
             if share_type_id:
-                cg_st_ids = [st['share_type_id'] for st in
-                             consistency_group.get('share_types', [])]
-                if share_type_id not in cg_st_ids:
+                share_group_st_ids = [
+                    st['share_type_id']
+                    for st in share_group.get('share_types', [])]
+                if share_type_id not in share_group_st_ids:
                     params = {
                         'type': share_type_id,
-                        'cg': consistency_group_id
+                        'group': share_group_id,
                     }
                     msg = _("The specified share type (%(type)s) is not "
-                            "supported by the specified consistency group "
-                            "(%(cg)s).") % params
+                            "supported by the specified share group "
+                            "(%(group)s).") % params
                     raise exception.InvalidParameterValue(msg)
 
-            if (not consistency_group.get('share_network_id')
-                    == share_network_id):
+            if not share_group.get('share_network_id') == share_network_id:
                 params = {
                     'net': share_network_id,
-                    'cg': consistency_group_id
+                    'group': share_group_id
                 }
                 msg = _("The specified share network (%(net)s) is not "
-                        "supported by the specified consistency group "
-                        "(%(cg)s).") % params
+                        "supported by the specified share group "
+                        "(%(group)s).") % params
                 raise exception.InvalidParameterValue(msg)
 
         options = {
@@ -224,12 +222,13 @@ class API(base.Base):
             'display_description': description,
             'share_proto': share_proto,
             'is_public': is_public,
-            'consistency_group_id': consistency_group_id,
+            'share_group_id': share_group_id,
         }
         options.update(self.get_share_attributes_from_share_type(share_type))
 
-        if cgsnapshot_member:
-            options['source_cgsnapshot_member_id'] = cgsnapshot_member['id']
+        if share_group_snapshot_member:
+            options['source_share_group_snapshot_member_id'] = (
+                share_group_snapshot_member['id'])
 
         try:
             share = self.db.share_create(context, options,
@@ -248,11 +247,14 @@ class API(base.Base):
             # It is common situation for different types of backends.
             host = snapshot['share']['instance']['host']
 
-        self.create_instance(context, share, share_network_id=share_network_id,
-                             host=host, availability_zone=availability_zone,
-                             consistency_group=consistency_group,
-                             cgsnapshot_member=cgsnapshot_member,
-                             share_type_id=share_type_id)
+        elif share_group:
+            host = share_group['host']
+
+        self.create_instance(
+            context, share, share_network_id=share_network_id, host=host,
+            availability_zone=availability_zone, share_group=share_group,
+            share_group_snapshot_member=share_group_snapshot_member,
+            share_type_id=share_type_id)
 
         # Retrieve the share with instance details
         share = self.db.share_get(context, share['id'])
@@ -316,20 +318,21 @@ class API(base.Base):
 
     def create_instance(self, context, share, share_network_id=None,
                         host=None, availability_zone=None,
-                        consistency_group=None, cgsnapshot_member=None,
+                        share_group=None, share_group_snapshot_member=None,
                         share_type_id=None):
         policy.check_policy(context, 'share', 'create')
 
         request_spec, share_instance = (
             self.create_share_instance_and_get_request_spec(
                 context, share, availability_zone=availability_zone,
-                consistency_group=consistency_group, host=host,
+                share_group=share_group, host=host,
                 share_network_id=share_network_id,
                 share_type_id=share_type_id))
 
-        if cgsnapshot_member:
-            # Inherit properties from the cgsnapshot_member
-            member_share_instance = cgsnapshot_member['share_instance']
+        if share_group_snapshot_member:
+            # Inherit properties from the share_group_snapshot_member
+            member_share_instance = share_group_snapshot_member[
+                'share_instance']
             updates = {
                 'host': member_share_instance['host'],
                 'share_network_id': member_share_instance['share_network_id'],
@@ -338,7 +341,8 @@ class API(base.Base):
             share = self.db.share_instance_update(context,
                                                   share_instance['id'],
                                                   updates)
-            # NOTE(ameade): Do not cast to driver if creating from cgsnapshot
+            # NOTE(ameade): Do not cast to driver if creating from share group
+            # snapshot
             return
 
         if host:
@@ -360,7 +364,7 @@ class API(base.Base):
 
     def create_share_instance_and_get_request_spec(
             self, context, share, availability_zone=None,
-            consistency_group=None, host=None, share_network_id=None,
+            share_group=None, host=None, share_network_id=None,
             share_type_id=None, cast_rules_to_readonly=False):
 
         availability_zone_id = None
@@ -398,9 +402,9 @@ class API(base.Base):
             'share_proto': share['share_proto'],
             'share_type_id': share_type_id,
             'is_public': share['is_public'],
-            'consistency_group_id': share['consistency_group_id'],
-            'source_cgsnapshot_member_id': share[
-                'source_cgsnapshot_member_id'],
+            'share_group_id': share['share_group_id'],
+            'source_share_group_snapshot_member_id': share[
+                'source_share_group_snapshot_member_id'],
             'snapshot_id': share['snapshot_id'],
             'replication_type': share['replication_type'],
         }
@@ -428,7 +432,7 @@ class API(base.Base):
             'share_id': share['id'],
             'snapshot_id': share['snapshot_id'],
             'share_type': share_type,
-            'consistency_group': consistency_group,
+            'share_group': share_group,
             'availability_zone_id': availability_zone_id,
         }
         return request_spec, share_instance
@@ -439,6 +443,10 @@ class API(base.Base):
         if not share.get('replication_type'):
             msg = _("Replication not supported for share %s.")
             raise exception.InvalidShare(message=msg % share['id'])
+
+        if share.get('share_group_id'):
+            msg = _("Replication not supported for shares in a group.")
+            raise exception.InvalidShare(message=msg)
 
         self._check_is_share_busy(share)
 
@@ -642,11 +650,11 @@ class API(base.Base):
             'share_proto': kwargs.get('share_proto', share.get('share_proto')),
             'share_type_id': share_type['id'],
             'is_public': kwargs.get('is_public', share.get('is_public')),
-            'consistency_group_id': kwargs.get(
-                'consistency_group_id', share.get('consistency_group_id')),
-            'source_cgsnapshot_member_id': kwargs.get(
-                'source_cgsnapshot_member_id',
-                share.get('source_cgsnapshot_member_id')),
+            'share_group_id': kwargs.get(
+                'share_group_id', share.get('share_group_id')),
+            'source_share_group_snapshot_member_id': kwargs.get(
+                'source_share_group_snapshot_member_id',
+                share.get('source_share_group_snapshot_member_id')),
             'snapshot_id': kwargs.get('snapshot_id', share.get('snapshot_id')),
         }
         share_instance_properties = {
@@ -878,14 +886,16 @@ class API(base.Base):
 
         snapshots = self.db.share_snapshot_get_all_for_share(context, share_id)
         if len(snapshots):
-            msg = _("Share still has %d dependent snapshots") % len(snapshots)
+            msg = _("Share still has %d dependent snapshots.") % len(snapshots)
             raise exception.InvalidShare(reason=msg)
 
-        cgsnapshot_members_count = self.db.count_cgsnapshot_members_in_share(
-            context, share_id)
-        if cgsnapshot_members_count:
-            msg = (_("Share still has %d dependent cgsnapshot members") %
-                   cgsnapshot_members_count)
+        share_group_snapshot_members_count = (
+            self.db.count_share_group_snapshot_members_in_share(
+                context, share_id))
+        if share_group_snapshot_members_count:
+            msg = (
+                _("Share still has %d dependent share group snapshot "
+                  "members.") % share_group_snapshot_members_count)
             raise exception.InvalidShare(reason=msg)
 
         self._check_is_share_busy(share)
@@ -955,10 +965,10 @@ class API(base.Base):
         if shares:
             raise exception.ShareServerInUse(share_server_id=server['id'])
 
-        cgs = self.db.consistency_group_get_all_by_share_server(context,
-                                                                server['id'])
-        if cgs:
-            LOG.error(_LE("share server '%(ssid)s' in use by CGs"),
+        share_groups = self.db.share_group_get_all_by_share_server(
+            context, server['id'])
+        if share_groups:
+            LOG.error(_LE("share server '%(ssid)s' in use by share groups."),
                       {'ssid': server['id']})
             raise exception.ShareServerInUse(share_server_id=server['id'])
 
