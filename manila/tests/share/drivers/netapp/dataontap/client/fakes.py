@@ -1395,10 +1395,12 @@ VOLUME_MODIFY_ITER_ERROR_RESPONSE = etree.XML("""
   </results>
 """ % {'volume': SHARE_NAME, 'vserver': VSERVER_NAME})
 
+SNAPSHOT_ACCESS_TIME = '1466640058'
 SNAPSHOT_GET_ITER_NOT_BUSY_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
       <snapshot-info>
+        <access-time>%(access_time)s</access-time>
         <busy>false</busy>
         <name>%(snap)s</name>
         <volume>%(volume)s</volume>
@@ -1407,12 +1409,18 @@ SNAPSHOT_GET_ITER_NOT_BUSY_RESPONSE = etree.XML("""
     </attributes-list>
     <num-records>1</num-records>
   </results>
-""" % {'snap': SNAPSHOT_NAME, 'volume': SHARE_NAME, 'vserver': VSERVER_NAME})
+""" % {
+    'access_time': SNAPSHOT_ACCESS_TIME,
+    'snap': SNAPSHOT_NAME,
+    'volume': SHARE_NAME,
+    'vserver': VSERVER_NAME,
+})
 
 SNAPSHOT_GET_ITER_BUSY_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
       <snapshot-info>
+        <access-time>%(access_time)s</access-time>
         <busy>true</busy>
         <name>%(snap)s</name>
         <volume>%(volume)s</volume>
@@ -1426,7 +1434,12 @@ SNAPSHOT_GET_ITER_BUSY_RESPONSE = etree.XML("""
     </attributes-list>
     <num-records>1</num-records>
   </results>
-""" % {'snap': SNAPSHOT_NAME, 'volume': SHARE_NAME, 'vserver': VSERVER_NAME})
+""" % {
+    'access_time': SNAPSHOT_ACCESS_TIME,
+    'snap': SNAPSHOT_NAME,
+    'volume': SHARE_NAME,
+    'vserver': VSERVER_NAME,
+})
 
 SNAPSHOT_GET_ITER_NOT_UNIQUE_RESPONSE = etree.XML("""
   <results status="passed">
@@ -1507,6 +1520,24 @@ SNAPSHOT_GET_ITER_DELETED_RESPONSE = etree.XML("""
     </attributes-list>
     <num-records>1</num-records>
   </results>
+""" % {
+    'snap': SNAPSHOT_NAME,
+    'volume': SHARE_NAME,
+    'vserver': VSERVER_NAME,
+})
+
+SNAPSHOT_GET_ITER_SNAPMIRROR_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <snapshot-info>
+        <name>%(snap)s</name>
+        <volume>%(volume)s</volume>
+        <vserver>%(vserver)s</vserver>
+      </snapshot-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+
 """ % {
     'snap': SNAPSHOT_NAME,
     'volume': SHARE_NAME,

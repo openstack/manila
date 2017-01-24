@@ -55,6 +55,9 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
     def create_snapshot(self, context, snapshot, **kwargs):
         return self.library.create_snapshot(context, snapshot, **kwargs)
 
+    def revert_to_snapshot(self, context, snapshot, **kwargs):
+        return self.library.revert_to_snapshot(context, snapshot, **kwargs)
+
     def delete_share(self, context, share, **kwargs):
         self.library.delete_share(context, share, **kwargs)
 
@@ -163,6 +166,11 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
     def update_replicated_snapshot(self, context, replica_list,
                                    share_replica, replica_snapshots,
                                    replica_snapshot, share_server=None):
+        raise NotImplementedError()
+
+    def revert_to_replicated_snapshot(self, context, active_replica,
+                                      replica_list, active_replica_snapshot,
+                                      replica_snapshots, share_server=None):
         raise NotImplementedError()
 
     def migration_check_compatibility(self, context, source_share,
