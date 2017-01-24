@@ -23,11 +23,11 @@ from webob import exc
 
 from manila.api import common
 from manila.api.openstack import wsgi
-import manila.api.views.cgsnapshots as cg_views
-import manila.consistency_group.api as cg_api
+import manila.api.views.share_group_snapshots as sgs_views
 from manila import db
 from manila import exception
 from manila.i18n import _, _LI
+import manila.share_group.api as sg_api
 
 LOG = log.getLogger(__name__)
 
@@ -36,11 +36,11 @@ class CGSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
     """The Consistency Group Snapshots API controller for the OpenStack API."""
 
     resource_name = 'cgsnapshot'
-    _view_builder_class = cg_views.CGSnapshotViewBuilder
+    _view_builder_class = sgs_views.CGSnapshotViewBuilder
 
     def __init__(self):
         super(CGSnapshotController, self).__init__()
-        self.cg_api = cg_api.API()
+        self.cg_api = sg_api.API()
 
     @wsgi.Controller.api_version('2.4', experimental=True)
     @wsgi.Controller.authorize('get_cgsnapshot')

@@ -23,11 +23,11 @@ from oslo_config import cfg
 from oslo_utils import timeutils
 
 from manila.common import constants
-import manila.consistency_group.api as cg_api
 from manila import context
 from manila import db as db_driver
 from manila import exception
 from manila.share import share_types
+import manila.share_group.api as sg_api
 from manila import test
 from manila.tests.api.contrib import stubs
 
@@ -82,7 +82,7 @@ class CGAPITestCase(test.TestCase):
         self.scheduler_rpcapi = mock.Mock()
         self.share_rpcapi = mock.Mock()
         self.share_api = mock.Mock()
-        self.api = cg_api.API()
+        self.api = sg_api.API()
         self.mock_object(self.api, 'share_rpcapi', self.share_rpcapi)
         self.mock_object(self.api, 'share_api', self.share_api)
         self.mock_object(self.api, 'scheduler_rpcapi', self.scheduler_rpcapi)

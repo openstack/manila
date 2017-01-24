@@ -31,12 +31,12 @@ from manila.api.v1 import share_servers
 from manila.api.v1 import share_types_extra_specs
 from manila.api.v1 import share_unmanage
 from manila.api.v2 import availability_zones
-from manila.api.v2 import cgsnapshots
-from manila.api.v2 import consistency_groups
 from manila.api.v2 import quota_class_sets
 from manila.api.v2 import quota_sets
 from manila.api.v2 import services
 from manila.api.v2 import share_export_locations
+from manila.api.v2 import share_group_snapshots
+from manila.api.v2 import share_groups
 from manila.api.v2 import share_instance_export_locations
 from manila.api.v2 import share_instances
 from manila.api.v2 import share_networks
@@ -280,8 +280,7 @@ class APIRouter(manila.api.openstack.APIRouter):
                        action="pools_detail",
                        conditions={"method": ["GET"]})
 
-        self.resources["consistency-groups"] = (
-            consistency_groups.create_resource())
+        self.resources["consistency-groups"] = share_groups.create_resource()
         mapper.resource("consistency-group", "consistency-groups",
                         controller=self.resources["consistency-groups"],
                         collection={"detail": "GET"})
@@ -291,7 +290,7 @@ class APIRouter(manila.api.openstack.APIRouter):
                        action="action",
                        conditions={"action": ["POST"]})
 
-        self.resources["cgsnapshots"] = cgsnapshots.create_resource()
+        self.resources["cgsnapshots"] = share_group_snapshots.create_resource()
         mapper.resource("cgsnapshot", "cgsnapshots",
                         controller=self.resources["cgsnapshots"],
                         collection={"detail": "GET"},

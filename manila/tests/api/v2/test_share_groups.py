@@ -25,14 +25,14 @@ import six
 import webob
 
 from manila.api.openstack import wsgi
-import manila.api.v2.consistency_groups as cgs
+from manila.api.v2 import share_groups
 from manila.common import constants
-import manila.consistency_group.api as cg_api
 from manila import context
 from manila import db
 from manila import exception
 from manila import policy
 from manila.share import share_types
+import manila.share_group.api as sg_api
 from manila import test
 from manila.tests.api import fakes
 from manila.tests import db_utils
@@ -47,7 +47,7 @@ class CGApiTest(test.TestCase):
 
     def setUp(self):
         super(self.__class__, self).setUp()
-        self.controller = cgs.CGController()
+        self.controller = share_groups.CGController()
         self.resource_name = self.controller.resource_name
         self.fake_share_type = {'id': six.text_type(uuidutils.generate_uuid())}
         self.api_version = '2.4'
@@ -467,7 +467,7 @@ class CGApiTest(test.TestCase):
 
     def test_cg_list_index(self):
         fake_cg, expected_cg = self._get_fake_simple_cg()
-        self.mock_object(cg_api.API, 'get_all',
+        self.mock_object(sg_api.API, 'get_all',
                          mock.Mock(return_value=[fake_cg]))
         res_dict = self.controller.index(self.request)
         self.assertEqual([expected_cg], res_dict['consistency_groups'])
@@ -475,7 +475,7 @@ class CGApiTest(test.TestCase):
             self.context, self.resource_name, 'get_all')
 
     def test_cg_list_index_no_cgs(self):
-        self.mock_object(cg_api.API, 'get_all',
+        self.mock_object(sg_api.API, 'get_all',
                          mock.Mock(return_value=[]))
         res_dict = self.controller.index(self.request)
         self.assertEqual([], res_dict['consistency_groups'])
@@ -485,7 +485,7 @@ class CGApiTest(test.TestCase):
     def test_cg_list_index_with_limit(self):
         fake_cg, expected_cg = self._get_fake_simple_cg()
         fake_cg2, expected_cg2 = self._get_fake_simple_cg(id="fake_id2")
-        self.mock_object(cg_api.API, 'get_all',
+        self.mock_object(sg_api.API, 'get_all',
                          mock.Mock(return_value=[fake_cg, fake_cg2]))
         req = fakes.HTTPRequest.blank('/consistency_groups?limit=1',
                                       version=self.api_version,
@@ -502,7 +502,7 @@ class CGApiTest(test.TestCase):
     def test_cg_list_index_with_limit_and_offset(self):
         fake_cg, expected_cg = self._get_fake_simple_cg()
         fake_cg2, expected_cg2 = self._get_fake_simple_cg(id="fake_id2")
-        self.mock_object(cg_api.API, 'get_all',
+        self.mock_object(sg_api.API, 'get_all',
                          mock.Mock(return_value=[fake_cg, fake_cg2]))
         req = fakes.HTTPRequest.blank('/consistency_groups?limit=1&offset=1',
                                       version=self.api_version,
@@ -518,7 +518,7 @@ class CGApiTest(test.TestCase):
 
     def test_cg_list_detail(self):
         fake_cg, expected_cg = self._get_fake_cg()
-        self.mock_object(cg_api.API, 'get_all',
+        self.mock_object(sg_api.API, 'get_all',
                          mock.Mock(return_value=[fake_cg]))
 
         res_dict = self.controller.detail(self.request)
@@ -528,7 +528,7 @@ class CGApiTest(test.TestCase):
             self.context, self.resource_name, 'get_all')
 
     def test_cg_list_detail_no_cgs(self):
-        self.mock_object(cg_api.API, 'get_all',
+        self.mock_object(sg_api.API, 'get_all',
                          mock.Mock(return_value=[]))
 
         res_dict = self.controller.detail(self.request)
@@ -545,7 +545,7 @@ class CGApiTest(test.TestCase):
         fake_cg, expected_cg = self._get_fake_cg(ctxt=req_context)
         fake_cg2, expected_cg2 = self._get_fake_cg(ctxt=req_context,
                                                    id="fake_id2")
-        self.mock_object(cg_api.API, 'get_all',
+        self.mock_object(sg_api.API, 'get_all',
                          mock.Mock(return_value=[fake_cg, fake_cg2]))
 
         res_dict = self.controller.detail(req)
@@ -563,7 +563,7 @@ class CGApiTest(test.TestCase):
         fake_cg, expected_cg = self._get_fake_cg(ctxt=req_context)
         fake_cg2, expected_cg2 = self._get_fake_cg(
             id="fake_id2", ctxt=req_context)
-        self.mock_object(cg_api.API, 'get_all',
+        self.mock_object(sg_api.API, 'get_all',
                          mock.Mock(return_value=[fake_cg, fake_cg2]))
 
         res_dict = self.controller.detail(req)
@@ -575,9 +575,9 @@ class CGApiTest(test.TestCase):
 
     def test_cg_delete(self):
         fake_cg, expected_cg = self._get_fake_cg()
-        self.mock_object(cg_api.API, 'get',
+        self.mock_object(sg_api.API, 'get',
                          mock.Mock(return_value=fake_cg))
-        self.mock_object(cg_api.API, 'delete')
+        self.mock_object(sg_api.API, 'delete')
 
         res = self.controller.delete(self.request, fake_cg['id'])
 
@@ -587,7 +587,7 @@ class CGApiTest(test.TestCase):
 
     def test_cg_delete_cg_not_found(self):
         fake_cg, expected_cg = self._get_fake_cg()
-        self.mock_object(cg_api.API, 'get',
+        self.mock_object(sg_api.API, 'get',
                          mock.Mock(side_effect=exception.NotFound))
 
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.delete,
@@ -597,9 +597,9 @@ class CGApiTest(test.TestCase):
 
     def test_cg_delete_in_conflicting_status(self):
         fake_cg, expected_cg = self._get_fake_cg()
-        self.mock_object(cg_api.API, 'get',
+        self.mock_object(sg_api.API, 'get',
                          mock.Mock(return_value=fake_cg))
-        self.mock_object(cg_api.API, 'delete', mock.Mock(
+        self.mock_object(sg_api.API, 'delete', mock.Mock(
             side_effect=exception.InvalidConsistencyGroup(reason='blah')))
 
         self.assertRaises(webob.exc.HTTPConflict, self.controller.delete,
@@ -609,7 +609,7 @@ class CGApiTest(test.TestCase):
 
     def test_cg_show(self):
         fake_cg, expected_cg = self._get_fake_cg()
-        self.mock_object(cg_api.API, 'get',
+        self.mock_object(sg_api.API, 'get',
                          mock.Mock(return_value=fake_cg))
         req = fakes.HTTPRequest.blank(
             '/consistency_groups/%s' % fake_cg['id'],
@@ -630,7 +630,7 @@ class CGApiTest(test.TestCase):
         req.environ['manila.context'] = admin_context
         fake_cg, expected_cg = self._get_fake_cg(
             ctxt=admin_context, id='my_cg_id')
-        self.mock_object(cg_api.API, 'get',
+        self.mock_object(sg_api.API, 'get',
                          mock.Mock(return_value=fake_cg))
 
         res_dict = self.controller.show(req, fake_cg['id'])
@@ -647,7 +647,7 @@ class CGApiTest(test.TestCase):
         req_context = req.environ['manila.context']
         fake_cg, expected_cg = self._get_fake_cg(
             ctxt=req_context, id='myfakecg')
-        self.mock_object(cg_api.API, 'get',
+        self.mock_object(sg_api.API, 'get',
                          mock.Mock(side_effect=exception.NotFound))
 
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
