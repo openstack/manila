@@ -284,7 +284,6 @@ function is_driver_enabled {
 # create_service_share_servers - creates service Nova VMs, one per generic
 # driver, and only if it is configured to mode without handling of share servers.
 function create_service_share_servers {
-    private_net_id=$(openstack network show $PRIVATE_NETWORK_NAME -f value -c id)
     created_admin_network=false
     for BE in ${MANILA_ENABLED_BACKENDS//,/ }; do
         driver_handles_share_servers=$(iniget $MANILA_CONF $BE driver_handles_share_servers)
@@ -295,6 +294,7 @@ function create_service_share_servers {
                 vm_name='manila_service_share_server_'$BE
                 local vm_exists=$( openstack server list --all-projects | grep " $vm_name " )
                 if [[ -z $vm_exists ]]; then
+                    private_net_id=$(openstack network show $PRIVATE_NETWORK_NAME -f value -c id)
                     openstack server create $vm_name \
                         --flavor $MANILA_SERVICE_VM_FLAVOR_NAME \
                         --image $MANILA_SERVICE_IMAGE_NAME \
