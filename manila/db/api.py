@@ -539,6 +539,81 @@ def share_snapshot_update(context, snapshot_id, values):
 
 
 ###################
+def share_snapshot_access_create(context, values):
+    """Create a share snapshot access from the values dictionary."""
+    return IMPL.share_snapshot_access_create(context, values)
+
+
+def share_snapshot_access_get(context, access_id):
+    """Get share snapshot access rule from given access_id."""
+    return IMPL.share_snapshot_access_get(context, access_id)
+
+
+def share_snapshot_access_get_all_for_snapshot_instance(
+        context, snapshot_instance_id, session=None):
+    """Get all access rules related to a certain snapshot instance."""
+    return IMPL.share_snapshot_access_get_all_for_snapshot_instance(
+        context, snapshot_instance_id, session)
+
+
+def share_snapshot_access_get_all_for_share_snapshot(context,
+                                                     share_snapshot_id,
+                                                     filters):
+    """Get all access rules for a given share snapshot according to filters."""
+    return IMPL.share_snapshot_access_get_all_for_share_snapshot(
+        context, share_snapshot_id, filters)
+
+
+def share_snapshot_export_locations_get(context, snapshot_id):
+    """Get all export locations for a given share snapshot."""
+    return IMPL.share_snapshot_export_locations_get(context, snapshot_id)
+
+
+def share_snapshot_instance_access_update(
+        context, access_id, instance_id, updates):
+    """Update the state of the share snapshot instance access."""
+    return IMPL.share_snapshot_instance_access_update(
+        context, access_id, instance_id, updates)
+
+
+def share_snapshot_instance_access_get(context, share_snapshot_instance_id,
+                                       access_id):
+    """Get the share snapshot instance access related to given ids."""
+    return IMPL.share_snapshot_instance_access_get(
+        context, share_snapshot_instance_id, access_id)
+
+
+def share_snapshot_instance_access_delete(context, access_id,
+                                          snapshot_instance_id):
+    """Delete share snapshot instance access given its id."""
+    return IMPL.share_snapshot_instance_access_delete(
+        context, access_id, snapshot_instance_id)
+
+
+def share_snapshot_instance_export_location_create(context, values):
+    """Create a share snapshot instance export location."""
+    return IMPL.share_snapshot_instance_export_location_create(context, values)
+
+
+def share_snapshot_instance_export_locations_get_all(
+        context, share_snapshot_instance_id):
+    """Get the share snapshot instance export locations for given id."""
+    return IMPL.share_snapshot_instance_export_locations_get_all(
+        context, share_snapshot_instance_id)
+
+
+def share_snapshot_instance_export_location_get(context, el_id):
+    """Get the share snapshot instance export location for given id."""
+    return IMPL.share_snapshot_instance_export_location_get(
+        context, el_id)
+
+
+def share_snapshot_instance_export_location_delete(context, el_id):
+    """Delete share snapshot instance export location given its id."""
+    return IMPL.share_snapshot_instance_export_location_delete(context, el_id)
+
+
+###################
 def security_service_create(context, values):
     """Create security service DB record."""
     return IMPL.security_service_create(context, values)

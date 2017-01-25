@@ -1500,13 +1500,17 @@ class ShareManagerTestCase(test.TestCase):
     def test_delete_snapshot_driver_exception(self, exc):
 
         share_id = 'FAKE_SHARE_ID'
-        share = fakes.fake_share(id=share_id, instance={'id': 'fake_id'})
+        share = fakes.fake_share(id=share_id, instance={'id': 'fake_id'},
+                                 mount_snapshot_support=True)
         snapshot_instance = fakes.fake_snapshot_instance(
             share_id=share_id, share=share, name='fake_snapshot')
         snapshot = fakes.fake_snapshot(
             share_id=share_id, share=share, instance=snapshot_instance,
             project_id=self.context.project_id)
         snapshot_id = snapshot['id']
+
+        update_access = self.mock_object(
+            self.share_manager.snapshot_access_helper, 'update_access_rules')
         self.mock_object(self.share_manager.driver, "delete_snapshot",
                          mock.Mock(side_effect=exc))
         self.mock_object(self.share_manager, '_get_share_server',
@@ -1532,6 +1536,9 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.driver.delete_snapshot.assert_called_once_with(
             mock.ANY, expected_snapshot_instance_dict,
             share_server=None)
+        update_access.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            snapshot_instance['id'], delete_all_rules=True, share_server=None)
         self.assertFalse(db_destroy_call.called)
         self.assertFalse(mock_exception_log.called)
 
@@ -5007,7 +5014,11 @@ class ShareManagerTestCase(test.TestCase):
     @ddt.data(
         {'size': 1},
         {'size': 2, 'name': 'fake'},
-        {'size': 3})
+        {'size': 3},
+        {'size': 3, 'export_locations': [{'path': '/path1',
+                                          'is_admin_only': True},
+                                         {'path': '/path2',
+                                          'is_admin_only': False}]})
     def test_manage_snapshot_valid_snapshot(self, driver_data):
         mock_get_share_server = self.mock_object(self.share_manager,
                                                  '_get_share_server',
@@ -5028,6 +5039,8 @@ class ShareManagerTestCase(test.TestCase):
         mock_get = self.mock_object(self.share_manager.db,
                                     'share_snapshot_get',
                                     mock.Mock(return_value=snapshot))
+        self.mock_object(self.share_manager.db,
+                         'share_snapshot_instance_export_location_create')
 
         self.share_manager.manage_snapshot(self.context, snapshot_id,
                                            driver_options)
@@ -5087,6 +5100,7 @@ class ShareManagerTestCase(test.TestCase):
             utils.IsAMatcher(context.RequestContext), snapshot['share'])
 
     def test_unmanage_snapshot_invalid_share(self):
+        manager.CONF.unmanage_remove_access_rules = False
         self.mock_object(self.share_manager, 'driver')
         self.share_manager.driver.driver_handles_share_servers = False
         mock_unmanage = mock.Mock(
@@ -5121,9 +5135,12 @@ class ShareManagerTestCase(test.TestCase):
         if quota_error:
             self.mock_object(quota.QUOTAS, 'reserve', mock.Mock(
                 side_effect=exception.ManilaException(message='error')))
+        manager.CONF.unmanage_remove_access_rules = True
         mock_log_warning = self.mock_object(manager.LOG, 'warning')
         self.mock_object(self.share_manager, 'driver')
         self.share_manager.driver.driver_handles_share_servers = False
+        mock_update_access = self.mock_object(
+            self.share_manager.snapshot_access_helper, "update_access_rules")
         self.mock_object(self.share_manager.driver, "unmanage_snapshot")
         mock_get_share_server = self.mock_object(
             self.share_manager,
@@ -5136,17 +5153,26 @@ class ShareManagerTestCase(test.TestCase):
         mock_get = self.mock_object(self.share_manager.db,
                                     'share_snapshot_get',
                                     mock.Mock(return_value=snapshot))
+        mock_snap_ins_get = self.mock_object(
+            self.share_manager.db, 'share_snapshot_instance_get',
+            mock.Mock(return_value=snapshot.instance))
 
         self.share_manager.unmanage_snapshot(self.context, snapshot['id'])
 
         self.share_manager.driver.unmanage_snapshot.assert_called_once_with(
-            mock.ANY)
+            snapshot.instance)
+        mock_update_access.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), snapshot.instance['id'],
+            delete_all_rules=True, share_server=None)
         mock_snapshot_instance_destroy_call.assert_called_once_with(
             mock.ANY, snapshot['instance']['id'])
         mock_get.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), snapshot['id'])
         mock_get_share_server.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), snapshot['share'])
+        mock_snap_ins_get.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), snapshot.instance['id'],
+            with_share_data=True)
         if quota_error:
             self.assertTrue(mock_log_warning.called)
 
@@ -5305,6 +5331,69 @@ class ShareManagerTestCase(test.TestCase):
         mock_share_snapshot_update.assert_called_once_with(
             mock.ANY, 'fake_snapshot_id',
             {'status': constants.STATUS_AVAILABLE})
+
+    def test_unmanage_snapshot_update_access_rule_exception(self):
+        self.mock_object(self.share_manager, 'driver')
+        self.share_manager.driver.driver_handles_share_servers = False
+        share = db_utils.create_share()
+        snapshot = db_utils.create_snapshot(share_id=share['id'])
+        manager.CONF.unmanage_remove_access_rules = True
+
+        mock_get = self.mock_object(
+            self.share_manager.db, 'share_snapshot_get',
+            mock.Mock(return_value=snapshot))
+
+        mock_get_share_server = self.mock_object(
+            self.share_manager, '_get_share_server',
+            mock.Mock(return_value=None))
+
+        self.mock_object(self.share_manager.snapshot_access_helper,
+                         'update_access_rules',
+                         mock.Mock(side_effect=Exception))
+        mock_log_exception = self.mock_object(manager.LOG, 'exception')
+
+        mock_update = self.mock_object(self.share_manager.db,
+                                       'share_snapshot_update')
+
+        self.share_manager.unmanage_snapshot(self.context, snapshot['id'])
+
+        self.assertTrue(mock_log_exception.called)
+        mock_get.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), snapshot['id'])
+        mock_get_share_server.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), snapshot['share'])
+        mock_update.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), snapshot['id'],
+            {'status': constants.STATUS_UNMANAGE_ERROR})
+
+    def test_snapshot_update_access(self):
+        snapshot = fakes.fake_snapshot(create_instance=True)
+        snapshot_instance = fakes.fake_snapshot_instance(
+            base_snapshot=snapshot)
+
+        mock_instance_get = self.mock_object(
+            db, 'share_snapshot_instance_get',
+            mock.Mock(return_value=snapshot_instance))
+
+        mock_get_share_server = self.mock_object(self.share_manager,
+                                                 '_get_share_server',
+                                                 mock.Mock(return_value=None))
+
+        mock_update_access = self.mock_object(
+            self.share_manager.snapshot_access_helper, 'update_access_rules')
+
+        self.share_manager.snapshot_update_access(self.context,
+                                                  snapshot_instance['id'])
+
+        mock_instance_get.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            snapshot_instance['id'], with_share_data=True)
+        mock_get_share_server.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            snapshot_instance['share_instance'])
+        mock_update_access.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            snapshot_instance['id'], share_server=None)
 
     def _setup_crud_replicated_snapshot_data(self):
         snapshot = fakes.fake_snapshot(create_instance=True)

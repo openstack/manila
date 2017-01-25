@@ -131,6 +131,7 @@ class HostState(object):
         self.snapshot_support = True
         self.create_share_from_snapshot_support = True
         self.revert_to_snapshot_support = False
+        self.mount_snapshot_support = False
         self.dedupe = False
         self.compression = False
         self.replication_type = None
@@ -302,6 +303,9 @@ class HostState(object):
             pool_cap['revert_to_snapshot_support'] = (
                 self.revert_to_snapshot_support)
 
+        if 'mount_snapshot_support' not in pool_cap:
+            pool_cap['mount_snapshot_support'] = self.mount_snapshot_support
+
         if 'dedupe' not in pool_cap:
             pool_cap['dedupe'] = self.dedupe
 
@@ -326,6 +330,8 @@ class HostState(object):
             'create_share_from_snapshot_support')
         self.revert_to_snapshot_support = capability.get(
             'revert_to_snapshot_support', False)
+        self.mount_snapshot_support = capability.get(
+            'mount_snapshot_support', False)
         self.updated = capability['timestamp']
         self.replication_type = capability.get('replication_type')
         self.replication_domain = capability.get('replication_domain')

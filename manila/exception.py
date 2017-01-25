@@ -446,6 +446,10 @@ class ShareAccessExists(ManilaException):
     message = _("Share access %(access_type)s:%(access)s exists.")
 
 
+class ShareSnapshotAccessExists(InvalidInput):
+    message = _("Share snapshot access %(access_type)s:%(access)s exists.")
+
+
 class InvalidShareAccess(Invalid):
     message = _("Invalid access rule: %(reason)s")
 
@@ -489,6 +493,10 @@ class ShareSnapshotIsBusy(ManilaException):
 
 class InvalidShareSnapshot(Invalid):
     message = _("Invalid share snapshot: %(reason)s.")
+
+
+class InvalidShareSnapshotInstance(Invalid):
+    message = _("Invalid share snapshot instance: %(reason)s.")
 
 
 class ManageInvalidShareSnapshot(InvalidShareSnapshot):

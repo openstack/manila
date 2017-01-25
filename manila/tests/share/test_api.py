@@ -752,6 +752,7 @@ class ShareAPITestCase(test.TestCase):
                 'snapshot_support': True,
                 'create_share_from_snapshot_support': False,
                 'revert_to_snapshot_support': False,
+                'mount_snapshot_support': False,
                 'replication_type': 'dr',
             }
         }
@@ -769,6 +770,7 @@ class ShareAPITestCase(test.TestCase):
             'snapshot_support': False,
             'create_share_from_snapshot_support': False,
             'revert_to_snapshot_support': False,
+            'mount_snapshot_support': False,
             'replication_type': None,
         }
         self.assertEqual(expected, result)
@@ -803,6 +805,7 @@ class ShareAPITestCase(test.TestCase):
                 'replication_type': replication_type,
                 'create_share_from_snapshot_support': False,
                 'revert_to_snapshot_support': False,
+                'mount_snapshot_support': False,
             },
         }
 
@@ -831,6 +834,8 @@ class ShareAPITestCase(test.TestCase):
                 fake_type['extra_specs']['create_share_from_snapshot_support'],
             'revert_to_snapshot_support':
                 fake_type['extra_specs']['revert_to_snapshot_support'],
+            'mount_snapshot_support':
+                fake_type['extra_specs']['mount_snapshot_support'],
             'replication_type': replication_type,
         })
 
@@ -893,6 +898,9 @@ class ShareAPITestCase(test.TestCase):
             'revert_to_snapshot_support': kwargs.get(
                 'revert_to_snapshot_support',
                 share_type['extra_specs'].get('revert_to_snapshot_support')),
+            'mount_snapshot_support': kwargs.get(
+                'mount_snapshot_support',
+                share_type['extra_specs'].get('mount_snapshot_support')),
             'share_proto': kwargs.get('share_proto', share.get('share_proto')),
             'share_type_id': share_type['id'],
             'is_public': kwargs.get('is_public', share.get('is_public')),
@@ -2232,6 +2240,169 @@ class ShareAPITestCase(test.TestCase):
             self.context, share, new_size
         )
 
+    def test_snapshot_allow_access(self):
+        access_to = '1.1.1.1'
+        access_type = 'ip'
+        share = db_utils.create_share()
+        snapshot = db_utils.create_snapshot(share_id=share['id'],
+                                            status=constants.STATUS_AVAILABLE)
+        access = db_utils.create_snapshot_access(
+            share_snapshot_id=snapshot['id'])
+        filters = {'access_to': access_to,
+                   'access_type': access_type}
+        values = {'share_snapshot_id': snapshot['id'],
+                  'access_type': access_type,
+                  'access_to': access_to}
+
+        access_get_all = self.mock_object(
+            db_api, 'share_snapshot_access_get_all_for_share_snapshot',
+            mock.Mock(return_value=[]))
+        access_create = self.mock_object(
+            db_api, 'share_snapshot_access_create',
+            mock.Mock(return_value=access))
+        self.mock_object(self.api.share_rpcapi, 'snapshot_update_access')
+
+        out = self.api.snapshot_allow_access(self.context, snapshot,
+                                             access_type, access_to)
+
+        self.assertEqual(access, out)
+        access_get_all.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), snapshot['id'], filters)
+        access_create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), values)
+
+    def test_snapshot_allow_access_instance_exception(self):
+        access_to = '1.1.1.1'
+        access_type = 'ip'
+        share = db_utils.create_share()
+        snapshot = db_utils.create_snapshot(share_id=share['id'])
+        filters = {'access_to': access_to,
+                   'access_type': access_type}
+
+        access_get_all = self.mock_object(
+            db_api, 'share_snapshot_access_get_all_for_share_snapshot',
+            mock.Mock(return_value=[]))
+
+        self.assertRaises(exception.InvalidShareSnapshotInstance,
+                          self.api.snapshot_allow_access, self.context,
+                          snapshot, access_type, access_to)
+
+        access_get_all.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), snapshot['id'], filters)
+
+    def test_snapshot_allow_access_access_exists_exception(self):
+        access_to = '1.1.1.1'
+        access_type = 'ip'
+        share = db_utils.create_share()
+        snapshot = db_utils.create_snapshot(share_id=share['id'])
+        access = db_utils.create_snapshot_access(
+            share_snapshot_id=snapshot['id'])
+        filters = {'access_to': access_to,
+                   'access_type': access_type}
+
+        access_get_all = self.mock_object(
+            db_api, 'share_snapshot_access_get_all_for_share_snapshot',
+            mock.Mock(return_value=[access]))
+
+        self.assertRaises(exception.ShareSnapshotAccessExists,
+                          self.api.snapshot_allow_access, self.context,
+                          snapshot, access_type, access_to)
+
+        access_get_all.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), snapshot['id'], filters)
+
+    def test_snapshot_deny_access(self):
+        share = db_utils.create_share()
+        snapshot = db_utils.create_snapshot(share_id=share['id'],
+                                            status=constants.STATUS_AVAILABLE)
+        access = db_utils.create_snapshot_access(
+            share_snapshot_id=snapshot['id'])
+        mapping = {'id': 'fake_id',
+                   'state': constants.STATUS_ACTIVE,
+                   'access_id': access['id']}
+
+        access_get = self.mock_object(
+            db_api, 'share_snapshot_instance_access_get',
+            mock.Mock(return_value=mapping))
+        access_update_state = self.mock_object(
+            db_api, 'share_snapshot_instance_access_update')
+        update_access = self.mock_object(self.api.share_rpcapi,
+                                         'snapshot_update_access')
+
+        self.api.snapshot_deny_access(self.context, snapshot, access)
+
+        access_get.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), access['id'],
+            snapshot['instance']['id'])
+        access_update_state.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), access['id'],
+            snapshot.instance['id'],
+            {'state': constants.ACCESS_STATE_QUEUED_TO_DENY})
+        update_access.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), snapshot['instance'])
+
+    def test_snapshot_deny_access_exception(self):
+        share = db_utils.create_share()
+        snapshot = db_utils.create_snapshot(share_id=share['id'])
+        access = db_utils.create_snapshot_access(
+            share_snapshot_id=snapshot['id'])
+
+        self.assertRaises(exception.InvalidShareSnapshotInstance,
+                          self.api.snapshot_deny_access, self.context,
+                          snapshot, access)
+
+    def test_snapshot_access_get_all(self):
+        share = db_utils.create_share()
+        snapshot = db_utils.create_snapshot(share_id=share['id'])
+        access = []
+        access.append(db_utils.create_snapshot_access(
+            share_snapshot_id=snapshot['id']))
+
+        self.mock_object(
+            db_api, 'share_snapshot_access_get_all_for_share_snapshot',
+            mock.Mock(return_value=access))
+
+        out = self.api.snapshot_access_get_all(self.context, snapshot)
+
+        self.assertEqual(access, out)
+
+    def test_snapshot_access_get(self):
+        share = db_utils.create_share()
+        snapshot = db_utils.create_snapshot(share_id=share['id'])
+        access = db_utils.create_snapshot_access(
+            share_snapshot_id=snapshot['id'])
+
+        self.mock_object(
+            db_api, 'share_snapshot_access_get',
+            mock.Mock(return_value=access))
+
+        out = self.api.snapshot_access_get(self.context, access['id'])
+
+        self.assertEqual(access, out)
+
+    def test_snapshot_export_locations_get(self):
+        share = db_utils.create_share()
+        snapshot = db_utils.create_snapshot(share_id=share['id'])
+
+        self.mock_object(
+            db_api, 'share_snapshot_export_locations_get',
+            mock.Mock(return_value=''))
+
+        out = self.api.snapshot_export_locations_get(self.context, snapshot)
+
+        self.assertEqual('', out)
+
+    def test_snapshot_export_location_get(self):
+        fake_el = '/fake_export_location'
+
+        self.mock_object(
+            db_api, 'share_snapshot_instance_export_location_get',
+            mock.Mock(return_value=fake_el))
+
+        out = self.api.snapshot_export_location_get(self.context, 'fake_id')
+
+        self.assertEqual(fake_el, out)
+
     @ddt.data({'share_type': True, 'share_net': True, 'dhss': True},
               {'share_type': False, 'share_net': True, 'dhss': True},
               {'share_type': False, 'share_net': False, 'dhss': True},
@@ -2253,6 +2424,7 @@ class ShareAPITestCase(test.TestCase):
                 'snapshot_support': False,
                 'create_share_from_snapshot_support': False,
                 'revert_to_snapshot_support': False,
+                'mount_snapshot_support': False,
                 'driver_handles_share_servers': dhss,
             },
         }
@@ -2264,6 +2436,7 @@ class ShareAPITestCase(test.TestCase):
                     'snapshot_support': False,
                     'create_share_from_snapshot_support': False,
                     'revert_to_snapshot_support': False,
+                    'mount_snapshot_support': False,
                     'driver_handles_share_servers': dhss,
                 },
             }

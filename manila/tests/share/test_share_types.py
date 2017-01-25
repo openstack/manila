@@ -239,7 +239,8 @@ class ShareTypesTestCase(test.TestCase):
         list(itertools.product(
              (constants.ExtraSpecs.SNAPSHOT_SUPPORT,
               constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT,
-              constants.ExtraSpecs.REVERT_TO_SNAPSHOT_SUPPORT),
+              constants.ExtraSpecs.REVERT_TO_SNAPSHOT_SUPPORT,
+              constants.ExtraSpecs.MOUNT_SNAPSHOT_SUPPORT),
              strutils.TRUE_STRINGS + strutils.FALSE_STRINGS))) +
         list(itertools.product(
              (constants.ExtraSpecs.REPLICATION_TYPE_SPEC,),

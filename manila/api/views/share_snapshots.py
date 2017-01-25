@@ -87,3 +87,21 @@ class ViewBuilder(common.ViewBuilder):
             snapshots_dict['share_snapshots_links'] = snapshots_links
 
         return snapshots_dict
+
+    def detail_access(self, request, access):
+        access = {
+            'snapshot_access': {
+                'id': access['id'],
+                'access_type': access['access_type'],
+                'access_to': access['access_to'],
+                'state': access['state'],
+            }
+        }
+        return access
+
+    def detail_list_access(self, request, access_list):
+        return {
+            'snapshot_access_list':
+                ([self.detail_access(request, access)['snapshot_access']
+                 for access in access_list])
+        }

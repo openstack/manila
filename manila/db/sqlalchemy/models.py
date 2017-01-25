@@ -306,6 +306,7 @@ class Share(BASE, ManilaBase):
     create_share_from_snapshot_support = Column(Boolean, default=True)
     revert_to_snapshot_support = Column(Boolean, default=False)
     replication_type = Column(String(255), nullable=True)
+    mount_snapshot_support = Column(Boolean, default=False)
     share_proto = Column(String(255))
     is_public = Column(Boolean, default=False)
     share_group_id = Column(String(36),
@@ -550,20 +551,7 @@ class ShareAccessMapping(BASE, ManilaBase):
         An access rule is supposed to be truly 'active' when it has been
         applied across all of the share instances of the parent share object.
         """
-        state = None
-        if len(self.instance_mappings) > 0:
-            order = (constants.ACCESS_STATE_ERROR,
-                     constants.ACCESS_STATE_DENYING,
-                     constants.ACCESS_STATE_QUEUED_TO_DENY,
-                     constants.ACCESS_STATE_QUEUED_TO_APPLY,
-                     constants.ACCESS_STATE_APPLYING,
-                     constants.ACCESS_STATE_ACTIVE)
-
-            sorted_instance_mappings = sorted(
-                self.instance_mappings, key=lambda x: order.index(x['state']))
-
-            state = sorted_instance_mappings[0].state
-        return state
+        return get_aggregated_access_rules_state(self.instance_mappings)
 
     instance_mappings = orm.relationship(
         "ShareInstanceAccessMapping",
@@ -619,6 +607,25 @@ class ShareSnapshot(BASE, ManilaBase):
             return getattr(self.instance, item, None)
 
         raise AttributeError(item)
+
+    @property
+    def export_locations(self):
+        # TODO(gouthamr): Return AZ specific export locations for replicated
+        # snapshots.
+        # NOTE(gouthamr): For a replicated snapshot, export locations of the
+        # 'active' instances are chosen, if 'available'.
+        all_export_locations = []
+        select_instances = list(filter(
+            lambda x: (x['share_instance']['replica_state'] ==
+                       constants.REPLICA_STATE_ACTIVE),
+            self.instances)) or self.instances
+
+        for instance in select_instances:
+            if instance['status'] == constants.STATUS_AVAILABLE:
+                for export_location in instance.export_locations:
+                    all_export_locations.append(export_location)
+
+        return all_export_locations
 
     @property
     def name(self):
@@ -747,6 +754,92 @@ class ShareSnapshotInstance(BASE, ManilaBase):
             'ShareSnapshotInstance.share_instance_id == ShareInstance.id,'
             'ShareSnapshotInstance.deleted == "False")')
     )
+
+    export_locations = orm.relationship(
+        "ShareSnapshotInstanceExportLocation",
+        lazy='immediate',
+        primaryjoin=(
+            'and_('
+            'ShareSnapshotInstance.id == '
+            'ShareSnapshotInstanceExportLocation.share_snapshot_instance_id, '
+            'ShareSnapshotInstanceExportLocation.deleted == "False")'
+        )
+    )
+
+
+class ShareSnapshotAccessMapping(BASE, ManilaBase):
+    """Represents access to share snapshot."""
+    __tablename__ = 'share_snapshot_access_map'
+
+    @property
+    def state(self):
+        """Get the aggregated 'state' from all the instance mapping states.
+
+        An access rule is supposed to be truly 'active' when it has been
+        applied across all of the share snapshot instances of the parent
+        share snapshot object.
+        """
+        return get_aggregated_access_rules_state(self.instance_mappings)
+
+    id = Column(String(36), primary_key=True)
+    deleted = Column(String(36), default='False')
+    share_snapshot_id = Column(String(36), ForeignKey('share_snapshots.id'))
+    access_type = Column(String(255))
+    access_to = Column(String(255))
+
+    instance_mappings = orm.relationship(
+        "ShareSnapshotInstanceAccessMapping",
+        lazy='immediate',
+        primaryjoin=(
+            'and_('
+            'ShareSnapshotAccessMapping.id == '
+            'ShareSnapshotInstanceAccessMapping.access_id, '
+            'ShareSnapshotInstanceAccessMapping.deleted == "False")'
+        )
+    )
+
+
+class ShareSnapshotInstanceAccessMapping(BASE, ManilaBase):
+    """Represents access to individual share snapshot instances."""
+
+    __tablename__ = 'share_snapshot_instance_access_map'
+    _proxified_properties = ('share_snapshot_id', 'access_type', 'access_to')
+
+    def set_snapshot_access_data(self, snapshot_access):
+        for snapshot_access_attr in self._proxified_properties:
+            setattr(self, snapshot_access_attr,
+                    snapshot_access[snapshot_access_attr])
+
+    id = Column(String(36), primary_key=True)
+    deleted = Column(String(36), default='False')
+    share_snapshot_instance_id = Column(String(36), ForeignKey(
+        'share_snapshot_instances.id'))
+    access_id = Column(String(36), ForeignKey('share_snapshot_access_map.id'))
+    state = Column(Enum(*constants.ACCESS_RULES_STATES),
+                   default=constants.ACCESS_STATE_QUEUED_TO_APPLY)
+
+    instance = orm.relationship(
+        "ShareSnapshotInstance",
+        lazy='immediate',
+        primaryjoin=(
+            'and_('
+            'ShareSnapshotInstanceAccessMapping.share_snapshot_instance_id == '
+            'ShareSnapshotInstance.id, '
+            'ShareSnapshotInstanceAccessMapping.deleted == "False")'
+        )
+    )
+
+
+class ShareSnapshotInstanceExportLocation(BASE, ManilaBase):
+    """Represents export locations of share snapshot instances."""
+    __tablename__ = 'share_snapshot_instance_export_locations'
+
+    id = Column(String(36), primary_key=True)
+    share_snapshot_instance_id = Column(
+        String(36), ForeignKey('share_snapshot_instances.id'), nullable=False)
+    path = Column(String(2000))
+    is_admin_only = Column(Boolean, default=False, nullable=False)
+    deleted = Column(String(36), default='False')
 
 
 class SecurityService(BASE, ManilaBase):
@@ -1117,3 +1210,20 @@ def get_access_rules_status(instances):
             break
 
     return share_access_status
+
+
+def get_aggregated_access_rules_state(instance_mappings):
+    state = None
+    if len(instance_mappings) > 0:
+        order = (constants.ACCESS_STATE_ERROR,
+                 constants.ACCESS_STATE_DENYING,
+                 constants.ACCESS_STATE_QUEUED_TO_DENY,
+                 constants.ACCESS_STATE_QUEUED_TO_APPLY,
+                 constants.ACCESS_STATE_APPLYING,
+                 constants.ACCESS_STATE_ACTIVE)
+
+        sorted_instance_mappings = sorted(
+            instance_mappings, key=lambda x: order.index(x['state']))
+
+        state = sorted_instance_mappings[0].state
+    return state

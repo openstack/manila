@@ -125,6 +125,16 @@ class ManilaExceptionTestCase(test.TestCase):
         self.assertEqual(500, e.code)
         self.assertIn(reason, e.msg)
 
+    def test_snapshot_access_already_exists(self):
+        # Verify response code for exception.ShareSnapshotAccessExists
+        access_type = "fake_type"
+        access = "fake_access"
+        e = exception.ShareSnapshotAccessExists(access_type=access_type,
+                                                access=access)
+        self.assertEqual(400, e.code)
+        self.assertIn(access_type, e.msg)
+        self.assertIn(access, e.msg)
+
 
 class ManilaExceptionResponseCode400(test.TestCase):
 
@@ -238,6 +248,13 @@ class ManilaExceptionResponseCode400(test.TestCase):
         # Verify response code for exception.UnmanageInvalidShareSnapshot
         reason = "fake_reason"
         e = exception.UnmanageInvalidShareSnapshot(reason=reason)
+        self.assertEqual(400, e.code)
+        self.assertIn(reason, e.msg)
+
+    def test_invalid_share_snapshot_instance(self):
+        # Verify response code for exception.InvalidShareSnapshotInstance
+        reason = "fake_reason"
+        e = exception.InvalidShareSnapshotInstance(reason=reason)
         self.assertEqual(400, e.code)
         self.assertIn(reason, e.msg)
 

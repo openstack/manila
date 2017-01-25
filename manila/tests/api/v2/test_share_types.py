@@ -297,6 +297,7 @@ class ShareTypesAPITest(test.TestCase):
             constants.ExtraSpecs.SNAPSHOT_SUPPORT: True,
             constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT: False,
             constants.ExtraSpecs.REVERT_TO_SNAPSHOT_SUPPORT: True,
+            constants.ExtraSpecs.MOUNT_SNAPSHOT_SUPPORT: True,
         }
 
         now = timeutils.utcnow().isoformat()

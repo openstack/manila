@@ -57,7 +57,8 @@ def fake_snapshot(**kwargs):
         'share': {
             'id': 'fakeid',
             'name': 'fakename',
-            'size': 1
+            'size': 1,
+            'share_proto': 'NFS',
         },
     }
     snapshot.update(kwargs)
@@ -324,10 +325,14 @@ class LVMShareDriverTestCase(test.TestCase):
     def test_create_snapshot(self):
         self._driver.create_snapshot(self._context, self.snapshot,
                                      self.share_server)
+        mount_path = self._get_mount_path(self.snapshot)
         expected_exec = [
-            "lvcreate -L 1G --name %s --snapshot %s/fakename" % (
-                self.snapshot['name'], CONF.lvm_share_volume_group,),
+            ("lvcreate -L 1G --name fakesnapshotname --snapshot "
+             "%s/fakename" % (CONF.lvm_share_volume_group,)),
             "tune2fs -U random /dev/mapper/fakevg-%s" % self.snapshot['name'],
+            "mkdir -p " + mount_path,
+            "mount /dev/mapper/fakevg-fakesnapshotname " + mount_path,
+            "chmod 777 " + mount_path,
         ]
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
 
@@ -349,7 +354,10 @@ class LVMShareDriverTestCase(test.TestCase):
         self._driver._delete_share(self._context, self.share)
 
     def test_delete_snapshot(self):
-        expected_exec = ['lvremove -f fakevg/fakesnapshotname']
+        expected_exec = [
+            'umount -f ' + self._get_mount_path(self.snapshot),
+            'lvremove -f fakevg/fakesnapshotname',
+        ]
         self._driver.delete_snapshot(self._context, self.snapshot,
                                      self.share_server)
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
@@ -529,20 +537,54 @@ class LVMShareDriverTestCase(test.TestCase):
                                         self.share_server)
         snap_lv = "%s/fakesnapshotname" % (CONF.lvm_share_volume_group)
         share_lv = "%s/fakename" % (CONF.lvm_share_volume_group)
-        mount_path = self._get_mount_path(self.snapshot['share'])
+        share_mount_path = self._get_mount_path(self.snapshot['share'])
+        snapshot_mount_path = self._get_mount_path(self.snapshot)
         expected_exec = [
+            ('umount -f %s' % snapshot_mount_path),
             ("lvconvert --merge %s" % snap_lv),
-            ("umount %s" % mount_path),
-            ("rmdir %s" % mount_path),
+            ("umount %s" % share_mount_path),
+            ("rmdir %s" % share_mount_path),
             ("lvchange -an %s" % share_lv),
             ("lvchange -ay %s" % share_lv),
             ("lvcreate -L 1G --name fakesnapshotname --snapshot %s" %
                 share_lv),
             ('tune2fs -U random /dev/mapper/%s-fakesnapshotname' %
                 CONF.lvm_share_volume_group),
-            ("mkdir -p %s" % mount_path),
+            ("mkdir -p %s" % share_mount_path),
             ("mount /dev/mapper/%s-fakename %s" %
-                (CONF.lvm_share_volume_group, mount_path)),
-            ("chmod 777 %s" % mount_path),
+                (CONF.lvm_share_volume_group, share_mount_path)),
+            ("chmod 777 %s" % share_mount_path),
+            ("mkdir -p %s" % snapshot_mount_path),
+            ("mount /dev/mapper/fakevg-fakesnapshotname "
+             "%s" % snapshot_mount_path),
+            ("chmod 777 %s" % snapshot_mount_path),
         ]
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
+
+    def test_snapshot_update_access(self):
+        access_rules = [{
+            'access_type': 'ip',
+            'access_to': '1.1.1.1',
+            'access_level': 'ro',
+        }]
+
+        add_rules = [{
+            'access_type': 'ip',
+            'access_to': '2.2.2.2',
+            'access_level': 'ro',
+        }]
+
+        delete_rules = [{
+            'access_type': 'ip',
+            'access_to': '3.3.3.3',
+            'access_level': 'ro',
+        }]
+
+        self._driver.snapshot_update_access(self._context, self.snapshot,
+                                            access_rules, add_rules,
+                                            delete_rules)
+
+        (self._driver._helpers[self.snapshot['share']['share_proto']].
+            update_access.assert_called_once_with(
+            self.server, self.snapshot['name'],
+            access_rules, add_rules=add_rules, delete_rules=delete_rules))

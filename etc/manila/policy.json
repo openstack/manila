@@ -61,11 +61,18 @@
     "share_snapshot:unmanage_snapshot": "rule:admin_api",
     "share_snapshot:force_delete": "rule:admin_api",
     "share_snapshot:reset_status": "rule:admin_api",
+    "share_snapshot:access_list": "rule:default",
+    "share_snapshot:allow_access": "rule:default",
+    "share_snapshot:deny_access": "rule:default",
+    "share_snapshot_export_location:index": "rule:default",
+    "share_snapshot_export_location:show": "rule:default",
 
     "share_snapshot_instance:detail": "rule:admin_api",
     "share_snapshot_instance:index": "rule:admin_api",
     "share_snapshot_instance:show": "rule:admin_api",
     "share_snapshot_instance:reset_status": "rule:admin_api",
+    "share_snapshot_instance_export_location:index": "rule:admin_api",
+    "share_snapshot_instance_export_location:show": "rule:admin_api",
 
     "share_type:index": "rule:default",
     "share_type:show": "rule:default",

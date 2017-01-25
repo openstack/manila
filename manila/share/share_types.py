@@ -270,6 +270,8 @@ def is_valid_optional_extra_spec(key, value):
         return parse_boolean_extra_spec(key, value) is not None
     elif key == constants.ExtraSpecs.REPLICATION_TYPE_SPEC:
         return value in constants.ExtraSpecs.REPLICATION_TYPES
+    elif key == constants.ExtraSpecs.MOUNT_SNAPSHOT_SUPPORT:
+        return parse_boolean_extra_spec(key, value) is not None
 
     return False
 

@@ -139,7 +139,7 @@ class ShareDriverTestCase(test.TestCase):
             'free_capacity_gb', 'total_capacity_gb',
             'driver_handles_share_servers',
             'reserved_percentage', 'vendor_name', 'storage_protocol',
-            'snapshot_support',
+            'snapshot_support', 'mount_snapshot_support',
         ]
         share_driver = driver.ShareDriver(True, configuration=conf)
         fake_stats = {'fake_key': 'fake_value'}
@@ -1009,3 +1009,10 @@ class ShareDriverTestCase(test.TestCase):
         ])
         self.assertIsNone(share_group_snapshot_update)
         self.assertIsNone(member_update_list)
+
+    def test_snapshot_update_access(self):
+        share_driver = self._instantiate_share_driver(None, False)
+        self.assertRaises(NotImplementedError,
+                          share_driver.snapshot_update_access,
+                          'fake_context', 'fake_snapshot', ['r1', 'r2'],
+                          [], [])

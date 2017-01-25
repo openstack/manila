@@ -167,6 +167,17 @@ def create_snapshot_instance(snapshot_id, **kwargs):
         context.get_admin_context(), snapshot_id, snapshot_instance)
 
 
+def create_snapshot_instance_export_locations(snapshot_id, **kwargs):
+    """Create a snapshot instance export location object."""
+    export_location = {
+        'share_snapshot_instance_id': snapshot_id,
+    }
+
+    export_location.update(kwargs)
+    return db.share_snapshot_instance_export_location_create(
+        context.get_admin_context(), export_location)
+
+
 def create_access(**kwargs):
     """Create a access rule object."""
     state = kwargs.pop('state', constants.ACCESS_STATE_QUEUED_TO_APPLY)
@@ -184,6 +195,16 @@ def create_access(**kwargs):
             mapping.share_instance_id, {'state': state})
 
     return share_access_rule
+
+
+def create_snapshot_access(**kwargs):
+    """Create a snapshot access rule object."""
+    access = {
+        'access_type': 'fake_type',
+        'access_to': 'fake_IP',
+        'share_snapshot_id': None,
+    }
+    return _create_db_row(db.share_snapshot_access_create, access, kwargs)
 
 
 def create_share_server(**kwargs):

@@ -55,6 +55,8 @@ class ShareRpcAPITestCase(test.TestCase):
         self.fake_share['instance'] = jsonutils.to_primitive(share.instance)
         self.fake_share_replica = jsonutils.to_primitive(share_replica)
         self.fake_snapshot = jsonutils.to_primitive(snapshot)
+        self.fake_snapshot['share_instance'] = jsonutils.to_primitive(
+            snapshot.instance)
         self.fake_share_server = jsonutils.to_primitive(share_server)
         self.fake_share_group = jsonutils.to_primitive(share_group)
         self.fake_share_group_snapshot = jsonutils.to_primitive(
@@ -111,6 +113,9 @@ class ShareRpcAPITestCase(test.TestCase):
         if 'update_access' in expected_msg:
             share_instance = expected_msg.pop('share_instance', None)
             expected_msg['share_instance_id'] = share_instance['id']
+        if 'snapshot_instance' in expected_msg:
+            snapshot_instance = expected_msg.pop('snapshot_instance', None)
+            expected_msg['snapshot_instance_id'] = snapshot_instance['id']
 
         if 'host' in kwargs:
             host = kwargs['host']
@@ -357,3 +362,10 @@ class ShareRpcAPITestCase(test.TestCase):
                              version='1.12',
                              share_instance=self.fake_share['instance'],
                              share_server_id='fake_server_id')
+
+    def test_snapshot_update_access(self):
+        self._test_share_api('snapshot_update_access',
+                             rpc_method='cast',
+                             version='1.17',
+                             snapshot_instance=self.fake_snapshot[
+                                 'share_instance'])
