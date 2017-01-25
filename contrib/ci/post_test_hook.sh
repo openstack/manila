@@ -70,7 +70,7 @@ RUN_MANILA_QUOTA_TESTS=${RUN_MANILA_QUOTA_TESTS:-True}
 RUN_MANILA_SHRINK_TESTS=${RUN_MANILA_SHRINK_TESTS:-True}
 RUN_MANILA_SNAPSHOT_TESTS=${RUN_MANILA_SNAPSHOT_TESTS:-True}
 RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS=${RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS:-False}
-RUN_MANILA_CG_TESTS=${RUN_MANILA_CG_TESTS:-False}
+RUN_MANILA_SG_TESTS=${RUN_MANILA_SG_TESTS:-${RUN_MANILA_CG_TESTS:-True}}
 RUN_MANILA_MANAGE_TESTS=${RUN_MANILA_MANAGE_TESTS:-True}
 RUN_MANILA_MANAGE_SNAPSHOT_TESTS=${RUN_MANILA_MANAGE_SNAPSHOT_TESTS:-False}
 RUN_MANILA_REPLICATION_TESTS=${RUN_MANILA_REPLICATION_TESTS:-False}
@@ -158,12 +158,13 @@ elif [[ "$DRIVER" == "generic" ]]; then
         iniset $TEMPEST_CONFIG share enable_protocols nfs
     fi
     MANILA_TESTS="(^manila_tempest_tests.tests.api)(?=.*\[.*\bbackend\b.*\])"
+    RUN_MANILA_SG_TESTS=False
 fi
 
 if [[ "$DRIVER" == "lvm" ]]; then
     MANILA_TESTS="(^manila_tempest_tests.tests)(?=.*\[.*\bbackend\b.*\])"
     MANILA_TEMPEST_CONCURRENCY=8
-    RUN_MANILA_CG_TESTS=False
+    RUN_MANILA_SG_TESTS=False
     RUN_MANILA_MANAGE_TESTS=False
     RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=True
     RUN_MANILA_SHRINK_TESTS=False
@@ -187,7 +188,7 @@ if [[ "$DRIVER" == "lvm" ]]; then
 elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     MANILA_TESTS="(^manila_tempest_tests.tests)(?=.*\[.*\bbackend\b.*\])"
     MANILA_TEMPEST_CONCURRENCY=8
-    RUN_MANILA_CG_TESTS=False
+    RUN_MANILA_SG_TESTS=False
     RUN_MANILA_MANAGE_TESTS=True
     RUN_MANILA_MANAGE_SNAPSHOT_TESTS=True
     RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS=True
@@ -209,7 +210,7 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     iniset $TEMPEST_CONFIG share capability_snapshot_support True
 elif [[ "$DRIVER" == "dummy" ]]; then
     MANILA_TEMPEST_CONCURRENCY=24
-    RUN_MANILA_CG_TESTS=False
+    RUN_MANILA_SG_TESTS=True
     RUN_MANILA_MANAGE_TESTS=False
     RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS=True
     RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS=True
@@ -229,7 +230,7 @@ elif [[ "$DRIVER" == "dummy" ]]; then
 elif [[ "$DRIVER" == "container" ]]; then
     MANILA_TESTS="(^manila_tempest_tests.tests.api)(?=.*\[.*\bbackend\b.*\])"
     MANILA_TEMPEST_CONCURRENCY=8
-    RUN_MANILA_CG_TESTS=False
+    RUN_MANILA_SG_TESTS=False
     RUN_MANILA_MANAGE_TESTS=False
     RUN_MANILA_QUOTA_TESTS=False
     RUN_MANILA_SHRINK_TESTS=False
@@ -253,8 +254,8 @@ iniset $TEMPEST_CONFIG share run_snapshot_tests $RUN_MANILA_SNAPSHOT_TESTS
 # Enable revert to snapshot tests
 iniset $TEMPEST_CONFIG share run_revert_to_snapshot_tests $RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS
 
-# Enable consistency group tests
-iniset $TEMPEST_CONFIG share run_consistency_group_tests $RUN_MANILA_CG_TESTS
+# Enable share group tests
+iniset $TEMPEST_CONFIG share run_share_group_tests $RUN_MANILA_SG_TESTS
 
 # Enable manage/unmanage tests
 iniset $TEMPEST_CONFIG share run_manage_unmanage_tests $RUN_MANILA_MANAGE_TESTS

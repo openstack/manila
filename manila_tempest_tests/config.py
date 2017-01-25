@@ -170,11 +170,10 @@ ShareGroup = [
                 help="Defines whether to run tests that revert shares "
                      "to snapshots or not. Enable this feature if used "
                      "driver supports it."),
-    cfg.BoolOpt("run_consistency_group_tests",
-                default=False,
-                help="Defines whether to run consistency group tests or not. "
-                     "Disable this feature if used driver doesn't support "
-                     "it."),
+    cfg.BoolOpt("run_share_group_tests",
+                default=True,
+                deprecated_name="run_consistency_group_tests",
+                help="Defines whether to run share group tests or not."),
     cfg.BoolOpt("run_replication_tests",
                 default=False,
                 help="Defines whether to run replication tests or not. "

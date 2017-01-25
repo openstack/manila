@@ -24,9 +24,9 @@ class ShareInstanceBuildErrorException(exceptions.TempestException):
     message = "Share instance %(id)s failed to build and is in ERROR status"
 
 
-class ConsistencyGroupBuildErrorException(exceptions.TempestException):
-    message = ("Consistency group %(consistency_group_id)s failed to build "
-               "and is in ERROR status")
+class ShareGroupBuildErrorException(exceptions.TempestException):
+    message = ("Share group %(share_group_id)s failed to build and "
+               "is in ERROR status")
 
 
 class AccessRuleBuildErrorException(exceptions.TempestException):
@@ -42,9 +42,9 @@ class SnapshotInstanceBuildErrorException(exceptions.TempestException):
                "ERROR status.")
 
 
-class CGSnapshotBuildErrorException(exceptions.TempestException):
-    message = ("CGSnapshot %(cgsnapshot_id)s failed to build and is in ERROR "
-               "status")
+class ShareGroupSnapshotBuildErrorException(exceptions.TempestException):
+    message = ("Share Group Snapshot %(share_group_snapshot_id)s failed "
+               "to build and is in ERROR status")
 
 
 class ShareProtocolNotSpecified(exceptions.TempestException):
