@@ -351,14 +351,11 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         self.share = self.migrate_share(
             self.share['id'], dest_pool, task_state, force_host_assisted)
 
-        read_only = False
         if force_host_assisted:
-            try:
-                ssh_client.exec_command(
-                    "dd if=/dev/zero of=/mnt/f1/1m6.bin bs=1M count=1")
-            except Exception:
-                read_only = True
-            self.assertTrue(read_only)
+            self.assertRaises(
+                exceptions.SSHExecCommandFailed,
+                ssh_client.exec_command,
+                "dd if=/dev/zero of=/mnt/f1/1m6.bin bs=1M count=1")
 
         self.umount_share(ssh_client)
 
