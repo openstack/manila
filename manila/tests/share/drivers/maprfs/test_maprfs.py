@@ -24,6 +24,7 @@ import six
 from manila import context
 from manila import exception
 import manila.share.configuration as config
+from manila.share.drivers.maprfs import driver_util as mapru
 import manila.share.drivers.maprfs.maprfs_native as maprfs
 from manila import test
 from manila.tests import fake_share
@@ -592,25 +593,36 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
                           self._context, self.snapshot)
 
     def test__execute(self):
-        hosts = ['192.168.1.0', '10.10.10.10', '11.11.11.11']
-        self._driver._maprfs_util.hosts += hosts
-        available_host = hosts[2]
+        first_host_skip = 'first'
+        available_host = 'available'
+        hosts = [first_host_skip, self.local_ip, available_host, 'extra']
+        test_config = mock.Mock()
+        test_config.maprfs_clinode_ip = hosts
+        test_config.maprfs_ssh_name = 'fake_maprfs_ssh_name'
+        test_maprfs_util = mapru.get_version_handler(test_config)
         # mutable container
         done = [False]
+        skips = []
 
         def fake_ssh_run(host, cmd, check_exit_code):
             if host == available_host:
                 done[0] = True
                 return '', 0
             else:
+                skips.append(host)
                 raise Exception()
 
-        self._driver._maprfs_util._run_ssh = fake_ssh_run
+        test_maprfs_util._run_ssh = fake_ssh_run
 
-        self._driver._maprfs_util._execute('fake', 'cmd')
+        test_maprfs_util._execute('fake', 'cmd')
 
         self.assertTrue(done[0])
-        self.assertEqual(available_host, self._driver._maprfs_util.hosts[0])
+        self.assertEqual(available_host, test_maprfs_util.hosts[0])
+        self.assertEqual(first_host_skip, test_maprfs_util.hosts[2])
+        self.assertEqual([first_host_skip], skips)
+        utils.execute.assert_called_once_with(
+            'sudo', 'su', '-', 'fake_maprfs_ssh_name', '-c', 'fake cmd',
+            check_exit_code=True)
 
     def test__execute_exeption(self):
         utils.execute = mock.Mock(side_effect=Exception)
