@@ -166,6 +166,27 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
             self.addCleanup(client.delete_access_rule, share_id, access['id'])
         return access
 
+    def _allow_access_snapshot(self, snapshot_id, access_type="ip",
+                               access_to="0.0.0.0/0", cleanup=True):
+        """Allow snapshot access
+
+        :param snapshot_id: id of the snapshot
+        :param access_type: "ip", "user" or "cert"
+        :param access_to
+        :returns: access object
+        """
+        access = self.shares_v2_client.create_snapshot_access_rule(
+            snapshot_id, access_type, access_to)
+
+        if cleanup:
+            self.addCleanup(self.shares_v2_client.delete_snapshot_access_rule,
+                            snapshot_id, access['id'])
+
+        self.shares_v2_client.wait_for_snapshot_access_rule_status(
+            snapshot_id, access['id'])
+
+        return access
+
     def _create_router_interface(self, subnet_id, client=None, router_id=None):
         """Create a router interface
 
