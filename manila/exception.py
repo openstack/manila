@@ -450,6 +450,10 @@ class ShareSnapshotAccessExists(InvalidInput):
     message = _("Share snapshot access %(access_type)s:%(access)s exists.")
 
 
+class InvalidSnapshotAccess(Invalid):
+    message = _("Invalid access rule: %(reason)s")
+
+
 class InvalidShareAccess(Invalid):
     message = _("Invalid access rule: %(reason)s")
 

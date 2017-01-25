@@ -25,6 +25,7 @@ from manila.common import constants
 from manila import exception
 from manila.i18n import _, _LE, _LI, _LW
 from manila.share import driver
+from manila.share import utils
 
 LOG = log.getLogger(__name__)
 
@@ -215,7 +216,7 @@ class HitachiHNASDriver(driver.ShareDriver):
                 host_list.append(rule['access_to'] + '(' +
                                  rule['access_level'] + ')')
 
-        self.hnas.update_nfs_access_rule(hnas_share_id, host_list)
+        self.hnas.update_nfs_access_rule(host_list, share_id=hnas_share_id)
 
         if host_list:
             LOG.debug("Share %(share)s has the rules: %(rules)s",
@@ -223,14 +224,25 @@ class HitachiHNASDriver(driver.ShareDriver):
         else:
             LOG.debug("Share %(share)s has no rules.", {'share': share['id']})
 
-    def _cifs_allow_access(self, share, hnas_share_id, add_rules):
+    def _cifs_allow_access(self, share_or_snapshot, hnas_id, add_rules,
+                           is_snapshot=False):
+
+        entity_type = "share"
+        if is_snapshot:
+            entity_type = "snapshot"
+
         for rule in add_rules:
             if rule['access_type'].lower() != 'user':
                 msg = _("Only USER access type currently supported for CIFS. "
-                        "Share provided %(share)s with rule %(r_id)s type "
-                        "%(type)s allowing permission to %(to)s.") % {
-                    'share': share['id'], 'type': rule['access_type'],
-                    'r_id': rule['id'], 'to': rule['access_to']}
+                        "%(entity_type)s provided %(share)s with "
+                        "rule %(r_id)s type %(type)s allowing permission "
+                        "to %(to)s.") % {
+                    'entity_type': entity_type.capitalize(),
+                    'share': share_or_snapshot['id'],
+                    'type': rule['access_type'],
+                    'r_id': rule['id'],
+                    'to': rule['access_to'],
+                }
                 raise exception.InvalidShareAccess(reason=msg)
 
             if rule['access_level'] == constants.ACCESS_LEVEL_RW:
@@ -242,38 +254,54 @@ class HitachiHNASDriver(driver.ShareDriver):
 
             formatted_user = rule['access_to'].replace('\\', '\\\\')
 
-            self.hnas.cifs_allow_access(hnas_share_id, formatted_user,
-                                        permission)
+            self.hnas.cifs_allow_access(hnas_id, formatted_user,
+                                        permission, is_snapshot=is_snapshot)
 
-            LOG.debug("Added %(rule)s rule for user/group %(user)s to share "
-                      "%(share)s.", {'rule': rule['access_level'],
-                                     'user': rule['access_to'],
-                                     'share': share['id']})
+            LOG.debug("Added %(rule)s rule for user/group %(user)s "
+                      "to %(entity_type)s %(share)s.",
+                      {'rule': rule['access_level'],
+                       'user': rule['access_to'],
+                       'entity_type': entity_type,
+                       'share': share_or_snapshot['id']})
 
-    def _cifs_deny_access(self, share, hnas_share_id, delete_rules):
+    def _cifs_deny_access(self, share_or_snapshot, hnas_id, delete_rules,
+                          is_snapshot=False):
+        if is_snapshot:
+            entity_type = "snapshot"
+            share_proto = share_or_snapshot['share']['share_proto']
+        else:
+            entity_type = "share"
+            share_proto = share_or_snapshot['share_proto']
+
         for rule in delete_rules:
             if rule['access_type'].lower() != 'user':
                 LOG.warning(_LW('Only USER access type is allowed for '
-                                'CIFS shares. Share provided %(share)s with '
+                                'CIFS. %(entity_type)s '
+                                'provided %(share)s with '
                                 'protocol %(proto)s.'),
-                            {'share': share['id'],
-                             'proto': share['share_proto']})
+                            {'entity_type': entity_type.capitalize(),
+                             'share': share_or_snapshot['id'],
+                             'proto': share_proto})
                 continue
 
             formatted_user = rule['access_to'].replace('\\', '\\\\')
 
-            self.hnas.cifs_deny_access(hnas_share_id, formatted_user)
+            self.hnas.cifs_deny_access(hnas_id, formatted_user,
+                                       is_snapshot=is_snapshot)
 
-            LOG.debug("Access denied for user/group %(user)s to share "
-                      "%(share)s.", {'user': rule['access_to'],
-                                     'share': share['id']})
+            LOG.debug("Access denied for user/group %(user)s "
+                      "to %(entity_type)s %(share)s.",
+                      {'user': rule['access_to'],
+                       'entity_type': entity_type,
+                       'share': share_or_snapshot['id']})
 
-    def _clean_cifs_access_list(self, hnas_share_id):
-        permission_list = self.hnas.list_cifs_permissions(hnas_share_id)
+    def _clean_cifs_access_list(self, hnas_id, is_snapshot=False):
+        permission_list = self.hnas.list_cifs_permissions(hnas_id)
 
         for permission in permission_list:
             formatted_user = r'"\{1}{0}\{1}"'.format(permission[0], '"')
-            self.hnas.cifs_deny_access(hnas_share_id, formatted_user)
+            self.hnas.cifs_deny_access(hnas_id, formatted_user,
+                                       is_snapshot=is_snapshot)
 
     def create_share(self, context, share, share_server=None):
         """Creates share.
@@ -363,12 +391,15 @@ class HitachiHNASDriver(driver.ShareDriver):
                   {'snap_share_id': snapshot['share_id'],
                    'snap_id': snapshot['id']})
 
-        self._create_snapshot(hnas_share_id, snapshot)
+        export_locations = self._create_snapshot(hnas_share_id, snapshot)
         LOG.info(_LI("Snapshot %(id)s successfully created."),
                  {'id': snapshot['id']})
 
-        return {'provider_location': os.path.join('/snapshots', hnas_share_id,
-                                                  snapshot['id'])}
+        return {
+            'provider_location': os.path.join('/snapshots', hnas_share_id,
+                                              snapshot['id']),
+            'export_locations': export_locations,
+        }
 
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes snapshot.
@@ -386,7 +417,8 @@ class HitachiHNASDriver(driver.ShareDriver):
                   {'snap_id': snapshot['id'],
                    'snap_share_id': snapshot['share_id']})
 
-        self._delete_snapshot(hnas_share_id, hnas_snapshot_id)
+        self._delete_snapshot(snapshot['share']['share_proto'],
+                              hnas_share_id, hnas_snapshot_id)
 
         LOG.info(_LI("Snapshot %(id)s successfully deleted."),
                  {'id': snapshot['id']})
@@ -553,6 +585,7 @@ class HitachiHNASDriver(driver.ShareDriver):
             'thin_provisioning': True,
             'dedupe': dedupe,
             'revert_to_snapshot_support': True,
+            'mount_snapshot_support': True,
         }
 
         LOG.info(_LI("HNAS Capabilities: %(data)s."),
@@ -783,26 +816,29 @@ class HitachiHNASDriver(driver.ShareDriver):
         LOG.debug("Share created with id %(shr)s, size %(size)sG.",
                   {'shr': share_id, 'size': share_size})
 
+        self._create_export(share_id, share_proto)
+
+        export_list = self._get_export_locations(share_proto, share_id)
+        return export_list
+
+    def _create_export(self, share_id, share_proto, snapshot_id=None):
         try:
             if share_proto.lower() == 'nfs':
                 # Create NFS export
-                self.hnas.nfs_export_add(share_id)
+                self.hnas.nfs_export_add(share_id, snapshot_id=snapshot_id)
                 LOG.debug("NFS Export created to %(shr)s.",
                           {'shr': share_id})
             else:
                 # Create CIFS share with vvol path
-                self.hnas.cifs_share_add(share_id)
+                self.hnas.cifs_share_add(share_id, snapshot_id=snapshot_id)
                 LOG.debug("CIFS share created to %(shr)s.",
                           {'shr': share_id})
-
         except exception.HNASBackendException as e:
             with excutils.save_and_reraise_exception():
-                self.hnas.vvol_delete(share_id)
+                if snapshot_id is None:
+                    self.hnas.vvol_delete(share_id)
                 msg = six.text_type(e)
                 LOG.exception(msg)
-
-        export_list = self._get_export_locations(share_proto, share_id)
-        return export_list
 
     def _check_fs_mounted(self):
         mounted = self.hnas.check_fs_mounted()
@@ -926,15 +962,15 @@ class HitachiHNASDriver(driver.ShareDriver):
         self._ensure_share(snapshot['share'], hnas_share_id)
         saved_list = []
 
-        self._check_protocol(snapshot['share_id'],
-                             snapshot['share']['share_proto'])
+        share_proto = snapshot['share']['share_proto']
+        self._check_protocol(snapshot['share_id'], share_proto)
 
-        if snapshot['share']['share_proto'].lower() == 'nfs':
+        if share_proto.lower() == 'nfs':
             saved_list = self.hnas.get_nfs_host_list(hnas_share_id)
             new_list = []
             for access in saved_list:
                 new_list.append(access.replace('(rw)', '(ro)'))
-            self.hnas.update_nfs_access_rule(hnas_share_id, new_list)
+            self.hnas.update_nfs_access_rule(new_list, share_id=hnas_share_id)
         else:  # CIFS
             if (self.hnas.is_cifs_in_use(hnas_share_id) and
                     not self.cifs_snapshot):
@@ -952,10 +988,18 @@ class HitachiHNASDriver(driver.ShareDriver):
                             "directory."))
             self.hnas.create_directory(dest_path)
         finally:
-            if snapshot['share']['share_proto'].lower() == 'nfs':
-                self.hnas.update_nfs_access_rule(hnas_share_id, saved_list)
+            if share_proto.lower() == 'nfs':
+                self.hnas.update_nfs_access_rule(saved_list,
+                                                 share_id=hnas_share_id)
 
-    def _delete_snapshot(self, hnas_share_id, snapshot_id):
+        self._create_export(hnas_share_id, share_proto,
+                            snapshot_id=snapshot['id'])
+        export_locations = self._get_export_locations(share_proto,
+                                                      snapshot['id'],
+                                                      is_snapshot=True)
+        return export_locations
+
+    def _delete_snapshot(self, share_proto, hnas_share_id, snapshot_id):
         """Deletes snapshot.
 
         It receives the hnas_share_id only to join the path for snapshot.
@@ -963,6 +1007,11 @@ class HitachiHNASDriver(driver.ShareDriver):
         :param snapshot_id: ID of snapshot.
         """
         self._check_fs_mounted()
+
+        if share_proto.lower() == 'nfs':
+            self.hnas.nfs_export_del(snapshot_id=snapshot_id)
+        elif share_proto.lower() == 'cifs':
+            self.hnas.cifs_share_del(snapshot_id)
 
         path = os.path.join('/snapshots', hnas_share_id, snapshot_id)
         self.hnas.tree_delete(path)
@@ -1029,11 +1078,12 @@ class HitachiHNASDriver(driver.ShareDriver):
                                      'proto': protocol}
             raise exception.ShareBackendException(msg=msg)
 
-    def _get_export_locations(self, share_proto, hnas_share_id):
+    def _get_export_locations(self, share_proto, hnas_id, is_snapshot=False):
         export_list = []
         for ip in (self.hnas_evs_ip, self.hnas_admin_network_ip):
             if ip:
-                path = self._get_export_path(ip, share_proto, hnas_share_id)
+                path = self._get_export_path(ip, share_proto, hnas_id,
+                                             is_snapshot)
                 export_list.append({
                     "path": path,
                     "is_admin_only": ip == self.hnas_admin_network_ip,
@@ -1041,12 +1091,30 @@ class HitachiHNASDriver(driver.ShareDriver):
                 })
         return export_list
 
-    def _get_export_path(self, ip, share_proto, hnas_share_id):
+    def _get_export_path(self, ip, share_proto, hnas_id, is_snapshot):
+        """Gets and returns export path.
+
+        :param ip: IP from HNAS EVS configured.
+        :param share_proto: Share or snapshot protocol (NFS or CIFS).
+        :param hnas_id: Entity ID in HNAS, it can be the ID from a share or
+            a snapshot.
+        :param is_snapshot: Boolean to determine if export is related to a
+            share or a snapshot.
+        :return: Complete export path, for example:
+            - In NFS:
+                SHARE: 172.24.44.10:/shares/id
+                SNAPSHOT: 172.24.44.10:/snapshots/id
+            - In CIFS:
+                SHARE and SNAPSHOT: \\172.24.44.10\id
+        """
         if share_proto.lower() == 'nfs':
-            path = os.path.join('/shares', hnas_share_id)
+            if is_snapshot:
+                path = os.path.join('/snapshots', hnas_id)
+            else:
+                path = os.path.join('/shares', hnas_id)
             export = ':'.join((ip, path))
         else:
-            export = r'\\%s\%s' % (ip, hnas_share_id)
+            export = r'\\%s\%s' % (ip, hnas_id)
         return export
 
     def manage_existing_snapshot(self, snapshot, driver_options):
@@ -1111,7 +1179,11 @@ class HitachiHNASDriver(driver.ShareDriver):
                  {'snap_path': snapshot['provider_location'],
                   'shr_id': snapshot['share_id'], 'snap_id': snapshot['id']})
 
-        return {'size': snapshot_size}
+        export_locations = self._get_export_locations(
+            snapshot['share']['share_proto'], hnas_snapshot_id,
+            is_snapshot=True)
+
+        return {'size': snapshot_size, 'export_locations': export_locations}
 
     def unmanage_snapshot(self, snapshot):
         """Unmanage a share snapshot
@@ -1123,3 +1195,72 @@ class HitachiHNASDriver(driver.ShareDriver):
                      "However, it is not deleted and can be found in HNAS."),
                  {'snap_id': snapshot['id'],
                   'share_id': snapshot['share_id']})
+
+    def snapshot_update_access(self, context, snapshot, access_rules,
+                               add_rules, delete_rules, share_server=None):
+        """Update access rules for given snapshot.
+
+        Drivers should support 2 different cases in this method:
+        1. Recovery after error - 'access_rules' contains all access rules,
+        'add_rules' and 'delete_rules' shall be empty. Driver should clear any
+        existent access rules and apply all access rules for given snapshot.
+        This recovery is made at driver start up.
+
+        2. Adding/Deleting of several access rules - 'access_rules' contains
+        all access rules, 'add_rules' and 'delete_rules' contain rules which
+        should be added/deleted. Driver can ignore rules in 'access_rules' and
+        apply only rules from 'add_rules' and 'delete_rules'. All snapshots
+        rules should be read only.
+
+        :param context: Current context
+        :param snapshot: Snapshot model with snapshot data.
+        :param access_rules: All access rules for given snapshot
+        :param add_rules: Empty List or List of access rules which should be
+               added. access_rules already contains these rules.
+        :param delete_rules: Empty List or List of access rules which should be
+               removed. access_rules doesn't contain these rules.
+        :param share_server: None or Share server model
+        """
+        hnas_snapshot_id = self._get_hnas_snapshot_id(snapshot)
+
+        self._check_protocol(snapshot['share']['id'],
+                             snapshot['share']['share_proto'])
+
+        access_rules, add_rules, delete_rules = utils.change_rules_to_readonly(
+            access_rules, add_rules, delete_rules)
+
+        if snapshot['share']['share_proto'].lower() == 'nfs':
+            host_list = []
+
+            for rule in access_rules:
+                if rule['access_type'].lower() != 'ip':
+                    msg = _("Only IP access type currently supported for NFS. "
+                            "Snapshot provided %(snapshot)s with rule type "
+                            "%(type)s.") % {'snapshot': snapshot['id'],
+                                            'type': rule['access_type']}
+                    raise exception.InvalidSnapshotAccess(reason=msg)
+
+                host_list.append(rule['access_to'] + '(ro)')
+
+            self.hnas.update_nfs_access_rule(host_list,
+                                             snapshot_id=hnas_snapshot_id)
+
+            if host_list:
+                LOG.debug("Snapshot %(snapshot)s has the rules: %(rules)s",
+                          {'snapshot': snapshot['id'],
+                           'rules': ', '.join(host_list)})
+            else:
+                LOG.debug("Snapshot %(snapshot)s has no rules.",
+                          {'snapshot': snapshot['id']})
+        else:
+            if not (add_rules or delete_rules):
+                # cifs recovery mode
+                self._clean_cifs_access_list(hnas_snapshot_id,
+                                             is_snapshot=True)
+                self._cifs_allow_access(snapshot, hnas_snapshot_id,
+                                        access_rules, is_snapshot=True)
+            else:
+                self._cifs_deny_access(snapshot, hnas_snapshot_id,
+                                       delete_rules, is_snapshot=True)
+                self._cifs_allow_access(snapshot, hnas_snapshot_id,
+                                        add_rules, is_snapshot=True)

@@ -539,13 +539,24 @@ class HNASSSHTestCase(test.TestCase):
         self.assertEqual(5120.0, free)
         self.assertTrue(dedupe)
 
-    def test_nfs_export_add(self):
+    @ddt.data(True, False)
+    def test_nfs_export_add(self, is_snapshot):
+        if is_snapshot:
+            name = '/snapshots/fake_snap'
+            path = '/snapshots/fake_share/fake_snap'
+        else:
+            name = path = '/shares/fake_share'
+
         fake_nfs_command = ['nfs-export', 'add', '-S', 'disable', '-c',
-                            '127.0.0.1', '/shares/vvol_test', self.fs_name,
-                            '/shares/vvol_test']
+                            '127.0.0.1', name, self.fs_name,
+                            path]
         self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
 
-        self._driver_ssh.nfs_export_add('vvol_test')
+        if is_snapshot:
+            self._driver_ssh.nfs_export_add('fake_share',
+                                            snapshot_id='fake_snap')
+        else:
+            self._driver_ssh.nfs_export_add('fake_share')
 
         self._driver_ssh._execute.assert_called_with(fake_nfs_command)
 
@@ -557,11 +568,19 @@ class HNASSSHTestCase(test.TestCase):
                           self._driver_ssh.nfs_export_add, 'vvol_test')
         self.assertTrue(self.mock_log.exception.called)
 
-    def test_nfs_export_del(self):
-        fake_nfs_command = ['nfs-export', 'del', '/shares/vvol_test']
+    @ddt.data(True, False)
+    def test_nfs_export_del(self, is_snapshot):
+        if is_snapshot:
+            name = '/snapshots/vvol_test'
+            args = {'snapshot_id': 'vvol_test'}
+        else:
+            name = '/shares/vvol_test'
+            args = {'share_id': 'vvol_test'}
+
+        fake_nfs_command = ['nfs-export', 'del', name]
         self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
 
-        self._driver_ssh.nfs_export_del('vvol_test')
+        self._driver_ssh.nfs_export_del(**args)
 
         self._driver_ssh._execute.assert_called_with(fake_nfs_command)
 
@@ -574,7 +593,11 @@ class HNASSSHTestCase(test.TestCase):
 
         self.assertTrue(self.mock_log.warning.called)
 
-    def test_nfs_export_del_error(self):
+    def test_nfs_export_del_exception(self):
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver_ssh.nfs_export_del)
+
+    def test_nfs_export_del_execute_error(self):
         self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
             side_effect=[putils.ProcessExecutionError(stderr='')]))
 
@@ -582,14 +605,26 @@ class HNASSSHTestCase(test.TestCase):
                           self._driver_ssh.nfs_export_del, 'vvol_test')
         self.assertTrue(self.mock_log.exception.called)
 
-    def test_cifs_share_add(self):
+    @ddt.data(True, False)
+    def test_cifs_share_add(self, is_snapshot):
+        if is_snapshot:
+            name = 'fake_snap'
+            path = r'\\snapshots\\fake_share\\fake_snap'
+        else:
+            name = 'fake_share'
+            path = r'\\shares\\fake_share'
+
         fake_cifs_add_command = ['cifs-share', 'add', '-S', 'disable',
                                  '--enable-abe', '--nodefaultsaa',
-                                 'vvol_test', self.fs_name,
-                                 r'\\shares\\vvol_test']
+                                 name, self.fs_name,
+                                 path]
         self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
 
-        self._driver_ssh.cifs_share_add('vvol_test')
+        if is_snapshot:
+            self._driver_ssh.cifs_share_add('fake_share',
+                                            snapshot_id='fake_snap')
+        else:
+            self._driver_ssh.cifs_share_add('fake_share')
 
         self._driver_ssh._execute.assert_called_with(fake_cifs_add_command)
 
@@ -642,10 +677,10 @@ class HNASSSHTestCase(test.TestCase):
 
     def test_update_nfs_access_rule_empty_host_list(self):
         fake_export_command = ['nfs-export', 'mod', '-c', '127.0.0.1',
-                               '/shares/fake_id']
+                               '/snapshots/fake_id']
         self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock())
 
-        self._driver_ssh.update_nfs_access_rule("fake_id", [])
+        self._driver_ssh.update_nfs_access_rule([], snapshot_id="fake_id")
 
         self._driver_ssh._execute.assert_called_with(fake_export_command)
 
@@ -654,10 +689,15 @@ class HNASSSHTestCase(test.TestCase):
                                u'"127.0.0.1,127.0.0.2"', '/shares/fake_id']
         self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock())
 
-        self._driver_ssh.update_nfs_access_rule("fake_id", ['127.0.0.1',
-                                                            '127.0.0.2'])
+        self._driver_ssh.update_nfs_access_rule(['127.0.0.1', '127.0.0.2'],
+                                                share_id="fake_id")
 
         self._driver_ssh._execute.assert_called_with(fake_export_command)
+
+    def test_update_nfs_access_rule_exception(self):
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver_ssh.update_nfs_access_rule,
+                          ['127.0.0.1'])
 
     def test_cifs_allow_access(self):
         fake_cifs_allow_command = ['cifs-saa', 'add', '--target-label',
@@ -1163,15 +1203,20 @@ class HNASSSHTestCase(test.TestCase):
         self.assertEqual(1024, self._driver_ssh.get_share_usage("vvol_test"))
 
     def test__get_share_export(self):
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(return_value=[HNAS_RESULT_export_ip, '']))
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            return_value=[HNAS_RESULT_export_ip, '']))
 
-        export_list = self._driver_ssh._get_share_export('fake_id')
+        export_list = self._driver_ssh._get_share_export(share_id='share_id')
+        path = '/shares/share_id'
 
+        command = ['nfs-export', 'list ', path]
+
+        self._driver_ssh._execute.assert_called_with(command)
         self.assertEqual('vvol_test', export_list[0].export_name)
         self.assertEqual('/vvol_test', export_list[0].export_path)
         self.assertEqual('fake_fs', export_list[0].file_system_label)
         self.assertEqual('Yes', export_list[0].mounted)
+        self.assertIn('rw', export_list[0].export_configuration[0])
 
     def test__get_share_export_exception_not_found(self):
 

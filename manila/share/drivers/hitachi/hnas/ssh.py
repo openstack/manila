@@ -20,6 +20,7 @@ from oslo_utils import units
 import paramiko
 import six
 
+import os
 import time
 
 from manila import exception
@@ -61,10 +62,15 @@ class HNASSSHBackend(object):
         available_space = fs.size - fs.used
         return fs.size, available_space, fs.dedupe
 
-    def nfs_export_add(self, share_id):
-        path = '/shares/' + share_id
+    def nfs_export_add(self, share_id, snapshot_id=None):
+        if snapshot_id is not None:
+            path = os.path.join('/snapshots', share_id, snapshot_id)
+            name = os.path.join('/snapshots', snapshot_id)
+        else:
+            path = name = os.path.join('/shares', share_id)
+
         command = ['nfs-export', 'add', '-S', 'disable', '-c', '127.0.0.1',
-                   path, self.fs_name, path]
+                   name, self.fs_name, path]
         try:
             self._execute(command)
         except processutils.ProcessExecutionError:
@@ -72,24 +78,36 @@ class HNASSSHBackend(object):
             LOG.exception(msg)
             raise exception.HNASBackendException(msg=msg)
 
-    def nfs_export_del(self, share_id):
-        path = '/shares/' + share_id
-        command = ['nfs-export', 'del', path]
+    def nfs_export_del(self, share_id=None, snapshot_id=None):
+        if share_id is not None:
+            name = os.path.join('/shares', share_id)
+        elif snapshot_id is not None:
+            name = os.path.join('/snapshots', snapshot_id)
+        else:
+            msg = _("NFS export not specified to delete.")
+            raise exception.HNASBackendException(msg=msg)
+
+        command = ['nfs-export', 'del', name]
         try:
             self._execute(command)
         except processutils.ProcessExecutionError as e:
             if 'does not exist' in e.stderr:
                 LOG.warning(_LW("Export %s does not exist on "
-                                "backend anymore."), path)
+                                "backend anymore."), name)
             else:
                 msg = six.text_type(e)
                 LOG.exception(msg)
                 raise exception.HNASBackendException(msg=msg)
 
-    def cifs_share_add(self, share_id):
-        path = r'\\shares\\' + share_id
+    def cifs_share_add(self, share_id, snapshot_id=None):
+        if snapshot_id is not None:
+            path = r'\\snapshots\\' + share_id + r'\\' + snapshot_id
+            name = snapshot_id
+        else:
+            path = r'\\shares\\' + share_id
+            name = share_id
         command = ['cifs-share', 'add', '-S', 'disable', '--enable-abe',
-                   '--nodefaultsaa', share_id, self.fs_name, path]
+                   '--nodefaultsaa', name, self.fs_name, path]
         try:
             self._execute(command)
         except processutils.ProcessExecutionError:
@@ -97,15 +115,15 @@ class HNASSSHBackend(object):
             LOG.exception(msg)
             raise exception.HNASBackendException(msg=msg)
 
-    def cifs_share_del(self, share_id):
+    def cifs_share_del(self, name):
         command = ['cifs-share', 'del', '--target-label', self.fs_name,
-                   share_id]
+                   name]
         try:
             self._execute(command)
         except processutils.ProcessExecutionError as e:
             if e.exit_code == 1:
                 LOG.warning(_LW("CIFS share %s does not exist on "
-                                "backend anymore."), share_id)
+                                "backend anymore."), name)
             else:
                 msg = six.text_type(e)
                 LOG.exception(msg)
@@ -115,7 +133,16 @@ class HNASSSHBackend(object):
         export = self._get_share_export(share_id)
         return export[0].export_configuration
 
-    def update_nfs_access_rule(self, share_id, host_list):
+    def update_nfs_access_rule(self, host_list, share_id=None,
+                               snapshot_id=None):
+        if share_id is not None:
+            name = os.path.join('/shares', share_id)
+        elif snapshot_id is not None:
+            name = os.path.join('/snapshots', snapshot_id)
+        else:
+            msg = _("No share/snapshot provided to update NFS rules.")
+            raise exception.HNASBackendException(msg=msg)
+
         command = ['nfs-export', 'mod', '-c']
 
         if len(host_list) == 0:
@@ -128,35 +155,47 @@ class HNASSSHBackend(object):
             string_command += '"'
             command.append(string_command)
 
-        path = '/shares/' + share_id
-        command.append(path)
+        command.append(name)
         self._execute(command)
 
-    def cifs_allow_access(self, hnas_share_id, user, permission):
+    def cifs_allow_access(self, name, user, permission, is_snapshot=False):
         command = ['cifs-saa', 'add', '--target-label', self.fs_name,
-                   hnas_share_id, user, permission]
+                   name, user, permission]
+
+        entity_type = "share"
+        if is_snapshot:
+            entity_type = "snapshot"
+
         try:
             self._execute(command)
         except processutils.ProcessExecutionError as e:
             if 'already listed as a user' in e.stderr:
-                LOG.debug('User %(user)s already allowed to access share '
-                          '%(share)s.', {'user': user, 'share': hnas_share_id})
+                LOG.debug('User %(user)s already allowed to access '
+                          '%(entity_type)s %(share)s.',
+                          {'entity_type': entity_type, 'user': user,
+                           'share': name})
             else:
                 msg = six.text_type(e)
                 LOG.exception(msg)
                 raise exception.InvalidShareAccess(reason=msg)
 
-    def cifs_deny_access(self, hnas_share_id, user):
+    def cifs_deny_access(self, name, user, is_snapshot=False):
         command = ['cifs-saa', 'delete', '--target-label', self.fs_name,
-                   hnas_share_id, user]
+                   name, user]
+
+        entity_type = "share"
+        if is_snapshot:
+            entity_type = "snapshot"
+
         try:
             self._execute(command)
         except processutils.ProcessExecutionError as e:
             if ('not listed as a user' in e.stderr or
                     'Could not delete user/group' in e.stderr):
                 LOG.warning(_LW('User %(user)s already not allowed to access '
-                                'share %(share)s.'),
-                            {'user': user, 'share': hnas_share_id})
+                                '%(entity_type)s %(share)s.'),
+                            {'entity_type': entity_type, 'user': user,
+                             'share': name})
             else:
                 msg = six.text_type(e)
                 LOG.exception(msg)
@@ -438,6 +477,7 @@ class HNASSSHBackend(object):
 
     def _get_share_export(self, share_id):
         share_id = '/shares/' + share_id
+
         command = ['nfs-export', 'list ', share_id]
         export_list = []
         try:
@@ -445,8 +485,8 @@ class HNASSSHBackend(object):
         except processutils.ProcessExecutionError as e:
             if 'does not exist' in e.stderr:
                 msg = _("Export %(share)s was not found in EVS "
-                        "%(evs_id)s") % {'share': share_id,
-                                         'evs_id': self.evs_id}
+                        "%(evs_id)s.") % {'share': share_id,
+                                          'evs_id': self.evs_id}
                 raise exception.HNASItemNotFoundException(msg=msg)
             else:
                 raise

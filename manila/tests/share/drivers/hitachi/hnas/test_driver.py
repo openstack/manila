@@ -228,10 +228,9 @@ class HitachiHNASTestCase(test.TestCase):
         self._driver.update_access('context', share_nfs, access_list, [], [])
 
         ssh.HNASSSHBackend.update_nfs_access_rule.assert_called_once_with(
-            share_nfs['id'], [access1['access_to'] + '('
-                              + access1['access_level'] + ',norootsquash)',
-                              access2['access_to'] + '('
-                              + access2['access_level'] + ')'])
+            [access1['access_to'] + '(' + access1['access_level'] +
+             ',norootsquash)', access2['access_to'] + '(' +
+             access2['access_level'] + ')', ], share_id=share_nfs['id'])
         self.assertTrue(self.mock_log.debug.called)
 
     def test_update_access_ip_exception(self):
@@ -282,7 +281,7 @@ class HitachiHNASTestCase(test.TestCase):
                                    access_list_allow, [])
 
         ssh.HNASSSHBackend.cifs_allow_access.assert_called_once_with(
-            share_cifs['id'], 'fake_user', permission)
+            share_cifs['id'], 'fake_user', permission, is_snapshot=False)
         self.assertTrue(self.mock_log.debug.called)
 
     def test_allow_access_cifs_invalid_type(self):
@@ -308,7 +307,7 @@ class HitachiHNASTestCase(test.TestCase):
                                    access_list_deny)
 
         ssh.HNASSSHBackend.cifs_deny_access.assert_called_once_with(
-            share_cifs['id'], 'fake_user')
+            share_cifs['id'], 'fake_user', is_snapshot=False)
         self.assertTrue(self.mock_log.debug.called)
 
     def test_deny_access_cifs_unsupported_type(self):
@@ -349,11 +348,16 @@ class HitachiHNASTestCase(test.TestCase):
             share_cifs['id'])
         self.assertTrue(self.mock_log.debug.called)
 
-    def _get_export(self, share, ip, is_admin_only):
-        if share['share_proto'].lower() == 'nfs':
-            export = ':'.join((ip, '/shares/' + share['id']))
+    def _get_export(self, id, share_proto, ip, is_admin_only,
+                    is_snapshot=False):
+        if share_proto.lower() == 'nfs':
+            if is_snapshot:
+                path = '/snapshots/' + id
+            else:
+                path = '/shares/' + id
+            export = ':'.join((ip, path))
         else:
-            export = r'\\%s\%s' % (ip, share['id'])
+            export = r'\\%s\%s' % (ip, id)
 
         return {
             "path": export,
@@ -379,17 +383,19 @@ class HitachiHNASTestCase(test.TestCase):
                                                              share['size'])
         expected = [
             self._get_export(
-                share, self._driver.hnas_evs_ip, False),
+                share['id'], share['share_proto'], self._driver.hnas_evs_ip,
+                False),
             self._get_export(
-                share, self._driver.hnas_admin_network_ip, True)]
+                share['id'], share['share_proto'],
+                self._driver.hnas_admin_network_ip, True)]
 
         if share['share_proto'].lower() == 'nfs':
             ssh.HNASSSHBackend.nfs_export_add.assert_called_once_with(
-                share_nfs['id'])
+                share_nfs['id'], snapshot_id=None)
             self.assertFalse(ssh.HNASSSHBackend.cifs_share_add.called)
         else:
             ssh.HNASSSHBackend.cifs_share_add.assert_called_once_with(
-                share_cifs['id'])
+                share_cifs['id'], snapshot_id=None)
             self.assertFalse(ssh.HNASSSHBackend.nfs_export_add.called)
         self.assertEqual(expected, result)
 
@@ -410,7 +416,7 @@ class HitachiHNASTestCase(test.TestCase):
         ssh.HNASSSHBackend.quota_add.assert_called_once_with(share_nfs['id'],
                                                              share_nfs['size'])
         ssh.HNASSSHBackend.nfs_export_add.assert_called_once_with(
-            share_nfs['id'])
+            share_nfs['id'], snapshot_id=None)
         ssh.HNASSSHBackend.vvol_delete.assert_called_once_with(share_nfs['id'])
 
     def test_create_share_invalid_share_protocol(self):
@@ -447,8 +453,18 @@ class HitachiHNASTestCase(test.TestCase):
     @ddt.data(snapshot_nfs, snapshot_cifs)
     def test_create_snapshot(self, snapshot):
         hnas_id = snapshot['share_id']
-        p_location = {'provider_location': '/snapshots/' + hnas_id + '/' +
-                                           snapshot['id']}
+        export_locations = [
+            self._get_export(
+                snapshot['id'], snapshot['share']['share_proto'],
+                self._driver.hnas_evs_ip, False, is_snapshot=True),
+            self._get_export(
+                snapshot['id'], snapshot['share']['share_proto'],
+                self._driver.hnas_admin_network_ip, True, is_snapshot=True)]
+        expected = {
+            'provider_location': '/snapshots/' + hnas_id + '/' +
+                                 snapshot['id'],
+            'export_locations': export_locations,
+        }
 
         self.mock_object(ssh.HNASSSHBackend, "get_nfs_host_list", mock.Mock(
             return_value=['172.24.44.200(rw)']))
@@ -457,21 +473,23 @@ class HitachiHNASTestCase(test.TestCase):
         self.mock_object(ssh.HNASSSHBackend, "is_cifs_in_use", mock.Mock(
             return_value=False))
         self.mock_object(ssh.HNASSSHBackend, "tree_clone", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "nfs_export_add")
+        self.mock_object(ssh.HNASSSHBackend, "cifs_share_add")
 
         out = self._driver.create_snapshot('context', snapshot)
 
         ssh.HNASSSHBackend.tree_clone.assert_called_once_with(
             '/shares/' + hnas_id, '/snapshots/' + hnas_id + '/' +
             snapshot['id'])
-        self.assertEqual(p_location, out)
+        self.assertEqual(expected, out)
 
         if snapshot['share']['share_proto'].lower() == 'nfs':
             ssh.HNASSSHBackend.get_nfs_host_list.assert_called_once_with(
                 hnas_id)
             ssh.HNASSSHBackend.update_nfs_access_rule.assert_any_call(
-                hnas_id, ['172.24.44.200(ro)'])
+                ['172.24.44.200(ro)'], share_id=hnas_id)
             ssh.HNASSSHBackend.update_nfs_access_rule.assert_any_call(
-                hnas_id, ['172.24.44.200(rw)'])
+                ['172.24.44.200(rw)'], share_id=hnas_id)
         else:
             ssh.HNASSSHBackend.is_cifs_in_use.assert_called_once_with(
                 hnas_id)
@@ -506,39 +524,54 @@ class HitachiHNASTestCase(test.TestCase):
         self.mock_object(ssh.HNASSSHBackend, "tree_clone", mock.Mock(
             side_effect=exception.HNASNothingToCloneException('msg')))
         self.mock_object(ssh.HNASSSHBackend, "create_directory", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "nfs_export_add")
+        self.mock_object(ssh.HNASSSHBackend, "cifs_share_add")
 
         self._driver.create_snapshot('context', snapshot_nfs)
 
         self.assertTrue(self.mock_log.warning.called)
-        ssh.HNASSSHBackend.get_nfs_host_list.assert_called_once_with(hnas_id)
+        ssh.HNASSSHBackend.get_nfs_host_list.assert_called_once_with(
+            hnas_id)
         ssh.HNASSSHBackend.update_nfs_access_rule.assert_any_call(
-            hnas_id, ['172.24.44.200(ro)'])
+            ['172.24.44.200(ro)'], share_id=hnas_id)
         ssh.HNASSSHBackend.update_nfs_access_rule.assert_any_call(
-            hnas_id, ['172.24.44.200(rw)'])
+            ['172.24.44.200(rw)'], share_id=hnas_id)
         ssh.HNASSSHBackend.create_directory.assert_called_once_with(
             '/snapshots/' + hnas_id + '/' + snapshot_nfs['id'])
 
-    def test_delete_snapshot(self):
-        hnas_id = snapshot_nfs['share_id']
+    @ddt.data(snapshot_nfs, snapshot_cifs)
+    def test_delete_snapshot(self, snapshot):
+        hnas_share_id = snapshot['share_id']
+        hnas_snapshot_id = snapshot['id']
         self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted")
-        self.mock_object(ssh.HNASSSHBackend, "tree_delete", mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "delete_directory", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "tree_delete")
+        self.mock_object(ssh.HNASSSHBackend, "delete_directory")
+        self.mock_object(ssh.HNASSSHBackend, "nfs_export_del")
+        self.mock_object(ssh.HNASSSHBackend, "cifs_share_del")
 
-        self._driver.delete_snapshot('context', snapshot_nfs)
+        self._driver.delete_snapshot('context', snapshot)
 
         self.assertTrue(self.mock_log.debug.called)
         self.assertTrue(self.mock_log.info.called)
         driver.HitachiHNASDriver._check_fs_mounted.assert_called_once_with()
         ssh.HNASSSHBackend.tree_delete.assert_called_once_with(
-            '/snapshots/' + hnas_id + '/' + snapshot_nfs['id'])
+            '/snapshots/' + hnas_share_id + '/' + snapshot['id'])
         ssh.HNASSSHBackend.delete_directory.assert_called_once_with(
-            '/snapshots/' + hnas_id)
+            '/snapshots/' + hnas_share_id)
+        if snapshot['share']['share_proto'].lower() == 'nfs':
+            ssh.HNASSSHBackend.nfs_export_del.assert_called_once_with(
+                snapshot_id=hnas_snapshot_id)
+        else:
+            ssh.HNASSSHBackend.cifs_share_del.assert_called_once_with(
+                hnas_snapshot_id)
 
     def test_delete_managed_snapshot(self):
         hnas_id = manage_snapshot['share_id']
         self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted")
         self.mock_object(ssh.HNASSSHBackend, "tree_delete")
         self.mock_object(ssh.HNASSSHBackend, "delete_directory")
+        self.mock_object(ssh.HNASSSHBackend, "nfs_export_del")
+        self.mock_object(ssh.HNASSSHBackend, "cifs_share_del")
 
         self._driver.delete_snapshot('context', manage_snapshot)
 
@@ -559,9 +592,11 @@ class HitachiHNASTestCase(test.TestCase):
 
         expected = [
             self._get_export(
-                share, self._driver.hnas_evs_ip, False),
+                share['id'], share['share_proto'], self._driver.hnas_evs_ip,
+                False),
             self._get_export(
-                share, self._driver.hnas_admin_network_ip, True)]
+                share['id'], share['share_proto'],
+                self._driver.hnas_admin_network_ip, True)]
 
         if share['share_proto'].lower() == 'nfs':
             ssh.HNASSSHBackend.check_export.assert_called_once_with(
@@ -625,9 +660,11 @@ class HitachiHNASTestCase(test.TestCase):
 
         expected_exports = [
             self._get_export(
-                share, self._driver.hnas_evs_ip, False),
+                share['id'], share['share_proto'], self._driver.hnas_evs_ip,
+                False),
             self._get_export(
-                share, self._driver.hnas_admin_network_ip, True)]
+                share['id'], share['share_proto'],
+                self._driver.hnas_admin_network_ip, True)]
 
         expected_out = {'size': share['size'],
                         'export_locations': expected_exports}
@@ -724,9 +761,11 @@ class HitachiHNASTestCase(test.TestCase):
 
         expected = [
             self._get_export(
-                share, self._driver.hnas_evs_ip, False),
+                share['id'], share['share_proto'], self._driver.hnas_evs_ip,
+                False),
             self._get_export(
-                share, self._driver.hnas_admin_network_ip, True)]
+                share['id'], share['share_proto'],
+                self._driver.hnas_admin_network_ip, True)]
 
         if share['share_proto'].lower() == 'nfs':
             ssh.HNASSSHBackend.nfs_export_add.assert_called_once_with(
@@ -752,9 +791,11 @@ class HitachiHNASTestCase(test.TestCase):
                                                          snapshot_nfs)
         expected = [
             self._get_export(
-                share_nfs, self._driver.hnas_evs_ip, False),
+                share_nfs['id'], share_nfs['share_proto'],
+                self._driver.hnas_evs_ip, False),
             self._get_export(
-                share_nfs, self._driver.hnas_admin_network_ip, True)]
+                share_nfs['id'], share_nfs['share_proto'],
+                self._driver.hnas_admin_network_ip, True)]
 
         self.assertEqual(expected, result)
         self.assertTrue(self.mock_log.warning.called)
@@ -837,6 +878,7 @@ class HitachiHNASTestCase(test.TestCase):
             'thin_provisioning': True,
             'dedupe': True,
             'revert_to_snapshot_support': True,
+            'mount_snapshot_support': True,
         }
 
         self.mock_object(ssh.HNASSSHBackend, 'get_stats', mock.Mock(
@@ -933,3 +975,109 @@ class HitachiHNASTestCase(test.TestCase):
         if exc:
             self.assertTrue(self.mock_log.warning.called)
         self.assertTrue(self.mock_log.info.called)
+
+    def test_nfs_snapshot_update_access_allow(self):
+        access1 = {
+            'access_type': 'ip',
+            'access_to': '172.24.10.10',
+        }
+        access2 = {
+            'access_type': 'ip',
+            'access_to': '172.31.20.20',
+        }
+        access_list = [access1, access2]
+
+        self.mock_object(ssh.HNASSSHBackend, "update_nfs_access_rule")
+
+        self._driver.snapshot_update_access('ctxt', snapshot_nfs, access_list,
+                                            access_list, [])
+
+        ssh.HNASSSHBackend.update_nfs_access_rule.assert_called_once_with(
+            [access1['access_to'] + '(ro)', access2['access_to'] + '(ro)'],
+            snapshot_id=snapshot_nfs['id'])
+        self.assertTrue(self.mock_log.debug.called)
+
+    def test_nfs_snapshot_update_access_deny(self):
+        access1 = {
+            'access_type': 'ip',
+            'access_to': '172.24.10.10',
+        }
+
+        self.mock_object(ssh.HNASSSHBackend, "update_nfs_access_rule")
+
+        self._driver.snapshot_update_access('ctxt', snapshot_nfs, [],
+                                            [], [access1])
+
+        ssh.HNASSSHBackend.update_nfs_access_rule.assert_called_once_with(
+            [], snapshot_id=snapshot_nfs['id'])
+        self.assertTrue(self.mock_log.debug.called)
+
+    def test_nfs_snapshot_update_access_invalid_access_type(self):
+        access1 = {
+            'access_type': 'user',
+            'access_to': 'user1',
+        }
+
+        self.assertRaises(exception.InvalidSnapshotAccess,
+                          self._driver.snapshot_update_access, 'ctxt',
+                          snapshot_nfs, [access1], [], [])
+
+    def test_cifs_snapshot_update_access_allow(self):
+        access1 = {
+            'access_type': 'user',
+            'access_to': 'fake_user1',
+        }
+
+        self.mock_object(ssh.HNASSSHBackend, 'cifs_allow_access')
+
+        self._driver.snapshot_update_access('ctxt', snapshot_cifs, [access1],
+                                            [access1], [])
+
+        ssh.HNASSSHBackend.cifs_allow_access.assert_called_with(
+            snapshot_cifs['id'], access1['access_to'], 'ar', is_snapshot=True)
+        self.assertTrue(self.mock_log.debug.called)
+
+    def test_cifs_snapshot_update_access_deny(self):
+        access1 = {
+            'access_type': 'user',
+            'access_to': 'fake_user1',
+        }
+
+        self.mock_object(ssh.HNASSSHBackend, 'cifs_deny_access')
+
+        self._driver.snapshot_update_access('ctxt', snapshot_cifs, [], [],
+                                            [access1])
+
+        ssh.HNASSSHBackend.cifs_deny_access.assert_called_with(
+            snapshot_cifs['id'], access1['access_to'], is_snapshot=True)
+        self.assertTrue(self.mock_log.debug.called)
+
+    def test_cifs_snapshot_update_access_recovery_mode(self):
+        access1 = {
+            'access_type': 'user',
+            'access_to': 'fake_user1',
+        }
+        access2 = {
+            'access_type': 'user',
+            'access_to': 'HDS\\fake_user2',
+        }
+        access_list = [access1, access2]
+        permission_list = [('fake_user1', 'ar'), ('HDS\\fake_user2', 'ar')]
+        formatted_user = r'"\{1}{0}\{1}"'.format(access2['access_to'], '"')
+
+        self.mock_object(ssh.HNASSSHBackend, 'list_cifs_permissions',
+                         mock.Mock(return_value=permission_list))
+        self.mock_object(ssh.HNASSSHBackend, 'cifs_deny_access')
+        self.mock_object(ssh.HNASSSHBackend, 'cifs_allow_access')
+
+        self._driver.snapshot_update_access('ctxt', snapshot_cifs, access_list,
+                                            [], [])
+
+        ssh.HNASSSHBackend.list_cifs_permissions.assert_called_once_with(
+            snapshot_cifs['id'])
+        ssh.HNASSSHBackend.cifs_deny_access.assert_called_with(
+            snapshot_cifs['id'], formatted_user, is_snapshot=True)
+        ssh.HNASSSHBackend.cifs_allow_access.assert_called_with(
+            snapshot_cifs['id'], access2['access_to'].replace('\\', '\\\\'),
+            'ar', is_snapshot=True)
+        self.assertTrue(self.mock_log.debug.called)
