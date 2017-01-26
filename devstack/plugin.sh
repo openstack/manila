@@ -741,7 +741,7 @@ function configure_samba {
 
         for backend_name in ${MANILA_ENABLED_BACKENDS//,/ }; do
             iniset $MANILA_CONF $backend_name driver_handles_share_servers False
-            iniset $MANILA_CONF $backend_name lvm_share_export_ip $HOST_IP
+            iniset $MANILA_CONF $backend_name lvm_share_export_ip $MANILA_LVM_SHARE_EXPORT_IP
         done
         iniset $MANILA_CONF DEFAULT data_node_access_ip $HOST_IP
     fi
