@@ -1,7 +1,7 @@
 {
     "versions": [
         {
-            "status": "SUPPORTED",
+            "status": "DEPRECATED",
             "updated": "2015-08-27T11:33:21Z",
             "links": [
                 {
