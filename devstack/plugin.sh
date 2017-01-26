@@ -296,18 +296,19 @@ function create_service_share_servers {
                 local vm_exists=$( openstack server list --all-projects | grep " $vm_name " )
                 if [[ -z $vm_exists ]]; then
                     private_net_id=$(openstack network show $PRIVATE_NETWORK_NAME -f value -c id)
-                    openstack server create $vm_name \
+                    vm_id=$(openstack server create $vm_name \
                         --flavor $MANILA_SERVICE_VM_FLAVOR_NAME \
                         --image $MANILA_SERVICE_IMAGE_NAME \
                         --nic net-id=$private_net_id \
                         --security-group $MANILA_SERVICE_SECGROUP \
-                        --key-name $MANILA_SERVICE_KEYPAIR_NAME
+                        --key-name $MANILA_SERVICE_KEYPAIR_NAME \
+                        | grep ' id ' | get_field 2)
+                else
+                    vm_id=$(openstack server show $vm_name -f value -c id)
                 fi
 
-                vm_id=$(openstack server show $vm_name -f value -c id)
-
                 floating_ip=$(openstack floating ip create $PUBLIC_NETWORK_NAME --subnet $PUBLIC_SUBNET_NAME | grep 'floating_ip_address' | get_field 2)
-                openstack server add floating ip $vm_name $floating_ip
+                openstack server add floating ip $vm_id $floating_ip
 
                 iniset $MANILA_CONF $BE service_instance_name_or_id $vm_id
                 iniset $MANILA_CONF $BE service_net_name_or_ip $floating_ip
