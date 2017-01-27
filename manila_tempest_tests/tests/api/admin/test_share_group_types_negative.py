@@ -40,10 +40,19 @@ class ShareGroupTypesAdminNegativeTest(base.BaseSharesMixedTest):
             client=cls.admin_shares_v2_client)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
-    def test_create_share_ggroup_with_nonexistent_share_type(self):
+    def test_create_share_group_type_without_name(self):
         self.assertRaises(
             lib_exc.BadRequest,
             self.admin_shares_v2_client.create_share_group_type,
+            name=None,
+            share_types=data_utils.rand_name("fake"))
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
+    def test_create_share_group_type_with_nonexistent_share_type(self):
+        self.assertRaises(
+            lib_exc.NotFound,
+            self.admin_shares_v2_client.create_share_group_type,
+            name=data_utils.rand_name("sgt_name_should_have_not_been_created"),
             share_types=data_utils.rand_name("fake"))
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)

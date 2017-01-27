@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 from tempest import config
 from tempest.lib.common.utils import data_utils
 import testtools
@@ -27,6 +28,7 @@ CONF = config.CONF
 @testtools.skipUnless(
     CONF.share.run_share_group_tests, 'Share Group tests disabled.')
 @base.skip_if_microversion_lt(constants.MIN_SHARE_GROUP_MICROVERSION)
+@ddt.ddt
 class ShareGroupTypesTest(base.BaseSharesAdminTest):
 
     @classmethod
@@ -44,13 +46,14 @@ class ShareGroupTypesTest(base.BaseSharesAdminTest):
         cls.share_type2 = share_type['share_type']
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
-    def test_create_get_delete_share_group_type_min(self):
+    @ddt.data('id', 'name')
+    def test_create_get_delete_share_group_type_min(self, st_key):
         name = data_utils.rand_name("tempest-manila")
 
         # Create share group type
         sg_type_c = self.create_share_group_type(
             name=name,
-            share_types=self.share_type['id'],
+            share_types=self.share_type[st_key],
             cleanup_in_class=False,
             version=constants.MIN_SHARE_GROUP_MICROVERSION)
 
@@ -76,12 +79,13 @@ class ShareGroupTypesTest(base.BaseSharesAdminTest):
             share_group_type_id=sg_type_r['id'])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
-    def test_create_share_group_type_multiple_share_types_min(self):
+    @ddt.data('id', 'name')
+    def test_create_share_group_type_multiple_share_types_min(self, st_key):
         name = data_utils.rand_name("tempest-manila")
 
         sg_type = self.create_share_group_type(
             name=name,
-            share_types=[self.share_type['id'], self.share_type2['id']],
+            share_types=[self.share_type[st_key], self.share_type2[st_key]],
             cleanup_in_class=False,
             version=constants.MIN_SHARE_GROUP_MICROVERSION)
 

@@ -469,6 +469,13 @@ class ManilaExceptionResponseCode404(test.TestCase):
         self.assertEqual(404, e.code)
         self.assertIn(share_type_name, e.msg)
 
+    def test_share_type_does_not_exist(self):
+        # verify response code for exception.ShareTypeDoesNotExist
+        share_type = "fake_share_type_1234"
+        e = exception.ShareTypeDoesNotExist(share_type=share_type)
+        self.assertEqual(404, e.code)
+        self.assertIn(share_type, e.msg)
+
     def test_share_type_extra_specs_not_found(self):
         # verify response code for exception.ShareTypeExtraSpecsNotFound
         share_type_id = "fake_share_type_id"

@@ -390,6 +390,19 @@ class ShareGroupTypesAPITest(test.TestCase):
             webob.exc.HTTPBadRequest,
             self.controller._create, req, fake_body)
 
+    def test_create_provided_share_type_does_not_exist(self):
+        req = fake_request('/v2/fake/share-group-types', admin=True)
+        fake_body = {
+            'share_group_type': {
+                'name': GROUP_TYPE_1['name'],
+                'share_types': SHARE_TYPE_ID + '_does_not_exist',
+            }
+        }
+
+        self.assertRaises(
+            webob.exc.HTTPNotFound,
+            self.controller._create, req, fake_body)
+
 
 class ShareGroupTypeAccessTest(test.TestCase):
 

@@ -3537,8 +3537,22 @@ def _share_type_get_by_name(context, name, session=None):
 @require_context
 def share_type_get_by_name(context, name):
     """Return a dict describing specific share_type."""
-
     return _share_type_get_by_name(context, name)
+
+
+@require_context
+def share_type_get_by_name_or_id(context, name_or_id):
+    """Return a dict describing specific share_type using its name or ID.
+
+    :returns: ShareType object or None if not found
+    """
+    try:
+        return _share_type_get(context, name_or_id)
+    except exception.ShareTypeNotFound:
+        try:
+            return _share_type_get_by_name(context, name_or_id)
+        except exception.ShareTypeNotFoundByName:
+            return None
 
 
 @require_admin_context
@@ -4201,10 +4215,13 @@ def share_group_type_create(context, values, projects=None):
             values['group_specs'] = _metadata_refs(
                 values.get('group_specs'), models.ShareGroupTypeSpecs)
             mappings = []
-            for item in values.get('share_types') or []:
+            for item in values.get('share_types', []):
+                share_type = share_type_get_by_name_or_id(context, item)
+                if not share_type:
+                    raise exception.ShareTypeDoesNotExist(share_type=item)
                 mapping = models.ShareGroupTypeShareTypeMapping()
                 mapping['id'] = six.text_type(uuidutils.generate_uuid())
-                mapping['share_type_id'] = item
+                mapping['share_type_id'] = share_type['id']
                 mapping['share_group_type_id'] = values['id']
                 mappings.append(mapping)
 
@@ -4214,6 +4231,8 @@ def share_group_type_create(context, values, projects=None):
             share_group_type_ref.save(session=session)
         except db_exception.DBDuplicateEntry:
             raise exception.ShareGroupTypeExists(type_id=values['name'])
+        except exception.ShareTypeDoesNotExist:
+            raise
         except Exception as e:
             raise db_exception.DBError(e)
 

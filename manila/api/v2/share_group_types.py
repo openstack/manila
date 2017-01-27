@@ -138,6 +138,8 @@ class ShareGroupTypesController(wsgi.Controller):
                 context, name)
         except exception.ShareGroupTypeExists as err:
             raise webob.exc.HTTPConflict(explanation=six.text_type(err))
+        except exception.ShareTypeDoesNotExist as err:
+            raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
         except exception.NotFound:
             raise webob.exc.HTTPNotFound()
         return self._view_builder.show(req, share_group_type)

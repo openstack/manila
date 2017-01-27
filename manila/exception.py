@@ -619,6 +619,10 @@ class ShareTypeExists(ManilaException):
     message = _("Share Type %(id)s already exists.")
 
 
+class ShareTypeDoesNotExist(NotFound):
+    message = _("Share Type %(share_type)s does not exist.")
+
+
 class ShareGroupTypeExists(ManilaException):
     message = _("Share group type %(type_id)s already exists.")
 

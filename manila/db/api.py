@@ -894,6 +894,11 @@ def share_type_get_by_name(context, name):
     return IMPL.share_type_get_by_name(context, name)
 
 
+def share_type_get_by_name_or_id(context, name_or_id):
+    """Get share type by name or ID and return None if not found."""
+    return IMPL.share_type_get_by_name_or_id(context, name_or_id)
+
+
 def share_type_access_get_all(context, type_id):
     """Get all share type access of a share type."""
     return IMPL.share_type_access_get_all(context, type_id)

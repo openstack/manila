@@ -2576,3 +2576,37 @@ class PurgeDeletedTest(test.TestCase):
         type_row = db_api.model_query(self.context,
                                       models.ShareTypes).count()
         self.assertEqual(0, s_row + type_row)
+
+
+class ShareTypeAPITestCase(test.TestCase):
+
+    def setUp(self):
+        super(self.__class__, self).setUp()
+        self.ctxt = context.RequestContext(
+            user_id='user_id', project_id='project_id', is_admin=True)
+
+    def test_share_type_get_by_name_or_id_found_by_id(self):
+        share_type = db_utils.create_share_type()
+
+        result = db_api.share_type_get_by_name_or_id(
+            self.ctxt, share_type['id'])
+
+        self.assertIsNotNone(result)
+        self.assertEqual(share_type['id'], result['id'])
+
+    def test_share_type_get_by_name_or_id_found_by_name(self):
+        name = uuidutils.generate_uuid()
+        db_utils.create_share_type(name=name)
+
+        result = db_api.share_type_get_by_name_or_id(self.ctxt, name)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(name, result['name'])
+        self.assertNotEqual(name, result['id'])
+
+    def test_share_type_get_by_name_or_id_when_does_not_exist(self):
+        fake_id = uuidutils.generate_uuid()
+
+        result = db_api.share_type_get_by_name_or_id(self.ctxt, fake_id)
+
+        self.assertIsNone(result)
