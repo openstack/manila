@@ -1,0 +1,11 @@
+---
+deprecations:
+  - Deprecation of the manila v1 API was announced in the mitaka release.
+    The versions response from the API has been fixed to state that this
+    version has been deprecated. If you are using v1 API, consider switching
+    to the v2 API to take advantage of newer features. v2 API has support for
+    'microversions'. Any endpoint on the v2 API can be requested with the HTTP header
+    'X-OpenStack-Manila-API-Version' and providing a value '2.x', where '2' is the
+    major version and 'x' is the minor (or 'micro') version. To continue exploiting
+    feature functionality that was part of the v1 API, you may use the v2 API with
+    the microverison '2.0', which is behaviourally identical to the v1 API.

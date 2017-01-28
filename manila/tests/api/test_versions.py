@@ -56,12 +56,14 @@ class VersionsControllerTestCase(test.TestCase):
         v1 = [v for v in version_list if v['id'] == 'v1.0'][0]
         self.assertEqual('', v1.get('min_version'))
         self.assertEqual('', v1.get('version'))
+        self.assertEqual('DEPRECATED', v1.get('status'))
 
         v2 = [v for v in version_list if v['id'] == 'v2.0'][0]
         self.assertEqual(api_version_request._MIN_API_VERSION,
                          v2.get('min_version'))
         self.assertEqual(api_version_request._MAX_API_VERSION,
                          v2.get('version'))
+        self.assertEqual('CURRENT', v2.get('status'))
 
     @ddt.data('1.0',
               '1.1',
@@ -84,6 +86,7 @@ class VersionsControllerTestCase(test.TestCase):
         self.assertEqual(version_header_name, response.headers['Vary'])
         self.assertEqual('', version_list[0].get('min_version'))
         self.assertEqual('', version_list[0].get('version'))
+        self.assertEqual('DEPRECATED', version_list[0].get('status'))
 
     @ddt.data(api_version_request._MIN_API_VERSION,
               api_version_request._MAX_API_VERSION)
