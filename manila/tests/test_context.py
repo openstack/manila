@@ -63,22 +63,3 @@ class ContextTestCase(test.TestCase):
                           ctxt,
                           'read_deleted',
                           True)
-
-    def test_to_dict_works_w_missing_manila_context_attributes(self):
-        manila_context_attributes = ['user_id', 'project_id', 'read_deleted',
-                                     'remote_address', 'timestamp',
-                                     'quota_class', 'service_catalog']
-        ctxt = context.RequestContext('111', '222', roles=['admin', 'weasel'])
-
-        # Early in context initialization to_dict() can be triggered
-        # before all manila specific context attributes have been set.
-        # Set up this situation here.
-        for attr in manila_context_attributes:
-            delattr(ctxt, attr)
-
-        # We should be able to run to_dict() without getting an
-        # AttributeError exception
-        res = ctxt.to_dict()
-
-        for attr in manila_context_attributes:
-            self.assertIsNone(res[attr])
