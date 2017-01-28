@@ -351,7 +351,7 @@ class ShareMixin(object):
             msg = _("Access rules cannot be added while the share or any of "
                     "its replicas or migration copies has its "
                     "access_rules_status set to %(instance_rules_status)s. "
-                    "Deny any rules in %(rule_state) state and try "
+                    "Deny any rules in %(rule_state)s state and try "
                     "again.") % {
                 'instance_rules_status': constants.SHARE_INSTANCE_RULES_ERROR,
                 'rule_state': constants.ACCESS_STATE_ERROR,
