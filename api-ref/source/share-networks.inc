@@ -52,15 +52,15 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Response parameters
 -------------------
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id
-   - name: name
+   - id: share_network_id
+   - name: share_network_name
 
 Response example
 ----------------
@@ -85,14 +85,14 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Response parameters
 -------------------
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id
+   - id: share_network_id
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
@@ -100,10 +100,10 @@ Response parameters
    - segmentation_id: segmentation_id
    - cidr: cidr
    - ip_version: ip_version
-   - name: name
-   - description: description
-   - created_at: created_at
-   - updated_at: updated_at
+   - name: share_network_name
+   - description: share_network_description
+   - created_at: share_network_created_at
+   - updated_at: share_network_updated_at
 
 Response example
 ----------------
@@ -128,15 +128,15 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - share_network_id: share_network_id
+   - tenant_id: tenant_id_path
+   - share_network_id: share_network_id_path
 
 Response parameters
 -------------------
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id
+   - id: share_network_id
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
@@ -144,10 +144,10 @@ Response parameters
    - segmentation_id: segmentation_id
    - cidr: cidr
    - ip_version: ip_version
-   - name: name
-   - description: description
-   - created_at: created_at
-   - updated_at: updated_at
+   - name: share_network_name
+   - description: share_network_description
+   - created_at: share_network_created_at
+   - updated_at: share_network_updated_at
 
 Response example
 ----------------
@@ -173,11 +173,11 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - neutron_net_id: neutron_net_id_1
    - neutron_subnet_id: neutron_subnet_id_1
-   - name: name
-   - description: description
+   - name: share_network_name_request
+   - description: share_network_description
 
 Request example
 ---------------
@@ -190,7 +190,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id
+   - id: share_network_id
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
@@ -198,10 +198,10 @@ Response parameters
    - segmentation_id: segmentation_id_1
    - cidr: cidr_1
    - ip_version: ip_version_1
-   - name: name
-   - description: description
-   - created_at: created_at
-   - updated_at: updated_at
+   - name: share_network_name
+   - description: share_network_description
+   - created_at: share_network_created_at
+   - updated_at: share_network_updated_at
 
 Response example
 ----------------
@@ -227,7 +227,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - tenant_id: tenant_id
-   - share_network_id: share_network_id
+   - share_network_id: share_network_id_path
    - security_service_id: security_service_id
 
 Request example
@@ -242,7 +242,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id
+   - id: share_network_id
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
@@ -250,10 +250,10 @@ Response parameters
    - segmentation_id: segmentation_id
    - cidr: cidr
    - ip_version: ip_version
-   - name: name
-   - description: description
-   - created_at: created_at
-   - updated_at: updated_at
+   - name: share_network_name
+   - description: share_network_description
+   - created_at: share_network_created_at
+   - updated_at: share_network_updated_at
 
 Response example
 ----------------
@@ -280,9 +280,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - share_network_id: share_network_id
-   - security_service_id: security_service_id_2
+   - tenant_id: tenant_id_path
+   - share_network_id: share_network_id_path
+   - security_service_id: share_network_security_service_id
 
 Request example
 ---------------
@@ -295,7 +295,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id
+   - id: share_network_id
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
@@ -303,10 +303,10 @@ Response parameters
    - segmentation_id: segmentation_id
    - cidr: cidr
    - ip_version: ip_version
-   - name: name
-   - description: description
-   - created_at: created_at
-   - updated_at: updated_at
+   - name: share_network_name
+   - description: share_network_description
+   - created_at: share_network_created_at
+   - updated_at: share_network_updated_at
 
 Response example
 ----------------
@@ -334,10 +334,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - share_network_id: share_network_id
-   - name: name
-   - description: description
+   - tenant_id: tenant_id_path
+   - share_network_id: share_network_id_path
+   - name: share_network_name_request
+   - description: share_network_description
 
 Request example
 ---------------
@@ -350,7 +350,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id
+   - id: share_network_id
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
@@ -358,10 +358,10 @@ Response parameters
    - segmentation_id: segmentation_id
    - cidr: cidr
    - ip_version: ip_version
-   - name: name
-   - description: description
-   - created_at: created_at
-   - updated_at: updated_at
+   - name: share_network_name
+   - description: share_network_description
+   - created_at: share_network_created_at
+   - updated_at: share_network_updated_at
 
 Response example
 ----------------
@@ -386,5 +386,5 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
-   - share_network_id: share_network_id
+   - tenant_id: tenant_id_path
+   - share_network_id: share_network_id_path

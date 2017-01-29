@@ -74,7 +74,7 @@ share_instance_id:
   in: path
   required: true
   type: string
-share_network_id:
+share_network_id_path:
   description: |
     The UUID of the share network.
   in: path
@@ -1023,24 +1023,6 @@ consistency_groups:
   in: body
   required: true
   type: array
-created_at:
-  description: |
-    The date and time stamp when the share network was created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
 created_at_1:
   description: |
     The date and time stamp when the consistency
@@ -1141,12 +1123,6 @@ deny_access:
   in: body
   required: true
   type: object
-description:
-  description: |
-    The share network description.
-  in: body
-  required: true
-  type: string
 description_1:
   description: |
     The consistency group snapshot description.
@@ -1630,12 +1606,6 @@ host_9:
     The share host name.
   in: body
   required: false
-  type: string
-id:
-  description: |
-    The share network ID.
-  in: body
-  required: true
   type: string
 id_1:
   description: |
@@ -2389,13 +2359,6 @@ security_service_id:
   in: body
   required: true
   type: string
-security_service_id_2:
-  description: |
-    The UUID of the security service to remove from
-    the share network. For details, see the security service section.
-  in: body
-  required: true
-  type: string
 security_service_name:
   description: |
     The security service name.
@@ -2693,6 +2656,36 @@ share_instance_id_1:
   in: body
   required: true
   type: string
+share_network_created_at:
+  description: |
+    The date and time stamp when the share network was created.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+  in: body
+  required: true
+  type: string
+share_network_description:
+  description: |
+    The share network description.
+  in: body
+  required: true
+  type: string
+share_network_id:
+  description: |
+    The share network ID.
+  in: body
+  required: true
+  type: string
 share_network_id_1:
   description: |
     The ID of a share network.  Note that when using
@@ -2737,8 +2730,38 @@ share_network_id_7:
   type: string
 share_network_name:
   description: |
-    The name of a share network that is associated
-    with the share server.
+    The name of a share network.
+  in: body
+  required: true
+  type: string
+share_network_name_request:
+  description: |
+    The name of a share network.
+  in: body
+  required: false
+  type: string
+share_network_security_service_id:
+  description: |
+    The UUID of the security service to remove from
+    the share network. For details, see the security service section.
+  in: body
+  required: true
+  type: string
+share_network_updated_at:
+  description: |
+    The date and time stamp when the share network was updated.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2015-08-27T09:49:58-05:00``.
   in: body
   required: true
   type: string
@@ -3303,24 +3326,6 @@ unmanage:
 updated:
   description: |
     The date and time stamp when the extension was last updated.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
-updated_at:
-  description: |
-    The date and time stamp when the share network was updated.
 
     The date and time stamp format is `ISO 8601
     <https://en.wikipedia.org/wiki/ISO_8601>`_:
