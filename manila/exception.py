@@ -812,6 +812,10 @@ class HNASConnException(ManilaException):
     message = _("HNAS Connection Exception: %(msg)s")
 
 
+class HNASSSCIsBusy(ManilaException):
+    message = _("HNAS SSC is busy and cannot execute the command: %(msg)s")
+
+
 class HNASItemNotFoundException(StorageResourceNotFound):
     message = _("HNAS Item Not Found Exception: %(msg)s")
 

@@ -309,12 +309,18 @@ class HNASSSHBackend(object):
     def delete_directory(self, path):
         self._locked_selectfs('delete', path)
 
+    @mutils.retry(exception=exception.HNASSSCIsBusy, wait_random=True,
+                  retries=5)
     def check_snapshot(self, path):
         command = ['path-to-object-number', '-f', self.fs_name, path]
 
         try:
             self._execute(command)
         except processutils.ProcessExecutionError as e:
+            if 'path-to-object-number is currently running' in e.stdout:
+                msg = (_("SSC command path-to-object-number for path %s "
+                         "is currently busy.") % path)
+                raise exception.HNASSSCIsBusy(msg=msg)
             if 'Unable to locate component:' in e.stdout:
                 LOG.debug("Cannot find %(path)s: %(out)s",
                           {'path': path, 'out': e.stdout})
