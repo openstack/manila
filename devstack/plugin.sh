@@ -741,23 +741,33 @@ function configure_samba {
     fi
 }
 
-# start_manila - Start running processes, including screen
-function start_manila {
-
+# start_manila_api - starts manila API services and checks its availability
+function start_manila_api {
     run_process m-api "$MANILA_BIN_DIR/manila-api --config-file $MANILA_CONF"
-    run_process m-shr "$MANILA_BIN_DIR/manila-share --config-file $MANILA_CONF"
-    run_process m-sch "$MANILA_BIN_DIR/manila-scheduler --config-file $MANILA_CONF"
-    run_process m-dat "$MANILA_BIN_DIR/manila-data --config-file $MANILA_CONF"
 
-    echo "Waiting for Manila to start..."
+    echo "Waiting for Manila API to start..."
     if ! wait_for_service $SERVICE_TIMEOUT $MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT; then
-        die $LINENO "Manila did not start"
+        die $LINENO "Manila API did not start"
     fi
 
     # Start proxies if enabled
     if is_service_enabled tls-proxy; then
         start_tls_proxy '*' $MANILA_SERVICE_PORT $MANILA_SERVICE_HOST $MANILA_SERVICE_PORT_INT &
     fi
+}
+
+# start_rest_of_manila - starts non-api manila services
+function start_rest_of_manila {
+    run_process m-shr "$MANILA_BIN_DIR/manila-share --config-file $MANILA_CONF"
+    run_process m-sch "$MANILA_BIN_DIR/manila-scheduler --config-file $MANILA_CONF"
+    run_process m-dat "$MANILA_BIN_DIR/manila-data --config-file $MANILA_CONF"
+}
+
+# start_manila - start all manila services. This function is kept for compatibility
+# reasons with old approach.
+function start_manila {
+    start_manila_api
+    start_rest_of_manila
 }
 
 # stop_manila - Stop running processes
@@ -906,17 +916,19 @@ elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
     if is_service_enabled nova; then
         echo_summary "Creating Manila service keypair"
         create_manila_service_keypair
-
-        echo_summary "Creating Manila service VMs for generic driver \
-            backends for which handlng of share servers is disabled."
-        create_service_share_servers
     fi
 
     echo_summary "Configure Samba server"
     configure_samba
 
-    echo_summary "Starting Manila"
-    start_manila
+    echo_summary "Starting Manila API"
+    start_manila_api
+
+    # Workaround for bug #1660304
+    if [ "$SHARE_DRIVER" != "manila.share.drivers.generic.GenericShareDriver" ]; then
+        echo_summary "Starting rest of Manila services - scheduler, share and data"
+        start_rest_of_manila
+    fi
 
     echo_summary "Creating Manila default share type"
     create_default_share_type
@@ -932,6 +944,23 @@ elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
         to your local.conf file to enable Manila UI"
 
 elif [[ "$1" == "stack" && "$2" == "test-config" ]]; then
+    ###########################################################################
+    # NOTE(vponomaryov): Workaround for bug #1660304
+    # We are able to create Nova VMs now only when last Nova step is performed
+    # which is registration of cell0. It is registered as last action in
+    # "post-extra" section.
+    if is_service_enabled nova; then
+        echo_summary "Creating Manila service VMs for generic driver \
+            backends for which handlng of share servers is disabled."
+        create_service_share_servers
+    fi
+
+    if [ "$SHARE_DRIVER" == "manila.share.drivers.generic.GenericShareDriver" ]; then
+        echo_summary "Starting rest of Manila services - scheduler, share and data"
+        start_rest_of_manila
+    fi
+    ###########################################################################
+
     echo_summary "Update Tempest config"
     update_tempest
 fi
