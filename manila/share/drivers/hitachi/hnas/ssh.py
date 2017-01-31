@@ -130,7 +130,7 @@ class HNASSSHBackend(object):
                 raise exception.HNASBackendException(msg=msg)
 
     def get_nfs_host_list(self, share_id):
-        export = self._get_share_export(share_id)
+        export = self._get_export(share_id)
         return export[0].export_configuration
 
     def update_nfs_access_rule(self, host_list, share_id=None,
@@ -400,8 +400,8 @@ class HNASSSHBackend(object):
             msg = (_("Virtual volume %s does not have any quota.") % vvol_name)
             raise exception.HNASItemNotFoundException(msg=msg)
 
-    def check_export(self, vvol_name):
-        export = self._get_share_export(vvol_name)
+    def check_export(self, vvol_name, is_snapshot=False):
+        export = self._get_export(vvol_name, is_snapshot=is_snapshot)
         if (vvol_name in export[0].export_name and
                 self.fs_name in export[0].file_system_label):
             return
@@ -475,17 +475,20 @@ class HNASSSHBackend(object):
                                                    quota.usage_unit)
             return bytes_usage / units.Gi
 
-    def _get_share_export(self, share_id):
-        share_id = '/shares/' + share_id
+    def _get_export(self, name, is_snapshot=False):
+        if is_snapshot:
+            name = '/snapshots/' + name
+        else:
+            name = '/shares/' + name
 
-        command = ['nfs-export', 'list ', share_id]
+        command = ['nfs-export', 'list ', name]
         export_list = []
         try:
             output, err = self._execute(command)
         except processutils.ProcessExecutionError as e:
             if 'does not exist' in e.stderr:
-                msg = _("Export %(share)s was not found in EVS "
-                        "%(evs_id)s.") % {'share': share_id,
+                msg = _("Export %(name)s was not found in EVS "
+                        "%(evs_id)s.") % {'name': name,
                                           'evs_id': self.evs_id}
                 raise exception.HNASItemNotFoundException(msg=msg)
             else:

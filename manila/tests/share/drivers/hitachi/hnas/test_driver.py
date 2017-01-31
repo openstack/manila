@@ -65,6 +65,34 @@ share_invalid_host = {
                                   'aa4a7710-f326-41fb-ad18-b4ad587fc87a'}],
 }
 
+share_mount_support_nfs = {
+    'id': '62125744-fcdd-4f55-a8c1-d1498102f634',
+    'name': '62125744-fcdd-4f55-a8c1-d1498102f634',
+    'size': 50,
+    'host': 'hnas',
+    'share_proto': 'NFS',
+    'share_type_id': 1,
+    'share_network_id': 'bb329e24-3bdb-491d-acfd-dfe70c09b98d',
+    'share_server_id': 'cc345a53-491d-acfd-3bdb-dfe70c09b98d',
+    'export_locations': [{'path': '172.24.44.10:/shares/'
+                                  '62125744-fcdd-4f55-a8c1-d1498102f634'}],
+    'mount_snapshot_support': True,
+}
+
+share_mount_support_cifs = {
+    'id': 'd6e7dc6b-f65f-49d9-968d-936f75474f29',
+    'name': 'd6e7dc6b-f65f-49d9-968d-936f75474f29',
+    'size': 50,
+    'host': 'hnas',
+    'share_proto': 'CIFS',
+    'share_type_id': 1,
+    'share_network_id': 'bb329e24-3bdb-491d-acfd-dfe70c09b98d',
+    'share_server_id': 'cc345a53-491d-acfd-3bdb-dfe70c09b98d',
+    'export_locations': [{'path': '172.24.44.10:/shares/'
+                                  'd6e7dc6b-f65f-49d9-968d-936f75474f29'}],
+    'mount_snapshot_support': True,
+}
+
 access_nfs_rw = {
     'id': 'acdc7172b-fe07-46c4-b78f-df3e0324ccd0',
     'access_type': 'ip',
@@ -113,6 +141,22 @@ manage_snapshot = {
     'share': share_nfs,
     'provider_location': '/snapshots/aa4a7710-f326-41fb-ad18-b4ad587fc87a'
                          '/snapshot18-05-2106',
+}
+
+snapshot_mount_support_nfs = {
+    'id': '3377b015-a695-4a5a-8aa5-9b931b023380',
+    'share_id': '62125744-fcdd-4f55-a8c1-d1498102f634',
+    'share': share_mount_support_nfs,
+    'provider_location': '/snapshots/62125744-fcdd-4f55-a8c1-d1498102f634'
+                         '/3377b015-a695-4a5a-8aa5-9b931b023380',
+}
+
+snapshot_mount_support_cifs = {
+    'id': 'f9916515-5cb8-4612-afa6-7f2baa74223a',
+    'share_id': 'd6e7dc6b-f65f-49d9-968d-936f75474f29',
+    'share': share_mount_support_cifs,
+    'provider_location': '/snapshots/d6e7dc6b-f65f-49d9-968d-936f75474f29'
+                         '/f9916515-5cb8-4612-afa6-7f2baa74223a',
 }
 
 invalid_share = {
@@ -895,9 +939,42 @@ class HitachiHNASTestCase(test.TestCase):
          assert_called_once_with(fake_data))
         self.assertTrue(self.mock_log.info.called)
 
+    @ddt.data(snapshot_nfs, snapshot_cifs,
+              snapshot_mount_support_nfs, snapshot_mount_support_cifs)
+    def test_ensure_snapshot(self, snapshot):
+        result = self._driver.ensure_snapshot('context', snapshot)
+
+        if snapshot['share'].get('mount_snapshot_support'):
+            expected = [
+                self._get_export(
+                    snapshot['id'], snapshot['share']['share_proto'],
+                    self._driver.hnas_evs_ip, False, is_snapshot=True),
+                self._get_export(
+                    snapshot['id'], snapshot['share']['share_proto'],
+                    self._driver.hnas_admin_network_ip, True,
+                    is_snapshot=True)]
+
+            if snapshot['share']['share_proto'].lower() == 'nfs':
+                ssh.HNASSSHBackend.check_export.assert_called_once_with(
+                    snapshot['id'], is_snapshot=True)
+                self.assertFalse(ssh.HNASSSHBackend.check_cifs.called)
+            else:
+                ssh.HNASSSHBackend.check_cifs.assert_called_once_with(
+                    snapshot['id'])
+                self.assertFalse(ssh.HNASSSHBackend.check_export.called)
+        else:
+            expected = None
+
+        self.assertEqual(expected, result)
+
     def test_manage_existing_snapshot(self):
         self.mock_object(ssh.HNASSSHBackend, 'check_snapshot',
                          mock.Mock(return_value=True))
+        self.mock_object(self._driver, '_ensure_snapshot',
+                         mock.Mock(return_value=[]))
+
+        path_info = manage_snapshot['provider_location'].split('/')
+        hnas_snapshot_id = path_info[3]
 
         out = self._driver.manage_existing_snapshot(manage_snapshot,
                                                     {'size': 20})
@@ -905,7 +982,52 @@ class HitachiHNASTestCase(test.TestCase):
         ssh.HNASSSHBackend.check_snapshot.assert_called_with(
             '/snapshots/aa4a7710-f326-41fb-ad18-b4ad587fc87a'
             '/snapshot18-05-2106')
+        self._driver._ensure_snapshot.assert_called_with(
+            manage_snapshot,
+            hnas_snapshot_id)
         self.assertEqual(20, out['size'])
+        self.assertTrue(self.mock_log.debug.called)
+        self.assertTrue(self.mock_log.info.called)
+
+    @ddt.data(None, exception.HNASItemNotFoundException('Fake error.'))
+    def test_manage_existing_snapshot_with_mount_support(self, exc):
+        export_locations = [{
+            'path': '172.24.44.10:/snapshots/'
+                    '3377b015-a695-4a5a-8aa5-9b931b023380'}]
+
+        self.mock_object(ssh.HNASSSHBackend, 'check_snapshot',
+                         mock.Mock(return_value=True))
+        self.mock_object(self._driver, '_ensure_snapshot',
+                         mock.Mock(return_value=[], side_effect=exc))
+        self.mock_object(self._driver, '_get_export_locations',
+                         mock.Mock(return_value=export_locations))
+        if exc:
+            self.mock_object(self._driver, '_create_export')
+
+        path_info = snapshot_mount_support_nfs['provider_location'].split('/')
+        hnas_snapshot_id = path_info[3]
+
+        out = self._driver.manage_existing_snapshot(
+            snapshot_mount_support_nfs,
+            {'size': 20, 'export_locations': export_locations})
+
+        ssh.HNASSSHBackend.check_snapshot.assert_called_with(
+            '/snapshots/62125744-fcdd-4f55-a8c1-d1498102f634'
+            '/3377b015-a695-4a5a-8aa5-9b931b023380')
+        self._driver._ensure_snapshot.assert_called_with(
+            snapshot_mount_support_nfs,
+            hnas_snapshot_id)
+        self._driver._get_export_locations.assert_called_with(
+            snapshot_mount_support_nfs['share']['share_proto'],
+            hnas_snapshot_id,
+            is_snapshot=True)
+        if exc:
+            self._driver._create_export.assert_called_with(
+                snapshot_mount_support_nfs['share_id'],
+                snapshot_mount_support_nfs['share']['share_proto'],
+                snapshot_id=hnas_snapshot_id)
+        self.assertEqual(20, out['size'])
+        self.assertEqual(export_locations, out['export_locations'])
         self.assertTrue(self.mock_log.debug.called)
         self.assertTrue(self.mock_log.info.called)
 

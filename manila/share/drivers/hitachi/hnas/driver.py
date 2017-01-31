@@ -1117,6 +1117,87 @@ class HitachiHNASDriver(driver.ShareDriver):
             export = r'\\%s\%s' % (ip, hnas_id)
         return export
 
+    def _ensure_snapshot(self, snapshot, hnas_snapshot_id):
+        """Ensure that snapshot is exported.
+
+        :param snapshot: Snapshot that will be checked.
+        :param hnas_snapshot_id: HNAS ID of snapshot that will be checked.
+
+        :returns: Returns a list of dicts containing the snapshot's export
+            locations or None if mount_snapshot_support is False.
+        """
+        self._check_protocol(snapshot['share_id'],
+                             snapshot['share']['share_proto'])
+        self._check_fs_mounted()
+
+        export_list = None
+        if snapshot['share'].get('mount_snapshot_support'):
+            if snapshot['share']['share_proto'].lower() == 'nfs':
+                self.hnas.check_export(hnas_snapshot_id, is_snapshot=True)
+            else:
+                self.hnas.check_cifs(hnas_snapshot_id)
+
+            export_list = self._get_export_locations(
+                snapshot['share']['share_proto'],
+                hnas_snapshot_id,
+                is_snapshot=True)
+
+        return export_list
+
+    def ensure_snapshot(self, context, snapshot, share_server=None):
+        """Ensure that snapshot is exported.
+
+        :param context: The `context.RequestContext` object for the request.
+        :param snapshot: Snapshot that will be checked.
+        :param share_server: Data structure with share server information.
+            Not used by this driver.
+
+        :returns: Returns a list of dicts containing the EVS IP concatenated
+            with the path of snapshot in the filesystem or None if
+            mount_snapshot_support is False.
+
+            Example for NFS::
+
+            [
+              {
+                'path': '172.24.44.10:/snapshots/id',
+                'metadata': {},
+                'is_admin_only': False
+              },
+              {
+                'path': '192.168.0.10:/snapshots/id',
+                'metadata': {},
+                'is_admin_only': True
+              }
+            ]
+
+            Example for CIFS::
+
+            [
+              {
+                'path': '\\172.24.44.10\id',
+                'metadata': {},
+                'is_admin_only': False
+              },
+              {
+                'path': '\\192.168.0.10\id',
+                'metadata': {},
+                'is_admin_only': True
+              }
+            ]
+        """
+        LOG.debug("Ensuring snapshot in HNAS: %(snap)s.",
+                  {'snap': snapshot['id']})
+
+        hnas_snapshot_id = self._get_hnas_snapshot_id(snapshot)
+
+        export_list = self._ensure_snapshot(snapshot, hnas_snapshot_id)
+
+        LOG.debug("Snapshot ensured in HNAS: %(snap)s, protocol %(proto)s.",
+                  {'snap': snapshot['id'],
+                   'proto': snapshot['share']['share_proto']})
+        return export_list
+
     def manage_existing_snapshot(self, snapshot, driver_options):
         """Manages a snapshot that exists only in HNAS.
 
@@ -1174,16 +1255,30 @@ class HitachiHNASDriver(driver.ShareDriver):
                     "HNAS.") % {'snap_id': hnas_snapshot_id}
             raise exception.ManageInvalidShareSnapshot(reason=msg)
 
+        try:
+            self._ensure_snapshot(snapshot, hnas_snapshot_id)
+        except exception.HNASItemNotFoundException:
+            LOG.warning(_LW("Export does not exist for snapshot %s, "
+                            "creating a new one."), snapshot['id'])
+            self._create_export(hnas_share_id,
+                                snapshot['share']['share_proto'],
+                                snapshot_id=hnas_snapshot_id)
+
+        output = {'size': snapshot_size}
+        if snapshot['share'].get('mount_snapshot_support'):
+            export_locations = self._get_export_locations(
+                snapshot['share']['share_proto'],
+                hnas_snapshot_id,
+                is_snapshot=True)
+            output['export_locations'] = export_locations
+
         LOG.info(_LI("Snapshot %(snap_path)s for share %(shr_id)s was "
                      "successfully managed with ID %(snap_id)s."),
                  {'snap_path': snapshot['provider_location'],
-                  'shr_id': snapshot['share_id'], 'snap_id': snapshot['id']})
+                  'shr_id': snapshot['share_id'],
+                  'snap_id': snapshot['id']})
 
-        export_locations = self._get_export_locations(
-            snapshot['share']['share_proto'], hnas_snapshot_id,
-            is_snapshot=True)
-
-        return {'size': snapshot_size, 'export_locations': export_locations}
+        return output
 
     def unmanage_snapshot(self, snapshot):
         """Unmanage a share snapshot
