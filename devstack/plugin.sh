@@ -560,6 +560,7 @@ function init_manila {
         if is_service_enabled m-shr; then
             mkdir -p $MANILA_ZFSONLINUX_BACKEND_FILES_CONTAINER_DIR
             file_counter=0
+            MANILA_ZFSONLINUX_SERVICE_IP=${MANILA_ZFSONLINUX_SERVICE_IP:-"127.0.0.1"}
             for BE in ${MANILA_ENABLED_BACKENDS//,/ }; do
                 if [[ $file_counter == 0 ]]; then
                     # NOTE(vponomaryov): create two pools for first ZFS backend
@@ -606,6 +607,7 @@ function init_manila {
                 cat $STACK_HOME/.ssh/*.pub >> $SSH_USER_HOME/.ssh/authorized_keys
                 # Give ssh user sudo access
                 echo "$MANILA_ZFSONLINUX_SSH_USERNAME ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers > /dev/null
+                iniset $MANILA_CONF DEFAULT data_node_access_ip $MANILA_ZFSONLINUX_SERVICE_IP
             fi
         fi
     fi
