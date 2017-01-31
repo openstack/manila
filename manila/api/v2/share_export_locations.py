@@ -45,7 +45,8 @@ class ShareExportLocationController(wsgi.Controller):
         context = req.environ['manila.context']
         self._verify_share(context, share_id)
         export_locations = db_api.share_export_locations_get_by_share_id(
-            context, share_id, include_admin_only=context.is_admin)
+            context, share_id, include_admin_only=context.is_admin,
+            ignore_migration_destination=True)
         return self._view_builder.summary_list(req, export_locations)
 
     @wsgi.Controller.api_version('2.9')

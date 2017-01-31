@@ -1396,11 +1396,27 @@ class ShareInstanceExportLocationsMetadataDatabaseAPITestCase(test.TestCase):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.ctxt = context.get_admin_context()
-        self.share = db_utils.create_share()
+        share_id = 'fake_share_id'
+        instances = [
+            db_utils.create_share_instance(
+                share_id=share_id,
+                status=constants.STATUS_AVAILABLE),
+            db_utils.create_share_instance(
+                share_id=share_id,
+                status=constants.STATUS_MIGRATING),
+            db_utils.create_share_instance(
+                share_id=share_id,
+                status=constants.STATUS_MIGRATING_TO),
+        ]
+        self.share = db_utils.create_share(
+            id=share_id,
+            instances=instances)
         self.initial_locations = ['/fake/foo/', '/fake/bar', '/fake/quuz']
-        db_api.share_export_locations_update(
-            self.ctxt, self.share.instance['id'], self.initial_locations,
-            delete=False)
+        self.shown_locations = ['/fake/foo/', '/fake/bar']
+        for i in range(0, 3):
+            db_api.share_export_locations_update(
+                self.ctxt, instances[i]['id'], self.initial_locations[i],
+                delete=False)
 
     def _get_export_location_uuid_by_path(self, path):
         els = db_api.share_export_locations_get_by_share_id(
@@ -1416,14 +1432,21 @@ class ShareInstanceExportLocationsMetadataDatabaseAPITestCase(test.TestCase):
         els = db_api.share_export_locations_get_by_share_id(
             self.ctxt, self.share.id)
         self.assertEqual(3, len(els))
-        for path in self.initial_locations:
+        for path in self.shown_locations:
+            self.assertTrue(any([path in el.path for el in els]))
+
+    def test_get_export_locations_by_share_id_ignore_migration_dest(self):
+        els = db_api.share_export_locations_get_by_share_id(
+            self.ctxt, self.share.id, ignore_migration_destination=True)
+        self.assertEqual(2, len(els))
+        for path in self.shown_locations:
             self.assertTrue(any([path in el.path for el in els]))
 
     def test_get_export_locations_by_share_instance_id(self):
         els = db_api.share_export_locations_get_by_share_instance_id(
             self.ctxt, self.share.instance.id)
-        self.assertEqual(3, len(els))
-        for path in self.initial_locations:
+        self.assertEqual(1, len(els))
+        for path in [self.shown_locations[1]]:
             self.assertTrue(any([path in el.path for el in els]))
 
     def test_export_location_metadata_update_delete(self):
