@@ -713,13 +713,20 @@ class HNASSSHTestCase(test.TestCase):
         fake_cifs_allow_command = ['cifs-saa', 'add', '--target-label',
                                    self.fs_name, 'vvol_test',
                                    'fake_user', 'acr']
+        fake_cifs_allow_command2 = ['cifs-saa', 'change', '--target-label',
+                                    'file_system', 'vvol_test', 'fake_user',
+                                    'acr']
+
         self.mock_object(ssh.HNASSSHBackend, '_execute',
                          mock.Mock(side_effect=[putils.ProcessExecutionError(
-                             stderr='already listed as a user')]))
+                             stderr='already listed as a user'),
+                             "Rule modified."]))
 
         self._driver_ssh.cifs_allow_access('vvol_test', 'fake_user', 'acr')
 
-        self._driver_ssh._execute.assert_called_with(fake_cifs_allow_command)
+        self._driver_ssh._execute.assert_has_calls(
+            [mock.call(fake_cifs_allow_command),
+             mock.call(fake_cifs_allow_command2)])
         self.assertTrue(self.mock_log.debug.called)
 
     def test_cifs_allow_access_exception(self):
@@ -736,6 +743,29 @@ class HNASSSHTestCase(test.TestCase):
                           'fake_user', 'acr')
 
         self._driver_ssh._execute.assert_called_with(fake_cifs_allow_command)
+
+    def test_cifs_update_access_level_exception(self):
+        fake_cifs_allow_command = ['cifs-saa', 'add', '--target-label',
+                                   self.fs_name, 'vvol_test',
+                                   'fake_user', 'acr']
+        fake_cifs_allow_command2 = ['cifs-saa', 'change', '--target-label',
+                                    'file_system', 'vvol_test', 'fake_user',
+                                    'acr']
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute',
+                         mock.Mock(side_effect=[putils.ProcessExecutionError(
+                             stderr='already listed as a user'),
+                             putils.ProcessExecutionError(
+                             stderr='Error when trying to modify rule.')]))
+
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver_ssh.cifs_allow_access, 'vvol_test',
+                          'fake_user', 'acr')
+
+        self._driver_ssh._execute.assert_has_calls(
+            [mock.call(fake_cifs_allow_command),
+             mock.call(fake_cifs_allow_command2)])
+        self.assertTrue(self.mock_log.debug.called)
 
     def test_cifs_deny_access(self):
         fake_cifs_deny_command = ['cifs-saa', 'delete', '--target-label',
