@@ -21,7 +21,6 @@ from testtools import testcase as tc
 from manila_tempest_tests.common import constants
 from manila_tempest_tests import share_exceptions
 from manila_tempest_tests.tests.api import base
-from manila_tempest_tests import utils
 
 CONF = config.CONF
 _MIN_SUPPORTED_MICROVERSION = '2.11'
@@ -72,9 +71,6 @@ class ReplicationTest(base.BaseSharesMixedTest):
         cls.instance_id1 = cls._get_instance(cls.shares[0])
         cls.instance_id2 = cls._get_instance(cls.shares[1])
 
-        cls.access_type = "ip"
-        cls.access_to = utils.rand_ip()
-
     @classmethod
     def _get_instance(cls, share):
         share_instances = cls.admin_client.get_instances_of_share(share["id"])
@@ -107,24 +103,36 @@ class ReplicationTest(base.BaseSharesMixedTest):
         return [replica for replica in replica_list
                 if replica['replica_state'] == r_state]
 
-    def _verify_config_and_set_access_rule_data(self):
-        """Verify the access rule configuration is enabled for NFS.
+    def _verify_in_sync_replica_promotion(self, share, original_replica):
+        # Verify that 'in-sync' replica has been promoted successfully
 
-        Set the data after verification.
-        """
-        protocol = self.shares_v2_client.share_protocol
+        # NOTE(Yogi1): Cleanup needs to be disabled for replica that is
+        # being promoted since it will become the 'primary'/'active' replica.
+        replica = self.create_share_replica(share["id"], self.replica_zone,
+                                            cleanup=False)
+        # Wait for replica state to update after creation
+        self.shares_v2_client.wait_for_share_replica_status(
+            replica['id'], constants.REPLICATION_STATE_IN_SYNC,
+            status_attr='replica_state')
+        # Promote the first in_sync replica to active state
+        promoted_replica = self.promote_share_replica(replica['id'])
+        # Delete the demoted replica so promoted replica can be cleaned
+        # during the cleanup of the share.
+        self.addCleanup(self.delete_share_replica, original_replica['id'])
+        self._verify_active_replica_count(share["id"])
+        # Verify the replica_state for promoted replica
+        promoted_replica = self.shares_v2_client.get_share_replica(
+            promoted_replica["id"])
+        self.assertEqual(constants.REPLICATION_STATE_ACTIVE,
+                         promoted_replica["replica_state"])
 
-        # TODO(Yogi1): Add access rules for other protocols.
-        if not ((protocol.lower() == 'nfs') and
-                (protocol in CONF.share.enable_ip_rules_for_protocols) and
-                CONF.share.enable_ip_rules_for_protocols):
-            message = "IP access rules are not supported for this protocol."
-            raise self.skipException(message)
-
-        access_type = "ip"
-        access_to = utils.rand_ip()
-
-        return access_type, access_to
+    def _check_skip_promotion_tests(self):
+        # Check if the replication type is right for replica promotion tests
+        if (self.replication_type
+                not in constants.REPLICATION_PROMOTION_CHOICES):
+            msg = "Option backend_replication_type should be one of (%s)!"
+            raise self.skipException(
+                msg % ','.join(constants.REPLICATION_PROMOTION_CHOICES))
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_add_delete_share_replica(self):
@@ -137,7 +145,7 @@ class ReplicationTest(base.BaseSharesMixedTest):
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_add_access_rule_create_replica_delete_rule(self):
         # Add access rule to the share
-        access_type, access_to = self._verify_config_and_set_access_rule_data()
+        access_type, access_to = self._get_access_rule_data_from_config()
         rule = self.shares_v2_client.create_access_rule(
             self.shares[0]["id"], access_type, access_to, 'ro')
         self.shares_v2_client.wait_for_access_rule_status(
@@ -159,7 +167,7 @@ class ReplicationTest(base.BaseSharesMixedTest):
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_create_replica_add_access_rule_delete_replica(self):
-        access_type, access_to = self._verify_config_and_set_access_rule_data()
+        access_type, access_to = self._get_access_rule_data_from_config()
         # Create the replica
         share_replica = self._verify_create_replica()
 
@@ -208,42 +216,40 @@ class ReplicationTest(base.BaseSharesMixedTest):
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_promote_in_sync_share_replica(self):
         # Test promote 'in_sync' share_replica to 'active' state
-        if (self.replication_type
-                not in constants.REPLICATION_PROMOTION_CHOICES):
-            msg = "Option backend_replication_type should be one of (%s)!"
-            raise self.skipException(
-                msg % ','.join(constants.REPLICATION_PROMOTION_CHOICES))
+        self._check_skip_promotion_tests()
         share = self.create_shares([self.creation_data])[0]
         original_replica = self.shares_v2_client.list_share_replicas(
             share["id"])[0]
-        # NOTE(Yogi1): Cleanup needs to be disabled for replica that is
-        # being promoted since it will become the 'primary'/'active' replica.
-        replica = self.create_share_replica(share["id"], self.replica_zone,
-                                            cleanup=False)
-        # Wait for replica state to update after creation
-        self.shares_v2_client.wait_for_share_replica_status(
-            replica['id'], constants.REPLICATION_STATE_IN_SYNC,
-            status_attr='replica_state')
-        # Promote the first in_sync replica to active state
-        promoted_replica = self.promote_share_replica(replica['id'])
-        # Delete the demoted replica so promoted replica can be cleaned
-        # during the cleanup of the share.
-        self.addCleanup(self.delete_share_replica, original_replica['id'])
-        self._verify_active_replica_count(share["id"])
-        # Verify the replica_state for promoted replica
-        promoted_replica = self.shares_v2_client.get_share_replica(
-            promoted_replica["id"])
-        self.assertEqual(constants.REPLICATION_STATE_ACTIVE,
-                         promoted_replica["replica_state"])
+        self._verify_in_sync_replica_promotion(share, original_replica)
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
+    def test_add_rule_promote_share_replica_verify_rule(self):
+        # Verify the access rule stays intact after share replica promotion
+        self._check_skip_promotion_tests()
+
+        share = self.create_shares([self.creation_data])[0]
+        # Add access rule
+        access_type, access_to = self._get_access_rule_data_from_config()
+        rule = self.shares_v2_client.create_access_rule(
+            share["id"], access_type, access_to, 'ro')
+        self.shares_v2_client.wait_for_access_rule_status(
+            share["id"], rule["id"], constants.RULE_STATE_ACTIVE)
+
+        original_replica = self.shares_v2_client.list_share_replicas(
+            share["id"])[0]
+        self._verify_in_sync_replica_promotion(share, original_replica)
+
+        # verify rule's values
+        rules_list = self.shares_v2_client.list_access_rules(share["id"])
+        self.assertEqual(1, len(rules_list))
+        self.assertEqual(access_type, rules_list[0]["access_type"])
+        self.assertEqual(access_to, rules_list[0]["access_to"])
+        self.assertEqual('ro', rules_list[0]["access_level"])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_promote_and_promote_back(self):
         # Test promote back and forth between 2 share replicas
-        if (self.replication_type
-                not in constants.REPLICATION_PROMOTION_CHOICES):
-            msg = "Option backend_replication_type should be one of (%s)!"
-            raise self.skipException(
-                msg % ','.join(constants.REPLICATION_PROMOTION_CHOICES))
+        self._check_skip_promotion_tests()
 
         # Create a new share
         share = self.create_shares([self.creation_data])[0]

@@ -159,6 +159,22 @@ class ReplicationNegativeTest(base.BaseSharesMixedTest):
         # Try promoting the replica
         self.shares_v2_client.promote_share_replica(replica['id'])
 
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    def test_add_access_rule_share_replica_error_status(self):
+        access_type, access_to = self._get_access_rule_data_from_config()
+        # Create the replica
+        share_replica = self.create_share_replica(self.share1["id"],
+                                                  self.replica_zone,
+                                                  cleanup_in_class=False)
+        # Reset the replica status to error
+        self.admin_client.reset_share_replica_status(
+            share_replica['id'], constants.STATUS_ERROR)
+
+        # Verify access rule cannot be added
+        self.assertRaises(lib_exc.BadRequest,
+                          self.admin_client.create_access_rule,
+                          self.share1["id"], access_type, access_to, 'ro')
+
 
 @testtools.skipUnless(CONF.share.run_replication_tests,
                       'Replication tests are disabled.')
