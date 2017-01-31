@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixed snapshot export locations being created for
+    shares with property mount_snapshot_support=False.
+

@@ -337,7 +337,8 @@ class ShareInstance(BASE, ManilaBase):
                              'display_name', 'display_description',
                              'snapshot_id', 'share_proto', 'is_public',
                              'share_group_id', 'replication_type',
-                             'source_share_group_snapshot_member_id')
+                             'source_share_group_snapshot_member_id',
+                             'mount_snapshot_support')
 
     def set_share_data(self, share):
         for share_property in self._proxified_properties:
