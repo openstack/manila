@@ -1106,6 +1106,15 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.Conflict(err=msg)
 
+        # TODO(ganso): We do not support migrating shares in or out of groups
+        # for now.
+        if share.get('share_group_id'):
+            msg = _('Share %s is a member of a group. This operation is not '
+                    'currently supported for shares that are members of '
+                    'groups.') % share['id']
+            LOG.error(msg)
+            raise exception.InvalidShare(reason=msg)
+
         # We only handle "available" share for now
         if share_instance['status'] != constants.STATUS_AVAILABLE:
             msg = _('Share instance %(instance_id)s status must be available, '
