@@ -1,0 +1,6 @@
+---
+fixes:
+  - Fixed default approach for creating share group snapshots that uses
+    common share driver interface by making proper call of this method.
+    Before, some drivers that were depending on some specific data
+    from 'snapshot' object were failing not being able to get these data.

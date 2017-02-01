@@ -41,6 +41,7 @@ class ShareGroupSnapshotViewBuilder(common.ViewBuilder):
                 'share_group_snapshot_id': member.get(
                     'share_group_snapshot_id'),
                 'share_id': member.get('share_id'),
+                # TODO(vponomaryov): add 'provider_location' key in Pike.
             }
             members_list.append(member_dict)
 

@@ -239,6 +239,9 @@ class DummyDriver(driver.ShareDriver):
             }
         )
         return {
+            'fake_key1': 'fake_value1',
+            'fake_key2': 'fake_value2',
+            'fake_key3': 'fake_value3',
             "provider_location": mountpoint,
             "export_locations": self._generate_export_locations(
                 mountpoint, share_server=share_server)
@@ -257,6 +260,7 @@ class DummyDriver(driver.ShareDriver):
     @slow_me_down
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Is called to remove snapshot."""
+        LOG.debug('Deleting snapshot with following data: %s', snapshot)
         self.private_storage.delete(snapshot["id"])
 
     @slow_me_down

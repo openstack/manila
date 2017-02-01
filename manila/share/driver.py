@@ -1325,7 +1325,8 @@ class ShareDriver(object):
                      'deleted_at': None,
                      'share_id': 'some_fake_uuid',
                      'id': 'some_fake_uuid',
-                     'size': 1
+                     'size': 1,
+                     'provider_location': None,
                     }
                 ],
                 'deleted_at': None,
@@ -1350,17 +1351,28 @@ class ShareDriver(object):
                 share_group=snap_dict['share_group_id'])
         elif not snapshot_members:
             LOG.warning(_LW('No shares in share group to create snapshot.'))
+            return None, None
         else:
             share_snapshots = []
+            snapshot_members_updates = []
             for member in snapshot_members:
                 share_snapshot = {
                     'snapshot_id': member['share_group_snapshot_id'],
                     'share_id': member['share_id'],
+                    'share_instance_id': member['share']['id'],
                     'id': member['id'],
+                    'share': member['share'],
+                    'size': member['share']['size'],
+                    'share_size': member['share']['size'],
+                    'share_proto': member['share']['share_proto'],
+                    'provider_location': None,
                 }
                 try:
-                    self.create_snapshot(context, share_snapshot,
-                                         share_server=share_server)
+                    member_update = self.create_snapshot(
+                        context, share_snapshot, share_server=share_server)
+                    if member_update:
+                        member_update['id'] = member['id']
+                        snapshot_members_updates.append(member_update)
                     share_snapshots.append(share_snapshot)
                 except exception.ManilaException as e:
                     msg = _LE('Could not create share group snapshot. Failed '
@@ -1381,8 +1393,7 @@ class ShareDriver(object):
 
             LOG.debug('Successfully created share group snapshot %s.',
                       snap_dict['id'])
-
-        return None, None
+            return None, snapshot_members_updates
 
     def delete_share_group_snapshot(self, context, snap_dict,
                                     share_server=None):
@@ -1417,7 +1428,8 @@ class ShareDriver(object):
                      'share_group_snapshot_id': 'some_fake_uuid',
                      'deleted_at': None,
                      'id': 'some_fake_uuid',
-                     'size': 1
+                     'size': 1,
+                     'provider_location': 'fake_provider_location_value',
                     }
                 ],
                 'deleted_at': None,
@@ -1433,8 +1445,15 @@ class ShareDriver(object):
         LOG.debug('Deleting share group snapshot %s.' % snap_dict['id'])
         for member in snapshot_members:
             share_snapshot = {
+                'snapshot_id': member['share_group_snapshot_id'],
                 'share_id': member['share_id'],
+                'share_instance_id': member['share']['id'],
                 'id': member['id'],
+                'share': member['share'],
+                'size': member['share']['size'],
+                'share_size': member['share']['size'],
+                'share_proto': member['share']['share_proto'],
+                'provider_location': member['provider_location'],
             }
             self.delete_snapshot(
                 context, share_snapshot, share_server=share_server)

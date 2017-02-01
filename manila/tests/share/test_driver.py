@@ -806,16 +806,28 @@ class ShareDriverTestCase(test.TestCase):
 
     def test_create_share_group_snapshot(self):
         fake_snap_member_1 = {
-            'share_group_snapshot_id': 'fake_sg_snap_id',
             'id': '6813e06b-a8f5-4784-b17d-f3e91afa370e',
-            'share_id': '420f978b-dbf6-4b3c-92fe-f5b17a0bb5e2',
-            'status': 'bar',
+            'share_id': 'a3ebdba5-b4e1-46c8-a0ea-a9ac8daf5296',
+            'share_group_snapshot_id': 'fake_share_group_snapshot_id',
+            'share_instance_id': 'fake_share_instance_id_1',
+            'provider_location': 'should_not_be_used_1',
+            'share': {
+                'id': '420f978b-dbf6-4b3c-92fe-f5b17a0bb5e2',
+                'size': 3,
+                'share_proto': 'fake_share_proto',
+            },
         }
         fake_snap_member_2 = {
-            'share_group_snapshot_id': 'fake_sg_snap_id',
             'id': '1e010dfe-545b-432d-ab95-4ef03cd82f89',
             'share_id': 'a3ebdba5-b4e1-46c8-a0ea-a9ac8daf5296',
-            'status': 'foo',
+            'share_group_snapshot_id': 'fake_share_group_snapshot_id',
+            'share_instance_id': 'fake_share_instance_id_2',
+            'provider_location': 'should_not_be_used_2',
+            'share': {
+                'id': '420f978b-dbf6-4b3c-92fe-f5b17a0bb5e2',
+                'size': '2',
+                'share_proto': 'fake_share_proto',
+            },
         }
         fake_snap_dict = {
             'status': 'available',
@@ -832,7 +844,10 @@ class ShareDriverTestCase(test.TestCase):
         }
         share_driver = self._instantiate_share_driver(None, False)
         share_driver._stats['share_group_snapshot_support'] = True
-        mock_create_snap = self.mock_object(share_driver, 'create_snapshot')
+        mock_create_snap = self.mock_object(
+            share_driver, 'create_snapshot',
+            mock.Mock(side_effect=lambda *args, **kwargs: {
+                'foo_k': 'foo_v', 'bar_k': 'bar_v_%s' % args[1]['id']}))
 
         share_group_snapshot_update, member_update_list = (
             share_driver.create_share_group_snapshot(
@@ -841,32 +856,50 @@ class ShareDriverTestCase(test.TestCase):
         mock_create_snap.assert_has_calls([
             mock.call(
                 'fake_context',
-                {'id': fake_snap_member_1['id'],
-                 'share_id': fake_snap_member_1['share_id'],
-                 'snapshot_id': fake_snap_member_1['share_group_snapshot_id']},
-                share_server=None),
-            mock.call(
-                'fake_context',
-                {'id': fake_snap_member_2['id'],
-                 'share_id': fake_snap_member_2['share_id'],
-                 'snapshot_id': fake_snap_member_2['share_group_snapshot_id']},
-                share_server=None),
+                {'snapshot_id': member['share_group_snapshot_id'],
+                 'share_id': member['share_id'],
+                 'share_instance_id': member['share']['id'],
+                 'id': member['id'],
+                 'share': member['share'],
+                 'size': member['share']['size'],
+                 'share_size': member['share']['size'],
+                 'share_proto': member['share']['share_proto'],
+                 'provider_location': None},
+                share_server=None)
+            for member in (fake_snap_member_1, fake_snap_member_2)
         ])
         self.assertIsNone(share_group_snapshot_update)
-        self.assertIsNone(member_update_list)
+        self.assertEqual(
+            [{'id': member['id'], 'foo_k': 'foo_v',
+              'bar_k': 'bar_v_%s' % member['id']}
+             for member in (fake_snap_member_1, fake_snap_member_2)],
+            member_update_list,
+        )
 
     def test_create_share_group_snapshot_failed_snapshot(self):
         fake_snap_member_1 = {
-            'share_group_snapshot_id': 'fake_sg_snap_id',
             'id': '6813e06b-a8f5-4784-b17d-f3e91afa370e',
-            'share_id': '420f978b-dbf6-4b3c-92fe-f5b17a0bb5e2',
-            'status': 'bar',
+            'share_id': 'a3ebdba5-b4e1-46c8-a0ea-a9ac8daf5296',
+            'share_group_snapshot_id': 'fake_share_group_snapshot_id',
+            'share_instance_id': 'fake_share_instance_id_1',
+            'provider_location': 'should_not_be_used_1',
+            'share': {
+                'id': '420f978b-dbf6-4b3c-92fe-f5b17a0bb5e2',
+                'size': 3,
+                'share_proto': 'fake_share_proto',
+            },
         }
         fake_snap_member_2 = {
-            'share_group_snapshot_id': 'fake_sg_snap_id',
             'id': '1e010dfe-545b-432d-ab95-4ef03cd82f89',
             'share_id': 'a3ebdba5-b4e1-46c8-a0ea-a9ac8daf5296',
-            'status': 'foo',
+            'share_group_snapshot_id': 'fake_share_group_snapshot_id',
+            'share_instance_id': 'fake_share_instance_id_2',
+            'provider_location': 'should_not_be_used_2',
+            'share': {
+                'id': '420f978b-dbf6-4b3c-92fe-f5b17a0bb5e2',
+                'size': '2',
+                'share_proto': 'fake_share_proto',
+            },
         }
         fake_snap_dict = {
             'status': 'available',
@@ -896,20 +929,30 @@ class ShareDriverTestCase(test.TestCase):
             'fake_context', fake_snap_dict)
 
         fake_snap_member_1_expected = {
-            'id': fake_snap_member_1['id'],
-            'share_id': fake_snap_member_1['share_id'],
             'snapshot_id': fake_snap_member_1['share_group_snapshot_id'],
+            'share_id': fake_snap_member_1['share_id'],
+            'share_instance_id': fake_snap_member_1['share']['id'],
+            'id': fake_snap_member_1['id'],
+            'share': fake_snap_member_1['share'],
+            'size': fake_snap_member_1['share']['size'],
+            'share_size': fake_snap_member_1['share']['size'],
+            'share_proto': fake_snap_member_1['share']['share_proto'],
+            'provider_location': None,
         }
         mock_create_snap.assert_has_calls([
             mock.call(
-                'fake_context', fake_snap_member_1_expected, share_server=None,
-            ),
-            mock.call(
                 'fake_context',
-                {'id': fake_snap_member_2['id'],
-                 'share_id': fake_snap_member_2['share_id'],
-                 'snapshot_id': fake_snap_member_2['share_group_snapshot_id']},
-                share_server=None),
+                {'snapshot_id': member['share_group_snapshot_id'],
+                 'share_id': member['share_id'],
+                 'share_instance_id': member['share']['id'],
+                 'id': member['id'],
+                 'share': member['share'],
+                 'size': member['share']['size'],
+                 'share_size': member['share']['size'],
+                 'share_proto': member['share']['share_proto'],
+                 'provider_location': None},
+                share_server=None)
+            for member in (fake_snap_member_1, fake_snap_member_2)
         ])
         mock_delete_snap.assert_called_with(
             'fake_context', fake_snap_member_1_expected, share_server=None)
@@ -975,11 +1018,27 @@ class ShareDriverTestCase(test.TestCase):
     def test_delete_share_group_snapshot(self):
         fake_snap_member_1 = {
             'id': '6813e06b-a8f5-4784-b17d-f3e91afa370e',
-            'share_id': '420f978b-dbf6-4b3c-92fe-f5b17a0bb5e2'
+            'share_id': 'a3ebdba5-b4e1-46c8-a0ea-a9ac8daf5296',
+            'share_group_snapshot_id': 'fake_share_group_snapshot_id',
+            'share_instance_id': 'fake_share_instance_id_1',
+            'provider_location': 'fake_provider_location_2',
+            'share': {
+                'id': '420f978b-dbf6-4b3c-92fe-f5b17a0bb5e2',
+                'size': 3,
+                'share_proto': 'fake_share_proto',
+            },
         }
         fake_snap_member_2 = {
             'id': '1e010dfe-545b-432d-ab95-4ef03cd82f89',
-            'share_id': 'a3ebdba5-b4e1-46c8-a0ea-a9ac8daf5296'
+            'share_id': 'a3ebdba5-b4e1-46c8-a0ea-a9ac8daf5296',
+            'share_group_snapshot_id': 'fake_share_group_snapshot_id',
+            'share_instance_id': 'fake_share_instance_id_2',
+            'provider_location': 'fake_provider_location_2',
+            'share': {
+                'id': '420f978b-dbf6-4b3c-92fe-f5b17a0bb5e2',
+                'size': '2',
+                'share_proto': 'fake_share_proto',
+            },
         }
         fake_snap_dict = {
             'status': 'available',
@@ -1004,8 +1063,19 @@ class ShareDriverTestCase(test.TestCase):
                 'fake_context', fake_snap_dict))
 
         mock_delete_snap.assert_has_calls([
-            mock.call('fake_context', fake_snap_member_1, share_server=None),
-            mock.call('fake_context', fake_snap_member_2, share_server=None),
+            mock.call(
+                'fake_context',
+                {'snapshot_id': member['share_group_snapshot_id'],
+                 'share_id': member['share_id'],
+                 'share_instance_id': member['share']['id'],
+                 'id': member['id'],
+                 'share': member['share'],
+                 'size': member['share']['size'],
+                 'share_size': member['share']['size'],
+                 'share_proto': member['share']['share_proto'],
+                 'provider_location': member['provider_location']},
+                share_server=None)
+            for member in (fake_snap_member_1, fake_snap_member_2)
         ])
         self.assertIsNone(share_group_snapshot_update)
         self.assertIsNone(member_update_list)

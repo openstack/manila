@@ -3580,7 +3580,7 @@ class ShareManagerTestCase(test.TestCase):
 
         mock_sg_snap_update.assert_called_once_with(
             mock.ANY, fake_snap['id'],
-            {'status': constants.STATUS_AVAILABLE, 'created_at': mock.ANY})
+            {'status': constants.STATUS_AVAILABLE, 'updated_at': mock.ANY})
 
     def test_create_share_group_snapshot_with_update(self):
         fake_snap = {'id': 'fake_snap_id', 'share_group': {},
@@ -3600,39 +3600,96 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY, 'fake_snap_id', {'foo': 'bar'})
         self.share_manager.db.share_group_snapshot_update.assert_any_call(
             mock.ANY, fake_snap['id'],
-            {'status': constants.STATUS_AVAILABLE, 'created_at': mock.ANY})
+            {'status': constants.STATUS_AVAILABLE, 'updated_at': mock.ANY})
 
     def test_create_share_group_snapshot_with_member_update(self):
-        fake_member = {'id': 'fake_member_id', 'share_instance_id': 'blah'}
-        fake_member_update = {'id': 'fake_member_id', 'foo': 'bar'}
-        fake_snap = {'id': 'fake_snap_id', 'share_group': {},
-                     'share_group_snapshot_members': [fake_member]}
+        fake_member1 = {'id': 'fake_member_id_1', 'share_instance_id': 'si_1'}
+        fake_member2 = {'id': 'fake_member_id_2', 'share_instance_id': 'si_2'}
+        fake_member3 = {'id': 'fake_member_id_3', 'share_instance_id': 'si_3'}
+        fake_member_update1 = {
+            'id': fake_member1['id'],
+            'provider_location': 'fake_provider_location_1',
+            'size': 13,
+            'export_locations': ['fake_el_1_1', 'fake_el_1_2'],
+            'should_not_be_used_k1': 'should_not_be_used_v1',
+        }
+        fake_member_update2 = {
+            'id': fake_member2['id'],
+            'provider_location': 'fake_provider_location_2',
+            'size': 31,
+            'export_locations': ['fake_el_2_1', 'fake_el_2_2'],
+            'status': 'fake_status_for_update',
+            'should_not_be_used_k2': 'should_not_be_used_k2',
+        }
+        fake_member_update3 = {
+            'provider_location': 'fake_provider_location_3',
+            'size': 42,
+            'export_locations': ['fake_el_3_1', 'fake_el_3_2'],
+            'should_not_be_used_k3': 'should_not_be_used_k3',
+        }
+        expected_member_update1 = {
+            'id': fake_member_update1['id'],
+            'provider_location': fake_member_update1['provider_location'],
+            'size': fake_member_update1['size'],
+        }
+        expected_member_update2 = {
+            'id': fake_member_update2['id'],
+            'provider_location': fake_member_update2['provider_location'],
+            'size': fake_member_update2['size'],
+            'status': fake_member_update2['status'],
+        }
+        fake_snap = {
+            'id': 'fake_snap_id',
+            'share_group': {},
+            'share_group_snapshot_members': [
+                fake_member1, fake_member2, fake_member3],
+        }
         self.mock_object(
             self.share_manager.db, 'share_group_snapshot_get',
             mock.Mock(return_value=fake_snap))
-        self.mock_object(
+        mock_sg_snapshot_update = self.mock_object(
             self.share_manager.db, 'share_group_snapshot_update',
             mock.Mock(return_value=fake_snap))
-        self.mock_object(
+        mock_sg_snapshot_member_update = self.mock_object(
             self.share_manager.db, 'share_group_snapshot_member_update')
         self.mock_object(
             self.share_manager.db, 'share_instance_get',
             mock.Mock(return_value={'id': 'blah'}))
         self.mock_object(
+            timeutils, 'utcnow', mock.Mock(side_effect=range(1, 10)))
+        mock_driver_create_sg_snapshot = self.mock_object(
             self.share_manager.driver, 'create_share_group_snapshot',
-            mock.Mock(return_value=(None, [fake_member_update])))
+            mock.Mock(return_value=(
+                None, [fake_member_update1, fake_member_update2,
+                       fake_member_update3])))
 
         self.share_manager.create_share_group_snapshot(
             self.context, fake_snap['id'])
 
-        self.share_manager.db.share_group_snapshot_update.assert_any_call(
+        mock_driver_create_sg_snapshot.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            fake_snap, share_server=None)
+        mock_sg_snapshot_update.assert_called_once_with(
             mock.ANY, fake_snap['id'],
-            {'share_group_snapshot_members': [fake_member_update]})
-        self.share_manager.db.share_group_snapshot_update.assert_any_call(
-            mock.ANY, fake_snap['id'],
-            {'status': constants.STATUS_AVAILABLE, 'created_at': mock.ANY})
-        self.assertTrue(
-            self.share_manager.db.share_group_snapshot_member_update.called)
+            {'status': constants.STATUS_AVAILABLE, 'updated_at': mock.ANY})
+        mock_sg_snapshot_member_update.assert_has_calls([
+            mock.call(
+                utils.IsAMatcher(context.RequestContext),
+                expected_member_update1['id'],
+                {'provider_location': expected_member_update1[
+                    'provider_location'],
+                 'size': expected_member_update1['size'],
+                 'updated_at': 1,
+                 'status': manager.constants.STATUS_AVAILABLE}),
+            mock.call(
+                utils.IsAMatcher(context.RequestContext),
+                expected_member_update2['id'],
+                {'provider_location': expected_member_update2[
+                    'provider_location'],
+                 'size': expected_member_update2['size'],
+                 'updated_at': 1,
+                 'status': expected_member_update2['status']}),
+        ])
 
     def test_create_group_snapshot_with_error(self):
         fake_snap = {'id': 'fake_snap_id', 'share_group': {},

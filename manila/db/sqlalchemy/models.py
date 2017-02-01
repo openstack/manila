@@ -1148,14 +1148,20 @@ class ShareGroupShareTypeMapping(BASE, ManilaBase):
                      'ShareGroupShareTypeMapping.deleted == "False")')
     )
 
+# TODO(vponomaryov): add 'share_group_snapshot_member_export_locations' model
+# to support mountable share group snapshots and add its relationship to
+# 'share_group_snapshot_members' table.
+
 
 class ShareGroupSnapshotMember(BASE, ManilaBase):
     """Represents the share snapshots in a share group snapshot."""
     __tablename__ = 'share_group_snapshot_members'
     id = Column(String(36), primary_key=True)
+    # TODO(vponomaryov): make 'share_group_snapshot_id' not nullable.
     share_group_snapshot_id = Column(
         String(36), ForeignKey('share_group_snapshots.id'))
     share_id = Column(String(36), ForeignKey('shares.id'))
+    # TODO(vponomaryov): make 'share_instance_id' not nullable.
     share_instance_id = Column(String(36), ForeignKey('share_instances.id'))
     size = Column(Integer)
     status = Column(String(255))
@@ -1163,6 +1169,11 @@ class ShareGroupSnapshotMember(BASE, ManilaBase):
     user_id = Column(String(255))
     project_id = Column(String(255))
     deleted = Column(String(36), default='False')
+    provider_location = Column(String(255))
+    # TODO(vponomaryov): add relationship to source share instance as it is
+    # done for share snapshot instances.
+    # TODO(vponomaryov): add share group snapshot member export locations
+    # relationship.
     share_group_snapshot = orm.relationship(
         ShareGroupSnapshot,
         backref="share_group_snapshot_members",

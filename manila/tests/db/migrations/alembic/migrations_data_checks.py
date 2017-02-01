@@ -2016,3 +2016,96 @@ class ShareGroupMigrationChecks(BaseMigrationChecks):
             self.cgsnapshot_id, member['cgsnapshot_id'])
         self.test_case.assertIn('share_type_id', member)
         self.test_case.assertEqual(self.share_type_id, member['share_type_id'])
+
+
+@map_to_migration('927920b37453')
+class ShareGroupSnapshotMemberNewProviderLocationColumnChecks(
+        BaseMigrationChecks):
+    table_name = 'share_group_snapshot_members'
+    share_group_type_id = uuidutils.generate_uuid()
+    share_group_id = uuidutils.generate_uuid()
+    share_id = uuidutils.generate_uuid()
+    share_instance_id = uuidutils.generate_uuid()
+    share_group_snapshot_id = uuidutils.generate_uuid()
+    share_group_snapshot_member_id = uuidutils.generate_uuid()
+
+    def setup_upgrade_data(self, engine):
+        # Setup share group type
+        sgt_data = {
+            'id': self.share_group_type_id,
+            'name': uuidutils.generate_uuid(),
+        }
+        sgt_table = utils.load_table('share_group_types', engine)
+        engine.execute(sgt_table.insert(sgt_data))
+
+        # Setup share group
+        sg_data = {
+            'id': self.share_group_id,
+            'project_id': 'fake_project_id',
+            'user_id': 'fake_user_id',
+            'share_group_type_id': self.share_group_type_id,
+        }
+        sg_table = utils.load_table('share_groups', engine)
+        engine.execute(sg_table.insert(sg_data))
+
+        # Setup shares
+        share_data = {
+            'id': self.share_id,
+            'share_group_id': self.share_group_id,
+        }
+        s_table = utils.load_table('shares', engine)
+        engine.execute(s_table.insert(share_data))
+
+        # Setup share instances
+        share_instance_data = {
+            'id': self.share_instance_id,
+            'share_id': share_data['id'],
+            'cast_rules_to_readonly': False,
+        }
+        si_table = utils.load_table('share_instances', engine)
+        engine.execute(si_table.insert(share_instance_data))
+
+        # Setup share group snapshot
+        sgs_data = {
+            'id': self.share_group_snapshot_id,
+            'share_group_id': self.share_group_id,
+            'project_id': 'fake_project_id',
+            'user_id': 'fake_user_id',
+        }
+        sgs_table = utils.load_table('share_group_snapshots', engine)
+        engine.execute(sgs_table.insert(sgs_data))
+
+        # Setup share group snapshot member
+        sgsm_data = {
+            'id': self.share_group_snapshot_member_id,
+            'share_group_snapshot_id': self.share_group_snapshot_id,
+            'share_id': self.share_id,
+            'share_instance_id': self.share_instance_id,
+            'project_id': 'fake_project_id',
+            'user_id': 'fake_user_id',
+        }
+        sgsm_table = utils.load_table(self.table_name, engine)
+        engine.execute(sgsm_table.insert(sgsm_data))
+
+    def check_upgrade(self, engine, data):
+        sgsm_table = utils.load_table(self.table_name, engine)
+        db_result = engine.execute(sgsm_table.select().where(
+            sgsm_table.c.id == self.share_group_snapshot_member_id))
+        self.test_case.assertEqual(1, db_result.rowcount)
+        for sgsm in db_result:
+            self.test_case.assertTrue(hasattr(sgsm, 'provider_location'))
+
+            # Check that we can write string data to the new field
+            engine.execute(sgsm_table.update().where(
+                sgsm_table.c.id == self.share_group_snapshot_member_id,
+            ).values({
+                'provider_location': ('z' * 255),
+            }))
+
+    def check_downgrade(self, engine):
+        sgsm_table = utils.load_table(self.table_name, engine)
+        db_result = engine.execute(sgsm_table.select().where(
+            sgsm_table.c.id == self.share_group_snapshot_member_id))
+        self.test_case.assertEqual(1, db_result.rowcount)
+        for sgsm in db_result:
+            self.test_case.assertFalse(hasattr(sgsm, 'provider_location'))

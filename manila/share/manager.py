@@ -3589,6 +3589,8 @@ class ShareManager(manager.SchedulerDependentManager):
             member['share_id'] = member['share_instance_id']
 
         status = constants.STATUS_AVAILABLE
+        now = timeutils.utcnow()
+        updated_members_ids = []
 
         try:
             LOG.info(_LI("Share group snapshot %s: creating"),
@@ -3601,12 +3603,51 @@ class ShareManager(manager.SchedulerDependentManager):
                 self.driver.create_share_group_snapshot(
                     context, snap_ref, share_server=share_server))
 
-            if member_update_list:
-                snapshot_update = snapshot_update or {}
-                snapshot_update['share_group_snapshot_members'] = []
-                for update in (member_update_list or []):
-                    snapshot_update['share_group_snapshot_members'].append(
-                        update)
+            for update in (member_update_list or []):
+                # NOTE(vponomaryov): we expect that each member is a dict
+                # and has required 'id' key and some optional keys
+                # to be updated such as 'provider_location'. It is planned
+                # to have here also 'export_locations' when it is supported.
+                member_id = update.pop('id', None)
+                if not member_id:
+                    LOG.warning(_LW(
+                        "One of share group snapshot '%s' members does not "
+                        "have reference ID. Its update was skipped."),
+                        share_group_snapshot_id)
+                    continue
+                # TODO(vponomaryov): remove following condition when
+                # sgs members start supporting export locations.
+                if 'export_locations' in update:
+                    LOG.debug(
+                        "Removing 'export_locations' data from "
+                        "share group snapshot member '%s' update because "
+                        "export locations are not supported.",
+                        member_id)
+                    update.pop('export_locations')
+
+                db_update = {
+                    'updated_at': now,
+                    'status': update.pop('status', status)
+                }
+                if 'provider_location' in update:
+                    db_update['provider_location'] = (
+                        update.pop('provider_location'))
+                if 'size' in update:
+                    db_update['size'] = int(update.pop('size'))
+
+                updated_members_ids.append(member_id)
+                self.db.share_group_snapshot_member_update(
+                    context, member_id, db_update)
+
+                if update:
+                    LOG.debug(
+                        "Share group snapshot ID='%(sgs_id)s', "
+                        "share group snapshot member ID='%(sgsm_id)s'. "
+                        "Following keys of sgs member were not updated "
+                        "as not allowed: %(keys)s.",
+                        {'sgs_id': share_group_snapshot_id,
+                         'sgsm_id': member_id,
+                         'keys': ', '.join(update)})
 
             if snapshot_update:
                 snap_ref = self.db.share_group_snapshot_update(
@@ -3621,15 +3662,16 @@ class ShareManager(manager.SchedulerDependentManager):
                 LOG.error(_LE("Share group snapshot %s: create failed"),
                           share_group_snapshot_id)
 
-        now = timeutils.utcnow()
         for member in (snap_ref.get('share_group_snapshot_members') or []):
-            update = {'status': status, 'created_at': now}
+            if member['id'] in updated_members_ids:
+                continue
+            update = {'status': status, 'updated_at': now}
             self.db.share_group_snapshot_member_update(
                 context, member['id'], update)
 
         self.db.share_group_snapshot_update(
             context, snap_ref['id'],
-            {'status': status, 'created_at': now})
+            {'status': status, 'updated_at': now})
         LOG.info(_LI("Share group snapshot %s: created successfully"),
                  share_group_snapshot_id)
 
