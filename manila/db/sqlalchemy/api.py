@@ -2643,9 +2643,14 @@ def _share_export_locations_get(context, share_instance_ids,
 @require_context
 @require_share_exists
 def share_export_locations_get_by_share_id(context, share_id,
-                                           include_admin_only=True):
+                                           include_admin_only=True,
+                                           ignore_migration_destination=False):
     share = share_get(context, share_id)
-    ids = [instance.id for instance in share.instances]
+    if ignore_migration_destination:
+        ids = [instance.id for instance in share.instances
+               if instance['status'] != constants.STATUS_MIGRATING_TO]
+    else:
+        ids = [instance.id for instance in share.instances]
     rows = _share_export_locations_get(
         context, ids, include_admin_only=include_admin_only)
     return rows

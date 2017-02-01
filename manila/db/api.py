@@ -676,10 +676,12 @@ def share_export_locations_get(context, share_id):
 
 
 def share_export_locations_get_by_share_id(context, share_id,
-                                           include_admin_only=True):
+                                           include_admin_only=True,
+                                           ignore_migration_destination=False):
     """Get all export locations of a share by its ID."""
     return IMPL.share_export_locations_get_by_share_id(
-        context, share_id, include_admin_only=include_admin_only)
+        context, share_id, include_admin_only=include_admin_only,
+        ignore_migration_destination=ignore_migration_destination)
 
 
 def share_export_locations_get_by_share_instance_id(context,
