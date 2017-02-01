@@ -539,6 +539,18 @@ class HNASSSHTestCase(test.TestCase):
         self.assertEqual(5120.0, free)
         self.assertTrue(dedupe)
 
+    def test_get_stats_error(self):
+
+        fake_list_command = ['df', '-a', '-f', self.fs_name]
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute',
+                         mock.Mock(side_effect=putils.ProcessExecutionError))
+
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver_ssh.get_stats)
+
+        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
+
     @ddt.data(True, False)
     def test_nfs_export_add(self, is_snapshot):
         if is_snapshot:
@@ -694,10 +706,23 @@ class HNASSSHTestCase(test.TestCase):
 
         self._driver_ssh._execute.assert_called_with(fake_export_command)
 
-    def test_update_nfs_access_rule_exception(self):
+    def test_update_nfs_access_rule_exception_no_share_provided(self):
         self.assertRaises(exception.HNASBackendException,
                           self._driver_ssh.update_nfs_access_rule,
                           ['127.0.0.1'])
+
+    def test_update_nfs_access_rule_exception_error(self):
+
+        fake_export_command = ['nfs-export', 'mod', '-c',
+                               u'"127.0.0.1,127.0.0.2"', '/shares/fake_id']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            side_effect=putils.ProcessExecutionError))
+
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver_ssh.update_nfs_access_rule,
+                          ['127.0.0.1', '127.0.0.2'], share_id="fake_id")
+
+        self._driver_ssh._execute.assert_called_with(fake_export_command)
 
     def test_cifs_allow_access(self):
         fake_cifs_allow_command = ['cifs-saa', 'add', '--target-label',
@@ -738,7 +763,7 @@ class HNASSSHTestCase(test.TestCase):
                              stderr='Could not add user/group fake_user to '
                                     'share \'vvol_test\'')]))
 
-        self.assertRaises(exception.InvalidShareAccess,
+        self.assertRaises(exception.HNASBackendException,
                           self._driver_ssh.cifs_allow_access, 'vvol_test',
                           'fake_user', 'acr')
 
@@ -931,7 +956,7 @@ class HNASSSHTestCase(test.TestCase):
                 stderr='')]
         ))
 
-        self.assertRaises(putils.ProcessExecutionError,
+        self.assertRaises(exception.HNASBackendException,
                           self._driver_ssh.tree_delete, "/path")
         self.assertTrue(self.mock_log.exception.called)
         self._driver_ssh._execute.assert_called_with(fake_tree_delete_command)
@@ -1009,7 +1034,7 @@ class HNASSSHTestCase(test.TestCase):
                          mock.Mock(side_effect=putils.ProcessExecutionError(
                              stdout="Internal Server Error.")))
 
-        self.assertRaises(putils.ProcessExecutionError,
+        self.assertRaises(exception.HNASBackendException,
                           self._driver_ssh.check_snapshot, path)
 
         self._driver_ssh._execute.assert_called_with(check_snap_args)
@@ -1040,7 +1065,9 @@ class HNASSSHTestCase(test.TestCase):
         self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
             side_effect=putils.ProcessExecutionError(stderr='')))
 
-        self.assertRaises(putils.ProcessExecutionError, self._driver_ssh.mount)
+        self.assertRaises(
+            exception.HNASBackendException, self._driver_ssh.mount)
+
         self._driver_ssh._execute.assert_called_with(fake_mount_command)
 
     def test_vvol_create(self):
@@ -1049,6 +1076,17 @@ class HNASSSHTestCase(test.TestCase):
         self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock())
 
         self._driver_ssh.vvol_create("vvol")
+
+        self._driver_ssh._execute.assert_called_with(fake_vvol_create_command)
+
+    def test_vvol_create_error(self):
+        fake_vvol_create_command = ['virtual-volume', 'add', '--ensure',
+                                    self.fs_name, 'vvol', '/shares/vvol']
+        self.mock_object(ssh.HNASSSHBackend, "_execute",
+                         mock.Mock(side_effect=putils.ProcessExecutionError))
+
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver_ssh.vvol_create, "vvol")
 
         self._driver_ssh._execute.assert_called_with(fake_vvol_create_command)
 
@@ -1073,7 +1111,7 @@ class HNASSSHTestCase(test.TestCase):
                 stderr='')]
         ))
 
-        self.assertRaises(putils.ProcessExecutionError,
+        self.assertRaises(exception.HNASBackendException,
                           self._driver_ssh.vvol_delete, "vvol")
         self.assertTrue(self.mock_log.exception.called)
         self._driver_ssh._execute.assert_called_with(fake_vvol_delete_command)
@@ -1097,6 +1135,29 @@ class HNASSSHTestCase(test.TestCase):
 
         self._driver_ssh._execute.assert_called_with(fake_modify_quota_command)
 
+    def test_quota_add_error(self):
+        fake_add_quota_command = ['quota', 'add', '--usage-limit', '1G',
+                                  '--usage-hard-limit', 'yes',
+                                  self.fs_name, 'vvol']
+        self.mock_object(ssh.HNASSSHBackend, "_execute",
+                         mock.Mock(side_effect=putils.ProcessExecutionError))
+
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver_ssh.quota_add, 'vvol', 1)
+
+        self._driver_ssh._execute.assert_called_with(fake_add_quota_command)
+
+    def test_modify_quota_error(self):
+        fake_modify_quota_command = ['quota', 'mod', '--usage-limit', '1G',
+                                     self.fs_name, 'vvol']
+        self.mock_object(ssh.HNASSSHBackend, "_execute",
+                         mock.Mock(side_effect=putils.ProcessExecutionError))
+
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver_ssh.modify_quota, 'vvol', 1)
+
+        self._driver_ssh._execute.assert_called_with(fake_modify_quota_command)
+
     def test_check_vvol(self):
         fake_check_vvol_command = ['virtual-volume', 'list', '--verbose',
                                    self.fs_name, 'vvol']
@@ -1114,6 +1175,16 @@ class HNASSSHTestCase(test.TestCase):
             return_value=('No quotas matching specified filter criteria', '')))
 
         self.assertRaises(exception.HNASItemNotFoundException,
+                          self._driver_ssh.check_quota, 'vvol')
+        self._driver_ssh._execute.assert_called_with(fake_check_quota_command)
+
+    def test_check_quota_error(self):
+        fake_check_quota_command = ['quota', 'list', '--verbose',
+                                    self.fs_name, 'vvol']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            side_effect=putils.ProcessExecutionError))
+
+        self.assertRaises(exception.HNASBackendException,
                           self._driver_ssh.check_quota, 'vvol')
         self._driver_ssh._execute.assert_called_with(fake_check_quota_command)
 
@@ -1159,7 +1230,7 @@ class HNASSSHTestCase(test.TestCase):
         self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
             side_effect=[putils.ProcessExecutionError(stderr='Error.')]))
 
-        self.assertRaises(putils.ProcessExecutionError,
+        self.assertRaises(exception.HNASBackendException,
                           self._driver_ssh.check_cifs, 'wrong_vvol')
         self._driver_ssh._execute.assert_called_with(check_cifs_share_command)
 
@@ -1288,7 +1359,7 @@ class HNASSSHTestCase(test.TestCase):
             side_effect=putils.ProcessExecutionError(stderr="Some error.")
         ))
 
-        self.assertRaises(putils.ProcessExecutionError,
+        self.assertRaises(exception.HNASBackendException,
                           self._driver_ssh._get_export, 'fake_id')
 
     def test__execute(self):
@@ -1336,7 +1407,6 @@ class HNASSSHTestCase(test.TestCase):
                                               check_exit_code=True)
 
         self.assertTrue(self.mock_log.debug.called)
-        self.assertTrue(self.mock_log.error.called)
 
     def test__locked_selectfs_create_operation(self):
         exec_command = ['selectfs', self.fs_name, '\n', 'ssc', '127.0.0.1',
@@ -1348,7 +1418,19 @@ class HNASSSHTestCase(test.TestCase):
 
         self._driver_ssh._execute.assert_called_with(exec_command)
 
-    def test__locked_selectfs_delete_operation_successfull(self):
+    def test__locked_selectfs_create_operation_error(self):
+        exec_command = ['selectfs', self.fs_name, '\n', 'ssc', '127.0.0.1',
+                        'console-context', '--evs', six.text_type(self.evs_id),
+                        'mkdir', '-p', '/path']
+        self.mock_object(ssh.HNASSSHBackend, '_execute',
+                         mock.Mock(side_effect=putils.ProcessExecutionError))
+
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver_ssh._locked_selectfs, 'create', '/path')
+
+        self._driver_ssh._execute.assert_called_with(exec_command)
+
+    def test__locked_selectfs_delete_operation_successful(self):
         exec_command = ['selectfs', self.fs_name, '\n', 'ssc', '127.0.0.1',
                         'console-context', '--evs', six.text_type(self.evs_id),
                         'rmdir', '/path']
@@ -1369,11 +1451,21 @@ class HNASSSHTestCase(test.TestCase):
         self.assertTrue(self.mock_log.debug.called)
 
     def test__locked_selectfs_delete_exception(self):
-        msg = 'rmdir: cannot remove \'/path\''
+        msg = "rmdir: cannot remove '/path'"
 
         self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
             side_effect=[putils.ProcessExecutionError(stderr=msg)]))
 
-        self.assertRaises(putils.ProcessExecutionError,
+        self.assertRaises(exception.HNASBackendException,
                           self._driver_ssh._locked_selectfs, 'delete', 'path')
         self.assertTrue(self.mock_log.exception.called)
+
+    def test__locked_selectfs_delete_not_found(self):
+        msg = "rmdir: NotFound '/path'"
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            side_effect=[putils.ProcessExecutionError(stderr=msg)]))
+
+        self._driver_ssh._locked_selectfs('delete', 'path')
+
+        self.assertTrue(self.mock_log.warning.called)
