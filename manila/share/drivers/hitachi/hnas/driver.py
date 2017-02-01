@@ -395,11 +395,15 @@ class HitachiHNASDriver(driver.ShareDriver):
         LOG.info(_LI("Snapshot %(id)s successfully created."),
                  {'id': snapshot['id']})
 
-        return {
-            'provider_location': os.path.join('/snapshots', hnas_share_id,
-                                              snapshot['id']),
-            'export_locations': export_locations,
+        output = {
+            'provider_location': os.path.join(
+                '/snapshots', hnas_share_id, snapshot['id'])
         }
+
+        if export_locations:
+            output['export_locations'] = export_locations
+
+        return output
 
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes snapshot.
@@ -417,7 +421,7 @@ class HitachiHNASDriver(driver.ShareDriver):
                   {'snap_id': snapshot['id'],
                    'snap_share_id': snapshot['share_id']})
 
-        self._delete_snapshot(snapshot['share']['share_proto'],
+        self._delete_snapshot(snapshot['share'],
                               hnas_share_id, hnas_snapshot_id)
 
         LOG.info(_LI("Snapshot %(id)s successfully deleted."),
@@ -992,14 +996,17 @@ class HitachiHNASDriver(driver.ShareDriver):
                 self.hnas.update_nfs_access_rule(saved_list,
                                                  share_id=hnas_share_id)
 
-        self._create_export(hnas_share_id, share_proto,
-                            snapshot_id=snapshot['id'])
-        export_locations = self._get_export_locations(share_proto,
-                                                      snapshot['id'],
-                                                      is_snapshot=True)
+        export_locations = []
+
+        if snapshot['share'].get('mount_snapshot_support'):
+            self._create_export(hnas_share_id, share_proto,
+                                snapshot_id=snapshot['id'])
+            export_locations = self._get_export_locations(
+                share_proto, snapshot['id'], is_snapshot=True)
+
         return export_locations
 
-    def _delete_snapshot(self, share_proto, hnas_share_id, snapshot_id):
+    def _delete_snapshot(self, share, hnas_share_id, snapshot_id):
         """Deletes snapshot.
 
         It receives the hnas_share_id only to join the path for snapshot.
@@ -1007,11 +1014,13 @@ class HitachiHNASDriver(driver.ShareDriver):
         :param snapshot_id: ID of snapshot.
         """
         self._check_fs_mounted()
+        share_proto = share['share_proto']
 
-        if share_proto.lower() == 'nfs':
-            self.hnas.nfs_export_del(snapshot_id=snapshot_id)
-        elif share_proto.lower() == 'cifs':
-            self.hnas.cifs_share_del(snapshot_id)
+        if share.get('mount_snapshot_support'):
+            if share_proto.lower() == 'nfs':
+                self.hnas.nfs_export_del(snapshot_id=snapshot_id)
+            elif share_proto.lower() == 'cifs':
+                self.hnas.cifs_share_del(snapshot_id)
 
         path = os.path.join('/snapshots', hnas_share_id, snapshot_id)
         self.hnas.tree_delete(path)
@@ -1318,8 +1327,7 @@ class HitachiHNASDriver(driver.ShareDriver):
         """
         hnas_snapshot_id = self._get_hnas_snapshot_id(snapshot)
 
-        self._check_protocol(snapshot['share']['id'],
-                             snapshot['share']['share_proto'])
+        self._ensure_snapshot(snapshot, hnas_snapshot_id)
 
         access_rules, add_rules, delete_rules = utils.change_rules_to_readonly(
             access_rules, add_rules, delete_rules)

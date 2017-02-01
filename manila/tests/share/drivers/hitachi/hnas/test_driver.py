@@ -494,7 +494,8 @@ class HitachiHNASTestCase(test.TestCase):
                 share['id'])
             self.assertFalse(ssh.HNASSSHBackend.nfs_export_del.called)
 
-    @ddt.data(snapshot_nfs, snapshot_cifs)
+    @ddt.data(snapshot_nfs, snapshot_cifs, snapshot_mount_support_nfs,
+              snapshot_mount_support_cifs)
     def test_create_snapshot(self, snapshot):
         hnas_id = snapshot['share_id']
         export_locations = [
@@ -504,11 +505,12 @@ class HitachiHNASTestCase(test.TestCase):
             self._get_export(
                 snapshot['id'], snapshot['share']['share_proto'],
                 self._driver.hnas_admin_network_ip, True, is_snapshot=True)]
-        expected = {
-            'provider_location': '/snapshots/' + hnas_id + '/' +
-                                 snapshot['id'],
-            'export_locations': export_locations,
-        }
+
+        expected = {'provider_location': '/snapshots/' + hnas_id + '/' +
+                                         snapshot['id']}
+
+        if snapshot['share'].get('mount_snapshot_support'):
+            expected['export_locations'] = export_locations
 
         self.mock_object(ssh.HNASSSHBackend, "get_nfs_host_list", mock.Mock(
             return_value=['172.24.44.200(rw)']))
@@ -583,7 +585,8 @@ class HitachiHNASTestCase(test.TestCase):
         ssh.HNASSSHBackend.create_directory.assert_called_once_with(
             '/snapshots/' + hnas_id + '/' + snapshot_nfs['id'])
 
-    @ddt.data(snapshot_nfs, snapshot_cifs)
+    @ddt.data(snapshot_nfs, snapshot_cifs,
+              snapshot_mount_support_nfs, snapshot_mount_support_cifs)
     def test_delete_snapshot(self, snapshot):
         hnas_share_id = snapshot['share_id']
         hnas_snapshot_id = snapshot['id']
@@ -603,11 +606,17 @@ class HitachiHNASTestCase(test.TestCase):
         ssh.HNASSSHBackend.delete_directory.assert_called_once_with(
             '/snapshots/' + hnas_share_id)
         if snapshot['share']['share_proto'].lower() == 'nfs':
-            ssh.HNASSSHBackend.nfs_export_del.assert_called_once_with(
-                snapshot_id=hnas_snapshot_id)
+            if snapshot['share'].get('mount_snapshot_support'):
+                ssh.HNASSSHBackend.nfs_export_del.assert_called_once_with(
+                    snapshot_id=hnas_snapshot_id)
+            else:
+                ssh.HNASSSHBackend.nfs_export_del.assert_not_called()
         else:
-            ssh.HNASSSHBackend.cifs_share_del.assert_called_once_with(
-                hnas_snapshot_id)
+            if snapshot['share'].get('mount_snapshot_support'):
+                ssh.HNASSSHBackend.cifs_share_del.assert_called_once_with(
+                    hnas_snapshot_id)
+            else:
+                ssh.HNASSSHBackend.cifs_share_del.assert_not_called()
 
     def test_delete_managed_snapshot(self):
         hnas_id = manage_snapshot['share_id']
