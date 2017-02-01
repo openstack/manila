@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import ddt
 import mock
 
@@ -52,6 +53,12 @@ class SnapshotAccessTestCase(test.TestCase):
                 'state': state,
                 'access_id': 'rule_id%s' % i
             })
+        all_rules = copy.deepcopy(rules)
+        all_rules.append({
+            'id': 'id-3',
+            'state': constants.ACCESS_STATE_ERROR,
+            'access_id': 'rule_id3'
+        })
 
         snapshot_instance_get = self.mock_object(
             db, 'share_snapshot_instance_get',
@@ -59,7 +66,7 @@ class SnapshotAccessTestCase(test.TestCase):
 
         snap_get_all_for_snap_instance = self.mock_object(
             db, 'share_snapshot_access_get_all_for_snapshot_instance',
-            mock.Mock(return_value=rules))
+            mock.Mock(return_value=all_rules))
 
         self.mock_object(db, 'share_snapshot_instance_access_update')
         self.mock_object(self.driver, 'snapshot_update_access')

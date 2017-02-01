@@ -1,0 +1,4 @@
+---
+fixes:
+  - Snapshot access rules in error state no longer cause other
+    rules to go into error state as well.

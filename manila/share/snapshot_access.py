@@ -79,15 +79,17 @@ class ShareSnapshotInstanceAccess(object):
         else:
 
             # NOTE(ganso): error'ed rules are to be left alone until
-            # reset back to "queued_to_deny" by API. Some drivers may
-            # attempt to reapply these rules, and later get deleted when
-            # requested.
+            # reset back to "queued_to_deny" by API.
             rules_to_be_on_snapshot = [
                 r for r in rules if r['state'] not in (
                     constants.ACCESS_STATE_QUEUED_TO_DENY,
                     # NOTE(ganso): We select denying rules as a recovery
                     # mechanism for invalid rules during a restart.
-                    constants.ACCESS_STATE_DENYING)
+                    constants.ACCESS_STATE_DENYING,
+                    # NOTE(ganso): We do not re-send error-ed access rules to
+                    # drivers.
+                    constants.ACCESS_STATE_ERROR
+                )
             ]
 
             # NOTE(ganso): Process queued rules
