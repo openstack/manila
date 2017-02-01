@@ -37,9 +37,6 @@ class RevertToSnapshotTest(base.BaseSharesMixedTest):
         if not CONF.share.run_revert_to_snapshot_tests:
             msg = "Revert to snapshot tests are disabled."
             raise cls.skipException(msg)
-        if not CONF.share.capability_revert_to_snapshot_support:
-            msg = "Revert to snapshot support is disabled."
-            raise cls.skipException(msg)
         if not CONF.share.capability_snapshot_support:
             msg = "Snapshot support is disabled."
             raise cls.skipException(msg)
@@ -85,8 +82,10 @@ class RevertToSnapshotTest(base.BaseSharesMixedTest):
             cls.share_zone = cls.zones[0]
             cls.replica_zone = cls.zones[-1]
 
-            extra_specs = cls.add_extra_specs_to_dict(
-                {"replication_type": cls.replication_type})
+            extra_specs = cls.add_extra_specs_to_dict({
+                "replication_type": cls.replication_type,
+                constants.REVERT_TO_SNAPSHOT_SUPPORT: True,
+            })
             share_type = cls.create_share_type(
                 cls.replicated_share_type_name,
                 extra_specs=extra_specs,

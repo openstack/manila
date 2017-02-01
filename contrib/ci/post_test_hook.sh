@@ -276,10 +276,6 @@ iniset $TEMPEST_CONFIG share run_mount_snapshot_tests $RUN_MANILA_MOUNT_SNAPSHOT
 # Create share from snapshot support
 iniset $TEMPEST_CONFIG share capability_create_share_from_snapshot_support $CAPABILITY_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT
 
-# Revert share to snapshot support
-CAPABILITY_REVERT_TO_SNAPSHOT_SUPPORT=${CAPABILITY_REVERT_TO_SNAPSHOT_SUPPORT:-$RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS}
-iniset $TEMPEST_CONFIG share capability_revert_to_snapshot_support $CAPABILITY_REVERT_TO_SNAPSHOT_SUPPORT
-
 iniset $TEMPEST_CONFIG validation ip_version_for_ssh 4
 iniset $TEMPEST_CONFIG validation network_for_ssh ${PRIVATE_NETWORK_NAME:-"private"}
 

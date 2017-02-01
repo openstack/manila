@@ -37,9 +37,6 @@ class RevertToSnapshotNegativeTest(base.BaseSharesMixedTest):
         if not CONF.share.run_revert_to_snapshot_tests:
             msg = "Revert to snapshot tests are disabled."
             raise cls.skipException(msg)
-        if not CONF.share.capability_revert_to_snapshot_support:
-            msg = "Revert to snapshot support is disabled."
-            raise cls.skipException(msg)
         if not CONF.share.capability_snapshot_support:
             msg = "Snapshot support is disabled."
             raise cls.skipException(msg)
