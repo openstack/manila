@@ -2644,6 +2644,18 @@ class ShareAPITestCase(test.TestCase):
         self.assertTrue(mock_log.error.called)
         self.assertFalse(mock_snapshot_get_call.called)
 
+    def test_migration_start_is_member_of_group(self):
+        group = db_utils.create_share_group()
+        share = db_utils.create_share(
+            host='fake@backend#pool', status=constants.STATUS_AVAILABLE,
+            share_group_id=group['id'])
+        mock_log = self.mock_object(share_api, 'LOG')
+
+        self.assertRaises(exception.InvalidShare, self.api.migration_start,
+                          self.context, share, 'fake_host', False, True, True,
+                          True, True)
+        self.assertTrue(mock_log.error.called)
+
     def test_migration_start_invalid_host(self):
         host = 'fake@backend#pool'
         share = db_utils.create_share(

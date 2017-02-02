@@ -1,0 +1,5 @@
+---
+fixes:
+  - Shares can no longer be migrated while being
+    members of share groups.
+
