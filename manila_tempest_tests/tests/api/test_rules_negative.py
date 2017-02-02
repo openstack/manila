@@ -19,6 +19,7 @@ from tempest.lib import exceptions as lib_exc
 import testtools
 from testtools import testcase as tc
 
+from manila_tempest_tests.common import constants
 from manila_tempest_tests.tests.api import base
 from manila_tempest_tests import utils
 
@@ -166,12 +167,14 @@ class ShareIpRulesForNFSNegativeTest(base.BaseSharesMixedTest):
             {"share_backend_name": 'invalid_backend'})
         share_type = self.create_share_type('invalid_backend',
                                             extra_specs=extra_specs,
-                                            client=self.admin_client)
+                                            client=self.admin_client,
+                                            cleanup_in_class=False)
         share_type = share_type['share_type']
         share = self.create_share(share_type_id=share_type['id'],
-                                  client=self.admin_client,
                                   cleanup_in_class=False,
                                   wait_for_status=False)
+        self.shares_v2_client.wait_for_share_status(
+            share['id'], constants.STATUS_ERROR)
         self.assertRaises(lib_exc.BadRequest,
                           self.admin_client.create_access_rule,
                           share["id"], access_type, access_to)
