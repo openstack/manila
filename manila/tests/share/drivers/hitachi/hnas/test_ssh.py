@@ -668,7 +668,7 @@ class HNASSSHTestCase(test.TestCase):
         self._driver_ssh._execute.assert_called_with(fake_cifs_del_command)
 
     def test_get_nfs_host_list(self):
-        self.mock_object(ssh.HNASSSHBackend, "_get_share_export", mock.Mock(
+        self.mock_object(ssh.HNASSSHBackend, "_get_export", mock.Mock(
             return_value=[ssh.Export(HNAS_RESULT_export)]))
 
         host_list = self._driver_ssh.get_nfs_host_list('fake_id')
@@ -1117,14 +1117,15 @@ class HNASSSHTestCase(test.TestCase):
                           self._driver_ssh.check_quota, 'vvol')
         self._driver_ssh._execute.assert_called_with(fake_check_quota_command)
 
-    def test_check_export(self):
-        self.mock_object(ssh.HNASSSHBackend, "_get_share_export", mock.Mock(
+    @ddt.data(True, False)
+    def test_check_export(self, is_snapshot):
+        self.mock_object(ssh.HNASSSHBackend, "_get_export", mock.Mock(
             return_value=[ssh.Export(HNAS_RESULT_export)]))
 
-        self._driver_ssh.check_export("vvol_test")
+        self._driver_ssh.check_export("vvol_test", is_snapshot)
 
     def test_check_export_error(self):
-        self.mock_object(ssh.HNASSSHBackend, "_get_share_export", mock.Mock(
+        self.mock_object(ssh.HNASSSHBackend, "_get_export", mock.Mock(
             return_value=[ssh.Export(HNAS_RESULT_wrong_export)]))
 
         self.assertRaises(exception.HNASItemNotFoundException,
@@ -1252,12 +1253,16 @@ class HNASSSHTestCase(test.TestCase):
 
         self.assertEqual(1024, self._driver_ssh.get_share_usage("vvol_test"))
 
-    def test__get_share_export(self):
+    @ddt.data(True, False)
+    def test__get_share_export(self, is_snapshot):
         self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
             return_value=[HNAS_RESULT_export_ip, '']))
 
-        export_list = self._driver_ssh._get_share_export(share_id='share_id')
-        path = '/shares/share_id'
+        export_list = self._driver_ssh._get_export(
+            name='fake_name', is_snapshot=is_snapshot)
+        path = '/shares/fake_name'
+        if is_snapshot:
+            path = '/snapshots/fake_name'
 
         command = ['nfs-export', 'list ', path]
 
@@ -1275,7 +1280,7 @@ class HNASSSHTestCase(test.TestCase):
                 stderr="NFS Export List: Export 'id' does not exist.")))
 
         self.assertRaises(exception.HNASItemNotFoundException,
-                          self._driver_ssh._get_share_export, 'fake_id')
+                          self._driver_ssh._get_export, 'fake_id')
 
     def test__get_share_export_exception_error(self):
 
@@ -1284,7 +1289,7 @@ class HNASSSHTestCase(test.TestCase):
         ))
 
         self.assertRaises(putils.ProcessExecutionError,
-                          self._driver_ssh._get_share_export, 'fake_id')
+                          self._driver_ssh._get_export, 'fake_id')
 
     def test__execute(self):
         key = self.ssh_private_key

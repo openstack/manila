@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed Hitachi HNAS driver not checking export on backend
+    when managing a snapshot.
