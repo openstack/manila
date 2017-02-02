@@ -936,6 +936,26 @@ class HNASSSHTestCase(test.TestCase):
         self.assertTrue(out)
         self._driver_ssh._execute.assert_called_with(check_snap_args)
 
+    def test_check_snapshot_retry(self):
+        error_msg = ("Unable to run path-to-object-number as "
+                     "path-to-object-number is currently running on volume "
+                     "39.")
+        path = ("/snapshots/" + self.snapshot['share_id'] + "/" +
+                self.snapshot['id'])
+
+        check_snap_args = ['path-to-object-number', '-f', self.fs_name, path]
+
+        self.mock_object(time, "sleep", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, '_execute',
+                         mock.Mock(side_effect=[putils.ProcessExecutionError(
+                             stdout=error_msg), putils.ProcessExecutionError(
+                             stdout=error_msg), 'Object number: 0x45a4']))
+
+        out = self._driver_ssh.check_snapshot(path)
+
+        self.assertIs(True, out)
+        self._driver_ssh._execute.assert_called_with(check_snap_args)
+
     def test_check_inexistent_snapshot(self):
         path = "/path/snap1/snapshot07-08-2016"
 
