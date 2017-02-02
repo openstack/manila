@@ -980,7 +980,8 @@ class ShareDriver(object):
         the failure.
         """
 
-    def revert_to_snapshot(self, context, snapshot, share_server=None):
+    def revert_to_snapshot(self, context, snapshot, access_rules,
+                           share_server=None):
         """Reverts a share (in place) to the specified snapshot.
 
         Does not delete the share snapshot.  The share and snapshot must both
@@ -994,6 +995,7 @@ class ShareDriver(object):
 
         :param context: Current context
         :param snapshot: The snapshot to be restored
+        :param access_rules: List of all access rules for the affected share
         :param share_server: Optional -- Share server model or None
         """
         raise NotImplementedError()
@@ -2063,7 +2065,8 @@ class ShareDriver(object):
 
     def revert_to_replicated_snapshot(self, context, active_replica,
                                       replica_list, active_replica_snapshot,
-                                      replica_snapshots, share_server=None):
+                                      replica_snapshots, access_rules,
+                                      share_server=None):
         """Reverts a replicated share (in place) to the specified snapshot.
 
         .. note::
@@ -2089,6 +2092,7 @@ class ShareDriver(object):
             These snapshot instances track the snapshot across the replicas.
             The snapshot of the active replica to be restored with have its
             status attribute set to 'restoring'.
+        :param access_rules: List of access rules for the affected share.
         :param share_server: Optional -- Share server model
         """
         raise NotImplementedError()

@@ -55,7 +55,7 @@ class ShareInstanceAccessDatabaseMixin(object):
 
     @locked_access_rules_operation
     def get_and_update_share_instance_access_rules_status(
-            self, context, status=None, conditionally_change={},
+            self, context, status=None, conditionally_change=None,
             share_instance_id=None):
         """Get and update the access_rules_status of a share instance.
 
@@ -73,7 +73,7 @@ class ShareInstanceAccessDatabaseMixin(object):
         """
         if status is not None:
             updates = {'access_rules_status': status}
-        else:
+        elif conditionally_change:
             share_instance = self.db.share_instance_get(
                 context, share_instance_id)
             access_rules_status = share_instance['access_rules_status']
@@ -84,6 +84,8 @@ class ShareInstanceAccessDatabaseMixin(object):
                 }
             except KeyError:
                 updates = {}
+        else:
+            updates = {}
         if updates:
             share_instance = self.db.share_instance_update(
                 context, share_instance_id, updates, with_share_data=True)
@@ -91,8 +93,8 @@ class ShareInstanceAccessDatabaseMixin(object):
 
     @locked_access_rules_operation
     def get_and_update_share_instance_access_rules(self, context,
-                                                   filters={}, updates={},
-                                                   conditionally_change={},
+                                                   filters=None, updates=None,
+                                                   conditionally_change=None,
                                                    share_instance_id=None):
         """Get and conditionally update all access rules of a share instance.
 
@@ -130,6 +132,10 @@ class ShareInstanceAccessDatabaseMixin(object):
             context, share_instance_id, filters=filters)
 
         if instance_rules and (updates or conditionally_change):
+            if not updates:
+                updates = {}
+            if not conditionally_change:
+                conditionally_change = {}
             for rule in instance_rules:
                 mapping_state = rule['state']
                 rule_updates = copy.deepcopy(updates)
@@ -151,11 +157,16 @@ class ShareInstanceAccessDatabaseMixin(object):
 
         return instance_rules
 
+    def get_share_instance_access_rules(self, context, filters=None,
+                                        share_instance_id=None):
+        return self.get_and_update_share_instance_access_rules(
+            context, filters, None, None, share_instance_id)
+
     @locked_access_rules_operation
     def get_and_update_share_instance_access_rule(self, context, rule_id,
-                                                  updates={},
+                                                  updates=None,
                                                   share_instance_id=None,
-                                                  conditionally_change={}):
+                                                  conditionally_change=None):
         """Get and conditionally update a given share instance access rule.
 
         :param updates: Set this parameter to a dictionary of key:value
@@ -180,6 +191,8 @@ class ShareInstanceAccessDatabaseMixin(object):
         instance_rule_mapping = self.db.share_instance_access_get(
             context, rule_id, share_instance_id)
 
+        if not updates:
+            updates = {}
         if conditionally_change:
             mapping_state = instance_rule_mapping['state']
             try:

@@ -5256,38 +5256,51 @@ class ShareManagerTestCase(test.TestCase):
         reservations = 'fake_reservations'
         share_id = 'fake_share_id'
         snapshot_id = 'fake_snapshot_id'
+        instance_id = 'fake_instance_id'
+        share_instance = fakes.fake_share_instance(
+            id=instance_id, share_id=share_id)
         share = fakes.fake_share(
-            id=share_id, instance={'id': 'fake_instance_id'},
+            id=share_id, instance=share_instance,
             project_id='fake_project', user_id='fake_user', size=2,
             has_replicas=has_replicas)
         snapshot_instance = fakes.fake_snapshot_instance(
-            share_id=share_id, share=share, name='fake_snapshot')
+            share_id=instance_id, share=share, name='fake_snapshot',
+            share_instance=share_instance, share_instance_id=instance_id)
         snapshot = fakes.fake_snapshot(
             id=snapshot_id, share_id=share_id, share=share,
             instance=snapshot_instance, project_id='fake_project',
             user_id='fake_user', size=1)
+        access_rules = ['fake_access_rule']
 
         mock_share_snapshot_get = self.mock_object(
             self.share_manager.db, 'share_snapshot_get',
             mock.Mock(return_value=snapshot))
+        mock_access_get = self.mock_object(
+            self.share_manager.access_helper,
+            'get_share_instance_access_rules',
+            mock.Mock(return_value=access_rules))
         mock_revert_to_snapshot = self.mock_object(
             self.share_manager, '_revert_to_snapshot')
         mock_revert_to_replicated_snapshot = self.mock_object(
             self.share_manager, '_revert_to_replicated_snapshot')
 
         self.share_manager.revert_to_snapshot(
-            self.context, snapshot_id, reservations, share_id=share_id)
+            self.context, snapshot_id, reservations)
 
         mock_share_snapshot_get.assert_called_once_with(mock.ANY, snapshot_id)
+        mock_access_get.assert_called_once_with(
+            mock.ANY, filters={'state': constants.STATUS_ACTIVE},
+            share_instance_id=instance_id)
 
         if not has_replicas:
             mock_revert_to_snapshot.assert_called_once_with(
-                mock.ANY, share, snapshot, reservations)
+                mock.ANY, share, snapshot, reservations, access_rules)
             self.assertFalse(mock_revert_to_replicated_snapshot.called)
         else:
             self.assertFalse(mock_revert_to_snapshot.called)
             mock_revert_to_replicated_snapshot.assert_called_once_with(
-                mock.ANY, share, snapshot, reservations, share_id=share_id)
+                mock.ANY, share, snapshot, reservations, access_rules,
+                share_id=share_id)
 
     @ddt.data(None, 'fake_reservations')
     def test__revert_to_snapshot(self, reservations):
@@ -5309,6 +5322,7 @@ class ShareManagerTestCase(test.TestCase):
             id='fake_snapshot_id', share_id=share_id, share=share,
             instance=snapshot_instance, project_id='fake_project',
             user_id='fake_user', size=1)
+        access_rules = []
 
         self.mock_object(
             self.share_manager.db, 'share_snapshot_get',
@@ -5322,12 +5336,13 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager.db, 'share_snapshot_update')
 
         self.share_manager._revert_to_snapshot(
-            self.context, share, snapshot, reservations)
+            self.context, share, snapshot, reservations, access_rules)
 
         mock_driver.revert_to_snapshot.assert_called_once_with(
             mock.ANY,
             self._get_snapshot_instance_dict(
                 snapshot_instance, share, snapshot=snapshot),
+            access_rules,
             share_server=None)
 
         self.assertFalse(mock_quotas_rollback.called)
@@ -5366,6 +5381,7 @@ class ShareManagerTestCase(test.TestCase):
             id='fake_snapshot_id', share_id=share_id, share=share,
             instance=snapshot_instance, project_id='fake_project',
             user_id='fake_user', size=1)
+        access_rules = []
 
         self.mock_object(
             self.share_manager.db, 'share_snapshot_get',
@@ -5383,12 +5399,14 @@ class ShareManagerTestCase(test.TestCase):
                           self.context,
                           share,
                           snapshot,
-                          reservations)
+                          reservations,
+                          access_rules)
 
         mock_driver.revert_to_snapshot.assert_called_once_with(
             mock.ANY,
             self._get_snapshot_instance_dict(
                 snapshot_instance, share, snapshot=snapshot),
+            access_rules,
             share_server=None)
 
         self.assertFalse(mock_quotas_commit.called)
@@ -5580,6 +5598,7 @@ class ShareManagerTestCase(test.TestCase):
             id='rid2', share_id=share_id, host='secondary',
             replica_state=constants.REPLICA_STATE_IN_SYNC, as_primitive=False)
         replicas = [active_replica, replica]
+        access_rules = []
         self.mock_object(
             db, 'share_snapshot_get', mock.Mock(return_value=snapshot))
         self.mock_object(
@@ -5601,7 +5620,8 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager.db, 'share_snapshot_instance_update')
 
         self.share_manager._revert_to_replicated_snapshot(
-            self.context, share, snapshot, reservations, share_id=share_id)
+            self.context, share, snapshot, reservations, access_rules,
+            share_id=share_id)
 
         self.assertTrue(mock_driver.revert_to_replicated_snapshot.called)
         self.assertFalse(mock_quotas_rollback.called)
@@ -5642,6 +5662,7 @@ class ShareManagerTestCase(test.TestCase):
             id='rid2', share_id=share_id, host='secondary',
             replica_state=constants.REPLICA_STATE_IN_SYNC, as_primitive=False)
         replicas = [active_replica, replica]
+        access_rules = []
         self.mock_object(
             db, 'share_snapshot_get', mock.Mock(return_value=snapshot))
         self.mock_object(
@@ -5670,6 +5691,7 @@ class ShareManagerTestCase(test.TestCase):
                           share,
                           snapshot,
                           reservations,
+                          access_rules,
                           share_id=share_id)
 
         self.assertTrue(mock_driver.revert_to_replicated_snapshot.called)
