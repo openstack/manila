@@ -2267,15 +2267,18 @@ class ShareManager(manager.SchedulerDependentManager):
             snapshot_export_locations = snapshot_update.pop(
                 'export_locations', [])
 
-            for el in snapshot_export_locations:
-                values = {
-                    'share_snapshot_instance_id': snapshot_instance['id'],
-                    'path': el['path'],
-                    'is_admin_only': el['is_admin_only'],
-                }
+            if snapshot_instance['share']['mount_snapshot_support']:
 
-                self.db.share_snapshot_instance_export_location_create(context,
-                                                                       values)
+                for el in snapshot_export_locations:
+                    values = {
+                        'share_snapshot_instance_id': snapshot_instance['id'],
+                        'path': el['path'],
+                        'is_admin_only': el['is_admin_only'],
+                    }
+
+                    self.db.share_snapshot_instance_export_location_create(
+                        context, values)
+
             snapshot_update.update({
                 'status': constants.STATUS_AVAILABLE,
                 'progress': '100%',
@@ -2620,15 +2623,17 @@ class ShareManager(manager.SchedulerDependentManager):
 
         snapshot_export_locations = model_update.pop('export_locations', [])
 
-        for el in snapshot_export_locations:
-            values = {
-                'share_snapshot_instance_id': snapshot_instance_id,
-                'path': el['path'],
-                'is_admin_only': el['is_admin_only'],
-            }
+        if snapshot_instance['share']['mount_snapshot_support']:
 
-            self.db.share_snapshot_instance_export_location_create(context,
-                                                                   values)
+            for el in snapshot_export_locations:
+                values = {
+                    'share_snapshot_instance_id': snapshot_instance_id,
+                    'path': el['path'],
+                    'is_admin_only': el['is_admin_only'],
+                }
+
+                self.db.share_snapshot_instance_export_location_create(context,
+                                                                       values)
 
         if model_update.get('status') in (None, constants.STATUS_AVAILABLE):
             model_update['status'] = constants.STATUS_AVAILABLE
