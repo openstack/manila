@@ -969,7 +969,9 @@ class HitachiHNASDriver(driver.ShareDriver):
             saved_list = self.hnas.get_nfs_host_list(hnas_share_id)
             new_list = []
             for access in saved_list:
-                new_list.append(access.replace('(rw)', '(ro)'))
+                for rw in ('read_write', 'readwrite', 'rw'):
+                    access = access.replace(rw, 'ro')
+                new_list.append(access)
             self.hnas.update_nfs_access_rule(new_list, share_id=hnas_share_id)
         else:  # CIFS
             if (self.hnas.is_cifs_in_use(hnas_share_id) and
