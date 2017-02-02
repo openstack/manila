@@ -162,22 +162,34 @@ class HNASSSHBackend(object):
         command = ['cifs-saa', 'add', '--target-label', self.fs_name,
                    name, user, permission]
 
-        entity_type = "share"
-        if is_snapshot:
-            entity_type = "snapshot"
-
         try:
             self._execute(command)
         except processutils.ProcessExecutionError as e:
             if 'already listed as a user' in e.stderr:
-                LOG.debug('User %(user)s already allowed to access '
-                          '%(entity_type)s %(share)s.',
-                          {'entity_type': entity_type, 'user': user,
-                           'share': name})
+                if is_snapshot:
+                    LOG.debug('User %(user)s already allowed to access '
+                              'snapshot %(snapshot)s.',
+                              {'user': user, 'snapshot': name})
+                else:
+                    self._update_cifs_rule(name, user, permission)
             else:
                 msg = six.text_type(e)
                 LOG.exception(msg)
                 raise exception.InvalidShareAccess(reason=msg)
+
+    def _update_cifs_rule(self, name, user, permission):
+        LOG.debug('User %(user)s already allowed to access '
+                  'share %(share)s. Updating access level...',
+                  {'user': user, 'share': name})
+
+        command = ['cifs-saa', 'change', '--target-label', self.fs_name,
+                   name, user, permission]
+        try:
+            self._execute(command)
+        except processutils.ProcessExecutionError:
+            msg = _("Could not update CIFS rule access for user %s.") % user
+            LOG.exception(msg)
+            raise exception.HNASBackendException(msg=msg)
 
     def cifs_deny_access(self, name, user, is_snapshot=False):
         command = ['cifs-saa', 'delete', '--target-label', self.fs_name,

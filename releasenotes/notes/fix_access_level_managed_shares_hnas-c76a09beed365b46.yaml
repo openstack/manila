@@ -1,0 +1,4 @@
+---
+fixes:
+  - HNAS driver correctly handles rule updates to pre-existing access rules
+    on a managed CIFS share.
