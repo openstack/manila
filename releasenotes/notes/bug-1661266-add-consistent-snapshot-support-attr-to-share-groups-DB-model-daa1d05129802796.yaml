@@ -1,0 +1,4 @@
+---
+fixes:
+  - Added 'consistent_snapshot_support' attribute to 'share_groups' DB model,
+    to ease possible future backport of bugfixes for 'share groups' feature.
