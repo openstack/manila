@@ -1207,12 +1207,30 @@ class ShareManager(manager.SchedulerDependentManager):
                 data_updates['export_locations'])
 
         snapshot_updates = data_updates.get('snapshot_updates') or {}
+
+        dest_extra_specs = self._get_extra_specs_from_share_type(
+            context, dest_share_instance['share_type_id'])
+
         for src_snap_ins, dest_snap_ins in snapshot_mappings.items():
             model_update = snapshot_updates.get(dest_snap_ins['id']) or {}
+            snapshot_export_locations = model_update.pop(
+                'export_locations', [])
+
             model_update['status'] = constants.STATUS_AVAILABLE
             model_update['progress'] = '100%'
             self.db.share_snapshot_instance_update(
                 context, dest_snap_ins['id'], model_update)
+
+            if dest_extra_specs['mount_snapshot_support']:
+
+                for el in snapshot_export_locations:
+                    values = {
+                        'share_snapshot_instance_id': dest_snap_ins['id'],
+                        'path': el['path'],
+                        'is_admin_only': el['is_admin_only'],
+                    }
+                    self.db.share_snapshot_instance_export_location_create(
+                        context, values)
 
         helper = migration.ShareMigrationHelper(
             context, self.db, share_ref, self.access_helper)
@@ -1324,15 +1342,19 @@ class ShareManager(manager.SchedulerDependentManager):
         LOG.info(_LI("Share Migration for share %s"
                      " completed successfully."), share_ref['id'])
 
-    def _update_migrated_share_model(
-            self, context, share_id, dest_share_instance):
+    def _get_extra_specs_from_share_type(self, context, share_type_id):
 
-        share_type = share_types.get_share_type(
-            context, dest_share_instance['share_type_id'])
+        share_type = share_types.get_share_type(context, share_type_id)
 
         share_api = api.API()
 
-        update = share_api.get_share_attributes_from_share_type(share_type)
+        return share_api.get_share_attributes_from_share_type(share_type)
+
+    def _update_migrated_share_model(
+            self, context, share_id, dest_share_instance):
+
+        update = self._get_extra_specs_from_share_type(
+            context, dest_share_instance['share_type_id'])
 
         self.db.share_update(context, share_id, update)
 

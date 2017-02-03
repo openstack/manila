@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixed error in driver-assisted share migration of mountable
+    snapshots.
+

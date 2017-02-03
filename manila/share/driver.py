@@ -449,11 +449,11 @@ class ShareDriver(object):
         :param share_server: Share server model or None.
         :param destination_share_server: Destination Share server model or
             None.
-        :return: If the migration changes the export locations or snapshot
-            provider locations, this method should return a dictionary with
-            the relevant info. In such case, a dictionary containing a list of
-            export locations and a list of model updates for each snapshot
-            indexed by their IDs.
+        :return: If the migration changes the share export locations, snapshot
+            provider locations or snapshot export locations, this method should
+            return a dictionary with the relevant info. In such case, a
+            dictionary containing a list of export locations and a list of
+            model updates for each snapshot indexed by their IDs.
 
             Example::
 
@@ -475,11 +475,33 @@ class ShareDriver(object):
                     {
                         'bc4e3b28-0832-4168-b688-67fdc3e9d408':
                         {
-                        'provider_location': '/snapshots/foo/bar_1'
+                        'provider_location': '/snapshots/foo/bar_1',
+                        'export_locations':
+                        [
+                            {
+                            'path': '1.2.3.4:/snapshots/foo/bar_1',
+                            'is_admin_only': False,
+                            },
+                            {
+                            'path': '5.6.7.8:/snapshots/foo/bar_1',
+                            'is_admin_only': True,
+                            },
+                        ],
                         },
                         '2e62b7ea-4e30-445f-bc05-fd523ca62941':
                         {
-                        'provider_location': '/snapshots/foo/bar_2'
+                        'provider_location': '/snapshots/foo/bar_2',
+                        'export_locations':
+                        [
+                            {
+                            'path': '1.2.3.4:/snapshots/foo/bar_2',
+                            'is_admin_only': False,
+                            },
+                            {
+                            'path': '5.6.7.8:/snapshots/foo/bar_2',
+                            'is_admin_only': True,
+                            },
+                        ],
                         },
                     },
                 }
