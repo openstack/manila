@@ -55,7 +55,13 @@ class HNASSSHBackend(object):
         dedupe = True if dedupe is enabled on filesystem.
         """
         command = ['df', '-a', '-f', self.fs_name]
-        output, err = self._execute(command)
+        try:
+            output, err = self._execute(command)
+
+        except processutils.ProcessExecutionError:
+            msg = _("Could not get HNAS backend stats.")
+            LOG.exception(msg)
+            raise exception.HNASBackendException(msg=msg)
 
         line = output.split('\n')
         fs = Filesystem(line[3])
@@ -74,7 +80,7 @@ class HNASSSHBackend(object):
         try:
             self._execute(command)
         except processutils.ProcessExecutionError:
-            msg = _("Could not create NFS export %s.") % share_id
+            msg = _("Could not create NFS export %s.") % name
             LOG.exception(msg)
             raise exception.HNASBackendException(msg=msg)
 
@@ -95,7 +101,7 @@ class HNASSSHBackend(object):
                 LOG.warning(_LW("Export %s does not exist on "
                                 "backend anymore."), name)
             else:
-                msg = six.text_type(e)
+                msg = _("Could not delete NFS export %s.") % name
                 LOG.exception(msg)
                 raise exception.HNASBackendException(msg=msg)
 
@@ -111,7 +117,7 @@ class HNASSSHBackend(object):
         try:
             self._execute(command)
         except processutils.ProcessExecutionError:
-            msg = _("Could not create CIFS share %s.") % share_id
+            msg = _("Could not create CIFS share %s.") % name
             LOG.exception(msg)
             raise exception.HNASBackendException(msg=msg)
 
@@ -125,7 +131,7 @@ class HNASSSHBackend(object):
                 LOG.warning(_LW("CIFS share %s does not exist on "
                                 "backend anymore."), name)
             else:
-                msg = six.text_type(e)
+                msg = _("Could not delete CIFS share %s.") % name
                 LOG.exception(msg)
                 raise exception.HNASBackendException(msg=msg)
 
@@ -156,7 +162,12 @@ class HNASSSHBackend(object):
             command.append(string_command)
 
         command.append(name)
-        self._execute(command)
+        try:
+            self._execute(command)
+        except processutils.ProcessExecutionError:
+            msg = _("Could not update access rules for NFS export %s.") % name
+            LOG.exception(msg)
+            raise exception.HNASBackendException(msg=msg)
 
     def cifs_allow_access(self, name, user, permission, is_snapshot=False):
         command = ['cifs-saa', 'add', '--target-label', self.fs_name,
@@ -168,26 +179,43 @@ class HNASSSHBackend(object):
             if 'already listed as a user' in e.stderr:
                 if is_snapshot:
                     LOG.debug('User %(user)s already allowed to access '
-                              'snapshot %(snapshot)s.',
-                              {'user': user, 'snapshot': name})
+                              'snapshot %(snapshot)s.', {
+                                  'user': user,
+                                  'snapshot': name,
+                              })
                 else:
                     self._update_cifs_rule(name, user, permission)
             else:
-                msg = six.text_type(e)
+                entity_type = "share"
+                if is_snapshot:
+                    entity_type = "snapshot"
+
+                msg = _("Could not add access of user %(user)s to "
+                        "%(entity_type)s %(name)s.") % {
+                            'user': user,
+                            'name': name,
+                            'entity_type': entity_type,
+                    }
                 LOG.exception(msg)
-                raise exception.InvalidShareAccess(reason=msg)
+                raise exception.HNASBackendException(msg=msg)
 
     def _update_cifs_rule(self, name, user, permission):
         LOG.debug('User %(user)s already allowed to access '
-                  'share %(share)s. Updating access level...',
-                  {'user': user, 'share': name})
+                  'share %(share)s. Updating access level...', {
+                      'user': user,
+                      'share': name,
+                  })
 
         command = ['cifs-saa', 'change', '--target-label', self.fs_name,
                    name, user, permission]
         try:
             self._execute(command)
         except processutils.ProcessExecutionError:
-            msg = _("Could not update CIFS rule access for user %s.") % user
+            msg = _("Could not update access of user %(user)s to "
+                    "share %(share)s.") % {
+                        'user': user,
+                        'share': name,
+                }
             LOG.exception(msg)
             raise exception.HNASBackendException(msg=msg)
 
@@ -205,11 +233,18 @@ class HNASSSHBackend(object):
             if ('not listed as a user' in e.stderr or
                     'Could not delete user/group' in e.stderr):
                 LOG.warning(_LW('User %(user)s already not allowed to access '
-                                '%(entity_type)s %(share)s.'),
-                            {'entity_type': entity_type, 'user': user,
-                             'share': name})
+                                '%(entity_type)s %(name)s.'), {
+                                    'entity_type': entity_type,
+                                    'user': user,
+                                    'name': name
+                    })
             else:
-                msg = six.text_type(e)
+                msg = _("Could not delete access of user %(user)s to "
+                        "%(entity_type)s %(name)s.") % {
+                            'user': user,
+                            'name': name,
+                            'entity_type': entity_type,
+                    }
                 LOG.exception(msg)
                 raise exception.HNASBackendException(msg=msg)
 
@@ -224,7 +259,7 @@ class HNASSSHBackend(object):
                           'added.', {'share': hnas_share_id})
                 return []
             else:
-                msg = six.text_type(e)
+                msg = _("Could not list access of share %s.") % hnas_share_id
                 LOG.exception(msg)
                 raise exception.HNASBackendException(msg=msg)
 
@@ -240,10 +275,12 @@ class HNASSSHBackend(object):
         except processutils.ProcessExecutionError as e:
             if ('Cannot find any clonable files in the source directory' in
                     e.stderr):
-                msg = _("Source path %s is empty") % src_path
+                msg = _("Source path %s is empty.") % src_path
+                LOG.debug(msg)
                 raise exception.HNASNothingToCloneException(msg=msg)
             else:
-                msg = six.text_type(e)
+                msg = _("Could not submit tree clone job to clone from %(src)s"
+                        " to %(dest)s.") % {'src': src_path, 'dest': dest_path}
                 LOG.exception(msg)
                 raise exception.HNASBackendException(msg=msg)
 
@@ -277,8 +314,8 @@ class HNASSSHBackend(object):
                         self._execute(command)
                         LOG.error(_LE("Timeout in snapshot creation from "
                                       "source path %s.") % src_path)
-                        msg = (_("Share snapshot of source path %s "
-                                 "was not created.") % src_path)
+                        msg = _("Share snapshot of source path %s "
+                                "was not created.") % src_path
                         raise exception.HNASBackendException(msg=msg)
                     else:
                         time.sleep(job_rechecks ** 2)
@@ -297,8 +334,8 @@ class HNASSSHBackend(object):
             else:
                 LOG.error(_LE('Error creating snapshot of source path %s.'),
                           src_path)
-                msg = (_('Snapshot of source path %s was not created.') %
-                       src_path)
+                msg = _('Snapshot of source path %s was not '
+                        'created.') % src_path
                 raise exception.HNASBackendException(msg=msg)
 
     def tree_delete(self, path):
@@ -311,9 +348,10 @@ class HNASSSHBackend(object):
                 LOG.warning(_LW("Attempted to delete path %s "
                                 "but it does not exist."), path)
             else:
-                msg = six.text_type(e)
+                msg = _("Could not submit tree delete job to delete path "
+                        "%s.") % path
                 LOG.exception(msg)
-                raise
+                raise exception.HNASBackendException(msg=msg)
 
     def create_directory(self, dest_path):
         self._locked_selectfs('create', dest_path)
@@ -338,15 +376,18 @@ class HNASSSHBackend(object):
                           {'path': path, 'out': e.stdout})
                 return False
             else:
-                raise
+                msg = _("Could not check if path %s exists.") % path
+                LOG.exception(msg)
+                raise exception.HNASBackendException(msg=msg)
         return True
 
     def check_fs_mounted(self):
         command = ['df', '-a', '-f', self.fs_name]
         output, err = self._execute(command)
         if "not found" in output:
-            msg = (_("Filesystem %s does not exist or it is not available "
-                     "in the current EVS context.") % self.fs_name)
+            msg = _("Filesystem %s does not exist or it is not available "
+                    "in the current EVS context.") % self.fs_name
+            LOG.error(msg)
             raise exception.HNASItemNotFoundException(msg=msg)
         else:
             line = output.split('\n')
@@ -359,16 +400,21 @@ class HNASSSHBackend(object):
             self._execute(command)
         except processutils.ProcessExecutionError as e:
             if 'file system is already mounted' not in e.stderr:
-                msg = six.text_type(e)
+                msg = _("Failed to mount filesystem %s.") % self.fs_name
                 LOG.exception(msg)
-                raise
+                raise exception.HNASBackendException(msg=msg)
 
     def vvol_create(self, vvol_name):
         # create a virtual-volume inside directory
         path = '/shares/' + vvol_name
         command = ['virtual-volume', 'add', '--ensure', self.fs_name,
                    vvol_name, path]
-        self._execute(command)
+        try:
+            self._execute(command)
+        except processutils.ProcessExecutionError:
+            msg = _("Failed to create vvol %s.") % vvol_name
+            LOG.exception(msg)
+            raise exception.HNASBackendException(msg=msg)
 
     def vvol_delete(self, vvol_name):
         path = '/shares/' + vvol_name
@@ -379,43 +425,61 @@ class HNASSSHBackend(object):
             self._execute(command)
         except processutils.ProcessExecutionError as e:
             if 'Source path: Cannot access' in e.stderr:
-                LOG.debug("Share %(shr)s does not exist.",
-                          {'shr': vvol_name})
+                LOG.warning(_LW("Share %s does not exist."), vvol_name)
             else:
-                msg = six.text_type(e)
+                msg = _("Failed to delete vvol %s.") % vvol_name
                 LOG.exception(msg)
-                raise e
+                raise exception.HNASBackendException(msg=msg)
 
     def quota_add(self, vvol_name, vvol_quota):
         str_quota = six.text_type(vvol_quota) + 'G'
         command = ['quota', 'add', '--usage-limit',
                    str_quota, '--usage-hard-limit',
                    'yes', self.fs_name, vvol_name]
-        self._execute(command)
+        try:
+            self._execute(command)
+        except processutils.ProcessExecutionError:
+            msg = _("Failed to add %(quota)s quota to vvol "
+                    "%(vvol)s.") % {'quota': str_quota, 'vvol': vvol_name}
+            LOG.exception(msg)
+            raise exception.HNASBackendException(msg=msg)
 
     def modify_quota(self, vvol_name, new_size):
         str_quota = six.text_type(new_size) + 'G'
         command = ['quota', 'mod', '--usage-limit', str_quota,
                    self.fs_name, vvol_name]
-        self._execute(command)
+        try:
+            self._execute(command)
+        except processutils.ProcessExecutionError:
+            msg = _("Failed to update quota of vvol %(vvol)s to "
+                    "%(quota)s.") % {'quota': str_quota, 'vvol': vvol_name}
+            LOG.exception(msg)
+            raise exception.HNASBackendException(msg=msg)
 
     def check_vvol(self, vvol_name):
         command = ['virtual-volume', 'list', '--verbose', self.fs_name,
                    vvol_name]
         try:
             self._execute(command)
-        except processutils.ProcessExecutionError as e:
-            msg = six.text_type(e)
+        except processutils.ProcessExecutionError:
+            msg = _("Virtual volume %s does not exist.") % vvol_name
             LOG.exception(msg)
-            msg = (_("Virtual volume %s does not exist.") % vvol_name)
             raise exception.HNASItemNotFoundException(msg=msg)
 
     def check_quota(self, vvol_name):
         command = ['quota', 'list', '--verbose', self.fs_name, vvol_name]
-        output, err = self._execute(command)
+        try:
+            output, err = self._execute(command)
+
+        except processutils.ProcessExecutionError:
+            msg = _("Could not check quota of vvol %s.") % vvol_name
+            LOG.exception(msg)
+            raise exception.HNASBackendException(msg=msg)
 
         if 'No quotas matching specified filter criteria' in output:
-            msg = (_("Virtual volume %s does not have any quota.") % vvol_name)
+            msg = _("Virtual volume %s does not have any"
+                    " quota.") % vvol_name
+            LOG.error(msg)
             raise exception.HNASItemNotFoundException(msg=msg)
 
     def check_export(self, vvol_name, is_snapshot=False):
@@ -425,6 +489,7 @@ class HNASSSHBackend(object):
             return
         else:
             msg = _("Export %s does not exist.") % export[0].export_name
+            LOG.error(msg)
             raise exception.HNASItemNotFoundException(msg=msg)
 
     def check_cifs(self, vvol_name):
@@ -437,6 +502,7 @@ class HNASSSHBackend(object):
                     "configured filesystem "
                     "%(fs)s.") % {'share': vvol_name,
                                   'fs': self.fs_name}
+            LOG.error(msg)
             raise exception.HNASItemNotFoundException(msg=msg)
 
     def is_cifs_in_use(self, vvol_name):
@@ -455,9 +521,13 @@ class HNASSSHBackend(object):
                 msg = _("CIFS share %(share)s was not found in EVS "
                         "%(evs_id)s") % {'share': vvol_name,
                                          'evs_id': self.evs_id}
+                LOG.exception(msg)
                 raise exception.HNASItemNotFoundException(msg=msg)
             else:
-                raise
+                msg = _("Could not list CIFS shares by vvol name "
+                        "%s.") % vvol_name
+                LOG.exception(msg)
+                raise exception.HNASBackendException(msg=msg)
 
         return output
 
@@ -475,8 +545,9 @@ class HNASSSHBackend(object):
         elif quota.limit_unit == 'GB':
             return quota.limit
         else:
-            msg = (_("Share %s does not support quota values "
-                     "below 1G.") % share_id)
+            msg = _("Share %s does not support quota values "
+                    "below 1G.") % share_id
+            LOG.error(msg)
             raise exception.HNASBackendException(msg=msg)
 
     def get_share_usage(self, share_id):
@@ -486,7 +557,8 @@ class HNASSSHBackend(object):
         quota = Quota(output)
 
         if quota.usage is None:
-            msg = (_("Virtual volume %s does not have any quota.") % share_id)
+            msg = _("Virtual volume %s does not have any quota.") % share_id
+            LOG.error(msg)
             raise exception.HNASItemNotFoundException(msg=msg)
         else:
             bytes_usage = strutils.string_to_bytes(six.text_type(quota.usage) +
@@ -506,11 +578,16 @@ class HNASSSHBackend(object):
         except processutils.ProcessExecutionError as e:
             if 'does not exist' in e.stderr:
                 msg = _("Export %(name)s was not found in EVS "
-                        "%(evs_id)s.") % {'name': name,
-                                          'evs_id': self.evs_id}
+                        "%(evs_id)s.") % {
+                            'name': name,
+                            'evs_id': self.evs_id,
+                }
+                LOG.exception(msg)
                 raise exception.HNASItemNotFoundException(msg=msg)
             else:
-                raise
+                msg = _("Could not list NFS exports by name %s.") % name
+                LOG.exception(msg)
+                raise exception.HNASBackendException(msg=msg)
         items = output.split('Export name')
 
         if items[0][0] == '\n':
@@ -526,7 +603,7 @@ class HNASSSHBackend(object):
         if self.admin_ip0 is not None:
             command = ['ssc', '--smuauth', self.admin_ip0]
 
-        command = command + ['console-context', '--evs', self.evs_id]
+        command += ['console-context', '--evs', self.evs_id]
         commands = command + commands
 
         mutils.check_ssh_injection(commands)
@@ -545,22 +622,26 @@ class HNASSSHBackend(object):
                 out, err = processutils.ssh_execute(ssh, commands,
                                                     check_exit_code=True)
                 LOG.debug("Command %(cmd)s result: out = %(out)s - err = "
-                          "%(err)s.", {'cmd': commands,
-                                       'out': out, 'err': err})
+                          "%(err)s.", {
+                              'cmd': commands,
+                              'out': out,
+                              'err': err,
+                          })
                 return out, err
             except processutils.ProcessExecutionError as e:
                 if 'Failed to establish SSC connection' in e.stderr:
-                    LOG.debug("SSC connection error!")
                     msg = _("Failed to establish SSC connection.")
+                    LOG.debug(msg)
                     raise exception.HNASConnException(msg=msg)
                 else:
-                    LOG.debug("Command %(cmd)s result: out = %(out)s - err = "
-                              "%(err)s - exit = %(exit)s.", {'cmd': e.cmd,
-                                                             'out': e.stdout,
-                                                             'err': e.stderr,
-                                                             'exit':
-                                                             e.exit_code})
-                    LOG.error(_LE("Error running SSH command."))
+                    LOG.debug("Error running SSH command. "
+                              "Command %(cmd)s result: out = %(out)s - err = "
+                              "%(err)s - exit = %(exit)s.", {
+                                  'cmd': e.cmd,
+                                  'out': e.stdout,
+                                  'err': e.stderr,
+                                  'exit': e.exit_code,
+                              })
                     raise
 
     @mutils.synchronized("hitachi_hnas_select_fs", external=True)
@@ -569,7 +650,12 @@ class HNASSSHBackend(object):
             command = ['selectfs', self.fs_name, '\n',
                        'ssc', '127.0.0.1', 'console-context', '--evs',
                        self.evs_id, 'mkdir', '-p', path]
-            self._execute(command)
+            try:
+                self._execute(command)
+            except processutils.ProcessExecutionError:
+                msg = _("Failed to create directory %s.") % path
+                LOG.exception(msg)
+                raise exception.HNASBackendException(msg=msg)
 
         if op == 'delete':
             command = ['selectfs', self.fs_name, '\n',
@@ -585,9 +671,9 @@ class HNASSSHBackend(object):
                     LOG.warning(_LW("Attempted to delete path %s but it does "
                                     "not exist."), path)
                 else:
-                    msg = six.text_type(e)
+                    msg = _("Failed to delete directory %s.") % path
                     LOG.exception(msg)
-                    raise
+                    raise exception.HNASBackendException(msg=msg)
 
 
 class Export(object):

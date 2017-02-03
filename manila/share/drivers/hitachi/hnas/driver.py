@@ -23,7 +23,7 @@ import six
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LE, _LI, _LW
+from manila.i18n import _, _LI, _LW
 from manila.share import driver
 from manila.share import utils
 
@@ -837,12 +837,10 @@ class HitachiHNASDriver(driver.ShareDriver):
                 self.hnas.cifs_share_add(share_id, snapshot_id=snapshot_id)
                 LOG.debug("CIFS share created to %(shr)s.",
                           {'shr': share_id})
-        except exception.HNASBackendException as e:
+        except exception.HNASBackendException:
             with excutils.save_and_reraise_exception():
                 if snapshot_id is None:
                     self.hnas.vvol_delete(share_id)
-                msg = six.text_type(e)
-                LOG.exception(msg)
 
     def _check_fs_mounted(self):
         mounted = self.hnas.check_fs_mounted()
@@ -1072,10 +1070,6 @@ class HitachiHNASDriver(driver.ShareDriver):
                 self.hnas.cifs_share_add(share['id'])
         except exception.HNASBackendException:
             with excutils.save_and_reraise_exception():
-                msg = _LE('Failed to create share %(share_id)s from snapshot '
-                          '%(snap)s.')
-                LOG.exception(msg, {'share_id': share['id'],
-                                    'snap': hnas_snapshot_id})
                 self.hnas.vvol_delete(share['id'])
 
         return self._get_export_locations(

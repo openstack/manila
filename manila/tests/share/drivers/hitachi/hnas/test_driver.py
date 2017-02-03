@@ -455,7 +455,6 @@ class HitachiHNASTestCase(test.TestCase):
         self.assertRaises(exception.HNASBackendException,
                           self._driver.create_share, 'context', share_nfs)
         self.assertTrue(self.mock_log.debug.called)
-        self.assertTrue(self.mock_log.exception.called)
         ssh.HNASSSHBackend.vvol_create.assert_called_once_with(share_nfs['id'])
         ssh.HNASSSHBackend.quota_add.assert_called_once_with(share_nfs['id'],
                                                              share_nfs['size'])
