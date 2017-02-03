@@ -4535,20 +4535,29 @@ class ShareManagerTestCase(test.TestCase):
                 new_instance)
             self.assertTrue(manager.LOG.exception.called)
 
-    def test__migration_complete_driver(self):
+    @ddt.data({'mount_snapshot_support': True, 'snapshot_els': False},
+              {'mount_snapshot_support': True, 'snapshot_els': True},
+              {'mount_snapshot_support': False, 'snapshot_els': False},
+              {'mount_snapshot_support': False, 'snapshot_els': True},)
+    @ddt.unpack
+    def test__migration_complete_driver(
+            self, mount_snapshot_support, snapshot_els):
         fake_src_host = 'src_host'
         fake_dest_host = 'dest_host'
         fake_rules = 'fake_rules'
 
         src_server = db_utils.create_share_server()
         dest_server = db_utils.create_share_server()
+        share_type = db_utils.create_share_type(
+            extra_specs={'mount_snapshot_support': mount_snapshot_support})
         share = db_utils.create_share(
             share_server_id='fake_src_server_id',
             host=fake_src_host)
         dest_instance = db_utils.create_share_instance(
             share_id=share['id'],
             share_server_id='fake_dest_server_id',
-            host=fake_dest_host)
+            host=fake_dest_host,
+            share_type_id=share_type['id'])
         src_instance = share.instance
         snapshot = db_utils.create_snapshot(share_id=share['id'])
         dest_snap_instance = db_utils.create_snapshot_instance(
@@ -4557,11 +4566,14 @@ class ShareManagerTestCase(test.TestCase):
 
         snapshot_mappings = {snapshot.instance['id']: dest_snap_instance}
 
+        model_update = {'fake_keys': 'fake_values'}
+        if snapshot_els:
+            el = {'path': 'fake_path', 'is_admin_only': False}
+            model_update['export_locations'] = [el]
+
         fake_return_data = {
             'export_locations': 'fake_export_locations',
-            'snapshot_updates': {dest_snap_instance['id']: {
-                'fake_keys': 'fake_values'},
-            },
+            'snapshot_updates': {dest_snap_instance['id']: model_update},
         }
 
         # mocks
@@ -4589,6 +4601,9 @@ class ShareManagerTestCase(test.TestCase):
                                    [snapshot.instance]]))
         self.mock_object(
             self.share_manager.db, 'share_snapshot_instance_update')
+        el_create = self.mock_object(
+            self.share_manager.db,
+            'share_snapshot_instance_export_location_create')
 
         # run
         self.share_manager._migration_complete_driver(
@@ -4635,6 +4650,11 @@ class ShareManagerTestCase(test.TestCase):
         (self.share_manager.db.share_snapshot_instance_update.
          assert_called_once_with(self.context, dest_snap_instance['id'],
                                  snap_data_update))
+        if mount_snapshot_support and snapshot_els:
+            el['share_snapshot_instance_id'] = dest_snap_instance['id']
+            el_create.assert_called_once_with(self.context, el)
+        else:
+            el_create.assert_not_called()
 
     def test__migration_complete_host_assisted(self):
 
