@@ -2457,11 +2457,11 @@ def share_snapshot_instance_export_location_create(context, values):
     values = ensure_model_dict_has_id(values)
     session = get_session()
     with session.begin():
-        access_ref = models.ShareSnapshotInstanceExportLocation()
-        access_ref.update(values)
-        access_ref.save(session=session)
+        ssiel = models.ShareSnapshotInstanceExportLocation()
+        ssiel.update(values)
+        ssiel.save(session=session)
 
-    return access_ref
+        return ssiel
 
 
 def _share_snapshot_instance_export_locations_get_query(context, session,
