@@ -498,6 +498,22 @@ class HitachiHNASTestCase(test.TestCase):
               snapshot_mount_support_cifs)
     def test_create_snapshot(self, snapshot):
         hnas_id = snapshot['share_id']
+        access_list = ['172.24.44.200(rw,norootsquash)',
+                       '172.24.49.180(all_squash,read_write,secure)',
+                       '172.24.49.110(ro, secure)',
+                       '172.24.49.112(secure,readwrite,norootsquash)',
+                       '172.24.49.142(read_only, secure)',
+                       '172.24.49.201(rw,read_write,readwrite)',
+                       '172.24.49.218(rw)']
+
+        ro_list = ['172.24.44.200(ro,norootsquash)',
+                   '172.24.49.180(all_squash,ro,secure)',
+                   '172.24.49.110(ro, secure)',
+                   '172.24.49.112(secure,ro,norootsquash)',
+                   '172.24.49.142(read_only, secure)',
+                   '172.24.49.201(ro,ro,ro)',
+                   '172.24.49.218(ro)']
+
         export_locations = [
             self._get_export(
                 snapshot['id'], snapshot['share']['share_proto'],
@@ -513,7 +529,7 @@ class HitachiHNASTestCase(test.TestCase):
             expected['export_locations'] = export_locations
 
         self.mock_object(ssh.HNASSSHBackend, "get_nfs_host_list", mock.Mock(
-            return_value=['172.24.44.200(rw)']))
+            return_value=access_list))
         self.mock_object(ssh.HNASSSHBackend, "update_nfs_access_rule",
                          mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "is_cifs_in_use", mock.Mock(
@@ -533,9 +549,9 @@ class HitachiHNASTestCase(test.TestCase):
             ssh.HNASSSHBackend.get_nfs_host_list.assert_called_once_with(
                 hnas_id)
             ssh.HNASSSHBackend.update_nfs_access_rule.assert_any_call(
-                ['172.24.44.200(ro)'], share_id=hnas_id)
+                ro_list, share_id=hnas_id)
             ssh.HNASSSHBackend.update_nfs_access_rule.assert_any_call(
-                ['172.24.44.200(rw)'], share_id=hnas_id)
+                access_list, share_id=hnas_id)
         else:
             ssh.HNASSSHBackend.is_cifs_in_use.assert_called_once_with(
                 hnas_id)

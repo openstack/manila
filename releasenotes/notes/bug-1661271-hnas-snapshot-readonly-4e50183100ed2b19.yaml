@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixed HNAS driver creating snapshots of NFS shares
+    without first changing it to read-only.
+
