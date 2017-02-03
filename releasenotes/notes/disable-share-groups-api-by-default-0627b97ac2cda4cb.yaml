@@ -1,0 +1,13 @@
+---
+issues:
+  - Share groups replaced the experimental consistency groups feature in Ocata.
+    The APIs for share groups have a default role-based-access-control policy
+    set to "!". This means that these APIs are not enabled by default on
+    upgrading to the Ocata release. Modify policy.json appropriately in your
+    deployment to enable these APIs. You may set these policies to
+    "rule:default" to allow access to all tenants and "rule:admin_api" to
+    restrict the access only to tenants with those privileges.
+upgrade:
+  - Policies relating to "consistency_group" and "cgsnapshot" APIs
+    have been removed from manila.
+    These policies can be removed from "policy.json".
