@@ -27,7 +27,7 @@ patch_system = mock.patch('storops.UnitySystem')
 def load_yaml(file_name):
     yaml_file = '{}/{}'.format(path.dirname(path.abspath(__file__)), file_name)
     with open(yaml_file) as f:
-        res = yaml.load(f)
+        res = yaml.safe_load(f)
         LOG.debug('Loaded yaml mock objects from %s.', yaml_file)
     return res
 
