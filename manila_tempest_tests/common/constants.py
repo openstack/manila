@@ -14,6 +14,8 @@
 STATUS_ERROR = 'error'
 STATUS_AVAILABLE = 'available'
 STATUS_ERROR_DELETING = 'error_deleting'
+STATUS_MIGRATING = 'migrating'
+
 TEMPEST_MANILA_PREFIX = 'tempest-manila'
 
 # Replication
