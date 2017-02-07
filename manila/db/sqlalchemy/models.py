@@ -1038,6 +1038,7 @@ class ShareGroup(BASE, ManilaBase):
         String(36), ForeignKey('share_servers.id'), nullable=True)
     share_group_type_id = Column(
         String(36), ForeignKey('share_group_types.id'), nullable=True)
+    consistent_snapshot_support = Column(Enum('pool', 'host'), default=None)
     share_group_type = orm.relationship(
         ShareGroupTypes,
         backref="share_groups",

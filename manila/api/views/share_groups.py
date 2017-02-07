@@ -57,6 +57,7 @@ class ShareGroupViewBuilder(common.ViewBuilder):
             'share_types': [st['share_type_id'] for st in share_group.get(
                 'share_types')],
             'links': self._get_links(request, share_group['id']),
+            # TODO(vponomaryov): add 'consistent_snapshot_support' key in Pike.
         }
         if context.is_admin:
             share_group_dict['share_server_id'] = share_group.get(

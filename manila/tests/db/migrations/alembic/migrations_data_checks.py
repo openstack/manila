@@ -36,6 +36,7 @@ See BaseMigrationChecks class for more information.
 import abc
 import datetime
 
+from oslo_db import exception as oslo_db_exc
 from oslo_utils import uuidutils
 import six
 from sqlalchemy import exc as sa_exc
@@ -2109,3 +2110,62 @@ class ShareGroupSnapshotMemberNewProviderLocationColumnChecks(
         self.test_case.assertEqual(1, db_result.rowcount)
         for sgsm in db_result:
             self.test_case.assertFalse(hasattr(sgsm, 'provider_location'))
+
+
+@map_to_migration('d5db24264f5c')
+class ShareGroupNewConsistentSnapshotSupportColumnChecks(BaseMigrationChecks):
+    table_name = 'share_groups'
+    new_attr_name = 'consistent_snapshot_support'
+    share_group_type_id = uuidutils.generate_uuid()
+    share_group_id = uuidutils.generate_uuid()
+
+    def setup_upgrade_data(self, engine):
+        # Setup share group type
+        sgt_data = {
+            'id': self.share_group_type_id,
+            'name': uuidutils.generate_uuid(),
+        }
+        sgt_table = utils.load_table('share_group_types', engine)
+        engine.execute(sgt_table.insert(sgt_data))
+
+        # Setup share group
+        sg_data = {
+            'id': self.share_group_id,
+            'project_id': 'fake_project_id',
+            'user_id': 'fake_user_id',
+            'share_group_type_id': self.share_group_type_id,
+        }
+        sg_table = utils.load_table('share_groups', engine)
+        engine.execute(sg_table.insert(sg_data))
+
+    def check_upgrade(self, engine, data):
+        sg_table = utils.load_table(self.table_name, engine)
+        db_result = engine.execute(sg_table.select().where(
+            sg_table.c.id == self.share_group_id))
+        self.test_case.assertEqual(1, db_result.rowcount)
+        for sg in db_result:
+            self.test_case.assertTrue(hasattr(sg, self.new_attr_name))
+
+            # Check that we can write proper enum data to the new field
+            for value in (None, 'pool', 'host'):
+                engine.execute(sg_table.update().where(
+                    sg_table.c.id == self.share_group_id,
+                ).values({self.new_attr_name: value}))
+
+            # Check that we cannot write values that are not allowed by enum.
+            for value in ('', 'fake', 'pool1', 'host1', '1pool', '1host'):
+                self.test_case.assertRaises(
+                    oslo_db_exc.DBError,
+                    engine.execute,
+                    sg_table.update().where(
+                        sg_table.c.id == self.share_group_id
+                    ).values({self.new_attr_name: value})
+                )
+
+    def check_downgrade(self, engine):
+        sg_table = utils.load_table(self.table_name, engine)
+        db_result = engine.execute(sg_table.select().where(
+            sg_table.c.id == self.share_group_id))
+        self.test_case.assertEqual(1, db_result.rowcount)
+        for sg in db_result:
+            self.test_case.assertFalse(hasattr(sg, self.new_attr_name))
