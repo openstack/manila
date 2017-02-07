@@ -319,7 +319,8 @@ class DummyDriver(driver.ShareDriver):
         """Removes the specified snapshot from Manila management."""
 
     @slow_me_down
-    def revert_to_snapshot(self, context, snapshot, share_server=None):
+    def revert_to_snapshot(self, context, snapshot, access_rules,
+                           share_server=None):
         """Reverts a share (in place) to the specified snapshot."""
 
     @slow_me_down
@@ -492,7 +493,8 @@ class DummyDriver(driver.ShareDriver):
     @slow_me_down
     def revert_to_replicated_snapshot(self, context, active_replica,
                                       replica_list, active_replica_snapshot,
-                                      replica_snapshots, share_server=None):
+                                      replica_snapshots, access_rules,
+                                      share_server=None):
         """Reverts a replicated share (in place) to the specified snapshot."""
 
     @slow_me_down

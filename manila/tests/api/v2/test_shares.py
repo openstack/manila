@@ -147,6 +147,12 @@ class ShareAPITest(test.TestCase):
         share = copy.deepcopy(self.share)
         share['status'] = constants.STATUS_AVAILABLE
         share['revert_to_snapshot_support'] = True
+        share["instances"] = [
+            {
+                "id": "fakeid",
+                "access_rules_status": constants.ACCESS_STATE_ACTIVE,
+            },
+        ]
         share = fake_share.fake_share(**share)
         snapshot = copy.deepcopy(self.snapshot)
         snapshot['status'] = constants.STATUS_AVAILABLE
@@ -292,6 +298,39 @@ class ShareAPITest(test.TestCase):
             mock.Mock(return_value=None))
 
         self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._revert,
+                          req,
+                          '1',
+                          body=body)
+
+    def test__revert_snapshot_access_applying(self):
+
+        share = copy.deepcopy(self.share)
+        share['status'] = constants.STATUS_AVAILABLE
+        share['revert_to_snapshot_support'] = True
+        share["instances"] = [
+            {
+                "id": "fakeid",
+                "access_rules_status": constants.SHARE_INSTANCE_RULES_SYNCING,
+            },
+        ]
+        share = fake_share.fake_share(**share)
+        snapshot = copy.deepcopy(self.snapshot)
+        snapshot['status'] = constants.STATUS_AVAILABLE
+        body = {'revert': {'snapshot_id': '2'}}
+        req = fakes.HTTPRequest.blank(
+            '/shares/1/action', use_admin_context=False, version='2.27')
+        self.mock_object(
+            self.controller, '_validate_revert_parameters',
+            mock.Mock(return_value=body['revert']))
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+        self.mock_object(share_api.API, 'get_snapshot',
+                         mock.Mock(return_value=snapshot))
+        self.mock_object(share_api.API, 'get_latest_snapshot_for_share',
+                         mock.Mock(return_value=snapshot))
+        self.mock_object(share_api.API, 'revert_to_snapshot')
+
+        self.assertRaises(webob.exc.HTTPConflict,
                           self.controller._revert,
                           req,
                           '1',

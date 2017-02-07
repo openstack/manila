@@ -362,7 +362,13 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         self._extend_container(share, device_name, new_size)
         self._execute('resize2fs', device_name, run_as_root=True)
 
-    def revert_to_snapshot(self, context, snapshot, share_server=None):
+    def revert_to_snapshot(self, context, snapshot, access_rules,
+                           share_server=None):
+        share = snapshot['share']
+        # Temporarily remove all access rules
+        self._get_helper(share).update_access(self.share_server,
+                                              share['name'], [], [], [])
+        # Unmount the filesystem
         self._remove_export(context, snapshot)
         # First we merge the snapshot LV and the share LV
         # This won't actually do anything until the LV is reactivated
@@ -370,7 +376,6 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
                                   snapshot['name'])
         self._execute('lvconvert', '--merge', snap_lv_name, run_as_root=True)
         # Unmount the share so we can deactivate it
-        share = snapshot['share']
         self._unmount_device(share)
         # Deactivate the share LV
         share_lv_name = "%s/%s" % (self.configuration.lvm_share_volume_group,
@@ -381,11 +386,15 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         self._execute('lvchange', '-ay', share_lv_name, run_as_root=True)
         # Now recreate the snapshot that was destroyed by the merge
         self._create_snapshot(context, snapshot)
-        # Finally we can mount the share again
+        # At this point we can mount the share again
         device_name = self._get_local_path(share)
         self._mount_device(share, device_name)
         device_name = self._get_local_path(snapshot)
         self._mount_device(snapshot, device_name)
+        # Lastly we add all the access rules back
+        self._get_helper(share).update_access(self.share_server,
+                                              share['name'], access_rules,
+                                              [], [])
 
     def create_snapshot(self, context, snapshot, share_server=None):
         self._create_snapshot(context, snapshot)

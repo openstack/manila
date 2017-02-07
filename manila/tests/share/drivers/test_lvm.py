@@ -533,8 +533,10 @@ class LVMShareDriverTestCase(test.TestCase):
         self.assertEqual('test-pool', self._driver._stats['pools'])
 
     def test_revert_to_snapshot(self):
+        mock_update_access = self.mock_object(self._helper_nfs,
+                                              'update_access')
         self._driver.revert_to_snapshot(self._context, self.snapshot,
-                                        self.share_server)
+                                        [], self.share_server)
         snap_lv = "%s/fakesnapshotname" % (CONF.lvm_share_volume_group)
         share_lv = "%s/fakename" % (CONF.lvm_share_volume_group)
         share_mount_path = self._get_mount_path(self.snapshot['share'])
@@ -560,6 +562,7 @@ class LVMShareDriverTestCase(test.TestCase):
             ("chmod 777 %s" % snapshot_mount_path),
         ]
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
+        self.assertEqual(2, mock_update_access.call_count)
 
     def test_snapshot_update_access(self):
         access_rules = [{

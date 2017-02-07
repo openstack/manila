@@ -129,6 +129,20 @@ class ShareController(shares.ShareMixin,
                         "%(latest_snap_id)s.")
                 raise exc.HTTPConflict(explanation=msg % msg_args)
 
+            # Ensure the access rules are not in the process of updating
+            for instance in share['instances']:
+                access_rules_status = instance['access_rules_status']
+                if access_rules_status != constants.ACCESS_STATE_ACTIVE:
+                    msg_args = {
+                        'share_id': share_id,
+                        'snap_id': snapshot_id,
+                        'state': constants.ACCESS_STATE_ACTIVE
+                    }
+                    msg = _("Snapshot %(snap_id)s belongs to a share "
+                            "%(share_id)s which has access rules that are"
+                            "not %(state)s.")
+                    raise exc.HTTPConflict(explanation=msg % msg_args)
+
             msg_args = {'share_id': share_id, 'snap_id': snapshot_id}
             msg = _LI('Reverting share %(share_id)s to snapshot %(snap_id)s.')
             LOG.info(msg, msg_args)
