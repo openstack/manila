@@ -235,6 +235,7 @@ class HitachiHNASTestCase(test.TestCase):
         self.mock_object(ssh.HNASSSHBackend, "check_quota", mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "check_cifs", mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "check_export", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, 'check_snapshot')
 
     @ddt.data('hitachi_hnas_driver_helper', 'hitachi_hnas_evs_id',
               'hitachi_hnas_evs_ip', 'hitachi_hnas_ip', 'hitachi_hnas_user')
@@ -989,6 +990,8 @@ class HitachiHNASTestCase(test.TestCase):
         else:
             expected = None
 
+        ssh.HNASSSHBackend.check_snapshot.assert_called_once_with(
+            snapshot['provider_location'])
         self.assertEqual(expected, result)
 
     def test_manage_existing_snapshot(self):
@@ -1117,6 +1120,8 @@ class HitachiHNASTestCase(test.TestCase):
         ssh.HNASSSHBackend.tree_clone.assert_called_once_with(
             '/'.join(('/snapshots', snap['share_id'], snap['id'])),
             '/'.join(('/shares', snap['share_id'])))
+        ssh.HNASSSHBackend.check_snapshot.assert_called_once_with(
+            snap['provider_location'])
 
         if exc:
             self.assertTrue(self.mock_log.warning.called)
@@ -1141,6 +1146,8 @@ class HitachiHNASTestCase(test.TestCase):
         ssh.HNASSSHBackend.update_nfs_access_rule.assert_called_once_with(
             [access1['access_to'] + '(ro)', access2['access_to'] + '(ro)'],
             snapshot_id=snapshot_nfs['id'])
+        ssh.HNASSSHBackend.check_snapshot.assert_called_once_with(
+            snapshot_nfs['provider_location'])
         self.assertTrue(self.mock_log.debug.called)
 
     def test_nfs_snapshot_update_access_deny(self):
@@ -1156,6 +1163,8 @@ class HitachiHNASTestCase(test.TestCase):
 
         ssh.HNASSSHBackend.update_nfs_access_rule.assert_called_once_with(
             [], snapshot_id=snapshot_nfs['id'])
+        ssh.HNASSSHBackend.check_snapshot.assert_called_once_with(
+            snapshot_nfs['provider_location'])
         self.assertTrue(self.mock_log.debug.called)
 
     def test_nfs_snapshot_update_access_invalid_access_type(self):
@@ -1167,6 +1176,8 @@ class HitachiHNASTestCase(test.TestCase):
         self.assertRaises(exception.InvalidSnapshotAccess,
                           self._driver.snapshot_update_access, 'ctxt',
                           snapshot_nfs, [access1], [], [])
+        ssh.HNASSSHBackend.check_snapshot.assert_called_once_with(
+            snapshot_nfs['provider_location'])
 
     def test_cifs_snapshot_update_access_allow(self):
         access1 = {
@@ -1181,6 +1192,8 @@ class HitachiHNASTestCase(test.TestCase):
 
         ssh.HNASSSHBackend.cifs_allow_access.assert_called_with(
             snapshot_cifs['id'], access1['access_to'], 'ar', is_snapshot=True)
+        ssh.HNASSSHBackend.check_snapshot.assert_called_once_with(
+            snapshot_cifs['provider_location'])
         self.assertTrue(self.mock_log.debug.called)
 
     def test_cifs_snapshot_update_access_deny(self):
@@ -1196,6 +1209,8 @@ class HitachiHNASTestCase(test.TestCase):
 
         ssh.HNASSSHBackend.cifs_deny_access.assert_called_with(
             snapshot_cifs['id'], access1['access_to'], is_snapshot=True)
+        ssh.HNASSSHBackend.check_snapshot.assert_called_once_with(
+            snapshot_cifs['provider_location'])
         self.assertTrue(self.mock_log.debug.called)
 
     def test_cifs_snapshot_update_access_recovery_mode(self):
@@ -1226,4 +1241,6 @@ class HitachiHNASTestCase(test.TestCase):
         ssh.HNASSSHBackend.cifs_allow_access.assert_called_with(
             snapshot_cifs['id'], access2['access_to'].replace('\\', '\\\\'),
             'ar', is_snapshot=True)
+        ssh.HNASSSHBackend.check_snapshot.assert_called_once_with(
+            snapshot_cifs['provider_location'])
         self.assertTrue(self.mock_log.debug.called)

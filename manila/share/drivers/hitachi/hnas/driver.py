@@ -750,11 +750,11 @@ class HitachiHNASDriver(driver.ShareDriver):
             Not used by this driver.
         """
 
-        self._check_fs_mounted()
-
         hnas_share_id = self._get_hnas_share_id(snapshot['share_id'])
 
         hnas_snapshot_id = self._get_hnas_snapshot_id(snapshot)
+
+        self._ensure_snapshot(snapshot, hnas_snapshot_id)
 
         dest_path = os.path.join('/shares', hnas_share_id)
         src_path = os.path.join('/snapshots', hnas_share_id, hnas_snapshot_id)
@@ -1134,6 +1134,8 @@ class HitachiHNASDriver(driver.ShareDriver):
         self._check_protocol(snapshot['share_id'],
                              snapshot['share']['share_proto'])
         self._check_fs_mounted()
+
+        self.hnas.check_snapshot(snapshot['provider_location'])
 
         export_list = None
         if snapshot['share'].get('mount_snapshot_support'):
