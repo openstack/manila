@@ -511,6 +511,7 @@ class HNASSSHTestCase(test.TestCase):
             'share_id': 'vvol_test',
             'host': 'ubuntu@hitachi2#HITACHI2',
         }
+        self.mock_log.debug.reset_mock()
 
     def test_get_stats(self):
         fake_list_command = ['df', '-a', '-f', self.fs_name]
@@ -811,7 +812,7 @@ class HNASSSHTestCase(test.TestCase):
         self._driver_ssh.cifs_deny_access('vvol_test', 'fake_user')
 
         self._driver_ssh._execute.assert_called_with(fake_cifs_deny_command)
-        self.assertTrue(self.mock_log.debug.called)
+        self.assertTrue(self.mock_log.warning.called)
 
     def test_cifs_deny_access_backend_exception(self):
         fake_cifs_deny_command = ['cifs-saa', 'delete', '--target-label',
@@ -963,35 +964,114 @@ class HNASSSHTestCase(test.TestCase):
 
     def test_create_directory(self):
         locked_selectfs_args = ['create', '/path']
-        self.mock_object(ssh.HNASSSHBackend, "_locked_selectfs", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "_locked_selectfs")
+        self.mock_object(ssh.HNASSSHBackend, "check_directory",
+                         mock.Mock(return_value=True))
 
         self._driver_ssh.create_directory("/path")
 
         self._driver_ssh._locked_selectfs.assert_called_with(
             *locked_selectfs_args)
+        ssh.HNASSSHBackend.check_directory.assert_called_once_with('/path')
+        self.assertFalse(self.mock_log.warning.called)
+
+    def test_create_directory_context_change_fail(self):
+        locked_selectfs_args = ['create', '/path']
+        self.mock_object(time, 'sleep')
+        self.mock_object(ssh.HNASSSHBackend, "_locked_selectfs")
+        self.mock_object(ssh.HNASSSHBackend, "check_directory",
+                         mock.Mock(return_value=False))
+
+        self.assertRaises(exception.HNASSSCContextChange,
+                          self._driver_ssh.create_directory, "/path")
+
+        self._driver_ssh._locked_selectfs.assert_called_with(
+            *locked_selectfs_args)
+        ssh.HNASSSHBackend.check_directory.assert_called_with('/path')
+        self.assertTrue(self.mock_log.warning.called)
+
+    def test_create_directory_context_change_success(self):
+        locked_selectfs_args = ['create', '/path']
+        self.mock_object(time, 'sleep')
+        self.mock_object(ssh.HNASSSHBackend, "_locked_selectfs")
+        self.mock_object(ssh.HNASSSHBackend, "check_directory",
+                         mock.Mock(side_effect=[False, False, True]))
+
+        self._driver_ssh.create_directory("/path")
+
+        self._driver_ssh._locked_selectfs.assert_called_with(
+            *locked_selectfs_args)
+        ssh.HNASSSHBackend.check_directory.assert_called_with('/path')
+        self.assertTrue(self.mock_log.warning.called)
 
     def test_delete_directory(self):
         locked_selectfs_args = ['delete', '/path']
-        self.mock_object(ssh.HNASSSHBackend, "_locked_selectfs", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "_locked_selectfs")
+        self.mock_object(ssh.HNASSSHBackend, "check_directory",
+                         mock.Mock(return_value=False))
 
         self._driver_ssh.delete_directory("/path")
 
         self._driver_ssh._locked_selectfs.assert_called_with(
             *locked_selectfs_args)
+        ssh.HNASSSHBackend.check_directory.assert_called_once_with('/path')
+        self.assertFalse(self.mock_log.debug.called)
 
-    def test_check_snapshot(self):
+    def test_delete_directory_directory_not_empty(self):
+        locked_selectfs_args = ['delete', '/path']
+        self.mock_object(ssh.HNASSSHBackend, "_locked_selectfs", mock.Mock(
+            side_effect=exception.HNASDirectoryNotEmpty(msg='fake')))
+        self.mock_object(ssh.HNASSSHBackend, "check_directory")
+
+        self._driver_ssh.delete_directory("/path")
+
+        self._driver_ssh._locked_selectfs.assert_called_with(
+            *locked_selectfs_args)
+        ssh.HNASSSHBackend.check_directory.assert_not_called()
+        self.assertFalse(self.mock_log.debug.called)
+
+    def test_delete_directory_context_change_fail(self):
+        locked_selectfs_args = ['delete', '/path']
+        self.mock_object(time, 'sleep')
+        self.mock_object(ssh.HNASSSHBackend, "_locked_selectfs")
+        self.mock_object(ssh.HNASSSHBackend, "check_directory",
+                         mock.Mock(return_value=True))
+
+        self.assertRaises(exception.HNASSSCContextChange,
+                          self._driver_ssh.delete_directory, "/path")
+
+        self._driver_ssh._locked_selectfs.assert_called_with(
+            *locked_selectfs_args)
+        ssh.HNASSSHBackend.check_directory.assert_called_with('/path')
+        self.assertTrue(self.mock_log.debug.called)
+
+    def test_delete_directory_context_change_success(self):
+        locked_selectfs_args = ['delete', '/path']
+        self.mock_object(time, 'sleep')
+        self.mock_object(ssh.HNASSSHBackend, "_locked_selectfs")
+        self.mock_object(ssh.HNASSSHBackend, "check_directory",
+                         mock.Mock(side_effect=[True, True, False]))
+
+        self._driver_ssh.delete_directory("/path")
+
+        self._driver_ssh._locked_selectfs.assert_called_with(
+            *locked_selectfs_args)
+        ssh.HNASSSHBackend.check_directory.assert_called_with('/path')
+        self.assertTrue(self.mock_log.debug.called)
+
+    def test_check_directory(self):
         path = ("/snapshots/" + self.snapshot['share_id'] + "/" +
                 self.snapshot['id'])
         check_snap_args = ['path-to-object-number', '-f', self.fs_name, path]
 
         self.mock_object(ssh.HNASSSHBackend, '_execute')
 
-        out = self._driver_ssh.check_snapshot(path)
+        out = self._driver_ssh.check_directory(path)
 
         self.assertTrue(out)
         self._driver_ssh._execute.assert_called_with(check_snap_args)
 
-    def test_check_snapshot_retry(self):
+    def test_check_directory_retry(self):
         error_msg = ("Unable to run path-to-object-number as "
                      "path-to-object-number is currently running on volume "
                      "39.")
@@ -1006,7 +1086,7 @@ class HNASSSHTestCase(test.TestCase):
                              stdout=error_msg), putils.ProcessExecutionError(
                              stdout=error_msg), 'Object number: 0x45a4']))
 
-        out = self._driver_ssh.check_snapshot(path)
+        out = self._driver_ssh.check_directory(path)
 
         self.assertIs(True, out)
         self._driver_ssh._execute.assert_called_with(check_snap_args)
@@ -1020,12 +1100,12 @@ class HNASSSHTestCase(test.TestCase):
                          mock.Mock(side_effect=putils.ProcessExecutionError(
                              stdout=HNAS_RESULT_check_snap_error)))
 
-        out = self._driver_ssh.check_snapshot(path)
+        out = self._driver_ssh.check_directory(path)
 
         self.assertFalse(out)
         self._driver_ssh._execute.assert_called_with(check_snap_args)
 
-    def test_check_snapshot_error(self):
+    def test_check_directory_error(self):
         path = "/path/snap1/snapshot07-08-2016"
 
         check_snap_args = ['path-to-object-number', '-f', self.fs_name, path]
@@ -1035,7 +1115,7 @@ class HNASSSHTestCase(test.TestCase):
                              stdout="Internal Server Error.")))
 
         self.assertRaises(exception.HNASBackendException,
-                          self._driver_ssh.check_snapshot, path)
+                          self._driver_ssh.check_directory, path)
 
         self._driver_ssh._execute.assert_called_with(check_snap_args)
 
@@ -1100,7 +1180,7 @@ class HNASSSHTestCase(test.TestCase):
 
         self._driver_ssh.vvol_delete("vvol")
 
-        self.assertTrue(self.mock_log.debug.called)
+        self.assertTrue(self.mock_log.warning.called)
         self._driver_ssh._execute.assert_called_with(fake_vvol_delete_command)
 
     def test_vvol_delete_error(self):
@@ -1422,13 +1502,30 @@ class HNASSSHTestCase(test.TestCase):
         exec_command = ['selectfs', self.fs_name, '\n', 'ssc', '127.0.0.1',
                         'console-context', '--evs', six.text_type(self.evs_id),
                         'mkdir', '-p', '/path']
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=putils.ProcessExecutionError))
+        self.mock_object(
+            ssh.HNASSSHBackend, '_execute',
+            mock.Mock(side_effect=putils.ProcessExecutionError(
+                stderr="some error")))
 
         self.assertRaises(exception.HNASBackendException,
                           self._driver_ssh._locked_selectfs, 'create', '/path')
 
         self._driver_ssh._execute.assert_called_with(exec_command)
+
+    def test__locked_selectfs_create_operation_context_change(self):
+        exec_command = ['selectfs', self.fs_name, '\n', 'ssc', '127.0.0.1',
+                        'console-context', '--evs', six.text_type(self.evs_id),
+                        'mkdir', '-p', '/path']
+        self.mock_object(
+            ssh.HNASSSHBackend, '_execute',
+            mock.Mock(side_effect=putils.ProcessExecutionError(
+                stderr="Current file system invalid: VolumeNotFound")))
+
+        self.assertRaises(exception.HNASSSCContextChange,
+                          self._driver_ssh._locked_selectfs, 'create', '/path')
+
+        self._driver_ssh._execute.assert_called_with(exec_command)
+        self.assertTrue(self.mock_log.debug.called)
 
     def test__locked_selectfs_delete_operation_successful(self):
         exec_command = ['selectfs', self.fs_name, '\n', 'ssc', '127.0.0.1',
@@ -1446,7 +1543,8 @@ class HNASSSHTestCase(test.TestCase):
         self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
             side_effect=[putils.ProcessExecutionError(stderr=msg)]))
 
-        self._driver_ssh._locked_selectfs('delete', '/path')
+        self.assertRaises(exception.HNASDirectoryNotEmpty,
+                          self._driver_ssh._locked_selectfs, 'delete', '/path')
 
         self.assertTrue(self.mock_log.debug.called)
 
@@ -1461,7 +1559,7 @@ class HNASSSHTestCase(test.TestCase):
         self.assertTrue(self.mock_log.exception.called)
 
     def test__locked_selectfs_delete_not_found(self):
-        msg = "rmdir: NotFound '/path'"
+        msg = "rmdir: cannot remove '/path': NotFound"
 
         self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
             side_effect=[putils.ProcessExecutionError(stderr=msg)]))
@@ -1469,3 +1567,14 @@ class HNASSSHTestCase(test.TestCase):
         self._driver_ssh._locked_selectfs('delete', 'path')
 
         self.assertTrue(self.mock_log.warning.called)
+
+    def test__locked_selectfs_delete_context_change(self):
+        msg = "Current file system invalid: VolumeNotFound"
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            side_effect=[putils.ProcessExecutionError(stderr=msg)]))
+
+        self.assertRaises(exception.HNASSSCContextChange,
+                          self._driver_ssh._locked_selectfs, 'delete', 'path')
+
+        self.assertTrue(self.mock_log.debug.called)

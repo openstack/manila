@@ -1138,7 +1138,7 @@ class HitachiHNASDriver(driver.ShareDriver):
                              snapshot['share']['share_proto'])
         self._check_fs_mounted()
 
-        self.hnas.check_snapshot(snapshot['provider_location'])
+        self.hnas.check_directory(snapshot['provider_location'])
 
         export_list = None
         if snapshot['share'].get('mount_snapshot_support'):
@@ -1260,7 +1260,7 @@ class HitachiHNASDriver(driver.ShareDriver):
                                         'share_id': snapshot['share_id']}
             raise exception.ManageInvalidShareSnapshot(reason=msg)
 
-        if not self.hnas.check_snapshot(snapshot['provider_location']):
+        if not self.hnas.check_directory(snapshot['provider_location']):
             msg = _("Snapshot %(snap_id)s does not exist in "
                     "HNAS.") % {'snap_id': hnas_snapshot_id}
             raise exception.ManageInvalidShareSnapshot(reason=msg)

@@ -816,6 +816,14 @@ class HNASSSCIsBusy(ManilaException):
     message = _("HNAS SSC is busy and cannot execute the command: %(msg)s")
 
 
+class HNASSSCContextChange(ManilaException):
+    message = _("HNAS SSC Context has been changed unexpectedly: %(msg)s")
+
+
+class HNASDirectoryNotEmpty(ManilaException):
+    message = _("HNAS Directory is not empty: %(msg)s")
+
+
 class HNASItemNotFoundException(StorageResourceNotFound):
     message = _("HNAS Item Not Found Exception: %(msg)s")
 
