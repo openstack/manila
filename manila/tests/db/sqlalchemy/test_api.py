@@ -163,7 +163,7 @@ class ShareAccessDatabaseAPITestCase(test.TestCase):
         for rule in rules:
             for key in share_access_keys:
                 self.assertEqual(share_access_keys_present, key in rule)
-            self.assertTrue('state' in rule)
+            self.assertIn('state', rule)
 
     def test_share_access_get_all_for_instance_with_filters(self):
         share = db_utils.create_share()
@@ -186,7 +186,7 @@ class ShareAccessDatabaseAPITestCase(test.TestCase):
 
         for rule in rules:
             for key in share_access_keys:
-                self.assertTrue(key in rule)
+                self.assertIn(key, rule)
 
     def test_share_instance_access_delete(self):
         share = db_utils.create_share()
@@ -1314,7 +1314,7 @@ class ShareExportLocationsDatabaseAPITestCase(test.TestCase):
                                                           share['id'])
 
         # actual result should contain locations in exact same order
-        self.assertTrue(actual_result == update_locations)
+        self.assertEqual(actual_result, update_locations)
 
     def test_update_string(self):
         share = db_utils.create_share()
@@ -1325,7 +1325,7 @@ class ShareExportLocationsDatabaseAPITestCase(test.TestCase):
         actual_result = db_api.share_export_locations_get(self.ctxt,
                                                           share['id'])
 
-        self.assertTrue(actual_result == [initial_location])
+        self.assertEqual(actual_result, [initial_location])
 
     def test_get_admin_export_locations(self):
         ctxt_user = context.RequestContext(

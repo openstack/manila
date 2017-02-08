@@ -120,8 +120,8 @@ class ShareInstanceAccessDatabaseMixinTestCase(test.TestCase):
 
         self.assertEqual(2, len(rules))
         rule_ids = [r['access_id'] for r in rules]
-        self.assertTrue(rule_1['id'] in rule_ids)
-        self.assertTrue(rule_2['id'] in rule_ids)
+        self.assertIn(rule_1['id'], rule_ids)
+        self.assertIn(rule_2['id'], rule_ids)
         self.assertFalse(db.share_instance_access_update.called)
 
     @ddt.data(
