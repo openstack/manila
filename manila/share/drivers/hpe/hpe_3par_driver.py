@@ -213,10 +213,11 @@ class HPE3ParShareDriver(driver.ShareDriver):
         2.0.6 - Multi pool support per backend
         2.0.7 - Fix get_vfs() to correctly validate conf IP addresses at
                 boot up #1621016
+        2.0.8 - Replace ConsistencyGroup with ShareGroup
 
     """
 
-    VERSION = "2.0.7"
+    VERSION = "2.0.8"
 
     def __init__(self, *args, **kwargs):
         super(HPE3ParShareDriver, self).__init__((True, False),
@@ -381,7 +382,7 @@ class HPE3ParShareDriver(driver.ShareDriver):
 
     def choose_share_server_compatible_with_share(self, context, share_servers,
                                                   share, snapshot=None,
-                                                  consistency_group=None):
+                                                  share_group=None):
         """Method that allows driver to choose share server for provided share.
 
         If compatible share-server is not found, method should return None.
@@ -390,12 +391,12 @@ class HPE3ParShareDriver(driver.ShareDriver):
         :param share_servers: list with share-server models
         :param share:  share model
         :param snapshot: snapshot model
-        :param consistency_group: ConsistencyGroup model with shares
+        :param share_group: ShareGroup model with shares
         :returns: share-server or None
         """
-        # If creating in a consistency group, raise exception
-        if consistency_group:
-            msg = _("HPE 3PAR driver does not support consistency group")
+        # If creating in a share group, raise exception
+        if share_group:
+            msg = _("HPE 3PAR driver does not support share group")
             raise exception.InvalidRequest(message=msg)
 
         pool_name = share_utils.extract_host(share['host'], level='pool')
