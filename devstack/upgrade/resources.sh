@@ -27,6 +27,13 @@ MANILA_GRENADE_WAIT_TIMEOUT=${MANILA_GRENADE_WAIT_TIMEOUT:-"300"}
 MANILA_GRENADE_SHARE_NETWORK_NAME=${MANILA_GRENADE_SHARE_NETWORK_NAME:-"manila_grenade_share_network"}
 MANILA_GRENADE_SHARE_TYPE_NAME=${MANILA_GRENADE_SHARE_TYPE_NAME:-"manila_grenade_share_type"}
 MANILA_GRENADE_SHARE_NAME=${MANILA_GRENADE_SHARE_NAME:-"manila_grenade_share"}
+MANILA_GRENADE_SHARE_SNAPSHOT_NAME=${MANILA_GRENADE_SHARE_SNAPSHOT_NAME:-"manila_grenade_share_snapshot"}
+
+# Extra specs that will be set for newly created share type
+MANILA_GRENADE_SHARE_TYPE_SNAPSHOT_SUPPORT_EXTRA_SPEC=${MANILA_GRENADE_SHARE_TYPE_SNAPSHOT_SUPPORT_EXTRA_SPEC:-"True"}
+MANILA_GRENADE_SHARE_TYPE_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT_EXTRA_SPEC=${MANILA_GRENADE_SHARE_TYPE_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT_EXTRA_SPEC:-"True"}
+MANILA_GRENADE_SHARE_TYPE_REVERT_TO_SNAPSHOT_SUPPORT_EXTRA_SPEC=${MANILA_GRENADE_SHARE_TYPE_REVERT_TO_SNAPSHOT_SUPPORT_EXTRA_SPEC:-"True"}
+MANILA_GRENADE_SHARE_TYPE_MOUNT_SNAPSHOT_SUPPORT_EXTRA_SPEC=${MANILA_GRENADE_SHARE_TYPE_MOUNT_SNAPSHOT_SUPPORT_EXTRA_SPEC:-"True"}
 
 MANILA_CONF_DIR=${MANILA_CONF_DIR:-/etc/manila}
 MANILA_CONF=$MANILA_CONF_DIR/manila.conf
@@ -78,7 +85,13 @@ function scenario_1_do_share_with_rules_and_metadata {
     eval $share_network_cmd
 
     # Create share-type
-    manila type-create $MANILA_GRENADE_SHARE_TYPE_NAME $driver_handles_share_servers
+    manila type-create \
+        $MANILA_GRENADE_SHARE_TYPE_NAME \
+        $driver_handles_share_servers \
+        --snapshot_support $MANILA_GRENADE_SHARE_TYPE_SNAPSHOT_SUPPORT_EXTRA_SPEC \
+        --create_share_from_snapshot_support $MANILA_GRENADE_SHARE_TYPE_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT_EXTRA_SPEC \
+        --revert_to_snapshot_support $MANILA_GRENADE_SHARE_TYPE_REVERT_TO_SNAPSHOT_SUPPORT_EXTRA_SPEC \
+        --mount_snapshot_support $MANILA_GRENADE_SHARE_TYPE_MOUNT_SNAPSHOT_SUPPORT_EXTRA_SPEC
 
     # Create share
     eval $create_share_cmd
@@ -307,6 +320,103 @@ function scenario_4_destroy_private_share_types {
     manila type-delete ${MANILA_GRENADE_SHARE_TYPE_NAME}_scenario4
 }
 
+#####
+
+function scenario_5_do_share_snapshot {
+    if [[ $(trueorfalse True MANILA_GRENADE_SHARE_TYPE_SNAPSHOT_SUPPORT_EXTRA_SPEC) == True ]]; then
+        # Create share snapshot
+        manila snapshot-create $MANILA_GRENADE_SHARE_NAME \
+            --name $MANILA_GRENADE_SHARE_SNAPSHOT_NAME
+        resource_save manila share_snapshot $MANILA_GRENADE_SHARE_SNAPSHOT_NAME
+
+        # Wait for share snapshot creation results
+        wait_timeout=$MANILA_GRENADE_WAIT_TIMEOUT
+        available='false'
+        while (( wait_timeout > 0 )) ; do
+            current_status=$( manila snapshot-show $MANILA_GRENADE_SHARE_SNAPSHOT_NAME | \
+                              grep " status " | get_field 2 )
+            if [[ $current_status == 'available' ]]; then
+                available='true'
+                break
+            elif [[ $current_status == 'creating' ]]; then
+                ((wait_timeout-=$MANILA_GRENADE_WAIT_STEP))
+                sleep $MANILA_GRENADE_WAIT_STEP
+            elif [[ $current_status == 'error' ]]; then
+                die $LINENO "Share snapshot is in 'error' state."
+            else
+                die $LINENO "Should never reach this line."
+            fi
+        done
+        if [[ $available == 'true' ]]; then
+            echo "Share snapshot has been created successfully."
+        else
+            die $LINENO "Share snapshot timed out to reach 'available' status."
+        fi
+    else
+        echo "Skipping scenario '5' with creation of share snapshot."
+    fi
+}
+
+function scenario_5_verify_share_snapshot {
+    if [[ $(trueorfalse True MANILA_GRENADE_SHARE_TYPE_SNAPSHOT_SUPPORT_EXTRA_SPEC) == True ]]; then
+        # Check that source share ID is set
+        share_id_in_snapshot=$( manila snapshot-show \
+            $MANILA_GRENADE_SHARE_SNAPSHOT_NAME \
+            | grep "| share_id " | get_field 2 )
+
+        if [[ -z $share_id_in_snapshot ]]; then
+            die $LINENO "Source share ID is not set."
+        fi
+
+        # Check that snapshot's source share ID is correct
+        share_id=$( manila show $MANILA_GRENADE_SHARE_NAME \
+            | grep "| id   " | get_field 2 )
+
+        if [[ $share_id != $share_id_in_snapshot ]]; then
+            die $LINENO "Actual source share ID '$share_id_in_snapshot' is not "\
+                "equal to expected value '$share_id'."
+        fi
+
+        # Check presence of expected columns in snapshot view
+        snapshot_output=$( manila snapshot-show $MANILA_GRENADE_SHARE_SNAPSHOT_NAME )
+        for snapshot_column in 'id' 'provider_location' 'name' 'size' 'export_locations'; do
+            echo $snapshot_output | grep "| $snapshot_column "
+            if [[ $? != 0 ]]; then
+                die $LINENO "'$snapshot_column' column was not found in output '$snapshot_output'"
+            fi
+        done
+    fi
+}
+
+function scenario_5_destroy_share_snapshot {
+    if [[ $(trueorfalse True MANILA_GRENADE_SHARE_TYPE_SNAPSHOT_SUPPORT_EXTRA_SPEC) == True ]]; then
+        manila snapshot-delete $MANILA_GRENADE_SHARE_SNAPSHOT_NAME
+
+        wait_timeout=$MANILA_GRENADE_WAIT_TIMEOUT
+        found='true'
+        while (( wait_timeout > 0 )) ; do
+            snapshot_status=$( manila snapshot-list --columns id,name,status | \
+                grep $MANILA_GRENADE_SHARE_SNAPSHOT_NAME | get_field 3)
+            if [[ -z $snapshot_status ]]; then
+                found='false'
+                break
+            elif [[ $snapshot_status == 'deleting' ]]; then
+                ((wait_timeout-=$MANILA_GRENADE_WAIT_STEP))
+                sleep $MANILA_GRENADE_WAIT_STEP
+            elif [[ $snapshot_status == 'error_deleting' ]]; then
+                die $LINENO "Share snapshot failed to be deleted."
+            else
+                die $LINENO "Should never reach this line."
+            fi
+        done
+        if [[ $found == 'true' ]]; then
+            die $LINENO "Share snapshot timed out to be deleted."
+        else
+            echo "Share snapshot has been deleted successfully."
+        fi
+    fi
+}
+
 ################################# Main logic ##################################
 
 function create {
@@ -314,6 +424,7 @@ function create {
     scenario_2_do_attach_ss_to_sn
     scenario_3_do_quotas
     scenario_4_do_private_share_types
+    scenario_5_do_share_snapshot
     echo "Manila 'create': SUCCESS"
 }
 
@@ -322,10 +433,12 @@ function verify {
     scenario_2_verify_attach_ss_to_sn
     scenario_3_verify_quotas
     scenario_4_verify_private_share_types
+    scenario_5_verify_share_snapshot
     echo "Manila 'verify': SUCCESS"
 }
 
 function destroy {
+    scenario_5_destroy_share_snapshot
     scenario_1_destroy_share_with_rules_and_metadata
     scenario_2_destroy_attach_ss_to_sn
     scenario_3_destroy_quotas
