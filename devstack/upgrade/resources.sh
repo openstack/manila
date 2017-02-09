@@ -120,17 +120,18 @@ function scenario_1_do_share_with_rules_and_metadata {
     while (( wait_timeout > 0 )) ; do
         current_state=$( manila access-list $MANILA_GRENADE_SHARE_NAME | \
                          grep " $MANILA_GRENADE_ACCESS_TO " | get_field 5 )
-        if [[ $current_state == 'active' ]]; then
-            active='true'
-            break
-        elif [[ $current_state == 'creating' || $current_state == 'new' ]]; then
-            ((wait_timeout-=$MANILA_GRENADE_WAIT_STEP))
-            sleep $MANILA_GRENADE_WAIT_STEP
-        elif [[ $current_state == 'error' ]]; then
-            die $LINENO "Failed to create access rule."
-        else
-            die $LINENO "Should never reach this line."
-        fi
+        case $current_state in
+            active)
+                active='true'
+                break;;
+            creating|new|queued_to_apply|applying)
+                ((wait_timeout-=$MANILA_GRENADE_WAIT_STEP))
+                sleep $MANILA_GRENADE_WAIT_STEP;;
+            error)
+                die $LINENO "Failed to create access rule.";;
+            *)
+                die $LINENO "Should never reach this line.";;
+        esac
     done
     if [[ $active == 'true' ]]; then
         echo "Access rule has been created successfully."
