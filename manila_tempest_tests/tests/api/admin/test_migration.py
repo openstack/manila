@@ -128,6 +128,11 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
 
         self._check_migration_enabled(force_host_assisted)
 
+        share = self.create_share(self.protocol)
+        share = self.shares_v2_client.get_share(share['id'])
+
+        share, dest_pool = self._setup_migration(share, opposite=True)
+
         # If currently configured is DHSS=False,
         # then we need it for DHSS=True
         if not CONF.share.multitenancy_enabled:
@@ -140,11 +145,6 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
         # then we must pass None for DHSS=False
         else:
             new_share_network_id = None
-
-        share = self.create_share(self.protocol)
-        share = self.shares_v2_client.get_share(share['id'])
-
-        share, dest_pool = self._setup_migration(share, opposite=True)
 
         old_share_network_id = share['share_network_id']
         old_share_type_id = share['share_type']
@@ -333,6 +333,22 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
 
     def _setup_migration(self, share, opposite=False):
 
+        if opposite:
+            dest_type = self.new_type_opposite['share_type']
+        else:
+            dest_type = self.new_type['share_type']
+
+        dest_pool = utils.choose_matching_backend(share, self.pools, dest_type)
+
+        if opposite:
+            if not dest_pool:
+                raise self.skipException(
+                    "This test requires two pools enabled with different "
+                    "driver modes.")
+        else:
+            self.assertIsNotNone(dest_pool)
+            self.assertIsNotNone(dest_pool.get('name'))
+
         old_exports = self.shares_v2_client.list_share_export_locations(
             share['id'])
         self.assertNotEmpty(old_exports)
@@ -353,22 +369,6 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
         self.shares_v2_client.wait_for_share_status(
             share['id'], constants.RULE_STATE_ACTIVE,
             status_attr='access_rules_status')
-
-        if opposite:
-            dest_type = self.new_type_opposite['share_type']
-        else:
-            dest_type = self.new_type['share_type']
-
-        dest_pool = utils.choose_matching_backend(share, self.pools, dest_type)
-
-        if opposite:
-            if not dest_pool:
-                raise self.skipException(
-                    "This test requires two pools enabled with different "
-                    "driver modes.")
-        else:
-            self.assertIsNotNone(dest_pool)
-            self.assertIsNotNone(dest_pool.get('name'))
 
         dest_pool = dest_pool['name']
         share = self.shares_v2_client.get_share(share['id'])
