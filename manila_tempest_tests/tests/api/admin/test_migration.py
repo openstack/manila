@@ -27,9 +27,8 @@ from manila_tempest_tests import utils
 CONF = config.CONF
 
 
-@ddt.ddt
-class MigrationNFSTest(base.BaseSharesAdminTest):
-    """Tests Share Migration for NFS shares.
+class MigrationBase(base.BaseSharesAdminTest):
+    """Base test class for Share Migration.
 
     Tests share migration in multi-backend environment.
 
@@ -53,11 +52,11 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
     configuration flag to be tested.
     """
 
-    protocol = "nfs"
+    protocol = None
 
     @classmethod
     def resource_setup(cls):
-        super(MigrationNFSTest, cls).resource_setup()
+        super(MigrationBase, cls).resource_setup()
         if cls.protocol not in CONF.share.enable_protocols:
             message = "%s tests are disabled." % cls.protocol
             raise cls.skipException(message)
@@ -81,257 +80,23 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
             extra_specs=utils.get_configured_extra_specs(
                 variation='opposite_driver_modes'))
 
-    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
-    @base.skip_if_microversion_lt("2.29")
-    @ddt.data(True, False)
-    def test_migration_cancel(self, force_host_assisted):
-
-        self._check_migration_enabled(force_host_assisted)
-
-        share = self.create_share(self.protocol)
-        share = self.shares_v2_client.get_share(share['id'])
-
-        share, dest_pool = self._setup_migration(share)
-
-        task_state = (constants.TASK_STATE_DATA_COPYING_COMPLETED
-                      if force_host_assisted
-                      else constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE)
-
-        share = self.migrate_share(
-            share['id'], dest_pool, wait_for_status=task_state,
-            force_host_assisted_migration=force_host_assisted)
-
-        self._validate_migration_successful(
-            dest_pool, share, task_state, complete=False)
-
-        progress = self.shares_v2_client.migration_get_progress(share['id'])
-
-        self.assertEqual(task_state, progress['task_state'])
-        self.assertEqual(100, progress['total_progress'])
-
-        share = self.migration_cancel(share['id'], dest_pool)
-
-        progress = self.shares_v2_client.migration_get_progress(share['id'])
-
-        self.assertEqual(
-            constants.TASK_STATE_MIGRATION_CANCELLED, progress['task_state'])
-        self.assertEqual(100, progress['total_progress'])
-
-        self._validate_migration_successful(
-            dest_pool, share, constants.TASK_STATE_MIGRATION_CANCELLED,
-            complete=False)
-
-    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
-    @base.skip_if_microversion_lt("2.29")
-    @ddt.data(True, False)
-    def test_migration_opposite_driver_modes(self, force_host_assisted):
-
-        self._check_migration_enabled(force_host_assisted)
-
-        # If currently configured is DHSS=False,
-        # then we need it for DHSS=True
-        if not CONF.share.multitenancy_enabled:
-
-            new_share_network_id = self.provide_share_network(
-                self.shares_v2_client, self.os_admin.networks_client,
-                isolated_creds_client=None, ignore_multitenancy_config=True)
-
-        # If currently configured is DHSS=True,
-        # then we must pass None for DHSS=False
-        else:
-            new_share_network_id = None
-
-        share = self.create_share(self.protocol)
-        share = self.shares_v2_client.get_share(share['id'])
-
-        share, dest_pool = self._setup_migration(share, opposite=True)
-
-        old_share_network_id = share['share_network_id']
-        old_share_type_id = share['share_type']
-        new_share_type_id = self.new_type_opposite['share_type']['id']
-
-        task_state = (constants.TASK_STATE_DATA_COPYING_COMPLETED
-                      if force_host_assisted
-                      else constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE)
-
-        share = self.migrate_share(
-            share['id'], dest_pool,
-            force_host_assisted_migration=force_host_assisted,
-            wait_for_status=task_state, new_share_type_id=new_share_type_id,
-            new_share_network_id=new_share_network_id)
-
-        self._validate_migration_successful(
-            dest_pool, share, task_state, complete=False,
-            share_network_id=old_share_network_id,
-            share_type_id=old_share_type_id)
-
-        progress = self.shares_v2_client.migration_get_progress(share['id'])
-
-        self.assertEqual(task_state, progress['task_state'])
-        self.assertEqual(100, progress['total_progress'])
-
-        share = self.migration_complete(share['id'], dest_pool)
-
-        progress = self.shares_v2_client.migration_get_progress(share['id'])
-
-        self.assertEqual(
-            constants.TASK_STATE_MIGRATION_SUCCESS, progress['task_state'])
-        self.assertEqual(100, progress['total_progress'])
-
-        self._validate_migration_successful(
-            dest_pool, share, constants.TASK_STATE_MIGRATION_SUCCESS,
-            complete=True, share_network_id=new_share_network_id,
-            share_type_id=new_share_type_id)
-
-    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
-    @base.skip_if_microversion_lt("2.29")
-    @ddt.data(True, False)
-    def test_migration_2phase(self, force_host_assisted):
-
-        self._check_migration_enabled(force_host_assisted)
-
-        share = self.create_share(self.protocol)
-        share = self.shares_v2_client.get_share(share['id'])
-
-        share, dest_pool = self._setup_migration(share)
-
-        old_share_network_id = share['share_network_id']
-        old_share_type_id = share['share_type']
-        task_state, new_share_network_id, new_share_type_id = (
-            self._get_migration_data(share, force_host_assisted))
-
-        share = self.migrate_share(
-            share['id'], dest_pool,
-            force_host_assisted_migration=force_host_assisted,
-            wait_for_status=task_state, new_share_type_id=new_share_type_id,
-            new_share_network_id=new_share_network_id)
-
-        self._validate_migration_successful(
-            dest_pool, share, task_state, complete=False,
-            share_network_id=old_share_network_id,
-            share_type_id=old_share_type_id)
-
-        progress = self.shares_v2_client.migration_get_progress(share['id'])
-
-        self.assertEqual(task_state, progress['task_state'])
-        self.assertEqual(100, progress['total_progress'])
-
-        share = self.migration_complete(share['id'], dest_pool)
-
-        progress = self.shares_v2_client.migration_get_progress(share['id'])
-
-        self.assertEqual(
-            constants.TASK_STATE_MIGRATION_SUCCESS, progress['task_state'])
-        self.assertEqual(100, progress['total_progress'])
-
-        self._validate_migration_successful(
-            dest_pool, share, constants.TASK_STATE_MIGRATION_SUCCESS,
-            complete=True, share_network_id=new_share_network_id,
-            share_type_id=new_share_type_id)
-        self._cleanup_share(share)
-
-    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
-    @base.skip_if_microversion_lt("2.29")
-    @testtools.skipUnless(CONF.share.run_extend_tests,
-                          'Extend share tests are disabled.')
-    @ddt.data(True, False)
-    def test_extend_on_migrated_share(self, force_host_assisted):
-        self._test_resize_post_migration(force_host_assisted, resize='extend')
-
-    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
-    @base.skip_if_microversion_lt("2.29")
-    @testtools.skipUnless(CONF.share.run_shrink_tests,
-                          'Shrink share tests are disabled.')
-    @ddt.data(True, False)
-    def test_shrink_on_migrated_share(self, force_host_assisted):
-        self._test_resize_post_migration(force_host_assisted, resize='shrink')
-
-    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
-    @base.skip_if_microversion_lt("2.29")
-    @testtools.skipUnless(CONF.share.run_snapshot_tests,
-                          'Snapshot tests are disabled.')
-    @testtools.skipUnless(CONF.share.run_driver_assisted_migration_tests,
-                          'Driver-assisted migration tests are disabled.')
-    @testtools.skipUnless(
-        CONF.share.run_migration_with_preserve_snapshots_tests,
-        'Migration with preserve snapshots tests are disabled.')
-    def test_migrating_share_with_snapshot(self):
-        ss_type, __ = self._create_share_type_for_snapshot_capability()
-
-        share = self.create_share(self.protocol, cleanup_in_class=False)
-        share = self.shares_v2_client.get_share(share['id'])
-
-        share, dest_pool = self._setup_migration(share)
-        snapshot1 = self.create_snapshot_wait_for_active(
-            share['id'], cleanup_in_class=False)
-        snapshot2 = self.create_snapshot_wait_for_active(
-            share['id'], cleanup_in_class=False)
-
-        task_state, new_share_network_id, __ = self._get_migration_data(share)
-
-        share = self.migrate_share(
-            share['id'], dest_pool,
-            wait_for_status=task_state,
-            new_share_type_id=ss_type['share_type']['id'],
-            new_share_network_id=new_share_network_id, preserve_snapshots=True)
-
-        share = self.migration_complete(share['id'], dest_pool)
-
-        self._validate_snapshot(share, snapshot1, snapshot2)
-
-    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
-    @base.skip_if_microversion_lt("2.29")
-    @testtools.skipUnless(CONF.share.run_snapshot_tests,
-                          'Snapshot tests are disabled.')
-    @testtools.skipUnless(CONF.share.run_driver_assisted_migration_tests,
-                          'Driver-assisted migration tests are disabled.')
-    @testtools.skipUnless(
-        CONF.share.run_migration_with_preserve_snapshots_tests,
-        'Migration with preserve snapshots tests are disabled.')
-    def test_migration_cancel_share_with_snapshot(self):
-        share = self.create_share(self.protocol)
-        share = self.shares_v2_client.get_share(share['id'])
-
-        share, dest_pool = self._setup_migration(share)
-        snapshot1 = self.create_snapshot_wait_for_active(share['id'])
-        snapshot2 = self.create_snapshot_wait_for_active(share['id'])
-
-        task_state, new_share_network_id, new_share_type_id = (
-            self._get_migration_data(share))
-
-        share = self.migrate_share(
-            share['id'], dest_pool,
-            wait_for_status=task_state, new_share_type_id=new_share_type_id,
-            new_share_network_id=new_share_network_id, preserve_snapshots=True)
-
-        share = self.migration_cancel(share['id'], dest_pool)
-        self._validate_snapshot(share, snapshot1, snapshot2)
-
-    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
-    @base.skip_if_microversion_lt("2.29")
-    @testtools.skipUnless(CONF.share.run_snapshot_tests,
-                          'Snapshot tests are disabled.')
-    @ddt.data(True, False)
-    def test_migrate_share_to_snapshot_capability_share_type(
-            self, force_host_assisted):
-        # Verify that share with no snapshot support type can be migrated
-        # to new share type which supports the snapshot
-        self._validate_share_migration_with_different_snapshot_capability_type(
-            force_host_assisted, True)
-
-    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
-    @base.skip_if_microversion_lt("2.29")
-    @testtools.skipUnless(CONF.share.run_snapshot_tests,
-                          'Snapshot tests are disabled.')
-    @ddt.data(True, False)
-    def test_migrate_share_to_no_snapshot_capability_share_type(
-            self, force_host_assisted):
-        # Verify that share with snapshot support type can be migrated
-        # to new share type which doesn't support the snapshot
-        self._validate_share_migration_with_different_snapshot_capability_type(
-            force_host_assisted, False)
-
     def _setup_migration(self, share, opposite=False):
+
+        if opposite:
+            dest_type = self.new_type_opposite['share_type']
+        else:
+            dest_type = self.new_type['share_type']
+
+        dest_pool = utils.choose_matching_backend(share, self.pools, dest_type)
+
+        if opposite:
+            if not dest_pool:
+                raise self.skipException(
+                    "This test requires two pools enabled with different "
+                    "driver modes.")
+        else:
+            self.assertIsNotNone(dest_pool)
+            self.assertIsNotNone(dest_pool.get('name'))
 
         old_exports = self.shares_v2_client.list_share_export_locations(
             share['id'])
@@ -353,22 +118,6 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
         self.shares_v2_client.wait_for_share_status(
             share['id'], constants.RULE_STATE_ACTIVE,
             status_attr='access_rules_status')
-
-        if opposite:
-            dest_type = self.new_type_opposite['share_type']
-        else:
-            dest_type = self.new_type['share_type']
-
-        dest_pool = utils.choose_matching_backend(share, self.pools, dest_type)
-
-        if opposite:
-            if not dest_pool:
-                raise self.skipException(
-                    "This test requires two pools enabled with different "
-                    "driver modes.")
-        else:
-            self.assertIsNotNone(dest_pool)
-            self.assertIsNotNone(dest_pool.get('name'))
 
         dest_pool = dest_pool['name']
         share = self.shares_v2_client.get_share(share['id'])
@@ -590,3 +339,296 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
         # NOTE(Yogi1): Share needs to be cleaned up explicitly at the end of
         #  test otherwise, newly created share_network will not get cleaned up.
         self.method_resources.insert(0, resource)
+
+
+@ddt.ddt
+class MigrationCancelNFSTest(MigrationBase):
+    protocol = "nfs"
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
+    @base.skip_if_microversion_lt("2.29")
+    @ddt.data(True, False)
+    def test_migration_cancel(self, force_host_assisted):
+        self._check_migration_enabled(force_host_assisted)
+
+        share = self.create_share(self.protocol)
+        share = self.shares_v2_client.get_share(share['id'])
+        share, dest_pool = self._setup_migration(share)
+        task_state = (constants.TASK_STATE_DATA_COPYING_COMPLETED
+                      if force_host_assisted
+                      else constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE)
+
+        share = self.migrate_share(
+            share['id'], dest_pool, wait_for_status=task_state,
+            force_host_assisted_migration=force_host_assisted)
+
+        self._validate_migration_successful(
+            dest_pool, share, task_state, complete=False)
+
+        progress = self.shares_v2_client.migration_get_progress(share['id'])
+
+        self.assertEqual(task_state, progress['task_state'])
+        self.assertEqual(100, progress['total_progress'])
+
+        share = self.migration_cancel(share['id'], dest_pool)
+        progress = self.shares_v2_client.migration_get_progress(share['id'])
+
+        self.assertEqual(
+            constants.TASK_STATE_MIGRATION_CANCELLED, progress['task_state'])
+        self.assertEqual(100, progress['total_progress'])
+
+        self._validate_migration_successful(
+            dest_pool, share, constants.TASK_STATE_MIGRATION_CANCELLED,
+            complete=False)
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
+    @base.skip_if_microversion_lt("2.29")
+    @testtools.skipUnless(
+        CONF.share.run_snapshot_tests, 'Snapshot tests are disabled.')
+    @testtools.skipUnless(
+        CONF.share.run_driver_assisted_migration_tests,
+        'Driver-assisted migration tests are disabled.')
+    @testtools.skipUnless(
+        CONF.share.run_migration_with_preserve_snapshots_tests,
+        'Migration with preserve snapshots tests are disabled.')
+    def test_migration_cancel_share_with_snapshot(self):
+        share = self.create_share(self.protocol)
+        share = self.shares_v2_client.get_share(share['id'])
+
+        share, dest_pool = self._setup_migration(share)
+        snapshot1 = self.create_snapshot_wait_for_active(share['id'])
+        snapshot2 = self.create_snapshot_wait_for_active(share['id'])
+
+        task_state, new_share_network_id, new_share_type_id = (
+            self._get_migration_data(share))
+
+        share = self.migrate_share(
+            share['id'], dest_pool,
+            wait_for_status=task_state, new_share_type_id=new_share_type_id,
+            new_share_network_id=new_share_network_id, preserve_snapshots=True)
+
+        share = self.migration_cancel(share['id'], dest_pool)
+        self._validate_snapshot(share, snapshot1, snapshot2)
+
+
+@ddt.ddt
+class MigrationOppositeDriverModesNFSTest(MigrationBase):
+    protocol = "nfs"
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
+    @base.skip_if_microversion_lt("2.29")
+    @ddt.data(True, False)
+    def test_migration_opposite_driver_modes(self, force_host_assisted):
+        self._check_migration_enabled(force_host_assisted)
+
+        share = self.create_share(self.protocol)
+        share = self.shares_v2_client.get_share(share['id'])
+        share, dest_pool = self._setup_migration(share, opposite=True)
+
+        if not CONF.share.multitenancy_enabled:
+            # If currently configured is DHSS=False,
+            # then we need it for DHSS=True
+            new_share_network_id = self.provide_share_network(
+                self.shares_v2_client,
+                self.os_admin.networks_client,
+                isolated_creds_client=None,
+                ignore_multitenancy_config=True,
+            )
+        else:
+            # If currently configured is DHSS=True,
+            # then we must pass None for DHSS=False
+            new_share_network_id = None
+
+        old_share_network_id = share['share_network_id']
+        old_share_type_id = share['share_type']
+        new_share_type_id = self.new_type_opposite['share_type']['id']
+
+        task_state = (constants.TASK_STATE_DATA_COPYING_COMPLETED
+                      if force_host_assisted
+                      else constants.TASK_STATE_MIGRATION_DRIVER_PHASE1_DONE)
+
+        share = self.migrate_share(
+            share['id'], dest_pool,
+            force_host_assisted_migration=force_host_assisted,
+            wait_for_status=task_state, new_share_type_id=new_share_type_id,
+            new_share_network_id=new_share_network_id)
+
+        self._validate_migration_successful(
+            dest_pool, share, task_state, complete=False,
+            share_network_id=old_share_network_id,
+            share_type_id=old_share_type_id)
+
+        progress = self.shares_v2_client.migration_get_progress(share['id'])
+
+        self.assertEqual(task_state, progress['task_state'])
+        self.assertEqual(100, progress['total_progress'])
+
+        share = self.migration_complete(share['id'], dest_pool)
+
+        progress = self.shares_v2_client.migration_get_progress(share['id'])
+
+        self.assertEqual(
+            constants.TASK_STATE_MIGRATION_SUCCESS, progress['task_state'])
+        self.assertEqual(100, progress['total_progress'])
+
+        self._validate_migration_successful(
+            dest_pool, share, constants.TASK_STATE_MIGRATION_SUCCESS,
+            complete=True, share_network_id=new_share_network_id,
+            share_type_id=new_share_type_id)
+
+
+@ddt.ddt
+class MigrationTwoPhaseNFSTest(MigrationBase):
+    protocol = "nfs"
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
+    @base.skip_if_microversion_lt("2.29")
+    @ddt.data(True, False)
+    def test_migration_2phase(self, force_host_assisted):
+        self._check_migration_enabled(force_host_assisted)
+
+        share = self.create_share(self.protocol)
+        share = self.shares_v2_client.get_share(share['id'])
+        share, dest_pool = self._setup_migration(share)
+
+        old_share_network_id = share['share_network_id']
+        old_share_type_id = share['share_type']
+        task_state, new_share_network_id, new_share_type_id = (
+            self._get_migration_data(share, force_host_assisted))
+
+        share = self.migrate_share(
+            share['id'], dest_pool,
+            force_host_assisted_migration=force_host_assisted,
+            wait_for_status=task_state, new_share_type_id=new_share_type_id,
+            new_share_network_id=new_share_network_id)
+
+        self._validate_migration_successful(
+            dest_pool, share, task_state, complete=False,
+            share_network_id=old_share_network_id,
+            share_type_id=old_share_type_id)
+
+        progress = self.shares_v2_client.migration_get_progress(share['id'])
+
+        self.assertEqual(task_state, progress['task_state'])
+        self.assertEqual(100, progress['total_progress'])
+
+        share = self.migration_complete(share['id'], dest_pool)
+
+        progress = self.shares_v2_client.migration_get_progress(share['id'])
+
+        self.assertEqual(
+            constants.TASK_STATE_MIGRATION_SUCCESS, progress['task_state'])
+        self.assertEqual(100, progress['total_progress'])
+
+        self._validate_migration_successful(
+            dest_pool, share, constants.TASK_STATE_MIGRATION_SUCCESS,
+            complete=True, share_network_id=new_share_network_id,
+            share_type_id=new_share_type_id)
+        self._cleanup_share(share)
+
+
+@ddt.ddt
+class MigrationWithShareExtendingNFSTest(MigrationBase):
+    protocol = "nfs"
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
+    @base.skip_if_microversion_lt("2.29")
+    @testtools.skipUnless(
+        CONF.share.run_extend_tests, 'Extend share tests are disabled.')
+    @ddt.data(True, False)
+    def test_extend_on_migrated_share(self, force_host_assisted):
+        self._test_resize_post_migration(force_host_assisted, resize='extend')
+
+
+@ddt.ddt
+class MigrationWithShareShrinkingNFSTest(MigrationBase):
+    protocol = "nfs"
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
+    @base.skip_if_microversion_lt("2.29")
+    @testtools.skipUnless(
+        CONF.share.run_shrink_tests, 'Shrink share tests are disabled.')
+    @ddt.data(True, False)
+    def test_shrink_on_migrated_share(self, force_host_assisted):
+        self._test_resize_post_migration(force_host_assisted, resize='shrink')
+
+
+@ddt.ddt
+class MigrationOfShareWithSnapshotNFSTest(MigrationBase):
+    protocol = "nfs"
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
+    @base.skip_if_microversion_lt("2.29")
+    @testtools.skipUnless(
+        CONF.share.run_snapshot_tests, 'Snapshot tests are disabled.')
+    @testtools.skipUnless(
+        CONF.share.run_driver_assisted_migration_tests,
+        'Driver-assisted migration tests are disabled.')
+    @testtools.skipUnless(
+        CONF.share.run_migration_with_preserve_snapshots_tests,
+        'Migration with preserve snapshots tests are disabled.')
+    def test_migrating_share_with_snapshot(self):
+        ss_type, __ = self._create_share_type_for_snapshot_capability()
+
+        share = self.create_share(self.protocol, cleanup_in_class=False)
+        share = self.shares_v2_client.get_share(share['id'])
+
+        share, dest_pool = self._setup_migration(share)
+        snapshot1 = self.create_snapshot_wait_for_active(
+            share['id'], cleanup_in_class=False)
+        snapshot2 = self.create_snapshot_wait_for_active(
+            share['id'], cleanup_in_class=False)
+
+        task_state, new_share_network_id, __ = self._get_migration_data(share)
+
+        share = self.migrate_share(
+            share['id'], dest_pool,
+            wait_for_status=task_state,
+            new_share_type_id=ss_type['share_type']['id'],
+            new_share_network_id=new_share_network_id, preserve_snapshots=True)
+
+        share = self.migration_complete(share['id'], dest_pool)
+
+        self._validate_snapshot(share, snapshot1, snapshot2)
+
+
+@ddt.ddt
+class MigrationWithDifferentSnapshotSupportNFSTest(MigrationBase):
+    protocol = "nfs"
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
+    @base.skip_if_microversion_lt("2.29")
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          'Snapshot tests are disabled.')
+    @ddt.data(True, False)
+    def test_migrate_share_to_snapshot_capability_share_type(
+            self, force_host_assisted):
+        # Verify that share with no snapshot support type can be migrated
+        # to new share type which supports the snapshot
+        self._validate_share_migration_with_different_snapshot_capability_type(
+            force_host_assisted, True)
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
+    @base.skip_if_microversion_lt("2.29")
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          'Snapshot tests are disabled.')
+    @ddt.data(True, False)
+    def test_migrate_share_to_no_snapshot_capability_share_type(
+            self, force_host_assisted):
+        # Verify that share with snapshot support type can be migrated
+        # to new share type which doesn't support the snapshot
+        self._validate_share_migration_with_different_snapshot_capability_type(
+            force_host_assisted, False)
+
+
+# NOTE(u_glide): this function is required to exclude MigrationBase from
+# executed test cases.
+# See: https://docs.python.org/2/library/unittest.html#load-tests-protocol
+# for details.
+def load_tests(loader, tests, _):
+    result = []
+    for test_case in tests:
+        if not test_case._tests or type(test_case._tests[0]) is MigrationBase:
+            continue
+        result.append(test_case)
+    return loader.suiteClass(result)
