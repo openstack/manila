@@ -509,7 +509,7 @@ class ShareGroupAPITest(test.TestCase):
                                 self.controller.create,
                                 self.request, body)
 
-        self.assertTrue('unknown_field' in six.text_type(exc))
+        self.assertIn('unknown_field', six.text_type(exc))
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'create')
 
@@ -586,7 +586,7 @@ class ShareGroupAPITest(test.TestCase):
                                 self.controller.update,
                                 self.request, 'fake_id', body)
 
-        self.assertTrue('unknown_field' in six.text_type(exc))
+        self.assertIn('unknown_field', six.text_type(exc))
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'update')
 
@@ -597,7 +597,7 @@ class ShareGroupAPITest(test.TestCase):
                                 self.controller.update,
                                 self.request, 'fake_id', body)
 
-        self.assertTrue('share_types' in six.text_type(exc))
+        self.assertIn('share_types', six.text_type(exc))
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'update')
 

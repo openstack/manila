@@ -61,7 +61,7 @@ class ShareMultiBackendTest(base.BaseSharesAdminTest):
         # Share's 'host' should be like "hostname@backend_name"
         for share in self.shares:
             get = self.shares_client.get_share(share['id'])
-            self.assertTrue(len(get["host"].split("@")) == 2)
+            self.assertEqual(2, len(get["host"].split("@")))
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_share_share_type(self):

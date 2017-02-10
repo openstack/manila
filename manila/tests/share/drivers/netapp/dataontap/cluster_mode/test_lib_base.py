@@ -508,7 +508,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         mock_check_license_for_protocol.assert_called_once_with(
             protocol.lower())
-        self.assertTrue(type(result) == helper_type)
+        self.assertEqual(helper_type, type(result))
 
     def test_get_helper_invalid_protocol(self):
 
