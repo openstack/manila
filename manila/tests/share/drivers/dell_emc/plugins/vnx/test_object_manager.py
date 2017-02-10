@@ -14,6 +14,7 @@
 #    under the License.
 
 import copy
+import time
 
 import ddt
 from lxml import builder
@@ -111,6 +112,7 @@ class StorageObjectTestCase(StorageObjectTestCaseBase):
         fake_req = storage_object._build_task_package(
             elt_maker.StartFake(name='foo')
         )
+        self.mock_object(time, 'sleep')
         resp = storage_object._send_request(fake_req)
         self.assertEqual('ok', resp['maxSeverity'])
 
