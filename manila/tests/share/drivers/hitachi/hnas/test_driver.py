@@ -235,7 +235,7 @@ class HitachiHNASTestCase(test.TestCase):
         self.mock_object(ssh.HNASSSHBackend, "check_quota", mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "check_cifs", mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "check_export", mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, 'check_snapshot')
+        self.mock_object(ssh.HNASSSHBackend, 'check_directory')
 
     @ddt.data('hitachi_hnas_driver_helper', 'hitachi_hnas_evs_id',
               'hitachi_hnas_evs_ip', 'hitachi_hnas_ip', 'hitachi_hnas_user')
@@ -990,12 +990,12 @@ class HitachiHNASTestCase(test.TestCase):
         else:
             expected = None
 
-        ssh.HNASSSHBackend.check_snapshot.assert_called_once_with(
+        ssh.HNASSSHBackend.check_directory.assert_called_once_with(
             snapshot['provider_location'])
         self.assertEqual(expected, result)
 
     def test_manage_existing_snapshot(self):
-        self.mock_object(ssh.HNASSSHBackend, 'check_snapshot',
+        self.mock_object(ssh.HNASSSHBackend, 'check_directory',
                          mock.Mock(return_value=True))
         self.mock_object(self._driver, '_ensure_snapshot',
                          mock.Mock(return_value=[]))
@@ -1006,7 +1006,7 @@ class HitachiHNASTestCase(test.TestCase):
         out = self._driver.manage_existing_snapshot(manage_snapshot,
                                                     {'size': 20})
 
-        ssh.HNASSSHBackend.check_snapshot.assert_called_with(
+        ssh.HNASSSHBackend.check_directory.assert_called_with(
             '/snapshots/aa4a7710-f326-41fb-ad18-b4ad587fc87a'
             '/snapshot18-05-2106')
         self._driver._ensure_snapshot.assert_called_with(
@@ -1022,7 +1022,7 @@ class HitachiHNASTestCase(test.TestCase):
             'path': '172.24.44.10:/snapshots/'
                     '3377b015-a695-4a5a-8aa5-9b931b023380'}]
 
-        self.mock_object(ssh.HNASSSHBackend, 'check_snapshot',
+        self.mock_object(ssh.HNASSSHBackend, 'check_directory',
                          mock.Mock(return_value=True))
         self.mock_object(self._driver, '_ensure_snapshot',
                          mock.Mock(return_value=[], side_effect=exc))
@@ -1038,7 +1038,7 @@ class HitachiHNASTestCase(test.TestCase):
             snapshot_mount_support_nfs,
             {'size': 20, 'export_locations': export_locations})
 
-        ssh.HNASSSHBackend.check_snapshot.assert_called_with(
+        ssh.HNASSSHBackend.check_directory.assert_called_with(
             '/snapshots/62125744-fcdd-4f55-a8c1-d1498102f634'
             '/3377b015-a695-4a5a-8aa5-9b931b023380')
         self._driver._ensure_snapshot.assert_called_with(
@@ -1081,7 +1081,7 @@ class HitachiHNASTestCase(test.TestCase):
         self.assertTrue(self.mock_log.debug.called)
 
     def test_manage_inexistent_snapshot_exception(self):
-        self.mock_object(ssh.HNASSSHBackend, 'check_snapshot',
+        self.mock_object(ssh.HNASSSHBackend, 'check_directory',
                          mock.Mock(return_value=False))
 
         self.assertRaises(exception.ManageInvalidShareSnapshot,
@@ -1120,7 +1120,7 @@ class HitachiHNASTestCase(test.TestCase):
         ssh.HNASSSHBackend.tree_clone.assert_called_once_with(
             '/'.join(('/snapshots', snap['share_id'], snap['id'])),
             '/'.join(('/shares', snap['share_id'])))
-        ssh.HNASSSHBackend.check_snapshot.assert_called_once_with(
+        ssh.HNASSSHBackend.check_directory.assert_called_once_with(
             snap['provider_location'])
 
         if exc:
@@ -1146,7 +1146,7 @@ class HitachiHNASTestCase(test.TestCase):
         ssh.HNASSSHBackend.update_nfs_access_rule.assert_called_once_with(
             [access1['access_to'] + '(ro)', access2['access_to'] + '(ro)'],
             snapshot_id=snapshot_nfs['id'])
-        ssh.HNASSSHBackend.check_snapshot.assert_called_once_with(
+        ssh.HNASSSHBackend.check_directory.assert_called_once_with(
             snapshot_nfs['provider_location'])
         self.assertTrue(self.mock_log.debug.called)
 
@@ -1163,7 +1163,7 @@ class HitachiHNASTestCase(test.TestCase):
 
         ssh.HNASSSHBackend.update_nfs_access_rule.assert_called_once_with(
             [], snapshot_id=snapshot_nfs['id'])
-        ssh.HNASSSHBackend.check_snapshot.assert_called_once_with(
+        ssh.HNASSSHBackend.check_directory.assert_called_once_with(
             snapshot_nfs['provider_location'])
         self.assertTrue(self.mock_log.debug.called)
 
@@ -1176,7 +1176,7 @@ class HitachiHNASTestCase(test.TestCase):
         self.assertRaises(exception.InvalidSnapshotAccess,
                           self._driver.snapshot_update_access, 'ctxt',
                           snapshot_nfs, [access1], [], [])
-        ssh.HNASSSHBackend.check_snapshot.assert_called_once_with(
+        ssh.HNASSSHBackend.check_directory.assert_called_once_with(
             snapshot_nfs['provider_location'])
 
     def test_cifs_snapshot_update_access_allow(self):
@@ -1192,7 +1192,7 @@ class HitachiHNASTestCase(test.TestCase):
 
         ssh.HNASSSHBackend.cifs_allow_access.assert_called_with(
             snapshot_cifs['id'], access1['access_to'], 'ar', is_snapshot=True)
-        ssh.HNASSSHBackend.check_snapshot.assert_called_once_with(
+        ssh.HNASSSHBackend.check_directory.assert_called_once_with(
             snapshot_cifs['provider_location'])
         self.assertTrue(self.mock_log.debug.called)
 
@@ -1209,7 +1209,7 @@ class HitachiHNASTestCase(test.TestCase):
 
         ssh.HNASSSHBackend.cifs_deny_access.assert_called_with(
             snapshot_cifs['id'], access1['access_to'], is_snapshot=True)
-        ssh.HNASSSHBackend.check_snapshot.assert_called_once_with(
+        ssh.HNASSSHBackend.check_directory.assert_called_once_with(
             snapshot_cifs['provider_location'])
         self.assertTrue(self.mock_log.debug.called)
 
@@ -1241,6 +1241,6 @@ class HitachiHNASTestCase(test.TestCase):
         ssh.HNASSSHBackend.cifs_allow_access.assert_called_with(
             snapshot_cifs['id'], access2['access_to'].replace('\\', '\\\\'),
             'ar', is_snapshot=True)
-        ssh.HNASSSHBackend.check_snapshot.assert_called_once_with(
+        ssh.HNASSSHBackend.check_directory.assert_called_once_with(
             snapshot_cifs['provider_location'])
         self.assertTrue(self.mock_log.debug.called)

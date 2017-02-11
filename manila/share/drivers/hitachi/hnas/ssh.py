@@ -353,15 +353,39 @@ class HNASSSHBackend(object):
                 LOG.exception(msg)
                 raise exception.HNASBackendException(msg=msg)
 
+    @mutils.retry(exception=exception.HNASSSCContextChange, wait_random=True,
+                  retries=5)
     def create_directory(self, dest_path):
         self._locked_selectfs('create', dest_path)
+        if not self.check_directory(dest_path):
+            msg = _("Command to create directory %(path)s was run in another "
+                    "filesystem instead of %(fs)s.") % {
+                'path': dest_path,
+                'fs': self.fs_name,
+            }
+            LOG.warning(msg)
+            raise exception.HNASSSCContextChange(msg=msg)
 
+    @mutils.retry(exception=exception.HNASSSCContextChange, wait_random=True,
+                  retries=5)
     def delete_directory(self, path):
-        self._locked_selectfs('delete', path)
+        try:
+            self._locked_selectfs('delete', path)
+        except exception.HNASDirectoryNotEmpty:
+            pass
+        else:
+            if self.check_directory(path):
+                msg = _("Command to delete empty directory %(path)s was run in"
+                        " another filesystem instead of %(fs)s.") % {
+                            'path': path,
+                            'fs': self.fs_name,
+                    }
+                LOG.debug(msg)
+                raise exception.HNASSSCContextChange(msg=msg)
 
     @mutils.retry(exception=exception.HNASSSCIsBusy, wait_random=True,
                   retries=5)
-    def check_snapshot(self, path):
+    def check_directory(self, path):
         command = ['path-to-object-number', '-f', self.fs_name, path]
 
         try:
@@ -652,10 +676,16 @@ class HNASSSHBackend(object):
                        self.evs_id, 'mkdir', '-p', path]
             try:
                 self._execute(command)
-            except processutils.ProcessExecutionError:
-                msg = _("Failed to create directory %s.") % path
-                LOG.exception(msg)
-                raise exception.HNASBackendException(msg=msg)
+            except processutils.ProcessExecutionError as e:
+                if "Current file system invalid: VolumeNotFound" in e.stderr:
+                    msg = _("Command to create directory %s failed due to "
+                            "context change.") % path
+                    LOG.debug(msg)
+                    raise exception.HNASSSCContextChange(msg=msg)
+                else:
+                    msg = _("Failed to create directory %s.") % path
+                    LOG.exception(msg)
+                    raise exception.HNASBackendException(msg=msg)
 
         if op == 'delete':
             command = ['selectfs', self.fs_name, '\n',
@@ -665,11 +695,17 @@ class HNASSSHBackend(object):
                 self._execute(command)
             except processutils.ProcessExecutionError as e:
                 if 'DirectoryNotEmpty' in e.stderr:
-                    LOG.debug("Share %(path)s has more snapshots.",
-                              {'path': path})
-                elif 'NotFound' in e.stderr:
+                    msg = _("Share %s has more snapshots.") % path
+                    LOG.debug(msg)
+                    raise exception.HNASDirectoryNotEmpty(msg=msg)
+                elif 'cannot remove' in e.stderr and 'NotFound' in e.stderr:
                     LOG.warning(_LW("Attempted to delete path %s but it does "
                                     "not exist."), path)
+                elif 'Current file system invalid: VolumeNotFound' in e.stderr:
+                    msg = _("Command to delete empty directory %s failed due "
+                            "to context change.") % path
+                    LOG.debug(msg)
+                    raise exception.HNASSSCContextChange(msg=msg)
                 else:
                     msg = _("Failed to delete directory %s.") % path
                     LOG.exception(msg)
