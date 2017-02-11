@@ -14,6 +14,7 @@
 #    under the License.
 
 import os
+import time
 
 import mock
 
@@ -208,6 +209,7 @@ class CopyClassTestCase(test.TestCase):
         self.mock_object(utils, 'execute', mock.Mock(
             side_effect=get_output))
         self.mock_object(self._copy, 'get_progress')
+        self.mock_object(time, 'sleep')
 
         # run
         self._copy.copy_data(self._copy.src)
