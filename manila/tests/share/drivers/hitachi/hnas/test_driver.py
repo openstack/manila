@@ -938,7 +938,7 @@ class HitachiHNASTestCase(test.TestCase):
             'driver_handles_share_servers':
                 self._driver.driver_handles_share_servers,
             'vendor_name': 'Hitachi',
-            'driver_version': '3.0.0',
+            'driver_version': '4.0.0',
             'storage_protocol': 'NFS_CIFS',
             'total_capacity_gb': 1000,
             'free_capacity_gb': 200,
