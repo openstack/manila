@@ -563,7 +563,7 @@ class HNASSSHTestCase(test.TestCase):
         fake_nfs_command = ['nfs-export', 'add', '-S', 'disable', '-c',
                             '127.0.0.1', name, self.fs_name,
                             path]
-        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, '_execute')
 
         if is_snapshot:
             self._driver_ssh.nfs_export_add('fake_share',
@@ -591,7 +591,7 @@ class HNASSSHTestCase(test.TestCase):
             args = {'share_id': 'vvol_test'}
 
         fake_nfs_command = ['nfs-export', 'del', name]
-        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, '_execute')
 
         self._driver_ssh.nfs_export_del(**args)
 
@@ -631,7 +631,7 @@ class HNASSSHTestCase(test.TestCase):
                                  '--enable-abe', '--nodefaultsaa',
                                  name, self.fs_name,
                                  path]
-        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, '_execute')
 
         if is_snapshot:
             self._driver_ssh.cifs_share_add('fake_share',
@@ -652,7 +652,7 @@ class HNASSSHTestCase(test.TestCase):
     def test_cifs_share_del(self):
         fake_cifs_del_command = ['cifs-share', 'del', '--target-label',
                                  self.fs_name, 'vvol_test']
-        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, '_execute')
 
         self._driver_ssh.cifs_share_del('vvol_test')
 
@@ -691,7 +691,7 @@ class HNASSSHTestCase(test.TestCase):
     def test_update_nfs_access_rule_empty_host_list(self):
         fake_export_command = ['nfs-export', 'mod', '-c', '127.0.0.1',
                                '/snapshots/fake_id']
-        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "_execute")
 
         self._driver_ssh.update_nfs_access_rule([], snapshot_id="fake_id")
 
@@ -700,7 +700,7 @@ class HNASSSHTestCase(test.TestCase):
     def test_update_nfs_access_rule(self):
         fake_export_command = ['nfs-export', 'mod', '-c',
                                u'"127.0.0.1,127.0.0.2"', '/shares/fake_id']
-        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "_execute")
 
         self._driver_ssh.update_nfs_access_rule(['127.0.0.1', '127.0.0.2'],
                                                 share_id="fake_id")
@@ -729,33 +729,39 @@ class HNASSSHTestCase(test.TestCase):
         fake_cifs_allow_command = ['cifs-saa', 'add', '--target-label',
                                    self.fs_name, 'vvol_test',
                                    'fake_user', 'ar']
-        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, '_execute')
 
         self._driver_ssh.cifs_allow_access('vvol_test', 'fake_user', 'ar')
 
         self._driver_ssh._execute.assert_called_with(fake_cifs_allow_command)
 
-    def test_cifs_allow_access_already_allowed_user(self):
+    @ddt.data(True, False)
+    def test_cifs_allow_access_already_allowed_user(self, is_snapshot):
         fake_cifs_allow_command = ['cifs-saa', 'add', '--target-label',
                                    self.fs_name, 'vvol_test',
                                    'fake_user', 'acr']
-        fake_cifs_allow_command2 = ['cifs-saa', 'change', '--target-label',
-                                    'file_system', 'vvol_test', 'fake_user',
-                                    'acr']
+        if not is_snapshot:
+            fake_cifs_allow_command2 = ['cifs-saa', 'change', '--target-label',
+                                        'file_system', 'vvol_test',
+                                        'fake_user', 'acr']
 
         self.mock_object(ssh.HNASSSHBackend, '_execute',
                          mock.Mock(side_effect=[putils.ProcessExecutionError(
                              stderr='already listed as a user'),
                              "Rule modified."]))
 
-        self._driver_ssh.cifs_allow_access('vvol_test', 'fake_user', 'acr')
+        self._driver_ssh.cifs_allow_access('vvol_test', 'fake_user', 'acr',
+                                           is_snapshot=is_snapshot)
 
-        self._driver_ssh._execute.assert_has_calls(
-            [mock.call(fake_cifs_allow_command),
-             mock.call(fake_cifs_allow_command2)])
+        _execute_calls = [mock.call(fake_cifs_allow_command)]
+        if not is_snapshot:
+            _execute_calls.append(mock.call(fake_cifs_allow_command2))
+
+        self._driver_ssh._execute.assert_has_calls(_execute_calls)
         self.assertTrue(self.mock_log.debug.called)
 
-    def test_cifs_allow_access_exception(self):
+    @ddt.data(True, False)
+    def test_cifs_allow_access_exception(self, is_snapshot):
         fake_cifs_allow_command = ['cifs-saa', 'add', '--target-label',
                                    self.fs_name, 'vvol_test',
                                    'fake_user', 'acr']
@@ -766,7 +772,7 @@ class HNASSSHTestCase(test.TestCase):
 
         self.assertRaises(exception.HNASBackendException,
                           self._driver_ssh.cifs_allow_access, 'vvol_test',
-                          'fake_user', 'acr')
+                          'fake_user', 'acr', is_snapshot=is_snapshot)
 
         self._driver_ssh._execute.assert_called_with(fake_cifs_allow_command)
 
@@ -796,20 +802,22 @@ class HNASSSHTestCase(test.TestCase):
     def test_cifs_deny_access(self):
         fake_cifs_deny_command = ['cifs-saa', 'delete', '--target-label',
                                   self.fs_name, 'vvol_test', 'fake_user']
-        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, '_execute')
 
         self._driver_ssh.cifs_deny_access('vvol_test', 'fake_user')
 
         self._driver_ssh._execute.assert_called_with(fake_cifs_deny_command)
 
-    def test_cifs_deny_access_already_deleted_user(self):
+    @ddt.data(True, False)
+    def test_cifs_deny_access_already_deleted_user(self, is_snapshot):
         fake_cifs_deny_command = ['cifs-saa', 'delete', '--target-label',
                                   self.fs_name, 'vvol_test', 'fake_user']
         self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
             side_effect=[putils.ProcessExecutionError(
                 stderr='not listed as a user')]))
 
-        self._driver_ssh.cifs_deny_access('vvol_test', 'fake_user')
+        self._driver_ssh.cifs_deny_access('vvol_test', 'fake_user',
+                                          is_snapshot=is_snapshot)
 
         self._driver_ssh._execute.assert_called_with(fake_cifs_deny_command)
         self.assertTrue(self.mock_log.warning.called)
@@ -929,7 +937,7 @@ class HNASSSHTestCase(test.TestCase):
                          (HNAS_RESULT_job_running, ''),
                          (HNAS_RESULT_empty, '')]))
         self.mock_object(time, "time", mock.Mock(side_effect=[0, 0, 200, 200]))
-        self.mock_object(time, "sleep", mock.Mock())
+        self.mock_object(time, "sleep")
 
         self.assertRaises(exception.HNASBackendException,
                           self._driver_ssh.tree_clone, "/src", "/dst")
@@ -1080,7 +1088,7 @@ class HNASSSHTestCase(test.TestCase):
 
         check_snap_args = ['path-to-object-number', '-f', self.fs_name, path]
 
-        self.mock_object(time, "sleep", mock.Mock())
+        self.mock_object(time, "sleep")
         self.mock_object(ssh.HNASSSHBackend, '_execute',
                          mock.Mock(side_effect=[putils.ProcessExecutionError(
                              stdout=error_msg), putils.ProcessExecutionError(
@@ -1153,7 +1161,7 @@ class HNASSSHTestCase(test.TestCase):
     def test_vvol_create(self):
         fake_vvol_create_command = ['virtual-volume', 'add', '--ensure',
                                     self.fs_name, 'vvol', '/shares/vvol']
-        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "_execute")
 
         self._driver_ssh.vvol_create("vvol")
 
@@ -1200,7 +1208,7 @@ class HNASSSHTestCase(test.TestCase):
         fake_add_quota_command = ['quota', 'add', '--usage-limit', '1G',
                                   '--usage-hard-limit', 'yes',
                                   self.fs_name, 'vvol']
-        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "_execute")
 
         self._driver_ssh.quota_add('vvol', 1)
 
@@ -1209,7 +1217,7 @@ class HNASSSHTestCase(test.TestCase):
     def test_modify_quota(self):
         fake_modify_quota_command = ['quota', 'mod', '--usage-limit', '1G',
                                      self.fs_name, 'vvol']
-        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "_execute")
 
         self._driver_ssh.modify_quota('vvol', 1)
 
@@ -1424,6 +1432,28 @@ class HNASSSHTestCase(test.TestCase):
         self.assertEqual('Yes', export_list[0].mounted)
         self.assertIn('rw', export_list[0].export_configuration[0])
 
+    def test__get_share_export_fs_not_available(self):
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            return_value=[HNAS_RESULT_exp_no_fs, '']))
+
+        export_list = self._driver_ssh._get_export(name='fake_name')
+        path = '/shares/fake_name'
+
+        command = ['nfs-export', 'list ', path]
+
+        self._driver_ssh._execute.assert_called_with(command)
+        self.assertEqual('no_fs', export_list[0].export_name)
+        self.assertEqual('/export_without_fs', export_list[0].export_path)
+        self.assertEqual('*** not available ***',
+                         export_list[0].file_system_info)
+        self.assertEqual([], export_list[0].export_configuration)
+        not_in_keys = ['file_system_label', 'file_system_size', 'formatted',
+                       'file_system_free_space', 'file_system_state', 'failed',
+                       'mounted', 'thin_provisioned']
+        for key in not_in_keys:
+            self.assertNotIn(key, export_list[0].__dict__)
+
     def test__get_share_export_exception_not_found(self):
 
         self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
@@ -1470,7 +1500,7 @@ class HNASSSHTestCase(test.TestCase):
                           'tree-clone-job-submit -e /src /dst')
         msg = 'Failed to establish SSC connection'
 
-        self.mock_object(time, "sleep", mock.Mock())
+        self.mock_object(time, "sleep")
         self.mock_object(paramiko.SSHClient, 'connect')
         self.mock_object(putils, 'ssh_execute',
                          mock.Mock(side_effect=[
@@ -1492,7 +1522,7 @@ class HNASSSHTestCase(test.TestCase):
         exec_command = ['selectfs', self.fs_name, '\n', 'ssc', '127.0.0.1',
                         'console-context', '--evs', six.text_type(self.evs_id),
                         'mkdir', '-p', '/path']
-        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, '_execute')
 
         self._driver_ssh._locked_selectfs('create', '/path')
 
@@ -1531,7 +1561,7 @@ class HNASSSHTestCase(test.TestCase):
         exec_command = ['selectfs', self.fs_name, '\n', 'ssc', '127.0.0.1',
                         'console-context', '--evs', six.text_type(self.evs_id),
                         'rmdir', '/path']
-        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, '_execute')
 
         self._driver_ssh._locked_selectfs('delete', '/path')
 
