@@ -105,7 +105,6 @@ class ShareAPITest(test.TestCase):
             'export_location': 'fake_location',
             'export_locations': ['fake_location', 'fake_location2'],
             'project_id': 'fakeproject',
-            'host': 'fakehost',
             'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
             'share_proto': 'FAKEPROTO',
             'metadata': {},
@@ -140,6 +139,7 @@ class ShareAPITest(test.TestCase):
             share['share_proto'] = share['share_proto'].upper()
         if admin:
             share['share_server_id'] = 'fake_share_server_id'
+            share['host'] = 'fakehost'
         return {'share': share}
 
     def test__revert(self):
@@ -1414,7 +1414,6 @@ class ShareAPITest(test.TestCase):
             'share_server_id': 'fake_share_server_id',
             'share_type_id': 'fake_share_type_id',
             'snapshot_id': 'fake_snapshot_id',
-            'host': 'fake_host',
             'share_network_id': 'fake_share_network_id',
             'metadata': '%7B%27k1%27%3A+%27v1%27%7D',  # serialized k1=v1
             'extra_specs': '%7B%27k2%27%3A+%27v2%27%7D',  # serialized k2=v2
@@ -1424,6 +1423,8 @@ class ShareAPITest(test.TestCase):
             'offset': '1',
             'is_public': 'False',
         }
+        if use_admin_context:
+            search_opts['host'] = 'fake_host'
         # fake_key should be filtered for non-admin
         url = '/shares?fake_key=fake_value'
         for k, v in search_opts.items():
@@ -1446,7 +1447,7 @@ class ShareAPITest(test.TestCase):
             'share_server_id': search_opts['share_server_id'],
             'share_type_id': search_opts['share_type_id'],
             'snapshot_id': search_opts['snapshot_id'],
-            'host': search_opts['host'],
+
             'share_network_id': search_opts['share_network_id'],
             'metadata': {'k1': 'v1'},
             'extra_specs': {'k2': 'v2'},
@@ -1454,6 +1455,7 @@ class ShareAPITest(test.TestCase):
         }
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
+            search_opts_expected['host'] = search_opts['host']
         share_api.API.get_all.assert_called_once_with(
             req.environ['manila.context'],
             sort_key=search_opts['sort_key'],
@@ -1503,7 +1505,6 @@ class ShareAPITest(test.TestCase):
             'share_server_id': 'fake_share_server_id',
             'share_type_id': 'fake_share_type_id',
             'snapshot_id': 'fake_snapshot_id',
-            'host': 'fake_host',
             'share_network_id': 'fake_share_network_id',
             'metadata': '%7B%27k1%27%3A+%27v1%27%7D',  # serialized k1=v1
             'extra_specs': '%7B%27k2%27%3A+%27v2%27%7D',  # serialized k2=v2
@@ -1513,6 +1514,8 @@ class ShareAPITest(test.TestCase):
             'offset': '1',
             'is_public': 'False',
         }
+        if use_admin_context:
+            search_opts['host'] = 'fake_host'
         # fake_key should be filtered for non-admin
         url = '/shares/detail?fake_key=fake_value'
         for k, v in search_opts.items():
@@ -1545,7 +1548,6 @@ class ShareAPITest(test.TestCase):
             'share_server_id': search_opts['share_server_id'],
             'share_type_id': search_opts['share_type_id'],
             'snapshot_id': search_opts['snapshot_id'],
-            'host': search_opts['host'],
             'share_network_id': search_opts['share_network_id'],
             'metadata': {'k1': 'v1'},
             'extra_specs': {'k2': 'v2'},
@@ -1553,6 +1555,7 @@ class ShareAPITest(test.TestCase):
         }
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
+            search_opts_expected['host'] = search_opts['host']
         share_api.API.get_all.assert_called_once_with(
             req.environ['manila.context'],
             sort_key=search_opts['sort_key'],
@@ -1571,8 +1574,9 @@ class ShareAPITest(test.TestCase):
             shares[1]['share_type_id'], result['shares'][0]['share_type'])
         self.assertEqual(
             shares[1]['snapshot_id'], result['shares'][0]['snapshot_id'])
-        self.assertEqual(
-            shares[1]['instance']['host'], result['shares'][0]['host'])
+        if use_admin_context:
+            self.assertEqual(
+                shares[1]['instance']['host'], result['shares'][0]['host'])
         self.assertEqual(
             shares[1]['instance']['share_network_id'],
             result['shares'][0]['share_network_id'])
@@ -1583,42 +1587,40 @@ class ShareAPITest(test.TestCase):
     def test_share_list_detail_with_search_opts_by_admin(self):
         self._share_list_detail_with_search_opts(use_admin_context=True)
 
-    def _list_detail_common_expected(self):
-        return {
-            'shares': [
+    def _list_detail_common_expected(self, admin=False):
+        share_dict = {
+            'status': 'fakestatus',
+            'description': 'displaydesc',
+            'export_location': 'fake_location',
+            'export_locations': ['fake_location', 'fake_location2'],
+            'availability_zone': 'fakeaz',
+            'name': 'displayname',
+            'share_proto': 'FAKEPROTO',
+            'metadata': {},
+            'project_id': 'fakeproject',
+            'id': '1',
+            'snapshot_id': '2',
+            'snapshot_support': True,
+            'share_network_id': None,
+            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'size': 1,
+            'share_type': '1',
+            'volume_type': '1',
+            'is_public': False,
+            'links': [
                 {
-                    'status': 'fakestatus',
-                    'description': 'displaydesc',
-                    'export_location': 'fake_location',
-                    'export_locations': ['fake_location', 'fake_location2'],
-                    'availability_zone': 'fakeaz',
-                    'name': 'displayname',
-                    'share_proto': 'FAKEPROTO',
-                    'metadata': {},
-                    'project_id': 'fakeproject',
-                    'host': 'fakehost',
-                    'id': '1',
-                    'snapshot_id': '2',
-                    'snapshot_support': True,
-                    'share_network_id': None,
-                    'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-                    'size': 1,
-                    'share_type': '1',
-                    'volume_type': '1',
-                    'is_public': False,
-                    'links': [
-                        {
-                            'href': 'http://localhost/v1/fake/shares/1',
-                            'rel': 'self'
-                        },
-                        {
-                            'href': 'http://localhost/fake/shares/1',
-                            'rel': 'bookmark'
-                        }
-                    ],
+                    'href': 'http://localhost/v1/fake/shares/1',
+                    'rel': 'self'
+                },
+                {
+                    'href': 'http://localhost/fake/shares/1',
+                    'rel': 'bookmark'
                 }
-            ]
+            ],
         }
+        if admin:
+            share_dict['host'] = 'fakehost'
+        return {'shares': [share_dict]}
 
     def _list_detail_test_common(self, req, expected):
         self.mock_object(share_api.API, 'get_all',
@@ -1692,7 +1694,6 @@ class ShareAPITest(test.TestCase):
                     'metadata': {},
                     'project_id': 'fakeproject',
                     'access_rules_status': 'active',
-                    'host': 'fakehost',
                     'id': '1',
                     'snapshot_id': '2',
                     'share_network_id': None,

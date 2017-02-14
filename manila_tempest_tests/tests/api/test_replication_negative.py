@@ -185,7 +185,7 @@ class ReplicationNegativeTest(base.BaseSharesMixedTest):
         hosts = [p['name'] for p in pools]
         self.create_share_replica(self.share1["id"], self.replica_zone,
                                   cleanup_in_class=False)
-        share_host = self.share1['host']
+        share_host = self.admin_client.get_share(self.share1['id'])['host']
 
         for host in hosts:
             if host != share_host:

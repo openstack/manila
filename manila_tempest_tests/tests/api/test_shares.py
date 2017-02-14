@@ -42,7 +42,7 @@ class SharesNFSTest(base.BaseSharesTest):
         share = self.create_share(self.protocol)
         detailed_elements = {'name', 'id', 'availability_zone',
                              'description', 'project_id',
-                             'host', 'created_at', 'share_proto', 'metadata',
+                             'created_at', 'share_proto', 'metadata',
                              'size', 'snapshot_id', 'share_network_id',
                              'status', 'share_type', 'volume_type', 'links',
                              'is_public'}

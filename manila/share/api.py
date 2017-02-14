@@ -1518,6 +1518,8 @@ class API(base.Base):
         is_public = strutils.bool_from_string(is_public, strict=True)
 
         # Get filtered list of shares
+        if 'host' in search_opts:
+            policy.check_policy(context, 'share', 'list_by_host')
         if 'share_server_id' in search_opts:
             # NOTE(vponomaryov): this is project_id independent
             policy.check_policy(context, 'share', 'list_by_share_server_id')
