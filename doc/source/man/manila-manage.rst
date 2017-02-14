@@ -63,6 +63,12 @@ Manila Db
 
     Generate new migration.
 
+``manila-manage db purge <age_in_days>``
+
+    Purge deleted rows older than a given age from manila database tables.
+    If age_in_days is not given or is specified as 0 all available rows will
+    be deleted.
+
 Manila Logs
 ~~~~~~~~~~~
 
