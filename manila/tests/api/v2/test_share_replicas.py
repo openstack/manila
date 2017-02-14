@@ -81,7 +81,6 @@ class ShareReplicasApiTest(test.TestCase):
 
         if not summary:
             expected_replica.update({
-                'host': replica['host'],
                 'availability_zone': None,
                 'created_at': None,
                 'share_network_id': replica['share_network_id'],
@@ -90,6 +89,7 @@ class ShareReplicasApiTest(test.TestCase):
 
         if admin:
             expected_replica['share_server_id'] = replica['share_server_id']
+            expected_replica['host'] = replica['host']
 
         return replica, expected_replica
 

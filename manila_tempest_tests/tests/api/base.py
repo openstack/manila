@@ -661,7 +661,8 @@ class BaseSharesTest(test.BaseTestCase):
     def get_pools_for_replication_domain(self):
         # Get the list of pools for the replication domain
         pools = self.admin_client.list_pools(detail=True)['pools']
-        instance_host = self.shares[0]['host']
+        instance_host = self.admin_client.get_share(
+            self.shares[0]['id'])['host']
         host_pool = [p for p in pools if p['name'] == instance_host][0]
         rep_domain = host_pool['capabilities']['replication_domain']
         pools_in_rep_domain = [p for p in pools if p['capabilities'][

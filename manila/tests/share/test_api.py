@@ -249,24 +249,29 @@ class ShareAPITestCase(test.TestCase):
             ctx, sort_dir='desc', sort_key='created_at', filters={})
         self.assertEqual(_FAKE_LIST_OF_ALL_SHARES, shares)
 
-    def test_get_all_non_admin_filter_by_share_server(self):
+    @ddt.data(
+        ({'share_server_id': 'fake_share_server'}, 'list_by_share_server_id'),
+        ({'host': 'fake_host'}, 'list_by_host'),
+    )
+    @ddt.unpack
+    def test_get_all_by_non_admin_using_admin_filter(self, filters, policy):
 
         def fake_policy_checker(*args, **kwargs):
-            if 'list_by_share_server_id' == args[2] and not args[0].is_admin:
+            if policy == args[2] and not args[0].is_admin:
                 raise exception.NotAuthorized
 
         ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
-        self.mock_object(share_api.policy, 'check_policy',
-                         mock.Mock(side_effect=fake_policy_checker))
+        self.mock_object(
+            share_api.policy, 'check_policy',
+            mock.Mock(side_effect=fake_policy_checker))
+
         self.assertRaises(
             exception.NotAuthorized,
-            self.api.get_all,
-            ctx,
-            {'share_server_id': 'fake'},
-        )
+            self.api.get_all, ctx, filters)
+
         share_api.policy.check_policy.assert_has_calls([
             mock.call(ctx, 'share', 'get_all'),
-            mock.call(ctx, 'share', 'list_by_share_server_id'),
+            mock.call(ctx, 'share', policy),
         ])
 
     def test_get_all_admin_filter_by_share_server_and_all_tenants(self):

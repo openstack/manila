@@ -22,6 +22,7 @@
     "share:get": "rule:default",
     "share:get_all": "rule:default",
     "share:list_by_share_server_id": "rule:admin_api",
+    "share:list_by_host": "rule:admin_api",
     "share:update": "rule:default",
     "share:access_get": "rule:default",
     "share:access_get_all": "rule:default",

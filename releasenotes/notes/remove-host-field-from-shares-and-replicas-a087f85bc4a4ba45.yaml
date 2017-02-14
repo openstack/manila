@@ -1,0 +1,10 @@
+---
+critical:
+  - The "host" field is no longer returned in the JSON response of the /shares
+    and /share-replicas APIs when these APIs are invoked with non-admin
+    privileges. Applications that depend on this field must be updated as
+    necessary. The value of this field is privileged information and the
+    request context must specify administrator privileges when using these
+    APIs for the "host" field to be present. The use of "host" as a filter
+    key in the GET /shares API is controlled with the policy "list_by_host".
+    This policy defaults to "rule:admin_api".
