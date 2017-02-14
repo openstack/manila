@@ -93,6 +93,8 @@ class HitachiHNASDriver(driver.ShareDriver):
     2.0.0 - Refactoring, bugfixes, implemented Share Shrink and Update Access.
     3.0.0 - New driver location, implemented support for CIFS protocol.
     3.1.0 - Added admin network export location support.
+    4.0.0 - Added mountable snapshots, revert-to-snapshot and manage snapshots
+            features support.
     """
 
     def __init__(self, *args, **kwargs):
@@ -580,7 +582,7 @@ class HitachiHNASDriver(driver.ShareDriver):
             'share_backend_name': self.backend_name,
             'driver_handles_share_servers': self.driver_handles_share_servers,
             'vendor_name': 'Hitachi',
-            'driver_version': '3.0.0',
+            'driver_version': '4.0.0',
             'storage_protocol': 'NFS_CIFS',
             'total_capacity_gb': total_space,
             'free_capacity_gb': free_space,
