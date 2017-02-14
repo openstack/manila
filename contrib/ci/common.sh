@@ -1,6 +1,6 @@
 # Environment variables
 
-export MANILA_TEMPEST_COMMIT="c592707"  # 2 Sept, 2016 - tempest 12.2.0
+export MANILA_TEMPEST_COMMIT="4ce3779"  # 10 Feb, 2017
 
 # ----------------------------------------------
 
