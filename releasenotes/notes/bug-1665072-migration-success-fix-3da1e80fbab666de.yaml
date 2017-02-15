@@ -1,0 +1,6 @@
+---
+fixes:
+  - Fixed ``task_state`` field in the share model
+    being set to ``migration_success`` before actually
+    completing a share migration.
+
