@@ -231,10 +231,10 @@ class HitachiHNASTestCase(test.TestCase):
         # mocking common backend calls
         self.mock_object(ssh.HNASSSHBackend, "check_fs_mounted", mock.Mock(
             return_value=True))
-        self.mock_object(ssh.HNASSSHBackend, "check_vvol", mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "check_quota", mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "check_cifs", mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "check_export", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "check_vvol")
+        self.mock_object(ssh.HNASSSHBackend, "check_quota")
+        self.mock_object(ssh.HNASSSHBackend, "check_cifs")
+        self.mock_object(ssh.HNASSSHBackend, "check_export")
         self.mock_object(ssh.HNASSSHBackend, 'check_directory')
 
     @ddt.data('hitachi_hnas_driver_helper', 'hitachi_hnas_evs_id',
@@ -255,27 +255,34 @@ class HitachiHNASTestCase(test.TestCase):
         self.assertRaises(exception.InvalidParameterValue,
                           self._driver.__init__)
 
-    def test_update_access_nfs(self):
-        access1 = {
-            'access_type': 'ip',
-            'access_to': '172.24.10.10',
-            'access_level': 'rw'
-        }
-        access2 = {
-            'access_type': 'ip',
-            'access_to': '188.100.20.10',
-            'access_level': 'ro'
-        }
-        access_list = [access1, access2]
+    @ddt.data(True, False)
+    def test_update_access_nfs(self, empty_rules):
+        if not empty_rules:
+            access1 = {
+                'access_type': 'ip',
+                'access_to': '172.24.10.10',
+                'access_level': 'rw'
+            }
+            access2 = {
+                'access_type': 'ip',
+                'access_to': '188.100.20.10',
+                'access_level': 'ro'
+            }
+            access_list = [access1, access2]
+            access_list_updated = (
+                [access1['access_to'] + '(' + access1['access_level'] +
+                 ',norootsquash)', access2['access_to'] + '(' +
+                 access2['access_level'] + ')', ])
+        else:
+            access_list = []
+            access_list_updated = []
 
         self.mock_object(ssh.HNASSSHBackend, "update_nfs_access_rule",
                          mock.Mock())
         self._driver.update_access('context', share_nfs, access_list, [], [])
 
         ssh.HNASSSHBackend.update_nfs_access_rule.assert_called_once_with(
-            [access1['access_to'] + '(' + access1['access_level'] +
-             ',norootsquash)', access2['access_to'] + '(' +
-             access2['access_level'] + ')', ], share_id=share_nfs['id'])
+            access_list_updated, share_id=share_nfs['id'])
         self.assertTrue(self.mock_log.debug.called)
 
     def test_update_access_ip_exception(self):
@@ -320,7 +327,7 @@ class HitachiHNASTestCase(test.TestCase):
     def test_allow_access_cifs(self, access_cifs, permission):
         access_list_allow = [access_cifs]
 
-        self.mock_object(ssh.HNASSSHBackend, 'cifs_allow_access', mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, 'cifs_allow_access')
 
         self._driver.update_access('context', share_cifs, [],
                                    access_list_allow, [])
@@ -346,7 +353,7 @@ class HitachiHNASTestCase(test.TestCase):
     def test_deny_access_cifs(self):
         access_list_deny = [access_cifs_rw]
 
-        self.mock_object(ssh.HNASSSHBackend, 'cifs_deny_access', mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, 'cifs_deny_access')
 
         self._driver.update_access('context', share_cifs, [], [],
                                    access_list_deny)
@@ -365,14 +372,14 @@ class HitachiHNASTestCase(test.TestCase):
         }
         access_list_deny = [access_cifs_type_ip]
 
-        self.mock_object(ssh.HNASSSHBackend, 'cifs_deny_access', mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, 'cifs_deny_access')
 
         self._driver.update_access('context', share_cifs, [], [],
                                    access_list_deny)
         self.assertTrue(self.mock_log.warning.called)
 
     def test_update_access_invalid_share_protocol(self):
-        self.mock_object(self._driver, '_ensure_share', mock.Mock())
+        self.mock_object(self._driver, '_ensure_share')
         ex = self.assertRaises(exception.ShareBackendException,
                                self._driver.update_access, 'context',
                                invalid_share, [], [], [])
@@ -384,8 +391,8 @@ class HitachiHNASTestCase(test.TestCase):
 
         self.mock_object(ssh.HNASSSHBackend, 'list_cifs_permissions',
                          mock.Mock(return_value=permission_list))
-        self.mock_object(ssh.HNASSSHBackend, 'cifs_deny_access', mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, 'cifs_allow_access', mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, 'cifs_deny_access')
+        self.mock_object(ssh.HNASSSHBackend, 'cifs_allow_access')
 
         self._driver.update_access('context', share_cifs, access_list, [], [])
 
@@ -414,11 +421,11 @@ class HitachiHNASTestCase(test.TestCase):
     def test_create_share(self, share):
         self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted",
                          mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "vvol_create", mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "quota_add", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "vvol_create")
+        self.mock_object(ssh.HNASSSHBackend, "quota_add")
         self.mock_object(ssh.HNASSSHBackend, "nfs_export_add", mock.Mock(
             return_value='/shares/' + share['id']))
-        self.mock_object(ssh.HNASSSHBackend, "cifs_share_add", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "cifs_share_add")
 
         result = self._driver.create_share('context', share)
 
@@ -447,11 +454,11 @@ class HitachiHNASTestCase(test.TestCase):
     def test_create_share_export_error(self):
         self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted",
                          mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "vvol_create", mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "quota_add", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "vvol_create")
+        self.mock_object(ssh.HNASSSHBackend, "quota_add")
         self.mock_object(ssh.HNASSSHBackend, "nfs_export_add", mock.Mock(
             side_effect=exception.HNASBackendException('msg')))
-        self.mock_object(ssh.HNASSSHBackend, "vvol_delete", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "vvol_delete")
 
         self.assertRaises(exception.HNASBackendException,
                           self._driver.create_share, 'context', share_nfs)
@@ -476,9 +483,9 @@ class HitachiHNASTestCase(test.TestCase):
     def test_delete_share(self, share):
         self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted",
                          mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "nfs_export_del", mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "cifs_share_del", mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "vvol_delete", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "nfs_export_del")
+        self.mock_object(ssh.HNASSSHBackend, "cifs_share_del")
+        self.mock_object(ssh.HNASSSHBackend, "vvol_delete")
 
         self._driver.delete_share('context', share)
 
@@ -534,7 +541,7 @@ class HitachiHNASTestCase(test.TestCase):
                          mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "is_cifs_in_use", mock.Mock(
             return_value=False))
-        self.mock_object(ssh.HNASSSHBackend, "tree_clone", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "tree_clone")
         self.mock_object(ssh.HNASSSHBackend, "nfs_export_add")
         self.mock_object(ssh.HNASSSHBackend, "cifs_share_add")
 
@@ -557,7 +564,7 @@ class HitachiHNASTestCase(test.TestCase):
                 hnas_id)
 
     def test_create_snapshot_invalid_protocol(self):
-        self.mock_object(self._driver, '_ensure_share', mock.Mock())
+        self.mock_object(self._driver, '_ensure_share')
         ex = self.assertRaises(exception.ShareBackendException,
                                self._driver.create_snapshot, 'context',
                                invalid_snapshot)
@@ -585,7 +592,7 @@ class HitachiHNASTestCase(test.TestCase):
                          mock.Mock())
         self.mock_object(ssh.HNASSSHBackend, "tree_clone", mock.Mock(
             side_effect=exception.HNASNothingToCloneException('msg')))
-        self.mock_object(ssh.HNASSSHBackend, "create_directory", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "create_directory")
         self.mock_object(ssh.HNASSSHBackend, "nfs_export_add")
         self.mock_object(ssh.HNASSSHBackend, "cifs_share_add")
 
@@ -686,7 +693,7 @@ class HitachiHNASTestCase(test.TestCase):
     def test_shrink_share(self):
         self.mock_object(ssh.HNASSSHBackend, "get_share_usage", mock.Mock(
             return_value=10))
-        self.mock_object(ssh.HNASSSHBackend, "modify_quota", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "modify_quota")
 
         self._driver.shrink_share(share_nfs, 11)
 
@@ -707,7 +714,7 @@ class HitachiHNASTestCase(test.TestCase):
     def test_extend_share(self):
         self.mock_object(ssh.HNASSSHBackend, "get_stats", mock.Mock(
             return_value=(500, 200, True)))
-        self.mock_object(ssh.HNASSSHBackend, "modify_quota", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "modify_quota")
 
         self._driver.extend_share(share_nfs, 150)
 
@@ -718,7 +725,7 @@ class HitachiHNASTestCase(test.TestCase):
     def test_extend_share_with_no_available_space_in_fs(self):
         self.mock_object(ssh.HNASSSHBackend, "get_stats", mock.Mock(
             return_value=(500, 200, False)))
-        self.mock_object(ssh.HNASSSHBackend, "modify_quota", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "modify_quota")
 
         self.assertRaises(exception.HNASBackendException,
                           self._driver.extend_share, share_nfs, 1000)
@@ -765,16 +772,31 @@ class HitachiHNASTestCase(test.TestCase):
 
     @ddt.data(':/', '1.1.1.1:/share_id', '1.1.1.1:/shares',
               '1.1.1.1:shares/share_id', ':/share_id')
-    def test_manage_existing_wrong_path_format(self, wrong_location):
+    def test_manage_existing_wrong_path_format_nfs(self, wrong_location):
         expected_exception = ("Share backend error: Incorrect path. It "
                               "should have the following format: "
                               "IP:/shares/share_id.")
-        share_copy = share_nfs.copy()
-        share_copy['export_locations'] = [{'path': wrong_location}]
+
+        self._test_manage_existing_wrong_path(
+            share_nfs.copy(), expected_exception, wrong_location)
+
+    @ddt.data('\\\\1.1.1.1', '1.1.1.1\\share_id', '1.1.1.1\\shares\\share_id',
+              '\\\\1.1.1.1\\shares\\share_id', '\\\\share_id')
+    def test_manage_existing_wrong_path_format_cifs(self, wrong_location):
+        expected_exception = ("Share backend error: Incorrect path. It should "
+                              "have the following format: \\\\IP\\share_id.")
+
+        self._test_manage_existing_wrong_path(
+            share_cifs.copy(), expected_exception, wrong_location)
+
+    def _test_manage_existing_wrong_path(
+            self, share, expected_exception, wrong_location):
+
+        share['export_locations'] = [{'path': wrong_location}]
 
         ex = self.assertRaises(exception.ShareBackendException,
-                               self._driver.manage_existing, share_copy,
-                               'option')
+                               self._driver.manage_existing, share, 'option')
+
         self.assertEqual(expected_exception, ex.msg)
 
     def test_manage_existing_wrong_evs_ip(self):
@@ -795,8 +817,13 @@ class HitachiHNASTestCase(test.TestCase):
                           self._driver.manage_existing, invalid_share,
                           'option')
 
-    def test_unmanage(self):
-        self._driver.unmanage(share_nfs)
+    @ddt.data(True, False)
+    def test_unmanage(self, has_export_locations):
+        share_copy = share_nfs.copy()
+        if not has_export_locations:
+            share_copy['export_locations'] = []
+
+        self._driver.unmanage(share_copy)
 
         self.assertTrue(self.fake_private_storage.delete.called)
         self.assertTrue(self.mock_log.info.called)
@@ -811,11 +838,11 @@ class HitachiHNASTestCase(test.TestCase):
     def test_create_share_from_snapshot(self, share, snapshot):
         self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted",
                          mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "vvol_create", mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "quota_add", mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "tree_clone", mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "cifs_share_add", mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "nfs_export_add", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "vvol_create")
+        self.mock_object(ssh.HNASSSHBackend, "quota_add")
+        self.mock_object(ssh.HNASSSHBackend, "tree_clone")
+        self.mock_object(ssh.HNASSSHBackend, "cifs_share_add")
+        self.mock_object(ssh.HNASSSHBackend, "nfs_export_add")
 
         result = self._driver.create_share_from_snapshot('context',
                                                          share,
@@ -850,11 +877,11 @@ class HitachiHNASTestCase(test.TestCase):
     def test_create_share_from_snapshot_empty_snapshot(self):
         self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted",
                          mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "vvol_create", mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "quota_add", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "vvol_create")
+        self.mock_object(ssh.HNASSSHBackend, "quota_add")
         self.mock_object(ssh.HNASSSHBackend, "tree_clone", mock.Mock(
             side_effect=exception.HNASNothingToCloneException('msg')))
-        self.mock_object(ssh.HNASSSHBackend, "nfs_export_add", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "nfs_export_add")
 
         result = self._driver.create_share_from_snapshot('context', share_nfs,
                                                          snapshot_nfs)
@@ -880,9 +907,9 @@ class HitachiHNASTestCase(test.TestCase):
     def test_create_share_from_snapshot_invalid_protocol(self):
         self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted",
                          mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "vvol_create", mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "quota_add", mock.Mock())
-        self.mock_object(ssh.HNASSSHBackend, "tree_clone", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "vvol_create")
+        self.mock_object(ssh.HNASSSHBackend, "quota_add")
+        self.mock_object(ssh.HNASSSHBackend, "tree_clone")
 
         ex = self.assertRaises(exception.ShareBackendException,
                                self._driver.create_share_from_snapshot,
@@ -955,7 +982,7 @@ class HitachiHNASTestCase(test.TestCase):
         self.mock_object(driver.HitachiHNASDriver, "_check_fs_mounted",
                          mock.Mock())
         self.mock_object(manila.share.driver.ShareDriver,
-                         '_update_share_stats', mock.Mock())
+                         '_update_share_stats')
 
         self._driver._update_share_stats()
 
