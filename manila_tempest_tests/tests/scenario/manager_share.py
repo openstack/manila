@@ -212,7 +212,8 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         if isinstance(server_or_ip, six.string_types):
             ip = server_or_ip
         else:
-            addr = server_or_ip['addresses'][CONF.compute.network_for_ssh][0]
+            addr = server_or_ip['addresses'][
+                CONF.validation.network_for_ssh][0]
             ip = addr['addr']
 
         # NOTE(u_glide): Both options (pkey and password) are required here to
