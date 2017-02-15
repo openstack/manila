@@ -179,7 +179,7 @@ Following driver features are implemented in the plugin.
 
 
 The :mod:`manila.share.drivers.dell_emc.driver` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------------------------
 
 .. automodule:: manila.share.drivers.dell_emc.driver
     :noindex:
@@ -188,7 +188,7 @@ The :mod:`manila.share.drivers.dell_emc.driver` Module
     :show-inheritance:
 
 The :mod:`manila.share.drivers.dell_emc.plugins.unity.connection` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------------------------------------------
 
 .. automodule:: manila.share.drivers.dell_emc.plugins.unity.connection
     :noindex:

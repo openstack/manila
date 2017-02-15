@@ -1,5 +1,5 @@
 Manila Style Commandments
-=======================
+=========================
 
 - Step 1: Read the OpenStack Style Commandments
   http://docs.openstack.org/developer/hacking/
@@ -22,7 +22,7 @@ Manila Specific Commandments
 - [M329] LOG.info messages require translations _LI()!
 - [M330] LOG.warning messages require translations _LW()!
 - [M331] Log messages require translations!
-- [M333] 'oslo_' should be used instead of 'oslo.'
+- [M333] ``oslo_`` should be used instead of ``oslo.``
 - [M336] Must use a dict comprehension instead of a dict constructor
   with a sequence of key-value pairs.
 - [M337] Ensure to not use xrange().

@@ -357,3 +357,4 @@ all shares on it hits 30 GB. After that, ``example2`` will have priority until
 the provisioned capacity of all shares on it hits 80 GB. ``example3`` will
 collect all shares greater or equal to 5 GB as well as all shares once
 ``example1`` and ``example2`` lose priority.
+
