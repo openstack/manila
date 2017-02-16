@@ -81,7 +81,9 @@ This section describes steps needed to be performed to set the driver up
 manually. The driver has been tested on Ubuntu 14.04, thus in case of
 any other distribution package names might differ.
 The following packages must be installed:
- - docker.io
+
+- docker.io
+
 One can verify if the package is installed by issuing ``sudo docker info``
 command. In case of normal operation it should return docker usage statistics.
 In case it fails complaining on inaccessible socket try installing
