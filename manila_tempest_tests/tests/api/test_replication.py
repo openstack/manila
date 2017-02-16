@@ -25,7 +25,7 @@ from manila_tempest_tests.tests.api import base
 CONF = config.CONF
 _MIN_SUPPORTED_MICROVERSION = '2.11'
 SUMMARY_KEYS = ['share_id', 'id', 'replica_state', 'status']
-DETAIL_KEYS = SUMMARY_KEYS + ['availability_zone', 'host', 'updated_at',
+DETAIL_KEYS = SUMMARY_KEYS + ['availability_zone', 'updated_at',
                               'share_network_id', 'created_at']
 
 
@@ -201,7 +201,7 @@ class ReplicationTest(base.BaseSharesMixedTest):
                                                    cleanup_in_class=False)
         self.shares_v2_client.get_share_replica(share_replica2['id'])
 
-        share_replicas = self.shares_v2_client.list_share_replicas(
+        share_replicas = self.admin_client.list_share_replicas(
             share_id=self.shares[0]["id"])
         replica_host_set = {r['host'] for r in share_replicas}
 

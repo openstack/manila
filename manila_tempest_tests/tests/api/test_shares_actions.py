@@ -88,7 +88,7 @@ class SharesActionsTest(base.BaseSharesTest):
             "status", "description", "links", "availability_zone",
             "created_at", "project_id", "volume_type", "share_proto", "name",
             "snapshot_id", "id", "size", "share_network_id", "metadata",
-            "host", "snapshot_id", "is_public",
+            "snapshot_id", "is_public",
         ]
         if utils.is_microversion_lt(version, '2.9'):
             expected_keys.extend(["export_location", "export_locations"])
@@ -196,7 +196,7 @@ class SharesActionsTest(base.BaseSharesTest):
             "status", "description", "links", "availability_zone",
             "created_at", "project_id", "volume_type", "share_proto", "name",
             "snapshot_id", "id", "size", "share_network_id", "metadata",
-            "host", "snapshot_id", "is_public", "share_type",
+            "snapshot_id", "is_public", "share_type",
         ]
         if utils.is_microversion_lt(version, '2.9'):
             keys.extend(["export_location", "export_locations"])
@@ -282,19 +282,6 @@ class SharesActionsTest(base.BaseSharesTest):
                 filters['metadata'], share['metadata'])
         if CONF.share.capability_create_share_from_snapshot_support:
             self.assertFalse(self.shares[1]['id'] in [s['id'] for s in shares])
-
-    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
-    def test_list_shares_with_detail_filter_by_host(self):
-        base_share = self.shares_client.get_share(self.shares[0]['id'])
-        filters = {'host': base_share['host']}
-
-        # list shares
-        shares = self.shares_client.list_shares_with_detail(params=filters)
-
-        # verify response
-        self.assertGreater(len(shares), 0)
-        for share in shares:
-            self.assertEqual(filters['host'], share['host'])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipIf(
@@ -407,7 +394,7 @@ class SharesActionsTest(base.BaseSharesTest):
 
         keys = [
             "status", "description", "links", "availability_zone",
-            "created_at", "export_location", "share_proto", "host",
+            "created_at", "export_location", "share_proto",
             "name", "snapshot_id", "id", "size", "project_id", "is_public",
         ]
         [self.assertIn(key, sh.keys()) for sh in shares for key in keys]
