@@ -702,9 +702,16 @@ function install_manila {
                 install_docker_ubuntu
                 echo "Importing docker image"
                 import_docker_service_image_ubuntu
+            elif is_fedora; then
+                echo "Installing docker...."
+                install_docker_fedora
+                echo "Importing docker image"
+                # TODO(tbarron): See if using a fedora container image
+                # is faster/smaller because of fewer extra dependencies.
+                import_docker_service_image_ubuntu
             else
-                echo "Manila Devstack plugin does not support Container Driver on  "\
-                     " distros other than Ubuntu."
+                echo "Manila Devstack plugin does not support Container Driver on"\
+                     " distros other than Ubuntu or Fedora."
                 exit 1
             fi
         fi
@@ -812,6 +819,12 @@ function install_docker_ubuntu {
     sudo apt-get update
     install_package apparmor
     install_package docker.io
+}
+
+function install_docker_fedora {
+    sudo yum install -y docker
+    sudo systemctl enable docker
+    sudo systemctl start docker
 }
 
 function download_image {
