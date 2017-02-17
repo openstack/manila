@@ -346,7 +346,26 @@ class NFSHelper(NASHelperBase):
         self._ssh_exec(server, restore_exports)
 
 
-class CIFSHelperIPAccess(NASHelperBase):
+class CIFSHelperBase(NASHelperBase):
+    @staticmethod
+    def _get_share_group_name_from_export_location(export_location):
+        if '/' in export_location and '\\' in export_location:
+            pass
+        elif export_location.startswith('\\\\'):
+            return export_location.split('\\')[-1]
+        elif export_location.startswith('//'):
+            return export_location.split('/')[-1]
+
+        msg = _("Got incorrect CIFS export location '%s'.") % export_location
+        raise exception.InvalidShare(reason=msg)
+
+    def _get_export_location_template(self, export_location_or_path):
+        group_name = self._get_share_group_name_from_export_location(
+            export_location_or_path)
+        return ('\\\\%s' + ('\\%s' % group_name))
+
+
+class CIFSHelperIPAccess(CIFSHelperBase):
     """Manage shares in samba server by net conf tool.
 
     Class provides functionality to operate with CIFS shares.
@@ -445,23 +464,6 @@ class CIFSHelperIPAccess(NASHelperBase):
         value = ' '.join(hosts) or ' '
         self._ssh_exec(server, ['sudo', 'net', 'conf', 'setparm', share_name,
                                 'hosts allow', value])
-
-    @staticmethod
-    def _get_share_group_name_from_export_location(export_location):
-        if '/' in export_location and '\\' in export_location:
-            pass
-        elif export_location.startswith('\\\\'):
-            return export_location.split('\\')[-1]
-        elif export_location.startswith('//'):
-            return export_location.split('/')[-1]
-
-        msg = _("Got incorrect CIFS export location '%s'.") % export_location
-        raise exception.InvalidShare(reason=msg)
-
-    def _get_export_location_template(self, export_location_or_path):
-        group_name = self._get_share_group_name_from_export_location(
-            export_location_or_path)
-        return ('\\\\%s' + ('\\%s' % group_name))
 
     def get_share_path_by_export_location(self, server, export_location):
         # Get name of group that contains share data on CIFS server
