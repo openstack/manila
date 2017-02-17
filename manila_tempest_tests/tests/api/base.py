@@ -150,6 +150,26 @@ class BaseSharesTest(test.BaseTestCase):
                 microversion)
 
     @classmethod
+    def _get_dynamic_creds(cls, name, network_resources=None):
+        return dynamic_creds.DynamicCredentialProvider(
+            identity_version=CONF.identity.auth_version,
+            name=name,
+            network_resources=network_resources,
+            credentials_domain=CONF.auth.default_credentials_domain_name,
+            admin_role=CONF.identity.admin_role,
+            admin_creds=common_creds.get_configured_admin_credentials(),
+            identity_admin_domain_scope=CONF.identity.admin_domain_scope,
+            identity_admin_role=CONF.identity.admin_role,
+            extra_roles=None,
+            neutron_available=CONF.service_available.neutron,
+            create_networks=(
+                CONF.share.create_networks_when_multitenancy_enabled),
+            project_network_cidr=CONF.network.project_network_cidr,
+            project_network_mask_bits=CONF.network.project_network_mask_bits,
+            public_network_id=CONF.network.public_network_id,
+            resource_prefix=CONF.resources_prefix)
+
+    @classmethod
     def get_client_with_isolated_creds(cls,
                                        name=None,
                                        type_of_creds="admin",
@@ -171,11 +191,7 @@ class BaseSharesTest(test.BaseTestCase):
                 name = name[0:32]
 
         # Choose type of isolated creds
-        ic = dynamic_creds.DynamicCredentialProvider(
-            identity_version=CONF.identity.auth_version,
-            name=name,
-            admin_role=CONF.identity.admin_role,
-            admin_creds=common_creds.get_configured_admin_credentials())
+        ic = cls._get_dynamic_creds(name)
         if "admin" in type_of_creds:
             creds = ic.get_admin_creds().credentials
         elif "alt" in type_of_creds:
@@ -349,13 +365,7 @@ class BaseSharesTest(test.BaseTestCase):
 
                     # Create suitable network
                     if net_id is None or subnet_id is None:
-                        ic = dynamic_creds.DynamicCredentialProvider(
-                            identity_version=CONF.identity.auth_version,
-                            name=service_net_name,
-                            admin_role=CONF.identity.admin_role,
-                            admin_creds=(
-                                common_creds.
-                                get_configured_admin_credentials()))
+                        ic = cls._get_dynamic_creds(service_net_name)
                         net_data = ic._create_network_resources(sc.tenant_id)
                         network, subnet, router = net_data
                         net_id = network["id"]
