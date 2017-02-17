@@ -80,7 +80,6 @@ class ViewBuilder(common.ViewBuilder):
             'name': share.get('display_name'),
             'description': share.get('display_description'),
             'project_id': share.get('project_id'),
-            'host': share_instance.get('host'),
             'snapshot_id': share.get('snapshot_id'),
             'share_network_id': share_instance.get('share_network_id'),
             'share_proto': share.get('share_proto'),
@@ -92,12 +91,12 @@ class ViewBuilder(common.ViewBuilder):
             'is_public': share.get('is_public'),
             'export_locations': export_locations,
         }
-
         self.update_versioned_resource_dict(request, share_dict, share)
 
         if context.is_admin:
             share_dict['share_server_id'] = share_instance.get(
                 'share_server_id')
+            share_dict['host'] = share_instance.get('host')
         return {'share': share_dict}
 
     @common.ViewBuilder.versioned_method("2.2")

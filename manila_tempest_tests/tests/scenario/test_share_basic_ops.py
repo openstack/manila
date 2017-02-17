@@ -312,7 +312,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         instance = self.boot_instance(wait_until="BUILD")
         self.create_share()
         instance = self.wait_for_active_instance(instance["id"])
-        self.share = self.shares_client.get_share(self.share['id'])
+        self.share = self.shares_admin_v2_client.get_share(self.share['id'])
 
         default_type = self.shares_v2_client.list_share_types(
             default=True)['share_type']
