@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixed HNAS driver version according to the new content
+    added in the Ocata release.
+
