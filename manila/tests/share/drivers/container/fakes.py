@@ -50,6 +50,7 @@ def fake_network(**kwargs):
         'id': 'fake_network_id',
         'server_id': 'fake_server_id',
         'network_allocations': [allocations],
+        'neutron_net_id': 'fake_net',
         'neutron_subnet_id': 'fake_subnet',
     }
     network.update(kwargs)

@@ -235,6 +235,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
             'lb': self.configuration.container_linux_bridge_name,
             'ovsb': self.configuration.container_ovs_bridge_name,
             'ip': port_address,
+            'network': network_info['neutron_net_id'],
             'subnet': network_info['neutron_subnet_id'],
         }
         LOG.debug("Container %(id)s veth is %(veth)s.", msg_helper)
@@ -254,7 +255,8 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
                       self.configuration.container_ovs_bridge_name, host_veth,
                       *(e_mac + e_id + e_status + e_mcid), run_as_root=True)
         LOG.debug("Now container %(id)s should be accessible from network "
-                  "%(subnet)s by address %(ip)s." % msg_helper)
+                  "%(network)s and subnet %(subnet)s by address %(ip)s." %
+                  msg_helper)
 
     @utils.synchronized("container_driver_teardown_lock", external=True)
     def _teardown_server(self, *args, **kwargs):
