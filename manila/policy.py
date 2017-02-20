@@ -46,15 +46,15 @@ def enforce(context, action, target, do_raise=True):
     """Verifies that the action is valid on the target in this context.
 
        :param context: manila context
-       :param action: string representing the action to be checked
+       :param action: string representing the action to be checked,
            this should be colon separated for clarity.
            i.e. ``compute:create_instance``,
            ``compute:attach_volume``,
            ``volume:attach_volume``
        :param target: dictionary representing the object of the action
-           for object creation this should be a dictionary representing the
+           for object creation, this should be a dictionary representing the
            location of the object e.g. ``{'project_id': context.project_id}``
-       :param do_raise: Whether to raise an exception if check fils.
+       :param do_raise: Whether to raise an exception if check fails.
 
        :returns: When ``do_raise`` is ``False``, returns a value that
                  evaluates as ``True`` or ``False`` depending on whether
@@ -77,7 +77,7 @@ def enforce(context, action, target, do_raise=True):
 
 
 def check_is_admin(roles):
-    """Whether or not roles contains 'admin' role according to policy setting.
+    """Whether or not roles contain 'admin' role according to policy setting.
 
     """
     init()
