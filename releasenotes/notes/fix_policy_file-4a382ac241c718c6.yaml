@@ -1,0 +1,4 @@
+---
+fixes:
+  - Adapted policy.json file to correct snapshot policy values.
+
