@@ -178,10 +178,13 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         return project_id
 
     def _resize_share(self, share, new_size):
-        # TODO(kaisers): check and update existing quota if already present
-        self.rpc.call('setQuota', {"consumer": {"type": 3,
-                                                "identifier": share["name"]},
-                                   "limits": {"type": 5, "value": new_size}})
+        self.rpc.call('setQuota', {"quotas": [
+            {"consumer":
+                [{"type": "VOLUME",
+                 "identifier": share["name"]}],
+             "limits": [{"type": "LOGICAL_DISK_SPACE",
+                        "value": new_size}]}
+        ]})
 
     def _resolve_volume_name(self, volume_name, tenant_domain):
         """Resolve a volume name to the global volume uuid."""
