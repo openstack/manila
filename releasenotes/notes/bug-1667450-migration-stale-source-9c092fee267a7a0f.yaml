@@ -1,0 +1,4 @@
+fixes:
+  - Fixed host-assisted share migration not deleting the
+    source share from the storage backend upon completion.
+
