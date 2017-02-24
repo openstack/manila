@@ -20,39 +20,26 @@
 # Import devstack function 'trueorfalse'
 source $BASE/new/devstack/functions
 
-function save_configuration {
-    # $1 - name of key
-    # $2 - value for key
-    # $3 - write to local.conf instead of localrc
-    write_to_local_conf=$3
-    for location in old new; do
-        if [[ -d "$BASE/$location" ]]; then
-            if [[ $(trueorfalse False write_to_local_conf) == True ]]; then
-                echo -e "$1=$2" >> $BASE/$location/devstack/local.conf
-            else
-                echo "$1=$2" >> $BASE/$location/devstack/localrc
-            fi
-        fi
-    done
-}
+localconf=$BASE/new/devstack/local.conf
 
-save_configuration "DEVSTACK_GATE_TEMPEST_ALLOW_TENANT_ISOLATION" "1"
-save_configuration "API_RATE_LIMIT" "False"
-save_configuration "TEMPEST_SERVICES+" ",manila"
-save_configuration "VOLUME_BACKING_FILE_SIZE" "22G"
-save_configuration "CINDER_LVM_TYPE" "thin"
+echo "[[local|localrc]]" >> $localconf
+echo "DEVSTACK_GATE_TEMPEST_ALLOW_TENANT_ISOLATION=1" >> $localconf
+echo "API_RATE_LIMIT=False" >> $localconf
+echo "TEMPEST_SERVICES+=,manila" >> $localconf
+echo "VOLUME_BACKING_FILE_SIZE=22G" >> $localconf
+echo "CINDER_LVM_TYPE=thin" >> $localconf
 
 # NOTE(mkoderer): switch to keystone v3 by default
-save_configuration "IDENTITY_API_VERSION" "3"
+echo "IDENTITY_API_VERSION=3" >> $localconf
 
 # NOTE(vponomaryov): Set oversubscription ratio for Cinder LVM driver
 # bigger than 1.0, because in CI we do not need such small value.
 # It will allow us to avoid exceeding real capacity in CI test runs.
-save_configuration "CINDER_OVERSUBSCRIPTION_RATIO" "100.0"
-save_configuration "MANILA_BACKEND1_CONFIG_GROUP_NAME" "london"
-save_configuration "MANILA_BACKEND2_CONFIG_GROUP_NAME" "paris"
-save_configuration "MANILA_SHARE_BACKEND1_NAME" "LONDON"
-save_configuration "MANILA_SHARE_BACKEND2_NAME" "PARIS"
+echo "CINDER_OVERSUBSCRIPTION_RATIO=100.0" >> $localconf
+echo "MANILA_BACKEND1_CONFIG_GROUP_NAME=london" >> $localconf
+echo "MANILA_BACKEND2_CONFIG_GROUP_NAME=paris" >> $localconf
+echo "MANILA_SHARE_BACKEND1_NAME=LONDON" >> $localconf
+echo "MANILA_SHARE_BACKEND2_NAME=PARIS" >> $localconf
 
 # === Handle script arguments ===
 # First argument is expected to be a boolean-like value for DHSS.
@@ -66,122 +53,126 @@ DRIVER=$2
 # or 'multibackend' that defines how many back-ends should be configured.
 BACK_END_TYPE=$3
 
-save_configuration "MANILA_OPTGROUP_london_driver_handles_share_servers" "$DHSS"
-save_configuration "MANILA_OPTGROUP_paris_driver_handles_share_servers" "$DHSS"
-save_configuration "MANILA_USE_SERVICE_INSTANCE_PASSWORD" "True"
-save_configuration "MANILA_USE_DOWNGRADE_MIGRATIONS" "True"
+echo "MANILA_OPTGROUP_london_driver_handles_share_servers=$DHSS" >> $localconf
+echo "MANILA_OPTGROUP_paris_driver_handles_share_servers=$DHSS" >> $localconf
+echo "MANILA_USE_SERVICE_INSTANCE_PASSWORD=True" >> $localconf
+echo "MANILA_USE_DOWNGRADE_MIGRATIONS=True" >> $localconf
 
 if [[ "$BACK_END_TYPE" == "multibackend" ]]; then
-    save_configuration "MANILA_MULTI_BACKEND" "True"
+    echo "MANILA_MULTI_BACKEND=True" >> $localconf
 else
-    save_configuration "MANILA_MULTI_BACKEND" "False"
+    echo "MANILA_MULTI_BACKEND=False" >> $localconf
 fi
 
 # Set MANILA_ADMIN_NET_RANGE for admin_network and data_service IP
-save_configuration "MANILA_ADMIN_NET_RANGE" "${MANILA_ADMIN_NET_RANGE:=10.2.5.0/24}"
-save_configuration "MANILA_DATA_NODE_IP" "${MANILA_DATA_NODE_IP:=$MANILA_ADMIN_NET_RANGE}"
-save_configuration "MANILA_DATA_COPY_CHECK_HASH" "${MANILA_DATA_COPY_CHECK_HASH:=True}"
+echo "MANILA_ADMIN_NET_RANGE=${MANILA_ADMIN_NET_RANGE:=10.2.5.0/24}" >> $localconf
+echo "MANILA_DATA_NODE_IP=${MANILA_DATA_NODE_IP:=$MANILA_ADMIN_NET_RANGE}" >> $localconf
+echo "MANILA_DATA_COPY_CHECK_HASH=${MANILA_DATA_COPY_CHECK_HASH:=True}" >> $localconf
 
 # Share Migration CI tests migration_continue period task interval
-save_configuration "MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL" "${MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL:=1}"
+echo "MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL=${MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL:=1}" >> $localconf
 
 MANILA_SERVICE_IMAGE_ENABLED=${MANILA_SERVICE_IMAGE_ENABLED:-False}
 DEFAULT_EXTRA_SPECS=${DEFAULT_EXTRA_SPECS:-"'snapshot_support=True create_share_from_snapshot_support=True'"}
 
 if [[ "$DRIVER" == "generic" ]]; then
     MANILA_SERVICE_IMAGE_ENABLED=True
-    save_configuration "SHARE_DRIVER" "manila.share.drivers.generic.GenericShareDriver"
-    save_configuration "[[post-config|${NOVA_CONF:-/etc/nova/nova.conf}]]\n[DEFAULT]\nquota_instances" "30\n" "True"
-    save_configuration "[[post-config|${NEUTRON_CONF:-/etc/neutron/neutron.conf}]]\n[DEFAULT]\nmax_fixed_ips_per_port" "100\n" "True"
-    save_configuration "[[post-config|${NEUTRON_CONF:-/etc/neutron/neutron.conf}]]\n[QUOTAS]\nquota_subnet" "-1\n" "True"
+    echo "SHARE_DRIVER=manila.share.drivers.generic.GenericShareDriver" >> $localconf
 elif [[ "$DRIVER" == "windows" ]]; then
     MANILA_SERVICE_IMAGE_ENABLED=True
-    save_configuration "SHARE_DRIVER" "manila.share.drivers.windows.windows_smb_driver.WindowsSMBDriver"
+    echo "SHARE_DRIVER=manila.share.drivers.windows.windows_smb_driver.WindowsSMBDriver" >> $localconf
 elif [[ "$DRIVER" == "dummy" ]]; then
     driver_path="manila.tests.share.drivers.dummy.DummyDriver"
     DEFAULT_EXTRA_SPECS="'snapshot_support=True create_share_from_snapshot_support=True revert_to_snapshot_support=True mount_snapshot_support=True'"
-    save_configuration "MANILA_SERVICE_IMAGE_ENABLED" "False"
-    save_configuration "SHARE_DRIVER" "$driver_path"
-    save_configuration "SUPPRESS_ERRORS_IN_CLEANUP" "False"
-    save_configuration "MANILA_REPLICA_STATE_UPDATE_INTERVAL" "10"
-    save_configuration "MANILA_ENABLED_BACKENDS" "alpha,beta,gamma,delta"
-    save_configuration "MANILA_CONFIGURE_GROUPS" "alpha,beta,gamma,delta,membernet,adminnet"
+    echo "MANILA_SERVICE_IMAGE_ENABLED=False" >> $localconf
+    echo "SHARE_DRIVER=$driver_path" >> $localconf
+    echo "SUPPRESS_ERRORS_IN_CLEANUP=False" >> $localconf
+    echo "MANILA_REPLICA_STATE_UPDATE_INTERVAL=10" >> $localconf
+    echo "MANILA_ENABLED_BACKENDS=alpha,beta,gamma,delta" >> $localconf
+    echo "MANILA_CONFIGURE_GROUPS=alpha,beta,gamma,delta,membernet,adminnet" >> $localconf
 
-    save_configuration "MANILA_OPTGROUP_alpha_share_driver" "$driver_path"
-    save_configuration "MANILA_OPTGROUP_alpha_driver_handles_share_servers" "True"
-    save_configuration "MANILA_OPTGROUP_alpha_share_backend_name" "ALPHA"
-    save_configuration "MANILA_OPTGROUP_alpha_network_config_group" "membernet"
-    save_configuration "MANILA_OPTGROUP_alpha_admin_network_config_group" "adminnet"
+    echo "MANILA_OPTGROUP_alpha_share_driver=$driver_path" >> $localconf
+    echo "MANILA_OPTGROUP_alpha_driver_handles_share_servers=True" >> $localconf
+    echo "MANILA_OPTGROUP_alpha_share_backend_name=ALPHA" >> $localconf
+    echo "MANILA_OPTGROUP_alpha_network_config_group=membernet" >> $localconf
+    echo "MANILA_OPTGROUP_alpha_admin_network_config_group=adminnet" >> $localconf
 
-    save_configuration "MANILA_OPTGROUP_beta_share_driver" "$driver_path"
-    save_configuration "MANILA_OPTGROUP_beta_driver_handles_share_servers" "True"
-    save_configuration "MANILA_OPTGROUP_beta_share_backend_name" "BETA"
-    save_configuration "MANILA_OPTGROUP_beta_network_config_group" "membernet"
-    save_configuration "MANILA_OPTGROUP_beta_admin_network_config_group" "adminnet"
+    echo "MANILA_OPTGROUP_beta_share_driver=$driver_path" >> $localconf
+    echo "MANILA_OPTGROUP_beta_driver_handles_share_servers=True" >> $localconf
+    echo "MANILA_OPTGROUP_beta_share_backend_name=BETA" >> $localconf
+    echo "MANILA_OPTGROUP_beta_network_config_group=membernet" >> $localconf
+    echo "MANILA_OPTGROUP_beta_admin_network_config_group=adminnet" >> $localconf
 
-    save_configuration "MANILA_OPTGROUP_gamma_share_driver" "$driver_path"
-    save_configuration "MANILA_OPTGROUP_gamma_driver_handles_share_servers" "False"
-    save_configuration "MANILA_OPTGROUP_gamma_share_backend_name" "GAMMA"
-    save_configuration "MANILA_OPTGROUP_gamma_replication_domain" "DUMMY_DOMAIN"
+    echo "MANILA_OPTGROUP_gamma_share_driver=$driver_path" >> $localconf
+    echo "MANILA_OPTGROUP_gamma_driver_handles_share_servers=False" >> $localconf
+    echo "MANILA_OPTGROUP_gamma_share_backend_name=GAMMA" >> $localconf
+    echo "MANILA_OPTGROUP_gamma_replication_domain=DUMMY_DOMAIN" >> $localconf
 
-    save_configuration "MANILA_OPTGROUP_delta_share_driver" "$driver_path"
-    save_configuration "MANILA_OPTGROUP_delta_driver_handles_share_servers" "False"
-    save_configuration "MANILA_OPTGROUP_delta_share_backend_name" "DELTA"
-    save_configuration "MANILA_OPTGROUP_delta_replication_domain" "DUMMY_DOMAIN"
+    echo "MANILA_OPTGROUP_delta_share_driver=$driver_path" >> $localconf
+    echo "MANILA_OPTGROUP_delta_driver_handles_share_servers=False" >> $localconf
+    echo "MANILA_OPTGROUP_delta_share_backend_name=DELTA" >> $localconf
+    echo "MANILA_OPTGROUP_delta_replication_domain=DUMMY_DOMAIN" >> $localconf
 
-    save_configuration "MANILA_OPTGROUP_membernet_network_api_class" "manila.network.standalone_network_plugin.StandaloneNetworkPlugin"
-    save_configuration "MANILA_OPTGROUP_membernet_standalone_network_plugin_gateway" "10.0.0.1"
-    save_configuration "MANILA_OPTGROUP_membernet_standalone_network_plugin_mask" "24"
-    save_configuration "MANILA_OPTGROUP_membernet_standalone_network_plugin_network_type" "vlan"
-    save_configuration "MANILA_OPTGROUP_membernet_standalone_network_plugin_segmentation_id" "1010"
-    save_configuration "MANILA_OPTGROUP_membernet_standalone_network_plugin_allowed_ip_ranges" "10.0.0.10-10.0.0.209"
-    save_configuration "MANILA_OPTGROUP_membernet_standalone_network_plugin_ip_version" "4"
+    echo "MANILA_OPTGROUP_membernet_network_api_class=manila.network.standalone_network_plugin.StandaloneNetworkPlugin" >> $localconf
+    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_gateway=10.0.0.1" >> $localconf
+    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_mask=24" >> $localconf
+    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_network_type=vlan" >> $localconf
+    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_segmentation_id=1010" >> $localconf
+    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_allowed_ip_ranges=10.0.0.10-10.0.0.209" >> $localconf
+    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_ip_version=4" >> $localconf
 
-    save_configuration "MANILA_OPTGROUP_adminnet_network_api_class" "manila.network.standalone_network_plugin.StandaloneNetworkPlugin"
-    save_configuration "MANILA_OPTGROUP_adminnet_standalone_network_plugin_gateway" "11.0.0.1"
-    save_configuration "MANILA_OPTGROUP_adminnet_standalone_network_plugin_mask" "24"
-    save_configuration "MANILA_OPTGROUP_adminnet_standalone_network_plugin_network_type" "vlan"
-    save_configuration "MANILA_OPTGROUP_adminnet_standalone_network_plugin_segmentation_id" "1011"
-    save_configuration "MANILA_OPTGROUP_adminnet_standalone_network_plugin_allowed_ip_ranges" "11.0.0.10-11.0.0.19,11.0.0.30-11.0.0.39,11.0.0.50-11.0.0.199"
-    save_configuration "MANILA_OPTGROUP_adminnet_standalone_network_plugin_ip_version" "4"
+    echo "MANILA_OPTGROUP_adminnet_network_api_class=manila.network.standalone_network_plugin.StandaloneNetworkPlugin" >> $localconf
+    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_gateway=11.0.0.1" >> $localconf
+    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_mask=24" >> $localconf
+    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_network_type=vlan" >> $localconf
+    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_segmentation_id=1011" >> $localconf
+    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_allowed_ip_ranges=11.0.0.10-11.0.0.19,11.0.0.30-11.0.0.39,11.0.0.50-11.0.0.199" >> $localconf
+    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_ip_version=4" >> $localconf
 
     export MANILA_TEMPEST_CONCURRENCY=24
 
 elif [[ "$DRIVER" == "lvm" ]]; then
     MANILA_SERVICE_IMAGE_ENABLED=True
     DEFAULT_EXTRA_SPECS="'snapshot_support=True create_share_from_snapshot_support=True revert_to_snapshot_support=True mount_snapshot_support=True'"
-    save_configuration "SHARE_DRIVER" "manila.share.drivers.lvm.LVMShareDriver"
-    save_configuration "SHARE_BACKING_FILE_SIZE" "32000M"
+
+    echo "SHARE_DRIVER=manila.share.drivers.lvm.LVMShareDriver" >> $localconf
+    echo "SHARE_BACKING_FILE_SIZE=32000M" >> $localconf
 elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     MANILA_SERVICE_IMAGE_ENABLED=True
-    save_configuration "SHARE_DRIVER" "manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver"
-    save_configuration "RUN_MANILA_REPLICATION_TESTS" "True"
+    echo "SHARE_DRIVER=manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver" >> $localconf
+    echo "RUN_MANILA_REPLICATION_TESTS=True" >> $localconf
     # Set the replica_state_update_interval to 60 seconds to make
     # replication tests run faster. The default is 300, which is greater than
     # the build timeout for ZFS on the gate.
-    save_configuration "MANILA_REPLICA_STATE_UPDATE_INTERVAL" "60"
-    save_configuration "MANILA_ZFSONLINUX_USE_SSH" "True"
+    echo "MANILA_REPLICA_STATE_UPDATE_INTERVAL=60" >> $localconf
+    echo "MANILA_ZFSONLINUX_USE_SSH=True" >> $localconf
     # Set proper host IP for user export to be able to run scenario tests correctly
-    save_configuration "MANILA_ZFSONLINUX_SHARE_EXPORT_IP" "$HOST"
-    save_configuration "MANILA_ZFSONLINUX_SERVICE_IP" "127.0.0.1"
+    echo "MANILA_ZFSONLINUX_SHARE_EXPORT_IP=$HOST" >> $localconf
+    echo "MANILA_ZFSONLINUX_SERVICE_IP=127.0.0.1" >> $localconf
 elif [[ "$DRIVER" == "container" ]]; then
     DEFAULT_EXTRA_SPECS="'snapshot_support=false'"
-    save_configuration "SHARE_DRIVER" "manila.share.drivers.container.driver.ContainerShareDriver"
-    save_configuration "SHARE_BACKING_FILE_SIZE" "64000M"
+    echo "SHARE_DRIVER=manila.share.drivers.container.driver.ContainerShareDriver" >> $localconf
+    echo "SHARE_BACKING_FILE_SIZE=64000M" >> $localconf
 fi
 
-save_configuration "MANILA_SERVICE_IMAGE_ENABLED" "$MANILA_SERVICE_IMAGE_ENABLED"
-save_configuration "MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS" "$DEFAULT_EXTRA_SPECS"
+echo "MANILA_SERVICE_IMAGE_ENABLED=$MANILA_SERVICE_IMAGE_ENABLED" >> $localconf
+echo "MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS=$DEFAULT_EXTRA_SPECS" >> $localconf
 
 # Enabling isolated metadata in Neutron is required because
 # Tempest creates isolated networks and created vm's in scenario tests don't
 # have access to Nova Metadata service. This leads to unavailability of
 # created vm's in scenario tests.
-save_configuration "ENABLE_ISOLATED_METADATA" "True"
+echo "ENABLE_ISOLATED_METADATA=True" >> $localconf
 
-save_configuration "TEMPEST_USE_TEST_ACCOUNTS" "True"
-save_configuration "TEMPEST_ALLOW_TENANT_ISOLATION" "False"
-save_configuration "TEMPEST_CONCURRENCY" "${MANILA_TEMPEST_CONCURRENCY:-8}"
+echo "TEMPEST_USE_TEST_ACCOUNTS=True" >> $localconf
+echo "TEMPEST_ALLOW_TENANT_ISOLATION=False" >> $localconf
+echo "TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-8}" >> $localconf
+
+if [[ "$DRIVER" == "generic" ]]; then
+    echo -e '[[post-config|${NOVA_CONF:-/etc/nova/nova.conf}]]\n[DEFAULT]\nquota_instances=30\n' >> $localconf
+    echo -e '[[post-config|${NEUTRON_CONF:-/etc/neutron/neutron.conf}]]\n[DEFAULT]\nmax_fixed_ips_per_port=100\n' >> $localconf
+    echo -e '[[post-config|${NEUTRON_CONF:-/etc/neutron/neutron.conf}]]\n[QUOTAS]\nquota_subnet=-1\n' >> $localconf
+fi
 
 # Go to Tempest dir and checkout stable commit to avoid possible
 # incompatibilities for plugin stored in Manila repo.
