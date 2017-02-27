@@ -14,6 +14,7 @@
 #    under the License.
 """Unit tests for the Protocol helper module."""
 
+import ddt
 import functools
 import mock
 
@@ -24,6 +25,7 @@ from manila import test
 from manila.tests.share.drivers.container.fakes import fake_share
 
 
+@ddt.ddt
 class DockerCIFSHelperTestCase(test.TestCase):
     """Tests ContainerShareDriver"""
 
@@ -293,3 +295,22 @@ class DockerCIFSHelperTestCase(test.TestCase):
             "fakeserver",
             "fakeuser",
             "ro")
+
+    @ddt.data(('inet',
+               "192.168.0.254",
+               ["5: br0 inet 192.168.0.254/24 brd 192.168.0.255 "
+                "scope global br0 valid_lft forever preferred_lft forever"]),
+              ("inet6",
+               "2001:470:8:c82:6600:6aff:fe84:8dda",
+               ["5: br0 inet6 2001:470:8:c82:6600:6aff:fe84:8dda/64 "
+                "scope global valid_lft forever preferred_lft forever"]),
+              )
+    @ddt.unpack
+    def test__fetch_container_address(self, address_family, expected_address,
+                                      return_value):
+        self.DockerCIFSHelper.container.execute = mock.Mock(
+            return_value=return_value)
+        address = self.DockerCIFSHelper._fetch_container_address(
+            "fakeserver",
+            address_family)
+        self.assertEqual(expected_address, address)

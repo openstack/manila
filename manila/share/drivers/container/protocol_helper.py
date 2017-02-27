@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import re
-
 from oslo_log import log
 
 from manila.common import constants as const
@@ -50,12 +48,20 @@ class DockerCIFSHelper(object):
                 server_id,
                 ["net", "conf", "setparm", share_name, param, value]
             )
+        # TODO(tbarron): pass configured address family when we support IPv6
+        address = self._fetch_container_address(server_id, 'inet')
+        return r"//%(addr)s/%(name)s" % {"addr": address, "name": share_name}
+
+    def _fetch_container_address(self, server_id, address_family="inet6"):
         result = self.container.execute(
             server_id,
-            ["ip", "addr", "show", "eth0"]
-        )[0].split('\n')[2]
-        address = re.findall("\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", result)[0]
-        return r"//%(addr)s/%(name)s" % {"addr": address, "name": share_name}
+            ["ip", "-oneline",
+             "-family", address_family,
+             "address", "show", "scope", "global", "dev", "eth0"],
+        )
+        address_w_prefix = result[0].split()[3]
+        address = address_w_prefix.split('/')[0]
+        return address
 
     def delete_share(self, server_id):
         self.container.execute(
