@@ -174,6 +174,11 @@ if [[ "$DRIVER" == "generic" ]]; then
     echo -e '[[post-config|${NEUTRON_CONF:-/etc/neutron/neutron.conf}]]\n[QUOTAS]\nquota_subnet=-1\n' >> $localconf
 fi
 
+# Required for "grenade" job that uses devstack config from 'old' directory.
+if [[ -d "$BASE/old/devstack" ]]; then
+    cp $localconf $BASE/old/devstack/local.conf
+fi
+
 # Go to Tempest dir and checkout stable commit to avoid possible
 # incompatibilities for plugin stored in Manila repo.
 cd $BASE/new/tempest
