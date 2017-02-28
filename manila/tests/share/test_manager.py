@@ -1148,7 +1148,10 @@ class ShareManagerTestCase(test.TestCase):
         active_replica = fake_replica(
             id='current_active_replica',
             replica_state=constants.REPLICA_STATE_ACTIVE)
-        replica_list = [replica, active_replica, fake_replica(id=3)]
+        replica_list = [
+            replica, active_replica, fake_replica(id=3),
+            fake_replica(id='one_more_replica'),
+        ]
         updated_replica_list = [
             {
                 'id': replica['id'],
@@ -1162,7 +1165,12 @@ class ShareManagerTestCase(test.TestCase):
             },
             {
                 'id': 'other_replica',
-                'export_locations': ['TEST1', 'TEST2'],
+                'export_locations': ['TEST3', 'TEST4'],
+            },
+            {
+                'id': replica_list[3]['id'],
+                'export_locations': ['TEST5', 'TEST6'],
+                'replica_state': constants.REPLICA_STATE_IN_SYNC,
             },
         ]
         self.mock_object(db, 'share_replica_get',
@@ -1200,13 +1208,19 @@ class ShareManagerTestCase(test.TestCase):
         demoted_replica_update_call = mock.call(
             mock.ANY, active_replica['id'], demoted_replica_updates
         )
+        additional_replica_update_call = mock.call(
+            mock.ANY, replica_list[3]['id'], {
+                'replica_state': constants.REPLICA_STATE_IN_SYNC,
+            }
+        )
 
         self.share_manager.promote_share_replica(self.context, replica)
 
-        self.assertEqual(2, mock_export_locs_update.call_count)
-        self.assertEqual(2, mock_replica_update.call_count)
+        self.assertEqual(3, mock_export_locs_update.call_count)
         mock_replica_update.assert_has_calls([
-            reset_replication_change_call, demoted_replica_update_call,
+            demoted_replica_update_call,
+            additional_replica_update_call,
+            reset_replication_change_call,
         ])
         self.assertTrue(mock_info_log.called)
         self.assertFalse(mock_snap_instance_update.called)

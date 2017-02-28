@@ -1,0 +1,9 @@
+---
+fixes:
+  - Fixed share replica status update concurrency in share replica promotion
+    feature. Before it was possible to see two active replicas,
+    having 'dr' or 'readable' type of replication,
+    performing 'share replica promotion' action.
+    Now, replica that becomes active is always updated last, so, at some period
+    of time we will have zero 'active' replicas at once instead of
+    two of them.

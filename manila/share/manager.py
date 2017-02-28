@@ -1997,18 +1997,25 @@ class ShareManager(manager.SchedulerDependentManager):
 
         if not updated_replica_list:
             self.db.share_replica_update(
-                context, share_replica['id'],
-                {'status': constants.STATUS_AVAILABLE,
-                 'replica_state': constants.REPLICA_STATE_ACTIVE,
-                 'cast_rules_to_readonly': False})
-
-            self.db.share_replica_update(
                 context, old_active_replica['id'],
                 {'replica_state': constants.REPLICA_STATE_OUT_OF_SYNC,
                  'cast_rules_to_readonly':
                      ensure_old_active_replica_to_readonly})
+            self.db.share_replica_update(
+                context, share_replica['id'],
+                {'status': constants.STATUS_AVAILABLE,
+                 'replica_state': constants.REPLICA_STATE_ACTIVE,
+                 'cast_rules_to_readonly': False})
         else:
-            for updated_replica in updated_replica_list:
+            while updated_replica_list:
+                # NOTE(vponomaryov): update 'active' replica last.
+                for updated_replica in updated_replica_list:
+                    if (updated_replica['id'] == share_replica['id'] and
+                            len(updated_replica_list) > 1):
+                        continue
+                    updated_replica_list.remove(updated_replica)
+                    break
+
                 updated_export_locs = updated_replica.get(
                     'export_locations')
                 if(updated_export_locs is not None
