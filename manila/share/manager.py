@@ -1237,14 +1237,20 @@ class ShareManager(manager.SchedulerDependentManager):
 
         helper.apply_new_access_rules(dest_share_instance)
 
+        self.db.share_instance_update(
+            context, dest_share_instance['id'],
+            {'status': constants.STATUS_AVAILABLE})
+
+        self.db.share_instance_update(context, src_share_instance['id'],
+                                      {'status': constants.STATUS_INACTIVE})
+
+        self._migration_delete_instance(context, src_share_instance['id'])
+
     def _migration_delete_instance(self, context, instance_id):
 
         # refresh the share instance model
         share_instance = self.db.share_instance_get(
             context, instance_id, with_share_data=True)
-
-        self.db.share_instance_update(
-            context, instance_id, {'status': constants.STATUS_INACTIVE})
 
         rules = self.access_helper.get_and_update_share_instance_access_rules(
             context, share_instance_id=instance_id)
@@ -1327,12 +1333,6 @@ class ShareManager(manager.SchedulerDependentManager):
                         {'status': constants.STATUS_AVAILABLE})
                     raise exception.ShareMigrationFailed(reason=msg)
 
-        self.db.share_instance_update(
-            context, dest_share_instance['id'],
-            {'status': constants.STATUS_AVAILABLE})
-
-        self._migration_delete_instance(context, src_share_instance['id'])
-
         model_update = self._get_extra_specs_from_share_type(
             context, dest_share_instance['share_type_id'])
 
@@ -1355,6 +1355,8 @@ class ShareManager(manager.SchedulerDependentManager):
     def _migration_complete_host_assisted(self, context, share_ref,
                                           src_instance_id, dest_instance_id):
 
+        src_share_instance = self.db.share_instance_get(
+            context, src_instance_id, with_share_data=True)
         dest_share_instance = self.db.share_instance_get(
             context, dest_instance_id, with_share_data=True)
 
@@ -1415,6 +1417,15 @@ class ShareManager(manager.SchedulerDependentManager):
                 {'status': constants.STATUS_AVAILABLE})
 
             raise exception.ShareMigrationFailed(reason=msg)
+
+        self.db.share_instance_update(
+            context, dest_share_instance['id'],
+            {'status': constants.STATUS_AVAILABLE})
+
+        self.db.share_instance_update(context, src_instance_id,
+                                      {'status': constants.STATUS_INACTIVE})
+
+        helper.delete_instance_and_wait(src_share_instance)
 
     @utils.require_driver_initialized
     def migration_cancel(self, context, src_instance_id, dest_instance_id):
