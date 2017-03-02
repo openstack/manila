@@ -33,6 +33,8 @@ REMOTE_CLUSTER_NAME = 'fake_cluster_2'
 CLUSTER_ADDRESS_1 = 'fake_cluster_address'
 CLUSTER_ADDRESS_2 = 'fake_cluster_address_2'
 VERSION = 'NetApp Release 8.2.1 Cluster-Mode: Fri Mar 21 14:25:07 PDT 2014'
+VERSION_NO_DARE = 'NetApp Release 9.1.0: Tue May 10 19:30:23 2016 <1no-DARE>'
+VERSION_TUPLE = (9, 1, 0)
 NODE_NAME = 'fake_node1'
 NODE_NAMES = ('fake_node1', 'fake_node2')
 VSERVER_NAME = 'fake_vserver'
@@ -453,6 +455,18 @@ SYSTEM_NODE_GET_ITER_RESPONSE = etree.XML("""
     <num-records>1</num-records>
   </results>
 """ % NODE_NAME)
+
+SECUTITY_KEY_MANAGER_NVE_SUPPORT_RESPONSE_TRUE = etree.XML("""
+  <results status="passed">
+    <vol-encryption-supported>true</vol-encryption-supported>
+  </results>
+""")
+
+SECUTITY_KEY_MANAGER_NVE_SUPPORT_RESPONSE_FALSE = etree.XML("""
+  <results status="passed">
+    <vol-encryption-supported>false</vol-encryption-supported>
+  </results>
+""")
 
 NET_PORT_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">
@@ -1884,6 +1898,35 @@ GET_AGGREGATE_FOR_VOLUME_RESPONSE = etree.XML("""
     'share': SHARE_NAME
 })
 
+GET_VOLUME_FOR_ENCRYPTED_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <encrypt>true</encrypt>
+        <volume-id-attributes>
+          <name>%(volume)s</name>
+          <owning-vserver-name>manila_svm</owning-vserver-name>
+        </volume-id-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'volume': SHARE_NAME})
+
+GET_VOLUME_FOR_ENCRYPTED_OLD_SYS_VERSION_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-id-attributes>
+          <name>%(volume)s</name>
+          <owning-vserver-name>manila_svm</owning-vserver-name>
+        </volume-id-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'volume': SHARE_NAME})
+
 EXPORT_RULE_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
@@ -2476,3 +2519,6 @@ FAKE_MANAGE_VOLUME = {
     'style': 'fake_style',
     'size': SHARE_SIZE,
 }
+
+FAKE_KEY_MANAGER_ERROR = "The onboard key manager is not enabled. To enable \
+                         it, run \"security key-manager setup\"."

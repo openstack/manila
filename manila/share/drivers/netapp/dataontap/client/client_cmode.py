@@ -1,6 +1,7 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2015 Clinton Knight.  All rights reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2018 Jose Porrua.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -55,6 +56,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.connection.set_api_version(1, 15)
         (major, minor) = self.get_ontapi_version(cached=False)
         self.connection.set_api_version(major, minor)
+        system_version = self.get_system_version(cached=False)
+        self.connection.set_system_version(system_version)
 
         self._init_features()
 
@@ -66,6 +69,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         ontapi_1_20 = ontapi_version >= (1, 20)
         ontapi_1_2x = (1, 20) <= ontapi_version < (1, 30)
         ontapi_1_30 = ontapi_version >= (1, 30)
+        ontapi_1_110 = ontapi_version >= (1, 110)
 
         self.features.add_feature('SNAPMIRROR_V2', supported=ontapi_1_20)
         self.features.add_feature('SYSTEM_METRICS', supported=ontapi_1_2x)
@@ -77,6 +81,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.features.add_feature('CLUSTER_PEER_POLICY', supported=ontapi_1_30)
         self.features.add_feature('ADVANCED_DISK_PARTITIONING',
                                   supported=ontapi_1_30)
+        self.features.add_feature('FLEXVOL_ENCRYPTION', supported=ontapi_1_110)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -373,6 +378,31 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                         vserver_client.send_request('cifs-server-delete')
 
     @na_utils.trace
+    def is_nve_supported(self):
+        """Determine whether NVE is supported on this platform and version."""
+        nodes = self.list_cluster_nodes()
+        system_version = self.get_system_version()
+        version = system_version.get('version')
+        version_tuple = system_version.get('version-tuple')
+
+        # NVE requires an ONTAP version >= 9.1. Also, not all platforms
+        # support this feature. NVE is not supported if the version
+        # includes the substring '<1no-DARE>' (no Data At Rest Encryption).
+        if version_tuple >= (9, 1, 0) and "<1no-DARE>" not in version:
+            if nodes is not None:
+                return self.get_security_key_manager_nve_support(nodes[0])
+            else:
+                LOG.debug('Cluster credentials are required in order to '
+                          'determine whether NetApp Volume Encryption is '
+                          'supported or not on this platform.')
+                return False
+        else:
+            LOG.debug('NetApp Volume Encryption is not supported on this '
+                      'ONTAP version: %(version)s, %(version_tuple)s. ',
+                      {'version': version, 'version_tuple': version_tuple})
+            return False
+
+    @na_utils.trace
     def list_cluster_nodes(self):
         """Get all available cluster nodes."""
         api_args = {
@@ -387,6 +417,25 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'attributes-list') or netapp_api.NaElement('none')
         return [node_info.get_child_content('node') for node_info
                 in nodes_info_list.get_children()]
+
+    @na_utils.trace
+    def get_security_key_manager_nve_support(self, node):
+        """Determine whether the cluster platform supports Volume Encryption"""
+        api_args = {'node': node}
+        try:
+            result = self.send_request(
+                'security-key-manager-volume-encryption-supported', api_args)
+            vol_encryption_supported = result.get_child_content(
+                'vol-encryption-supported') or 'false'
+        except netapp_api.NaApiError as e:
+            if (e.code == netapp_api.EAPIERROR and
+                    "key manager is not enabled" in e.message):
+                LOG.debug("%s", e.message)
+                return False
+            else:
+                raise
+
+        return strutils.bool_from_string(vol_encryption_supported)
 
     @na_utils.trace
     def list_node_data_ports(self, node):
@@ -1430,8 +1479,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                       language=None, dedup_enabled=False,
                       compression_enabled=False, max_files=None,
                       snapshot_reserve=None, volume_type='rw',
-                      qos_policy_group=None, **options):
-
+                      qos_policy_group=None,
+                      encrypt=False, **options):
         """Creates a volume."""
         api_args = {
             'containing-aggr-name': aggregate_name,
@@ -1452,6 +1501,14 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 snapshot_reserve)
         if qos_policy_group is not None:
             api_args['qos-policy-group-name'] = qos_policy_group
+
+        if encrypt is True:
+            if not self.features.FLEXVOL_ENCRYPTION:
+                msg = 'Flexvol encryption is not supported on this backend.'
+                raise exception.NetAppException(msg)
+            else:
+                api_args['encrypt'] = 'true'
+
         self.send_request('volume-create', api_args)
 
         # cDOT compression requires that deduplication be enabled.
@@ -1704,6 +1761,41 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         }
         result = self.send_iter_request('volume-get-iter', api_args)
         return self._has_records(result)
+
+    @na_utils.trace
+    def is_flexvol_encrypted(self, volume_name, vserver_name):
+        """Checks whether the volume is encrypted or not."""
+
+        if not self.features.FLEXVOL_ENCRYPTION:
+            return False
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'encrypt': 'true',
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                        'owning-vserver-name': vserver_name,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'encrypt': None,
+                },
+            },
+        }
+        result = self.send_iter_request('volume-get-iter', api_args)
+        if self._has_records(result):
+            attributes_list = result.get_child_by_name(
+                'attributes-list') or netapp_api.NaElement('none')
+            volume_attributes = attributes_list.get_child_by_name(
+                'volume-attributes') or netapp_api.NaElement('none')
+            encrypt = volume_attributes.get_child_content('encrypt')
+            if encrypt:
+                return True
+
+        return False
 
     @na_utils.trace
     def get_aggregate_for_volume(self, volume_name):
@@ -3419,29 +3511,37 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def start_volume_move(self, volume_name, vserver, destination_aggregate,
-                          cutover_action='wait'):
+                          cutover_action='wait', encrypt_destination=None):
         """Moves a FlexVol across Vserver aggregates.
 
         Requires cluster-scoped credentials.
         """
         self._send_volume_move_request(
-            volume_name, vserver, destination_aggregate,
-            cutover_action=cutover_action)
+            volume_name, vserver,
+            destination_aggregate,
+            cutover_action=cutover_action,
+            encrypt_destination=encrypt_destination)
 
     @na_utils.trace
-    def check_volume_move(self, volume_name, vserver, destination_aggregate):
+    def check_volume_move(self, volume_name, vserver, destination_aggregate,
+                          encrypt_destination=None):
         """Moves a FlexVol across Vserver aggregates.
 
         Requires cluster-scoped credentials.
         """
         self._send_volume_move_request(
-            volume_name, vserver, destination_aggregate, validation_only=True)
+            volume_name,
+            vserver,
+            destination_aggregate,
+            validation_only=True,
+            encrypt_destination=encrypt_destination)
 
     @na_utils.trace
     def _send_volume_move_request(self, volume_name, vserver,
                                   destination_aggregate,
                                   cutover_action='wait',
-                                  validation_only=False):
+                                  validation_only=False,
+                                  encrypt_destination=None):
         """Send request to check if vol move is possible, or start it.
 
         :param volume_name: Name of the FlexVol to be moved.
@@ -3454,6 +3554,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             intervention in case of errors.
         :param validation_only: If set to True, only validates if the volume
             move is possible, does not trigger data copy.
+        :param encrypt_destination: If set to True, it encrypts the Flexvol
+            after the volume move is complete.
         """
         api_args = {
             'source-volume': volume_name,
@@ -3461,6 +3563,15 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'dest-aggr': destination_aggregate,
             'cutover-action': CUTOVER_ACTION_MAP[cutover_action],
         }
+
+        if self.features.FLEXVOL_ENCRYPTION and encrypt_destination:
+            api_args['encrypt-destination'] = 'true'
+        elif encrypt_destination:
+            msg = 'Flexvol encryption is not supported on this backend.'
+            raise exception.NetAppException(msg)
+        else:
+            api_args['encrypt-destination'] = 'false'
+
         if validation_only:
             api_args['perform-validation-only'] = 'true'
         self.send_request('volume-move-start', api_args)

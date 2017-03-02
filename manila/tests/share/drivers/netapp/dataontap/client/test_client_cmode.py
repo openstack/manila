@@ -53,6 +53,13 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          'get_ontapi_version',
                          mock.Mock(return_value=(1, 20)))
 
+        self.mock_object(client_base.NetAppBaseClient,
+                         'get_system_version',
+                         mock.Mock(return_value={
+                             'version-tuple': (8, 3, 0),
+                             'version': fake.VERSION,
+                         }))
+
         self.client = client_cmode.NetAppCmodeClient(**fake.CONNECTION_INFO)
         self.client.connection = mock.MagicMock()
 
@@ -76,6 +83,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertFalse(self.client.features.BROADCAST_DOMAINS)
         self.assertFalse(self.client.features.IPSPACES)
         self.assertFalse(self.client.features.SUBNETS)
+        self.assertFalse(self.client.features.FLEXVOL_ENCRYPTION)
 
     @ddt.data((1, 30), (1, 40), (2, 0))
     def test_init_features_ontapi_1_30(self, ontapi_version):
@@ -89,6 +97,145 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertTrue(self.client.features.BROADCAST_DOMAINS)
         self.assertTrue(self.client.features.IPSPACES)
         self.assertTrue(self.client.features.SUBNETS)
+
+    @ddt.data((1, 110), (2, 0))
+    def test_init_features_ontap_1_110(self, ontapi_version):
+
+        self.mock_object(client_base.NetAppBaseClient,
+                         'get_ontapi_version',
+                         mock.Mock(return_value=ontapi_version))
+
+        self.client._init_features()
+
+        self.assertTrue(self.client.features.BROADCAST_DOMAINS)
+        self.assertTrue(self.client.features.IPSPACES)
+        self.assertTrue(self.client.features.SUBNETS)
+        self.assertTrue(self.client.features.FLEXVOL_ENCRYPTION)
+
+    @ddt.data(((9, 1, 0), fake.VERSION_NO_DARE), ((8, 3, 2), fake.VERSION))
+    @ddt.unpack
+    def test_is_nve_supported_unsupported_release_or_platform(self, gen, ver):
+
+        system_version = {'version-tuple': gen, 'version': ver}
+        self.mock_object(client_base.NetAppBaseClient,
+                         'get_system_version',
+                         mock.Mock(return_value=system_version))
+        self.mock_object(self.client,
+                         'get_security_key_manager_nve_support',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.client,
+                         'list_cluster_nodes',
+                         mock.Mock(return_value=fake.NODE_NAMES))
+
+        result = self.client.is_nve_supported()
+
+        self.assertFalse(result)
+
+    def test_is_nve_supported_valid_platform_and_supported_release(self):
+
+        system_version = {
+            'version-tuple': (9, 1, 0),
+            'version': fake.VERSION,
+        }
+        self.mock_object(client_base.NetAppBaseClient,
+                         'get_system_version',
+                         mock.Mock(return_value=system_version))
+        self.mock_object(self.client,
+                         'get_security_key_manager_nve_support',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.client,
+                         'list_cluster_nodes',
+                         mock.Mock(return_value=fake.NODE_NAMES))
+
+        result = self.client.is_nve_supported()
+        self.assertTrue(result)
+
+    def test_is_nve_supported_key_manager_not_enabled(self):
+
+        system_version = {
+            'version-tuple': (9, 1, 0),
+            'version': fake.VERSION,
+        }
+        self.mock_object(client_base.NetAppBaseClient,
+                         'get_system_version',
+                         mock.Mock(return_value=system_version))
+        self.mock_object(self.client,
+                         'get_security_key_manager_nve_support',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.client,
+                         'list_cluster_nodes',
+                         mock.Mock(return_value=fake.NODE_NAMES))
+
+        result = self.client.is_nve_supported()
+
+        self.assertFalse(result)
+
+    def test_get_security_key_manager_nve_support_enabled(self):
+        api_response = netapp_api.NaElement(
+            fake.SECUTITY_KEY_MANAGER_NVE_SUPPORT_RESPONSE_TRUE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_security_key_manager_nve_support(
+            fake.NODE_NAME)
+
+        self.assertTrue(result)
+        api_args = {'node': fake.NODE_NAME}
+        self.client.send_request.assert_has_calls([
+            mock.call('security-key-manager-volume-encryption-supported',
+                      api_args)])
+
+    def test_get_security_key_manager_nve_support_disabled(self):
+        api_response = netapp_api.NaElement(
+            fake.SECUTITY_KEY_MANAGER_NVE_SUPPORT_RESPONSE_FALSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_security_key_manager_nve_support(
+            fake.NODE_NAME)
+
+        self.assertFalse(result)
+        api_args = {'node': fake.NODE_NAME}
+        self.client.send_request.assert_has_calls([
+            mock.call('security-key-manager-volume-encryption-supported',
+                      api_args)])
+
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.get_security_key_manager_nve_support,
+                          fake.NODE_NAME)
+        self.mock_object(self.client, 'send_request', self._mock_api_error(
+            code=netapp_api.EAPIERROR, message=fake.FAKE_KEY_MANAGER_ERROR))
+        result = self.client.get_security_key_manager_nve_support(
+            fake.NODE_NAME)
+        self.assertFalse(result)
+
+    @ddt.data((True, True, True), (False, None, False))
+    @ddt.unpack
+    def test_send_volume_move_request_success(self, validation_only,
+                                              encrypt_dst, fv_encryption):
+        self.mock_object(self.client, 'features',
+                         mock.Mock(FLEXVOL_ENCRYPTION=fv_encryption))
+        self.client._send_volume_move_request(fake.ROOT_VOLUME_NAME,
+                                              fake.NODE_VSERVER_NAME,
+                                              fake.SHARE_AGGREGATE_NAME,
+                                              validation_only=validation_only,
+                                              encrypt_destination=encrypt_dst)
+
+    @ddt.data((True, True, False))
+    @ddt.unpack
+    def test_send_volume_move_request_failure(self, validation_only,
+                                              encrypt_dst, fv_encrypt):
+        self.mock_object(self.client, 'features',
+                         mock.Mock(FLEXVOL_ENCRYPTION=fv_encrypt))
+        self.assertRaises(exception.NetAppException,
+                          self.client._send_volume_move_request,
+                          fake.ROOT_VOLUME_NAME,
+                          fake.NODE_VSERVER_NAME,
+                          fake.SHARE_AGGREGATE_NAME,
+                          validation_only=validation_only,
+                          encrypt_destination=encrypt_dst)
 
     def test_invoke_vserver_api(self):
 
@@ -2535,6 +2682,143 @@ class NetAppClientCmodeTestCase(test.TestCase):
             fake.SHARE_NAME, fake.MAX_FILES)
         self.client.enable_dedup.assert_called_once_with(fake.SHARE_NAME)
         self.client.enable_compression.assert_called_once_with(fake.SHARE_NAME)
+
+    def test_create_encrypted_volume(self):
+
+        self.mock_object(self.client, 'send_request')
+        self.client.features.add_feature('FLEXVOL_ENCRYPTION')
+
+        self.client.create_volume(
+            fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME, 100, encrypt=True)
+
+        volume_create_args = {
+            'containing-aggr-name': fake.SHARE_AGGREGATE_NAME,
+            'size': '100g',
+            'volume': fake.SHARE_NAME,
+            'volume-type': 'rw',
+            'junction-path': '/%s' % fake.SHARE_NAME,
+            'encrypt': 'true',
+        }
+
+        self.client.send_request.assert_called_once_with('volume-create',
+                                                         volume_create_args)
+
+    def test_create_non_encrypted_volume(self):
+
+        self.mock_object(self.client, 'send_request')
+        self.client.features.add_feature('FLEXVOL_ENCRYPTION')
+
+        self.client.create_volume(
+            fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME, 100, encrypt=False)
+
+        volume_create_args = {
+            'containing-aggr-name': fake.SHARE_AGGREGATE_NAME,
+            'size': '100g',
+            'volume': fake.SHARE_NAME,
+            'volume-type': 'rw',
+            'junction-path': '/%s' % fake.SHARE_NAME,
+        }
+
+        self.client.send_request.assert_called_once_with('volume-create',
+                                                         volume_create_args)
+
+    def test_create_encrypted_volume_not_supported(self):
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.create_volume,
+                          fake.SHARE_AGGREGATE_NAME,
+                          fake.SHARE_NAME,
+                          100,
+                          encrypt=True)
+
+    def test_is_flexvol_encrypted_unsupported(self):
+
+        self.client.features.add_feature('FLEXVOL_ENCRYPTION', supported=False)
+
+        result = self.client.is_flexvol_encrypted(fake.SHARE_NAME,
+                                                  fake.VSERVER_NAME)
+
+        self.assertFalse(result)
+
+    def test_is_flexvol_encrypted_no_records_found(self):
+
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.is_flexvol_encrypted(fake.SHARE_NAME,
+                                                  fake.VSERVER_NAME)
+
+        self.assertFalse(result)
+
+    def test_is_flexvol_encrypted(self):
+
+        self.client.features.add_feature('FLEXVOL_ENCRYPTION', supported=True)
+        api_response = netapp_api.NaElement(
+            fake.GET_VOLUME_FOR_ENCRYPTED_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.is_flexvol_encrypted(fake.SHARE_NAME,
+                                                  fake.VSERVER_NAME)
+
+        volume_get_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'encrypt': 'true',
+                    'volume-id-attributes': {
+                        'name': fake.SHARE_NAME,
+                        'owning-vserver-name': fake.VSERVER_NAME,
+                    }
+                }
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'encrypt': None,
+                }
+            }
+        }
+
+        self.client.send_iter_request.assert_called_once_with(
+            'volume-get-iter', volume_get_iter_args)
+
+        self.assertTrue(result)
+
+    def test_is_flexvol_encrypted_8_x_system_version_response(self):
+
+        self.client.features.add_feature('FLEXVOL_ENCRYPTION', supported=True)
+        api_response = netapp_api.NaElement(
+            fake.GET_VOLUME_FOR_ENCRYPTED_OLD_SYS_VERSION_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.is_flexvol_encrypted(fake.SHARE_NAME,
+                                                  fake.VSERVER_NAME)
+
+        volume_get_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'encrypt': 'true',
+                    'volume-id-attributes': {
+                        'name': fake.SHARE_NAME,
+                        'owning-vserver-name': fake.VSERVER_NAME,
+                    }
+                }
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'encrypt': None,
+                }
+            }
+        }
+
+        self.client.send_iter_request.assert_called_once_with(
+            'volume-get-iter', volume_get_iter_args)
+
+        self.assertFalse(result)
 
     def test_enable_dedup(self):
 
@@ -5812,6 +6096,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'vserver': fake.VSERVER_NAME,
             'dest-aggr': fake.SHARE_AGGREGATE_NAME,
             'cutover-action': 'wait',
+            'encrypt-destination': 'false'
         }
         if method_name.startswith('check'):
             expected_api_args['perform-validation-only'] = 'true'
