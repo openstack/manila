@@ -26,6 +26,7 @@ import random
 import re
 import shutil
 import socket
+import ssl
 import sys
 import tempfile
 import time
@@ -48,7 +49,7 @@ from webob import exc
 from manila.common import constants
 from manila.db import api as db_api
 from manila import exception
-from manila.i18n import _
+from manila.i18n import _, _LW
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
@@ -590,3 +591,24 @@ def wait_for_access_update(context, db, share_instance,
             raise exception.ShareMigrationFailed(reason=msg)
         else:
             time.sleep(tries ** 2)
+
+
+def create_ssl_context(configuration):
+    """Create context for ssl verification.
+
+    .. note:: starting from python 2.7.9 ssl adds create_default_context.
+              We need to keep compatibility with previous python as well.
+    """
+    try:
+        if configuration.driver_ssl_cert_verify:
+            context = ssl.create_default_context(
+                capath=configuration.driver_ssl_cert_path)
+        else:
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+    except AttributeError:
+        LOG.warning(_LW('Creating ssl context is not supported on this '
+                        'version of Python, ssl verification is disabled.'))
+        context = None
+    return context

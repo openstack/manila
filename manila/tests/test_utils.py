@@ -17,6 +17,7 @@
 import datetime
 import errno
 import socket
+import ssl
 import time
 
 import ddt
@@ -744,3 +745,30 @@ class ShareMigrationHelperTestCase(test.TestCase):
         self.assertRaises(expected_exc,
                           utils.wait_for_access_update, self.context,
                           db, fake_instance, 1)
+
+
+class SslContextTestCase(test.TestCase):
+
+    def test_create_ssl_context(self):
+        configuration = mock.Mock()
+        configuration.driver_ssl_cert_verify = True
+        configuration.driver_ssl_cert_path = "./cert_path/"
+        self.mock_object(ssl, 'create_default_context')
+        context = utils.create_ssl_context(configuration)
+        self.assertIsNotNone(context)
+
+    def test_create_ssl_context_no_verify(self):
+        configuration = mock.Mock()
+        configuration.driver_ssl_cert_verify = False
+        self.mock_object(ssl, 'create_default_context')
+        context = utils.create_ssl_context(configuration)
+        self.assertFalse(context.check_hostname)
+
+    def test_no_create_default_context(self):
+        """Test scenario of running on python 2.7.8 or earlier."""
+        configuration = mock.Mock()
+        configuration.driver_ssl_cert_verify = False
+        self.mock_object(ssl, 'create_default_context',
+                         mock.Mock(side_effect=AttributeError))
+        context = utils.create_ssl_context(configuration)
+        self.assertIsNone(context)

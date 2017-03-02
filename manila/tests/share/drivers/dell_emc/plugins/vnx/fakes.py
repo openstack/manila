@@ -1467,6 +1467,9 @@ class FakeEMCShareDriver(object):
         self.configuration.emc_nas_login = FakeData.emc_nas_login
         self.configuration.emc_nas_password = FakeData.emc_nas_password
         self.configuration.share_backend_name = FakeData.share_backend_name
+        self.configuration.driver_ssl_cert_verify = False
+        self.configuration.driver_ssl_cert_path = None
+
 
 CIFS_SHARE = fake_share.fake_share(
     id=FakeData.share_id,
