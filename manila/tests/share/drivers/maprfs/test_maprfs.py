@@ -14,8 +14,6 @@
 
 """Unit tests for MapRFS native protocol driver module."""
 
-import socket
-
 import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -50,9 +48,6 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
 
         self.fake_conf = config.Configuration(None)
         self.cluster_name = 'fake'
-        self._driver = maprfs.MapRFSNativeShareDriver(
-            configuration=self.fake_conf)
-        self._driver.do_setup(self._context)
         export_locations = {0: {'path': '/share-0'}}
         export_locations[0]['el_metadata'] = {
             'volume-name': 'share-0'}
@@ -78,14 +73,20 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
         self.hadoop_bin = '/usr/bin/hadoop'
         self.maprcli_bin = '/usr/bin/maprcli'
 
+        self.mock_object(utils, 'execute')
+        self.mock_object(
+            mapru.socket, 'gethostname', mock.Mock(return_value='testserver'))
+        self.mock_object(
+            mapru.socket, 'gethostbyname_ex', mock.Mock(return_value=(
+                'localhost',
+                ['localhost.localdomain',
+                 mapru.socket.gethostname.return_value],
+                ['127.0.0.1', self.local_ip])))
+        self._driver = maprfs.MapRFSNativeShareDriver(
+            configuration=self.fake_conf)
+        self._driver.do_setup(self._context)
         self._driver.api.get_share_metadata = mock.Mock(return_value={})
         self._driver.api.update_share_metadata = mock.Mock()
-        utils.execute = mock.Mock()
-        socket.gethostname = mock.Mock(return_value='testserver')
-        socket.gethostbyname_ex = mock.Mock(return_value=(
-            'localhost',
-            ['localhost.localdomain', 'testserver'],
-            ['127.0.0.1', self.local_ip]))
 
     def test_do_setup(self):
         self._driver.do_setup(self._context)
@@ -638,7 +639,7 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
                           self._driver._maprfs_util._execute, "fake", "cmd")
 
     def test__execute_local(self):
-        utils.execute = mock.Mock(return_value=("fake", 0))
+        self.mock_object(utils, 'execute', mock.Mock(return_value=("fake", 0)))
 
         self._driver._maprfs_util._execute("fake", "cmd")
 
