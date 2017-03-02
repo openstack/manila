@@ -177,12 +177,6 @@ class Reservation(BASE, ManilaBase):
     delta = Column(Integer)
     expire = Column(DateTime, nullable=False)
 
-#    usage = orm.relationship(
-#        "QuotaUsage",
-#        foreign_keys=usage_id,
-#        primaryjoin='and_(Reservation.usage_id == QuotaUsage.id,'
-#                         'QuotaUsage.deleted == 0)')
-
 
 class Share(BASE, ManilaBase):
     """Represents an NFS and CIFS shares."""

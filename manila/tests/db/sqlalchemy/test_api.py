@@ -2473,6 +2473,37 @@ class NetworkAllocationsDatabaseAPITestCase(test.TestCase):
             self.assertIn(na.label, ('admin', 'user', None))
 
 
+class ReservationDatabaseAPITest(test.TestCase):
+
+    def setUp(self):
+        super(ReservationDatabaseAPITest, self).setUp()
+        self.context = context.get_admin_context()
+
+    def test_reservation_expire(self):
+        quota_usage = db_api.quota_usage_create(self.context, 'fake_project',
+                                                'fake_user', 'fake_resource',
+                                                0, 12, until_refresh=None)
+        session = db_api.get_session()
+        for time_s in (-1, 1):
+            reservation = db_api._reservation_create(
+                self.context, 'fake_uuid',
+                quota_usage, 'fake_project',
+                'fake_user', 'fake_resource', 10,
+                timeutils.utcnow() +
+                datetime.timedelta(days=time_s),
+                session=session)
+
+        db_api.reservation_expire(self.context)
+
+        reservations = db_api._quota_reservations_query(session, self.context,
+                                                        ['fake_uuid']).all()
+        quota_usage = db_api.quota_usage_get(self.context, 'fake_project',
+                                             'fake_resource')
+        self.assertEqual(1, len(reservations))
+        self.assertEqual(reservation['id'], reservations[0]['id'])
+        self.assertEqual(2, quota_usage['reserved'])
+
+
 @ddt.ddt
 class PurgeDeletedTest(test.TestCase):
 

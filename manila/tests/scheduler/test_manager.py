@@ -17,6 +17,12 @@
 Tests For Scheduler Manager
 """
 
+try:
+    # Python3 variant
+    from importlib import reload
+except ImportError:
+    pass
+
 import ddt
 import mock
 from oslo_config import cfg
@@ -25,6 +31,7 @@ from manila.common import constants
 from manila import context
 from manila import db
 from manila import exception
+from manila import quota
 from manila.scheduler.drivers import base
 from manila.scheduler.drivers import filter
 from manila.scheduler import manager
@@ -46,6 +53,19 @@ class SchedulerManagerTestCase(test.TestCase):
 
     def setUp(self):
         super(SchedulerManagerTestCase, self).setUp()
+        self.periodic_tasks = []
+
+        def _periodic_task(*args, **kwargs):
+            def decorator(f):
+                self.periodic_tasks.append(f)
+                return f
+            return mock.Mock(side_effect=decorator)
+
+        self.mock_periodic_task = self.mock_object(
+            manager.periodic_task, 'periodic_task',
+            mock.Mock(side_effect=_periodic_task))
+        reload(manager)
+
         self.flags(scheduler_driver=self.driver_cls_name)
         self.manager = self.manager_cls()
         self.context = context.RequestContext('fake_user', 'fake_project')
@@ -163,6 +183,20 @@ class SchedulerManagerTestCase(test.TestCase):
             (self.manager.driver.schedule_create_share.
                 assert_called_once_with(self.context, request_spec, {}))
             manager.LOG.error.assert_called_once_with(mock.ANY, mock.ANY)
+
+    @mock.patch.object(quota.QUOTAS, 'expire')
+    def test__expire_reservations(self, mock_expire):
+        self.manager._expire_reservations(self.context)
+
+        mock_expire.assert_called_once_with(self.context)
+
+    def test_periodic_tasks(self):
+        self.mock_periodic_task.assert_called_once_with(
+            spacing=600, run_immediately=True)
+        self.assertEqual(1, len(self.periodic_tasks))
+        self.assertEqual(
+            self.periodic_tasks[0].__name__,
+            self.manager._expire_reservations.__name__)
 
     def test_get_pools(self):
         """Ensure get_pools exists and calls base_scheduler.get_pools."""
