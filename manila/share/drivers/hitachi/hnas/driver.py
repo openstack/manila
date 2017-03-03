@@ -89,12 +89,15 @@ CONF.register_opts(hitachi_hnas_opts)
 class HitachiHNASDriver(driver.ShareDriver):
     """Manila HNAS Driver implementation.
 
-    1.0.0 - Initial Version.
-    2.0.0 - Refactoring, bugfixes, implemented Share Shrink and Update Access.
-    3.0.0 - New driver location, implemented support for CIFS protocol.
-    3.1.0 - Added admin network export location support.
-    4.0.0 - Added mountable snapshots, revert-to-snapshot and manage snapshots
-            features support.
+    Driver versions::
+
+        1.0.0 - Initial Version.
+        2.0.0 - Refactoring, bugfixes, implemented Share Shrink and
+                Update Access.
+        3.0.0 - New driver location, implemented support for CIFS protocol.
+        3.1.0 - Added admin network export location support.
+        4.0.0 - Added mountable snapshots, revert-to-snapshot and
+                manage snapshots features support.
     """
 
     def __init__(self, *args, **kwargs):
@@ -318,31 +321,45 @@ class HitachiHNASDriver(driver.ShareDriver):
             Example for NFS::
 
             [
+
               {
+
                 'path': '172.24.44.10:/shares/id',
                 'metadata': {},
                 'is_admin_only': False
+
               },
+
               {
+
                 'path': '192.168.0.10:/shares/id',
                 'metadata': {},
                 'is_admin_only': True
+
               }
+
             ]
 
             Example for CIFS::
 
             [
+
               {
+
                 'path': '\\172.24.44.10\id',
                 'metadata': {},
                 'is_admin_only': False
+
               },
+
               {
+
                 'path': '\\192.168.0.10\id',
                 'metadata': {},
                 'is_admin_only': True
+
               }
+
             ]
 
         """
@@ -445,31 +462,45 @@ class HitachiHNASDriver(driver.ShareDriver):
             Example for NFS::
 
             [
+
               {
+
                 'path': '172.24.44.10:/shares/id',
                 'metadata': {},
                 'is_admin_only': False
+
               },
+
               {
+
                 'path': '192.168.0.10:/shares/id',
                 'metadata': {},
                 'is_admin_only': True
+
               }
+
             ]
 
             Example for CIFS::
 
             [
+
               {
+
                 'path': '\\172.24.44.10\id',
                 'metadata': {},
                 'is_admin_only': False
+
               },
+
               {
+
                 'path': '\\192.168.0.10\id',
                 'metadata': {},
                 'is_admin_only': True
+
               }
+
             ]
 
         """
@@ -501,31 +532,45 @@ class HitachiHNASDriver(driver.ShareDriver):
             Example for NFS::
 
             [
+
               {
+
                 'path': '172.24.44.10:/shares/id',
                 'metadata': {},
                 'is_admin_only': False
+
               },
+
               {
+
                 'path': '192.168.0.10:/shares/id',
                 'metadata': {},
                 'is_admin_only': True
+
               }
+
             ]
 
             Example for CIFS::
 
             [
+
               {
+
                 'path': '\\172.24.44.10\id',
                 'metadata': {},
                 'is_admin_only': False
+
               },
+
               {
+
                 'path': '\\192.168.0.10\id',
                 'metadata': {},
                 'is_admin_only': True
+
               }
+
             ]
 
         """
@@ -610,37 +655,55 @@ class HitachiHNASDriver(driver.ShareDriver):
             Example for NFS::
 
             {
+
               'size': 10,
               'export_locations': [
+
                 {
+
                   'path': '172.24.44.10:/shares/id',
                   'metadata': {},
                   'is_admin_only': False
+
                 },
+
                 {
+
                   'path': '192.168.0.10:/shares/id',
                   'metadata': {},
                   'is_admin_only': True
+
                 }
+
               ]
+
             }
 
             Example for CIFS::
 
             {
+
               'size': 10,
               'export_locations': [
+
                 {
+
                   'path': '\\172.24.44.10\id',
                   'metadata': {},
                   'is_admin_only': False
+
                 },
+
                 {
+
                   'path': '\\192.168.0.10\id',
                   'metadata': {},
                   'is_admin_only': True
+
                 }
+
               ]
+
             }
 
         """
@@ -1171,32 +1234,47 @@ class HitachiHNASDriver(driver.ShareDriver):
             Example for NFS::
 
             [
+
               {
+
                 'path': '172.24.44.10:/snapshots/id',
                 'metadata': {},
                 'is_admin_only': False
+
               },
+
               {
+
                 'path': '192.168.0.10:/snapshots/id',
                 'metadata': {},
                 'is_admin_only': True
+
               }
+
             ]
 
             Example for CIFS::
 
             [
+
               {
+
                 'path': '\\172.24.44.10\id',
                 'metadata': {},
                 'is_admin_only': False
+
               },
+
               {
+
                 'path': '\\192.168.0.10\id',
                 'metadata': {},
                 'is_admin_only': True
+
               }
+
             ]
+
         """
         LOG.debug("Ensuring snapshot in HNAS: %(snap)s.",
                   {'snap': snapshot['id']})

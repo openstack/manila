@@ -42,8 +42,10 @@ class FPG(types.String, types.IPAddress):
 
     Used to represent multiple pools per backend values.
     Converts configuration value to an FPGs value.
-    FPGs value format:
+    FPGs value format::
+
         FPG name, IP address 1, IP address 2, ..., IP address 4
+
     where FPG name is a string value,
     IP address is of type types.IPAddress
 
@@ -199,7 +201,8 @@ class HPE3ParShareDriver(driver.ShareDriver):
 
     Supports NFS and CIFS protocols on arrays with File Persona.
 
-    Version history:
+    Version history::
+
         1.0.0 - Begin Liberty development (post-Kilo)
         1.0.1 - Report thin/dedup/hp_flash_cache capabilities
         1.0.2 - Add share server/share network support

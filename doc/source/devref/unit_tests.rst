@@ -4,7 +4,7 @@ Unit Tests
 Manila contains a suite of unit tests, in the manila/tests directory.
 
 Any proposed code change will be automatically rejected by the OpenStack
-Jenkins server [#f1]_ if the change causes unit test failures.
+Jenkins server if the change causes unit test failures.
 
 Running the tests
 -----------------
@@ -92,7 +92,7 @@ Virtualenv
 ----------
 
 By default, the tests use the Python packages installed inside a
-virtualenv [#f2]_. (This is equivalent to using the ``-V, --virtualenv`` flag).
+virtualenv [#f1]_. (This is equivalent to using the ``-V, --virtualenv`` flag).
 If the virtualenv does not exist, it will be created the first time the tests are run.
 
 If you wish to recreate the virtualenv, call ``run_tests.sh`` with the flag::
@@ -119,7 +119,7 @@ If you do not wish to use a virtualenv at all, use the flag::
 Database
 --------
 
-Some of the unit tests make queries against an sqlite database [#f3]_. By
+Some of the unit tests make queries against an sqlite database [#f2]_. By
 default, the test database (``tests.sqlite``) is deleted and recreated each
 time ``run_tests.sh`` is invoked (This is equivalent to using the
 ``-r, --recreate-db`` flag). To reduce testing time if a database already
@@ -137,7 +137,7 @@ Gotchas
 **Running Tests from Shared Folders**
 
 If you are running the unit tests from a shared folder, you may see tests start
-to fail or stop completely as a result of Python lockfile issues [#f4]_. You
+to fail or stop completely as a result of Python lockfile issues [#f3]_. You
 can get around this by manually setting or updating the following line in
 ``manila/tests/conf_fixture.py``::
 
@@ -148,12 +148,10 @@ a shared folder.
 
 .. rubric:: Footnotes
 
-.. [#f1] See :doc:`jenkins`.
-
-.. [#f2] See :doc:`development.environment` for more details about the use of
+.. [#f1] See :doc:`development.environment` for more details about the use of
    virtualenv.
 
-.. [#f3] There is an effort underway to use a fake DB implementation for the
+.. [#f2] There is an effort underway to use a fake DB implementation for the
    unit tests. See https://lists.launchpad.net/openstack/msg05604.html
 
-.. [#f4] See Vish's comment in this bug report: https://bugs.launchpad.net/manila/+bug/882933
+.. [#f3] See Vish's comment in this bug report: https://bugs.launchpad.net/manila/+bug/882933

@@ -66,11 +66,6 @@ Information
 
    glossary
 
-Outstanding Documentation Tasks
-===============================
-
-.. todolist::
-
 Indices and tables
 ==================
 

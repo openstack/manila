@@ -78,12 +78,16 @@ class SchedulerAPI(object):
         """Casts an rpc to the scheduler to create a share group.
 
         Example of 'request_spec' argument value::
+
             {
-                'share_group_type_id': ,
+
+                'share_group_type_id': 'fake_share_group_type_id',
                 'share_group_id': 'some_fake_uuid',
                 'share_types': [models.ShareType],
                 'resource_type': models.ShareGroup,
+
             }
+
         """
         request_spec_p = jsonutils.to_primitive(request_spec)
         call_context = self.client.prepare(version='1.8')

@@ -18,9 +18,6 @@
 Shared Filesystems
 ==================
 
-.. todo:: rework
-
-
 The :mod:`manila.share.manager` Module
 --------------------------------------
 

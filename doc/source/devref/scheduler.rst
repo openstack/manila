@@ -163,16 +163,6 @@ The :mod:`manila.scheduler.filters.capacity` Filter
     :show-inheritance:
 
 
-The :mod:`manila.scheduler.filters.consistency_group` Filter
-------------------------------------------------------------
-
-.. automodule:: manila.scheduler.filters.consistency_group
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 The :mod:`manila.scheduler.filters.extra_specs_ops` Filter
 ----------------------------------------------------------
 

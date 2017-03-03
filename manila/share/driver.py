@@ -731,17 +731,24 @@ class ShareDriver(object):
         :param delete_rules: Empty List or List of access rules which should be
                removed. access_rules doesn't contain these rules.
         :param share_server: None or Share server model
-        :returns: None, or a dictionary of updates in the format:
+        :returns: None, or a dictionary of updates in the format::
 
             {
+
                 '09960614-8574-4e03-89cf-7cf267b0bd08': {
-                        'access_key': 'alice31493e5441b8171d2310d80e37e',
-                        'state': 'error',
-                    },
+
+                    'access_key': 'alice31493e5441b8171d2310d80e37e',
+                    'state': 'error',
+
+                },
+
                 '28f6eabb-4342-486a-a7f4-45688f0c0295': {
-                        'access_key': 'bob0078aa042d5a7325480fd13228b',
-                        'state': 'active',
-                    },
+
+                    'access_key': 'bob0078aa042d5a7325480fd13228b',
+                    'state': 'active',
+
+                },
+
             }
 
         The top level keys are 'access_id' fields of the access rules that

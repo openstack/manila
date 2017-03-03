@@ -787,9 +787,15 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
 
         :param snapshot_instance: SnapshotInstance data
         :param driver_options: expects only one optional key 'size'.
-        :return: dict with share snapshot instance fields for update, example:
-            {'size': 1,
-             'provider_location': 'path/to/some/dataset@some_snapshot_tag'}
+        :return: dict with share snapshot instance fields for update, example::
+
+            {
+
+                'size': 1,
+                'provider_location': 'path/to/some/dataset@some_snapshot_tag',
+
+            }
+
         """
         snapshot_size = int(driver_options.get("size", 0))
         old_provider_location = snapshot_instance.get("provider_location")

@@ -332,10 +332,12 @@ Share Migration driver-assisted interfaces:
 -------------------------------------------
 
 .. autoclass:: manila.share.driver.ShareDriver
+    :noindex:
     :members: migration_check_compatibility, migration_start, migration_continue, migration_complete, migration_cancel, migration_get_progress
 
 Share Migration host-assisted interfaces:
 -----------------------------------------
 
 .. autoclass:: manila.share.driver.ShareDriver
+    :noindex:
     :members:  connection_get_info
