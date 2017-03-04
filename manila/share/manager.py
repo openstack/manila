@@ -1372,12 +1372,12 @@ class ShareManager(manager.SchedulerDependentManager):
             helper.cleanup_new_instance(dest_share_instance)
             cancelled = (
                 task_state == constants.TASK_STATE_DATA_COPYING_CANCELLED)
-            supress_errors = True
+            suppress_errors = True
             if cancelled:
-                supress_errors = False
+                suppress_errors = False
             self._reset_read_only_access_rules(
                 context, share_ref, src_instance_id,
-                supress_errors=supress_errors, helper=helper)
+                supress_errors=suppress_errors, helper=helper)
             self.db.share_instance_update(
                 context, src_instance_id,
                 {'status': constants.STATUS_AVAILABLE})
@@ -3447,7 +3447,6 @@ class ShareManager(manager.SchedulerDependentManager):
                     'share_server_id']
 
         status = constants.STATUS_AVAILABLE
-        model_update = False
 
         share_network_id = share_group_ref.get('share_network_id')
         share_server = None
@@ -3544,8 +3543,6 @@ class ShareManager(manager.SchedulerDependentManager):
         share_group_ref['shares'] = (
             self.db.share_instances_get_all_by_share_group_id(
                 context, share_group_id))
-
-        model_update = False
 
         # TODO(ameade): Add notification for delete.start
 
