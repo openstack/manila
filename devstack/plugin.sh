@@ -642,6 +642,10 @@ function _install_nfs_and_samba {
         check_nfs_kernel_service_state_ubuntu
     elif is_fedora; then
         install_package nfs-utils samba
+        sudo systemctl enable smb.service
+        sudo systemctl start smb.service
+        sudo systemctl enable nfs-server.service
+        sudo systemctl start nfs-server.service
     elif is_suse; then
         install_package nfs-kernel-server nfs-utils samba
     else
