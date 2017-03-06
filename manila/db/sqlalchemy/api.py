@@ -2069,6 +2069,7 @@ def _share_snapshot_instance_get_with_filters(context, instance_ids=None,
     if statuses is not None:
         query = query.filter(models.ShareSnapshotInstance.status.in_(statuses))
 
+    query = query.options(joinedload('share_group_snapshot'))
     return query
 
 
@@ -2142,6 +2143,7 @@ def share_snapshot_get(context, snapshot_id, session=None):
                          project_only=True).\
         filter_by(id=snapshot_id).\
         options(joinedload('share')).\
+        options(joinedload('instances')).\
         first()
 
     if not result:
@@ -2164,6 +2166,7 @@ def _share_snapshot_get_all_with_filters(context, project_id=None,
     if share_id:
         query = query.filter_by(share_id=share_id)
     query = query.options(joinedload('share'))
+    query = query.options(joinedload('instances'))
 
     # Apply filters
     if 'usage' in filters:
@@ -4015,7 +4018,7 @@ def count_share_group_snapshot_members_in_share(context, share_id,
                                                 session=None):
     session = session or get_session()
     return model_query(
-        context, models.ShareGroupSnapshotMember, session=session,
+        context, models.ShareSnapshotInstance, session=session,
         project_only=True, read_deleted="no",
     ).filter_by(
         share_id=share_id,
@@ -4150,7 +4153,7 @@ def share_group_snapshot_destroy(context, share_group_snapshot_id):
         share_group_snap_ref = _share_group_snapshot_get(
             context, share_group_snapshot_id, session=session)
         share_group_snap_ref.soft_delete(session)
-        session.query(models.ShareGroupSnapshotMember).filter_by(
+        session.query(models.ShareSnapshotInstance).filter_by(
             share_group_snapshot_id=share_group_snapshot_id).soft_delete()
 
 
@@ -4159,7 +4162,7 @@ def share_group_snapshot_members_get_all(context, share_group_snapshot_id,
                                          session=None):
     session = session or get_session()
     query = model_query(
-        context, models.ShareGroupSnapshotMember, session=session,
+        context, models.ShareSnapshotInstance, session=session,
         read_deleted='no',
     ).filter_by(share_group_snapshot_id=share_group_snapshot_id)
     return query.all()
@@ -4168,7 +4171,7 @@ def share_group_snapshot_members_get_all(context, share_group_snapshot_id,
 @require_context
 def share_group_snapshot_member_get(context, member_id, session=None):
     result = model_query(
-        context, models.ShareGroupSnapshotMember, session=session,
+        context, models.ShareSnapshotInstance, session=session,
         project_only=True, read_deleted='no',
     ).filter_by(id=member_id).first()
     if not result:
@@ -4178,7 +4181,7 @@ def share_group_snapshot_member_get(context, member_id, session=None):
 
 @require_context
 def share_group_snapshot_member_create(context, values):
-    member = models.ShareGroupSnapshotMember()
+    member = models.ShareSnapshotInstance()
     if not values.get('id'):
         values['id'] = six.text_type(uuidutils.generate_uuid())
 

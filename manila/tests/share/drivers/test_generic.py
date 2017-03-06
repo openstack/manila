@@ -1060,7 +1060,8 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_create_snapshot(self):
         fake_vol = fake_volume.FakeVolume()
-        fake_vol_snap = fake_volume.FakeVolumeSnapshot(share_id=fake_vol['id'])
+        fake_vol_snap = fake_volume.FakeVolumeSnapshot(
+            share_instance_id=fake_vol['id'])
         self.mock_object(self._driver, '_get_volume',
                          mock.Mock(return_value=fake_vol))
         self.mock_object(self._driver.volume_api, 'create_snapshot_force',
@@ -1070,7 +1071,7 @@ class GenericShareDriverTestCase(test.TestCase):
                                      share_server=self.server)
 
         self._driver._get_volume.assert_called_once_with(
-            self._driver.admin_context, fake_vol_snap['share_id'])
+            self._driver.admin_context, fake_vol_snap['share_instance_id'])
         self._driver.volume_api.create_snapshot_force.assert_called_once_with(
             self._context,
             fake_vol['id'],

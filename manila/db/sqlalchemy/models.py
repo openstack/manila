@@ -700,23 +700,11 @@ class ShareSnapshot(BASE, ManilaBase):
                              'ShareSnapshot.share_id == Share.id,'
                              'ShareSnapshot.deleted == "False")')
 
-    instances = orm.relationship(
-        "ShareSnapshotInstance",
-        lazy='immediate',
-        primaryjoin=(
-            'and_('
-            'ShareSnapshot.id == ShareSnapshotInstance.snapshot_id, '
-            'ShareSnapshotInstance.deleted == "False")'
-        ),
-        viewonly=True,
-        join_depth=2,
-    )
-
 
 class ShareSnapshotInstance(BASE, ManilaBase):
     """Represents a snapshot of a share."""
     __tablename__ = 'share_snapshot_instances'
-    _extra_keys = ['name', 'share_id', 'share_name']
+    _extra_keys = ['name', 'share_name']
 
     @property
     def name(self):
@@ -726,29 +714,20 @@ class ShareSnapshotInstance(BASE, ManilaBase):
     def share_name(self):
         return CONF.share_name_template % self.share_instance_id
 
-    @property
-    def share_id(self):
-        # NOTE(u_glide): This property required for compatibility
-        # with share drivers
-        return self.share_instance_id
-
     id = Column(String(36), primary_key=True)
     deleted = Column(String(36), default='False')
-    snapshot_id = Column(
-        String(36), ForeignKey('share_snapshots.id'), nullable=False)
+    snapshot_id = Column(String(36), nullable=True)
     share_instance_id = Column(
         String(36), ForeignKey('share_instances.id'), nullable=False)
     status = Column(String(255))
     progress = Column(String(255))
     provider_location = Column(String(255))
-    share_instance = orm.relationship(
-        ShareInstance, backref="snapshot_instances",
-        lazy='immediate',
-        primaryjoin=(
-            'and_('
-            'ShareSnapshotInstance.share_instance_id == ShareInstance.id,'
-            'ShareSnapshotInstance.deleted == "False")')
-    )
+    share_proto = Column(String(255))
+    size = Column(Integer)
+    share_id = Column(String(36), nullable=True)
+    share_group_snapshot_id = Column(String(36), nullable=True)
+    user_id = Column(String(255))
+    project_id = Column(String(255))
 
     export_locations = orm.relationship(
         "ShareSnapshotInstanceExportLocation",
@@ -759,6 +738,37 @@ class ShareSnapshotInstance(BASE, ManilaBase):
             'ShareSnapshotInstanceExportLocation.share_snapshot_instance_id, '
             'ShareSnapshotInstanceExportLocation.deleted == "False")'
         )
+    )
+    share_instance = orm.relationship(
+        ShareInstance, backref="snapshot_instances",
+        lazy='immediate',
+        primaryjoin=(
+            'and_('
+            'ShareSnapshotInstance.share_instance_id == ShareInstance.id,'
+            'ShareSnapshotInstance.deleted == "False")')
+    )
+    snapshot = orm.relationship(
+        "ShareSnapshot",
+        lazy="immediate",
+        foreign_keys=snapshot_id,
+        backref="instances",
+        primaryjoin=(
+            'and_('
+            'ShareSnapshot.id == ShareSnapshotInstance.snapshot_id, '
+            'ShareSnapshotInstance.deleted == "False")'
+        ),
+        viewonly=True,
+        join_depth=2,
+    )
+    share_group_snapshot = orm.relationship(
+        "ShareGroupSnapshot",
+        lazy="immediate",
+        foreign_keys=share_group_snapshot_id,
+        backref="share_group_snapshot_members",
+        primaryjoin=('ShareGroupSnapshot.id == '
+                     'ShareSnapshotInstance.share_group_snapshot_id'),
+        viewonly=True,
+        join_depth=2,
     )
 
 
@@ -1161,39 +1171,6 @@ class ShareGroupShareTypeMapping(BASE, ManilaBase):
                      '== ShareGroup.id,'
                      'ShareGroupShareTypeMapping.deleted == "False")')
     )
-
-# TODO(vponomaryov): add 'share_group_snapshot_member_export_locations' model
-# to support mountable share group snapshots and add its relationship to
-# 'share_group_snapshot_members' table.
-
-
-class ShareGroupSnapshotMember(BASE, ManilaBase):
-    """Represents the share snapshots in a share group snapshot."""
-    __tablename__ = 'share_group_snapshot_members'
-    id = Column(String(36), primary_key=True)
-    # TODO(vponomaryov): make 'share_group_snapshot_id' not nullable.
-    share_group_snapshot_id = Column(
-        String(36), ForeignKey('share_group_snapshots.id'))
-    share_id = Column(String(36), ForeignKey('shares.id'))
-    # TODO(vponomaryov): make 'share_instance_id' not nullable.
-    share_instance_id = Column(String(36), ForeignKey('share_instances.id'))
-    size = Column(Integer)
-    status = Column(String(255))
-    share_proto = Column(String(255))
-    user_id = Column(String(255))
-    project_id = Column(String(255))
-    deleted = Column(String(36), default='False')
-    provider_location = Column(String(255))
-    # TODO(vponomaryov): add relationship to source share instance as it is
-    # done for share snapshot instances.
-    # TODO(vponomaryov): add share group snapshot member export locations
-    # relationship.
-    share_group_snapshot = orm.relationship(
-        ShareGroupSnapshot,
-        backref="share_group_snapshot_members",
-        foreign_keys=share_group_snapshot_id,
-        primaryjoin='ShareGroupSnapshot.id == '
-                    'ShareGroupSnapshotMember.share_group_snapshot_id')
 
 
 def register_models():

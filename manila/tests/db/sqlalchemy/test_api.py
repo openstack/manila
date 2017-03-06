@@ -885,9 +885,11 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
 
     def test_share_group_snapshot_members_get_all(self):
         sg = db_utils.create_share_group()
+        share = db_utils.create_share(share_group_id=sg['id'])
+        si = db_utils.create_share_instance(share_id=share['id'])
         sg_snap = db_utils.create_share_group_snapshot(sg['id'])
         expected_member = db_utils.create_share_group_snapshot_member(
-            sg_snap['id'])
+            sg_snap['id'], share_instance_id=si['id'])
 
         members = db_api.share_group_snapshot_members_get_all(
             self.ctxt, sg_snap['id'])
@@ -896,14 +898,16 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
         self.assertDictMatch(dict(expected_member), dict(members[0]))
 
     def test_count_share_group_snapshot_members_in_share(self):
-        share = db_utils.create_share()
-        share2 = db_utils.create_share()
         sg = db_utils.create_share_group()
+        share = db_utils.create_share(share_group_id=sg['id'])
+        si = db_utils.create_share_instance(share_id=share['id'])
+        share2 = db_utils.create_share(share_group_id=sg['id'])
+        si2 = db_utils.create_share_instance(share_id=share2['id'])
         sg_snap = db_utils.create_share_group_snapshot(sg['id'])
         db_utils.create_share_group_snapshot_member(
-            sg_snap['id'], share_id=share['id'])
+            sg_snap['id'], share_id=share['id'], share_instance_id=si['id'])
         db_utils.create_share_group_snapshot_member(
-            sg_snap['id'], share_id=share2['id'])
+            sg_snap['id'], share_id=share2['id'], share_instance_id=si2['id'])
 
         count = db_api.count_share_group_snapshot_members_in_share(
             self.ctxt, share['id'])
@@ -912,9 +916,11 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
 
     def test_share_group_snapshot_members_get(self):
         sg = db_utils.create_share_group()
+        share = db_utils.create_share(share_group_id=sg['id'])
+        si = db_utils.create_share_instance(share_id=share['id'])
         sg_snap = db_utils.create_share_group_snapshot(sg['id'])
         expected_member = db_utils.create_share_group_snapshot_member(
-            sg_snap['id'])
+            sg_snap['id'], share_instance_id=si['id'])
 
         member = db_api.share_group_snapshot_member_get(
             self.ctxt, expected_member['id'])
@@ -928,9 +934,11 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
 
     def test_share_group_snapshot_member_update(self):
         sg = db_utils.create_share_group()
+        share = db_utils.create_share(share_group_id=sg['id'])
+        si = db_utils.create_share_instance(share_id=share['id'])
         sg_snap = db_utils.create_share_group_snapshot(sg['id'])
         expected_member = db_utils.create_share_group_snapshot_member(
-            sg_snap['id'])
+            sg_snap['id'], share_instance_id=si['id'])
 
         db_api.share_group_snapshot_member_update(
             self.ctxt, expected_member['id'],

@@ -751,7 +751,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     def create_snapshot(self, context, snapshot, share_server=None):
         """Creates a snapshot."""
         model_update = {}
-        volume = self._get_volume(self.admin_context, snapshot['share_id'])
+        volume = self._get_volume(
+            self.admin_context, snapshot['share_instance_id'])
         volume_snapshot_name = (self.configuration.
                                 volume_snapshot_name_template % snapshot['id'])
         volume_snapshot = self.volume_api.create_snapshot_force(

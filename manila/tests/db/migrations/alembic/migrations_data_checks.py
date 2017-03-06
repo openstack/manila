@@ -2249,3 +2249,119 @@ class ShareGroupNewAvailabilityZoneIDColumnChecks(BaseMigrationChecks):
         self.test_case.assertEqual(1, db_result.rowcount)
         for sg in db_result:
             self.test_case.assertFalse(hasattr(sg, self.new_attr_name))
+
+
+@map_to_migration('31252d671ae5')
+class SquashSGSnapshotMembersAndSSIModelsChecks(BaseMigrationChecks):
+    old_table_name = 'share_group_snapshot_members'
+    new_table_name = 'share_snapshot_instances'
+    share_group_type_id = uuidutils.generate_uuid()
+    share_group_id = uuidutils.generate_uuid()
+    share_id = uuidutils.generate_uuid()
+    share_instance_id = uuidutils.generate_uuid()
+    share_group_snapshot_id = uuidutils.generate_uuid()
+    share_group_snapshot_member_id = uuidutils.generate_uuid()
+    keys = (
+        'user_id', 'project_id', 'size', 'share_proto', 'share_id',
+        'share_group_snapshot_id',
+    )
+
+    def setup_upgrade_data(self, engine):
+        # Setup share group type
+        sgt_data = {
+            'id': self.share_group_type_id,
+            'name': uuidutils.generate_uuid(),
+        }
+        sgt_table = utils.load_table('share_group_types', engine)
+        engine.execute(sgt_table.insert(sgt_data))
+
+        # Setup share group
+        sg_data = {
+            'id': self.share_group_id,
+            'project_id': 'fake_project_id',
+            'user_id': 'fake_user_id',
+            'share_group_type_id': self.share_group_type_id,
+        }
+        sg_table = utils.load_table('share_groups', engine)
+        engine.execute(sg_table.insert(sg_data))
+
+        # Setup shares
+        share_data = {
+            'id': self.share_id,
+            'share_group_id': self.share_group_id,
+        }
+        s_table = utils.load_table('shares', engine)
+        engine.execute(s_table.insert(share_data))
+
+        # Setup share instances
+        share_instance_data = {
+            'id': self.share_instance_id,
+            'share_id': share_data['id'],
+            'cast_rules_to_readonly': False,
+        }
+        si_table = utils.load_table('share_instances', engine)
+        engine.execute(si_table.insert(share_instance_data))
+
+        # Setup share group snapshot
+        sgs_data = {
+            'id': self.share_group_snapshot_id,
+            'share_group_id': self.share_group_id,
+            'project_id': 'fake_project_id',
+            'user_id': 'fake_user_id',
+        }
+        sgs_table = utils.load_table('share_group_snapshots', engine)
+        engine.execute(sgs_table.insert(sgs_data))
+
+        # Setup share group snapshot member
+        sgsm_data = {
+            'id': self.share_group_snapshot_member_id,
+            'share_group_snapshot_id': self.share_group_snapshot_id,
+            'share_id': self.share_id,
+            'share_instance_id': self.share_instance_id,
+            'project_id': 'fake_project_id',
+            'user_id': 'fake_user_id',
+        }
+        sgsm_table = utils.load_table(self.old_table_name, engine)
+        engine.execute(sgsm_table.insert(sgsm_data))
+
+    def check_upgrade(self, engine, data):
+        ssi_table = utils.load_table(self.new_table_name, engine)
+        db_result = engine.execute(ssi_table.select().where(
+            ssi_table.c.id == self.share_group_snapshot_member_id))
+        self.test_case.assertEqual(1, db_result.rowcount)
+        for ssi in db_result:
+            for key in self.keys:
+                self.test_case.assertTrue(hasattr(ssi, key))
+
+            # Check that we can write string data to the new fields
+            engine.execute(ssi_table.update().where(
+                ssi_table.c.id == self.share_group_snapshot_member_id,
+            ).values({
+                'user_id': ('u' * 255),
+                'project_id': ('p' * 255),
+                'share_proto': ('s' * 255),
+                'size': 123456789,
+                'share_id': self.share_id,
+                'share_group_snapshot_id': self.share_group_snapshot_id,
+            }))
+
+        # Check that table 'share_group_snapshot_members' does not
+        # exist anymore
+        self.test_case.assertRaises(
+            sa_exc.NoSuchTableError,
+            utils.load_table, 'share_group_snapshot_members', engine)
+
+    def check_downgrade(self, engine):
+        sgsm_table = utils.load_table(self.old_table_name, engine)
+        db_result = engine.execute(sgsm_table.select().where(
+            sgsm_table.c.id == self.share_group_snapshot_member_id))
+        self.test_case.assertEqual(1, db_result.rowcount)
+        for sgsm in db_result:
+            for key in self.keys:
+                self.test_case.assertTrue(hasattr(sgsm, key))
+
+        # Check that create SGS member is absent in SSI table
+        ssi_table = utils.load_table(self.new_table_name, engine)
+        db_result = engine.execute(ssi_table.select().where(
+            ssi_table.c.id == self.share_group_snapshot_member_id))
+        self.test_case.assertEqual(0, db_result.rowcount)

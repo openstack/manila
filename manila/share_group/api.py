@@ -164,9 +164,6 @@ class API(base.Base):
                     share = self.db.share_get(context, member['share_id'])
                     share_type = share_types.get_share_type(
                         context, share['share_type_id'])
-                    member['share_instance'] = self.db.share_instance_get(
-                        context, member['share_instance_id'],
-                        with_share_data=True)
                     self.share_api.create(
                         context,
                         member['share_proto'],
