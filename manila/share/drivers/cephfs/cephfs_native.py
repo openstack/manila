@@ -341,11 +341,11 @@ class CephFSNativeDriver(driver.ShareDriver,):
             self._share_path(snapshot['share']),
             '_'.join([snapshot['snapshot_id'], snapshot['id']]))
 
-    def create_share_group(self, context, cg_dict, share_server=None):
-        self.volume_client.create_group(cg_dict['id'])
+    def create_share_group(self, context, sg_dict, share_server=None):
+        self.volume_client.create_group(sg_dict['id'])
 
-    def delete_share_group(self, context, cg_dict, share_server=None):
-        self.volume_client.destroy_group(cg_dict['id'])
+    def delete_share_group(self, context, sg_dict, share_server=None):
+        self.volume_client.destroy_group(sg_dict['id'])
 
     def delete_share_group_snapshot(self, context, snap_dict,
                                     share_server=None):

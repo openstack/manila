@@ -865,7 +865,7 @@ class ShareDriver(object):
         :param share_servers: list with share-server models
         :param share:  share model
         :param snapshot: snapshot model
-        :param share_group: ConsistencyGroup model with shares
+        :param share_group: ShareGroup model with shares
         :returns: share-server or None
         """
         # If creating in a share group, use its share server
