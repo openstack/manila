@@ -583,33 +583,33 @@ class ShareManager(manager.SchedulerDependentManager):
     def _provide_share_server_for_share_group(self, context, share_network_id,
                                               share_group_ref,
                                               share_group_snapshot=None):
-        """Gets or creates share_server and updates share with its id.
+        """Gets or creates share_server and updates share group with its id.
 
-        Active share_server can be deleted if there are no dependent shares
-        on it.
+        Active share_server can be deleted if there are no shares or share
+        groups dependent on it.
+
         So we need avoid possibility to delete share_server in time gap
         between reaching active state for share_server and setting up
-        share_server_id for share. It is possible, for example, with first
-        share creation, which starts share_server creation.
+        share_server_id for share group. It is possible, for example, with
+        first share group creation, which starts share_server creation.
         For this purpose used shared lock between this method and the one
         with deletion of share_server.
 
         :param context: Current context
         :param share_network_id: Share network where existing share server
-                                 should be found or created. If
-                                 share_network_id is None method use
-                                 share_network_id from provided snapshot.
+                                 should be found or created.
         :param share_group_ref: Share Group model
-        :param share_group_snapshot: Optional -- ShareGroupSnapshot model
+        :param share_group_snapshot: Optional -- ShareGroupSnapshot model.  If
+                                     supplied, driver will use it to choose
+                                     the appropriate share server.
 
         :returns: dict, dict -- first value is share_server, that
                   has been chosen for share group schedule.
                   Second value is share group updated with
                   share_server_id.
         """
-        if not (share_network_id or share_group_snapshot):
-            msg = _("'share_network_id' parameter or 'snapshot'"
-                    " should be provided. ")
+        if not share_network_id:
+            msg = _("'share_network_id' parameter should be provided. ")
             raise exception.InvalidInput(reason=msg)
 
         def error(msg, *args):
