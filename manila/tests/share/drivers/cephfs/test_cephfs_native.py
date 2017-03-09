@@ -394,21 +394,21 @@ class CephFSNativeDriverTestCase(test.TestCase):
 
     def test_create_share_snapshot(self):
         self._driver.create_share_group_snapshot(self._context, {
-            'share_group_id': 'cgid',
+            'share_group_id': 'sgid',
             'id': 'snapid'
         })
 
         (self._driver._volume_client.create_snapshot_group.
-         assert_called_once_with("cgid", "snapid"))
+         assert_called_once_with("sgid", "snapid"))
 
     def test_delete_share_group_snapshot(self):
         self._driver.delete_share_group_snapshot(self._context, {
-            'share_group_id': 'cgid',
+            'share_group_id': 'sgid',
             'id': 'snapid'
         })
 
         (self._driver._volume_client.destroy_snapshot_group.
-         assert_called_once_with("cgid", "snapid"))
+         assert_called_once_with("sgid", "snapid"))
 
     def test_delete_driver(self):
         # Create share to prompt volume_client construction
