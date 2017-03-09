@@ -394,15 +394,16 @@ class QuobyteShareDriverTestCase(test.TestCase):
         self._driver._resize_share(share=self.share, new_size=7)
 
         exp_params = {
-            "consumer": {
-                "type": 3,
-                "identifier": self.share["name"],
-            },
-            "limits": {
-                "type": 5,
-                "value": 7,
-            },
-        }
+            "quotas": [{
+                "consumer": [{
+                    "type": "VOLUME",
+                    "identifier": self.share["name"],
+                }],
+                "limits": [{
+                    "type": "LOGICAL_DISK_SPACE",
+                    "value": 7,
+                }],
+            }]}
         self._driver.rpc.call.assert_has_calls([
             mock.call('setQuota', exp_params)])
 
