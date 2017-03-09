@@ -459,7 +459,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         @utils.synchronized("share_manager_%s" % share_network_id,
                             external=True)
-        def _provide_share_server_for_share():
+        def _wrapped_provide_share_server_for_share():
             try:
                 available_share_servers = get_available_share_servers()
             except exception.ShareServerNotFound:
@@ -513,7 +513,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
             return compatible_share_server, share_instance_ref
 
-        return _provide_share_server_for_share()
+        return _wrapped_provide_share_server_for_share()
 
     def _create_share_server_in_backend(self, context, share_server,
                                         metadata=None):
@@ -620,7 +620,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         @utils.synchronized("share_manager_%s" % share_network_id,
                             external=True)
-        def _provide_share_server_for_share_group():
+        def _wrapped_provide_share_server_for_share_group():
             try:
                 available_share_servers = (
                     self.db.share_server_get_all_by_host_and_share_net_valid(
@@ -677,7 +677,7 @@ class ShareManager(manager.SchedulerDependentManager):
                          {'share_server_id': compatible_share_server['id']})
             return compatible_share_server, updated_share_group
 
-        return _provide_share_server_for_share_group()
+        return _wrapped_provide_share_server_for_share_group()
 
     def _get_share_server(self, context, share_instance):
         if share_instance['share_server_id']:
@@ -3269,7 +3269,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         @utils.synchronized(
             "share_manager_%s" % share_server['share_network_id'])
-        def _teardown_server():
+        def _wrapped_delete_share_server():
             # NOTE(vponomaryov): Verify that there are no dependent shares.
             # Without this verification we can get here exception in next case:
             # share-server-delete API was called after share creation scheduled
@@ -3309,7 +3309,7 @@ class ShareManager(manager.SchedulerDependentManager):
             else:
                 self.db.share_server_delete(context, share_server['id'])
 
-        _teardown_server()
+        _wrapped_delete_share_server()
         LOG.info(
             _LI("Share server '%s' has been deleted successfully."),
             share_server['id'])
