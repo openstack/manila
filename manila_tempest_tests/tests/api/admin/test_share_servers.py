@@ -84,30 +84,40 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         any(s["share_network_name"] in self.sn_name_and_id for s in servers)
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
-    @ddt.data('host', 'status')
-    def test_list_share_servers_with_filters(self, filter_key):
+    def test_list_share_servers_with_host_filter(self):
         # Get list of share servers and remember 'host' name
         servers = self.shares_v2_client.list_share_servers()
         # Remember name of server that was used by this test suite
         # to be sure it will be still existing.
         for server in servers:
             if server["share_network_name"] in self.sn_name_and_id:
-                if not server[filter_key]:
+                if not server["host"]:
                     msg = ("Server '%s' has wrong value for host - "
-                           "'%s'.") % (server["id"], server[filter_key])
+                           "'%s'.") % (server["id"], server["host"])
                     raise lib_exc.InvalidContentType(message=msg)
-                filter_value = server[filter_key]
+                host = server["host"]
                 break
         else:
             msg = ("Appropriate server was not found. Its share_network_data"
                    ": '%s'. List of servers: '%s'.") % (self.sn_name_and_id,
                                                         six.text_type(servers))
             raise lib_exc.NotFound(message=msg)
-        search_opts = {filter_key: filter_value}
+        search_opts = {"host": host}
         servers = self.shares_v2_client.list_share_servers(search_opts)
         self.assertGreater(len(servers), 0)
         for server in servers:
-            self.assertEqual(server[filter_key], filter_value)
+            self.assertEqual(server["host"], host)
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    def test_list_share_servers_with_status_filter(self):
+        search_opts = {"status": "active"}
+        servers = self.shares_v2_client.list_share_servers(search_opts)
+
+        # At least 1 share server should exist always - the one created
+        # for this class.
+        self.assertGreater(len(servers), 0)
+        for server in servers:
+            self.assertEqual(server["status"], "active")
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_list_share_servers_with_project_id_filter(self):
