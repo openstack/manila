@@ -190,7 +190,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.17'
+    RPC_API_VERSION = '1.18'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -2453,8 +2453,7 @@ class ShareManager(manager.SchedulerDependentManager):
     @add_hooks
     @utils.require_driver_initialized
     def revert_to_snapshot(self, context, snapshot_id,
-                           reservations, share_id=None):
-        # TODO(bswartz) fix bug 1662572 and remove share_id
+                           reservations):
         context = context.elevated()
         snapshot = self.db.share_snapshot_get(context, snapshot_id)
         share = snapshot['share']
