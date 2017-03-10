@@ -75,7 +75,7 @@ echo "MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL=${MANILA_SHARE_MIGRATION_PERIO
 MANILA_SERVICE_IMAGE_ENABLED=${MANILA_SERVICE_IMAGE_ENABLED:-False}
 DEFAULT_EXTRA_SPECS=${DEFAULT_EXTRA_SPECS:-"'snapshot_support=True create_share_from_snapshot_support=True'"}
 
-if [[ "$DRIVER" == "generic" ]]; then
+if [[ "$DRIVER" == "generic"* ]]; then
     MANILA_SERVICE_IMAGE_ENABLED=True
     echo "SHARE_DRIVER=manila.share.drivers.generic.GenericShareDriver" >> $localconf
 elif [[ "$DRIVER" == "windows" ]]; then
@@ -149,7 +149,7 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     # Set proper host IP for user export to be able to run scenario tests correctly
     echo "MANILA_ZFSONLINUX_SHARE_EXPORT_IP=$HOST" >> $localconf
     echo "MANILA_ZFSONLINUX_SERVICE_IP=127.0.0.1" >> $localconf
-elif [[ "$DRIVER" == "container" ]]; then
+elif [[ "$DRIVER" == "container"* ]]; then
     DEFAULT_EXTRA_SPECS="'snapshot_support=false'"
     echo "SHARE_DRIVER=manila.share.drivers.container.driver.ContainerShareDriver" >> $localconf
     echo "SHARE_BACKING_FILE_SIZE=64000M" >> $localconf
@@ -168,7 +168,7 @@ echo "TEMPEST_USE_TEST_ACCOUNTS=True" >> $localconf
 echo "TEMPEST_ALLOW_TENANT_ISOLATION=False" >> $localconf
 echo "TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-8}" >> $localconf
 
-if [[ "$DRIVER" == "generic" ]]; then
+if [[ "$DRIVER" == "generic"* ]]; then
     echo -e '[[post-config|${NOVA_CONF:-/etc/nova/nova.conf}]]\n[DEFAULT]\nquota_instances=30\n' >> $localconf
     echo -e '[[post-config|${NEUTRON_CONF:-/etc/neutron/neutron.conf}]]\n[DEFAULT]\nmax_fixed_ips_per_port=100\n' >> $localconf
     echo -e '[[post-config|${NEUTRON_CONF:-/etc/neutron/neutron.conf}]]\n[QUOTAS]\nquota_subnet=-1\n' >> $localconf

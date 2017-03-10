@@ -140,12 +140,7 @@ cd $BASE/new/tempest
 export MANILA_TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-6}
 export MANILA_TESTS=${MANILA_TESTS:-'manila_tempest_tests.tests.api'}
 
-if [[ "$TEST_TYPE" == "scenario" ]]; then
-    echo "Set test set to scenario only"
-    MANILA_TESTS='manila_tempest_tests.tests.scenario'
-    iniset $TEMPEST_CONFIG auth use_dynamic_credentials True
-    RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=True
-elif [[ "$DRIVER" == "generic" ]]; then
+if [[ "$DRIVER" == "generic"* ]]; then
     RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=True
     RUN_MANILA_MANAGE_SNAPSHOT_TESTS=True
     RUN_MANILA_CG_TESTS=False
@@ -160,6 +155,18 @@ elif [[ "$DRIVER" == "generic" ]]; then
     fi
     MANILA_TESTS="(^manila_tempest_tests.tests.api)(?=.*\[.*\bbackend\b.*\])"
     RUN_MANILA_SG_TESTS=False
+fi
+
+if [[ "$DRIVER" == "generic_with_custom_image" ]]; then
+    # For CI jobs that test changes to image we do not need to run lots of tests
+    # Will be enough to run simple scenario test, because
+    # if some package is lost, it is very likely to fail with each test.
+    MANILA_TESTS="(^manila_tempest_tests.tests.scenario)(?=.*\btest_write_data_to_share_created_from_snapshot\b.*)"
+elif [[ "$TEST_TYPE" == "scenario" ]]; then
+    echo "Set test set to scenario only"
+    MANILA_TESTS='manila_tempest_tests.tests.scenario'
+    iniset $TEMPEST_CONFIG auth use_dynamic_credentials True
+    RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=True
 fi
 
 if [[ "$DRIVER" == "lvm" ]]; then
@@ -230,19 +237,30 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     iniset $TEMPEST_CONFIG share multitenancy_enabled True
     iniset $TEMPEST_CONFIG share create_networks_when_multitenancy_enabled False
     iniset $TEMPEST_CONFIG share multi_backend True
-elif [[ "$DRIVER" == "container" ]]; then
+elif [[ "$DRIVER" == "container"* ]]; then
     MANILA_TESTS="(^manila_tempest_tests.tests.api)(?=.*\[.*\bbackend\b.*\])"
+    if [[ "$DRIVER" == "container_with_custom_image" ]]; then
+        # TODO(vponomaryov): set scenario tests for run when
+        # manila tempest plugin supports share protocol and rules that
+        # container driver uses.
+        # MANILA_TESTS="(^manila_tempest_tests.tests.scenario)(?=.*\btest_read_write_two_vms\b.*)"
+        :
+    fi
     MANILA_TEMPEST_CONCURRENCY=8
     RUN_MANILA_SG_TESTS=False
     RUN_MANILA_MANAGE_TESTS=False
     RUN_MANILA_QUOTA_TESTS=False
     RUN_MANILA_SHRINK_TESTS=False
     RUN_MANILA_SNAPSHOT_TESTS=False
+    RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=False
     CAPABILITY_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT=False
     iniset $TEMPEST_CONFIG share capability_storage_protocol 'CIFS'
     iniset $TEMPEST_CONFIG share enable_protocols 'cifs'
     iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
     iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols ''
+
+    # TODO(vponomaryov): set following to True when bug #1679715 is fixed
+    iniset $TEMPEST_CONFIG auth use_dynamic_credentials False
 fi
 
 # Enable quota tests
