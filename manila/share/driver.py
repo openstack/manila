@@ -158,6 +158,8 @@ ganesha_opts = [
                help='Path to main Ganesha config file.'),
     cfg.StrOpt('ganesha_nfs_export_options',
                default='maxread = 65536, prefread = 65536',
+               deprecated_for_removal=True,
+               deprecated_reason="This option is no longer used.",
                help='Options to use when exporting a share using ganesha '
                     'NFS server. Note that these defaults can be overridden '
                     'when a share is created by passing metadata with key '
