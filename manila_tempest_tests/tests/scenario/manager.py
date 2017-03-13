@@ -24,12 +24,12 @@ import six
 
 from tempest.common import compute
 from tempest.common import image as common_image
-from tempest.common.utils import data_utils
 from tempest.common.utils.linux import remote_client
 from tempest.common.utils import net_utils
 from tempest.common import waiters
 from tempest import config
 from tempest import exceptions
+from tempest.lib.common.utils import data_utils
 from tempest.lib.common.utils import test_utils
 from tempest.lib import exceptions as lib_exc
 import tempest.test
