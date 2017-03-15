@@ -56,7 +56,14 @@ host_manager_opts = [
                     'CapacityWeigher',
                     'GoodnessWeigher',
                 ],
-                help='Which weigher class names to use for weighing hosts.')
+                help='Which weigher class names to use for weighing hosts.'),
+    cfg.ListOpt(
+        'scheduler_default_share_group_filters',
+        default=[
+            'ConsistentSnapshotFilter',
+        ],
+        help='Which filter class names to use for filtering hosts '
+             'creating share group when not specified in the request.'),
 ]
 
 CONF = cfg.CONF
@@ -139,6 +146,9 @@ class HostState(object):
         # PoolState for all pools
         self.pools = {}
         self.updated = None
+
+        # Share Group capabilities
+        self.sg_consistent_snapshot_support = None
 
     def update_capabilities(self, capabilities=None, service=None):
         # Read-only capability dicts
@@ -317,6 +327,10 @@ class HostState(object):
         if not pool_cap.get('replication_domain'):
             pool_cap['replication_domain'] = self.replication_domain
 
+        if 'sg_consistent_snapshot_support' not in pool_cap:
+            pool_cap['sg_consistent_snapshot_support'] = (
+                self.sg_consistent_snapshot_support)
+
     def update_backend(self, capability):
         self.share_backend_name = capability.get('share_backend_name')
         self.vendor_name = capability.get('vendor_name')
@@ -334,6 +348,8 @@ class HostState(object):
         self.updated = capability['timestamp']
         self.replication_type = capability.get('replication_type')
         self.replication_domain = capability.get('replication_domain')
+        self.sg_consistent_snapshot_support = capability.get(
+            'share_group_stats', {}).get('consistent_snapshot_support')
 
     def consume_from_share(self, share):
         """Incrementally update host state from an share."""
@@ -419,6 +435,8 @@ class PoolState(HostState):
                 'replication_type', self.replication_type)
             self.replication_domain = capability.get(
                 'replication_domain')
+            self.sg_consistent_snapshot_support = capability.get(
+                'sg_consistent_snapshot_support')
 
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet

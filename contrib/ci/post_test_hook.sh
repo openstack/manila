@@ -232,6 +232,7 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     iniset $TEMPEST_CONFIG share build_timeout 180
     iniset $TEMPEST_CONFIG share share_creation_retry_number 0
     iniset $TEMPEST_CONFIG share capability_storage_protocol 'NFS_CIFS'
+    iniset $TEMPEST_CONFIG share capability_sg_consistent_snapshot_support 'pool'
     iniset $TEMPEST_CONFIG share enable_protocols 'nfs,cifs'
     iniset $TEMPEST_CONFIG share suppress_errors_in_cleanup False
     iniset $TEMPEST_CONFIG share multitenancy_enabled True

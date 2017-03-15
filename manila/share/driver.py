@@ -1112,7 +1112,6 @@ class ShareDriver(object):
             create_share_from_snapshot_support=(
                 self.creating_shares_from_snapshots_is_supported),
             revert_to_snapshot_support=False,
-            share_group_snapshot_support=self.snapshots_are_supported,
             mount_snapshot_support=False,
             replication_domain=self.replication_domain,
             filter_function=self.get_filter_function(),
@@ -1120,6 +1119,13 @@ class ShareDriver(object):
         )
         if isinstance(data, dict):
             common.update(data)
+
+        sg_stats = data.get('share_group_stats', {}) if data else {}
+        common['share_group_stats'] = {
+            'consistent_snapshot_support': sg_stats.get(
+                'consistent_snapshot_support'),
+        }
+
         self._stats = common
 
     def get_share_server_pools(self, share_server):
@@ -1357,7 +1363,7 @@ class ShareDriver(object):
                   snap_dict['id'])
 
         snapshot_members = snap_dict.get('share_group_snapshot_members', [])
-        if not self._stats.get('share_group_snapshot_support'):
+        if not self._stats.get('snapshot_support'):
             raise exception.ShareGroupSnapshotNotSupported(
                 share_group=snap_dict['share_group_id'])
         elif not snapshot_members:

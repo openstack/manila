@@ -15,9 +15,9 @@
 #    under the License.
 
 """
-The FilterScheduler is for creating shares.
-You can customize this scheduler by specifying your own share Filters and
-Weighing Functions.
+The FilterScheduler is for scheduling of share and share group creation.
+You can customize this scheduler by specifying your own share/share group
+filters and weighing functions.
 """
 
 from oslo_config import cfg
@@ -392,7 +392,9 @@ class FilterScheduler(base.Scheduler):
         }
 
         hosts = self.host_manager.get_filtered_hosts(
-            all_hosts, filter_properties)
+            all_hosts,
+            filter_properties,
+            CONF.scheduler_default_share_group_filters)
 
         if not hosts:
             return []

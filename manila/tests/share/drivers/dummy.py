@@ -380,13 +380,15 @@ class DummyDriver(driver.ShareDriver):
             "storage_protocol": "NFS_CIFS",
             "reserved_percentage":
                 self.configuration.reserved_share_percentage,
-            "consistency_group_support": "pool",
             "snapshot_support": True,
             "create_share_from_snapshot_support": True,
             "revert_to_snapshot_support": True,
             "mount_snapshot_support": True,
             "driver_name": "Dummy",
             "pools": self._get_pools_info(),
+            "share_group_stats": {
+                "consistent_snapshot_support": "pool",
+            }
         }
         if self.configuration.replication_domain:
             data["replication_type"] = "readable"

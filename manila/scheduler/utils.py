@@ -53,6 +53,8 @@ def generate_stats(host_state, properties):
         'pools': host_state.pools,
         'max_over_subscription_ratio':
             host_state.max_over_subscription_ratio,
+        'sg_consistent_snapshot_support': (
+            host_state.sg_consistent_snapshot_support),
     }
 
     host_caps = host_state.capabilities
@@ -60,15 +62,20 @@ def generate_stats(host_state, properties):
     share_type = properties.get('share_type', {})
     extra_specs = share_type.get('extra_specs', {})
 
+    share_group_type = properties.get('share_group_type', {})
+    group_specs = share_group_type.get('group_specs', {})
+
     request_spec = properties.get('request_spec', {})
     share_stats = request_spec.get('resource_properties', {})
 
     stats = {
         'host_stats': host_stats,
         'host_caps': host_caps,
+        'share_type': share_type,
         'extra_specs': extra_specs,
         'share_stats': share_stats,
-        'share_type': share_type,
+        'share_group_type': share_group_type,
+        'group_specs': group_specs,
     }
 
     return stats

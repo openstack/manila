@@ -112,6 +112,11 @@ ShareGroup = [
                      "capability called 'revert_to_snapshot_support' "
                      "and will be used for setting up custom share type. "
                      "Defaults to the value of run_revert_to_snapshot_tests."),
+    cfg.StrOpt("capability_sg_consistent_snapshot_support",
+               choices=["host", "pool", None],
+               help="Backend capability to create consistent snapshots of "
+                    "share group members. Will be used with creation "
+                    "of new share group types as group spec."),
     cfg.StrOpt("share_network_id",
                default="",
                help="Some backend drivers requires share network "
