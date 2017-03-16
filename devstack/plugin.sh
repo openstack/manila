@@ -181,8 +181,7 @@ function configure_manila {
     iniset $MANILA_CONF DEFAULT osapi_share_extension manila.api.contrib.standard_extensions
     iniset $MANILA_CONF DEFAULT state_path $MANILA_STATE_PATH
     iniset $MANILA_CONF DEFAULT default_share_type $MANILA_DEFAULT_SHARE_TYPE
-    # TODO(vponomaryov): revert following back in Pike
-    # iniset $MANILA_CONF DEFAULT default_share_group_type $MANILA_DEFAULT_SHARE_GROUP_TYPE
+    iniset $MANILA_CONF DEFAULT default_share_group_type $MANILA_DEFAULT_SHARE_GROUP_TYPE
 
     if ! [[ -z $MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL ]]; then
         iniset $MANILA_CONF DEFAULT migration_driver_continue_update_interval $MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL
@@ -953,9 +952,8 @@ elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
     echo_summary "Creating Manila default share type"
     create_default_share_type
 
-    # TODO(vponomaryov): revert following back in Pike
-    # echo_summary "Creating Manila default share group type"
-    # create_default_share_group_type
+    echo_summary "Creating Manila default share group type"
+    create_default_share_group_type
 
     echo_summary "Creating Manila custom share types"
     create_custom_share_types
