@@ -45,8 +45,8 @@ GlusterfsManilaShare_opts = [
                default='Gluster',
                help='Type of NFS server that mediate access to the Gluster '
                     'volumes (Gluster or Ganesha).'),
-    cfg.StrOpt('glusterfs_ganesha_server_ip',
-               help="Remote Ganesha server node's IP address."),
+    cfg.HostAddressOpt('glusterfs_ganesha_server_ip',
+                       help="Remote Ganesha server node's IP address."),
     cfg.StrOpt('glusterfs_ganesha_server_username',
                default='root',
                help="Remote Ganesha server node's username."),

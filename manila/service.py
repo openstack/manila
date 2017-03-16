@@ -51,9 +51,10 @@ service_opts = [
                help='Range of seconds to randomly delay when starting the '
                     'periodic task scheduler to reduce stampeding. '
                     '(Disable by setting to 0)'),
-    cfg.StrOpt('osapi_share_listen',
-               default="::",
-               help='IP address for OpenStack Share API to listen on.'),
+    cfg.HostAddressOpt('osapi_share_listen',
+                       default="::",
+                       help='IP address for OpenStack Share API to listen '
+                            'on.'),
     cfg.PortOpt('osapi_share_listen_port',
                 default=8786,
                 help='Port for OpenStack Share API to listen on.'),

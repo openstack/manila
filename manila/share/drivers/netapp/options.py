@@ -30,9 +30,10 @@ netapp_proxy_opts = [
                      'clustered Data ONTAP.')), ]
 
 netapp_connection_opts = [
-    cfg.StrOpt('netapp_server_hostname',
-               deprecated_name='netapp_nas_server_hostname',
-               help='The hostname (or IP address) for the storage system.'),
+    cfg.HostAddressOpt('netapp_server_hostname',
+                       deprecated_name='netapp_nas_server_hostname',
+                       help='The hostname (or IP address) for the storage '
+                            'system.'),
     cfg.PortOpt('netapp_server_port',
                 help=('The TCP port to use for communication with the storage '
                       'system or proxy server. If not specified, Data ONTAP '

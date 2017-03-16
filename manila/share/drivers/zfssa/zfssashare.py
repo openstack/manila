@@ -30,10 +30,10 @@ from manila.share.drivers.zfssa import zfssarest
 
 
 ZFSSA_OPTS = [
-    cfg.StrOpt('zfssa_host',
-               help='ZFSSA management IP address.'),
-    cfg.StrOpt('zfssa_data_ip',
-               help='IP address for data.'),
+    cfg.HostAddressOpt('zfssa_host',
+                       help='ZFSSA management IP address.'),
+    cfg.HostAddressOpt('zfssa_data_ip',
+                       help='IP address for data.'),
     cfg.StrOpt('zfssa_auth_user',
                help='ZFSSA management authorized username.'),
     cfg.StrOpt('zfssa_auth_password',

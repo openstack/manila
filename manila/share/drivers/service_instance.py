@@ -125,13 +125,13 @@ no_share_servers_handling_mode_opts = [
         "service_instance_name_or_id",
         help="Name or ID of service instance in Nova to use for share "
              "exports. Used only when share servers handling is disabled."),
-    cfg.StrOpt(
+    cfg.HostAddressOpt(
         "service_net_name_or_ip",
         help="Can be either name of network that is used by service "
              "instance within Nova to get IP address or IP address itself "
              "for managing shares there. "
              "Used only when share servers handling is disabled."),
-    cfg.StrOpt(
+    cfg.HostAddressOpt(
         "tenant_net_name_or_ip",
         help="Can be either name of network that is used by service "
              "instance within Nova to get IP address or IP address itself "

@@ -30,8 +30,8 @@ from manila.share import driver
 from manila.share import utils as share_utils
 
 tegile_opts = [
-    cfg.StrOpt('tegile_nas_server',
-               help='Tegile NAS server hostname or IP address.'),
+    cfg.HostAddressOpt('tegile_nas_server',
+                       help='Tegile NAS server hostname or IP address.'),
     cfg.StrOpt('tegile_nas_login',
                help='User name for the Tegile NAS server.'),
     cfg.StrOpt('tegile_nas_password',

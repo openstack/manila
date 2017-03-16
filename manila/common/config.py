@@ -58,10 +58,10 @@ CONF.register_cli_opts(core_opts)
 CONF.register_cli_opts(debug_opts)
 
 global_opts = [
-    cfg.StrOpt('my_ip',
-               default=netutils.get_my_ipv4(),
-               sample_default='<your_ip>',
-               help='IP address of this host.'),
+    cfg.HostAddressOpt('my_ip',
+                       default=netutils.get_my_ipv4(),
+                       sample_default='<your_ip>',
+                       help='IP address of this host.'),
     cfg.StrOpt('scheduler_topic',
                default='manila-scheduler',
                help='The topic scheduler nodes listen on.'),
@@ -107,11 +107,12 @@ global_opts = [
     cfg.StrOpt('data_manager',
                default='manila.data.manager.DataManager',
                help='Full class name for the data manager.'),
-    cfg.StrOpt('host',
-               default=socket.gethostname(),
-               sample_default='<your_hostname>',
-               help='Name of this node.  This can be an opaque identifier.  '
-                    'It is not necessarily a hostname, FQDN, or IP address.'),
+    cfg.HostAddressOpt('host',
+                       default=socket.gethostname(),
+                       sample_default='<your_hostname>',
+                       help='Name of this node.  This can be an opaque '
+                            'identifier. It is not necessarily a hostname, '
+                            'FQDN, or IP address.'),
     # NOTE(vish): default to nova for compatibility with nova installs
     cfg.StrOpt('storage_availability_zone',
                default='nova',

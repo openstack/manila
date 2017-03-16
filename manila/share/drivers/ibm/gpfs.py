@@ -60,8 +60,8 @@ AVPATTERN = re.compile(r'\s*(?P<attr>\w+)\s*=\s*(?P<val>'
 ERR_FILE_NOT_FOUND = 2
 
 gpfs_share_opts = [
-    cfg.StrOpt('gpfs_share_export_ip',
-               help='IP to be added to GPFS export string.'),
+    cfg.HostAddressOpt('gpfs_share_export_ip',
+                       help='IP to be added to GPFS export string.'),
     cfg.StrOpt('gpfs_mount_point_base',
                default='$state_path/mnt',
                help='Base folder where exported shares are located.'),
