@@ -131,6 +131,14 @@ class ShareGroupTypesController(wsgi.Controller):
         if name is None or name == "" or len(name) > 255:
             msg = _("Share group type name is not valid.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
+        if not (specs is None or isinstance(specs,  dict)):
+            msg = _("Group specs can be either of 'None' or 'dict' types.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+        if specs:
+            for element in list(specs.keys()) + list(specs.values()):
+                if not isinstance(element, six.string_types):
+                    msg = _("Group specs keys and values should be strings.")
+                    raise webob.exc.HTTPBadRequest(explanation=msg)
         try:
             share_group_types.create(
                 context, name, share_types, specs, is_public)

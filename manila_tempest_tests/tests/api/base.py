@@ -595,7 +595,8 @@ class BaseSharesTest(test.BaseTestCase):
                                 group_specs=None, client=None,
                                 cleanup_in_class=True, **kwargs):
         client = client or cls.shares_v2_client
-        if group_specs is None:
+        if (group_specs is None and
+                CONF.share.capability_sg_consistent_snapshot_support):
             group_specs = {
                 'consistent_snapshot_support': (
                     CONF.share.capability_sg_consistent_snapshot_support),
