@@ -132,6 +132,14 @@ share_opts = [
     cfg.StrOpt('goodness_function',
                help='String representation for an equation that will be '
                     'used to determine the goodness of a host.'),
+    cfg.BoolOpt('driver_ssl_cert_verify',
+                default=False,
+                help='If set to True the https client will validate the SSL '
+                     'certificate of the backend endpoint.'),
+    cfg.StrOpt('driver_ssl_cert_path',
+               help='Can be used to specify a non default path to a '
+                    'CA_BUNDLE file or directory with certificates of trusted '
+                    'CAs, which will be used to validate the backend.'),
 ]
 
 ssh_opts = [
