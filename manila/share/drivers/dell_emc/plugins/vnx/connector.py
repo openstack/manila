@@ -38,17 +38,11 @@ class XMLAPIConnector(object):
         self.storage_ip = configuration.emc_nas_server
         self.username = configuration.emc_nas_login
         self.password = configuration.emc_nas_password
-        self.ssl_cert_verify = configuration.driver_ssl_cert_verify
-        self.ssl_cert_path = configuration.driver_ssl_cert_path
         self.debug = debug
         self.auth_url = 'https://' + self.storage_ip + '/Login'
-        self._url = 'https://{}/servlets/CelerraManagementServices'.format(
-            self.storage_ip)
-        context = utils.create_ssl_context(configuration)
-        if context:
-            https_handler = url_request.HTTPSHandler(context=context)
-        else:
-            https_handler = url_request.HTTPSHandler()
+        self._url = ('https://' + self.storage_ip
+                     + '/servlets/CelerraManagementServices')
+        https_handler = url_request.HTTPSHandler()
         cookie_handler = url_request.HTTPCookieProcessor(
             http_cookiejar.CookieJar())
         self.url_opener = url_request.build_opener(https_handler,

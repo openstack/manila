@@ -1,6 +1,0 @@
----
-features:
-  - Added following 2 options for SSL verification
-    ``driver_ssl_cert_verify``
-    ``driver_ssl_cert_path``
-    For more details, see OpenStack official documentation.
