@@ -36,16 +36,6 @@ Guidelines for writing new hacking checks
 
 UNDERSCORE_IMPORT_FILES = []
 
-log_translation = re.compile(
-    r"(.)*LOG\.(audit|error|info|critical|exception)\(\s*('|\")")
-log_translation_LC = re.compile(
-    r"(.)*LOG\.(critical)\(\s*(_\(|'|\")")
-log_translation_LE = re.compile(
-    r"(.)*LOG\.(error|exception)\(\s*(_\(|'|\")")
-log_translation_LI = re.compile(
-    r"(.)*LOG\.(info)\(\s*(_\(|'|\")")
-log_translation_LW = re.compile(
-    r"(.)*LOG\.(warning|warn)\(\s*(_\(|'|\")")
 translated_log = re.compile(
     r"(.)*LOG\.(audit|error|info|warn|warning|critical|exception)"
     "\(\s*_\(\s*('|\")")
@@ -187,32 +177,6 @@ class CheckLoggingFormatArgs(BaseASTChecker):
                     self.add_error(arg)
 
         return super(CheckLoggingFormatArgs, self).generic_visit(node)
-
-
-def validate_log_translations(logical_line, physical_line, filename):
-    # Translations are not required in the test and tempest
-    # directories.
-    if ("manila/tests" in filename or "manila_tempest_tests" in filename or
-            "contrib/tempest" in filename):
-        return
-    if pep8.noqa(physical_line):
-        return
-    msg = "M327: LOG.critical messages require translations `_LC()`!"
-    if log_translation_LC.match(logical_line):
-        yield (0, msg)
-    msg = ("M328: LOG.error and LOG.exception messages require translations "
-           "`_LE()`!")
-    if log_translation_LE.match(logical_line):
-        yield (0, msg)
-    msg = "M329: LOG.info messages require translations `_LI()`!"
-    if log_translation_LI.match(logical_line):
-        yield (0, msg)
-    msg = "M330: LOG.warning messages require translations `_LW()`!"
-    if log_translation_LW.match(logical_line):
-        yield (0, msg)
-    msg = "M331: Log messages require translations!"
-    if log_translation.match(logical_line):
-        yield (0, msg)
 
 
 def check_explicit_underscore_import(logical_line, filename):
@@ -375,7 +339,6 @@ def no_log_warn_check(logical_line):
 
 
 def factory(register):
-    register(validate_log_translations)
     register(check_explicit_underscore_import)
     register(no_translate_debug_logs)
     register(CheckForStrUnicodeExc)

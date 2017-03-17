@@ -1,13 +1,19 @@
 Internationalization
 ====================
 Manila uses `gettext <http://docs.python.org/library/gettext.html>`_ so that
-user-facing strings such as log messages appear in the appropriate
-language in different locales.
+user-facing strings appear in the appropriate language in different locales.
+
+Beginning with the Pike series, OpenStack no longer supports log translation.
+It is not useful to add translation instructions to new code, and the
+instructions can be removed from old code.
+
+Other user-facing strings, e.g. in exception messages, should be translated.
 
 To use gettext, make sure that the strings passed to the logger are wrapped
 in a ``_()`` function call. For example::
 
-    LOG.info(_("block_device_mapping %s"), block_device_mapping)
+    msg = _("Share group %s not found.") % share_group_id
+    raise exc.HTTPNotFound(explanation=msg)
 
 Do not use ``locals()`` for formatting messages because:
 1. It is not as clear as using explicit dicts.
