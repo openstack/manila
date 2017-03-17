@@ -83,6 +83,7 @@ class SchedulerAPI(object):
 
                 'share_group_type_id': 'fake_share_group_type_id',
                 'share_group_id': 'some_fake_uuid',
+                'availability_zone_id': 'some_fake_az_uuid',
                 'share_types': [models.ShareType],
                 'resource_type': models.ShareGroup,
 

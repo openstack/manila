@@ -49,7 +49,8 @@ class API(base.Base):
 
     def create(self, context, name=None, description=None,
                share_type_ids=None, source_share_group_snapshot_id=None,
-               share_network_id=None, share_group_type_id=None):
+               share_network_id=None, share_group_type_id=None,
+               availability_zone_id=None):
         """Create new share group."""
 
         share_group_snapshot = None
@@ -73,6 +74,7 @@ class API(base.Base):
                 for s in original_share_group['share_types']]
             share_network_id = original_share_group['share_network_id']
             share_server_id = original_share_group['share_server_id']
+            availability_zone_id = original_share_group['availability_zone_id']
 
         # Get share_type_objects
         share_type_objects = []
@@ -141,6 +143,7 @@ class API(base.Base):
             'source_share_group_snapshot_id': source_share_group_snapshot_id,
             'share_network_id': share_network_id,
             'share_server_id': share_server_id,
+            'availability_zone_id': availability_zone_id,
             'name': name,
             'description': description,
             'user_id': context.user_id,
@@ -164,12 +167,17 @@ class API(base.Base):
                     member['share_instance'] = self.db.share_instance_get(
                         context, member['share_instance_id'],
                         with_share_data=True)
-                    self.share_api.create(context, member['share_proto'],
-                                          member['size'], None, None,
-                                          share_group_id=share_group['id'],
-                                          share_group_snapshot_member=member,
-                                          share_type=share_type,
-                                          share_network_id=share_network_id)
+                    self.share_api.create(
+                        context,
+                        member['share_proto'],
+                        member['size'],
+                        None,
+                        None,
+                        share_group_id=share_group['id'],
+                        share_group_snapshot_member=member,
+                        share_type=share_type,
+                        availability_zone=availability_zone_id,
+                        share_network_id=share_network_id)
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.db.share_group_destroy(

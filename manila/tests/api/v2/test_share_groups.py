@@ -94,6 +94,7 @@ class ShareGroupAPITest(test.TestCase):
             'name': None,
             'description': None,
             'host': None,
+            'availability_zone_id': None,
             'source_share_group_snapshot_id': None,
             'share_group_type_id': self.fake_share_group_type.get('id'),
             'share_network_id': uuidutils.generate_uuid(),
@@ -111,6 +112,10 @@ class ShareGroupAPITest(test.TestCase):
             'name': share_group_db_dict['name'],
             'description': share_group_db_dict['description'],
             'host': share_group_db_dict['host'],
+            # NOTE(vponomaryov): uncomment following when API start returning
+            # availability zone value.
+            # 'availability_zone_id': share_group_db_dict[
+            #     'availability_zone_id'],
             'source_share_group_snapshot_id': share_group_db_dict[
                 'source_share_group_snapshot_id'],
             'share_group_type_id': share_group_db_dict['share_group_type_id'],
@@ -233,6 +238,92 @@ class ShareGroupAPITest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           self.request, body)
 
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
+
+    def test_share_group_create_with_az(self):
+        fake_az_name = 'fake_az_name'
+        fake_az_id = 'fake_az_id'
+        fake_share_group, expected_share_group = self._get_fake_share_group(
+            availability_zone_id=fake_az_id)
+        self.mock_object(
+            self.controller.share_group_api, 'create',
+            mock.Mock(return_value=fake_share_group))
+        self.mock_object(
+            share_groups.db, 'availability_zone_get',
+            mock.Mock(return_value=type(
+                'FakeAZ', (object, ), {
+                    'id': fake_az_id,
+                    'name': fake_az_name,
+                })))
+
+        body = {"share_group": {"availability_zone": fake_az_name}}
+
+        res_dict = self.controller.create(self.request, body)
+
+        self.controller.share_group_api.create.assert_called_once_with(
+            self.context, availability_zone_id=fake_az_id,
+            share_group_type_id=self.fake_share_group_type['id'],
+            share_type_ids=[self.fake_share_type['id']])
+        share_groups.db.availability_zone_get.assert_called_once_with(
+            self.context, fake_az_name)
+        self.assertEqual(expected_share_group, res_dict['share_group'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
+
+    def test_share_group_create_with_az_and_source_share_group_snapshot(self):
+        fake_az_name = 'fake_az_name'
+        fake_az_id = 'fake_az_id'
+        fake_share_group, expected_share_group = self._get_fake_share_group(
+            availability_zone_id=fake_az_id)
+        self.mock_object(
+            self.controller.share_group_api, 'create',
+            mock.Mock(return_value=fake_share_group))
+        self.mock_object(
+            share_groups.db, 'availability_zone_get',
+            mock.Mock(return_value=type(
+                'FakeAZ', (object, ), {
+                    'id': fake_az_id,
+                    'name': fake_az_name,
+                })))
+
+        body = {"share_group": {
+            "availability_zone": fake_az_name,
+            "source_share_group_snapshot_id": 'fake_sgs_id',
+        }}
+
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller.create,
+            self.request, body)
+
+        self.controller.share_group_api.create.assert_not_called()
+        share_groups.db.availability_zone_get.assert_not_called()
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
+
+    def test_share_group_create_with_nonexistent_az(self):
+        fake_az_name = 'fake_az_name'
+        fake_az_id = 'fake_az_id'
+        fake_share_group, expected_share_group = self._get_fake_share_group(
+            availability_zone_id=fake_az_id)
+        self.mock_object(
+            self.controller.share_group_api, 'create',
+            mock.Mock(return_value=fake_share_group))
+        self.mock_object(
+            share_groups.db, 'availability_zone_get',
+            mock.Mock(
+                side_effect=exception.AvailabilityZoneNotFound(id=fake_az_id)))
+
+        body = {"share_group": {"availability_zone": fake_az_name}}
+
+        self.assertRaises(
+            webob.exc.HTTPNotFound,
+            self.controller.create, self.request, body)
+
+        self.assertEqual(0, self.controller.share_group_api.create.call_count)
+        share_groups.db.availability_zone_get.assert_called_once_with(
+            self.context, fake_az_name)
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'create')
 

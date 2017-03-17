@@ -3523,6 +3523,8 @@ class ShareManager(manager.SchedulerDependentManager):
                     context,
                     share_group_ref['id'],
                     {'status': constants.STATUS_ERROR,
+                     'availability_zone_id': self._get_az_for_share_group(
+                         context, share_group_ref),
                      'consistent_snapshot_support': self.driver._stats[
                          'share_group_stats'].get(
                              'consistent_snapshot_support')})
@@ -3541,6 +3543,8 @@ class ShareManager(manager.SchedulerDependentManager):
             share_group_ref['id'],
             {'status': status,
              'created_at': now,
+             'availability_zone_id': self._get_az_for_share_group(
+                 context, share_group_ref),
              'consistent_snapshot_support': self.driver._stats[
                  'share_group_stats'].get('consistent_snapshot_support')})
         LOG.info("Share group %s: created successfully", share_group_id)
@@ -3548,6 +3552,12 @@ class ShareManager(manager.SchedulerDependentManager):
         # TODO(ameade): Add notification for create.end
 
         return share_group_ref['id']
+
+    def _get_az_for_share_group(self, context, share_group_ref):
+        if not share_group_ref['availability_zone_id']:
+            return self.db.availability_zone_get(
+                context, CONF.storage_availability_zone)['id']
+        return share_group_ref['availability_zone_id']
 
     @utils.require_driver_initialized
     def delete_share_group(self, context, share_group_id):

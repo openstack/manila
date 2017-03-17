@@ -154,6 +154,7 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
             'share_group_type_id',
             'source_share_group_snapshot_id',
             'share_network_id',
+            'availability_zone',
         }
         invalid_fields = set(share_group.keys()) - valid_fields
         if invalid_fields:
@@ -196,6 +197,20 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
                     "'source_share_group_snapshot_id' attributes as the share "
                     "network is inherited from the source.")
             raise exc.HTTPBadRequest(explanation=msg)
+
+        availability_zone = share_group.get('availability_zone')
+        if availability_zone:
+            if 'source_share_group_snapshot_id' in share_group:
+                msg = _(
+                    "Cannot supply both 'availability_zone' and "
+                    "'source_share_group_snapshot_id' attributes as the "
+                    "availability zone is inherited from the source.")
+                raise exc.HTTPBadRequest(explanation=msg)
+            try:
+                az_id = db.availability_zone_get(context, availability_zone).id
+                kwargs['availability_zone_id'] = az_id
+            except exception.AvailabilityZoneNotFound as e:
+                raise exc.HTTPNotFound(explanation=six.text_type(e))
 
         if 'source_share_group_snapshot_id' in share_group:
             source_share_group_snapshot_id = share_group.get(

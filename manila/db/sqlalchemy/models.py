@@ -1017,6 +1017,9 @@ class ShareGroupTypes(BASE, ManilaBase):
 class ShareGroup(BASE, ManilaBase):
     """Represents a share group."""
     __tablename__ = 'share_groups'
+    _extra_keys = [
+        'availability_zone',
+    ]
     id = Column(String(36), primary_key=True)
     user_id = Column(String(255), nullable=False)
     project_id = Column(String(255), nullable=False)
@@ -1032,7 +1035,10 @@ class ShareGroup(BASE, ManilaBase):
         String(36), ForeignKey('share_servers.id'), nullable=True)
     share_group_type_id = Column(
         String(36), ForeignKey('share_group_types.id'), nullable=True)
+    availability_zone_id = Column(
+        String(36), ForeignKey('availability_zones.id'), nullable=True)
     consistent_snapshot_support = Column(Enum('pool', 'host'), default=None)
+
     share_group_type = orm.relationship(
         ShareGroupTypes,
         backref="share_groups",
@@ -1041,6 +1047,19 @@ class ShareGroup(BASE, ManilaBase):
                     'ShareGroup.share_group_type_id == '
                     'ShareGroupTypes.id,'
                     'ShareGroup.deleted == 0)')
+    _availability_zone = orm.relationship(
+        "AvailabilityZone",
+        lazy='immediate',
+        foreign_keys=availability_zone_id,
+        primaryjoin=(
+            "and_("
+            "ShareGroup.availability_zone_id == AvailabilityZone.id, "
+            "AvailabilityZone.deleted == 'False')"))
+
+    @property
+    def availability_zone(self):
+        if self._availability_zone:
+            return self._availability_zone['name']
 
 
 class ShareGroupTypeProjects(BASE, ManilaBase):
