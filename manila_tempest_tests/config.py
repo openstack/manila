@@ -104,6 +104,10 @@ ShareGroup = [
                      "False if the driver being tested does not support "
                      "creating shares from snapshots."),
     cfg.BoolOpt("capability_revert_to_snapshot_support",
+                deprecated_for_removal=True,
+                deprecated_reason="Redundant configuration option. Please use "
+                                  "'run_revert_to_snapshot_tests' config "
+                                  "option instead.",
                 help="Defines extra spec that satisfies specific back end "
                      "capability called 'revert_to_snapshot_support' "
                      "and will be used for setting up custom share type. "
