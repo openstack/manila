@@ -23,7 +23,6 @@ __all__ = [
     'get_client',
     'get_server',
     'get_notifier',
-    'TRANSPORT_ALIASES',
 ]
 
 from oslo_config import cfg
@@ -42,25 +41,12 @@ ALLOWED_EXMODS = [
 ]
 EXTRA_EXMODS = []
 
-# NOTE(flaper87): The manila.openstack.common.rpc entries are
-# for backwards compat with Havana rpc_backend configuration
-# values. The manila.rpc entries are for compat with Folsom values.
-TRANSPORT_ALIASES = {
-    'manila.openstack.common.rpc.impl_kombu': 'rabbit',
-    'manila.openstack.common.rpc.impl_qpid': 'qpid',
-    'manila.openstack.common.rpc.impl_zmq': 'zmq',
-    'manila.rpc.impl_kombu': 'rabbit',
-    'manila.rpc.impl_qpid': 'qpid',
-    'manila.rpc.impl_zmq': 'zmq',
-}
-
 
 def init(conf):
     global TRANSPORT, NOTIFIER
     exmods = get_allowed_exmods()
     TRANSPORT = messaging.get_transport(conf,
-                                        allowed_remote_exmods=exmods,
-                                        aliases=TRANSPORT_ALIASES)
+                                        allowed_remote_exmods=exmods)
 
     serializer = RequestContextSerializer(JsonPayloadSerializer())
     NOTIFIER = messaging.Notifier(TRANSPORT, serializer=serializer)
@@ -123,7 +109,7 @@ class RequestContextSerializer(messaging.Serializer):
 
 
 def get_transport_url(url_str=None):
-    return messaging.TransportURL.parse(CONF, url_str, TRANSPORT_ALIASES)
+    return messaging.TransportURL.parse(CONF, url_str)
 
 
 def get_client(target, version_cap=None, serializer=None):
