@@ -1,0 +1,5 @@
+---
+features:
+  - Dell EMC Unity driver is changed to create shares with the available space
+    instead of allocated space as the same as the size specified by user.
+  - Dell EMC Unity driver version is changed to 3.0.0 for Pike release.

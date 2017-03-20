@@ -15,6 +15,7 @@
 """ Utility module for EMC Unity Manila Driver """
 
 from oslo_utils import fnmatch
+from oslo_utils import units
 
 from manila import exception
 from manila.i18n import _
@@ -73,3 +74,7 @@ def find_ports_by_mtu(all_ports, port_ids_conf, mtu):
                  '%{mtu}s.') % {'conf': port_ids_conf, 'mtu': mtu})
         raise exception.ShareBackendException(msg=msg)
     return managed_port_map
+
+
+def gib_to_byte(size_gib):
+    return size_gib * units.Gi
