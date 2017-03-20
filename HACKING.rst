@@ -17,11 +17,6 @@ Manila Specific Commandments
 - [M325] str() and unicode() cannot be used on an exception. Remove or use six.text_type().
 - [M326] Translated messages cannot be concatenated.  String should be
   included in translated message.
-- [M328] LOG.critical messages require translations _LC()!
-- [M328] LOG.error and LOG.exception messages require translations _LE()!
-- [M329] LOG.info messages require translations _LI()!
-- [M330] LOG.warning messages require translations _LW()!
-- [M331] Log messages require translations!
 - [M333] ``oslo_`` should be used instead of ``oslo.``
 - [M336] Must use a dict comprehension instead of a dict constructor
   with a sequence of key-value pairs.
@@ -32,19 +27,14 @@ Manila Specific Commandments
 LOG Translations
 ----------------
 
-LOG.debug messages will not get translated. Use  ``_LI()`` for
-``LOG.info``, ``_LW`` for ``LOG.warning``, ``_LE`` for ``LOG.error``
-and ``LOG.exception``, and ``_LC()`` for ``LOG.critical``.
+Beginning with the Pike series, OpenStack no longer supports log translation.
+It is not useful to add translation instructions to new code, the
+instructions can be removed from old code, and the hacking checks that
+enforced use of special translation markers for log messages have been
+removed.
 
-``_()`` is preferred for any user facing message, even if it is also
-going to a log file.  This ensures that the translated version of the
-message will be available to the user.
-
-The log marker functions (``_LI()``, ``_LW()``, ``_LE()``, and ``_LC()``)
-must only be used when the message is only sent directly to the log.
-Anytime that the message will be passed outside of the current context
-(for example as part of an exception) the ``_()`` marker function
-must be used.
+Other user-facing strings, e.g. in exception messages, should be translated
+using ``_()``.
 
 A common pattern is to define a single message object and use it more
 than once, for the log call and the exception.  In that case, ``_()``
