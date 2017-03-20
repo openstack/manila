@@ -195,3 +195,8 @@ user documentation.
 2.33
 ----
   Added created_at and updated_at in access_list API.
+
+2.34
+----
+  Added 'availability_zone_id' and 'consistent_snapshot_support' fields to
+  'share_group' object.

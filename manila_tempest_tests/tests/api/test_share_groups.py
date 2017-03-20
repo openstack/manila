@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 from tempest import config
 from tempest.lib import exceptions as lib_exc
 import testtools
@@ -27,6 +28,7 @@ CONF = config.CONF
 @testtools.skipUnless(
     CONF.share.run_share_group_tests, 'Share Group tests disabled.')
 @base.skip_if_microversion_lt(constants.MIN_SHARE_GROUP_MICROVERSION)
+@ddt.ddt
 class ShareGroupsTest(base.BaseSharesTest):
     """Covers share group functionality."""
 
@@ -163,3 +165,58 @@ class ShareGroupsTest(base.BaseSharesTest):
             share_group['share_network_id'],
             new_share_group['share_network_id'],
             msg)
+
+    @base.skip_if_microversion_lt("2.34")
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    @ddt.data(
+        'sg', 'sg_and_share', 'none',
+    )
+    def test_create_sg_and_share_specifying_az(self, where_specify_az):
+        # Get list of existing availability zones, at least one always
+        # should exist
+        azs = self.shares_v2_client.list_availability_zones()
+
+        sg_kwargs = {
+            'version': '2.34',
+            'cleanup_in_class': False,
+        }
+        if where_specify_az in ('sg', 'sg_and_share'):
+            sg_kwargs['availability_zone'] = azs[0]['name']
+
+        # Create share group
+        share_group = self.create_share_group(**sg_kwargs)
+
+        # Get latest share group info
+        share_group = self.shares_v2_client.get_share_group(
+            share_group['id'], '2.34')
+
+        self.assertIn('availability_zone', share_group)
+        if where_specify_az in ('sg', 'sg_and_share'):
+            self.assertEqual(azs[0]['name'], share_group['availability_zone'])
+        else:
+            self.assertIn(
+                share_group['availability_zone'], [az['name'] for az in azs])
+
+        # Test 'consistent_snapshot_support' as part of 2.33 API change
+        self.assertIn('consistent_snapshot_support', share_group)
+        self.assertIn(
+            share_group['consistent_snapshot_support'], ('host', 'pool', None))
+
+        s_kwargs = {
+            'share_group_id': share_group['id'],
+            'version': '2.33',
+            'cleanup_in_class': False,
+            'experimental': True,
+        }
+        if where_specify_az == 'sg_and_share':
+            s_kwargs['availability_zone'] = azs[0]['name']
+
+        # Create share in share group
+        share = self.create_share(**s_kwargs)
+
+        # Get latest share info
+        share = self.shares_v2_client.get_share(share['id'], '2.34')
+
+        # Verify that share always has the same AZ as share group does
+        self.assertEqual(
+            share_group['availability_zone'], share['availability_zone'])

@@ -237,3 +237,37 @@ class ShareGroupsNegativeTest(base.BaseSharesTest):
             version=constants.MIN_SHARE_GROUP_MICROVERSION,
         )
         self.assertEqual(0, len(shares), 'Incorrect number of shares returned')
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    def test_create_sg_with_nonexistent_az_min(self):
+        self.assertRaises(
+            lib_exc.NotFound,
+            self.shares_v2_client.create_share_group,
+            name='tempest_sg',
+            description='tempest_sg_desc',
+            availability_zone='fake_nonexistent_az',
+            version=constants.MIN_SHARE_GROUP_MICROVERSION)
+
+    @base.skip_if_microversion_lt("2.34")
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    def test_create_sg_and_share_with_different_azs(self):
+        azs = self.shares_v2_client.list_availability_zones()
+
+        if len(azs) < 2:
+            raise self.skipException(
+                'Test requires presence of at least 2 availability zones.')
+        else:
+            share_group = self.shares_v2_client.get_share_group(
+                self.share_group['id'], '2.34')
+            different_az = [
+                az['name']
+                for az in azs
+                if az['name'] != share_group['availability_zone']
+            ][0]
+
+        self.assertRaises(
+            lib_exc.BadRequest,
+            self.create_share,
+            share_group_id=self.share_group['id'],
+            availability_zone=different_az,
+            version='2.34')
