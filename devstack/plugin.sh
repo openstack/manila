@@ -644,7 +644,7 @@ function _install_nfs_and_samba {
         install_package nfs-utils samba
     elif is_suse; then
         install_package nfs-kernel-server nfs-utils samba
-    else:
+    else
         echo "This distro is not supported. Skipping step of NFS and Samba installation."
     fi
 }
