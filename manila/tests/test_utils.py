@@ -25,6 +25,7 @@ from oslo_config import cfg
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import paramiko
+import six
 from webob import exc
 
 import manila
@@ -744,3 +745,39 @@ class ShareMigrationHelperTestCase(test.TestCase):
         self.assertRaises(expected_exc,
                           utils.wait_for_access_update, self.context,
                           db, fake_instance, 1)
+
+
+@ddt.ddt
+class ConvertStrTestCase(test.TestCase):
+
+    def test_convert_str_str_input(self):
+        self.mock_object(utils.encodeutils, 'safe_encode')
+        input_value = six.text_type("string_input")
+
+        output_value = utils.convert_str(input_value)
+
+        if six.PY2:
+            utils.encodeutils.safe_encode.assert_called_once_with(input_value)
+            self.assertEqual(
+                utils.encodeutils.safe_encode.return_value, output_value)
+        else:
+            self.assertEqual(0, utils.encodeutils.safe_encode.call_count)
+            self.assertEqual(input_value, output_value)
+
+    def test_convert_str_bytes_input(self):
+        self.mock_object(utils.encodeutils, 'safe_encode')
+        if six.PY2:
+            input_value = six.binary_type("binary_input")
+        else:
+            input_value = six.binary_type("binary_input", "utf-8")
+
+        output_value = utils.convert_str(input_value)
+
+        if six.PY2:
+            utils.encodeutils.safe_encode.assert_called_once_with(input_value)
+            self.assertEqual(
+                utils.encodeutils.safe_encode.return_value, output_value)
+        else:
+            self.assertEqual(0, utils.encodeutils.safe_encode.call_count)
+            self.assertIsInstance(output_value, six.string_types)
+            self.assertEqual(six.text_type("binary_input"), output_value)

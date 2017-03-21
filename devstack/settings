@@ -73,9 +73,8 @@ MANILA_DEFAULT_SHARE_GROUP_TYPE_SPECS=${MANILA_DEFAULT_SHARE_GROUP_TYPE_SPECS:-'
 # Public facing bits
 MANILA_SERVICE_HOST=${MANILA_SERVICE_HOST:-$SERVICE_HOST}
 MANILA_SERVICE_PORT=${MANILA_SERVICE_PORT:-8786}
-MANILA_SERVICE_PORT_INT=${MANILA_SERVICE_PORT_INT:-18776}
+MANILA_SERVICE_PORT_INT=${MANILA_SERVICE_PORT_INT:-18786}
 MANILA_SERVICE_PROTOCOL=${MANILA_SERVICE_PROTOCOL:-$SERVICE_PROTOCOL}
-
 
 # Support entry points installation of console scripts
 if [[ -d $MANILA_DIR/bin ]]; then
@@ -83,7 +82,6 @@ if [[ -d $MANILA_DIR/bin ]]; then
 else
     MANILA_BIN_DIR=$(get_python_exec_prefix)
 fi
-
 
 # Common opts
 SHARE_NAME_PREFIX=${SHARE_NAME_PREFIX:-share-}
@@ -96,6 +94,14 @@ MANILA_SERVICE_SECGROUP="manila-service"
 # If it is set to True, then will be applied 'upgrade', 'downgrade' and 'upgrade'
 # migrations again.
 MANILA_USE_DOWNGRADE_MIGRATIONS=${MANILA_USE_DOWNGRADE_MIGRATIONS:-"False"}
+
+# Toggle for deploying manila-api service under Apache web server with enabled 'mod_wsgi' plugin.
+# Disabled by default, which means running manila-api service as standalone
+# eventlet-based WSGI application.
+# Set it as True, because starting with Pike it is requirement from
+# 'governance' project. See:
+# https://governance.openstack.org/tc/goals/pike/deploy-api-in-wsgi.html#completion-criteria
+MANILA_USE_MOD_WSGI=${MANILA_USE_MOD_WSGI:-True}
 
 # Common info for Generic driver(s)
 SHARE_DRIVER=${SHARE_DRIVER:-manila.share.drivers.generic.GenericShareDriver}

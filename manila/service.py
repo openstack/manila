@@ -26,6 +26,7 @@ from oslo_log import log
 import oslo_messaging as messaging
 from oslo_service import loopingcall
 from oslo_service import service
+from oslo_service import wsgi
 from oslo_utils import importutils
 
 from manila import context
@@ -34,7 +35,6 @@ from manila import db
 from manila import exception
 from manila import rpc
 from manila import version
-from manila import wsgi
 
 LOG = log.getLogger(__name__)
 
@@ -283,7 +283,7 @@ class WSGIService(service.ServiceBase):
         """
         self.name = name
         self.manager = self._get_manager()
-        self.loader = loader or wsgi.Loader()
+        self.loader = loader or wsgi.Loader(CONF)
         if not rpc.initialized():
             rpc.init(CONF)
         self.app = self.loader.load_app(name)
@@ -296,10 +296,13 @@ class WSGIService(service.ServiceBase):
                 "greater than 1.  Input value ignored." % {'name': name})
             # Reset workers to default
             self.workers = None
-        self.server = wsgi.Server(name,
-                                  self.app,
-                                  host=self.host,
-                                  port=self.port)
+        self.server = wsgi.Server(
+            CONF,
+            name,
+            self.app,
+            host=self.host,
+            port=self.port,
+        )
 
     def _get_manager(self):
         """Initialize a Manager object appropriate for this service.

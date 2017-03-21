@@ -24,6 +24,7 @@ Unit Tests for remote procedure calls using queue
 import ddt
 import mock
 from oslo_config import cfg
+from oslo_service import wsgi
 
 from manila import context
 from manila import db
@@ -32,7 +33,6 @@ from manila import manager
 from manila import service
 from manila import test
 from manila import utils
-from manila import wsgi
 
 test_service_opts = [
     cfg.StrOpt("fake_manager",
@@ -224,5 +224,5 @@ class TestWSGIService(test.TestCase):
         # Resetting pool size to default
         self.test_service.reset()
         self.test_service.start()
-        self.assertEqual(1000, self.test_service.server._pool.size)
+        self.assertGreater(self.test_service.server._pool.size, 0)
         wsgi.Loader.load_app.assert_called_once_with("test_service")

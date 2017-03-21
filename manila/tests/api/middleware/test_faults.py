@@ -19,7 +19,9 @@ import webob
 import webob.dec
 import webob.exc
 
+from manila.api.middleware import fault
 from manila.api.openstack import wsgi
+from manila import exception
 from manila import test
 
 
@@ -72,7 +74,7 @@ class TestFaults(test.TestCase):
                 "overLimit": {
                     "message": "sorry",
                     "code": 413,
-                    "retryAfter": 4,
+                    "retryAfter": '4',
                 },
             }
             actual = jsonutils.loads(response.body)
@@ -109,3 +111,76 @@ class TestFaults(test.TestCase):
         """Ensure the status_int is set correctly on faults."""
         fault = wsgi.Fault(webob.exc.HTTPBadRequest(explanation='what?'))
         self.assertEqual(400, fault.status_int)
+
+
+class ExceptionTest(test.TestCase):
+
+    def _wsgi_app(self, inner_app):
+        return fault.FaultWrapper(inner_app)
+
+    def _do_test_exception_safety_reflected_in_faults(self, expose):
+        class ExceptionWithSafety(exception.ManilaException):
+            safe = expose
+
+        @webob.dec.wsgify
+        def fail(req):
+            raise ExceptionWithSafety('some explanation')
+
+        api = self._wsgi_app(fail)
+        resp = webob.Request.blank('/').get_response(api)
+        self.assertIn('{"computeFault', six.text_type(resp.body), resp.body)
+        expected = ('ExceptionWithSafety: some explanation' if expose else
+                    'The server has either erred or is incapable '
+                    'of performing the requested operation.')
+        self.assertIn(expected, six.text_type(resp.body), resp.body)
+        self.assertEqual(500, resp.status_int, resp.body)
+
+    def test_safe_exceptions_are_described_in_faults(self):
+        self._do_test_exception_safety_reflected_in_faults(True)
+
+    def test_unsafe_exceptions_are_not_described_in_faults(self):
+        self._do_test_exception_safety_reflected_in_faults(False)
+
+    def _do_test_exception_mapping(self, exception_type, msg):
+        @webob.dec.wsgify
+        def fail(req):
+            raise exception_type(msg)
+
+        api = self._wsgi_app(fail)
+        resp = webob.Request.blank('/').get_response(api)
+        self.assertIn(msg, six.text_type(resp.body), resp.body)
+        self.assertEqual(exception_type.code, resp.status_int, resp.body)
+
+        if hasattr(exception_type, 'headers'):
+            for (key, value) in exception_type.headers.items():
+                self.assertIn(key, resp.headers)
+                self.assertEqual(value, resp.headers[key])
+
+    def test_quota_error_mapping(self):
+        self._do_test_exception_mapping(exception.QuotaError, 'too many used')
+
+    def test_non_manila_notfound_exception_mapping(self):
+        class ExceptionWithCode(Exception):
+            code = 404
+
+        self._do_test_exception_mapping(ExceptionWithCode,
+                                        'NotFound')
+
+    def test_non_manila_exception_mapping(self):
+        class ExceptionWithCode(Exception):
+            code = 417
+
+        self._do_test_exception_mapping(ExceptionWithCode,
+                                        'Expectation failed')
+
+    def test_exception_with_none_code_throws_500(self):
+        class ExceptionWithNoneCode(Exception):
+            code = None
+
+        @webob.dec.wsgify
+        def fail(req):
+            raise ExceptionWithNoneCode()
+
+        api = self._wsgi_app(fail)
+        resp = webob.Request.blank('/').get_response(api)
+        self.assertEqual(500, resp.status_int)

@@ -85,7 +85,7 @@ import manila.share.hook
 import manila.share.manager
 import manila.volume
 import manila.volume.cinder
-import manila.wsgi
+import manila.wsgi.eventlet_server
 
 
 # List of *all* options in [DEFAULT] namespace of manila.
@@ -165,8 +165,7 @@ _global_opt_lists = [
     manila.share.hook.hook_options,
     manila.share.manager.share_manager_opts,
     manila.volume._volume_opts,
-    manila.wsgi.eventlet_opts,
-    manila.wsgi.socket_opts,
+    manila.wsgi.eventlet_server.socket_opts,
 ]
 
 _opts = [

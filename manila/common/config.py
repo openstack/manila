@@ -41,9 +41,6 @@ log.register_options(CONF)
 
 
 core_opts = [
-    cfg.StrOpt('api_paste_config',
-               default="api-paste.ini",
-               help='File name for the paste.deploy config for manila-api.'),
     cfg.StrOpt('state_path',
                default='/var/lib/manila',
                help="Top-level directory for maintaining manila's state."),

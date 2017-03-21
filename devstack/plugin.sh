@@ -59,6 +59,22 @@ function cleanup_manila {
     _clean_zfsonlinux_data
 }
 
+# _config_manila_apache_wsgi() - Configure manila-api wsgi application.
+function _config_manila_apache_wsgi {
+    local manila_api_apache_conf
+    local venv_path=""
+    manila_api_apache_conf=$(apache_site_config_for manila-api)
+
+    sudo cp $MANILA_DIR/devstack/apache-manila.template $manila_api_apache_conf
+    sudo sed -e "
+        s|%APACHE_NAME%|$APACHE_NAME|g;
+        s|%MANILA_BIN_DIR%|$MANILA_BIN_DIR|g;
+        s|%PORT%|$MANILA_SERVICE_PORT|g;
+        s|%APIWORKERS%|$API_WORKERS|g;
+        s|%USER%|$STACK_USER|g;
+    " -i $manila_api_apache_conf
+}
+
 # configure_default_backends - configures default Manila backends with generic driver.
 function configure_default_backends {
     # Configure two default backends with generic drivers onboard
@@ -257,6 +273,10 @@ function configure_manila {
     MANILA_CONFIGURE_GROUPS=${MANILA_CONFIGURE_GROUPS:-"$MANILA_ENABLED_BACKENDS"}
     set_config_opts $MANILA_CONFIGURE_GROUPS
     set_config_opts DEFAULT
+
+    if [ $(trueorfalse False MANILA_USE_MOD_WSGI) == True ]; then
+        _config_manila_apache_wsgi
+    fi
 }
 
 
@@ -759,7 +779,14 @@ function configure_samba {
 
 # start_manila_api - starts manila API services and checks its availability
 function start_manila_api {
-    run_process m-api "$MANILA_BIN_DIR/manila-api --config-file $MANILA_CONF"
+    if [ $(trueorfalse False MANILA_USE_MOD_WSGI) == True ]; then
+        install_apache_wsgi
+        enable_apache_site manila-api
+        restart_apache_server
+        tail_log m-api /var/log/$APACHE_NAME/manila_api.log
+    else
+        run_process m-api "$MANILA_BIN_DIR/manila-api --config-file $MANILA_CONF"
+    fi
 
     echo "Waiting for Manila API to start..."
     if ! wait_for_service $SERVICE_TIMEOUT $MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT; then
@@ -788,8 +815,16 @@ function start_manila {
 
 # stop_manila - Stop running processes
 function stop_manila {
-    # Kill the manila processes
-    for serv in m-api m-sch m-shr m-dat; do
+    # Disable manila api service
+    if [ $(trueorfalse False MANILA_USE_MOD_WSGI) == True ]; then
+        disable_apache_site manila-api
+        restart_apache_server
+    else
+        stop_process m-api
+    fi
+
+    # Kill all other manila processes
+    for serv in m-sch m-shr m-dat; do
         stop_process $serv
     done
 }

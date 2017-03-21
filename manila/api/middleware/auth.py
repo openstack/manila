@@ -27,7 +27,7 @@ import webob.exc
 from manila.api.openstack import wsgi
 from manila import context
 from manila.i18n import _
-from manila import wsgi as base_wsgi
+from manila.wsgi import common as base_wsgi
 
 use_forwarded_for_opt = cfg.BoolOpt(
     'use_forwarded_for',
