@@ -22,12 +22,19 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import subprocess
+import eventlet
 import sys
 import os
 import warnings
 
 import openstackdocstheme
+
+# NOTE(dims): monkey patch subprocess to prevent failures in latest eventlet
+# See https://github.com/eventlet/eventlet/issues/398
+try:
+    eventlet.monkey_patch(subprocess=True)
+except TypeError:
+    pass
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -206,6 +213,7 @@ git_cmd = [
     "git", "log", "--pretty=format:'%ad, commit %h'", "--date=local", "-n1"
 ]
 try:
+    import subprocess
     html_last_updated_fmt = subprocess.check_output(git_cmd).decode('utf-8')
 except Exception:
     warnings.warn('Cannot get last updated time from git repository. '
