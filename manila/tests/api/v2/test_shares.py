@@ -1771,7 +1771,7 @@ class ShareActionsTest(test.TestCase):
     @ddt.data(
         {'access_type': 'ip', 'access_to': '127.0.0.1'},
         {'access_type': 'user', 'access_to': '1' * 4},
-        {'access_type': 'user', 'access_to': '1' * 32},
+        {'access_type': 'user', 'access_to': '1' * 255},
         {'access_type': 'user', 'access_to': 'fake\\]{.-_\'`;}['},
         {'access_type': 'user', 'access_to': 'MYDOMAIN\\Administrator'},
         {'access_type': 'cert', 'access_to': 'x'},
@@ -1803,7 +1803,7 @@ class ShareActionsTest(test.TestCase):
         {'access_type': 'ip', 'access_to': '127.0.0.256'},
         {'access_type': 'user', 'access_to': '1'},
         {'access_type': 'user', 'access_to': '1' * 3},
-        {'access_type': 'user', 'access_to': '1' * 33},
+        {'access_type': 'user', 'access_to': '1' * 256},
         {'access_type': 'user', 'access_to': 'root^'},
         {'access_type': 'cert', 'access_to': ''},
         {'access_type': 'cert', 'access_to': ' '},

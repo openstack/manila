@@ -334,10 +334,10 @@ def validate_common_name(access):
 
 
 def validate_username(access):
-    valid_username_re = '[\w\.\-_\`;\'\{\}\[\]\\\\]{4,32}$'
+    valid_username_re = '[\w\.\-_\`;\'\{\}\[\]\\\\]{4,255}$'
     username = access
     if not re.match(valid_username_re, username):
-        exc_str = ('Invalid user or group name. Must be 4-32 characters '
+        exc_str = ('Invalid user or group name. Must be 4-255 characters '
                    'and consist of alphanumeric characters and '
                    'special characters ]{.-_\'`;}[\\')
         raise webob.exc.HTTPBadRequest(explanation=exc_str)
