@@ -686,7 +686,7 @@ class ShareDriver(object):
         the share if it changes. To do that, you should return list with
         export locations.
 
-        :return None or list with export locations
+        :return: None or list with export locations
         """
         raise NotImplementedError()
 
@@ -2347,7 +2347,7 @@ class ShareDriver(object):
         find the default filter_function. When None is returned the scheduler
         will always pass the driver instance.
 
-        :return a filter_function string or None
+        :return: a filter_function string or None
         """
         ret_function = self.configuration.filter_function
         if not ret_function:
@@ -2364,7 +2364,7 @@ class ShareDriver(object):
         find the default goodness_function. When None is returned the scheduler
         will give the lowest score to the driver instance.
 
-        :return a goodness_function string or None
+        :return: a goodness_function string or None
         """
         ret_function = self.configuration.goodness_function
         if not ret_function:
