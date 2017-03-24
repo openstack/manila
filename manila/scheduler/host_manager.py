@@ -33,7 +33,6 @@ import six
 
 from manila import db
 from manila import exception
-from manila.i18n import _LI, _LW
 from manila.scheduler.filters import base_host as base_host_filter
 from manila.scheduler import utils as scheduler_utils
 from manila.scheduler.weighers import base_host as base_host_weigher
@@ -548,7 +547,7 @@ class HostManager(object):
 
             # Warn about down services and remove them from host_state_map
             if not utils.service_is_up(service) or service['disabled']:
-                LOG.warning(_LW("Share service is down. (host: %s).") % host)
+                LOG.warning("Share service is down. (host: %s)." % host)
                 continue
 
             # Create and register host_state if not in host_state_map
@@ -569,8 +568,8 @@ class HostManager(object):
         # remove non-active hosts from host_state_map
         nonactive_hosts = set(self.host_state_map.keys()) - active_hosts
         for host in nonactive_hosts:
-            LOG.info(_LI("Removing non-active host: %(host)s from"
-                         "scheduler cache."), {'host': host})
+            LOG.info("Removing non-active host: %(host)s from "
+                     "scheduler cache.", {'host': host})
             self.host_state_map.pop(host, None)
 
     def get_all_host_states_share(self, context):

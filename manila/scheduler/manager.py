@@ -28,7 +28,6 @@ from manila.common import constants
 from manila import context
 from manila import db
 from manila import exception
-from manila.i18n import _LE, _LW
 from manila import manager
 from manila import rpc
 from manila.share import rpcapi as share_rpcapi
@@ -70,9 +69,9 @@ class SchedulerManager(manager.Manager):
                 'old': scheduler_driver,
                 'new': MAPPING[scheduler_driver],
             }
-            LOG.warning(_LW("Scheduler driver path %(old)s is deprecated, "
-                            "update your configuration to the new path "
-                            "%(new)s"), msg_args)
+            LOG.warning("Scheduler driver path %(old)s is deprecated, "
+                        "update your configuration to the new path "
+                        "%(new)s", msg_args)
             scheduler_driver = MAPPING[scheduler_driver]
 
         self.driver = importutils.import_object(scheduler_driver)
@@ -189,7 +188,7 @@ class SchedulerManager(manager.Manager):
     def _set_share_state_and_notify(self, method, state, context, ex,
                                     request_spec):
 
-        LOG.error(_LE("Failed to schedule %(method)s: %(ex)s"),
+        LOG.error("Failed to schedule %(method)s: %(ex)s",
                   {"method": method, "ex": ex})
 
         properties = request_spec.get('share_properties', {})
@@ -213,7 +212,7 @@ class SchedulerManager(manager.Manager):
         share_rpcapi.ShareAPI().publish_service_capabilities(context)
 
     def _set_share_group_error_state(self, method, context, ex, request_spec):
-        LOG.warning(_LW("Failed to schedule_%(method)s: %(ex)s"),
+        LOG.warning("Failed to schedule_%(method)s: %(ex)s",
                     {"method": method, "ex": ex})
 
         share_group_state = {'status': constants.STATUS_ERROR}
@@ -239,7 +238,7 @@ class SchedulerManager(manager.Manager):
     def _set_share_replica_error_state(self, context, method, exc,
                                        request_spec):
 
-        LOG.warning(_LW("Failed to schedule_%(method)s: %(exc)s"),
+        LOG.warning("Failed to schedule_%(method)s: %(exc)s",
                     {'method': method, 'exc': exc})
         status_updates = {
             'status': constants.STATUS_ERROR,

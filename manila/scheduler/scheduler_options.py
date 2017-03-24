@@ -28,8 +28,6 @@ from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 
-from manila.i18n import _LE
-
 scheduler_json_config_location_opt = cfg.StrOpt(
     'scheduler_json_config_location',
     default='',
@@ -65,8 +63,8 @@ class SchedulerOptions(object):
         try:
             return os.path.getmtime(filename)
         except os.error:
-            LOG.exception(_LE("Could not stat scheduler options file "
-                              "%(filename)s."),
+            LOG.exception("Could not stat scheduler options file "
+                          "%(filename)s.",
                           {"filename": filename})
             raise
 
@@ -75,7 +73,7 @@ class SchedulerOptions(object):
         try:
             return jsonutils.load(handle)
         except ValueError:
-            LOG.exception(_LE("Could not decode scheduler options."))
+            LOG.exception("Could not decode scheduler options.")
             return {}
 
     def _get_time_now(self):
