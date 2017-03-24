@@ -1,0 +1,104 @@
+# Jose Porrua <jose.porrua@netapp.com>, 2016. #zanata
+msgid ""
+msgstr ""
+"Project-Id-Version: Manila Release Notes 4.0.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2017-03-23 15:49+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2016-07-28 02:25+0000\n"
+"Last-Translator: Jose Porrua <jose.porrua@netapp.com>\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"X-Generator: Zanata 3.9.6\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+
+msgid "1.0.1"
+msgstr "1.0.1"
+
+msgid "2.0.0"
+msgstr "2.0.0"
+
+msgid "Add support for hybrid aggregates to the NetApp cDOT drivers."
+msgstr ""
+"Añadir funcionalidad para user agrupaciones híbridas en los drivers de "
+"Clustered Data ONTAP de NetApp."
+
+msgid "Add support for snapshot manage/unmanage to the NetApp cDOT driver."
+msgstr ""
+"Añadir funcionalidad para administrar instantáneas en el driver de NetApp "
+"cDOT."
+
+msgid "Added APIs for listing export locations per share and share instances."
+msgstr ""
+"Se añadió APIs para obtener una lista con las localidades de exportación por "
+"recurso compartido y por instancia de recurso compartido."
+
+msgid "Added driver for Tegile IntelliFlash arrays."
+msgstr ""
+"Se añadió un controlador para interactuar con los sistemas de almacenamiento "
+"de datos Tegile IntelliFlash."
+
+msgid "Added support of 'manage share' feature to ZFSonLinux driver."
+msgstr ""
+"Se añadió la funcionalidad para gestionar recursos compartidos en el "
+"controlador de ZFSonLinux."
+
+msgid "Added support of 'manage snapshot' feature to ZFSonLinux driver."
+msgstr ""
+"Se añadió la funcionalidad para gestionar instantáneas en el controlador de "
+"ZFSonLinux."
+
+msgid "Bug Fixes"
+msgstr "Corrigiendo errores."
+
+msgid "Current Series Release Notes"
+msgstr "Notas de la versión actual"
+
+msgid "Deprecation Notes"
+msgstr "Notas de desuso"
+
+msgid "Known Issues"
+msgstr "Problemas Conocidos"
+
+msgid "Liberty Series Release Notes"
+msgstr "Notas de la versión para Liberty"
+
+msgid "Manage and unmanage snapshot."
+msgstr "Gestionar o dejar de gestionar una instantánea."
+
+msgid "Manage share snapshot on array in huawei driver."
+msgstr ""
+"Gestionar una instantánea de un recurso compartido en el controlador Huawei."
+
+msgid "Manila Release Notes"
+msgstr "Notas de la versión para Manila"
+
+msgid "Mitaka Series Release Notes"
+msgstr "Notas de la versión para Mitaka"
+
+msgid "New Features"
+msgstr "Nuevas Funcionalidades"
+
+msgid "Other Notes"
+msgstr "Otras Notas"
+
+msgid "Security Issues"
+msgstr "Problemas de Seguridad"
+
+msgid "Store network gateway value in DB."
+msgstr "Guardar el valor de la red de pasarela en la base de datos."
+
+msgid "Upgrade Notes"
+msgstr "Notas de Actualización"
+
+msgid "User ID is added to the JSON response of the /shares APIs."
+msgstr "Se añadió el ID de usuario a la respuesta JSON de la API /shares."
+
+msgid ""
+"user_id and project_id fields are added to the JSON response of /snapshots "
+"APIs."
+msgstr ""
+"Se añadieron los campos user_id y project_id a la respuesta JSON de la API /"
+"snapshots."
