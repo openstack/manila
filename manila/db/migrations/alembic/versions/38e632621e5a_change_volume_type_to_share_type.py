@@ -30,25 +30,24 @@ from oslo_utils import strutils
 import sqlalchemy as sa
 from sqlalchemy.sql import table
 
-from manila.i18n import _LI
 
 LOG = log.getLogger(__name__)
 
 
 def upgrade():
-    LOG.info(_LI("Renaming column name shares.volume_type_id to "
-             "shares.share_type.id"))
+    LOG.info("Renaming column name shares.volume_type_id to "
+             "shares.share_type.id")
     op.alter_column("shares", "volume_type_id",
                     new_column_name="share_type_id",
                     type_=sa.String(length=36))
 
-    LOG.info(_LI("Renaming volume_types table to share_types"))
+    LOG.info("Renaming volume_types table to share_types")
     op.rename_table("volume_types", "share_types")
     op.drop_constraint('vt_name_uc', 'share_types', type_='unique')
     op.create_unique_constraint('st_name_uc', 'share_types',
                                 ['name', 'deleted'])
 
-    LOG.info(_LI("Creating share_type_extra_specs table"))
+    LOG.info("Creating share_type_extra_specs table")
     st_es = op.create_table(
         'share_type_extra_specs',
         sa.Column('created_at', sa.DateTime),
@@ -63,16 +62,16 @@ def upgrade():
         sa.Column('spec_value', sa.String(length=255)),
         mysql_engine='InnoDB')
 
-    LOG.info(_LI("Migrating volume_type_extra_specs to "
-                 "share_type_extra_specs"))
+    LOG.info("Migrating volume_type_extra_specs to "
+             "share_type_extra_specs")
     _copy_records(destination_table=st_es, up_migration=True)
 
-    LOG.info(_LI("Dropping volume_type_extra_specs table"))
+    LOG.info("Dropping volume_type_extra_specs table")
     op.drop_table("volume_type_extra_specs")
 
 
 def downgrade():
-    LOG.info(_LI("Creating volume_type_extra_specs table"))
+    LOG.info("Creating volume_type_extra_specs table")
     vt_es = op.create_table(
         'volume_type_extra_specs',
         sa.Column('created_at', sa.DateTime),
@@ -86,21 +85,21 @@ def downgrade():
         sa.Column('value', sa.String(length=255)),
         mysql_engine='InnoDB')
 
-    LOG.info(_LI("Migrating share_type_extra_specs to "
-             "volume_type_extra_specs"))
+    LOG.info("Migrating share_type_extra_specs to "
+             "volume_type_extra_specs")
     _copy_records(destination_table=vt_es, up_migration=False)
 
-    LOG.info(_LI("Dropping share_type_extra_specs table"))
+    LOG.info("Dropping share_type_extra_specs table")
     op.drop_table("share_type_extra_specs")
 
-    LOG.info(_LI("Renaming share_types table to volume_types"))
+    LOG.info("Renaming share_types table to volume_types")
     op.drop_constraint('st_name_uc', 'share_types', type_='unique')
     op.create_unique_constraint('vt_name_uc', 'share_types',
                                 ['name', 'deleted'])
     op.rename_table("share_types", "volume_types")
 
-    LOG.info(_LI("Renaming column name shares.share_type_id to "
-             "shares.volume_type.id"))
+    LOG.info("Renaming column name shares.share_type_id to "
+             "shares.volume_type.id")
     op.alter_column("shares", "share_type_id",
                     new_column_name="volume_type_id",
                     type_=sa.String(length=36))

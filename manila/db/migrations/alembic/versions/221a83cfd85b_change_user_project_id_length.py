@@ -28,35 +28,32 @@ from alembic import op
 from oslo_log import log
 import sqlalchemy as sa
 
-from manila.i18n import _LI
-
-
 LOG = log.getLogger(__name__)
 
 
 def upgrade():
-    LOG.info(_LI("Changing user_id length for share_networks"))
+    LOG.info("Changing user_id length for share_networks")
     op.alter_column("share_networks", "user_id",
                     type_=sa.String(length=255))
 
-    LOG.info(_LI("Changing project_id length for share_networks"))
+    LOG.info("Changing project_id length for share_networks")
     op.alter_column("share_networks", "project_id",
                     type_=sa.String(length=255))
 
-    LOG.info(_LI("Changing project_id length for security_services"))
+    LOG.info("Changing project_id length for security_services")
     op.alter_column("security_services", "project_id",
                     type_=sa.String(length=255))
 
 
 def downgrade():
-    LOG.info(_LI("Changing back user_id length for share_networks"))
+    LOG.info("Changing back user_id length for share_networks")
     op.alter_column("share_networks", "user_id",
                     type_=sa.String(length=36))
 
-    LOG.info(_LI("Changing back project_id length for share_networks"))
+    LOG.info("Changing back project_id length for share_networks")
     op.alter_column("share_networks", "project_id",
                     type_=sa.String(length=36))
 
-    LOG.info(_LI("Changing back project_id length for security_services"))
+    LOG.info("Changing back project_id length for security_services")
     op.alter_column("security_services", "project_id",
                     type_=sa.String(length=36))

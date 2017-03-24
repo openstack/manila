@@ -28,13 +28,12 @@ import sqlalchemy as sa
 from sqlalchemy import Column, String
 
 from manila.db.migrations import utils
-from manila.i18n import _LI
 
 LOG = log.getLogger(__name__)
 
 
 def upgrade():
-    LOG.info(_LI("Renaming consistency group tables"))
+    LOG.info("Renaming consistency group tables")
 
     # Rename tables
     op.rename_table("consistency_groups", "share_groups")

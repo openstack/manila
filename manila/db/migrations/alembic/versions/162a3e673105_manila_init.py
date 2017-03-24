@@ -29,8 +29,6 @@ from oslo_log import log
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey
 from sqlalchemy import Integer, MetaData, String, Table, UniqueConstraint
 
-from manila.i18n import _LE
-
 LOG = log.getLogger(__name__)
 
 
@@ -399,7 +397,7 @@ def upgrade():
                 table.create()
             except Exception:
                 LOG.info(repr(table))
-                LOG.exception(_LE('Exception while creating table.'))
+                LOG.exception('Exception while creating table.')
                 raise
 
     if migrate_engine.name == "mysql":

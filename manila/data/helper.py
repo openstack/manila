@@ -21,7 +21,7 @@ from oslo_log import log
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LW
+from manila.i18n import _
 from manila.share import access as access_manager
 from manila.share import rpcapi as share_rpc
 from manila import utils
@@ -84,7 +84,7 @@ class DataServiceHelper(object):
             self.deny_access_to_data_service(
                 access_ref_list, share_instance_id)
         except Exception:
-            LOG.warning(_LW("Could not cleanup access rule of share %s."),
+            LOG.warning("Could not cleanup access rule of share %s.",
                         self.share['id'])
 
     def cleanup_temp_folder(self, instance_id, mount_path):
@@ -95,11 +95,11 @@ class DataServiceHelper(object):
                 os.rmdir(path)
             self._check_dir_not_exists(path)
         except Exception:
-            LOG.warning(_LW("Could not cleanup instance %(instance_id)s "
-                            "temporary folders for data copy of "
-                            "share %(share_id)s."), {
-                                'instance_id': instance_id,
-                                'share_id': self.share['id']})
+            LOG.warning("Could not cleanup instance %(instance_id)s "
+                        "temporary folders for data copy of "
+                        "share %(share_id)s.", {
+                            'instance_id': instance_id,
+                            'share_id': self.share['id']})
 
     def cleanup_unmount_temp_folder(self, unmount_template, mount_path,
                                     share_instance_id):
@@ -108,11 +108,11 @@ class DataServiceHelper(object):
             self.unmount_share_instance(unmount_template, mount_path,
                                         share_instance_id)
         except Exception:
-            LOG.warning(_LW("Could not unmount folder of instance"
-                            " %(instance_id)s for data copy of "
-                            "share %(share_id)s."), {
-                                'instance_id': share_instance_id,
-                                'share_id': self.share['id']})
+            LOG.warning("Could not unmount folder of instance"
+                        " %(instance_id)s for data copy of "
+                        "share %(share_id)s.", {
+                            'instance_id': share_instance_id,
+                            'share_id': self.share['id']})
 
     def _change_data_access_to_instance(self, instance, accesses, deny=False):
         if not isinstance(accesses, list):
@@ -263,4 +263,4 @@ class DataServiceHelper(object):
                 os.rmdir(path)
             self._check_dir_not_exists(path)
         except Exception:
-            LOG.warning(_LW("Folder %s could not be removed."), path)
+            LOG.warning("Folder %s could not be removed.", path)

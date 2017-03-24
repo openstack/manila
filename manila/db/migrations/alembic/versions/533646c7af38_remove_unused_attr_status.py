@@ -29,7 +29,6 @@ from oslo_log import log
 import sqlalchemy as sql
 
 from manila.common import constants
-from manila.i18n import _LE
 
 LOG = log.getLogger(__name__)
 COLUMN_NAME = 'status'
@@ -41,7 +40,7 @@ def upgrade():
         try:
             op.drop_column(t_name, COLUMN_NAME)
         except Exception:
-            LOG.error(_LE("Column '%s' could not be dropped"), COLUMN_NAME)
+            LOG.error("Column '%s' could not be dropped", COLUMN_NAME)
             raise
 
 
@@ -64,5 +63,5 @@ def downgrade():
                 ),
             )
         except Exception:
-            LOG.error(_LE("Column '%s' could not be added"), COLUMN_NAME)
+            LOG.error("Column '%s' could not be added", COLUMN_NAME)
             raise

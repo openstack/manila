@@ -17,7 +17,6 @@ import re
 
 from oslo_log import log
 
-from manila.i18n import _LE
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -46,7 +45,7 @@ class OVSBridge(object):
         try:
             return utils.execute(*full_args, run_as_root=True)
         except Exception:
-            LOG.exception(_LE("Unable to execute %(cmd)s."),
+            LOG.exception("Unable to execute %(cmd)s.",
                           {'cmd': full_args})
 
     def reset_bridge(self):
