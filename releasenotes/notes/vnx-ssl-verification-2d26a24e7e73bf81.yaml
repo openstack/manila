@@ -1,0 +1,3 @@
+upgrade:
+  - Added ``emc_ssl_cert_verify`` and ``emc_ssl_cert_path`` options for VNX SSL
+    verification. For more details, see OpenStack official documentation.

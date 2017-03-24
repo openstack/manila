@@ -43,7 +43,15 @@ EMC_NAS_OPTS = [
                choices=['isilon', 'vnx', 'unity', 'vmax'],
                help='Share backend.'),
     cfg.StrOpt('emc_nas_root_dir',
-               help='The root directory where shares will be located.')
+               help='The root directory where shares will be located.'),
+    cfg.BoolOpt('emc_ssl_cert_verify',
+                default=True,
+                help='If set to False the https client will not validate the '
+                     'SSL certificate of the backend endpoint.'),
+    cfg.StrOpt('emc_ssl_cert_path',
+               help='Can be used to specify a non default path to a '
+                    'CA_BUNDLE file or directory with certificates of trusted '
+                    'CAs, which will be used to validate the backend.')
 ]
 
 CONF = cfg.CONF

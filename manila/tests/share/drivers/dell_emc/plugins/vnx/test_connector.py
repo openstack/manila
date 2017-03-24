@@ -160,6 +160,8 @@ class CmdConnectorTest(test.TestCase):
         self.configuration.emc_nas_login = fakes.FakeData.emc_nas_login
         self.configuration.emc_nas_password = fakes.FakeData.emc_nas_password
         self.configuration.emc_nas_server = fakes.FakeData.emc_nas_server
+        self.configuration.emc_ssl_cert_verify = False
+        self.configuration.emc_ssl_cert_path = None
 
         self.sshpool = MockSSHPool()
         with mock.patch.object(utils, "SSHPool",

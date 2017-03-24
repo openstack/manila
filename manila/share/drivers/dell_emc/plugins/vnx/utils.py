@@ -15,10 +15,12 @@
 
 import types
 
+from manila.i18n import _LW
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import fnmatch
 from oslo_utils import timeutils
+import ssl
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
@@ -81,3 +83,24 @@ def do_match_any(full, matcher_list):
                 matched.add(item)
     not_matched = full - matched
     return matched, not_matched
+
+
+def create_ssl_context(configuration):
+    """Create context for ssl verification.
+
+    .. note:: starting from python 2.7.9 ssl adds create_default_context.
+              We need to keep compatibility with previous python as well.
+    """
+    try:
+        if configuration.emc_ssl_cert_verify:
+            context = ssl.create_default_context(
+                capath=configuration.emc_ssl_cert_path)
+        else:
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+    except AttributeError:
+        LOG.warning(_LW('Creating ssl context is not supported on this '
+                        'version of Python, ssl verification is disabled.'))
+        context = None
+    return context
