@@ -1,0 +1,5 @@
+---
+fixes:
+  - Changed user access name limit from 32 to 255 characters
+    since there are security services that allow user names
+    longer than 32 characters.

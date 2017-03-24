@@ -229,7 +229,7 @@ class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
     def test_create_access_rule_user_with_too_big_key(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
                           getattr(self, client_name).create_access_rule,
-                          self.share["id"], "user", "a" * 33)
+                          self.share["id"], "user", "a" * 256)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data('shares_client', 'shares_v2_client')
