@@ -24,7 +24,7 @@ import six
 
 from manila.common import constants as const
 from manila import exception
-from manila.i18n import _, _LW
+from manila.i18n import _
 from manila.share.drivers.dell_emc.plugins import base
 from manila.share.drivers.dell_emc.plugins.isilon import isilon_api
 
@@ -139,8 +139,8 @@ class IsilonStorageConnection(base.StorageConnection):
             self._root_dir + '/' + share['name'])
 
         if share_id is None:
-            lw = _LW('Attempted to delete NFS Share "%s", but the share does '
-                     'not appear to exist.')
+            lw = ('Attempted to delete NFS Share "%s", but the share does '
+                  'not appear to exist.')
             LOG.warning(lw, share['name'])
         else:
             # attempt to delete the share
@@ -154,8 +154,8 @@ class IsilonStorageConnection(base.StorageConnection):
         """Is called to remove CIFS share."""
         smb_share = self._isilon_api.lookup_smb_share(share['name'])
         if smb_share is None:
-            lw = _LW('Attempted to delete CIFS Share "%s", but the share does '
-                     'not appear to exist.')
+            lw = ('Attempted to delete CIFS Share "%s", but the share does '
+                  'not appear to exist.')
             LOG.warning(lw, share['name'])
         else:
             share_deleted = self._isilon_api.delete_smb_share(share['name'])

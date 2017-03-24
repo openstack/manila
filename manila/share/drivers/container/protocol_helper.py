@@ -17,7 +17,7 @@ from oslo_log import log
 
 from manila.common import constants as const
 from manila import exception
-from manila.i18n import _, _LW
+from manila.i18n import _
 
 LOG = log.getLogger(__name__)
 
@@ -110,7 +110,7 @@ class DockerCIFSHelper(object):
             existing_users = self._get_existing_users(server_id, share_name,
                                                       access)
         except TypeError:
-            LOG.warning(_LW("Can't access smbd at share %s.") % share_name)
+            LOG.warning("Can't access smbd at share %s." % share_name)
             return
         else:
             allowed_users = " ".join(sorted(set(existing_users.split()) -

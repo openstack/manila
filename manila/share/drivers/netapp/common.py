@@ -21,7 +21,7 @@ from oslo_log import log
 from oslo_utils import importutils
 
 from manila import exception
-from manila.i18n import _, _LI
+from manila.i18n import _
 from manila.share import driver
 from manila.share.drivers.netapp import options
 from manila.share.drivers.netapp import utils as na_utils
@@ -69,7 +69,7 @@ class NetAppDriver(object):
         na_utils.check_flags(NetAppDriver.REQUIRED_FLAGS, config)
 
         app_version = na_utils.OpenStackInfo().info()
-        LOG.info(_LI('OpenStack OS Version Info: %s'), app_version)
+        LOG.info('OpenStack OS Version Info: %s', app_version)
         kwargs['app_version'] = app_version
 
         driver_mode = NetAppDriver._get_driver_mode(
@@ -107,8 +107,8 @@ class NetAppDriver(object):
         storage_family = storage_family.lower()
 
         fmt = {'storage_family': storage_family, 'driver_mode': driver_mode}
-        LOG.info(_LI('Requested unified config: %(storage_family)s and '
-                     '%(driver_mode)s.') % fmt)
+        LOG.info('Requested unified config: %(storage_family)s and '
+                 '%(driver_mode)s.' % fmt)
 
         family_meta = NETAPP_UNIFIED_DRIVER_REGISTRY.get(storage_family)
         if family_meta is None:
@@ -124,6 +124,6 @@ class NetAppDriver(object):
 
         kwargs['netapp_mode'] = 'proxy'
         driver = importutils.import_object(driver_loc, *args, **kwargs)
-        LOG.info(_LI('NetApp driver of family %(storage_family)s and mode '
-                     '%(driver_mode)s loaded.') % fmt)
+        LOG.info('NetApp driver of family %(storage_family)s and mode '
+                 '%(driver_mode)s loaded.' % fmt)
         return driver

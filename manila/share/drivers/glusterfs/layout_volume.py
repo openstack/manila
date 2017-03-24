@@ -28,7 +28,7 @@ from oslo_log import log
 import six
 
 from manila import exception
-from manila.i18n import _, _LE, _LI, _LW
+from manila.i18n import _
 from manila.share.drivers.glusterfs import common
 from manila.share.drivers.glusterfs import layout
 from manila import utils
@@ -129,8 +129,8 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
                 exceptions[srvaddr] = six.text_type(exc)
         if exceptions:
             for srvaddr, excmsg in exceptions.items():
-                LOG.error(_LE("'gluster version' failed on server "
-                              "%(server)s with: %(message)s"),
+                LOG.error("'gluster version' failed on server "
+                          "%(server)s with: %(message)s",
                           {'server': srvaddr, 'message': excmsg})
             raise exception.GlusterfsException(_(
                 "'gluster version' failed on servers %s") % (
@@ -143,9 +143,9 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
             gluster_version_min_str = '.'.join(
                 six.text_type(c) for c in self.driver.GLUSTERFS_VERSION_MIN)
             for srvaddr in notsupp_servers:
-                LOG.error(_LE("GlusterFS version %(version)s on server "
-                              "%(server)s is not supported, "
-                              "minimum requirement: %(minvers)s"),
+                LOG.error("GlusterFS version %(version)s on server "
+                          "%(server)s is not supported, "
+                          "minimum requirement: %(minvers)s",
                           {'server': srvaddr,
                            'version': '.'.join(glusterfs_versions[srvaddr]),
                            'minvers': gluster_version_min_str})
@@ -167,8 +167,8 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
-        LOG.info(_LI("Found %d Gluster volumes allocated for Manila."
-                     ), len(gluster_volumes_initial))
+        LOG.info("Found %d Gluster volumes allocated for Manila.",
+                 len(gluster_volumes_initial))
 
         self._check_mount_glusterfs()
 
@@ -203,10 +203,10 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         for srvaddr in self.configuration.glusterfs_servers:
             gluster_mgr = self._glustermanager(srvaddr, False)
             if gluster_mgr.user:
-                logmsg = _LE("Retrieving volume list "
-                             "on host %s") % gluster_mgr.host
+                logmsg = ("Retrieving volume list "
+                          "on host %s") % gluster_mgr.host
             else:
-                logmsg = _LE("Retrieving volume list")
+                logmsg = ("Retrieving volume list")
             out, err = gluster_mgr.gluster_call('volume', 'list', log=logmsg)
             for volname in out.split("\n"):
                 patmatch = self.volume_pattern.match(volname)
@@ -251,17 +251,17 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
 
         if not unused_vols:
             # No volumes available for use as share. Warn user.
-            LOG.warning(_LW("No unused gluster volumes available for use as "
-                            "share! Create share won't be supported unless "
-                            "existing shares are deleted or some gluster "
-                            "volumes are created with names matching "
-                            "'glusterfs_volume_pattern'."))
+            LOG.warning("No unused gluster volumes available for use as "
+                        "share! Create share won't be supported unless "
+                        "existing shares are deleted or some gluster "
+                        "volumes are created with names matching "
+                        "'glusterfs_volume_pattern'.")
         else:
-            LOG.info(_LI("Number of gluster volumes in use:  "
-                         "%(inuse-numvols)s. Number of gluster volumes "
-                         "available for use as share: %(unused-numvols)s"),
+            LOG.info("Number of gluster volumes in use:  "
+                     "%(inuse-numvols)s. Number of gluster volumes "
+                     "available for use as share: %(unused-numvols)s",
                      {'inuse-numvols': len(self.gluster_used_vols),
-                     'unused-numvols': len(unused_vols)})
+                      'unused-numvols': len(unused_vols)})
 
         # volmap is the data structure used to categorize and sort
         # the unused volumes. It's a nested dictionary of structure
@@ -385,7 +385,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         try:
             vol = self._pop_gluster_vol(share['size'])
         except exception.GlusterfsException:
-            msg = (_LE("Error creating share %(share_id)s"),
+            msg = ("Error creating share %(share_id)s",
                    {'share_id': share['id']})
             LOG.error(msg)
             raise
@@ -401,7 +401,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
 
         # For native protocol, the export_location should be of the form:
         # server:/volname
-        LOG.info(_LI("export_location sent back from create_share: %s"),
+        LOG.info("export_location sent back from create_share: %s",
                  export)
         return export
 
@@ -436,8 +436,8 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
 
             self._push_gluster_vol(gmgr.qualified)
         except exception.GlusterfsException:
-            msg = (_LE("Error during delete_share request for "
-                       "share %(share_id)s"), {'share_id': share['id']})
+            msg = ("Error during delete_share request for "
+                   "share %(share_id)s", {'share_id': share['id']})
             LOG.error(msg)
             raise
 
@@ -449,7 +449,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         args = ('snapshot', 'list', gluster_mgr.volume, '--mode=script')
         out, err = gluster_mgr.gluster_call(
             *args,
-            log=_LE("Retrieving snapshot list"))
+            log=("Retrieving snapshot list"))
         snapgrep = list(filter(lambda x: snapshot['id'] in x, out.split("\n")))
         if len(snapgrep) != 1:
             msg = (_("Failed to identify backing GlusterFS object "
@@ -493,7 +493,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         for args in args_tuple:
             out, err = old_gmgr.gluster_call(
                 *args,
-                log=_LE("Creating share from snapshot"))
+                log=("Creating share from snapshot"))
 
         # Get a manager for the new volume/share.
         comp_vol = old_gmgr.components.copy()
@@ -509,7 +509,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
                   ('start', []))
         for op, opargs in argseq:
             args = ['volume', op, gmgr.volume] + opargs
-            gmgr.gluster_call(*args, log=_LE("Creating share from snapshot"))
+            gmgr.gluster_call(*args, log=("Creating share from snapshot"))
 
         self.gluster_used_vols.add(gmgr.qualified)
         self.private_storage.update(share['id'], {'volume': gmgr.qualified})
@@ -528,7 +528,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
                     gluster_mgr.volume)
             out, err = gluster_mgr.gluster_call(
                 *args,
-                log=_LE("Retrieving volume info"))
+                log=("Retrieving volume info"))
 
             if not out:
                 raise exception.GlusterfsException(
@@ -570,7 +570,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
                 '--mode=script')
         out, err = gluster_mgr.gluster_call(
             *args,
-            log=_LE("Error deleting snapshot"))
+            log=("Error deleting snapshot"))
 
         if not out:
             raise exception.GlusterfsException(

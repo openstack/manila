@@ -20,7 +20,7 @@ from oslo_utils import units
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LE, _LI
+from manila.i18n import _
 from manila.share import driver
 from manila.share.drivers.hitachi.hsp import rest
 
@@ -92,7 +92,7 @@ class HitachiHSPDriver(driver.ShareDriver):
             }],
         }
 
-        LOG.info(_LI("Hitachi HSP Capabilities: %(data)s."),
+        LOG.info("Hitachi HSP Capabilities: %(data)s.",
                  {'data': data})
         super(HitachiHSPDriver, self)._update_share_stats(data)
 
@@ -111,7 +111,7 @@ class HitachiHSPDriver(driver.ShareDriver):
         except exception.HSPBackendException:
             with excutils.save_and_reraise_exception():
                 self.hsp.delete_file_system(filesystem_id)
-                msg = _LE("Could not create share %s on HSP.")
+                msg = ("Could not create share %s on HSP.")
                 LOG.exception(msg, share['id'])
 
         uri = self.hsp_host + ':/' + share['id']
@@ -133,7 +133,7 @@ class HitachiHSPDriver(driver.ShareDriver):
             filesystem_id = self.hsp.get_file_system(share['id'])['id']
             hsp_share_id = self.hsp.get_share(filesystem_id)['id']
         except exception.HSPItemNotFoundException:
-            LOG.info(_LI("Share %(shr)s already removed from backend."),
+            LOG.info("Share %(shr)s already removed from backend.",
                      {'shr': share['id']})
 
         if hsp_share_id:
@@ -278,8 +278,8 @@ class HitachiHSPDriver(driver.ShareDriver):
                    % share['id'])
             raise exception.HSPBackendException(msg=msg)
 
-        LOG.info(_LI("Share %(shr_id)s successfully extended to "
-                     "%(shr_size)sG."),
+        LOG.info("Share %(shr_id)s successfully extended to "
+                 "%(shr_size)sG.",
                  {'shr_id': share['id'],
                   'shr_size': new_size})
 
@@ -299,8 +299,8 @@ class HitachiHSPDriver(driver.ShareDriver):
             raise exception.ShareShrinkingPossibleDataLoss(
                 share_id=share['id'])
 
-        LOG.info(_LI("Share %(shr_id)s successfully shrunk to "
-                     "%(shr_size)sG."),
+        LOG.info("Share %(shr_id)s successfully shrunk to "
+                 "%(shr_size)sG.",
                  {'shr_id': share['id'],
                   'shr_size': new_size})
 
@@ -333,8 +333,8 @@ class HitachiHSPDriver(driver.ShareDriver):
 
         file_system = self.hsp.get_file_system(share['id'])
 
-        LOG.info(_LI("Share %(shr_path)s was successfully managed with ID "
-                     "%(shr_id)s."),
+        LOG.info("Share %(shr_path)s was successfully managed with ID "
+                 "%(shr_id)s.",
                  {'shr_path': share['export_locations'][0]['path'],
                   'shr_id': share['id']})
 
@@ -357,8 +357,8 @@ class HitachiHSPDriver(driver.ShareDriver):
 
         self.private_storage.delete(share['id'])
 
-        LOG.info(_LI("The share with current path %(shr_path)s and ID "
-                     "%(shr_id)s is no longer being managed."),
+        LOG.info("The share with current path %(shr_path)s and ID "
+                 "%(shr_id)s is no longer being managed.",
                  {'shr_path': share['export_locations'][0]['path'],
                   'shr_id': share['id']})
 

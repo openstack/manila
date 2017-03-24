@@ -28,7 +28,7 @@ from oslo_utils import importutils
 import six
 
 from manila import exception
-from manila.i18n import _, _LE, _LI, _LW
+from manila.i18n import _
 from manila.share import driver
 from manila.share.drivers import generic
 from manila.share import utils
@@ -105,9 +105,9 @@ class LVMMixin(driver.ExecuteMixin):
                                share_name), run_as_root=True)
         except exception.ProcessExecutionError as exc:
             if "not found" not in exc.stderr:
-                LOG.exception(_LE("Error deleting volume"))
+                LOG.exception("Error deleting volume")
                 raise
-            LOG.warning(_LW("Volume not found: %s") % exc.stderr)
+            LOG.warning("Volume not found: %s" % exc.stderr)
 
     def _create_snapshot(self, context, snapshot):
         """Creates a snapshot."""
@@ -253,12 +253,12 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
                 if 'device is busy' in six.text_type(exc):
                     raise exception.ShareBusyException(reason=share['name'])
                 else:
-                    LOG.info(_LI('Unable to umount: %s'), exc)
+                    LOG.info('Unable to umount: %s', exc)
             # remove dir
             try:
                 os.rmdir(mount_path)
             except OSError:
-                LOG.warning(_LW('Unable to delete %s'), mount_path)
+                LOG.warning('Unable to delete %s', mount_path)
 
     def ensure_share(self, ctx, share, share_server=None):
         """Ensure that storage are mounted and exported."""
@@ -273,7 +273,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
             self._get_helper(share).remove_exports(
                 self.share_server, share['name'])
         except exception.ProcessExecutionError:
-            LOG.warning(_LW("Can't remove share %r"), share['id'])
+            LOG.warning("Can't remove share %r", share['id'])
         except exception.InvalidShare as exc:
             LOG.warning(exc.message)
 
@@ -326,7 +326,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         except exception.ProcessExecutionError:
             out, err = self._execute('mount', '-l', run_as_root=True)
             if device_name in out:
-                LOG.warning(_LW("%s is already mounted"), device_name)
+                LOG.warning("%s is already mounted", device_name)
             else:
                 raise
         return mount_path

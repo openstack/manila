@@ -25,7 +25,7 @@ import re
 from oslo_log import log
 
 from manila import exception
-from manila.i18n import _, _LI
+from manila.i18n import _
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp import utils as na_utils
 
@@ -72,8 +72,8 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
                     'correctly.') % self._vserver
             raise exception.NetAppException(msg)
 
-        msg = _LI('Using Vserver %(vserver)s for backend %(backend)s with '
-                  '%(creds)s credentials.')
+        msg = ('Using Vserver %(vserver)s for backend %(backend)s with '
+               '%(creds)s credentials.')
         msg_args = {'vserver': self._vserver, 'backend': self._backend_name}
         msg_args['creds'] = ('cluster' if self._have_cluster_creds
                              else 'Vserver')

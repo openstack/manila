@@ -28,7 +28,6 @@ import six
 import six.moves.urllib.parse as urlparse
 
 from manila import exception
-from manila.i18n import _LW
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -48,9 +47,9 @@ class JsonRpc(object):
         if self._url_scheme == 'https':
             if not self._ca_file:
                 self._ca_file = False
-                LOG.warning(_LW(
+                LOG.warning(
                     "Will not verify the server certificate of the API service"
-                    " because the CA certificate is not available."))
+                    " because the CA certificate is not available.")
         self._id = 0
         self._credentials = auth.HTTPBasicAuth(
             user_credentials[0], user_credentials[1])

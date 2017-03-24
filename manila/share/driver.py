@@ -25,7 +25,7 @@ from oslo_config import cfg
 from oslo_log import log
 
 from manila import exception
-from manila.i18n import _, _LE, _LW
+from manila.i18n import _
 from manila import network
 from manila import utils
 
@@ -213,8 +213,8 @@ class ExecuteMixin(object):
                 tries += 1
                 if tries >= self.configuration.num_shell_tries:
                     raise
-                LOG.exception(_LE("Recovering from a failed execute. "
-                                  "Try number %s"), tries)
+                LOG.exception("Recovering from a failed execute. "
+                              "Try number %s", tries)
                 time.sleep(tries ** 2)
 
 
@@ -1295,8 +1295,8 @@ class ShareDriver(object):
             self.delete_snapshot(
                 context, share_snapshot, share_server=share_server)
         except exception.ManilaException:
-            msg = _LE('Could not delete share group snapshot member %(snap)s '
-                      'for share %(share)s.')
+            msg = ('Could not delete share group snapshot member %(snap)s '
+                   'for share %(share)s.')
             LOG.error(msg % {
                 'snap': share_snapshot['id'],
                 'share': share_snapshot['share_id'],
@@ -1361,7 +1361,7 @@ class ShareDriver(object):
             raise exception.ShareGroupSnapshotNotSupported(
                 share_group=snap_dict['share_group_id'])
         elif not snapshot_members:
-            LOG.warning(_LW('No shares in share group to create snapshot.'))
+            LOG.warning('No shares in share group to create snapshot.')
             return None, None
         else:
             share_snapshots = []
@@ -1386,9 +1386,9 @@ class ShareDriver(object):
                         snapshot_members_updates.append(member_update)
                     share_snapshots.append(share_snapshot)
                 except exception.ManilaException as e:
-                    msg = _LE('Could not create share group snapshot. Failed '
-                              'to create share snapshot %(snap)s for '
-                              'share %(share)s.')
+                    msg = ('Could not create share group snapshot. Failed '
+                           'to create share snapshot %(snap)s for '
+                           'share %(share)s.')
                     LOG.exception(msg % {
                         'snap': share_snapshot['id'],
                         'share': share_snapshot['share_id']

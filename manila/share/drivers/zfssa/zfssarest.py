@@ -18,7 +18,7 @@ from oslo_log import log
 from oslo_serialization import jsonutils
 
 from manila import exception
-from manila.i18n import _, _LE, _LW
+from manila.i18n import _
 from manila.share.drivers.zfssa import restclient
 
 
@@ -233,12 +233,12 @@ class ZFSSAApi(object):
         svc = self.share_path % (pool, project, share)
         ret = self.rclient.delete(svc)
         if ret.status != restclient.Status.NO_CONTENT:
-            exception_msg = (_LE('Error deleting '
-                                 'share: %(share)s to '
-                                 'pool: %(pool)s '
-                                 'project: %(project)s '
-                                 'return code: %(ret.status)d '
-                                 'message: %(ret.data)s.'),
+            exception_msg = (('Error deleting '
+                              'share: %(share)s to '
+                              'pool: %(pool)s '
+                              'project: %(project)s '
+                              'return code: %(ret.status)d '
+                              'message: %(ret.data)s.'),
                              {'share': share,
                               'pool': pool,
                               'project': project,
@@ -391,7 +391,7 @@ class ZFSSAApi(object):
         svc = "%(base)s/%(prop)s" % {'base': base, 'prop': schema['property']}
         ret = self.rclient.get(svc)
         if ret.status == restclient.Status.OK:
-            LOG.warning(_LW('Property %s already exists.'), schema['property'])
+            LOG.warning('Property %s already exists.', schema['property'])
             return
         ret = self.rclient.post(base, schema)
         if ret.status != restclient.Status.CREATED:

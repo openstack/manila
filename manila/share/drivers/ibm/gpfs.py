@@ -44,7 +44,7 @@ import six
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LI
+from manila.i18n import _
 from manila.share import driver
 from manila.share.drivers.helpers import NFSHelper
 from manila.share import share_types
@@ -684,8 +684,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                 msg = _('Failed to set quota for share %s.') % new_share_name
                 LOG.exception(msg)
                 raise exception.GPFSException(msg)
-            LOG.info(_LI('Existing share %(shr)s has size %(size)s KB '
-                         'which is below 1GiB, so extended it to 1GiB.') %
+            LOG.info('Existing share %(shr)s has size %(size)s KB '
+                     'which is below 1GiB, so extended it to 1GiB.' %
                      {'shr': new_share_name, 'size': share_size})
             share_size = 1
         else:

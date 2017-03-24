@@ -23,11 +23,11 @@ import six
 from oslo_config import cfg
 from oslo_log import log
 
-from manila import utils
-from manila.i18n import _, _LI, _LW
 from manila import exception
+from manila.i18n import _
 from manila.share import driver
 from manila.share import utils as share_utils
+from manila import utils
 
 tegile_opts = [
     cfg.StrOpt('tegile_nas_server',
@@ -201,7 +201,7 @@ class TegileShareDriver(driver.ShareDriver):
         # of 'sharename' if inherited share properties are selected.
         ip, real_share_name = self._api('createShare', params).split()
 
-        LOG.info(_LI("Created share %(sharename)s, share id %(shid)s."),
+        LOG.info("Created share %(sharename)s, share id %(shid)s.",
                  {'sharename': share_name, 'shid': share['id']})
 
         return self._get_location_path(real_share_name, share_proto, ip)
@@ -273,8 +273,8 @@ class TegileShareDriver(driver.ShareDriver):
 
         params = (share, snap_name, False)
 
-        LOG.info(_LI('Creating snapshot for share_name=%(shr)s'
-                     ' snap_name=%(name)s'),
+        LOG.info('Creating snapshot for share_name=%(shr)s'
+                 ' snap_name=%(name)s',
                  {'shr': share_name, 'name': snap_name})
 
         self._api('createShareSnapshot', params)
@@ -383,18 +383,18 @@ class TegileShareDriver(driver.ShareDriver):
 
     def _check_share_access(self, share_proto, access_type):
         if share_proto == 'CIFS' and access_type != 'user':
-            reason = _LW('Only USER access type is allowed for '
-                         'CIFS shares.')
+            reason = ('Only USER access type is allowed for '
+                      'CIFS shares.')
             LOG.warning(reason)
             raise exception.InvalidShareAccess(reason=reason)
         elif share_proto == 'NFS' and access_type not in ('ip', 'user'):
-            reason = _LW('Only IP or USER access types are allowed for '
-                         'NFS shares.')
+            reason = ('Only IP or USER access types are allowed for '
+                      'NFS shares.')
             LOG.warning(reason)
             raise exception.InvalidShareAccess(reason=reason)
         elif share_proto not in ('NFS', 'CIFS'):
-            reason = _LW('Unsupported protocol \"%s\" specified for '
-                         'access rule.') % share_proto
+            reason = ('Unsupported protocol \"%s\" specified for '
+                      'access rule.') % share_proto
             raise exception.InvalidShareAccess(reason=reason)
 
     @debugger

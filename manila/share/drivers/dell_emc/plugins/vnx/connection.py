@@ -24,7 +24,7 @@ from oslo_utils import units
 
 from manila.common import constants as const
 from manila import exception
-from manila.i18n import _, _LE, _LI, _LW
+from manila.i18n import _
 from manila.share.drivers.dell_emc.plugins import base as driver
 from manila.share.drivers.dell_emc.plugins.vnx import constants
 from manila.share.drivers.dell_emc.plugins.vnx import object_manager as manager
@@ -250,9 +250,9 @@ class VNXStorageConnection(driver.StorageConnection):
     def delete_share(self, context, share, share_server=None):
         """Delete a share."""
         if share_server is None:
-            LOG.warning(_LW("Driver does not support share deletion without "
-                            "share network specified. Return directly because "
-                            "there is nothing to clean."))
+            LOG.warning("Driver does not support share deletion without "
+                        "share network specified. Return directly because "
+                        "there is nothing to clean.")
             return
 
         share_proto = share['share_proto']
@@ -545,7 +545,7 @@ class VNXStorageConnection(driver.StorageConnection):
                        ",".join(real_pools))
                 raise exception.InvalidParameterValue(err=msg)
 
-            LOG.info(_LI("Storage pools: %s will be managed."),
+            LOG.info("Storage pools: %s will be managed.",
                      ",".join(matched_pools))
         else:
             LOG.debug("No storage pool is specified, so all pools "
@@ -711,7 +711,7 @@ class VNXStorageConnection(driver.StorageConnection):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Could not setup server.'))
+                LOG.exception('Could not setup server.')
                 server_details = self._construct_backend_details(
                     vdm_name, allocated_interfaces)
                 self.teardown_server(
@@ -799,7 +799,7 @@ class VNXStorageConnection(driver.StorageConnection):
                 status, servers = self._get_context('CIFSServer').get_all(
                     vdm_name)
                 if constants.STATUS_OK != status:
-                    LOG.error(_LE('Could not find CIFS server by name: %s.'),
+                    LOG.error('Could not find CIFS server by name: %s.',
                               vdm_name)
                 else:
                     cifs_servers = copy.deepcopy(servers)

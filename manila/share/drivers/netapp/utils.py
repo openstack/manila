@@ -24,7 +24,7 @@ from oslo_log import log
 import six
 
 from manila import exception
-from manila.i18n import _, _LI, _LW
+from manila.i18n import _
 from manila import version
 
 
@@ -43,9 +43,9 @@ def validate_driver_instantiation(**kwargs):
     """
     if kwargs and kwargs.get('netapp_mode') == 'proxy':
         return
-    LOG.warning(_LW('Please use NetAppDriver in the configuration file '
-                    'to load the driver instead of directly specifying '
-                    'the driver module name.'))
+    LOG.warning('Please use NetAppDriver in the configuration file '
+                'to load the driver instead of directly specifying '
+                'the driver module name.')
 
 
 def check_flags(required_flags, configuration):
@@ -74,7 +74,7 @@ def setup_tracing(trace_flags_string):
         flags = trace_flags_string.split(',')
         flags = [flag.strip() for flag in flags]
         for invalid_flag in list(set(flags) - set(VALID_TRACE_FLAGS)):
-            LOG.warning(_LW('Invalid trace flag: %s') % invalid_flag)
+            LOG.warning('Invalid trace flag: %s' % invalid_flag)
         TRACE_METHOD = 'method' in flags
         TRACE_API = 'api' in flags
 
@@ -164,7 +164,7 @@ class OpenStackInfo(object):
                                       "'%{version}\t%{release}\t%{vendor}'",
                                       self.PACKAGE_NAME)
             if not out:
-                LOG.info(_LI('No rpm info found for %(pkg)s package.') % {
+                LOG.info('No rpm info found for %(pkg)s package.' % {
                     'pkg': self.PACKAGE_NAME})
                 return False
             parts = out.split()
@@ -173,7 +173,7 @@ class OpenStackInfo(object):
             self._vendor = ' '.join(parts[2::])
             return True
         except Exception as e:
-            LOG.info(_LI('Could not run rpm command: %(msg)s.') % {
+            LOG.info('Could not run rpm command: %(msg)s.' % {
                 'msg': e})
             return False
 
@@ -185,9 +185,9 @@ class OpenStackInfo(object):
             out, err = putils.execute("dpkg-query", "-W", "-f='${Version}'",
                                       self.PACKAGE_NAME)
             if not out:
-                LOG.info(_LI(
-                    'No dpkg-query info found for %(pkg)s package.') % {
-                    'pkg': self.PACKAGE_NAME})
+                LOG.info(
+                    'No dpkg-query info found for %(pkg)s package.' % {
+                        'pkg': self.PACKAGE_NAME})
                 return False
             # Debian format: [epoch:]upstream_version[-debian_revision]
             deb_version = out
@@ -204,7 +204,7 @@ class OpenStackInfo(object):
                 self._vendor = _vendor
             return True
         except Exception as e:
-            LOG.info(_LI('Could not run dpkg-query command: %(msg)s.') % {
+            LOG.info('Could not run dpkg-query command: %(msg)s.' % {
                 'msg': e})
             return False
 

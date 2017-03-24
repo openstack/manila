@@ -29,7 +29,6 @@ from oslo_log import log
 import six
 
 from manila import context as ctxt
-from manila.i18n import _LW
 
 
 hook_options = [
@@ -110,7 +109,7 @@ class HookBase(object):
                 *args, **kwargs)
         except Exception as e:
             if self.suppress_pre_hooks_errors:
-                LOG.warning(_LW("\nSuppressed exception in pre hook. %s\n"), e)
+                LOG.warning("\nSuppressed exception in pre hook. %s\n", e)
                 pre_data = e
             else:
                 raise
@@ -135,7 +134,7 @@ class HookBase(object):
         except Exception as e:
             if self.suppress_post_hooks_errors:
                 LOG.warning(
-                    _LW("\nSuppressed exception in post hook. %s\n"), e)
+                    "\nSuppressed exception in post hook. %s\n", e)
                 post_data = e
             else:
                 raise

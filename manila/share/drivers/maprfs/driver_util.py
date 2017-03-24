@@ -27,7 +27,6 @@ import six
 from manila.common import constants
 from manila import exception
 from manila.i18n import _
-from manila.i18n import _LE
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -71,13 +70,13 @@ class BaseDriverUtil(object):
                 if self._check_error(e):
                     raise
                 elif x < len(self.hosts) - 1:
-                    msg = _LE('Error running SSH command. Trying another host')
+                    msg = ('Error running SSH command. Trying another host')
                     LOG.error(msg)
                 else:
                     raise
             except Exception as e:
                 if x < len(self.hosts) - 1:
-                    msg = _LE('Error running SSH command. Trying another host')
+                    msg = ('Error running SSH command. Trying another host')
                     LOG.error(msg)
                 else:
                     raise exception.ProcessExecutionError(six.text_type(e))

@@ -22,7 +22,7 @@ from oslo_log import log
 import six
 
 from manila import exception
-from manila.i18n import _, _LE
+from manila.i18n import _
 from manila.share.drivers.glusterfs import common
 from manila.share.drivers.glusterfs import layout
 
@@ -82,8 +82,8 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
         except exception.GlusterfsException:
             if (self.gluster_manager.
                     get_vol_option('features.quota')) != 'on':
-                LOG.exception(_LE("Error in tuning GlusterFS volume to enable "
-                                  "creation of shares of specific size."))
+                LOG.exception("Error in tuning GlusterFS volume to enable "
+                              "creation of shares of specific size.")
                 raise
 
         self._ensure_gluster_vol_mounted()
@@ -106,7 +106,7 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
                                       self.gluster_manager.export, mount_path,
                                       ensure=True)
         except exception.GlusterfsException:
-            LOG.exception(_LE('Could not mount the Gluster volume %s'),
+            LOG.exception('Could not mount the Gluster volume %s',
                           self.gluster_manager.volume)
             raise
 
@@ -152,7 +152,7 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
                 exc = exception.GlusterfsException(exc)
             if isinstance(exc, exception.GlusterfsException):
                 self._cleanup_create_share(local_share_path, share['name'])
-                LOG.error(_LE('Unable to create share %s'), share['name'])
+                LOG.error('Unable to create share %s', share['name'])
             raise exc
 
         comp_share = self.gluster_manager.components.copy()
@@ -170,9 +170,9 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
             try:
                 self.driver._execute(*cmd, run_as_root=True)
             except exception.ProcessExecutionError as exc:
-                LOG.error(_LE('Cannot cleanup share, %s, that errored out '
-                              'during its creation, but exists in GlusterFS '
-                              'volume.'), share_name)
+                LOG.error('Cannot cleanup share, %s, that errored out '
+                          'during its creation, but exists in GlusterFS '
+                          'volume.', share_name)
                 raise exception.GlusterfsException(exc)
 
     def delete_share(self, context, share, share_server=None):
@@ -182,7 +182,7 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
         try:
             self.driver._execute(*cmd, run_as_root=True)
         except exception.ProcessExecutionError:
-            LOG.exception(_LE('Unable to delete share %s'), share['name'])
+            LOG.exception('Unable to delete share %s', share['name'])
             raise
 
     def ensure_share(self, context, share, share_server=None):

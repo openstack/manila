@@ -25,7 +25,7 @@ from oslo_log import log
 from oslo_utils import excutils
 
 from manila import exception
-from manila.i18n import _, _LE, _LI
+from manila.i18n import _
 from manila.share import configuration
 from manila.share import driver
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
@@ -196,7 +196,7 @@ class DataMotionSession(object):
                 if (e.code == netapp_api.EOBJECTNOTFOUND or
                         e.code == netapp_api.ESOURCE_IS_DIFFERENT or
                         "(entry doesn't exist)" in e.message):
-                    LOG.info(_LI('No snapmirror relationship to delete'))
+                    LOG.info('No snapmirror relationship to delete')
                     exc_context.reraise = False
 
         if release:
@@ -267,7 +267,7 @@ class DataMotionSession(object):
             )[0]
             if snapmirror.get('relationship-status') != 'quiesced':
                 raise exception.ReplicationException(
-                    reason=_LE("Snapmirror relationship is not quiesced."))
+                    reason=("Snapmirror relationship is not quiesced."))
 
         try:
             wait_for_quiesced()

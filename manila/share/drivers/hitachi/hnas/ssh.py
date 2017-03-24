@@ -24,7 +24,7 @@ import os
 import time
 
 from manila import exception
-from manila.i18n import _, _LE, _LW
+from manila.i18n import _
 from manila import utils as mutils
 
 LOG = log.getLogger(__name__)
@@ -98,8 +98,8 @@ class HNASSSHBackend(object):
             self._execute(command)
         except processutils.ProcessExecutionError as e:
             if 'does not exist' in e.stderr:
-                LOG.warning(_LW("Export %s does not exist on "
-                                "backend anymore."), name)
+                LOG.warning("Export %s does not exist on "
+                            "backend anymore.", name)
             else:
                 msg = _("Could not delete NFS export %s.") % name
                 LOG.exception(msg)
@@ -128,8 +128,8 @@ class HNASSSHBackend(object):
             self._execute(command)
         except processutils.ProcessExecutionError as e:
             if e.exit_code == 1:
-                LOG.warning(_LW("CIFS share %s does not exist on "
-                                "backend anymore."), name)
+                LOG.warning("CIFS share %s does not exist on "
+                            "backend anymore.", name)
             else:
                 msg = _("Could not delete CIFS share %s.") % name
                 LOG.exception(msg)
@@ -232,18 +232,18 @@ class HNASSSHBackend(object):
         except processutils.ProcessExecutionError as e:
             if ('not listed as a user' in e.stderr or
                     'Could not delete user/group' in e.stderr):
-                LOG.warning(_LW('User %(user)s already not allowed to access '
-                                '%(entity_type)s %(name)s.'), {
-                                    'entity_type': entity_type,
-                                    'user': user,
-                                    'name': name
-                    })
+                LOG.warning('User %(user)s already not allowed to access '
+                            '%(entity_type)s %(name)s.', {
+                                'entity_type': entity_type,
+                                'user': user,
+                                'name': name
+                            })
             else:
                 msg = _("Could not delete access of user %(user)s to "
                         "%(entity_type)s %(name)s.") % {
-                            'user': user,
-                            'name': name,
-                            'entity_type': entity_type,
+                    'user': user,
+                    'name': name,
+                    'entity_type': entity_type,
                     }
                 LOG.exception(msg)
                 raise exception.HNASBackendException(msg=msg)
@@ -312,8 +312,8 @@ class HNASSSHBackend(object):
                     if now > deadline:
                         command = ['tree-clone-job-abort', job_id]
                         self._execute(command)
-                        LOG.error(_LE("Timeout in snapshot creation from "
-                                      "source path %s.") % src_path)
+                        LOG.error("Timeout in snapshot creation from "
+                                  "source path %s." % src_path)
                         msg = _("Share snapshot of source path %s "
                                 "was not created.") % src_path
                         raise exception.HNASBackendException(msg=msg)
@@ -332,7 +332,7 @@ class HNASSSHBackend(object):
                           {'src': src_path,
                            'dest': dest_path})
             else:
-                LOG.error(_LE('Error creating snapshot of source path %s.'),
+                LOG.error('Error creating snapshot of source path %s.',
                           src_path)
                 msg = _('Snapshot of source path %s was not '
                         'created.') % src_path
@@ -345,8 +345,8 @@ class HNASSSHBackend(object):
             self._execute(command)
         except processutils.ProcessExecutionError as e:
             if 'Source path: Cannot access' in e.stderr:
-                LOG.warning(_LW("Attempted to delete path %s "
-                                "but it does not exist."), path)
+                LOG.warning("Attempted to delete path %s "
+                            "but it does not exist.", path)
             else:
                 msg = _("Could not submit tree delete job to delete path "
                         "%s.") % path
@@ -449,7 +449,7 @@ class HNASSSHBackend(object):
             self._execute(command)
         except processutils.ProcessExecutionError as e:
             if 'Source path: Cannot access' in e.stderr:
-                LOG.warning(_LW("Share %s does not exist."), vvol_name)
+                LOG.warning("Share %s does not exist.", vvol_name)
             else:
                 msg = _("Failed to delete vvol %s.") % vvol_name
                 LOG.exception(msg)
@@ -699,8 +699,8 @@ class HNASSSHBackend(object):
                     LOG.debug(msg)
                     raise exception.HNASDirectoryNotEmpty(msg=msg)
                 elif 'cannot remove' in e.stderr and 'NotFound' in e.stderr:
-                    LOG.warning(_LW("Attempted to delete path %s but it does "
-                                    "not exist."), path)
+                    LOG.warning("Attempted to delete path %s but it does "
+                                "not exist.", path)
                 elif 'Current file system invalid: VolumeNotFound' in e.stderr:
                     msg = _("Command to delete empty directory %s failed due "
                             "to context change.") % path

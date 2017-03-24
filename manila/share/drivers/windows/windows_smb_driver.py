@@ -18,7 +18,6 @@ import os
 from oslo_log import log
 from oslo_utils import units
 
-from manila.i18n import _LW
 from manila.share import driver as base_driver
 from manila.share.drivers import generic
 from manila.share.drivers.windows import service_instance
@@ -67,9 +66,9 @@ class WindowsSMBDriver(generic.GenericShareDriver):
                                                   security_service['user'],
                                                   security_service['password'])
             except Exception as exc:
-                LOG.warning(_LW("Failed to remove service instance "
-                                "%(instance_id)s from domain %(domain)s. "
-                                "Exception: %(exc)s."),
+                LOG.warning("Failed to remove service instance "
+                            "%(instance_id)s from domain %(domain)s. "
+                            "Exception: %(exc)s.",
                             dict(instance_id=server_details['instance_id'],
                                  domain=security_service['domain'],
                                  exc=exc))

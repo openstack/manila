@@ -33,7 +33,7 @@ import six
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LE, _LI, _LW
+from manila.i18n import _
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
@@ -158,11 +158,11 @@ class NetAppCmodeFileStorageLibrary(object):
             'backend': self._backend_name,
             'licenses': ', '.join(self._licenses),
         }
-        LOG.info(_LI('Available licenses on %(backend)s '
-                     'are %(licenses)s.'), log_data)
+        LOG.info('Available licenses on %(backend)s '
+                 'are %(licenses)s.', log_data)
 
         if 'nfs' not in self._licenses and 'cifs' not in self._licenses:
-            msg = _LE('Neither NFS nor CIFS is licensed on %(backend)s')
+            msg = 'Neither NFS nor CIFS is licensed on %(backend)s'
             msg_args = {'backend': self._backend_name}
             LOG.error(msg % msg_args)
 
@@ -657,9 +657,9 @@ class NetAppCmodeFileStorageLibrary(object):
         except (exception.InvalidInput,
                 exception.VserverNotSpecified,
                 exception.VserverNotFound) as error:
-            LOG.warning(_LW("Could not determine share server for share being "
-                            "deleted: %(share)s. Deletion of share record "
-                            "will proceed anyway. Error: %(error)s"),
+            LOG.warning("Could not determine share server for share being "
+                        "deleted: %(share)s. Deletion of share record "
+                        "will proceed anyway. Error: %(error)s",
                         {'share': share['id'], 'error': error})
             return
 
@@ -668,7 +668,7 @@ class NetAppCmodeFileStorageLibrary(object):
             self._remove_export(share, vserver_client)
             self._deallocate_container(share_name, vserver_client)
         else:
-            LOG.info(_LI("Share %s does not exist."), share['id'])
+            LOG.info("Share %s does not exist.", share['id'])
 
     @na_utils.trace
     def _deallocate_container(self, share_name, vserver_client):
@@ -812,9 +812,9 @@ class NetAppCmodeFileStorageLibrary(object):
         except (exception.InvalidInput,
                 exception.VserverNotSpecified,
                 exception.VserverNotFound) as error:
-            LOG.warning(_LW("Could not determine share server for snapshot "
-                            "being deleted: %(snap)s. Deletion of snapshot "
-                            "record will proceed anyway. Error: %(error)s"),
+            LOG.warning("Could not determine share server for snapshot "
+                        "being deleted: %(snap)s. Deletion of snapshot "
+                        "record will proceed anyway. Error: %(error)s",
                         {'snap': snapshot['id'], 'error': error})
             return
 
@@ -825,7 +825,7 @@ class NetAppCmodeFileStorageLibrary(object):
         try:
             self._delete_snapshot(vserver_client, share_name, snapshot_name)
         except exception.SnapshotResourceNotFound:
-            msg = _LI("Snapshot %(snap)s does not exist on share %(share)s.")
+            msg = ("Snapshot %(snap)s does not exist on share %(share)s.")
             msg_args = {'snap': snapshot_name, 'share': share_name}
             LOG.info(msg, msg_args)
 
@@ -1099,9 +1099,9 @@ class NetAppCmodeFileStorageLibrary(object):
         except (exception.InvalidInput,
                 exception.VserverNotSpecified,
                 exception.VserverNotFound) as error:
-            LOG.warning(_LW("Could not determine share server for consistency "
-                            "group being deleted: %(cg)s. Deletion of CG "
-                            "record will proceed anyway. Error: %(error)s"),
+            LOG.warning("Could not determine share server for consistency "
+                        "group being deleted: %(cg)s. Deletion of CG "
+                        "record will proceed anyway. Error: %(error)s",
                         {'cg': cg_dict['id'], 'error': error})
 
     @na_utils.trace
@@ -1128,9 +1128,9 @@ class NetAppCmodeFileStorageLibrary(object):
         except (exception.InvalidInput,
                 exception.VserverNotSpecified,
                 exception.VserverNotFound) as error:
-            LOG.warning(_LW("Could not determine share server for CG snapshot "
-                            "being deleted: %(snap)s. Deletion of CG snapshot "
-                            "record will proceed anyway. Error: %(error)s"),
+            LOG.warning("Could not determine share server for CG snapshot "
+                        "being deleted: %(snap)s. Deletion of CG snapshot "
+                        "record will proceed anyway. Error: %(error)s",
                         {'snap': snap_dict['id'], 'error': error})
             return None, None
 
@@ -1143,8 +1143,8 @@ class NetAppCmodeFileStorageLibrary(object):
                 self._delete_snapshot(
                     vserver_client, share_name, snapshot_name)
             except exception.SnapshotResourceNotFound:
-                msg = _LI("Snapshot %(snap)s does not exist on share "
-                          "%(share)s.")
+                msg = ("Snapshot %(snap)s does not exist on share "
+                       "%(share)s.")
                 msg_args = {'snap': snapshot_name, 'share': share_name}
                 LOG.info(msg, msg_args)
                 continue
@@ -1185,9 +1185,9 @@ class NetAppCmodeFileStorageLibrary(object):
         except (exception.InvalidInput,
                 exception.VserverNotSpecified,
                 exception.VserverNotFound) as error:
-            LOG.warning(_LW("Could not determine share server for share "
-                            "%(share)s during access rules update. "
-                            "Error: %(error)s"),
+            LOG.warning("Could not determine share server for share "
+                        "%(share)s during access rules update. "
+                        "Error: %(error)s",
                         {'share': share['id'], 'error': error})
             return
 
@@ -1216,8 +1216,8 @@ class NetAppCmodeFileStorageLibrary(object):
         The self._ssc_stats attribute is updated with the following format.
         {<aggregate_name> : {<ssc_key>: <ssc_value>}}
         """
-        LOG.info(_LI("Updating storage service catalog information for "
-                     "backend '%s'"), self._backend_name)
+        LOG.info("Updating storage service catalog information for "
+                 "backend '%s'", self._backend_name)
 
         # Work on a copy and update the ssc data atomically before returning.
         ssc_stats = copy.deepcopy(self._ssc_stats)
@@ -1349,7 +1349,7 @@ class NetAppCmodeFileStorageLibrary(object):
         try:
             snapmirrors = dm_session.get_snapmirrors(active_replica, replica)
         except netapp_api.NaApiError:
-            LOG.exception(_LE("Could not get snapmirrors for replica %s."),
+            LOG.exception("Could not get snapmirrors for replica %s.",
                           replica['id'])
             return constants.STATUS_ERROR
 
@@ -1358,8 +1358,8 @@ class NetAppCmodeFileStorageLibrary(object):
                 try:
                     dm_session.create_snapmirror(active_replica, replica)
                 except netapp_api.NaApiError:
-                    LOG.exception(_LE("Could not create snapmirror for "
-                                      "replica %s."), replica['id'])
+                    LOG.exception("Could not create snapmirror for "
+                                  "replica %s.", replica['id'])
                     return constants.STATUS_ERROR
             return constants.REPLICA_STATE_OUT_OF_SYNC
 
@@ -1381,7 +1381,7 @@ class NetAppCmodeFileStorageLibrary(object):
                                                  share_name)
                 return constants.REPLICA_STATE_OUT_OF_SYNC
             except netapp_api.NaApiError:
-                LOG.exception(_LE("Could not resync snapmirror."))
+                LOG.exception("Could not resync snapmirror.")
                 return constants.STATUS_ERROR
 
         last_update_timestamp = float(
@@ -1433,8 +1433,8 @@ class NetAppCmodeFileStorageLibrary(object):
                     context, dm_session, orig_active_replica, replica,
                     access_rules, share_server=share_server))
         except exception.StorageCommunicationException:
-            LOG.exception(_LE("Could not communicate with the backend "
-                              "for replica %s during promotion."),
+            LOG.exception("Could not communicate with the backend "
+                          "for replica %s during promotion.",
                           replica['id'])
             new_active_replica = copy.deepcopy(replica)
             new_active_replica['replica_state'] = (
@@ -1524,16 +1524,16 @@ class NetAppCmodeFileStorageLibrary(object):
             replica['status'] = constants.STATUS_ERROR
             replica['replica_state'] = constants.STATUS_ERROR
             replica['export_locations'] = []
-            msg = _LE("Failed to change replica (%s) to a SnapMirror "
-                      "destination. Replica backend is unreachable.")
+            msg = ("Failed to change replica (%s) to a SnapMirror "
+                   "destination. Replica backend is unreachable.")
 
             LOG.exception(msg, replica['id'])
             return replica
         except netapp_api.NaApiError:
             replica['replica_state'] = constants.STATUS_ERROR
             replica['export_locations'] = []
-            msg = _LE("Failed to change replica (%s) to a SnapMirror "
-                      "destination.")
+            msg = ("Failed to change replica (%s) to a SnapMirror "
+                   "destination.")
             LOG.exception(msg, replica['id'])
             return replica
 
@@ -1735,8 +1735,8 @@ class NetAppCmodeFileStorageLibrary(object):
                     share_volume, source_vserver, destination_aggregate)
 
             except Exception:
-                msg = _LE("Cannot migrate share %(shr)s efficiently between "
-                          "%(src)s and %(dest)s.")
+                msg = ("Cannot migrate share %(shr)s efficiently between "
+                       "%(src)s and %(dest)s.")
                 msg_args = {
                     'shr': source_share['id'],
                     'src': source_share['host'],
@@ -1746,9 +1746,9 @@ class NetAppCmodeFileStorageLibrary(object):
             else:
                 compatible = True
         else:
-            msg = _LW("Cluster credentials have not been configured "
-                      "with this share driver. Cannot perform volume move "
-                      "operations.")
+            msg = ("Cluster credentials have not been configured "
+                   "with this share driver. Cannot perform volume move "
+                   "operations.")
             LOG.warning(msg)
 
         compatibility = {
@@ -1774,8 +1774,8 @@ class NetAppCmodeFileStorageLibrary(object):
         self._client.start_volume_move(
             share_volume, vserver, destination_aggregate)
 
-        msg = _LI("Began volume move operation of share %(shr)s from %(src)s "
-                  "to %(dest)s.")
+        msg = ("Began volume move operation of share %(shr)s from %(src)s "
+               "to %(dest)s.")
         msg_args = {
             'shr': source_share['id'],
             'src': source_share['host'],
@@ -1826,8 +1826,8 @@ class NetAppCmodeFileStorageLibrary(object):
                                'cutover_soft_deferred'):
             status['percent-complete'] = 100
 
-        msg = _LI("Volume move status for share %(share)s: (State) %(state)s. "
-                  "(Phase) %(phase)s. Details: %(details)s")
+        msg = ("Volume move status for share %(share)s: (State) %(state)s. "
+               "(Phase) %(phase)s. Details: %(details)s")
         msg_args = {
             'state': status['state'],
             'details': status['details'],
@@ -1854,13 +1854,13 @@ class NetAppCmodeFileStorageLibrary(object):
         try:
             self._get_volume_move_status(source_share, share_server)
         except exception.NetAppException:
-            LOG.exception(_LE("Could not get volume move status."))
+            LOG.exception("Could not get volume move status.")
             return
 
         self._client.abort_volume_move(share_volume, vserver)
 
-        msg = _LI("Share volume move operation for share %(shr)s from host "
-                  "%(src)s to %(dest)s was successfully aborted.")
+        msg = ("Share volume move operation for share %(shr)s from host "
+               "%(src)s to %(dest)s was successfully aborted.")
         msg_args = {
             'shr': source_share['id'],
             'src': source_share['host'],
@@ -1903,9 +1903,9 @@ class NetAppCmodeFileStorageLibrary(object):
             destination_share['id'])
         vserver_client.set_volume_name(share_volume, new_share_volume_name)
 
-        msg = _LI("Volume move operation for share %(shr)s has completed "
-                  "successfully. Share has been moved from %(src)s to "
-                  "%(dest)s.")
+        msg = ("Volume move operation for share %(shr)s has completed "
+               "successfully. Share has been moved from %(src)s to "
+               "%(dest)s.")
         msg_args = {
             'shr': source_share['id'],
             'src': source_share['host'],

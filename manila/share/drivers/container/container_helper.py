@@ -18,7 +18,7 @@ import uuid
 from oslo_log import log
 
 from manila import exception
-from manila.i18n import _, _LE, _LI
+from manila.i18n import _
 from manila.share import driver
 
 
@@ -66,8 +66,8 @@ class DockerExecHelper(driver.ExecuteMixin):
         if result[1] != "":
             raise exception.ManilaException(
                 _("Container %s has failed to start.") % name)
-        LOG.info(_LI("A container has been successfully started! Its id is "
-                     "%s."), result[0].rstrip('\n'))
+        LOG.info("A container has been successfully started! Its id is "
+                 "%s.", result[0].rstrip('\n'))
 
     def stop_container(self, name):
         LOG.debug("Stopping container %s.", name)
@@ -76,7 +76,7 @@ class DockerExecHelper(driver.ExecuteMixin):
         if result[1] != '':
             raise exception.ManilaException(
                 _("Container %s has failed to stop properly.") % name)
-        LOG.info(_LI("Container %s is successfully stopped."), name)
+        LOG.info("Container %s is successfully stopped.", name)
 
     def execute(self, name=None, cmd=None):
         if name is None:
@@ -94,7 +94,7 @@ class DockerExecHelper(driver.ExecuteMixin):
         try:
             result = self._execute(*cmd, run_as_root=True)
         except Exception:
-            LOG.exception(_LE("Executing command failed."))
+            LOG.exception("Executing command failed.")
             return None
         LOG.debug("Execution result: %s.", result)
         return result

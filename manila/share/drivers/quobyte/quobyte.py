@@ -29,7 +29,7 @@ import six
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LE, _LI, _LW
+from manila.i18n import _
 from manila.share import driver
 from manila.share.drivers.quobyte import jsonrpc
 
@@ -121,7 +121,7 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         try:
             self.rpc.call('getInformation', {})
         except Exception as exc:
-            LOG.error(_LE("Could not connect to API: %s"), exc)
+            LOG.error("Could not connect to API: %s", exc)
             raise exception.QBException(
                 _('Could not connect to API: %s') % exc)
 
@@ -143,8 +143,8 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
 
         total = float(result['total_physical_capacity'])
         used = float(result['total_physical_usage'])
-        LOG.info(_LI('Read capacity of %(cap)s bytes and '
-                     'usage of %(use)s bytes from backend. '),
+        LOG.info('Read capacity of %(cap)s bytes and '
+                 'usage of %(use)s bytes from backend. ',
                  {'cap': total, 'use': used})
         free = total - used
         if free < 0:
@@ -244,8 +244,8 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
             share['name'],
             self._get_project_name(context, share['project_id']))
         if not volume_uuid:
-            LOG.warning(_LW("No volume found for "
-                            "share %(project_id)s/%(name)s")
+            LOG.warning("No volume found for "
+                        "share %(project_id)s/%(name)s"
                         % {"project_id": share['project_id'],
                            "name": share['name']})
             return
@@ -374,7 +374,7 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
                 self._allow_access(context, share, a_rule)
         else:
             if not access_rules:
-                LOG.warning(_LW("No access rules provided in update_access."))
+                LOG.warning("No access rules provided in update_access.")
             else:
                 # Handling access rule recovery
                 existing_rules = self._fetch_existing_access(context, share)

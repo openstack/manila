@@ -18,7 +18,7 @@ import copy
 from oslo_log import log
 
 from manila.common import constants
-from manila.i18n import _, _LI
+from manila.i18n import _
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -493,8 +493,8 @@ class ShareInstanceAccess(ShareInstanceAccessDatabaseMixin):
                                 remove_rules, share_instance, share_server):
         for rule in add_rules:
             LOG.info(
-                _LI("Applying access rule '%(rule)s' for share "
-                    "instance '%(instance)s'"),
+                "Applying access rule '%(rule)s' for share "
+                "instance '%(instance)s'",
                 {'rule': rule['id'], 'instance': share_instance['id']}
             )
 
@@ -511,8 +511,8 @@ class ShareInstanceAccess(ShareInstanceAccessDatabaseMixin):
 
         for rule in delete_rules:
             LOG.info(
-                _LI("Denying access rule '%(rule)s' from share "
-                    "instance '%(instance)s'"),
+                "Denying access rule '%(rule)s' from share "
+                "instance '%(instance)s'",
                 {'rule': rule['id'], 'instance': share_instance['id']}
             )
 

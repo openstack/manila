@@ -21,7 +21,7 @@ from oslo_config import cfg
 from oslo_log import log
 
 from manila import exception
-from manila.i18n import _, _LI, _LW
+from manila.i18n import _
 from manila.share.drivers import service_instance
 from manila.share.drivers.windows import windows_utils
 from manila.share.drivers.windows import winrm_helper
@@ -232,21 +232,21 @@ class WindowsServiceInstanceManager(service_instance.ServiceInstanceManager):
 
     def get_valid_security_service(self, security_services):
         if not security_services:
-            LOG.info(_LI("No security services provided."))
+            LOG.info("No security services provided.")
         elif len(security_services) > 1:
-            LOG.warning(_LW("Multiple security services provided. Only one "
-                            "security service of type 'active_directory' "
-                            "is supported."))
+            LOG.warning("Multiple security services provided. Only one "
+                        "security service of type 'active_directory' "
+                        "is supported.")
         else:
             security_service = security_services[0]
             security_service_type = security_service['type']
             if security_service_type == 'active_directory':
                 return security_service
             else:
-                LOG.warning(_LW("Only security services of type "
-                                "'active_directory' are supported. "
-                                "Retrieved security "
-                                "service type: %(sec_type)s."),
+                LOG.warning("Only security services of type "
+                            "'active_directory' are supported. "
+                            "Retrieved security "
+                            "service type: %(sec_type)s.",
                             {'sec_type': security_service_type})
         return None
 

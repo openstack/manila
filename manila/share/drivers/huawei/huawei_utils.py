@@ -17,7 +17,6 @@ import copy
 
 from oslo_log import log
 
-from manila.i18n import _LE
 from manila.share.drivers.huawei import constants
 from manila.share import share_types
 
@@ -66,8 +65,8 @@ def _get_opts_from_specs(specs):
             words = value.split()
 
             if not (words and len(words) == 2 and words[0] == '<is>'):
-                LOG.error(_LE("Extra specs must be specified as "
-                              "capabilities:%s='<is> True'."), key)
+                LOG.error("Extra specs must be specified as "
+                          "capabilities:%s='<is> True'.", key)
             else:
                 opts[key] = words[1].lower()
 

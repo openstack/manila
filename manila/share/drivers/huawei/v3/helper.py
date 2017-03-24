@@ -25,7 +25,7 @@ from six.moves import http_cookiejar
 from six.moves.urllib import request as urlreq  # pylint: disable=E0611
 
 from manila import exception
-from manila.i18n import _, _LE, _LW
+from manila.i18n import _
 from manila.share.drivers.huawei import constants
 from manila import utils
 
@@ -77,8 +77,8 @@ class RestHelper(object):
             LOG.debug('Response Data: %(res)s.', {'res': res})
 
         except Exception as err:
-            LOG.error(_LE('\nBad response from server: %(url)s.'
-                          ' Error: %(err)s'), {'url': url, 'err': err})
+            LOG.error('\nBad response from server: %(url)s.'
+                      ' Error: %(err)s', {'url': url, 'err': err})
             res = '{"error":{"code":%s,' \
                   '"description":"Connect server error"}}' \
                   % constants.ERROR_CONNECT_TO_SERVER
@@ -110,7 +110,7 @@ class RestHelper(object):
             if((result['error']['code'] != 0)
                or ("data" not in result)
                or (result['data']['deviceid'] is None)):
-                LOG.error(_LE("Login to %s failed, try another."), item_url)
+                LOG.error("Login to %s failed, try another.", item_url)
                 continue
 
             LOG.debug('Login success: %(url)s\n',
@@ -139,7 +139,7 @@ class RestHelper(object):
         error_code = result['error']['code']
         if(error_code == constants.ERROR_CONNECT_TO_SERVER
            or error_code == constants.ERROR_UNAUTHORIZED_TO_SERVER):
-            LOG.error(_LE("Can't open the recent url, re-login."))
+            LOG.error("Can't open the recent url, re-login.")
             deviceid = self.login()
 
         if deviceid is not None:
@@ -214,7 +214,7 @@ class RestHelper(object):
             utils.execute('chmod', '666', filepath, run_as_root=True)
 
         except Exception as err:
-            LOG.error(_LE('Bad response from change file: %s.') % err)
+            LOG.error('Bad response from change file: %s.' % err)
             raise
 
     def create_share(self, share_name, fs_id, share_proto):
@@ -1151,8 +1151,8 @@ class RestHelper(object):
         url = "/vlan/" + vlan_id
         result = self.call(url, None, 'DELETE')
         if result['error']['code'] == constants.ERROR_LOGICAL_PORT_EXIST:
-            LOG.warning(_LW('Cannot delete vlan because there is '
-                            'a logical port on vlan.'))
+            LOG.warning('Cannot delete vlan because there is '
+                        'a logical port on vlan.')
             return
 
         self._assert_rest_result(result, _('Delete vlan error.'))
@@ -1402,7 +1402,7 @@ class RestHelper(object):
 
         if (result['error']['code'] ==
                 constants.ERROR_REPLICATION_PAIR_NOT_EXIST):
-            LOG.warning(_LW('Replication pair %s was not found.'),
+            LOG.warning('Replication pair %s was not found.',
                         pair_id)
             return
 

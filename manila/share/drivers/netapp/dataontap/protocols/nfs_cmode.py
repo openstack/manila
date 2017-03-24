@@ -23,7 +23,6 @@ import six
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LI
 from manila.share.drivers.netapp.dataontap.protocols import base
 from manila.share.drivers.netapp import utils as na_utils
 
@@ -89,15 +88,15 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
                 self._is_readonly(new_rules[address]))
 
         # Rename policy currently in force
-        LOG.info(_LI('Renaming NFS export policy for share %(share)s to '
-                     '%(policy)s.') %
+        LOG.info('Renaming NFS export policy for share %(share)s to '
+                 '%(policy)s.' %
                  {'share': share_name, 'policy': temp_old_export_policy_name})
         self._client.rename_nfs_export_policy(export_policy_name,
                                               temp_old_export_policy_name)
 
         # Switch share to the new policy
-        LOG.info(_LI('Setting NFS export policy for share %(share)s to '
-                     '%(policy)s.') %
+        LOG.info('Setting NFS export policy for share %(share)s to '
+                 '%(policy)s.' %
                  {'share': share_name, 'policy': temp_new_export_policy_name})
         self._client.set_nfs_export_policy_for_volume(
             share_name, temp_new_export_policy_name)
@@ -106,8 +105,8 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
         self._client.soft_delete_nfs_export_policy(temp_old_export_policy_name)
 
         # Rename new policy to its final name
-        LOG.info(_LI('Renaming NFS export policy for share %(share)s to '
-                     '%(policy)s.') %
+        LOG.info('Renaming NFS export policy for share %(share)s to '
+                 '%(policy)s.' %
                  {'share': share_name, 'policy': export_policy_name})
         self._client.rename_nfs_export_policy(temp_new_export_policy_name,
                                               export_policy_name)
@@ -117,8 +116,8 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
         """Checks whether access rule type and level are valid."""
 
         if rule['access_type'] != 'ip':
-            msg = _("Clustered Data ONTAP supports only 'ip' type for share "
-                    "access rules with NFS protocol.")
+            msg = ("Clustered Data ONTAP supports only 'ip' type for share "
+                   "access rules with NFS protocol.")
             raise exception.InvalidShareAccess(reason=msg)
 
         if rule['access_level'] not in constants.ACCESS_LEVELS:

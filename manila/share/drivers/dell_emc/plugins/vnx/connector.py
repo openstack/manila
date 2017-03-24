@@ -25,7 +25,6 @@ from six.moves.urllib import request as url_request  # pylint: disable=E0611
 
 from manila import exception
 from manila.i18n import _
-from manila.i18n import _LE
 from manila.share.drivers.dell_emc.plugins.vnx import constants
 from manila import utils
 
@@ -154,7 +153,7 @@ class SSHConnector(object):
                 return out, err
             except processutils.ProcessExecutionError:
                 with excutils.save_and_reraise_exception():
-                    LOG.exception(_LE('Error running SSH command: %(cmd)s.'),
+                    LOG.exception('Error running SSH command: %(cmd)s.',
                                   {'cmd': command})
 
     def log_request(self, cmd, out, err):

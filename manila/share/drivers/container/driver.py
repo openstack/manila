@@ -27,7 +27,7 @@ from oslo_log import log
 from oslo_utils import importutils
 
 from manila import exception
-from manila.i18n import _, _LI, _LW
+from manila.i18n import _
 from manila.share import driver
 from manila import utils
 
@@ -156,9 +156,9 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
                 ["rm", "-fR", "/shares/%s" % share.share_id]
             )
         except exception.ProcessExecutionError as e:
-            LOG.warning(_LW("Failed to remove /shares/%(share)s directory in "
-                            "container %(cont)s."), {"share": share.share_id,
-                                                     "cont": server_id})
+            LOG.warning("Failed to remove /shares/%(share)s directory in "
+                        "container %(cont)s.", {"share": share.share_id,
+                                                "cont": server_id})
             LOG.error(e)
 
         self.storage.remove_storage(share)
@@ -213,8 +213,8 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
                     "specified.") % neutron_class
             raise exception.ManilaException(msg)
         elif host_id is None:
-            LOG.warning(_LW("neutron_host_id is not specified. This driver "
-                            "might not work as expected without it."))
+            LOG.warning("neutron_host_id is not specified. This driver "
+                        "might not work as expected without it.")
 
     def _connect_to_network(self, server_id, network_info, host_veth):
         LOG.debug("Attempting to connect container to neutron network.")
@@ -280,8 +280,8 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
                                   self.configuration.container_ovs_bridge_name,
                                   veth, run_as_root=True)
                 except exception.ProcessExecutionError as e:
-                    LOG.warning(_LW("Failed to delete port %s: port "
-                                    "vanished."), veth)
+                    LOG.warning("Failed to delete port %s: port "
+                                "vanished.", veth)
                     LOG.error(e)
 
     def _get_veth_state(self):
@@ -317,5 +317,5 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
 
         veth = self._get_corresponding_veth(veths_before, veths_after)
         self._connect_to_network(server_id, network_info, veth)
-        LOG.info(_LI("Container %s was created."), server_id)
+        LOG.info("Container %s was created.", server_id)
         return {"id": network_info["server_id"]}
