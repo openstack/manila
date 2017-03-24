@@ -22,7 +22,7 @@ from oslo_log import log
 import routes
 
 from manila.api.openstack import wsgi
-from manila.i18n import _, _LW
+from manila.i18n import _
 from manila import wsgi as base_wsgi
 
 LOG = log.getLogger(__name__)
@@ -102,8 +102,8 @@ class APIRouter(base_wsgi.Router):
             controller = extension.controller
 
             if collection not in self.resources:
-                LOG.warning(_LW('Extension %(ext_name)s: Cannot extend '
-                                'resource %(collection)s: No such resource'),
+                LOG.warning('Extension %(ext_name)s: Cannot extend '
+                            'resource %(collection)s: No such resource',
                             {'ext_name': ext_name, 'collection': collection})
                 continue
 
@@ -121,9 +121,9 @@ class APIRouter(base_wsgi.Router):
 
 class FaultWrapper(base_wsgi.Middleware):
     def __init__(self, application):
-        LOG.warning(_LW('manila.api.openstack:FaultWrapper is deprecated. '
-                        'Please use '
-                        'manila.api.middleware.fault:FaultWrapper instead.'))
+        LOG.warning('manila.api.openstack:FaultWrapper is deprecated. '
+                    'Please use '
+                    'manila.api.middleware.fault:FaultWrapper instead.')
         # Avoid circular imports from here.
         from manila.api.middleware import fault
         super(FaultWrapper, self).__init__(fault.FaultWrapper(application))

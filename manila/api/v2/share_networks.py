@@ -27,7 +27,7 @@ from manila.api.openstack import wsgi
 from manila.api.views import share_networks as share_networks_views
 from manila.db import api as db_api
 from manila import exception
-from manila.i18n import _, _LE, _LW
+from manila.i18n import _
 from manila import policy
 from manila import quota
 from manila.share import rpcapi as share_rpcapi
@@ -97,8 +97,8 @@ class ShareNetworkController(wsgi.Controller):
                 context, project_id=share_network['project_id'],
                 share_networks=-1, user_id=share_network['user_id'])
         except Exception:
-            LOG.exception(_LE("Failed to update usages deleting "
-                              "share-network."))
+            LOG.exception("Failed to update usages deleting "
+                          "share-network.")
         else:
             QUOTAS.commit(context, reservations,
                           project_id=share_network['project_id'],
@@ -250,13 +250,13 @@ class ShareNetworkController(wsgi.Controller):
                 return (usages[name]['reserved'] + usages[name]['in_use'])
 
             if 'share_networks' in overs:
-                LOG.warning(_LW("Quota exceeded for %(s_pid)s, "
-                                "tried to create "
-                                "share-network (%(d_consumed)d of %(d_quota)d "
-                                "already consumed)."), {
-                                    's_pid': context.project_id,
-                                    'd_consumed': _consumed('share_networks'),
-                                    'd_quota': quotas['share_networks']})
+                LOG.warning("Quota exceeded for %(s_pid)s, "
+                            "tried to create "
+                            "share-network (%(d_consumed)d of %(d_quota)d "
+                            "already consumed).", {
+                                's_pid': context.project_id,
+                                'd_consumed': _consumed('share_networks'),
+                                'd_quota': quotas['share_networks']})
                 raise exception.ShareNetworksLimitExceeded(
                     allowed=quotas['share_networks'])
         else:

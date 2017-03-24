@@ -27,7 +27,7 @@ from manila.api.v1 import share_snapshots
 from manila.api.views import share_snapshots as snapshot_views
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LI
+from manila.i18n import _
 from manila import share
 
 LOG = log.getLogger(__name__)
@@ -49,7 +49,7 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
         """Unmanage a share snapshot."""
         context = req.environ['manila.context']
 
-        LOG.info(_LI("Unmanage share snapshot with id: %s."), id)
+        LOG.info("Unmanage share snapshot with id: %s.", id)
 
         try:
             snapshot = self.share_api.get_snapshot(context, id)

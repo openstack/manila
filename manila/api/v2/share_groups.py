@@ -24,7 +24,7 @@ from manila.api.openstack import wsgi
 from manila.api.views import share_groups as share_group_views
 from manila import db
 from manila import exception
-from manila.i18n import _, _LI
+from manila.i18n import _
 from manila.share import share_types
 from manila.share_group import api as share_group_api
 from manila.share_group import share_group_types
@@ -64,7 +64,7 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
         """Delete a share group."""
         context = req.environ['manila.context']
 
-        LOG.info(_LI("Delete share group with id: %s"), id, context=context)
+        LOG.info("Delete share group with id: %s", id, context=context)
         share_group = self._get_share_group(context, id)
         try:
             self.share_group_api.delete(context, share_group)

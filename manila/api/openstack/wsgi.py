@@ -29,7 +29,7 @@ from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import versioned_method
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LE, _LI
+from manila.i18n import _
 from manila import policy
 from manila import wsgi
 
@@ -524,14 +524,14 @@ class ResourceExceptionHandler(object):
                 code=ex_value.code, explanation=six.text_type(ex_value)))
         elif isinstance(ex_value, TypeError):
             exc_info = (ex_type, ex_value, ex_traceback)
-            LOG.error(_LE('Exception handling resource: %s'),
+            LOG.error('Exception handling resource: %s',
                       ex_value, exc_info=exc_info)
             raise Fault(webob.exc.HTTPBadRequest())
         elif isinstance(ex_value, Fault):
-            LOG.info(_LI("Fault thrown: %s"), ex_value)
+            LOG.info("Fault thrown: %s", ex_value)
             raise ex_value
         elif isinstance(ex_value, webob.exc.HTTPException):
-            LOG.info(_LI("HTTP exception thrown: %s"), ex_value)
+            LOG.info("HTTP exception thrown: %s", ex_value)
             raise Fault(ex_value)
 
         # We didn't handle the exception
@@ -732,8 +732,8 @@ class Resource(wsgi.Application):
     def __call__(self, request):
         """WSGI method that controls (de)serialization and method dispatch."""
 
-        LOG.info(_LI("%(method)s %(url)s") % {"method": request.method,
-                                              "url": request.url})
+        LOG.info("%(method)s %(url)s" % {"method": request.method,
+                                         "url": request.url})
         if self.support_api_request_version:
             # Set the version of the API requested based on the header
             try:

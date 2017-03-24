@@ -29,7 +29,7 @@ from manila.api.views import shares as share_views
 from manila.common import constants
 from manila import db
 from manila import exception
-from manila.i18n import _, _LI
+from manila.i18n import _
 from manila import share
 from manila import utils
 
@@ -144,7 +144,7 @@ class ShareController(shares.ShareMixin,
                     raise exc.HTTPConflict(explanation=msg % msg_args)
 
             msg_args = {'share_id': share_id, 'snap_id': snapshot_id}
-            msg = _LI('Reverting share %(share_id)s to snapshot %(snap_id)s.')
+            msg = 'Reverting share %(share_id)s to snapshot %(snap_id)s.'
             LOG.info(msg, msg_args)
 
             self.share_api.revert_to_snapshot(context, share, snapshot)

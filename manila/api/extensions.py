@@ -25,7 +25,6 @@ import webob.exc
 import manila.api.openstack
 from manila.api.openstack import wsgi
 from manila import exception
-from manila.i18n import _LE, _LI, _LW
 import manila.policy
 
 CONF = cfg.CONF
@@ -122,7 +121,7 @@ class ExtensionManager(object):
     """
 
     def __init__(self):
-        LOG.info(_LI('Initializing extension manager.'))
+        LOG.info('Initializing extension manager.')
 
         self.cls_list = CONF.osapi_share_extension
 
@@ -138,7 +137,7 @@ class ExtensionManager(object):
             return
 
         alias = ext.alias
-        LOG.info(_LI('Loaded extension: %s'), alias)
+        LOG.info('Loaded extension: %s', alias)
 
         if alias in self.extensions:
             raise exception.Error("Found duplicate extension: %s" % alias)
@@ -182,7 +181,7 @@ class ExtensionManager(object):
                       ' '.join(extension.__doc__.strip().split()))
             LOG.debug('Ext updated: %s', extension.updated)
         except AttributeError:
-            LOG.exception(_LE("Exception loading extension."))
+            LOG.exception("Exception loading extension.")
             return False
 
         return True
@@ -216,11 +215,11 @@ class ExtensionManager(object):
                             'standard_extensions')
         new_contrib_path = 'manila.api.contrib.standard_extensions'
         if old_contrib_path in extensions:
-            LOG.warning(_LW('osapi_share_extension is set to deprecated path: '
-                            '%s.'),
+            LOG.warning('osapi_share_extension is set to deprecated path: '
+                        '%s.',
                         old_contrib_path)
-            LOG.warning(_LW('Please set your flag or manila.conf settings for '
-                            'osapi_share_extension to: %s.'), new_contrib_path)
+            LOG.warning('Please set your flag or manila.conf settings for '
+                        'osapi_share_extension to: %s.', new_contrib_path)
             extensions = [e.replace(old_contrib_path, new_contrib_path)
                           for e in extensions]
 
@@ -228,8 +227,8 @@ class ExtensionManager(object):
             try:
                 self.load_extension(ext_factory)
             except Exception as exc:
-                LOG.warning(_LW('Failed to load extension %(ext_factory)s: '
-                                '%(exc)s.'),
+                LOG.warning('Failed to load extension %(ext_factory)s: '
+                            '%(exc)s.',
                             {"ext_factory": ext_factory, "exc": exc})
 
 
@@ -297,8 +296,8 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
             try:
                 ext_mgr.load_extension(classpath)
             except Exception as exc:
-                logger.warning(_LW('Failed to load extension %(classpath)s: '
-                                   '%(exc)s.'),
+                logger.warning('Failed to load extension %(classpath)s: '
+                               '%(exc)s.',
                                {"classpath": classpath, "exc": exc})
 
         # Now, let's consider any subdirectories we may have...
@@ -322,8 +321,8 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
                 try:
                     ext(ext_mgr)
                 except Exception as exc:
-                    logger.warning(_LW('Failed to load extension '
-                                       '%(ext_name)s: %(exc)s.'),
+                    logger.warning('Failed to load extension '
+                                   '%(ext_name)s: %(exc)s.',
                                    {"ext_name": ext_name, "exc": exc})
 
         # Update the list of directories we'll explore...

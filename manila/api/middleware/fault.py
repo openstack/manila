@@ -20,7 +20,6 @@ import webob.dec
 import webob.exc
 
 from manila.api.openstack import wsgi
-from manila.i18n import _LE, _LI
 from manila import utils
 from manila import wsgi as base_wsgi
 
@@ -41,7 +40,7 @@ class FaultWrapper(base_wsgi.Middleware):
             status, webob.exc.HTTPInternalServerError)()
 
     def _error(self, inner, req):
-        LOG.exception(_LE("Caught error: %s"), inner)
+        LOG.exception("Caught error: %s", inner)
 
         safe = getattr(inner, 'safe', False)
         headers = getattr(inner, 'headers', None)
@@ -50,7 +49,7 @@ class FaultWrapper(base_wsgi.Middleware):
             status = 500
 
         msg_dict = dict(url=req.url, status=status)
-        LOG.info(_LI("%(url)s returned with HTTP %(status)d"), msg_dict)
+        LOG.info("%(url)s returned with HTTP %(status)d", msg_dict)
         outer = self.status_to_type(status)
         if headers:
             outer.headers = headers

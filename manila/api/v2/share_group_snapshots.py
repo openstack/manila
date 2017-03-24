@@ -24,7 +24,7 @@ from manila.api.openstack import wsgi
 import manila.api.views.share_group_snapshots as share_group_snapshots_views
 from manila import db
 from manila import exception
-from manila.i18n import _, _LI
+from manila.i18n import _
 import manila.share_group.api as share_group_api
 
 LOG = log.getLogger(__name__)
@@ -62,7 +62,7 @@ class ShareGroupSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
     def delete(self, req, id):
         """Delete a share group snapshot."""
         context = req.environ['manila.context']
-        LOG.info(_LI("Delete share group snapshot with id: %s"),
+        LOG.info("Delete share group snapshot with id: %s",
                  id, context=context)
         sg_snapshot = self._get_share_group_snapshot(context, id)
         try:
