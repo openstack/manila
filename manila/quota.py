@@ -26,7 +26,6 @@ import six
 
 from manila import db
 from manila import exception
-from manila.i18n import _LE
 
 LOG = log.getLogger(__name__)
 
@@ -988,7 +987,7 @@ class QuotaEngine(object):
             # usage resynchronization and the reservation expiration
             # mechanisms will resolve the issue.  The exception is
             # logged, however, because this is less than optimal.
-            LOG.exception(_LE("Failed to commit reservations %s"),
+            LOG.exception("Failed to commit reservations %s",
                           reservations)
             return
         LOG.debug("Committed reservations %s", reservations)
@@ -1012,7 +1011,7 @@ class QuotaEngine(object):
             # usage resynchronization and the reservation expiration
             # mechanisms will resolve the issue.  The exception is
             # logged, however, because this is less than optimal.
-            LOG.exception(_LE("Failed to roll back reservations %s"),
+            LOG.exception("Failed to roll back reservations %s",
                           reservations)
             return
         LOG.debug("Rolled back reservations %s", reservations)
