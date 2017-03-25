@@ -900,6 +900,8 @@ elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
     init_manila
     echo_summary "Installing extra libraries"
     install_libraries
+    echo_summary "Creating Manila entities for auth service"
+    create_manila_accounts
 
     # Cinder config update
     if is_service_enabled cinder && [[ -n "$CINDER_OVERSUBSCRIPTION_RATIO" ]]; then
@@ -911,9 +913,6 @@ elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
         iniset $CINDER_CONF DEFAULT max_over_subscription_ratio $CINDER_OVERSUBSCRIPTION_RATIO
     fi
 elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
-    echo_summary "Creating Manila entities for auth service"
-    create_manila_accounts
-
     if is_service_enabled nova; then
         echo_summary "Creating Manila service flavor"
         create_manila_service_flavor
