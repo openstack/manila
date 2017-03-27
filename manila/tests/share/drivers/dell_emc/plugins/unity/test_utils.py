@@ -14,6 +14,7 @@
 #    under the License.
 
 import ddt
+from oslo_utils import units
 
 from manila.share.drivers.dell_emc.plugins.unity import utils
 from manila import test
@@ -111,3 +112,6 @@ class TestUtils(test.TestCase):
         self.assertEqual({'spa': {'spa_eth0', 'spa_la_1'},
                           'spb': {'spb_eth0', 'spb_la_1'}},
                          port_map)
+
+    def test_gb_to_byte(self):
+        self.assertEqual(3 * units.Gi, utils.gib_to_byte(3))

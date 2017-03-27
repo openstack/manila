@@ -35,7 +35,7 @@ from manila.share.drivers.dell_emc.plugins.vnx import utils as emc_utils
 from manila.share import utils as share_utils
 from manila import utils
 
-VERSION = "2.0.0"
+VERSION = "3.0.0"
 
 LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')

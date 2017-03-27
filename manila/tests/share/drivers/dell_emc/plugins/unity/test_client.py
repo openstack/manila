@@ -170,14 +170,6 @@ class TestClient(test.TestCase):
 
         self.assertEqual('SPA', sp.name)
 
-    @ddt.data((1, 3), (2, 3), (3, 3), (4, 4), (10, 10))
-    @ddt.unpack
-    @res_mock.patch_client
-    def test_get_valid_fs_size(self, client, share_size_gb, fs_size_gb):
-        size = client.get_valid_fs_size_in_byte(share_size_gb)
-
-        self.assertEqual(fs_size_gb * units.Gi, size)
-
     @res_mock.mock_client_input
     @res_mock.patch_client
     def test_extend_filesystem(self, client, mocked_input):
