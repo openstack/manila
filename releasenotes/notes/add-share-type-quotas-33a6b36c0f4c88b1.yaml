@@ -1,0 +1,5 @@
+---
+features:
+  - Added possibility to set quotas per share type.
+    It is useful for deployments with multiple backends that
+    are accessible via different share types.

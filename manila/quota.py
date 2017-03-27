@@ -69,15 +69,6 @@ class DbQuotaDriver(object):
     quota information.  The default driver utilizes the local
     database.
     """
-    def get_by_project_and_user(self, context, project_id, user_id, resource):
-        """Get a specific quota by project and user."""
-
-        return db.quota_get(context, project_id, user_id, resource)
-
-    def get_by_project(self, context, project_id, resource):
-        """Get a specific quota by project."""
-
-        return db.quota_get(context, project_id, resource)
 
     def get_by_class(self, context, quota_class, resource):
         """Get a specific quota by quota class."""
@@ -96,7 +87,6 @@ class DbQuotaDriver(object):
         for resource in resources.values():
             quotas[resource.name] = default_quotas.get(resource.name,
                                                        resource.default)
-
         return quotas
 
     def get_class_quotas(self, context, resources, quota_class,
@@ -209,8 +199,7 @@ class DbQuotaDriver(object):
                                     remains=remains)
 
     def get_user_quotas(self, context, resources, project_id, user_id,
-                        quota_class=None, defaults=True,
-                        usages=True):
+                        quota_class=None, defaults=True, usages=True):
         """Retrieve quotas for user and project.
 
         Given a list of resources, retrieve the quotas for the given
@@ -232,8 +221,8 @@ class DbQuotaDriver(object):
         :param usages: If True, the current in_use and reserved counts
                        will also be returned.
         """
-        user_quotas = db.quota_get_all_by_project_and_user(context,
-                                                           project_id, user_id)
+        user_quotas = db.quota_get_all_by_project_and_user(
+            context, project_id, user_id)
         # Use the project quota for default user quota.
         proj_quotas = db.quota_get_all_by_project(context, project_id)
         for key, value in proj_quotas.items():
@@ -247,8 +236,47 @@ class DbQuotaDriver(object):
                                     user_quotas, quota_class,
                                     defaults=defaults, usages=user_usages)
 
+    def get_share_type_quotas(self, context, resources, project_id,
+                              share_type_id, quota_class=None, defaults=True,
+                              usages=True):
+        """Retrieve quotas for share_type and project.
+
+        Given a list of resources, retrieve the quotas for the given
+        share_type and project.
+
+        :param context: The request context, for access checks.
+        :param resources: A dictionary of the registered resources.
+        :param project_id: The UUID of the project to return quotas for.
+        :param share_type: UUID/name of a share type to return quotas for.
+        :param quota_class: If project_id != context.project_id, the
+                            quota class cannot be determined.  This
+                            parameter allows it to be specified.  It
+                            will be ignored if project_id ==
+                            context.project_id.
+        :param defaults: If True, the quota class value (or the
+                         default value, if there is no value from the
+                         quota class) will be reported if there is no
+                         specific value for the resource.
+        :param usages: If True, the current in_use and reserved counts
+                       will also be returned.
+        """
+        st_quotas = db.quota_get_all_by_project_and_share_type(
+            context, project_id, share_type_id)
+        # Use the project quota for default share_type quota.
+        project_quotas = db.quota_get_all_by_project(context, project_id)
+        for key, value in project_quotas.items():
+            if key not in st_quotas.keys():
+                st_quotas[key] = value
+        st_usages = None
+        if usages:
+            st_usages = db.quota_usage_get_all_by_project_and_share_type(
+                context, project_id, share_type_id)
+        return self._process_quotas(
+            context, resources, project_id, st_quotas, quota_class,
+            defaults=defaults, usages=st_usages)
+
     def get_settable_quotas(self, context, resources, project_id,
-                            user_id=None):
+                            user_id=None, share_type_id=None):
         """Retrieve range of settable quotas.
 
         Given a list of resources, retrieve the range of settable quotas for
@@ -258,30 +286,34 @@ class DbQuotaDriver(object):
         :param resources: A dictionary of the registered resources.
         :param project_id: The ID of the project to return quotas for.
         :param user_id: The ID of the user to return quotas for.
+        :param share_type_id: The UUID of the share_type to return quotas for.
         """
         settable_quotas = {}
-        project_quotas = self.get_project_quotas(context, resources,
-                                                 project_id, remains=True)
-        if user_id:
-            user_quotas = self.get_user_quotas(context, resources,
-                                               project_id, user_id)
-            setted_quotas = db.quota_get_all_by_project_and_user(
-                context, project_id, user_id)
-            for key, value in user_quotas.items():
-                maximum = (project_quotas[key]['remains'] +
-                           setted_quotas.get(key, 0))
-                settable_quotas[key] = dict(
-                    minimum=value['in_use'] + value['reserved'],
-                    maximum=maximum)
+        project_quotas = self.get_project_quotas(
+            context, resources, project_id, remains=True)
+        if user_id or share_type_id:
+            if user_id:
+                subquotas = self.get_user_quotas(
+                    context, resources, project_id, user_id)
+            else:
+                subquotas = self.get_share_type_quotas(
+                    context, resources, project_id, share_type_id)
+            for key, value in subquotas.items():
+                settable_quotas[key] = {
+                    "minimum": value['in_use'] + value['reserved'],
+                    "maximum": project_quotas[key]["limit"],
+                }
         else:
             for key, value in project_quotas.items():
-                minimum = max(int(value['limit'] - value['remains']),
-                              int(value['in_use'] + value['reserved']))
-                settable_quotas[key] = dict(minimum=minimum, maximum=-1)
+                minimum = max(
+                    int(value['limit'] - value['remains']),
+                    int(value['in_use'] + value['reserved'])
+                )
+                settable_quotas[key] = {"minimum": minimum, "maximum": -1}
         return settable_quotas
 
     def _get_quotas(self, context, resources, keys, has_sync, project_id=None,
-                    user_id=None):
+                    user_id=None, share_type_id=None):
         """Retrieve quotas for a resource.
 
         A helper method which retrieves the quotas for the specific
@@ -323,6 +355,11 @@ class DbQuotaDriver(object):
             quotas = self.get_user_quotas(context, sub_resources,
                                           project_id, user_id,
                                           context.quota_class, usages=False)
+        elif share_type_id:
+            # Grab and return the quotas (without usages)
+            quotas = self.get_share_type_quotas(
+                context, sub_resources, project_id, share_type_id,
+                context.quota_class, usages=False)
         else:
             # Grab and return the quotas (without usages)
             quotas = self.get_project_quotas(context, sub_resources,
@@ -332,66 +369,8 @@ class DbQuotaDriver(object):
 
         return {k: v['limit'] for k, v in quotas.items()}
 
-    def limit_check(self, context, resources, values, project_id=None,
-                    user_id=None):
-        """Check simple quota limits.
-
-        For limits--those quotas for which there is no usage
-        synchronization function--this method checks that a set of
-        proposed values are permitted by the limit restriction.
-
-        This method will raise a QuotaResourceUnknown exception if a
-        given resource is unknown or if it is not a simple limit
-        resource.
-
-        If any of the proposed values is over the defined quota, an
-        OverQuota exception will be raised with the sorted list of the
-        resources which are too high.  Otherwise, the method returns
-        nothing.
-
-        :param context: The request context, for access checks.
-        :param resources: A dictionary of the registered resources.
-        :param values: A dictionary of the values to check against the
-                       quota.
-        :param project_id: Specify the project_id if current context
-                           is admin and admin wants to impact on
-                           common user's tenant.
-        :param user_id: Specify the user_id if current context
-                        is admin and admin wants to impact on
-                        common user. (Special case: user operates on
-                        resource, owned/created by different user)
-        """
-
-        # Ensure no value is less than zero
-        unders = [key for key, val in values.items() if val < 0]
-        if unders:
-            raise exception.InvalidQuotaValue(unders=sorted(unders))
-
-        # If project_id is None, then we use the project_id in context
-        if project_id is None:
-            project_id = context.project_id
-        # If user id is None, then we use the user_id in context
-        if user_id is None:
-            user_id = context.user_id
-
-        # Get the applicable quotas
-        quotas = self._get_quotas(context, resources, values.keys(),
-                                  has_sync=False, project_id=project_id)
-        user_quotas = self._get_quotas(context, resources, values.keys(),
-                                       has_sync=False, project_id=project_id,
-                                       user_id=user_id)
-
-        # Check the quotas and construct a list of the resources that
-        # would be put over limit by the desired values
-        overs = [key for key, val in values.items()
-                 if (quotas[key] >= 0 and quotas[key] < val) or
-                 (user_quotas[key] >= 0 and user_quotas[key] < val)]
-        if overs:
-            raise exception.OverQuota(overs=sorted(overs), quotas=quotas,
-                                      usages={})
-
     def reserve(self, context, resources, deltas, expire=None,
-                project_id=None, user_id=None):
+                project_id=None, user_id=None, share_type_id=None):
         """Check quotas and reserve resources.
 
         For counting quotas--those quotas for which there is a usage
@@ -451,23 +430,31 @@ class DbQuotaDriver(object):
         # NOTE(Vek): We're not worried about races at this point.
         #            Yes, the admin may be in the process of reducing
         #            quotas, but that's a pretty rare thing.
-        quotas = self._get_quotas(context, resources, deltas.keys(),
-                                  has_sync=True, project_id=project_id)
-        user_quotas = self._get_quotas(context, resources, deltas.keys(),
-                                       has_sync=True, project_id=project_id,
-                                       user_id=user_id)
+        quotas = self._get_quotas(
+            context, resources, deltas, has_sync=True, project_id=project_id)
+        user_quotas = self._get_quotas(
+            context, resources, deltas, has_sync=True,
+            project_id=project_id, user_id=user_id)
+        if share_type_id:
+            share_type_quotas = self._get_quotas(
+                context, resources, deltas, has_sync=True,
+                project_id=project_id, share_type_id=share_type_id)
+        else:
+            share_type_quotas = {}
 
         # NOTE(Vek): Most of the work here has to be done in the DB
         #            API, because we have to do it in a transaction,
         #            which means access to the session.  Since the
         #            session isn't available outside the DBAPI, we
         #            have to do the work there.
-        return db.quota_reserve(context, resources, quotas, user_quotas,
-                                deltas, expire,
-                                CONF.until_refresh, CONF.max_age,
-                                project_id=project_id, user_id=user_id)
+        return db.quota_reserve(
+            context, resources, quotas, user_quotas, share_type_quotas,
+            deltas, expire, CONF.until_refresh, CONF.max_age,
+            project_id=project_id, user_id=user_id,
+            share_type_id=share_type_id)
 
-    def commit(self, context, reservations, project_id=None, user_id=None):
+    def commit(self, context, reservations, project_id=None, user_id=None,
+               share_type_id=None):
         """Commit reservations.
 
         :param context: The request context, for access checks.
@@ -488,10 +475,12 @@ class DbQuotaDriver(object):
         if user_id is None:
             user_id = context.user_id
 
-        db.reservation_commit(context, reservations, project_id=project_id,
-                              user_id=user_id)
+        db.reservation_commit(
+            context, reservations, project_id=project_id, user_id=user_id,
+            share_type_id=share_type_id)
 
-    def rollback(self, context, reservations, project_id=None, user_id=None):
+    def rollback(self, context, reservations, project_id=None, user_id=None,
+                 share_type_id=None):
         """Roll back reservations.
 
         :param context: The request context, for access checks.
@@ -512,8 +501,9 @@ class DbQuotaDriver(object):
         if user_id is None:
             user_id = context.user_id
 
-        db.reservation_rollback(context, reservations, project_id=project_id,
-                                user_id=user_id)
+        db.reservation_rollback(
+            context, reservations, project_id=project_id, user_id=user_id,
+            share_type_id=share_type_id)
 
     def usage_reset(self, context, resources):
         """Reset usage records.
@@ -571,6 +561,21 @@ class DbQuotaDriver(object):
 
         db.quota_destroy_all_by_project_and_user(context, project_id, user_id)
 
+    def destroy_all_by_project_and_share_type(self, context, project_id,
+                                              share_type_id):
+        """Destroy metadata associated with a project and share_type.
+
+        Destroy all quotas, usages, and reservations associated with a
+        project and share_type.
+
+        :param context: The request context, for access checks.
+        :param project_id: The ID of the project.
+        :param share_type_id: The UUID of the share type.
+        """
+
+        db.quota_destroy_all_by_project_and_share_type(
+            context, project_id, share_type_id)
+
     def expire(self, context):
         """Expire reservations.
 
@@ -597,54 +602,6 @@ class BaseResource(object):
 
         self.name = name
         self.flag = flag
-
-    def quota(self, driver, context, **kwargs):
-        """Obtain quota for a resource.
-
-        Given a driver and context, obtain the quota for this
-        resource.
-
-        :param driver: A quota driver.
-        :param context: The request context.
-        :param project_id: The project to obtain the quota value for.
-                           If not provided, it is taken from the
-                           context.  If it is given as None, no
-                           project-specific quota will be searched
-                           for.
-        :param quota_class: The quota class corresponding to the
-                            project, or for which the quota is to be
-                            looked up.  If not provided, it is taken
-                            from the context.  If it is given as None,
-                            no quota class-specific quota will be
-                            searched for.  Note that the quota class
-                            defaults to the value in the context,
-                            which may not correspond to the project if
-                            project_id is not the same as the one in
-                            the context.
-        """
-
-        # Get the project ID
-        project_id = kwargs.get('project_id', context.project_id)
-
-        # Ditto for the quota class
-        quota_class = kwargs.get('quota_class', context.quota_class)
-
-        # Look up the quota for the project
-        if project_id:
-            try:
-                return driver.get_by_project(context, project_id, self.name)
-            except exception.ProjectQuotaNotFound:
-                pass
-
-        # Try for the quota class
-        if quota_class:
-            try:
-                return driver.get_by_class(context, quota_class, self.name)
-            except exception.QuotaClassNotFound:
-                pass
-
-        # OK, return the default
-        return self.default
 
     @property
     def default(self):
@@ -768,17 +725,6 @@ class QuotaEngine(object):
         for resource in resources:
             self.register_resource(resource)
 
-    def get_by_project_and_user(self, context, project_id, user_id, resource):
-        """Get a specific quota by project and user."""
-
-        return self._driver.get_by_project_and_user(context, project_id,
-                                                    user_id, resource)
-
-    def get_by_project(self, context, project_id, resource):
-        """Get a specific quota by project."""
-
-        return self._driver.get_by_project(context, project_id, resource)
-
     def get_by_class(self, context, quota_class, resource):
         """Get a specific quota by quota class."""
 
@@ -830,6 +776,28 @@ class QuotaEngine(object):
                                             defaults=defaults,
                                             usages=usages)
 
+    def get_share_type_quotas(self, context, project_id, share_type_id,
+                              quota_class=None, defaults=True, usages=True):
+        """Retrieve the quotas for the given user and project.
+
+        :param context: The request context, for access checks.
+        :param project_id: The ID of the project to return quotas for.
+        :param share_type_id: The UUID of the user to return quotas for.
+        :param quota_class: If project_id != context.project_id, the
+                            quota class cannot be determined.  This
+                            parameter allows it to be specified.
+        :param defaults: If True, the quota class value (or the
+                         default value, if there is no value from the
+                         quota class) will be reported if there is no
+                         specific value for the resource.
+        :param usages: If True, the current in_use and reserved counts
+                       will also be returned.
+        """
+
+        return self._driver.get_share_type_quotas(
+            context, self._resources, project_id, share_type_id,
+            quota_class=quota_class, defaults=defaults, usages=usages)
+
     def get_project_quotas(self, context, project_id, quota_class=None,
                            defaults=True, usages=True, remains=False):
         """Retrieve the quotas for the given project.
@@ -856,7 +824,8 @@ class QuotaEngine(object):
                                                usages=usages,
                                                remains=remains)
 
-    def get_settable_quotas(self, context, project_id, user_id=None):
+    def get_settable_quotas(self, context, project_id, user_id=None,
+                            share_type_id=None):
         """Get settable quotas.
 
         Given a list of resources, retrieve the range of settable quotas for
@@ -866,11 +835,12 @@ class QuotaEngine(object):
         :param resources: A dictionary of the registered resources.
         :param project_id: The ID of the project to return quotas for.
         :param user_id: The ID of the user to return quotas for.
+        :param share_type_id: The UUID of the share_type to return quotas for.
         """
 
-        return self._driver.get_settable_quotas(context, self._resources,
-                                                project_id,
-                                                user_id=user_id)
+        return self._driver.get_settable_quotas(
+            context, self._resources, project_id, user_id=user_id,
+            share_type_id=share_type_id)
 
     def count(self, context, resource, *args, **kwargs):
         """Count a resource.
@@ -891,40 +861,8 @@ class QuotaEngine(object):
 
         return res.count(context, *args, **kwargs)
 
-    def limit_check(self, context, project_id=None, user_id=None, **values):
-        """Check simple quota limits.
-
-        For limits--those quotas for which there is no usage
-        synchronization function--this method checks that a set of
-        proposed values are permitted by the limit restriction.  The
-        values to check are given as keyword arguments, where the key
-        identifies the specific quota limit to check, and the value is
-        the proposed value.
-
-        This method will raise a QuotaResourceUnknown exception if a
-        given resource is unknown or if it is not a simple limit
-        resource.
-
-        If any of the proposed values is over the defined quota, an
-        OverQuota exception will be raised with the sorted list of the
-        resources which are too high.  Otherwise, the method returns
-        nothing.
-
-        :param context: The request context, for access checks.
-        :param project_id: Specify the project_id if current context
-                           is admin and admin wants to impact on
-                           common user's tenant.
-        :param user_id: Specify the user_id if current context
-                        is admin and admin wants to impact on
-                        common user. (Special case: user operates on
-                        resource, owned/created by different user)
-        """
-
-        return self._driver.limit_check(context, self._resources, values,
-                                        project_id=project_id, user_id=user_id)
-
     def reserve(self, context, expire=None, project_id=None, user_id=None,
-                **deltas):
+                share_type_id=None, **deltas):
         """Check quotas and reserve resources.
 
         For counting quotas--those quotas for which there is a usage
@@ -959,16 +897,20 @@ class QuotaEngine(object):
                            common user's tenant.
         """
 
-        reservations = self._driver.reserve(context, self._resources, deltas,
-                                            expire=expire,
-                                            project_id=project_id,
-                                            user_id=user_id)
+        reservations = self._driver.reserve(
+            context, self._resources, deltas,
+            expire=expire,
+            project_id=project_id,
+            user_id=user_id,
+            share_type_id=share_type_id,
+        )
 
         LOG.debug("Created reservations %s", reservations)
 
         return reservations
 
-    def commit(self, context, reservations, project_id=None, user_id=None):
+    def commit(self, context, reservations, project_id=None, user_id=None,
+               share_type_id=None):
         """Commit reservations.
 
         :param context: The request context, for access checks.
@@ -980,8 +922,9 @@ class QuotaEngine(object):
         """
 
         try:
-            self._driver.commit(context, reservations, project_id=project_id,
-                                user_id=user_id)
+            self._driver.commit(
+                context, reservations, project_id=project_id,
+                user_id=user_id, share_type_id=share_type_id)
         except Exception:
             # NOTE(Vek): Ignoring exceptions here is safe, because the
             # usage resynchronization and the reservation expiration
@@ -992,7 +935,8 @@ class QuotaEngine(object):
             return
         LOG.debug("Committed reservations %s", reservations)
 
-    def rollback(self, context, reservations, project_id=None, user_id=None):
+    def rollback(self, context, reservations, project_id=None, user_id=None,
+                 share_type_id=None):
         """Roll back reservations.
 
         :param context: The request context, for access checks.
@@ -1004,8 +948,9 @@ class QuotaEngine(object):
         """
 
         try:
-            self._driver.rollback(context, reservations, project_id=project_id,
-                                  user_id=user_id)
+            self._driver.rollback(
+                context, reservations, project_id=project_id,
+                user_id=user_id, share_type_id=share_type_id)
         except Exception:
             # NOTE(Vek): Ignoring exceptions here is safe, because the
             # usage resynchronization and the reservation expiration
@@ -1047,6 +992,21 @@ class QuotaEngine(object):
 
         self._driver.destroy_all_by_project_and_user(context,
                                                      project_id, user_id)
+
+    def destroy_all_by_project_and_share_type(self, context, project_id,
+                                              share_type_id):
+        """Destroy metadata associated with a project and share_type.
+
+        Destroy all quotas, usages, and reservations associated with a
+        project and share_type.
+
+        :param context: The request context, for access checks.
+        :param project_id: The ID of the project.
+        :param share_type_id: The UUID of the share_type.
+        """
+
+        self._driver.destroy_all_by_project_and_share_type(
+            context, project_id, share_type_id)
 
     def destroy_all_by_project(self, context, project_id):
         """Destroy metadata associated with a project.

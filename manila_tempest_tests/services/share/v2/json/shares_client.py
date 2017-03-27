@@ -852,10 +852,22 @@ class SharesV2Client(shares_client.SharesClient):
 
 ###############
 
-    def _get_quotas_url(self, version):
+    @staticmethod
+    def _get_quotas_url(version):
         if utils.is_microversion_gt(version, "2.6"):
             return 'quota-sets'
         return 'os-quota-sets'
+
+    @staticmethod
+    def _get_quotas_url_arguments_as_str(user_id=None, share_type=None):
+        args_str = ''
+        if not (user_id is None or share_type is None):
+            args_str = "?user_id=%s&share_type=%s" % (user_id, share_type)
+        elif user_id is not None:
+            args_str = "?user_id=%s" % user_id
+        elif share_type is not None:
+            args_str = "?share_type=%s" % share_type
+        return args_str
 
     def default_quotas(self, tenant_id, url=None, version=LATEST_MICROVERSION):
         if url is None:
@@ -865,48 +877,44 @@ class SharesV2Client(shares_client.SharesClient):
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
-    def show_quotas(self, tenant_id, user_id=None, url=None,
+    def show_quotas(self, tenant_id, user_id=None, share_type=None, url=None,
                     version=LATEST_MICROVERSION):
         if url is None:
             url = self._get_quotas_url(version)
         url += '/%s' % tenant_id
-        if user_id is not None:
-            url += "?user_id=%s" % user_id
+        url += self._get_quotas_url_arguments_as_str(user_id, share_type)
         resp, body = self.get(url, version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
-    def reset_quotas(self, tenant_id, user_id=None, url=None,
+    def reset_quotas(self, tenant_id, user_id=None, share_type=None, url=None,
                      version=LATEST_MICROVERSION):
         if url is None:
             url = self._get_quotas_url(version)
         url += '/%s' % tenant_id
-        if user_id is not None:
-            url += "?user_id=%s" % user_id
+        url += self._get_quotas_url_arguments_as_str(user_id, share_type)
         resp, body = self.delete(url, version=version)
         self.expected_success(202, resp.status)
         return body
 
-    def detail_quotas(self, tenant_id, user_id=None, url=None,
+    def detail_quotas(self, tenant_id, user_id=None, share_type=None, url=None,
                       version=LATEST_MICROVERSION):
         if url is None:
             url = self._get_quotas_url(version)
         url += '/%s/detail' % tenant_id
-        if user_id is not None:
-            url += "?user_id=%s" % user_id
+        url += self._get_quotas_url_arguments_as_str(user_id, share_type)
         resp, body = self.get(url, version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
     def update_quotas(self, tenant_id, user_id=None, shares=None,
                       snapshots=None, gigabytes=None, snapshot_gigabytes=None,
-                      share_networks=None, force=True, url=None,
-                      version=LATEST_MICROVERSION):
+                      share_networks=None, force=True, share_type=None,
+                      url=None, version=LATEST_MICROVERSION):
         if url is None:
             url = self._get_quotas_url(version)
         url += '/%s' % tenant_id
-        if user_id is not None:
-            url += "?user_id=%s" % user_id
+        url += self._get_quotas_url_arguments_as_str(user_id, share_type)
 
         put_body = {"tenant_id": tenant_id}
         if force:

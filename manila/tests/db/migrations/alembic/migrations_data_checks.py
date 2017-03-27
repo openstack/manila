@@ -2396,3 +2396,73 @@ class MessagesTableChecks(BaseMigrationChecks):
     def check_downgrade(self, engine):
         self.test_case.assertRaises(sa_exc.NoSuchTableError, utils.load_table,
                                     'messages', engine)
+
+
+@map_to_migration('b516de97bfee')
+class ProjectShareTypesQuotasChecks(BaseMigrationChecks):
+    new_table_name = 'project_share_type_quotas'
+    usages_table = 'quota_usages'
+    reservations_table = 'reservations'
+    st_record_id = uuidutils.generate_uuid()
+
+    def setup_upgrade_data(self, engine):
+        # Create share type
+        self.st_data = {
+            'id': self.st_record_id,
+            'name': uuidutils.generate_uuid(),
+            'deleted': "False",
+        }
+        st_table = utils.load_table('share_types', engine)
+        engine.execute(st_table.insert(self.st_data))
+
+    def check_upgrade(self, engine, data):
+        # Create share type quota
+        self.quota_data = {
+            'project_id': 'x' * 255,
+            'resource': 'y' * 255,
+            'hard_limit': 987654321,
+            'created_at': datetime.datetime(2017, 4, 11, 18, 5, 58),
+            'updated_at': None,
+            'deleted_at': None,
+            'deleted': 0,
+            'share_type_id': self.st_record_id,
+        }
+        new_table = utils.load_table(self.new_table_name, engine)
+        engine.execute(new_table.insert(self.quota_data))
+
+        # Create usage record
+        self.usages_data = {
+            'project_id': 'x' * 255,
+            'user_id': None,
+            'share_type_id': self.st_record_id,
+            'resource': 'y' * 255,
+            'in_use': 13,
+            'reserved': 15,
+        }
+        usages_table = utils.load_table(self.usages_table, engine)
+        engine.execute(usages_table.insert(self.usages_data))
+
+        # Create reservation record
+        self.reservations_data = {
+            'uuid': uuidutils.generate_uuid(),
+            'usage_id': 1,
+            'project_id': 'x' * 255,
+            'user_id': None,
+            'share_type_id': self.st_record_id,
+            'resource': 'y' * 255,
+            'delta': 13,
+            'expire': datetime.datetime(2399, 4, 11, 18, 5, 58),
+        }
+        reservations_table = utils.load_table(self.reservations_table, engine)
+        engine.execute(reservations_table.insert(self.reservations_data))
+
+    def check_downgrade(self, engine):
+        self.test_case.assertRaises(
+            sa_exc.NoSuchTableError,
+            utils.load_table, self.new_table_name, engine)
+        for table_name in (self.usages_table, self.reservations_table):
+            table = utils.load_table(table_name, engine)
+            db_result = engine.execute(table.select())
+            self.test_case.assertGreater(db_result.rowcount, 0)
+            for row in db_result:
+                self.test_case.assertFalse(hasattr(row, 'share_type_id'))

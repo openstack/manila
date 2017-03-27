@@ -39,6 +39,7 @@ def fake_share(**kwargs):
         'is_busy': False,
         'share_group_id': None,
         'instance': {
+            'id': 'fake_share_instance_id',
             'host': 'fakehost',
             'share_type_id': '1',
         },
@@ -61,6 +62,7 @@ def fake_share_instance(base_share=None, **kwargs):
         'host': 'fakehost',
         'share_network_id': 'fakesharenetworkid',
         'share_server_id': 'fakeshareserverid',
+        'share_type_id': '1',
     }
 
     for attr in models.ShareInstance._proxified_properties:
@@ -153,7 +155,10 @@ def fake_snapshot_instance(base_snapshot=None, as_primitive=False, **kwargs):
         'provider_location': 'i_live_here_actually',
         'share_name': 'fakename',
         'share_id': 'fakeshareinstanceid',
-        'share_instance': {'share_id': 'fakeshareid', },
+        'share_instance': {
+            'share_id': 'fakeshareid',
+            'share_type_id': '1',
+        },
         'share_instance_id': 'fakeshareinstanceid',
         'deleted': False,
         'updated_at': datetime.datetime(2016, 3, 21, 0, 5, 58),

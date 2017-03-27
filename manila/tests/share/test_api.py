@@ -677,7 +677,8 @@ class ShareAPITestCase(test.TestCase):
             share_data['display_description']
         )
         quota.QUOTAS.reserve.assert_called_once_with(
-            self.context, shares=1, gigabytes=share_data['size'])
+            self.context, share_type_id=None,
+            shares=1, gigabytes=share_data['size'])
 
     @ddt.data(exception.QuotaError, exception.InvalidShare)
     def test_create_share_error_on_quota_commit(self, expected_exception):
@@ -700,8 +701,8 @@ class ShareAPITestCase(test.TestCase):
             share_data['display_description']
         )
 
-        quota.QUOTAS.rollback.assert_called_once_with(self.context,
-                                                      reservation)
+        quota.QUOTAS.rollback.assert_called_once_with(
+            self.context, reservation, share_type_id=None)
         db_api.share_delete.assert_called_once_with(self.context, share['id'])
 
     def test_create_share_instance_with_host_and_az(self):
@@ -1033,9 +1034,10 @@ class ShareAPITestCase(test.TestCase):
             share_api.policy.check_policy.assert_called_once_with(
                 self.context, 'share', 'create_snapshot', share)
             quota.QUOTAS.reserve.assert_called_once_with(
-                self.context, snapshots=1, snapshot_gigabytes=1)
+                self.context, share_type_id=None,
+                snapshot_gigabytes=1, snapshots=1)
             quota.QUOTAS.commit.assert_called_once_with(
-                self.context, 'reservation')
+                self.context, 'reservation', share_type_id=None)
             db_api.share_snapshot_create.assert_called_once_with(
                 self.context, options)
 
@@ -1248,7 +1250,8 @@ class ShareAPITestCase(test.TestCase):
 
         if reservations is not None:
             mock_quotas_rollback.assert_called_once_with(
-                self.context, reservations)
+                self.context, reservations,
+                share_type_id=share['instance']['share_type_id'])
         else:
             self.assertFalse(mock_quotas_rollback.called)
 
@@ -1284,6 +1287,7 @@ class ShareAPITestCase(test.TestCase):
         self.assertEqual('fake_reservations', result)
         mock_quotas_reserve.assert_called_once_with(
             self.context, project_id='fake_project', gigabytes=1,
+            share_type_id=share['instance']['share_type_id'],
             user_id='fake_user')
 
     def test_handle_revert_to_snapshot_quotas_quota_exceeded(self):
@@ -1649,9 +1653,10 @@ class ShareAPITestCase(test.TestCase):
             mock.call(self.context, 'share', 'create'),
             mock.call(self.context, 'share_snapshot', 'get_snapshot')])
         quota.QUOTAS.reserve.assert_called_once_with(
-            self.context, gigabytes=1, shares=1)
+            self.context, share_type_id=share_type['id'],
+            gigabytes=1, shares=1)
         quota.QUOTAS.commit.assert_called_once_with(
-            self.context, 'reservation')
+            self.context, 'reservation', share_type_id=share_type['id'])
 
     def test_create_from_snapshot_with_different_share_type(self):
         snapshot, share, share_data, request_spec = (
@@ -1734,12 +1739,14 @@ class ShareAPITestCase(test.TestCase):
             project_id=share['project_id'],
             shares=-1,
             gigabytes=-share['size'],
+            share_type_id=None,
             user_id=share['user_id']
         )
         quota.QUOTAS.commit.assert_called_once_with(
             diff_user_context,
             mock.ANY,
             project_id=share['project_id'],
+            share_type_id=None,
             user_id=share['user_id']
         )
 
@@ -1810,6 +1817,7 @@ class ShareAPITestCase(test.TestCase):
             project_id=share['project_id'],
             shares=-1,
             gigabytes=-share['size'],
+            share_type_id=None,
             user_id=share['user_id']
         )
         self.assertFalse(quota.QUOTAS.commit.called)
@@ -2239,6 +2247,7 @@ class ShareAPITestCase(test.TestCase):
             diff_user_context,
             project_id=share['project_id'],
             gigabytes=size_increase,
+            share_type_id=None,
             user_id=share['user_id']
         )
 

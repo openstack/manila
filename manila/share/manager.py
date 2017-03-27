@@ -2199,12 +2199,18 @@ class ShareManager(manager.SchedulerDependentManager):
                 msg = _("Driver cannot calculate share size.")
                 raise exception.InvalidShare(reason=msg)
 
-            reservations = QUOTAS.reserve(context,
-                                          project_id=project_id,
-                                          user_id=context.user_id,
-                                          shares=1,
-                                          gigabytes=share_update['size'])
-            QUOTAS.commit(context, reservations, project_id=project_id)
+            reservations = QUOTAS.reserve(
+                context,
+                project_id=project_id,
+                user_id=context.user_id,
+                shares=1,
+                gigabytes=share_update['size'],
+                share_type_id=share_instance['share_type_id'],
+            )
+            QUOTAS.commit(
+                context, reservations, project_id=project_id,
+                share_type_id=share_instance['share_type_id'],
+            )
 
             share_update.update({
                 'status': constants.STATUS_AVAILABLE,
@@ -2371,11 +2377,17 @@ class ShareManager(manager.SchedulerDependentManager):
             return
 
         try:
-            reservations = QUOTAS.reserve(context,
-                                          project_id=project_id,
-                                          shares=-1,
-                                          gigabytes=-share_ref['size'])
-            QUOTAS.commit(context, reservations, project_id=project_id)
+            reservations = QUOTAS.reserve(
+                context,
+                project_id=project_id,
+                shares=-1,
+                gigabytes=-share_ref['size'],
+                share_type_id=share_instance['share_type_id'],
+            )
+            QUOTAS.commit(
+                context, reservations, project_id=project_id,
+                share_type_id=share_instance['share_type_id'],
+            )
         except Exception as e:
             # Note(imalinovskiy):
             # Quota reservation errors here are not fatal, because
@@ -2452,12 +2464,18 @@ class ShareManager(manager.SchedulerDependentManager):
             return
 
         try:
+            share_type_id = snapshot_ref['share']['instance']['share_type_id']
             reservations = QUOTAS.reserve(
                 context,
                 project_id=project_id,
                 snapshots=-1,
-                snapshot_gigabytes=-snapshot_ref['size'])
-            QUOTAS.commit(context, reservations, project_id=project_id)
+                snapshot_gigabytes=-snapshot_ref['size'],
+                share_type_id=share_type_id,
+            )
+            QUOTAS.commit(
+                context, reservations, project_id=project_id,
+                share_type_id=share_type_id,
+            )
         except Exception as e:
             # Note(imalinovskiy):
             # Quota reservation errors here are not fatal, because
@@ -2500,6 +2518,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         snapshot_instance = self.db.share_snapshot_instance_get(
             context, snapshot.instance['id'], with_share_data=True)
+        share_type_id = snapshot_instance["share_instance"]["share_type_id"]
 
         # Make primitive to pass the information to the driver
         snapshot_instance_dict = self._get_snapshot_instance_dict(
@@ -2521,7 +2540,8 @@ class ShareManager(manager.SchedulerDependentManager):
                 if reservations:
                     QUOTAS.rollback(
                         context, reservations, project_id=project_id,
-                        user_id=user_id)
+                        user_id=user_id, share_type_id=share_type_id,
+                    )
 
                 self.db.share_update(
                     context, share_id,
@@ -2532,7 +2552,9 @@ class ShareManager(manager.SchedulerDependentManager):
 
         if reservations:
             QUOTAS.commit(
-                context, reservations, project_id=project_id, user_id=user_id)
+                context, reservations, project_id=project_id, user_id=user_id,
+                share_type_id=share_type_id,
+            )
 
         self.db.share_update(
             context, share_id,
@@ -2743,19 +2765,25 @@ class ShareManager(manager.SchedulerDependentManager):
 
         self.db.share_snapshot_instance_delete(context, snapshot_instance_id)
 
+        share_type_id = snapshot_ref['share']['instance']['share_type_id']
         try:
             reservations = QUOTAS.reserve(
                 context, project_id=project_id, snapshots=-1,
                 snapshot_gigabytes=-snapshot_ref['size'],
-                user_id=snapshot_ref['user_id'])
+                user_id=snapshot_ref['user_id'],
+                share_type_id=share_type_id,
+            )
         except Exception:
             reservations = None
             LOG.exception("Failed to update quota usages while deleting "
                           "snapshot %s.", snapshot_id)
 
         if reservations:
-            QUOTAS.commit(context, reservations, project_id=project_id,
-                          user_id=snapshot_ref['user_id'])
+            QUOTAS.commit(
+                context, reservations, project_id=project_id,
+                user_id=snapshot_ref['user_id'],
+                share_type_id=share_type_id,
+            )
 
     @add_hooks
     @utils.require_driver_initialized
@@ -2860,7 +2888,9 @@ class ShareManager(manager.SchedulerDependentManager):
                 if reservations:
                     QUOTAS.rollback(
                         context, reservations, project_id=project_id,
-                        user_id=user_id)
+                        user_id=user_id,
+                        share_type_id=active_replica['share_type_id'],
+                    )
 
                 self.db.share_replica_update(
                     context, active_replica['id'],
@@ -2871,7 +2901,9 @@ class ShareManager(manager.SchedulerDependentManager):
 
         if reservations:
             QUOTAS.commit(
-                context, reservations, project_id=project_id, user_id=user_id)
+                context, reservations, project_id=project_id, user_id=user_id,
+                share_type_id=active_replica['share_type_id'],
+            )
 
         self.db.share_update(context, share_id, {'size': snapshot['size']})
         self.db.share_replica_update(
@@ -3368,14 +3400,19 @@ class ShareManager(manager.SchedulerDependentManager):
                 raise exception.ShareExtendingError(
                     reason=six.text_type(e), share_id=share_id)
             finally:
-                QUOTAS.rollback(context, reservations, project_id=project_id,
-                                user_id=user_id)
+                QUOTAS.rollback(
+                    context, reservations, project_id=project_id,
+                    user_id=user_id,
+                    share_type_id=share_instance['share_type_id'],
+                )
 
         # we give the user_id of the share, to update the quota usage
         # for the user, who created the share, because on share delete
         # only this quota will be decreased
-        QUOTAS.commit(context, reservations, project_id=project_id,
-                      user_id=user_id)
+        QUOTAS.commit(
+            context, reservations, project_id=project_id,
+            user_id=user_id, share_type_id=share_instance['share_type_id'],
+        )
 
         share_update = {
             'size': int(new_size),
@@ -3418,10 +3455,13 @@ class ShareManager(manager.SchedulerDependentManager):
             # we give the user_id of the share, to update the quota usage
             # for the user, who created the share, because on share delete
             # only this quota will be decreased
-            reservations = QUOTAS.reserve(context,
-                                          project_id=project_id,
-                                          user_id=user_id,
-                                          gigabytes=-size_decrease)
+            reservations = QUOTAS.reserve(
+                context,
+                project_id=project_id,
+                user_id=user_id,
+                share_type_id=share_instance['share_type_id'],
+                gigabytes=-size_decrease,
+            )
         except Exception as e:
             error_occurred(
                 e, ("Failed to update quota on share shrinking."))
@@ -3443,11 +3483,16 @@ class ShareManager(manager.SchedulerDependentManager):
             try:
                 error_occurred(e, **error_params)
             finally:
-                QUOTAS.rollback(context, reservations, project_id=project_id,
-                                user_id=user_id)
+                QUOTAS.rollback(
+                    context, reservations, project_id=project_id,
+                    user_id=user_id,
+                    share_type_id=share_instance['share_type_id'],
+                )
 
-        QUOTAS.commit(context, reservations, project_id=project_id,
-                      user_id=user_id)
+        QUOTAS.commit(
+            context, reservations, project_id=project_id,
+            user_id=user_id, share_type_id=share_instance['share_type_id'],
+        )
 
         share_update = {
             'size': new_size,

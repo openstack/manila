@@ -138,7 +138,10 @@ class API(base.Base):
             raise exception.InvalidInput(reason=msg)
 
         try:
-            reservations = QUOTAS.reserve(context, shares=1, gigabytes=size)
+            reservations = QUOTAS.reserve(
+                context, shares=1, gigabytes=size,
+                share_type_id=share_type_id,
+            )
         except exception.OverQuota as e:
             overs = e.kwargs['overs']
             usages = e.kwargs['usages']
@@ -233,13 +236,14 @@ class API(base.Base):
         try:
             share = self.db.share_create(context, options,
                                          create_share_instance=False)
-            QUOTAS.commit(context, reservations)
+            QUOTAS.commit(context, reservations, share_type_id=share_type_id)
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
                     self.db.share_delete(context, share['id'])
                 finally:
-                    QUOTAS.rollback(context, reservations)
+                    QUOTAS.rollback(
+                        context, reservations, share_type_id=share_type_id)
 
         host = None
         if snapshot and not CONF.use_scheduler_creating_share_from_snapshot:
@@ -778,7 +782,9 @@ class API(base.Base):
         except Exception:
             with excutils.save_and_reraise_exception():
                 if reservations:
-                    QUOTAS.rollback(context, reservations)
+                    QUOTAS.rollback(
+                        context, reservations,
+                        share_type_id=share['instance']['share_type_id'])
 
     def _handle_revert_to_snapshot_quotas(self, context, share, snapshot):
         """Reserve extra quota if a revert will result in a larger share."""
@@ -789,10 +795,12 @@ class API(base.Base):
             return None
 
         try:
-            return QUOTAS.reserve(context,
-                                  project_id=share['project_id'],
-                                  gigabytes=size_increase,
-                                  user_id=share['user_id'])
+            return QUOTAS.reserve(
+                context,
+                project_id=share['project_id'],
+                gigabytes=size_increase,
+                user_id=share['user_id'],
+                share_type_id=share['instance']['share_type_id'])
         except exception.OverQuota as exc:
             usages = exc.kwargs['usages']
             quotas = exc.kwargs['quotas']
@@ -919,11 +927,13 @@ class API(base.Base):
         try:
             # we give the user_id of the share, to update the quota usage
             # for the user, who created the share
-            reservations = QUOTAS.reserve(context,
-                                          project_id=project_id,
-                                          shares=-1,
-                                          gigabytes=-share['size'],
-                                          user_id=share['user_id'])
+            reservations = QUOTAS.reserve(
+                context,
+                project_id=project_id,
+                shares=-1,
+                gigabytes=-share['size'],
+                user_id=share['user_id'],
+                share_type_id=share['instance']['share_type_id'])
         except Exception as e:
             reservations = None
             LOG.exception(
@@ -938,8 +948,11 @@ class API(base.Base):
         if reservations:
             # we give the user_id of the share, to update the quota usage
             # for the user, who created the share
-            QUOTAS.commit(context, reservations, project_id=project_id,
-                          user_id=share['user_id'])
+            QUOTAS.commit(
+                context, reservations, project_id=project_id,
+                user_id=share['user_id'],
+                share_type_id=share['instance']['share_type_id'],
+            )
 
     def delete_instance(self, context, share_instance, force=False):
         policy.check_policy(context, 'share', 'delete')
@@ -1010,7 +1023,8 @@ class API(base.Base):
 
         try:
             reservations = QUOTAS.reserve(
-                context, snapshots=1, snapshot_gigabytes=size)
+                context, snapshots=1, snapshot_gigabytes=size,
+                share_type_id=share['instance']['share_type_id'])
         except exception.OverQuota as e:
             overs = e.kwargs['overs']
             usages = e.kwargs['usages']
@@ -1049,13 +1063,17 @@ class API(base.Base):
 
         try:
             snapshot = self.db.share_snapshot_create(context, options)
-            QUOTAS.commit(context, reservations)
+            QUOTAS.commit(
+                context, reservations,
+                share_type_id=share['instance']['share_type_id'])
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
                     self.db.snapshot_delete(context, share['id'])
                 finally:
-                    QUOTAS.rollback(context, reservations)
+                    QUOTAS.rollback(
+                        context, reservations,
+                        share_type_id=share['instance']['share_type_id'])
 
         # If replicated share, create snapshot instances for each replica
         if share.get('has_replicas'):
@@ -1793,10 +1811,12 @@ class API(base.Base):
             # we give the user_id of the share, to update the quota usage
             # for the user, who created the share, because on share delete
             # only this quota will be decreased
-            reservations = QUOTAS.reserve(context,
-                                          project_id=share['project_id'],
-                                          gigabytes=size_increase,
-                                          user_id=share['user_id'])
+            reservations = QUOTAS.reserve(
+                context,
+                project_id=share['project_id'],
+                gigabytes=size_increase,
+                user_id=share['user_id'],
+                share_type_id=share['instance']['share_type_id'])
         except exception.OverQuota as exc:
             usages = exc.kwargs['usages']
             quotas = exc.kwargs['quotas']
