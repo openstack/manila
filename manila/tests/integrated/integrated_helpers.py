@@ -63,7 +63,6 @@ class _IntegratedTestBase(test.TestCase):
 
         f = self._get_flags()
         self.flags(**f)
-        self.flags(verbose=True)
 
         # set up services
         self.volume = self.start_service('share')
