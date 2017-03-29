@@ -24,7 +24,7 @@ from manila.api.openstack import wsgi
 from manila.api.views import share_snapshots as snapshot_views
 from manila import db
 from manila import exception
-from manila.i18n import _, _LI
+from manila.i18n import _
 from manila import share
 
 LOG = log.getLogger(__name__)
@@ -61,7 +61,7 @@ class ShareSnapshotMixin(object):
         """Delete a snapshot."""
         context = req.environ['manila.context']
 
-        LOG.info(_LI("Delete snapshot with id: %s"), id, context=context)
+        LOG.info("Delete snapshot with id: %s", id, context=context)
 
         try:
             snapshot = self.share_api.get_snapshot(context, id)
@@ -169,7 +169,7 @@ class ShareSnapshotMixin(object):
             LOG.error(msg)
             raise exc.HTTPUnprocessableEntity(explanation=msg)
 
-        LOG.info(_LI("Create snapshot from share %s"),
+        LOG.info("Create snapshot from share %s",
                  share_id, context=context)
 
         # NOTE(rushiagr): v2 API allows name instead of display_name

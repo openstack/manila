@@ -20,7 +20,7 @@ from webob import exc
 from manila.api.openstack import wsgi
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LI
+from manila.i18n import _
 from manila import share
 
 LOG = log.getLogger(__name__)
@@ -33,7 +33,7 @@ class ShareUnmanageMixin(object):
         """Unmanage a share."""
         context = req.environ['manila.context']
 
-        LOG.info(_LI("Unmanage share with id: %s"), id, context=context)
+        LOG.info("Unmanage share with id: %s", id, context=context)
 
         try:
             share = self.share_api.get(context, id)

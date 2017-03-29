@@ -31,7 +31,7 @@ from manila.api.views import shares as share_views
 from manila.common import constants
 from manila import db
 from manila import exception
-from manila.i18n import _, _LI
+from manila.i18n import _
 from manila import share
 from manila.share import share_types
 
@@ -68,7 +68,7 @@ class ShareMixin(object):
         """Delete a share."""
         context = req.environ['manila.context']
 
-        LOG.info(_LI("Delete share with id: %s"), id, context=context)
+        LOG.info("Delete share with id: %s", id, context=context)
 
         try:
             share = self.share_api.get(context, id)
@@ -219,7 +219,7 @@ class ShareMixin(object):
         size = share['size']
         share_proto = share['share_proto'].upper()
 
-        msg = (_LI("Create %(share_proto)s share of %(size)s GB") %
+        msg = ("Create %(share_proto)s share of %(size)s GB" %
                {'share_proto': share_proto, 'size': size})
         LOG.info(msg, context=context)
 

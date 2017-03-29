@@ -17,22 +17,21 @@
 from oslo_log import log
 
 from manila.api.middleware import auth
-from manila.i18n import _LW
 
 LOG = log.getLogger(__name__)
 
 
 class ManilaKeystoneContext(auth.ManilaKeystoneContext):
     def __init__(self, application):
-        LOG.warning(_LW('manila.api.auth:ManilaKeystoneContext is deprecated. '
-                        'Please use '
-                        'manila.api.middleware.auth:ManilaKeystoneContext '
-                        'instead.'))
+        LOG.warning('manila.api.auth:ManilaKeystoneContext is deprecated. '
+                    'Please use '
+                    'manila.api.middleware.auth:ManilaKeystoneContext '
+                    'instead.')
         super(ManilaKeystoneContext, self).__init__(application)
 
 
 def pipeline_factory(loader, global_conf, **local_conf):
-    LOG.warning(_LW('manila.api.auth:pipeline_factory is deprecated. '
-                    'Please use manila.api.middleware.auth:pipeline_factory '
-                    'instead.'))
+    LOG.warning('manila.api.auth:pipeline_factory is deprecated. '
+                'Please use manila.api.middleware.auth:pipeline_factory '
+                'instead.')
     auth.pipeline_factory(loader, global_conf, **local_conf)

@@ -25,7 +25,7 @@ from manila.api.views import security_service as security_service_views
 from manila.common import constants
 from manila import db
 from manila import exception
-from manila.i18n import _, _LI
+from manila.i18n import _
 from manila import policy
 
 
@@ -54,7 +54,7 @@ class SecurityServiceController(wsgi.Controller):
         """Delete a security service."""
         context = req.environ['manila.context']
 
-        LOG.info(_LI("Delete security service with id: %s"),
+        LOG.info("Delete security service with id: %s",
                  id, context=context)
 
         try:
