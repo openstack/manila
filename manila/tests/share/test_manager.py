@@ -32,6 +32,7 @@ from manila.data import rpcapi as data_rpc
 from manila import db
 from manila.db.sqlalchemy import models
 from manila import exception
+from manila.message import message_field
 from manila import quota
 from manila.share import api
 from manila.share import drivers_private_data
@@ -96,6 +97,7 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.driver._stats = {
             'share_group_stats': {'consistent_snapshot_support': None},
         }
+        self.mock_object(self.share_manager.message_api, 'create')
         self.context = context.get_admin_context()
         self.share_manager.driver.initialized = True
         mock.patch.object(
@@ -584,6 +586,13 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY, replica['id'], {'status': constants.STATUS_ERROR,
                                       'replica_state': constants.STATUS_ERROR})
         self.assertFalse(mock_driver_replica_call.called)
+        self.share_manager.message_api.create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            message_field.Action.CREATE,
+            replica['project_id'],
+            resource_type=message_field.Resource.SHARE_REPLICA,
+            resource_id=replica['id'],
+            detail=message_field.Detail.NO_ACTIVE_REPLICA)
 
     def test_create_share_replica_with_share_network_id_and_not_dhss(self):
         replica = fake_replica()
@@ -605,6 +614,13 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY, replica['id'], {'status': constants.STATUS_ERROR,
                                       'replica_state': constants.STATUS_ERROR})
         self.assertFalse(mock_driver_replica_call.called)
+        self.share_manager.message_api.create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            message_field.Action.CREATE,
+            replica['project_id'],
+            resource_type=message_field.Resource.SHARE_REPLICA,
+            resource_id=replica['id'],
+            detail=message_field.Detail.UNEXPECTED_NETWORK)
 
     def test_create_share_replica_with_share_server_exception(self):
         replica = fake_replica()
@@ -626,6 +642,13 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY, replica['id'], {'status': constants.STATUS_ERROR,
                                       'replica_state': constants.STATUS_ERROR})
         self.assertFalse(mock_driver_replica_call.called)
+        self.share_manager.message_api.create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            message_field.Action.CREATE,
+            replica['project_id'],
+            resource_type=message_field.Resource.SHARE_REPLICA,
+            resource_id=replica['id'],
+            detail=message_field.Detail.NO_SHARE_SERVER)
 
     def test_create_share_replica_driver_error_on_creation(self):
         fake_access_rules = [{'id': '1'}, {'id': '2'}, {'id': '3'}]
@@ -676,6 +699,13 @@ class ShareManagerTestCase(test.TestCase):
         self.assertTrue(mock_log_error.called)
         self.assertFalse(mock_log_info.called)
         self.assertTrue(driver_call.called)
+        self.share_manager.message_api.create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            message_field.Action.CREATE,
+            replica['project_id'],
+            resource_type=message_field.Resource.SHARE_REPLICA,
+            resource_id=replica['id'],
+            exception=mock.ANY)
 
     def test_create_share_replica_invalid_locations_state(self):
         driver_retval = {
@@ -896,6 +926,13 @@ class ShareManagerTestCase(test.TestCase):
         self.assertFalse(mock_drv_delete_replica_call.called)
         self.assertFalse(mock_replica_delete_call.called)
         self.assertFalse(mock_exception_log.called)
+        self.share_manager.message_api.create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            message_field.Action.DELETE_ACCESS_RULES,
+            replica['project_id'],
+            resource_type=message_field.Resource.SHARE_REPLICA,
+            resource_id=replica['id'],
+            exception=mock.ANY)
 
     def test_delete_share_replica_drv_misbehavior_ignored_with_the_force(self):
         replica = fake_replica()
@@ -1097,6 +1134,18 @@ class ShareManagerTestCase(test.TestCase):
         mock_replica_update.assert_has_calls(expected_update_calls)
         self.assertFalse(mock_info_log.called)
 
+        expected_message_calls = [
+            mock.call(
+                utils.IsAMatcher(context.RequestContext),
+                message_field.Action.PROMOTE,
+                r['project_id'],
+                resource_type=message_field.Resource.SHARE_REPLICA,
+                resource_id=r['id'],
+                exception=mock.ANY)
+            for r in (replica, active_replica)]
+        self.share_manager.message_api.create.assert_has_calls(
+            expected_message_calls)
+
     @ddt.data([], None)
     def test_promote_share_replica_driver_update_nothing_has_snaps(self,
                                                                    retval):
@@ -1288,6 +1337,13 @@ class ShareManagerTestCase(test.TestCase):
              'status': constants.STATUS_ERROR}
         )
         self.assertEqual(1, mock_debug_log.call_count)
+        self.share_manager.message_api.create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            message_field.Action.UPDATE,
+            replica['project_id'],
+            resource_type=message_field.Resource.SHARE_REPLICA,
+            resource_id=replica['id'],
+            exception=mock.ANY)
 
     def test__share_replica_update_driver_exception_ignored(self):
         mock_debug_log = self.mock_object(manager.LOG, 'debug')
@@ -1314,6 +1370,13 @@ class ShareManagerTestCase(test.TestCase):
              'status': constants.STATUS_ERROR}
         )
         self.assertEqual(1, mock_debug_log.call_count)
+        self.share_manager.message_api.create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            message_field.Action.UPDATE,
+            replica['project_id'],
+            resource_type=message_field.Resource.SHARE_REPLICA,
+            resource_id=replica['id'],
+            exception=mock.ANY)
 
     @ddt.data({'status': constants.STATUS_AVAILABLE,
                'replica_state': constants.REPLICA_STATE_ACTIVE, },
@@ -1487,6 +1550,13 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.driver.create_snapshot.assert_called_once_with(
             self.context, expected_snapshot_instance_dict, share_server=None)
+        self.share_manager.message_api.create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            message_field.Action.CREATE,
+            snapshot['project_id'],
+            resource_type=message_field.Resource.SHARE_SNAPSHOT,
+            resource_id=snapshot_instance['id'],
+            exception=mock.ANY)
 
     @ddt.data({'model_update': {}, 'mount_snapshot_support': True},
               {'model_update': {}, 'mount_snapshot_support': False},
@@ -1601,6 +1671,13 @@ class ShareManagerTestCase(test.TestCase):
             snapshot_instance['id'], delete_all_rules=True, share_server=None)
         self.assertFalse(db_destroy_call.called)
         self.assertFalse(mock_exception_log.called)
+        self.share_manager.message_api.create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            message_field.Action.DELETE,
+            snapshot['project_id'],
+            resource_type=message_field.Resource.SHARE_SNAPSHOT,
+            resource_id=snapshot_instance['id'],
+            exception=mock.ANY)
 
     @ddt.data(True, False)
     def test_delete_snapshot_with_quota_error(self, quota_error):
@@ -1695,6 +1772,13 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY, snapshot_instance['id'])
         self.assertFalse(quota_commit_call.called)
         self.assertFalse(db_update_call.called)
+        self.share_manager.message_api.create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            message_field.Action.DELETE,
+            snapshot['project_id'],
+            resource_type=message_field.Resource.SHARE_SNAPSHOT,
+            resource_id=snapshot_instance['id'],
+            exception=mock.ANY)
 
     def test_create_share_instance_with_share_network_dhss_false(self):
         manager.CONF.set_default('driver_handles_share_servers', False)
@@ -1702,8 +1786,8 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager.driver.configuration, 'safe_get',
             mock.Mock(return_value=False))
         share_network_id = 'fake_sn'
-        share_instance = db_utils.create_share(
-            share_network_id=share_network_id).instance
+        share = db_utils.create_share(share_network_id=share_network_id)
+        share_instance = share.instance
         self.mock_object(
             self.share_manager.db, 'share_instance_get',
             mock.Mock(return_value=share_instance))
@@ -1722,6 +1806,13 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.share_instance_update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), share_instance['id'],
             {'status': constants.STATUS_ERROR})
+        self.share_manager.message_api.create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            message_field.Action.CREATE,
+            six.text_type(share.project_id),
+            resource_type=message_field.Resource.SHARE,
+            resource_id=share['id'],
+            detail=mock.ANY)
 
     def test_create_share_instance_with_share_network_server_not_exists(self):
         """Test share can be created without share server."""
@@ -1800,6 +1891,13 @@ class ShareManagerTestCase(test.TestCase):
             metadata={'request_host': 'fake_host'})
         manager.LOG.error.assert_called_with(mock.ANY,
                                              fake_share.instance['id'])
+        self.share_manager.message_api.create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            message_field.Action.CREATE,
+            six.text_type(fake_share.project_id),
+            resource_type=message_field.Resource.SHARE,
+            resource_id=fake_share['id'],
+            detail=message_field.Detail.NO_SHARE_SERVER)
 
     def test_create_share_instance_with_share_network_not_found(self):
         """Test creation fails if share network not found."""
@@ -1817,6 +1915,13 @@ class ShareManagerTestCase(test.TestCase):
         manager.LOG.error.assert_called_with(mock.ANY, share.instance['id'])
         shr = db.share_get(self.context, share_id)
         self.assertEqual(constants.STATUS_ERROR, shr['status'])
+        self.share_manager.message_api.create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            message_field.Action.CREATE,
+            six.text_type(shr.project_id),
+            resource_type=message_field.Resource.SHARE,
+            resource_id=shr['id'],
+            detail=message_field.Detail.NO_SHARE_SERVER)
 
     def test_create_share_instance_with_share_network_server_exists(self):
         """Test share can be created with existing share server."""
@@ -1865,6 +1970,13 @@ class ShareManagerTestCase(test.TestCase):
         self.assertTrue(self.share_manager.driver.create_share.called)
         shr = db.share_get(self.context, share_id)
         self.assertEqual(some_data, shr['export_location'])
+        self.share_manager.message_api.create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            message_field.Action.CREATE,
+            six.text_type(share.project_id),
+            resource_type=message_field.Resource.SHARE,
+            resource_id=share['id'],
+            exception=mock.ANY)
 
     def test_create_share_instance_with_server_created(self):
         """Test share can be created and share server is created."""

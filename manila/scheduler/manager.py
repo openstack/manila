@@ -221,7 +221,8 @@ class SchedulerManager(manager.Manager):
     def request_service_capabilities(self, context):
         share_rpcapi.ShareAPI().publish_service_capabilities(context)
 
-    def _set_share_group_error_state(self, method, context, ex, request_spec):
+    def _set_share_group_error_state(self, method, context, ex,
+                                     request_spec, action=None):
         LOG.warning("Failed to schedule_%(method)s: %(ex)s",
                     {"method": method, "ex": ex})
 
@@ -231,6 +232,12 @@ class SchedulerManager(manager.Manager):
 
         if share_group_id:
             db.share_group_update(context, share_group_id, share_group_state)
+
+        if action:
+            self.message_api.create(
+                context, action, context.project_id,
+                resource_type=message_field.Resource.SHARE_GROUP,
+                resource_id=share_group_id, exception=ex)
 
     @periodic_task.periodic_task(spacing=600, run_immediately=True)
     def _expire_reservations(self, context):
@@ -243,14 +250,15 @@ class SchedulerManager(manager.Manager):
                 context, share_group_id, request_spec, filter_properties)
         except exception.NoValidHost as ex:
             self._set_share_group_error_state(
-                'create_share_group', context, ex, request_spec)
+                'create_share_group', context, ex, request_spec,
+                message_field.Action.ALLOCATE_HOST)
         except Exception as ex:
             with excutils.save_and_reraise_exception():
                 self._set_share_group_error_state(
                     'create_share_group', context, ex, request_spec)
 
     def _set_share_replica_error_state(self, context, method, exc,
-                                       request_spec):
+                                       request_spec, action=None):
 
         LOG.warning("Failed to schedule_%(method)s: %(exc)s",
                     {'method': method, 'exc': exc})
@@ -271,6 +279,12 @@ class SchedulerManager(manager.Manager):
 
         db.share_replica_update(context, share_replica_id, status_updates)
 
+        if action:
+            self.message_api.create(
+                context, action, context.project_id,
+                resource_type=message_field.Resource.SHARE_REPLICA,
+                resource_id=share_replica_id, exception=exc)
+
     def create_share_replica(self, context, request_spec=None,
                              filter_properties=None):
         try:
@@ -279,7 +293,8 @@ class SchedulerManager(manager.Manager):
 
         except exception.NoValidHost as exc:
             self._set_share_replica_error_state(
-                context, 'create_share_replica', exc, request_spec)
+                context, 'create_share_replica', exc, request_spec,
+                message_field.Action.ALLOCATE_HOST)
 
         except Exception as exc:
             with excutils.save_and_reraise_exception():
