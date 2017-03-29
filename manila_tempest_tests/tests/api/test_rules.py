@@ -422,13 +422,15 @@ class ShareCephxRulesForCephFSTest(base.BaseSharesTest):
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     @ddt.data(*itertools.product(
         set(['2.13', '2.27', '2.28', LATEST_MICROVERSION]),
-        ("alice", "alice_bob", "alice bob")))
+        ("alice", "alice_bob", "alice bob"),
+        ('rw', 'ro')))
     @ddt.unpack
-    def test_create_delete_cephx_rule(self, version, access_to):
+    def test_create_delete_cephx_rule(self, version, access_to, access_level):
         rule = self.shares_v2_client.create_access_rule(
-            self.share["id"], self.access_type, access_to, version=version)
+            self.share["id"], self.access_type, access_to, version=version,
+            access_level=access_level)
 
-        self.assertEqual('rw', rule['access_level'])
+        self.assertEqual(access_level, rule['access_level'])
         for key in ('deleted', 'deleted_at', 'instance_mappings'):
             self.assertNotIn(key, rule.keys())
         self.shares_v2_client.wait_for_access_rule_status(
