@@ -24,9 +24,6 @@ from manila import test
 class DBInterfaceTestCase(test.TestCase):
     """Test cases for the DB Interface methods."""
 
-    def setUp(self):
-        super(self.__class__, self).setUp()
-
     def test_interface_methods(self):
         """Ensure that implementation methods match interfaces.
 
