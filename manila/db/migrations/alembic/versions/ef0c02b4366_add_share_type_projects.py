@@ -26,7 +26,6 @@ from alembic import op
 from oslo_log import log
 import sqlalchemy as sql
 
-from manila.i18n import _LE
 
 LOG = log.getLogger(__name__)
 
@@ -42,7 +41,7 @@ def upgrade():
         share_types = sql.Table('share_types', meta, is_public.copy())
         share_types.update().values(is_public=True).execute()
     except Exception:
-        LOG.error(_LE("Column |%s| not created!"), repr(is_public))
+        LOG.error("Column |%s| not created!", repr(is_public))
         raise
 
     try:
@@ -61,7 +60,7 @@ def upgrade():
             mysql_engine='InnoDB',
         )
     except Exception:
-        LOG.error(_LE("Table |%s| not created!"), 'share_type_projects')
+        LOG.error("Table |%s| not created!", 'share_type_projects')
         raise
 
 
@@ -69,11 +68,11 @@ def downgrade():
     try:
         op.drop_column('share_types', 'is_public')
     except Exception:
-        LOG.error(_LE("share_types.is_public column not dropped"))
+        LOG.error("share_types.is_public column not dropped")
         raise
 
     try:
         op.drop_table('share_type_projects')
     except Exception:
-        LOG.error(_LE("share_type_projects table not dropped"))
+        LOG.error("share_type_projects table not dropped")
         raise

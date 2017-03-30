@@ -47,7 +47,7 @@ from sqlalchemy.sql import func
 from manila.common import constants
 from manila.db.sqlalchemy import models
 from manila import exception
-from manila.i18n import _, _LE, _LI, _LW
+from manila.i18n import _
 
 CONF = cfg.CONF
 
@@ -973,8 +973,8 @@ def quota_reserve(context, resources, project_quotas, user_quotas, deltas,
             session.add(usage_ref)
 
     if unders:
-        LOG.warning(_LW("Change will make usage less than 0 for the following "
-                        "resources: %s"), unders)
+        LOG.warning("Change will make usage less than 0 for the following "
+                    "resources: %s", unders)
     if overs:
         if project_quotas == user_quotas:
             usages = project_usages
@@ -3575,7 +3575,7 @@ def share_type_destroy(context, id):
             session=session,
         ).filter_by(share_type_id=id).count()
         if results or share_group_count:
-            LOG.error(_LE('ShareType %s deletion failed, ShareType in use.'),
+            LOG.error('ShareType %s deletion failed, ShareType in use.',
                       id)
             raise exception.ShareTypeInUse(share_type_id=id)
         model_query(context, models.ShareTypeExtraSpecs, session=session).\
@@ -3803,15 +3803,15 @@ def purge_deleted_records(context, age_in_days):
                                 deleted_count += 1
                         except db_exc.DBError:
                             LOG.warning(
-                                _LW("Deleting soft-deleted resource %s "
-                                    "failed, skipping."), record)
+                                ("Deleting soft-deleted resource %s "
+                                 "failed, skipping."), record)
                     if deleted_count != 0:
-                        LOG.info(_LI("Deleted %(count)s records in "
-                                     "table %(table)s."),
+                        LOG.info("Deleted %(count)s records in "
+                                 "table %(table)s.",
                                  {'count': deleted_count, 'table': table})
             except db_exc.DBError:
-                LOG.warning(_LW("Querying table %s's soft-deleted records "
-                                "failed, skipping."), table)
+                LOG.warning("Querying table %s's soft-deleted records "
+                            "failed, skipping.", table)
     session.commit()
 
 
@@ -4382,7 +4382,7 @@ def share_group_type_destroy(context, type_id):
             share_group_type_id=type_id,
         ).count()
         if results:
-            LOG.error(_LE('Share group type %s deletion failed, it in use.'),
+            LOG.error('Share group type %s deletion failed, it in use.',
                       type_id)
             raise exception.ShareGroupTypeInUse(type_id=type_id)
         model_query(

@@ -26,7 +26,6 @@ from alembic import op
 from oslo_log import log
 import sqlalchemy as sql
 
-from manila.i18n import _LE
 
 LOG = log.getLogger(__name__)
 
@@ -52,7 +51,7 @@ def upgrade():
             mysql_engine='InnoDB',
         )
     except Exception:
-        LOG.error(_LE("Table |%s| not created!"), 'share_group_types')
+        LOG.error("Table |%s| not created!", 'share_group_types')
         raise
 
     # Add share group specs
@@ -73,7 +72,7 @@ def upgrade():
             mysql_engine='InnoDB',
         )
     except Exception:
-        LOG.error(_LE("Table |%s| not created!"), 'share_group_type_specs')
+        LOG.error("Table |%s| not created!", 'share_group_type_specs')
         raise
 
     # Add share group project types
@@ -95,7 +94,7 @@ def upgrade():
             mysql_engine='InnoDB',
         )
     except Exception:
-        LOG.error(_LE("Table |%s| not created!"), 'share_group_type_projects')
+        LOG.error("Table |%s| not created!", 'share_group_type_projects')
         raise
 
     # Add mapping between group types and share types
@@ -142,5 +141,5 @@ def downgrade():
         try:
             op.drop_table(table_name)
         except Exception:
-            LOG.error(_LE("%s table not dropped") % table_name)
+            LOG.error("%s table not dropped" % table_name)
             raise

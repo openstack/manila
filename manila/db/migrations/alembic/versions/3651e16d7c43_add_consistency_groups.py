@@ -38,9 +38,6 @@ from alembic import op
 from oslo_log import log
 import sqlalchemy as sa
 
-from manila.i18n import _LE
-
-
 LOG = log.getLogger(__name__)
 
 
@@ -161,40 +158,40 @@ def downgrade():
     try:
         op.drop_table('cgsnapshot_members')
     except Exception:
-        LOG.exception(_LE("Error Dropping 'cgsnapshot_members' table."))
+        LOG.exception("Error Dropping 'cgsnapshot_members' table.")
 
     try:
         op.drop_table('cgsnapshots')
     except Exception:
-        LOG.exception(_LE("Error Dropping 'cgsnapshots' table."))
+        LOG.exception("Error Dropping 'cgsnapshots' table.")
 
     try:
         op.drop_table('consistency_group_share_type_mappings')
     except Exception:
-        LOG.exception(_LE("Error Dropping "
-                          "'consistency_group_share_type_mappings' table."))
+        LOG.exception("Error Dropping "
+                      "'consistency_group_share_type_mappings' table.")
 
     try:
         op.drop_column('shares', 'source_cgsnapshot_member_id')
     except Exception:
-        LOG.exception(_LE("Error Dropping 'source_cgsnapshot_member_id' "
-                          "column from 'shares' table."))
+        LOG.exception("Error Dropping 'source_cgsnapshot_member_id' "
+                      "column from 'shares' table.")
 
     try:
         op.drop_constraint(SHARES_CG_FK_CONSTRAINT_NAME,
                            'shares',
                            type_='foreignkey')
     except Exception:
-        LOG.exception(_LE("Error Dropping '%s' constraint.") %
+        LOG.exception("Error Dropping '%s' constraint." %
                       SHARES_CG_FK_CONSTRAINT_NAME)
 
     try:
         op.drop_column('shares', 'consistency_group_id')
     except Exception:
-        LOG.exception(_LE("Error Dropping 'consistency_group_id' column "
-                          "from 'shares' table."))
+        LOG.exception("Error Dropping 'consistency_group_id' column "
+                      "from 'shares' table.")
 
     try:
         op.drop_table('consistency_groups')
     except Exception:
-        LOG.exception(_LE("Error Dropping 'consistency_groups' table."))
+        LOG.exception("Error Dropping 'consistency_groups' table.")

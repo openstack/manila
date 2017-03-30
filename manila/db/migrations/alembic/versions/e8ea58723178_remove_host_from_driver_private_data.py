@@ -31,7 +31,6 @@ from oslo_utils import uuidutils
 import sqlalchemy as sql
 
 from manila.db.migrations import utils
-from manila.i18n import _LI, _LE
 
 LOG = log.getLogger(__name__)
 TABLE_NAME = 'drivers_private_data'
@@ -45,7 +44,7 @@ def upgrade():
     try:
         op.drop_column(TABLE_NAME, COLUMN_HOST)
     except Exception:
-        LOG.error(_LE("Column '%s' could not be dropped"), COLUMN_HOST)
+        LOG.error("Column '%s' could not be dropped", COLUMN_HOST)
         raise
 
 
@@ -57,7 +56,7 @@ def downgrade():
         'session': uuidutils.generate_uuid()[:8]
     }
 
-    LOG.info(_LI("Creating the migration table %(table)s"), {
+    LOG.info("Creating the migration table %(table)s", {
         'table': migration_table_name
     })
     migration_table = op.create_table(
@@ -76,11 +75,11 @@ def downgrade():
         mysql_engine='InnoDB',
     )
 
-    LOG.info(_LI("Copying data from %(from_table)s to the migration "
-                 "table %(migration_table)s") % {
-        'from_table': TABLE_NAME,
-        'migration_table': migration_table_name
-    })
+    LOG.info("Copying data from %(from_table)s to the migration "
+             "table %(migration_table)s" % {
+                 'from_table': TABLE_NAME,
+                 'migration_table': migration_table_name
+             })
     rows = []
     for row in op.get_bind().execute(from_table.select()):
         rows.append({
@@ -95,14 +94,14 @@ def downgrade():
         })
     op.bulk_insert(migration_table, rows)
 
-    LOG.info(_LI("Dropping table %(from_table)s") % {
+    LOG.info("Dropping table %(from_table)s" % {
         'from_table': TABLE_NAME
     })
     op.drop_table(TABLE_NAME)
 
-    LOG.info(_LI("Rename the migration table %(migration_table)s to "
-                 "the original table %(from_table)s") % {
-        'migration_table': migration_table_name,
-        'from_table': TABLE_NAME
-    })
+    LOG.info("Rename the migration table %(migration_table)s to "
+             "the original table %(from_table)s" % {
+                 'migration_table': migration_table_name,
+                 'from_table': TABLE_NAME
+             })
     op.rename_table(migration_table_name, TABLE_NAME)

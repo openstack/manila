@@ -22,7 +22,6 @@ from oslo_config import cfg
 from oslo_log import log
 import six
 
-from manila.i18n import _, _LE, _LI, _LW
 from manila.common import constants
 from manila import context
 from manila.data import helper
@@ -30,6 +29,8 @@ from manila.data import utils as data_utils
 from manila import exception
 from manila import manager
 from manila.share import rpcapi as share_rpc
+
+from manila.i18n import _
 
 LOG = log.getLogger(__name__)
 
@@ -115,9 +116,9 @@ class DataManager(manager.Manager):
         finally:
             self.busy_tasks_shares.pop(share_id, None)
 
-        LOG.info(_LI(
+        LOG.info(
             "Completed copy operation of migrating share content from share "
-            "instance %(instance_id)s to instance %(dest_instance_id)s."),
+            "instance %(instance_id)s to instance %(dest_instance_id)s.",
             {'instance_id': share_instance_id,
              'dest_instance_id': dest_share_instance_id})
 
@@ -139,8 +140,8 @@ class DataManager(manager.Manager):
         copy = self.busy_tasks_shares.get(share_id)
         if copy:
             result = copy.get_progress()
-            LOG.info(_LI("Obtained following data copy information "
-                         "of share %(share)s: %(info)s."),
+            LOG.info("Obtained following data copy information "
+                     "of share %(share)s: %(info)s.",
                      {'share': share_id,
                       'info': six.text_type(result)})
             return result
@@ -230,9 +231,9 @@ class DataManager(manager.Manager):
                 copied = True
 
         except Exception:
-            LOG.exception(_LE("Failed to copy data from share instance "
-                              "%(share_instance_id)s to "
-                              "%(dest_share_instance_id)s."),
+            LOG.exception("Failed to copy data from share instance "
+                          "%(share_instance_id)s to "
+                          "%(dest_share_instance_id)s.",
                           {'share_instance_id': share_instance_id,
                            'dest_share_instance_id': dest_share_instance_id})
 
@@ -240,38 +241,38 @@ class DataManager(manager.Manager):
             helper_src.unmount_share_instance(connection_info_src['unmount'],
                                               mount_path, share_instance_id)
         except Exception:
-            LOG.exception(_LE("Could not unmount folder of instance"
-                          " %s after its data copy."), share_instance_id)
+            LOG.exception("Could not unmount folder of instance"
+                          " %s after its data copy.", share_instance_id)
 
         try:
             helper_dest.unmount_share_instance(
                 connection_info_dest['unmount'], mount_path,
                 dest_share_instance_id)
         except Exception:
-            LOG.exception(_LE("Could not unmount folder of instance"
-                          " %s after its data copy."), dest_share_instance_id)
+            LOG.exception("Could not unmount folder of instance"
+                          " %s after its data copy.", dest_share_instance_id)
 
         try:
             helper_src.deny_access_to_data_service(
                 access_ref_list_src, share_instance)
         except Exception:
-            LOG.exception(_LE("Could not deny access to instance"
-                          " %s after its data copy."), share_instance_id)
+            LOG.exception("Could not deny access to instance"
+                          " %s after its data copy.", share_instance_id)
 
         try:
             helper_dest.deny_access_to_data_service(
                 access_ref_list_dest, dest_share_instance)
         except Exception:
-            LOG.exception(_LE("Could not deny access to instance"
-                          " %s after its data copy."), dest_share_instance_id)
+            LOG.exception("Could not deny access to instance"
+                          " %s after its data copy.", dest_share_instance_id)
 
         if copy and copy.cancelled:
             self.db.share_update(
                 context, src_share['id'],
                 {'task_state': constants.TASK_STATE_DATA_COPYING_CANCELLED})
-            LOG.warning(_LW("Copy of data from share instance "
-                            "%(src_instance)s to share instance "
-                            "%(dest_instance)s was cancelled."),
+            LOG.warning("Copy of data from share instance "
+                        "%(src_instance)s to share instance "
+                        "%(dest_instance)s was cancelled.",
                         {'src_instance': share_instance_id,
                          'dest_instance': dest_share_instance_id})
             raise exception.ShareDataCopyCancelled(

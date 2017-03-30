@@ -28,14 +28,13 @@ import sqlalchemy as sa
 
 from manila.common import constants
 from manila.db.migrations import utils
-from manila.i18n import _LI
 
 LOG = log.getLogger(__name__)
 
 
 def upgrade():
 
-    LOG.info(_LI("Adding cast_rules_to_readonly column to share instances."))
+    LOG.info("Adding cast_rules_to_readonly column to share instances.")
 
     op.add_column('share_instances',
                   sa.Column('cast_rules_to_readonly', sa.Boolean,
@@ -95,6 +94,6 @@ def upgrade():
 
 
 def downgrade():
-    LOG.info(_LI("Removing cast_rules_to_readonly column from share "
-                 "instances."))
+    LOG.info("Removing cast_rules_to_readonly column from share "
+             "instances.")
     op.drop_column('share_instances', 'cast_rules_to_readonly')

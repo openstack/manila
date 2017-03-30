@@ -29,8 +29,6 @@ from alembic import op
 from oslo_log import log
 import sqlalchemy as sa
 
-from manila.i18n import _LE
-
 LOG = log.getLogger(__name__)
 
 
@@ -39,7 +37,7 @@ def upgrade():
         op.add_column('shares', sa.Column('is_public', sa.Boolean,
                                           default=False))
     except Exception:
-        LOG.error(_LE("Column shares.is_public not created!"))
+        LOG.error("Column shares.is_public not created!")
         raise
 
 
@@ -47,5 +45,5 @@ def downgrade():
     try:
         op.drop_column('shares', 'is_public')
     except Exception:
-        LOG.error(_LE("Column shares.is_public not dropped!"))
+        LOG.error("Column shares.is_public not dropped!")
         raise

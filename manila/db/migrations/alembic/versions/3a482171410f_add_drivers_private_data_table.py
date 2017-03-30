@@ -29,8 +29,6 @@ from alembic import op
 from oslo_log import log
 import sqlalchemy as sql
 
-from manila.i18n import _LE
-
 LOG = log.getLogger(__name__)
 
 drivers_private_data_table_name = 'drivers_private_data'
@@ -54,7 +52,7 @@ def upgrade():
             mysql_engine='InnoDB',
         )
     except Exception:
-        LOG.error(_LE("Table |%s| not created!"),
+        LOG.error("Table |%s| not created!",
                   drivers_private_data_table_name)
         raise
 
@@ -63,5 +61,5 @@ def downgrade():
     try:
         op.drop_table(drivers_private_data_table_name)
     except Exception:
-        LOG.error(_LE("%s table not dropped"), drivers_private_data_table_name)
+        LOG.error("%s table not dropped", drivers_private_data_table_name)
         raise

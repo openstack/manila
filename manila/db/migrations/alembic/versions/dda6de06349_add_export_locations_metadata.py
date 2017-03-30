@@ -30,7 +30,6 @@ from oslo_log import log
 from oslo_utils import uuidutils
 import sqlalchemy as sa
 
-from manila.i18n import _LE
 
 SI_TABLE_NAME = 'share_instances'
 EL_TABLE_NAME = 'share_instance_export_locations'
@@ -79,7 +78,7 @@ def upgrade():
             nullable=False,
         )
     except Exception:
-        LOG.error(_LE("Failed to update '%s' table!"),
+        LOG.error("Failed to update '%s' table!",
                   EL_TABLE_NAME)
         raise
 
@@ -101,7 +100,7 @@ def upgrade():
             mysql_engine='InnoDB',
         )
     except Exception:
-        LOG.error(_LE("Failed to create '%s' table!"), ELM_TABLE_NAME)
+        LOG.error("Failed to create '%s' table!", ELM_TABLE_NAME)
         raise
 
 
@@ -109,12 +108,12 @@ def downgrade():
     try:
         op.drop_table(ELM_TABLE_NAME)
     except Exception:
-        LOG.error(_LE("Failed to drop '%s' table!"), ELM_TABLE_NAME)
+        LOG.error("Failed to drop '%s' table!", ELM_TABLE_NAME)
         raise
 
     try:
         op.drop_column(EL_TABLE_NAME, 'is_admin_only')
         op.drop_column(EL_TABLE_NAME, 'uuid')
     except Exception:
-        LOG.error(_LE("Failed to update '%s' table!"), EL_TABLE_NAME)
+        LOG.error("Failed to update '%s' table!", EL_TABLE_NAME)
         raise
