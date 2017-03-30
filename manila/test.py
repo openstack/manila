@@ -350,7 +350,7 @@ class TestCase(base_test.BaseTestCase):
     def _dict_from_object(self, obj, ignored_keys):
         if ignored_keys is None:
             ignored_keys = []
-        return {k: v for k, v in obj.iteritems()
+        return {k: v for k, v in obj.items()
                 if k not in ignored_keys}
 
     def _assertEqualListsOfObjects(self, objs1, objs2, ignored_keys=None):

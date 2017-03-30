@@ -225,7 +225,7 @@ class GlusterManager(object):
             raise exception.GlusterfsException(_(
                 'GlusterFS command %(command)s on volume %(volume)s failed'
             ) % {'volume': self.volume, 'command': command})
-        if list(six.itervalues(ret)) != [0, 0]:
+        if list(ret.values()) != [0, 0]:
             errdct = {'volume': self.volume, 'command': commandstr,
                       'opErrstr': volxml_get(xmlout, 'opErrstr', default=None)}
             errdct.update(ret)

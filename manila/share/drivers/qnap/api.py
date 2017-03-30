@@ -298,7 +298,7 @@ class QnapAPIExecutor(object):
     @_connection_checker
     def get_share_info(self, pool_id, **kwargs):
         """Execute get_share_info API."""
-        for key, value in six.iteritems(kwargs):
+        for key, value in kwargs.items():
             LOG.debug('%(key)s = %(val)s',
                       {'key': key, 'val': value})
 
@@ -609,7 +609,7 @@ class QnapAPIExecutorTS(QnapAPIExecutor):
     @_connection_checker
     def get_snapshot_info(self, **kwargs):
         """Execute get_snapshot_info API."""
-        for key, value in six.iteritems(kwargs):
+        for key, value in kwargs.items():
             LOG.debug('%(key)s = %(val)s',
                       {'key': key, 'val': value})
 
