@@ -21,7 +21,6 @@ import math
 
 from oslo_log import log
 
-from manila.i18n import _LE, _LW
 from manila.scheduler.filters import base_host
 from manila.scheduler import utils
 
@@ -37,8 +36,8 @@ class CapacityFilter(base_host.BaseHostFilter):
 
         if host_state.free_capacity_gb is None:
             # Fail Safe
-            LOG.error(_LE("Free capacity not set: "
-                          "share node info collection broken."))
+            LOG.error("Free capacity not set: "
+                      "share node info collection broken.")
             return False
 
         free_space = host_state.free_capacity_gb
@@ -60,8 +59,8 @@ class CapacityFilter(base_host.BaseHostFilter):
             return reserved == 0 and share_size <= free_space
         total = float(total_space)
         if total <= 0:
-            LOG.warning(_LW("Insufficient free space for share creation. "
-                            "Total capacity is %(total).2f on host %(host)s."),
+            LOG.warning("Insufficient free space for share creation. "
+                        "Total capacity is %(total).2f on host %(host)s.",
                         {"total": total,
                          "host": host_state.host})
             return False
@@ -94,12 +93,12 @@ class CapacityFilter(base_host.BaseHostFilter):
             provisioned_ratio = ((host_state.provisioned_capacity_gb +
                                   share_size) / total)
             if provisioned_ratio > host_state.max_over_subscription_ratio:
-                LOG.warning(_LW(
+                LOG.warning(
                     "Insufficient free space for thin provisioning. "
                     "The ratio of provisioned capacity over total capacity "
                     "%(provisioned_ratio).2f would exceed the maximum over "
                     "subscription ratio %(oversub_ratio).2f on host "
-                    "%(host)s."),
+                    "%(host)s.",
                     {"provisioned_ratio": provisioned_ratio,
                      "oversub_ratio": host_state.max_over_subscription_ratio,
                      "host": host_state.host})
@@ -112,15 +111,15 @@ class CapacityFilter(base_host.BaseHostFilter):
                 return adjusted_free_virtual >= share_size
         elif (use_thin_logic and thin_provisioning and
               host_state.max_over_subscription_ratio < 1):
-            LOG.error(_LE("Invalid max_over_subscription_ratio: %(ratio)s. "
-                          "Valid value should be >= 1."),
+            LOG.error("Invalid max_over_subscription_ratio: %(ratio)s. "
+                      "Valid value should be >= 1.",
                       {"ratio": host_state.max_over_subscription_ratio})
             return False
 
         if free < share_size:
-            LOG.warning(_LW("Insufficient free space for share creation "
-                            "on host %(host)s (requested / avail): "
-                            "%(requested)s/%(available)s"), msg_args)
+            LOG.warning("Insufficient free space for share creation "
+                        "on host %(host)s (requested / avail): "
+                        "%(requested)s/%(available)s", msg_args)
             return False
 
         return True

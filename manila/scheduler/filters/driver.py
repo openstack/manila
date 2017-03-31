@@ -17,7 +17,6 @@ import six
 
 from oslo_log import log as logging
 
-from manila.i18n import _LI, _LW
 from manila.scheduler.evaluator import evaluator
 from manila.scheduler.filters import base_host
 from manila.scheduler import utils
@@ -56,18 +55,18 @@ class DriverFilter(base_host.BaseHostFilter):
 
         # Check that the share types match
         if extra_specs is None or 'share_backend_name' not in extra_specs:
-            LOG.warning(_LW("No 'share_backend_name' key in extra_specs. "
-                            "Skipping share backend name check."))
+            LOG.warning("No 'share_backend_name' key in extra_specs. "
+                        "Skipping share backend name check.")
         elif (extra_specs['share_backend_name'] !=
                 host_stats['share_backend_name']):
-            LOG.warning(_LW("Share backend names do not match: '%(target)s' "
-                            "vs '%(current)s' :: Skipping."),
+            LOG.warning("Share backend names do not match: '%(target)s'"
+                        "vs '%(current)s' :: Skipping.",
                         {'target': extra_specs['share_backend_name'],
                          'current': host_stats['share_backend_name']})
             return False
 
         if stats['filter_function'] is None:
-            LOG.warning(_LW("Filter function not set :: passing host."))
+            LOG.warning("Filter function not set :: passing host.")
             return True
 
         try:
@@ -76,13 +75,13 @@ class DriverFilter(base_host.BaseHostFilter):
         except Exception as ex:
             # Warn the admin for now that there is an error in the
             # filter function.
-            LOG.warning(_LW("Error in filtering function "
-                            "'%(function)s' : '%(error)s' :: failing host."),
+            LOG.warning("Error in filtering function "
+                        "'%(function)s' : '%(error)s' :: failing host.",
                         {'function': stats['filter_function'],
                          'error': ex, })
             return False
 
-        msg = _LI("Filter function result for host %(host)s: %(result)s.")
+        msg = "Filter function result for host %(host)s: %(result)s."
         args = {'host': stats['host_stats']['host'],
                 'result': six.text_type(filter_result)}
         LOG.info(msg, args)

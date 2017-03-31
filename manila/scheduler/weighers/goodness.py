@@ -16,7 +16,6 @@
 from oslo_log import log as logging
 import six
 
-from manila.i18n import _LI, _LW
 from manila.scheduler.evaluator import evaluator
 from manila.scheduler import utils
 from manila.scheduler.weighers import base_host
@@ -58,17 +57,17 @@ class GoodnessWeigher(base_host.BaseHostWeigher):
         goodness_rating = 0
 
         if stats['goodness_function'] is None:
-            LOG.warning(_LW("Goodness function not set :: defaulting to "
-                            "minimal goodness rating of 0."))
+            LOG.warning("Goodness function not set :: defaulting to "
+                        "minimal goodness rating of 0.")
         else:
             try:
                 goodness_result = self._run_evaluator(
                     stats['goodness_function'],
                     stats)
             except Exception as ex:
-                LOG.warning(_LW("Error in goodness_function function "
-                                "'%(function)s' : '%(error)s' :: Defaulting "
-                                "to a goodness of 0."),
+                LOG.warning("Error in goodness_function function "
+                            "'%(function)s' : '%(error)s' :: Defaulting "
+                            "to a goodness of 0.",
                             {'function': stats['goodness_function'],
                              'error': ex, })
                 return goodness_rating
@@ -77,14 +76,14 @@ class GoodnessWeigher(base_host.BaseHostWeigher):
                 if goodness_result:
                     goodness_rating = 100
             elif goodness_result < 0 or goodness_result > 100:
-                LOG.warning(_LW("Invalid goodness result.  Result must be "
-                                "between 0 and 100.  Result generated: '%s' "
-                                ":: Defaulting to a goodness of 0."),
+                LOG.warning("Invalid goodness result.  Result must be "
+                            "between 0 and 100.  Result generated: '%s' "
+                            ":: Defaulting to a goodness of 0.",
                             goodness_result)
             else:
                 goodness_rating = goodness_result
 
-        msg = _LI("Goodness function result for host %(host)s: %(result)s.")
+        msg = "Goodness function result for host %(host)s: %(result)s."
         args = {'host': stats['host_stats']['host'],
                 'result': six.text_type(goodness_rating)}
         LOG.info(msg, args)

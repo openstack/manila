@@ -18,7 +18,6 @@ Filter support
 """
 from oslo_log import log
 
-from manila.i18n import _LI
 from manila.scheduler import base_handler
 
 LOG = log.getLogger(__name__)
@@ -90,7 +89,7 @@ class BaseFilterHandler(base_handler.BaseHandler):
                               {'cls_name': cls_name})
                     return
                 list_objs = list(objs)
-                msg = (_LI("Filter %(cls_name)s returned %(obj_len)d host(s)")
+                msg = ("Filter %(cls_name)s returned %(obj_len)d host(s)"
                        % {'cls_name': cls_name, 'obj_len': len(list_objs)})
                 if not list_objs:
                     LOG.info(msg)

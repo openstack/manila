@@ -25,7 +25,6 @@ from oslo_log import log
 
 from manila import exception
 from manila.i18n import _
-from manila.i18n import _LE, _LI
 from manila.scheduler.drivers import base
 from manila.scheduler import scheduler_options
 from manila.share import share_types
@@ -265,8 +264,8 @@ class FilterScheduler(base.Scheduler):
         if retry['num_attempts'] > max_attempts:
             msg = _("Exceeded max scheduling attempts %(max_attempts)d for "
                     "share %(share_id)s") % {
-                        "max_attempts": max_attempts,
-                        "share_id": share_id
+                "max_attempts": max_attempts,
+                "share_id": share_id
             }
             raise exception.NoValidHost(reason=msg)
 
@@ -285,12 +284,12 @@ class FilterScheduler(base.Scheduler):
             return  # no previously attempted hosts, skip
 
         last_host = hosts[-1]
-        LOG.error(_LE("Error scheduling %(share_id)s from last share-service: "
-                      "%(last_host)s : %(exc)s"), {
-                          "share_id": share_id,
-                          "last_host": last_host,
-                          "exc": "exc"
-        })
+        LOG.error("Error scheduling %(share_id)s from last share-service: "
+                  "%(last_host)s : %(exc)s", {
+                      "share_id": share_id,
+                      "last_host": last_host,
+                      "exc": "exc"
+                      })
 
     def populate_filter_properties_share(self, request_spec,
                                          filter_properties):
@@ -310,14 +309,14 @@ class FilterScheduler(base.Scheduler):
     def schedule_create_share_group(self, context, share_group_id,
                                     request_spec, filter_properties):
 
-        LOG.info(_LI("Scheduling share group %s.") % share_group_id)
+        LOG.info("Scheduling share group %s." % share_group_id)
         host = self._get_best_host_for_share_group(context, request_spec)
 
         if not host:
             msg = _("No hosts available for share group %s.") % share_group_id
             raise exception.NoValidHost(reason=msg)
 
-        msg = _LI("Chose host %(host)s for create_share_group %(group)s.")
+        msg = "Chose host %(host)s for create_share_group %(group)s."
         LOG.info(msg % {'host': host, 'group': share_group_id})
 
         updated_share_group = base.share_group_update_db(
