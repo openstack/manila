@@ -12,7 +12,6 @@ Manila Specific Commandments
 - [M310] Check for improper use of logging format arguments.
 - [M312] Use assertIsNone(...) instead of assertEqual(None, ...).
 - [M313] Use assertTrue(...) rather than assertEqual(True, ...).
-- [M319] Validate that debug level logs are not translated.
 - [M323] Ensure that the _() function is explicitly imported to ensure proper translations.
 - [M325] str() and unicode() cannot be used on an exception. Remove or use six.text_type().
 - [M326] Translated messages cannot be concatenated.  String should be
@@ -23,6 +22,7 @@ Manila Specific Commandments
 - [M337] Ensure to not use xrange().
 - [M354] Use oslo_utils.uuidutils to generate UUID instead of uuid4().
 - [M338] Ensure to not use LOG.warn().
+- [M359] Validate that log messages are not translated.
 
 LOG Translations
 ----------------
