@@ -60,7 +60,7 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                           group=self.backend, enforce_type=True)
         CONF.set_override("netapp_password", "fake_password",
                           group=self.backend, enforce_type=True)
-        CONF.set_override("netapp_server_hostname", "fake_hostname",
+        CONF.set_override("netapp_server_hostname", "fake.hostname",
                           group=self.backend, enforce_type=True)
         CONF.set_override("netapp_server_port", 8866,
                           group=self.backend, enforce_type=True)
@@ -72,7 +72,7 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
         data_motion.get_client_for_backend(self.backend)
 
         self.mock_cmode_client.assert_called_once_with(
-            hostname='fake_hostname', password='fake_password',
+            hostname='fake.hostname', password='fake_password',
             username='fake_user', transport_type='https', port=8866,
             trace=mock.ANY, vserver=None)
 
@@ -86,7 +86,7 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
         data_motion.get_client_for_backend(self.backend)
 
         self.mock_cmode_client.assert_called_once_with(
-            hostname='fake_hostname', password='fake_password',
+            hostname='fake.hostname', password='fake_password',
             username='fake_user', transport_type='https', port=8866,
             trace=mock.ANY, vserver='fake_vserver')
 

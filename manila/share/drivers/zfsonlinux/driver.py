@@ -41,11 +41,11 @@ from manila import utils
 
 
 zfsonlinux_opts = [
-    cfg.StrOpt(
+    cfg.HostAddressOpt(
         "zfs_share_export_ip",
         required=True,
         help="IP to be added to user-facing export location. Required."),
-    cfg.StrOpt(
+    cfg.HostAddressOpt(
         "zfs_service_ip",
         required=True,
         help="IP to be added to admin-facing export location. Required."),

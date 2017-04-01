@@ -44,8 +44,8 @@ from manila import utils
 LOG = log.getLogger(__name__)
 
 hdfs_native_share_opts = [
-    cfg.StrOpt('hdfs_namenode_ip',
-               help='The IP of the HDFS namenode.'),
+    cfg.HostAddressOpt('hdfs_namenode_ip',
+                       help='The IP of the HDFS namenode.'),
     cfg.PortOpt('hdfs_namenode_port',
                 default=9000,
                 help='The port of HDFS namenode service.'),

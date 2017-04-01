@@ -27,10 +27,10 @@ from manila.share.drivers.hitachi.hsp import rest
 LOG = log.getLogger(__name__)
 
 hitachi_hsp_opts = [
-    cfg.StrOpt('hitachi_hsp_host',
-               required=True,
-               help="HSP management host for communication between Manila "
-                    "controller and HSP."),
+    cfg.HostAddressOpt('hitachi_hsp_host',
+                       required=True,
+                       help="HSP management host for communication between "
+                            "Manila controller and HSP."),
     cfg.StrOpt('hitachi_hsp_username',
                required=True,
                help="HSP username to perform tasks such as create filesystems"
