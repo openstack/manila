@@ -1,6 +1,7 @@
 ---
-  Dummy.dummy:
+  Dummy.openstack:
     -
+      description: "Check quotas context"
       runner:
         type: "constant"
         times: 1
