@@ -102,14 +102,6 @@ share_servers_handling_mode_opts = [
              "Used only with Neutron and "
              "if driver_handles_share_servers=True."),
     cfg.StrOpt(
-        "service_instance_network_helper_type",
-        default=NEUTRON_NAME,
-        deprecated_for_removal=True,
-        deprecated_reason="This option isn't used any longer because "
-                          "nova networking is no longer supported.",
-        help="Used to select between neutron and nova helpers when "
-             "driver_handles_share_servers=True. Obsolete."),
-    cfg.StrOpt(
         "admin_network_id",
         help="ID of neutron network used to communicate with admin network,"
              " to create additional admin export locations on."),
