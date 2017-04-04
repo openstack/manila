@@ -21,7 +21,7 @@
         default_share_type = default_share_type
         rootwrap_config = /etc/manila/rootwrap.conf
 
-      .. important::
+     .. important::
 
         The ``default_share_type`` option specifies the default share type to
         be used when shares are created without specifying the share type in
