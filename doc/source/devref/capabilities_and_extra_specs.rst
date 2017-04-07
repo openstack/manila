@@ -96,21 +96,27 @@ can be used verbatim as extra_specs in share types used to create shares.
 
 * `dedupe` - indicates that a backend/pool can provide shares using some
   deduplication technology. The default value of the dedupe capability (if a
-  driver doesn't report it) is False. Drivers cannot report to the scheduler
-  that they support both dedupe and non-deduped share. For each pool it's
-  either always on or always off. Administrators can make a share type use
-  deduplication by setting this extra-spec to '<is> True'. Administrators can
-  prevent a share type from using deduplication by setting this extra-spec to
-  '<is> False'. Added in Liberty.
+  driver doesn't report it) is False. In Liberty, drivers cannot report to the
+  scheduler that they support both dedupe and non-deduped share. For each pool
+  it's either always on or always off, even if the drivers can technically
+  support both dedupe and non-deduped in a pool. Since Mitaka, the logic is
+  changed to allow a driver to report dedupe=[True, False] if it can support
+  both dedupe and non-deduped in a pool. Administrators can make a share type
+  use deduplication by setting this extra-spec to '<is> True'. Administrators
+  can prevent a share type from using deduplication by setting this extra-spec
+  to '<is> False'. Added in Liberty.
 
 * `compression` - indicates that a backend/pool can provide shares using some
   compression technology. The default value of the compression capability (if a
-  driver doesn't report it) is False. Drivers cannot report to the scheduler
-  that they support both compression and non-compression. For each pool it's
-  either always on or always off. Administrators can make a share type use
-  compression by setting this extra-spec to '<is> True'. Administrators can
-  prevent a share type from using compression by setting this extra-spec to
-  '<is> False'. Added in Liberty.
+  driver doesn't report it) is False. In Liberty, drivers cannot report to the
+  scheduler that they support both compression and non-compression. For each
+  pool it's either always on or always off, even if the drivers can technically
+  support both compression and non-compression in a pool. Since Mitaka, the
+  logic is changed to allow a driver to report compression=[True, False] if it
+  can support both compression and non-compression in a pool. Administrators
+  can make a share type use compression by setting this extra-spec to
+  '<is> True'. Administrators can prevent a share type from using compression
+  by setting this extra-spec to '<is> False'. Added in Liberty.
 
 * `thin_provisioning` - shares will not be space guaranteed and
   overprovisioning will be enabled. This capability defaults to False.
