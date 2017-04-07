@@ -27,7 +27,7 @@ if storops:
 
 from manila.common import constants as const
 from manila import exception
-from manila.i18n import _, _LE, _LW, _LI
+from manila.i18n import _
 from manila.share.drivers.dell_emc.plugins import base as driver
 from manila.share.drivers.dell_emc.plugins.unity import client
 from manila.share.drivers.dell_emc.plugins.unity import utils as unity_utils
@@ -127,9 +127,9 @@ class UnityStorageConnection(driver.StorageConnection):
             raise exception.BadConfigurationException(reason=msg)
 
         if unmanaged_port_ids:
-            LOG.info(_LI("The following specified ports are not managed by "
-                         "the backend: %(unmanaged)s. This host will only "
-                         "manage the storage ports: %(exist)s"),
+            LOG.info("The following specified ports are not managed by "
+                     "the backend: %(unmanaged)s. This host will only "
+                     "manage the storage ports: %(exist)s",
                      {'unmanaged': ",".join(unmanaged_port_ids),
                       'exist': ",".join(map(",".join,
                                             sp_ports_map.values()))})
@@ -138,8 +138,8 @@ class UnityStorageConnection(driver.StorageConnection):
                       ",".join(map(",".join, sp_ports_map.values())))
 
         if len(sp_ports_map) == 1:
-            LOG.info(_LI("Only ports of %s are configured. Configure ports "
-                         "of both SPA and SPB to use both of the SPs."),
+            LOG.info("Only ports of %s are configured. Configure ports "
+                     "of both SPA and SPB to use both of the SPs.",
                      list(sp_ports_map)[0])
 
         return sp_ports_map
@@ -237,7 +237,7 @@ class UnityStorageConnection(driver.StorageConnection):
             backend_share = self.client.get_share(share_name,
                                                   share['share_proto'])
         except storops_ex.UnityResourceNotFoundError:
-            LOG.warning(_LW("Share %s is not found when deleting the share"),
+            LOG.warning("Share %s is not found when deleting the share",
                         share_name)
             return
 
@@ -261,8 +261,8 @@ class UnityStorageConnection(driver.StorageConnection):
                                           new_size)
         else:
             share_id = share['id']
-            reason = _LE("Driver does not support extending a "
-                         "snapshot based share.")
+            reason = ("Driver does not support extending a "
+                      "snapshot based share.")
             raise exception.ShareExtendingError(share_id=share_id,
                                                 reason=reason)
 
@@ -422,7 +422,7 @@ class UnityStorageConnection(driver.StorageConnection):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Could not setup server.'))
+                LOG.exception('Could not setup server.')
                 server_details = {'share_server_name': server_name}
                 self.teardown_server(
                     server_details, network_info['security_services'])
@@ -538,10 +538,10 @@ class UnityStorageConnection(driver.StorageConnection):
             raise exception.BadConfigurationException(reason=msg)
 
         if unmanaged_pools:
-            LOG.info(_LI("The following specified storage pools "
-                         "are not managed by the backend: "
-                         "%(un_managed)s. This host will only manage "
-                         "the storage pools: %(exist)s"),
+            LOG.info("The following specified storage pools "
+                     "are not managed by the backend: "
+                     "%(un_managed)s. This host will only manage "
+                     "the storage pools: %(exist)s",
                      {'un_managed': ",".join(unmanaged_pools),
                       'exist': ",".join(matched_pools)})
         else:
@@ -621,13 +621,13 @@ class UnityStorageConnection(driver.StorageConnection):
                 # Enable NFS service with kerberos
                 kerberos_enabled = True
                 # TODO(jay.xu): enable nfs service with kerberos
-                LOG.warning(_LW('Kerberos is not supported by '
-                                'EMC Unity manila driver plugin.'))
+                LOG.warning('Kerberos is not supported by '
+                            'EMC Unity manila driver plugin.')
             elif service_type == 'ldap':
-                LOG.warning(_LW('LDAP is not supported by '
-                                'EMC Unity manila driver plugin.'))
+                LOG.warning('LDAP is not supported by '
+                            'EMC Unity manila driver plugin.')
             else:
-                LOG.warning(_LW('Unknown security service type: %s.'),
+                LOG.warning('Unknown security service type: %s.',
                             service_type)
 
         if not kerberos_enabled:

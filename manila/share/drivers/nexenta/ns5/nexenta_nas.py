@@ -18,7 +18,7 @@ from oslo_utils import units
 
 from manila.common import constants as common
 from manila import exception
-from manila.i18n import _, _LW, _LE
+from manila.i18n import _
 from manila.share import driver
 from manila.share.drivers.nexenta.ns5 import jsonrpc
 from manila.share.drivers.nexenta import options
@@ -156,9 +156,9 @@ class NexentaNasDriver(driver.ShareDriver):
             try:
                 self.delete_share(None, share)
             except exception.NexentaException as exc:
-                LOG.warning(_LW(
+                LOG.warning(
                     "Cannot destroy created filesystem: %(vol)s/%(folder)s, "
-                    "exception: %(exc)s"),
+                    "exception: %(exc)s",
                     {'vol': self.pool_name, 'folder': '/'.join(
                         (self.fs_prefix, share['name'])), 'exc': exc})
             raise
@@ -194,12 +194,12 @@ class NexentaNasDriver(driver.ShareDriver):
             self._add_permission(share['name'])
         except exception.NexentaException:
             LOG.exception(
-                _LE('Failed to add permissions for %s'), share['name'])
+                ('Failed to add permissions for %s'), share['name'])
             try:
                 self.delete_share(None, share)
             except exception.NexentaException:
-                LOG.warning(_LW("Cannot destroy cloned filesystem: "
-                                "%(vol)s/%(filesystem)s"),
+                LOG.warning("Cannot destroy cloned filesystem: "
+                            "%(vol)s/%(filesystem)s",
                             {'vol': self.pool_name,
                              'filesystem': '/'.join(
                                  (self.fs_prefix, share['name']))})
@@ -269,7 +269,7 @@ class NexentaNasDriver(driver.ShareDriver):
         except exception.NexentaException as e:
             if e.kwargs['code'] == 'ENOENT':
                 LOG.warning(
-                    _LW('snapshot %(name)s not found, response: %(msg)s'), {
+                    'snapshot %(name)s not found, response: %(msg)s', {
                         'name': snapshot['name'], 'msg': e.msg})
             else:
                 raise

@@ -30,7 +30,7 @@ from oslo_utils import timeutils
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LI, _LW
+from manila.i18n import _
 from manila.share import configuration
 from manila.share import driver
 from manila.share.drivers.zfsonlinux import utils as zfs_utils
@@ -279,7 +279,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
             self.zfs('destroy', '-f', name)
             return
         except exception.ProcessExecutionError:
-            LOG.info(_LI("Failed to destroy ZFS dataset, retrying one time"))
+            LOG.info("Failed to destroy ZFS dataset, retrying one time")
 
         # NOTE(bswartz): There appears to be a bug in ZFS when creating and
         # destroying datasets concurrently where the filesystem remains mounted
@@ -529,8 +529,8 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
             break
         else:
             LOG.warning(
-                _LW("Share with '%(id)s' ID and '%(name)s' NAME is "
-                    "absent on backend. Nothing has been deleted."),
+                "Share with '%(id)s' ID and '%(name)s' NAME is "
+                "absent on backend. Nothing has been deleted.",
                 {'id': share['id'], 'name': dataset_name})
         self.private_storage.delete(share['id'])
 
@@ -574,8 +574,8 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                 break
         else:
             LOG.warning(
-                _LW("Snapshot with '%(id)s' ID and '%(name)s' NAME is "
-                    "absent on backend. Nothing has been deleted."),
+                "Snapshot with '%(id)s' ID and '%(name)s' NAME is "
+                "absent on backend. Nothing has been deleted.",
                 {'id': snapshot['id'], 'name': snapshot_name})
 
     @ensure_share_server_not_provided
@@ -972,8 +972,8 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                 break
         else:
             LOG.warning(
-                _LW("Share replica with '%(id)s' ID and '%(name)s' NAME is "
-                    "absent on backend. Nothing has been deleted."),
+                "Share replica with '%(id)s' ID and '%(name)s' NAME is "
+                "absent on backend. Nothing has been deleted.",
                 {'id': replica['id'], 'name': dataset_name})
         self.private_storage.delete(replica['id'])
 
@@ -1131,7 +1131,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                         'sudo', 'zfs', 'receive', '-vF', dataset_name,
                     )
                 except exception.ProcessExecutionError as e:
-                    LOG.warning(_LW("Failed to sync replica %(id)s. %(e)s"),
+                    LOG.warning("Failed to sync replica %(id)s. %(e)s",
                                 {'id': repl['id'], 'e': e})
                     replica_dict[repl['id']]['replica_state'] = (
                         constants.REPLICA_STATE_OUT_OF_SYNC)
@@ -1153,7 +1153,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                 constants.REPLICA_STATE_IN_SYNC)
         except Exception as e:
             LOG.warning(
-                _LW("Failed to update currently active replica. \n%s"), e)
+                "Failed to update currently active replica. \n%s", e)
 
             replica_dict[active_replica['id']]['replica_state'] = (
                 constants.REPLICA_STATE_OUT_OF_SYNC)
@@ -1185,7 +1185,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                         'sudo', 'zfs', 'receive', '-vF', dataset_name,
                     )
                 except exception.ProcessExecutionError as e:
-                    LOG.warning(_LW("Failed to sync replica %(id)s. %(e)s"),
+                    LOG.warning("Failed to sync replica %(id)s. %(e)s",
                                 {'id': repl['id'], 'e': e})
                     replica_dict[repl['id']]['replica_state'] = (
                         constants.REPLICA_STATE_OUT_OF_SYNC)
@@ -1274,7 +1274,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                 )
             except exception.ProcessExecutionError as e:
                 LOG.warning(
-                    _LW("Failed to sync snapshot instance %(id)s. %(e)s"),
+                    "Failed to sync snapshot instance %(id)s. %(e)s",
                     {'id': replica_snapshot['id'], 'e': e})
                 replica_snapshots_dict[replica_snapshot['id']]['status'] = (
                     constants.STATUS_ERROR)
@@ -1526,8 +1526,8 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                         x for x in line.strip().split(' ') if x != ''][1]
                     self.execute('sudo', 'kill', '-9', migr_pid)
         except exception.ProcessExecutionError as e:
-            LOG.warning(_LW(
-                "Caught following error trying to kill migration process: %s"),
+            LOG.warning(
+                "Caught following error trying to kill migration process: %s",
                 e)
 
         # Sleep couple of seconds before destroying updated objects
@@ -1544,9 +1544,9 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                 'sudo', 'zfs', 'destroy', '-r', dst_dataset_name,
             )
         except exception.ProcessExecutionError as e:
-            LOG.warning(_LW(
+            LOG.warning(
                 "Failed to destroy destination dataset with following error: "
-                "%s"),
+                "%s",
                 e)
 
         LOG.debug(

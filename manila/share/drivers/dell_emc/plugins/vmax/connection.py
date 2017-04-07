@@ -24,7 +24,7 @@ from oslo_utils import units
 
 from manila.common import constants as const
 from manila import exception
-from manila.i18n import _, _LE, _LI, _LW
+from manila.i18n import _
 from manila.share.drivers.dell_emc.plugins import base as driver
 from manila.share.drivers.dell_emc.plugins.vmax import (
     object_manager as manager)
@@ -250,8 +250,8 @@ class VMAXStorageConnection(driver.StorageConnection):
     def delete_share(self, context, share, share_server=None):
         """Delete a share."""
         if share_server is None:
-            LOG.warning(_LW("Share network should be specified for "
-                            "share deletion."))
+            LOG.warning("Share network should be specified for "
+                        "share deletion.")
             return
 
         share_proto = share['share_proto'].upper()
@@ -295,20 +295,20 @@ class VMAXStorageConnection(driver.StorageConnection):
             # Delete mount point
             self._get_context('MountPoint').delete(path, vdm_name)
         except exception.EMCVmaxXMLAPIError as e:
-            LOG.exception(_LE("CIFS server %(name)s on mover %(mover_name)s "
+            LOG.exception("CIFS server %(name)s on mover %(mover_name)s "
                           "not found due to error %(err)s. Skip the "
-                              "deletion."),
+                          "deletion.",
                           {'name': path, 'mover_name': vdm_name,
-                          'err': e.message})
+                           'err': e.message})
 
         try:
             # Delete file system
             self._get_context('FileSystem').delete(share_name)
         except exception.EMCVmaxXMLAPIError as e:
-            LOG.exception(_LE("File system  %(share_name)s not found due to"
-                          "error %(err)s. Skip the deletion."),
+            LOG.exception("File system  %(share_name)s not found due to"
+                          "error %(err)s. Skip the deletion.",
                           {'share_name': share_name,
-                          'err': e.message})
+                           'err': e.message})
 
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Delete a snapshot."""
@@ -471,7 +471,7 @@ class VMAXStorageConnection(driver.StorageConnection):
         share_name = share['id']
 
         if access['access_type'] != 'user':
-            LOG.warning(_LW("Only user access type allowed for CIFS share."))
+            LOG.warning("Only user access type allowed for CIFS share.")
             return
 
         user_name = access['access_to']
@@ -505,7 +505,7 @@ class VMAXStorageConnection(driver.StorageConnection):
 
         access_type = access['access_type']
         if access_type != 'ip':
-            LOG.warning(_LW("Only ip access type allowed."))
+            LOG.warning("Only ip access type allowed.")
             return
 
         host_ip = access['access_to']
@@ -550,7 +550,7 @@ class VMAXStorageConnection(driver.StorageConnection):
                        ",".join(real_pools))
                 raise exception.InvalidParameterValue(err=msg)
 
-            LOG.info(_LI("Storage pools: %s will be managed."),
+            LOG.info("Storage pools: %s will be managed.",
                      ",".join(matched_pools))
         else:
             LOG.debug("No storage pool is specified, so all pools "
@@ -722,7 +722,7 @@ class VMAXStorageConnection(driver.StorageConnection):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Could not setup server'))
+                LOG.exception('Could not setup server')
                 server_details = self._construct_backend_details(
                     vdm_name, allocated_interfaces)
                 self.teardown_server(
@@ -810,7 +810,7 @@ class VMAXStorageConnection(driver.StorageConnection):
                 status, servers = self._get_context('CIFSServer').get_all(
                     vdm_name)
                 if constants.STATUS_OK != status:
-                    LOG.error(_LE('Could not find CIFS server by name: %s.'),
+                    LOG.error('Could not find CIFS server by name: %s.',
                               vdm_name)
                 else:
                     cifs_servers = copy.deepcopy(servers)

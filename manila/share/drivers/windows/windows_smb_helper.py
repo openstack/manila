@@ -20,7 +20,6 @@ from oslo_log import log
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _LI, _LW
 from manila.share.drivers import helpers
 from manila.share.drivers.windows import windows_utils
 
@@ -78,7 +77,7 @@ class WindowsSMBHelper(helpers.CIFSHelperBase):
                    '-ReadAccess', "*%s" % self._NULL_SID]
             self._remote_exec(server, cmd)
         else:
-            LOG.info(_LI("Skipping creating export %s as it already exists."),
+            LOG.info("Skipping creating export %s as it already exists.",
                      share_name)
         return self.get_exports_for_share(server, export_location)
 
@@ -127,20 +126,20 @@ class WindowsSMBHelper(helpers.CIFSHelperBase):
                               share_name)
                 else:
                     LOG.warning(
-                        _LW("Found explicit deny ACE rule that was not "
-                            "created by Manila and will be ignored: %s"),
+                        "Found explicit deny ACE rule that was not "
+                        "created by Manila and will be ignored: %s",
                         raw_acl)
                 continue
             if access_level == self._ACCESS_LEVEL_CUSTOM:
                 LOG.warning(
-                    _LW("Found 'custom' ACE rule that will be ignored: %s"),
+                    "Found 'custom' ACE rule that will be ignored: %s",
                     raw_acl)
                 continue
             elif access_right == self._WIN_ACCESS_RIGHT_FULL:
                 LOG.warning(
-                    _LW("Account '%(access_to)s' was given full access "
-                        "right on share %(share_name)s. Manila only "
-                        "grants 'change' access."),
+                    "Account '%(access_to)s' was given full access "
+                    "right on share %(share_name)s. Manila only "
+                    "grants 'change' access.",
                     {'access_to': access_to,
                      'share_name': share_name})
 
@@ -159,8 +158,8 @@ class WindowsSMBHelper(helpers.CIFSHelperBase):
                "-AccountName", "'%s'" % access_to, "-Force"]
         self._remote_exec(server, cmd)
         self._refresh_acl(server, share_name)
-        LOG.info(_LI("Granted %(access_level)s access to '%(access_to)s' "
-                     "on share %(share_name)s"),
+        LOG.info("Granted %(access_level)s access to '%(access_to)s' "
+                 "on share %(share_name)s",
                  {'access_level': access_level,
                   'access_to': access_to,
                   'share_name': share_name})
@@ -174,8 +173,8 @@ class WindowsSMBHelper(helpers.CIFSHelperBase):
                '-AccountName', '"%s"' % access_to, '-Force']
         self._remote_exec(server, cmd)
         self._refresh_acl(server, share_name)
-        LOG.info(_LI("Revoked access to '%(access_to)s' "
-                     "on share %(share_name)s"),
+        LOG.info("Revoked access to '%(access_to)s' "
+                 "on share %(share_name)s",
                  {'access_to': access_to,
                   'share_name': share_name})
 
@@ -207,12 +206,12 @@ class WindowsSMBHelper(helpers.CIFSHelperBase):
             except (exception.InvalidShareAccess,
                     exception.InvalidShareAccessLevel):
                 # This check will allow invalid rules to be deleted.
-                LOG.warning(_LW(
+                LOG.warning(
                     "Unsupported access level %(level)s or access type "
                     "%(type)s, skipping removal of access rule to "
-                    "%(to)s.") % {'level': deleted_rule['access_level'],
-                                  'type': deleted_rule['access_type'],
-                                  'to': deleted_rule['access_to']})
+                    "%(to)s." % {'level': deleted_rule['access_level'],
+                                 'type': deleted_rule['access_type'],
+                                 'to': deleted_rule['access_to']})
                 continue
             self._revoke_share_access(server, share_name,
                                       deleted_rule['access_to'])

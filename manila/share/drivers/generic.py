@@ -30,7 +30,7 @@ from manila.common import constants as const
 from manila import compute
 from manila import context
 from manila import exception
-from manila.i18n import _, _LE, _LI, _LW
+from manila.i18n import _
 from manila.share import driver
 from manila.share.drivers import service_instance
 from manila import utils
@@ -193,11 +193,11 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
             if not common_sv_available:
                 time.sleep(sv_fetch_retry_interval)
-                LOG.warning(_LW("Waiting for the common service VM to become "
-                                "available. "
-                                "Driver is currently uninitialized. "
-                                "Share server: %(share_server)s "
-                                "Retry interval: %(retry_interval)s"),
+                LOG.warning("Waiting for the common service VM to become "
+                            "available. "
+                            "Driver is currently uninitialized. "
+                            "Share server: %(share_server)s "
+                            "Retry interval: %(retry_interval)s",
                             dict(share_server=share_server,
                                  retry_interval=sv_fetch_retry_interval))
 
@@ -293,14 +293,14 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 ['sudo', 'cp', const.MOUNT_FILE_TEMP, const.MOUNT_FILE],
             )
         except exception.ProcessExecutionError as e:
-            LOG.error(_LE("Failed to sync mount files on server '%s'."),
+            LOG.error("Failed to sync mount files on server '%s'.",
                       server_details['instance_id'])
             raise exception.ShareBackendException(msg=six.text_type(e))
         try:
             # Remount it to avoid postponed point of failure
             self._ssh_exec(server_details, ['sudo', 'mount', '-a'])
         except exception.ProcessExecutionError as e:
-            LOG.error(_LE("Failed to mount all shares on server '%s'."),
+            LOG.error("Failed to mount all shares on server '%s'.",
                       server_details['instance_id'])
             raise exception.ShareBackendException(msg=six.text_type(e))
 
@@ -346,8 +346,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                     # Add mount permanently
                     self._sync_mount_temp_and_perm_files(server_details)
                 else:
-                    LOG.warning(_LW("Mount point '%(path)s' already exists on "
-                                    "server '%(server)s'."), log_data)
+                    LOG.warning("Mount point '%(path)s' already exists on "
+                                "server '%(server)s'.", log_data)
             except exception.ProcessExecutionError as e:
                 raise exception.ShareBackendException(msg=six.text_type(e))
         return _mount_device_with_lock()
@@ -373,8 +373,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 # Remove mount permanently
                 self._sync_mount_temp_and_perm_files(server_details)
             else:
-                LOG.warning(_LW("Mount point '%(path)s' does not exist on "
-                                "server '%(server)s'."), log_data)
+                LOG.warning("Mount point '%(path)s' does not exist on "
+                            "server '%(server)s'.", log_data)
         return _unmount_device_with_lock()
 
     def _get_mount_path(self, share):
@@ -449,10 +449,10 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             return volumes_list[0]
         elif len(volumes_list) > 1:
             LOG.error(
-                _LE("Expected only one volume in volume list with name "
-                    "'%(name)s', but got more than one in a result - "
-                    "'%(result)s'."), {
-                        'name': volume_name, 'result': volumes_list})
+                "Expected only one volume in volume list with name "
+                "'%(name)s', but got more than one in a result - "
+                "'%(result)s'.", {
+                    'name': volume_name, 'result': volumes_list})
             raise exception.ManilaException(
                 _("Error. Ambiguous volumes for name '%s'") % volume_name)
         return None
@@ -479,11 +479,11 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             volume_snapshot = volume_snapshot_list[0]
         elif len(volume_snapshot_list) > 1:
             LOG.error(
-                _LE("Expected only one volume snapshot in list with name "
-                    "'%(name)s', but got more than one in a result - "
-                    "'%(result)s'."), {
-                        'name': volume_snapshot_name,
-                        'result': volume_snapshot_list})
+                "Expected only one volume snapshot in list with name"
+                "'%(name)s', but got more than one in a result - "
+                "'%(result)s'.", {
+                    'name': volume_snapshot_name,
+                    'result': volume_snapshot_list})
             raise exception.ManilaException(
                 _('Error. Ambiguous volume snaphots'))
         return volume_snapshot
@@ -501,8 +501,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             try:
                 volume = self._get_volume(context, share['id'])
             except exception.VolumeNotFound:
-                LOG.warning(_LW("Volume not found for share %s. "
-                                "Possibly already deleted."), share['id'])
+                LOG.warning("Volume not found for share %s. "
+                            "Possibly already deleted.", share['id'])
                 volume = None
             if volume and volume['id'] in attached_volumes:
                 self.compute_api.instance_volume_detach(
@@ -587,7 +587,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         try:
             volume = self._get_volume(context, share['id'])
         except exception.VolumeNotFound:
-            LOG.info(_LI("Volume not found. Already deleted?"))
+            LOG.info("Volume not found. Already deleted?")
             volume = None
         if volume:
             if volume['status'] == 'in-use':

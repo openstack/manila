@@ -17,7 +17,6 @@ import re
 
 from oslo_log import log
 
-from manila.i18n import _LI
 
 LOG = log.getLogger(__name__)
 
@@ -125,9 +124,9 @@ class WindowsUtils(object):
         # NOTE(lpetrut): An instance reboot is needed but this will be
         # performed using Nova so that the instance state can be
         # retrieved easier.
-        LOG.info(_LI("Joining server %(ip)s to Active Directory "
-                     "domain %(domain)s"), dict(ip=server['ip'],
-                                                domain=domain))
+        LOG.info("Joining server %(ip)s to Active Directory "
+                 "domain %(domain)s", dict(ip=server['ip'],
+                                           domain=domain))
         cmds = [
             ('$password = "%s" | '
              'ConvertTo-SecureString -asPlainText -Force' % admin_password),

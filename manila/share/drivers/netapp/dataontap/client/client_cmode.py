@@ -26,7 +26,7 @@ from oslo_utils import units
 import six
 
 from manila import exception
-from manila.i18n import _, _LE, _LW
+from manila.i18n import _
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_base
 from manila.share.drivers.netapp import utils as na_utils
@@ -327,7 +327,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         Offlines and destroys root volumes.  Deletes Vserver.
         """
         if not self.vserver_exists(vserver_name):
-            LOG.error(_LE("Vserver %s does not exist."), vserver_name)
+            LOG.error("Vserver %s does not exist.", vserver_name)
             return
 
         root_volume_name = self.get_vserver_root_volume_name(vserver_name)
@@ -338,7 +338,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 vserver_client.offline_volume(root_volume_name)
             except netapp_api.NaApiError as e:
                 if e.code == netapp_api.EVOLUMEOFFLINE:
-                    LOG.error(_LE("Volume %s is already offline."),
+                    LOG.error("Volume %s is already offline.",
                               root_volume_name)
                 else:
                     raise
@@ -367,8 +367,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                     vserver_client.send_request('cifs-server-delete', api_args)
                 except netapp_api.NaApiError as e:
                     if e.code == netapp_api.EOBJECTNOTFOUND:
-                        LOG.error(_LE('CIFS server does not exist for '
-                                      'Vserver %s.'), vserver_name)
+                        LOG.error('CIFS server does not exist for '
+                                  'Vserver %s.', vserver_name)
                     else:
                         vserver_client.send_request('cifs-server-delete')
 
@@ -1069,7 +1069,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         vserver_aggr_info_list = vserver_aggr_info_element.get_children()
 
         if not vserver_aggr_info_list:
-            LOG.warning(_LW('No aggregates assigned to Vserver %s.'),
+            LOG.warning('No aggregates assigned to Vserver %s.',
                         vserver_name)
 
         # Return dict of key-value pair of aggr_name:aggr_size_available.
@@ -1387,7 +1387,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             self.send_request('net-dns-create', api_args)
         except netapp_api.NaApiError as e:
             if e.code == netapp_api.EDUPLICATEENTRY:
-                LOG.error(_LE("DNS exists for Vserver."))
+                LOG.error("DNS exists for Vserver.")
             else:
                 msg = _("Failed to configure DNS. %s")
                 raise exception.NetAppException(msg % e.message)
@@ -2027,8 +2027,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 return
             except netapp_api.NaApiError as e:
                 if e.code == netapp_api.EAPIERROR and 'job ID' in e.message:
-                    msg = _LW('Could not unmount volume %(volume)s due to '
-                              'ongoing volume operation: %(exception)s')
+                    msg = ('Could not unmount volume %(volume)s due to '
+                           'ongoing volume operation: %(exception)s')
                     msg_args = {'volume': volume_name, 'exception': e}
                     LOG.warning(msg, msg_args)
                     time.sleep(retry_interval)
@@ -2642,7 +2642,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             node_client.send_request('ems-autosupport-log', message_dict)
             LOG.debug('EMS executed successfully.')
         except netapp_api.NaApiError as e:
-            LOG.warning(_LW('Failed to invoke EMS. %s') % e)
+            LOG.warning('Failed to invoke EMS. %s' % e)
 
     @na_utils.trace
     def get_aggregate(self, aggregate_name):
@@ -3276,8 +3276,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
             has_snapmirrors = len(snapmirrors) > 0
         except netapp_api.NaApiError:
-            msg = _LE("Could not determine if volume %s is part of "
-                      "existing snapmirror relationships.")
+            msg = ("Could not determine if volume %s is part of "
+                   "existing snapmirror relationships.")
             LOG.exception(msg, volume['name'])
             has_snapmirrors = False
 

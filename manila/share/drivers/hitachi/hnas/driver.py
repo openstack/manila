@@ -23,7 +23,7 @@ import six
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LI, _LW
+from manila.i18n import _
 from manila.share import driver
 from manila.share import utils
 
@@ -281,10 +281,10 @@ class HitachiHNASDriver(driver.ShareDriver):
 
         for rule in delete_rules:
             if rule['access_type'].lower() != 'user':
-                LOG.warning(_LW('Only USER access type is allowed for '
-                                'CIFS. %(entity_type)s '
-                                'provided %(share)s with '
-                                'protocol %(proto)s.'),
+                LOG.warning('Only USER access type is allowed for '
+                            'CIFS. %(entity_type)s '
+                            'provided %(share)s with '
+                            'protocol %(proto)s.',
                             {'entity_type': entity_type.capitalize(),
                              'share': share_or_snapshot['id'],
                              'proto': share_proto})
@@ -412,7 +412,7 @@ class HitachiHNASDriver(driver.ShareDriver):
                    'snap_id': snapshot['id']})
 
         export_locations = self._create_snapshot(hnas_share_id, snapshot)
-        LOG.info(_LI("Snapshot %(id)s successfully created."),
+        LOG.info("Snapshot %(id)s successfully created.",
                  {'id': snapshot['id']})
 
         output = {
@@ -444,7 +444,7 @@ class HitachiHNASDriver(driver.ShareDriver):
         self._delete_snapshot(snapshot['share'],
                               hnas_share_id, hnas_snapshot_id)
 
-        LOG.info(_LI("Snapshot %(id)s successfully deleted."),
+        LOG.info("Snapshot %(id)s successfully deleted.",
                  {'id': snapshot['id']})
 
     def create_share_from_snapshot(self, context, share, snapshot,
@@ -599,8 +599,8 @@ class HitachiHNASDriver(driver.ShareDriver):
                   {'shr_id': share['id']})
 
         self._extend_share(hnas_share_id, share, new_size)
-        LOG.info(_LI("Share %(shr_id)s successfully extended to "
-                     "%(shr_size)s."),
+        LOG.info("Share %(shr_id)s successfully extended to "
+                 "%(shr_size)s.",
                  {'shr_id': share['id'],
                   'shr_size': six.text_type(new_size)})
 
@@ -640,7 +640,7 @@ class HitachiHNASDriver(driver.ShareDriver):
             'mount_snapshot_support': True,
         }
 
-        LOG.info(_LI("HNAS Capabilities: %(data)s."),
+        LOG.info("HNAS Capabilities: %(data)s.",
                  {'data': six.text_type(data)})
 
         super(HitachiHNASDriver, self)._update_share_stats(data)
@@ -720,8 +720,8 @@ class HitachiHNASDriver(driver.ShareDriver):
 
         if share['share_proto'].lower() == 'nfs':
             # 10.0.0.1:/shares/example
-            LOG.info(_LI("Share %(shr_path)s will be managed with ID "
-                         "%(shr_id)s."),
+            LOG.info("Share %(shr_path)s will be managed with ID "
+                     "%(shr_id)s.",
                      {'shr_path': share['export_locations'][0]['path'],
                       'shr_id': share['id']})
 
@@ -765,8 +765,8 @@ class HitachiHNASDriver(driver.ShareDriver):
                   "Share ID %(share_id)s", {'hnas_id': hnas_share_id,
                                             'share_id': share['id']})
 
-        LOG.info(_LI("Share %(shr_path)s was successfully managed with ID "
-                     "%(shr_id)s."),
+        LOG.info("Share %(shr_path)s was successfully managed with ID "
+                 "%(shr_id)s.",
                  {'shr_path': share['export_locations'][0]['path'],
                   'shr_id': share['id']})
 
@@ -780,13 +780,13 @@ class HitachiHNASDriver(driver.ShareDriver):
         self.private_storage.delete(share['id'])
 
         if len(share['export_locations']) == 0:
-            LOG.info(_LI("The share with ID %(shr_id)s is no longer being "
-                         "managed."), {'shr_id': share['id']})
+            LOG.info("The share with ID %(shr_id)s is no longer being "
+                     "managed.", {'shr_id': share['id']})
         else:
-            LOG.info(_LI("The share with current path %(shr_path)s and ID "
-                         "%(shr_id)s is no longer being managed."),
+            LOG.info("The share with current path %(shr_path)s and ID "
+                     "%(shr_id)s is no longer being managed.",
                      {'shr_path': share['export_locations'][0]['path'],
-                         'shr_id': share['id']})
+                      'shr_id': share['id']})
 
     def shrink_share(self, share, new_size, share_server=None):
         """Shrinks a share to new size.
@@ -802,8 +802,8 @@ class HitachiHNASDriver(driver.ShareDriver):
                   {'shr_id': share['id']})
 
         self._shrink_share(hnas_share_id, share, new_size)
-        LOG.info(_LI("Share %(shr_id)s successfully shrunk to "
-                     "%(shr_size)sG."),
+        LOG.info("Share %(shr_id)s successfully shrunk to "
+                 "%(shr_size)sG.",
                  {'shr_id': share['id'],
                   'shr_size': six.text_type(new_size)})
 
@@ -837,12 +837,12 @@ class HitachiHNASDriver(driver.ShareDriver):
         try:
             self.hnas.tree_clone(src_path, dest_path)
         except exception.HNASNothingToCloneException:
-            LOG.warning(_LW("Source directory is empty, creating an empty "
-                            "directory."))
+            LOG.warning("Source directory is empty, creating an empty "
+                        "directory.")
 
-        LOG.info(_LI("Share %(share)s successfully reverted to snapshot "
-                     "%(snapshot)s."), {'share': snapshot['share_id'],
-                                        'snapshot': snapshot['id']})
+        LOG.info("Share %(share)s successfully reverted to snapshot "
+                 "%(snapshot)s.", {'share': snapshot['share_id'],
+                                   'snapshot': snapshot['id']})
 
     def _get_hnas_share_id(self, share_id):
         hnas_id = self.private_storage.get(share_id, 'hnas_id')
@@ -1057,8 +1057,8 @@ class HitachiHNASDriver(driver.ShareDriver):
         try:
             self.hnas.tree_clone(src_path, dest_path)
         except exception.HNASNothingToCloneException:
-            LOG.warning(_LW("Source directory is empty, creating an empty "
-                            "directory."))
+            LOG.warning("Source directory is empty, creating an empty "
+                        "directory.")
             self.hnas.create_directory(dest_path)
         finally:
             if share_proto.lower() == 'nfs':
@@ -1126,8 +1126,8 @@ class HitachiHNASDriver(driver.ShareDriver):
         try:
             self.hnas.tree_clone(src_path, dest_path)
         except exception.HNASNothingToCloneException:
-            LOG.warning(_LW("Source directory is empty, exporting "
-                            "directory."))
+            LOG.warning("Source directory is empty, exporting "
+                        "directory.")
 
         self._check_protocol(share['id'], share['share_proto'])
 
@@ -1349,8 +1349,8 @@ class HitachiHNASDriver(driver.ShareDriver):
         try:
             self._ensure_snapshot(snapshot, hnas_snapshot_id)
         except exception.HNASItemNotFoundException:
-            LOG.warning(_LW("Export does not exist for snapshot %s, "
-                            "creating a new one."), snapshot['id'])
+            LOG.warning("Export does not exist for snapshot %s, "
+                        "creating a new one.", snapshot['id'])
             self._create_export(hnas_share_id,
                                 snapshot['share']['share_proto'],
                                 snapshot_id=hnas_snapshot_id)
@@ -1363,8 +1363,8 @@ class HitachiHNASDriver(driver.ShareDriver):
                 is_snapshot=True)
             output['export_locations'] = export_locations
 
-        LOG.info(_LI("Snapshot %(snap_path)s for share %(shr_id)s was "
-                     "successfully managed with ID %(snap_id)s."),
+        LOG.info("Snapshot %(snap_path)s for share %(shr_id)s was "
+                 "successfully managed with ID %(snap_id)s.",
                  {'snap_path': snapshot['provider_location'],
                   'shr_id': snapshot['share_id'],
                   'snap_id': snapshot['id']})
@@ -1376,9 +1376,9 @@ class HitachiHNASDriver(driver.ShareDriver):
 
         :param snapshot: Snapshot that will be unmanaged.
         """
-        LOG.info(_LI("The snapshot with ID %(snap_id)s from share "
-                     "%(share_id)s is no longer being managed by Manila. "
-                     "However, it is not deleted and can be found in HNAS."),
+        LOG.info("The snapshot with ID %(snap_id)s from share "
+                 "%(share_id)s is no longer being managed by Manila. "
+                 "However, it is not deleted and can be found in HNAS.",
                  {'snap_id': snapshot['id'],
                   'share_id': snapshot['share_id']})
 

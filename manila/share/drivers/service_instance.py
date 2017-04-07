@@ -32,7 +32,7 @@ from manila.common import constants as const
 from manila import compute
 from manila import context
 from manila import exception
-from manila.i18n import _, _LW
+from manila.i18n import _
 from manila.network.linux import ip_lib
 from manila.network.neutron import api as neutron
 from manila import utils
@@ -319,8 +319,8 @@ class ServiceInstanceManager(object):
         name = name or self.get_config_option(
             "service_instance_security_group")
         if not name:
-            LOG.warning(_LW("Name for service instance security group is not "
-                            "provided. Skipping security group step."))
+            LOG.warning("Name for service instance security group is not "
+                        "provided. Skipping security group step.")
             return None
         s_groups = [s for s in self.compute_api.security_group_list(context)
                     if s.name == name]
@@ -351,15 +351,15 @@ class ServiceInstanceManager(object):
     def ensure_service_instance(self, context, server):
         """Ensures that server exists and active."""
         if 'instance_id' not in server:
-            LOG.warning(_LW("Unable to check server existence since "
-                            "'instance_id' key is not set in share server "
-                            "backend details."))
+            LOG.warning("Unable to check server existence since "
+                        "'instance_id' key is not set in share server "
+                        "backend details.")
             return False
         try:
             inst = self.compute_api.server_get(self.admin_context,
                                                server['instance_id'])
         except exception.InstanceNotFound:
-            LOG.warning(_LW("Service instance %s does not exist."),
+            LOG.warning("Service instance %s does not exist.",
                         server['instance_id'])
             return False
         if inst['status'] == 'ACTIVE':
@@ -502,11 +502,11 @@ class ServiceInstanceManager(object):
             raise exception.ServiceInstanceException(
                 _('Neither service instance password nor key are available.'))
         if not key_path:
-            LOG.warning(_LW(
+            LOG.warning(
                 'No key path is available. May be non-existent key path is '
                 'provided. Check path_to_private_key (current value '
                 '%(private_path)s) and path_to_public_key (current value '
-                '%(public_path)s) in manila configuration file.'), dict(
+                '%(public_path)s) in manila configuration file.', dict(
                     private_path=self.path_to_private_key,
                     public_path=self.path_to_public_key))
         network_data = self.network_helper.setup_network(network_info)
@@ -957,8 +957,8 @@ class NeutronNetworkHelper(BaseNetworkhelper):
             addr_list = device.addr.list()
         except Exception as e:
             if 'does not exist' in six.text_type(e):
-                LOG.warning(_LW(
-                    "Device %s does not exist anymore.") % device.name)
+                LOG.warning(
+                    "Device %s does not exist anymore." % device.name)
             else:
                 raise
         for addr in addr_list:

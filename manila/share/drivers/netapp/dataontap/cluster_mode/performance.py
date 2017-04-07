@@ -21,7 +21,7 @@ import copy
 from oslo_log import log as logging
 
 from manila import exception
-from manila.i18n import _, _LE
+from manila.i18n import _
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 
 
@@ -60,9 +60,9 @@ class PerformanceLibrary(object):
                 self.avg_processor_busy_base_counter_name = 'cpu_elapsed_time'
             else:
                 self.avg_processor_busy_base_counter_name = 'cpu_elapsed_time1'
-            LOG.exception(_LE('Could not get performance base counter '
-                              'name. Performance-based scheduler '
-                              'functions may not be available.'))
+            LOG.exception('Could not get performance base counter '
+                          'name. Performance-based scheduler '
+                          'functions may not be available.')
 
     def update_performance_cache(self, flexvol_pools, aggregate_pools):
         """Called periodically to update per-pool node utilization metrics."""
@@ -194,8 +194,8 @@ class PerformanceLibrary(object):
             return max(min(100.0, node_utilization), 0)
 
         except Exception:
-            LOG.exception(_LE('Could not calculate node utilization for '
-                              'node %s.'), node_name)
+            LOG.exception('Could not calculate node utilization for '
+                          'node %s.', node_name)
             return DEFAULT_UTILIZATION
 
     def _get_kahuna_utilization(self, counters_t1, counters_t2):
@@ -343,8 +343,8 @@ class PerformanceLibrary(object):
                     self._get_node_utilization_wafl_counters(node_name) +
                     self._get_node_utilization_processor_counters(node_name))
         except netapp_api.NaApiError:
-            LOG.exception(_LE('Could not get utilization counters from node '
-                              '%s'), node_name)
+            LOG.exception('Could not get utilization counters from node '
+                          '%s', node_name)
             return None
 
     def _get_node_utilization_system_counters(self, node_name):

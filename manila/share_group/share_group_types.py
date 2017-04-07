@@ -20,7 +20,6 @@ from manila import context
 from manila import db
 from manila import exception
 from manila.i18n import _
-from manila.i18n import _LE
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
@@ -38,7 +37,7 @@ def create(context, name, share_types, group_specs=None, is_public=True,
              "share_types": share_types},
             projects=projects)
     except db_exception.DBError:
-        LOG.exception(_LE('DB error'))
+        LOG.exception('DB error')
         raise exception.ShareGroupTypeCreateFailed(
             name=name, group_specs=group_specs)
     return type_ref
@@ -142,8 +141,8 @@ def get_default(ctxt=None):
         return get_by_name(ctxt, name)
     except exception.ShareGroupTypeNotFoundByName:
         LOG.exception(
-            _LE("Default share group type '%s' is not found, "
-                "please check 'default_share_group_type' config."),
+            "Default share group type '%s' is not found, "
+            "please check 'default_share_group_type' config.",
             name,
         )
 

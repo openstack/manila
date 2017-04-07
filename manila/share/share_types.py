@@ -29,7 +29,6 @@ from manila import context
 from manila import db
 from manila import exception
 from manila.i18n import _
-from manila.i18n import _LE
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
@@ -53,7 +52,7 @@ def create(context, name, extra_specs=None, is_public=True, projects=None):
                                              is_public=is_public),
                                         projects=projects)
     except db_exception.DBError:
-        LOG.exception(_LE('DB error.'))
+        LOG.exception('DB error.')
         raise exception.ShareTypeCreateFailed(name=name,
                                               extra_specs=extra_specs)
     return type_ref
@@ -86,8 +85,8 @@ def get_all_types(context, inactive=0, search_opts=None):
             required_extra_specs = get_valid_required_extra_specs(
                 type_args['extra_specs'])
         except exception.InvalidExtraSpec:
-            LOG.exception(_LE('Share type %(share_type)s has invalid required'
-                              ' extra specs.'), {'share_type': type_name})
+            LOG.exception('Share type %(share_type)s has invalid required'
+                          ' extra specs.', {'share_type': type_name})
 
         type_args['required_extra_specs'] = required_extra_specs
 
@@ -172,8 +171,8 @@ def get_default_share_type(ctxt=None):
         # Couldn't find share type with the name in default_share_type
         # flag, record this issue and move on
         # TODO(zhiteng) consider add notification to warn admin
-        LOG.exception(_LE('Default share type is not found, '
-                          'please check default_share_type config: %s'),
+        LOG.exception('Default share type is not found, '
+                      'please check default_share_type config: %s',
                       e)
 
 

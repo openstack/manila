@@ -25,8 +25,8 @@ from oslo_utils import units
 
 from manila.common import constants
 from manila import exception
+from manila.i18n import _
 from manila import share
-from manila.i18n import _, _LE, _LI, _LW
 from manila.share import driver
 from manila.share.drivers.qnap import api
 from manila import utils
@@ -83,9 +83,9 @@ class QnapShareDriver(driver.ShareDriver):
         try:
             self.api_executor = self._create_api_executor()
         except Exception:
-            LOG.exception(_LE('Failed to create HTTP client. Check IP '
-                              'address, port, username, password and make '
-                              'sure the array version is compatible.'))
+            LOG.exception('Failed to create HTTP client. Check IP '
+                          'address, port, username, password and make '
+                          'sure the array version is compatible.')
             raise
 
     def check_for_setup_error(self):
@@ -301,7 +301,7 @@ class QnapShareDriver(driver.ShareDriver):
         # Use private_storage to retreive volume ID created in the NAS.
         volID = self.private_storage.get(share['id'], 'volID')
         if not volID:
-            LOG.warning(_LW('volID for Share %s does not exist'), share['id'])
+            LOG.warning('volID for Share %s does not exist', share['id'])
             return
         LOG.debug('volID: %s', volID)
 
@@ -309,7 +309,7 @@ class QnapShareDriver(driver.ShareDriver):
             self.configuration.qnap_poolname,
             vol_no=volID)
         if del_share is None:
-            LOG.warning(_LW('Share %s does not exist'), share['id'])
+            LOG.warning('Share %s does not exist', share['id'])
             return
 
         vol_no = del_share.find('vol_no').text
@@ -350,7 +350,7 @@ class QnapShareDriver(driver.ShareDriver):
         volID = self.private_storage.get(snapshot['share']['id'], 'volID')
         if not volID:
             LOG.warning(
-                _LW('volID for Share %s does not exist'),
+                'volID for Share %s does not exist',
                 snapshot['share']['id'])
             raise exception.ShareResourceNotFound(
                 share_id=snapshot['share']['id'])
@@ -401,7 +401,7 @@ class QnapShareDriver(driver.ShareDriver):
         snapshot_id = (snapshot.get('provider_location') or
                        self.private_storage.get(snapshot['id'], 'snapshot_id'))
         if not snapshot_id:
-            LOG.warning(_LW('Snapshot %s does not exist'), snapshot['id'])
+            LOG.warning('Snapshot %s does not exist', snapshot['id'])
             return
         LOG.debug('snapshot_id: %s', snapshot_id)
 
@@ -421,7 +421,7 @@ class QnapShareDriver(driver.ShareDriver):
         snapshot_id = (snapshot.get('provider_location') or
                        self.private_storage.get(snapshot['id'], 'snapshot_id'))
         if not snapshot_id:
-            LOG.warning(_LW('Snapshot %s does not exist'), snapshot['id'])
+            LOG.warning('Snapshot %s does not exist', snapshot['id'])
             raise exception.SnapshotResourceNotFound(name=snapshot['id'])
         LOG.debug('snapshot_id: %s', snapshot_id)
 
@@ -568,7 +568,7 @@ class QnapShareDriver(driver.ShareDriver):
         try:
             self._check_share_access(share_proto, access_type)
         except exception.InvalidShareAccess:
-            LOG.warning(_LW('The denied rule is invalid and does not exist.'))
+            LOG.warning('The denied rule is invalid and does not exist.')
             return
 
         hostlist = self.api_executor.get_host_list()
@@ -603,8 +603,8 @@ class QnapShareDriver(driver.ShareDriver):
         """Manages a share that exists on backend."""
         if share['share_proto'].lower() == 'nfs':
             # 10.0.0.1:/share/example
-            LOG.info(_LI("Share %(shr_path)s will be managed with ID "
-                         "%(shr_id)s."),
+            LOG.info("Share %(shr_path)s will be managed with ID"
+                     "%(shr_id)s.",
                      {'shr_path': share['export_locations'][0]['path'],
                       'shr_id': share['id']})
 
@@ -646,8 +646,8 @@ class QnapShareDriver(driver.ShareDriver):
         volName = self.private_storage.get(share['id'], 'volName')
         LOG.debug('volName: %s', volName)
 
-        LOG.info(_LI("Share %(shr_path)s was successfully managed with ID "
-                     "%(shr_id)s."),
+        LOG.info("Share %(shr_path)s was successfully managed with ID "
+                 "%(shr_id)s.",
                  {'shr_path': share['export_locations'][0]['path'],
                   'shr_id': share['id']})
 

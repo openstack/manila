@@ -24,7 +24,6 @@ import six
 
 from manila import exception
 from manila.i18n import _
-from manila.i18n import _LE
 from manila.share import driver
 from manila.share.drivers.zfssa import zfssarest
 
@@ -278,7 +277,7 @@ class ZFSSAShareDriver(driver.ShareDriver):
                                            snapshot['share_id'],
                                            snapshot['id'])
         if has_clones:
-            LOG.error(_LE("snapshot %s: has clones"), snapshot['id'])
+            LOG.error("snapshot %s: has clones", snapshot['id'])
             raise exception.ShareSnapshotIsBusy(snapshot_name=snapshot['id'])
         self.zfssa.delete_snapshot(lcfg.zfssa_pool,
                                    lcfg.zfssa_project,
@@ -303,7 +302,7 @@ class ZFSSAShareDriver(driver.ShareDriver):
         try:
             details = self._get_share_details(name)
         except Exception:
-            LOG.error(_LE('Cannot manage share %s'), name)
+            LOG.error('Cannot manage share %s', name)
             raise
 
         lcfg = self.configuration
@@ -438,8 +437,8 @@ class ZFSSAShareDriver(driver.ShareDriver):
         new_size_byte = int(new_size) * units.Gi
 
         if used_space > new_size_byte:
-            LOG.error(_LE('%(used).1fGB of share %(id)s is already used. '
-                          'Cannot shrink to %(newsize)dGB.'),
+            LOG.error('%(used).1fGB of share %(id)s is already used. '
+                      'Cannot shrink to %(newsize)dGB.',
                       {'used': float(used_space) / units.Gi,
                        'id': share['id'],
                        'newsize': new_size})

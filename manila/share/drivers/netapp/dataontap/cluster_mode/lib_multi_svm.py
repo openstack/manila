@@ -26,7 +26,7 @@ from oslo_log import log
 from oslo_utils import excutils
 
 from manila import exception
-from manila.i18n import _, _LE, _LW, _LI
+from manila.i18n import _
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp import utils as na_utils
@@ -47,8 +47,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         if self._have_cluster_creds:
             if self.configuration.netapp_vserver:
-                msg = _LW('Vserver is specified in the configuration. This is '
-                          'ignored when the driver is managing share servers.')
+                msg = ('Vserver is specified in the configuration. This is '
+                       'ignored when the driver is managing share servers.')
                 LOG.warning(msg)
 
         else:  # only have vserver creds, which is an error in multi_svm mode
@@ -191,7 +191,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                                                      vserver_name)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Failed to configure Vserver."))
+                LOG.error("Failed to configure Vserver.")
                 self._delete_vserver(vserver_name,
                                      security_services=security_services)
 
@@ -243,7 +243,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         network_allocations = network_info.get('admin_network_allocations')
         if not network_allocations:
-            LOG.info(_LI('No admin network defined for Vserver %s.') %
+            LOG.info('No admin network defined for Vserver %s.' %
                      vserver_name)
             return
 
@@ -310,15 +310,15 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             'vserver_name') if server_details else None
 
         if not vserver:
-            LOG.warning(_LW("Vserver not specified for share server being "
-                            "deleted. Deletion of share server record will "
-                            "proceed anyway."))
+            LOG.warning("Vserver not specified for share server being "
+                        "deleted. Deletion of share server record will "
+                        "proceed anyway.")
             return
 
         elif not self._client.vserver_exists(vserver):
-            LOG.warning(_LW("Could not find Vserver for share server being "
-                            "deleted: %s. Deletion of share server "
-                            "record will proceed anyway."), vserver)
+            LOG.warning("Could not find Vserver for share server being "
+                        "deleted: %s. Deletion of share server "
+                        "record will proceed anyway.", vserver)
             return
 
         self._delete_vserver(vserver, security_services=security_services)
@@ -362,4 +362,4 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 node = interface['home-node']
                 self._client.delete_vlan(node, port, vlan)
             except exception.NetAppException:
-                LOG.exception(_LE("Deleting Vserver VLAN failed."))
+                LOG.exception("Deleting Vserver VLAN failed.")

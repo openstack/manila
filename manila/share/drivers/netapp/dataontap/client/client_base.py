@@ -16,7 +16,6 @@
 from oslo_log import log
 from oslo_utils import excutils
 
-from manila.i18n import _LE
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp import utils as na_utils
 
@@ -89,7 +88,7 @@ class NetAppBaseClient(object):
             result = self.send_request('license-v2-list-info')
         except netapp_api.NaApiError:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("Could not get licenses list."))
+                LOG.exception("Could not get licenses list.")
 
         return sorted(
             [l.get_child_content('package').lower()

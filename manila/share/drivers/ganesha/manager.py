@@ -24,7 +24,6 @@ import six
 
 from manila import exception
 from manila.i18n import _
-from manila.i18n import _LE
 from manila.share.drivers.ganesha import utils as ganesha_utils
 from manila import utils
 
@@ -187,8 +186,8 @@ class GaneshaManager(object):
             except exception.ProcessExecutionError as e:
                 if makelog:
                     LOG.error(
-                        _LE("Error while executing management command on "
-                            "Ganesha node %(tag)s: %(msg)s."),
+                        ("Error while executing management command on "
+                         "Ganesha node %(tag)s: %(msg)s."),
                         {'tag': tag, 'msg': msg})
                 raise exception.GaneshaCommandFailure(
                     stdout=e.stdout, stderr=e.stderr, exit_code=e.exit_code,
@@ -324,8 +323,8 @@ class GaneshaManager(object):
             run_as_root=False)[0]
         match = re.search('\Aexportid\|(\d+)$', out)
         if not match:
-            LOG.error(_LE("Invalid export database on "
-                      "Ganesha node %(tag)s: %(db)s."),
+            LOG.error("Invalid export database on "
+                      "Ganesha node %(tag)s: %(db)s.",
                       {'tag': self.tag, 'db': self.ganesha_db_path})
             raise exception.InvalidSqliteDB()
         return int(match.groups()[0])

@@ -20,7 +20,7 @@ from oslo_utils import units
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LI, _LW
+from manila.i18n import _
 from manila.share import driver
 from manila.share import share_types
 
@@ -142,7 +142,7 @@ class CephFSNativeDriver(driver.ShareDriver,):
         auth_id = self.configuration.safe_get('cephfs_auth_id')
         self._volume_client = ceph_volume_client.CephFSVolumeClient(
             auth_id, conf_path, cluster_name)
-        LOG.info(_LI("[%(be)s}] Ceph client found, connecting..."),
+        LOG.info("[%(be)s}] Ceph client found, connecting...",
                  {"be": self.backend_name})
         if auth_id != CEPH_DEFAULT_AUTH_ID:
             # Evict any other manila sessions.  Only do this if we're
@@ -157,7 +157,7 @@ class CephFSNativeDriver(driver.ShareDriver,):
             self._volume_client = None
             raise
         else:
-            LOG.info(_LI("[%(be)s] Ceph client connection complete."),
+            LOG.info("[%(be)s] Ceph client connection complete.",
                      {"be": self.backend_name})
 
         return self._volume_client
@@ -199,7 +199,7 @@ class CephFSNativeDriver(driver.ShareDriver,):
             addrs=",".join(mon_addrs),
             path=volume['mount_path'])
 
-        LOG.info(_LI("Calculated export location for share %(id)s: %(loc)s"),
+        LOG.info("Calculated export location for share %(id)s: %(loc)s",
                  {"id": share['id'], "loc": export_location})
 
         return {
@@ -244,8 +244,8 @@ class CephFSNativeDriver(driver.ShareDriver,):
 
     def _deny_access(self, context, share, access, share_server=None):
         if access['access_type'] != CEPHX_ACCESS_TYPE:
-            LOG.warning(_LW("Invalid access type '%(type)s', "
-                            "ignoring in deny."),
+            LOG.warning("Invalid access type '%(type)s', "
+                        "ignoring in deny.",
                         {"type": access['access_type']})
             return
 

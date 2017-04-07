@@ -31,7 +31,7 @@ import six
 from manila.common import constants as common_constants
 from manila.data import utils as data_utils
 from manila import exception
-from manila.i18n import _, _LE, _LI, _LW
+from manila.i18n import _
 from manila import rpc
 from manila.share.drivers.huawei import base as driver
 from manila.share.drivers.huawei import constants
@@ -275,7 +275,7 @@ class V3StorageConnection(driver.HuaweiBase):
         snapshot_name = "share_snapshot_" + snap_name
         snap_id = self.helper._create_snapshot(sharefsid,
                                                snapshot_name)
-        LOG.info(_LI('Creating snapshot id %s.'), snap_id)
+        LOG.info('Creating snapshot id %s.', snap_id)
         return snapshot_name.replace("-", "_")
 
     def delete_snapshot(self, snapshot, share_server=None):
@@ -286,8 +286,8 @@ class V3StorageConnection(driver.HuaweiBase):
         sharefsid = self.helper.get_fsid_by_name(snapshot['share_name'])
 
         if sharefsid is None:
-            LOG.warning(_LW('Delete snapshot share id %s fs has been '
-                        'deleted.'), snap_name)
+            LOG.warning('Delete snapshot share id %s fs has been '
+                        'deleted.', snap_name)
             return
 
         snapshot_id = self.helper._get_snapshot_id(sharefsid, snap_name)
@@ -297,7 +297,7 @@ class V3StorageConnection(driver.HuaweiBase):
         if snapshot_flag:
             self.helper._delete_snapshot(snapshot_id)
         else:
-            LOG.warning(_LW("Can not find snapshot %s on array."), snap_name)
+            LOG.warning("Can not find snapshot %s on array.", snap_name)
 
     def update_share_stats(self, stats_dict):
         """Retrieve status info from share group."""
@@ -358,13 +358,13 @@ class V3StorageConnection(driver.HuaweiBase):
         share = self.helper._get_share_by_name(share_name, share_url_type)
 
         if not share:
-            LOG.warning(_LW('The share was not found. Share name:%s'),
+            LOG.warning('The share was not found. Share name:%s',
                         share_name)
             fsid = self.helper.get_fsid_by_name(share_name)
             if fsid:
                 self.helper._delete_fs(fsid)
                 return
-            LOG.warning(_LW('The filesystem was not found.'))
+            LOG.warning('The filesystem was not found.')
             return
 
         share_id = share['ID']
@@ -452,8 +452,8 @@ class V3StorageConnection(driver.HuaweiBase):
                 try:
                     os.rmdir(item['mount_src'])
                 except Exception as err:
-                    LOG.warning(_LW('Failed to remove temp file. File path: '
-                                    '%(file_path)s. Reason: %(err)s.'),
+                    LOG.warning('Failed to remove temp file. File path:'
+                                '%(file_path)s. Reason: %(err)s.',
                                 {'file_path': item['mount_src'],
                                  'err': err})
 
@@ -467,8 +467,8 @@ class V3StorageConnection(driver.HuaweiBase):
                 self.allow_access(old_share, old_access)
             except exception.ManilaException as err:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Failed to add access to share %(name)s. '
-                                  'Reason: %(err)s.'),
+                    LOG.error('Failed to add access to share %(name)s. '
+                              'Reason: %(err)s.',
                               {'name': old_share['name'],
                                'err': err})
 
@@ -478,8 +478,8 @@ class V3StorageConnection(driver.HuaweiBase):
                 self.mount_share_to_host(old_share, old_access)
             except exception.ShareMountException as err:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Failed to mount old share %(name)s. '
-                                  'Reason: %(err)s.'),
+                    LOG.error('Failed to mount old share %(name)s. '
+                              'Reason: %(err)s.',
                               {'name': old_share['name'],
                                'err': err})
 
@@ -489,8 +489,8 @@ class V3StorageConnection(driver.HuaweiBase):
             except Exception as err:
                 with excutils.save_and_reraise_exception():
                     self.umount_share_from_host(old_share)
-                    LOG.error(_LE('Failed to mount new share %(name)s. '
-                                  'Reason: %(err)s.'),
+                    LOG.error('Failed to mount new share %(name)s. '
+                              'Reason: %(err)s.',
                               {'name': new_share['name'],
                                'err': err})
 
@@ -500,8 +500,8 @@ class V3StorageConnection(driver.HuaweiBase):
                 try:
                     self.umount_share_from_host(item)
                 except exception.ShareUmountException as err:
-                    LOG.warning(_LW('Failed to unmount share %(name)s. '
-                                    'Reason: %(err)s.'),
+                    LOG.warning('Failed to unmount share %(name)s. '
+                                'Reason: %(err)s.',
                                 {'name': item['name'],
                                  'err': err})
 
@@ -573,7 +573,7 @@ class V3StorageConnection(driver.HuaweiBase):
             if copy.get_progress()['total_progress'] == 100:
                 copy_finish = True
         except Exception as err:
-            LOG.error(_LE("Failed to copy data, reason: %s."), err)
+            LOG.error("Failed to copy data, reason: %s.", err)
 
         return copy_finish
 
@@ -695,12 +695,12 @@ class V3StorageConnection(driver.HuaweiBase):
         share_url_type = self.helper._get_share_url_type(share_proto)
         access_type = access['access_type']
         if share_proto == 'NFS' and access_type not in ('ip', 'user'):
-            LOG.warning(_LW('Only IP or USER access types are allowed for '
-                            'NFS shares.'))
+            LOG.warning('Only IP or USER access types are allowed for '
+                        'NFS shares.')
             return
         elif share_proto == 'CIFS' and access_type != 'user':
-            LOG.warning(_LW('Only USER access type is allowed for'
-                            ' CIFS shares.'))
+            LOG.warning('Only USER access type is allowed for'
+                        ' CIFS shares.')
             return
 
         access_to = access['access_to']
@@ -710,14 +710,14 @@ class V3StorageConnection(driver.HuaweiBase):
             access_to = '*'
         share = self.helper._get_share_by_name(share_name, share_url_type)
         if not share:
-            LOG.warning(_LW('Can not get share %s.'), share_name)
+            LOG.warning('Can not get share %s.', share_name)
             return
 
         access_id = self.helper._get_access_from_share(share['ID'], access_to,
                                                        share_proto)
         if not access_id:
-            LOG.warning(_LW('Can not get access id from share. '
-                            'share_name: %s'), share_name)
+            LOG.warning('Can not get access id from share. '
+                        'share_name: %s', share_name)
             return
 
         self.helper._remove_access_from_share(access_id, share_proto)
@@ -798,7 +798,7 @@ class V3StorageConnection(driver.HuaweiBase):
         share_url_type = self.helper._get_share_url_type(share_proto)
         share_stor = self.helper._get_share_by_name(share_name, share_url_type)
         if not share_stor:
-            LOG.warning(_LW('Cannot get share %s.'), share_name)
+            LOG.warning('Cannot get share %s.', share_name)
             return
         share_id = share_stor['ID']
         all_accesses = self.helper._get_all_access_from_share(share_id,
@@ -920,8 +920,8 @@ class V3StorageConnection(driver.HuaweiBase):
                 opts['thin_provisioning'] = constants.THICK_PROVISIONING
 
         change_opts = self.check_retype_change_opts(opts, poolinfo, fs)
-        LOG.info(_LI('Retyping share (%(share)s), changed options are : '
-                     '(%(change_opts)s).'),
+        LOG.info('Retyping share (%(share)s), changed options are : '
+                 '(%(change_opts)s).',
                  {'share': old_share_name, 'change_opts': change_opts})
         try:
             self.retype_share(change_opts, fs_id)
@@ -1198,9 +1198,9 @@ class V3StorageConnection(driver.HuaweiBase):
         if wait_interval:
             return int(wait_interval)
         else:
-            LOG.info(_LI(
+            LOG.info(
                 "Wait interval is not configured in huawei "
-                "conf file. Use default: %(default_wait_interval)d."),
+                "conf file. Use default: %(default_wait_interval)d.",
                 {"default_wait_interval": constants.DEFAULT_WAIT_INTERVAL})
             return constants.DEFAULT_WAIT_INTERVAL
 
@@ -1211,9 +1211,9 @@ class V3StorageConnection(driver.HuaweiBase):
         if timeout:
             return int(timeout)
         else:
-            LOG.info(_LI(
+            LOG.info(
                 "Timeout is not configured in huawei conf file. "
-                "Use default: %(default_timeout)d."),
+                "Use default: %(default_timeout)d.",
                 {"default_timeout": constants.DEFAULT_TIMEOUT})
             return constants.DEFAULT_TIMEOUT
 
@@ -1736,8 +1736,8 @@ class V3StorageConnection(driver.HuaweiBase):
                 remote_fs_id=self.helper.get_fsid_by_name(new_share_name)
             )
         except Exception:
-            LOG.exception(_LE('Failed to create a replication pair '
-                              'with host %s.'),
+            LOG.exception('Failed to create a replication pair '
+                          'with host %s.',
                           active_replica['host'])
             raise
 
@@ -1760,7 +1760,7 @@ class V3StorageConnection(driver.HuaweiBase):
         replica_pair_id = self.private_storage.get(replica['share_id'],
                                                    'replica_pair_id')
         if replica_pair_id is None:
-            msg = _LE("No replication pair ID recorded for share %s.")
+            msg = ("No replication pair ID recorded for share %s.")
             LOG.error(msg, replica['share_id'])
             return common_constants.STATUS_ERROR
 
@@ -1780,7 +1780,7 @@ class V3StorageConnection(driver.HuaweiBase):
         try:
             self.replica_mgr.switch_over(replica_pair_id)
         except Exception:
-            LOG.exception(_LE('Failed to promote replica %s.'),
+            LOG.exception('Failed to promote replica %s.',
                           replica['id'])
             raise
 
@@ -1790,8 +1790,8 @@ class V3StorageConnection(driver.HuaweiBase):
         try:
             self.update_access(replica, access_rules, [], [], share_server)
         except Exception:
-            LOG.warning(_LW('Failed to set access rules to '
-                            'new active replica %s.'),
+            LOG.warning('Failed to set access rules to '
+                        'new active replica %s.',
                         replica['id'])
             updated_new_active_access = False
 
@@ -1800,8 +1800,8 @@ class V3StorageConnection(driver.HuaweiBase):
         try:
             self.clear_access(old_active_replica, share_server)
         except Exception:
-            LOG.warning(_LW("Failed to clear access rules from "
-                            "old active replica %s."),
+            LOG.warning("Failed to clear access rules from "
+                        "old active replica %s.",
                         old_active_replica['id'])
             cleared_old_active_access = False
 
@@ -1833,8 +1833,8 @@ class V3StorageConnection(driver.HuaweiBase):
         replica_pair_id = self.private_storage.get(replica['share_id'],
                                                    'replica_pair_id')
         if replica_pair_id is None:
-            msg = _LW("No replication pair ID recorded for share %(share)s. "
-                      "Continue to delete replica %(replica)s.")
+            msg = ("No replication pair ID recorded for share %(share)s. "
+                   "Continue to delete replica %(replica)s.")
             LOG.warning(msg, {'share': replica['share_id'],
                               'replica': replica['id']})
         else:
@@ -1844,6 +1844,6 @@ class V3StorageConnection(driver.HuaweiBase):
         try:
             self.delete_share(replica, share_server)
         except Exception:
-            LOG.exception(_LE('Failed to delete replica %s.'),
+            LOG.exception('Failed to delete replica %s.',
                           replica['id'])
             raise

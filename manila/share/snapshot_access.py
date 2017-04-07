@@ -16,7 +16,6 @@
 from oslo_log import log
 
 from manila.common import constants
-from manila.i18n import _LI
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -147,8 +146,8 @@ class ShareSnapshotInstanceAccess(object):
             self._update_access_rules(context, snapshot_instance,
                                       share_server=share_server)
         else:
-            LOG.info(_LI("Access rules were successfully applied for "
-                         "snapshot instance: %s"), snapshot_instance['id'])
+            LOG.info("Access rules were successfully applied for "
+                     "snapshot instance: %s", snapshot_instance['id'])
 
     def _check_needs_refresh(self, context, snapshot_instance_id):
 

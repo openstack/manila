@@ -24,7 +24,6 @@ import six
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _LI
 from manila.share.drivers.ganesha import manager as ganesha_manager
 from manila.share.drivers.ganesha import utils as ganesha_utils
 
@@ -76,7 +75,7 @@ class GaneshaNASHelper(NASHelperBase):
             if e.errno != errno.ENOENT or must_exist:
                 raise
             dirlist = []
-        LOG.info(_LI('Loading Ganesha config from %s.'), dirpath)
+        LOG.info('Loading Ganesha config from %s.', dirpath)
         conf_files = list(filter(self._confrx.search, dirlist))
         conf_files.sort()
         export_template = {}

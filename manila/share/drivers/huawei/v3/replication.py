@@ -18,7 +18,7 @@ from oslo_utils import strutils
 
 from manila.common import constants as common_constants
 from manila import exception
-from manila.i18n import _, _LE, _LW
+from manila.i18n import _
 from manila.share.drivers.huawei import constants
 
 
@@ -56,7 +56,7 @@ class ReplicaPairManager(object):
 
             pair_info = self.helper.create_replication_pair(pair_params)
         except Exception:
-            msg = _LE("Failed to create replication pair for share %s.")
+            msg = ("Failed to create replication pair for share %s.")
             LOG.exception(msg, local_share_name)
             raise
 
@@ -69,8 +69,8 @@ class ReplicaPairManager(object):
             pair_info = self.helper.get_replication_pair_by_id(
                 replica_pair_id)
         except Exception:
-            LOG.exception(_LE('Failed to get replication pair info for '
-                          '%s.'), replica_pair_id)
+            LOG.exception('Failed to get replication pair info for '
+                          '%s.', replica_pair_id)
             raise
 
         return pair_info
@@ -114,7 +114,7 @@ class ReplicaPairManager(object):
             pair_info = self._get_replication_pair_info(replica_pair_id)
         except Exception:
             # if cannot communicate to backend, return error
-            LOG.error(_LE('Cannot get replica state, return %s'),
+            LOG.error('Cannot get replica state, return %s',
                       common_constants.STATUS_ERROR)
             return common_constants.STATUS_ERROR
 
@@ -124,8 +124,8 @@ class ReplicaPairManager(object):
         try:
             self.helper.sync_replication_pair(pair_id)
         except Exception as err:
-            LOG.warning(_LW('Failed to sync replication pair %(id)s. '
-                            'Reason: %(err)s'),
+            LOG.warning('Failed to sync replication pair %(id)s. '
+                        'Reason: %(err)s',
                         {'id': pair_id, 'err': err})
 
     def update_replication_pair_state(self, replica_pair_id):
@@ -133,8 +133,8 @@ class ReplicaPairManager(object):
 
         health = self._check_replication_health(pair_info)
         if health is not None:
-            LOG.warning(_LW("Cannot update the replication %s "
-                            "because it's not in normal status."),
+            LOG.warning("Cannot update the replication %s "
+                        "because it's not in normal status.",
                         replica_pair_id)
             return
 
@@ -145,9 +145,9 @@ class ReplicaPairManager(object):
             try:
                 self.helper.switch_replication_pair(replica_pair_id)
             except Exception:
-                msg = _LE('Replication pair %s primary/secondary '
-                          'relationship is not right, try to switch over '
-                          'again but still failed.')
+                msg = ('Replication pair %s primary/secondary '
+                       'relationship is not right, try to switch over '
+                       'again but still failed.')
                 LOG.exception(msg, replica_pair_id)
                 return
 
@@ -158,8 +158,8 @@ class ReplicaPairManager(object):
             try:
                 self.helper.set_pair_secondary_write_lock(replica_pair_id)
             except Exception:
-                msg = _LE('Replication pair %s secondary access is R/W, '
-                          'try to set write lock but still failed.')
+                msg = ('Replication pair %s secondary access is R/W, '
+                       'try to set write lock but still failed.')
                 LOG.exception(msg, replica_pair_id)
                 return
 
@@ -173,8 +173,8 @@ class ReplicaPairManager(object):
         pair_info = self._get_replication_pair_info(replica_pair_id)
 
         if strutils.bool_from_string(pair_info['ISPRIMARY']):
-            LOG.warning(_LW('The replica to promote is already primary, '
-                            'no need to switch over.'))
+            LOG.warning('The replica to promote is already primary, '
+                        'no need to switch over.')
             return
 
         replica_state = self._check_replica_state(pair_info)
@@ -192,14 +192,14 @@ class ReplicaPairManager(object):
             # means replication pair is in an abnormal status,
             # ignore this exception, continue to cancel secondary write lock,
             # let secondary share accessible for disaster recovery.
-            LOG.exception(_LE('Failed to split replication pair %s while '
-                              'switching over.'), replica_pair_id)
+            LOG.exception('Failed to split replication pair %s while '
+                          'switching over.', replica_pair_id)
 
         try:
             self.helper.cancel_pair_secondary_write_lock(replica_pair_id)
         except Exception:
-            LOG.exception(_LE('Failed to cancel replication pair %s '
-                              'secondary write lock.'), replica_pair_id)
+            LOG.exception('Failed to cancel replication pair %s '
+                          'secondary write lock.', replica_pair_id)
             raise
 
         try:
@@ -207,8 +207,8 @@ class ReplicaPairManager(object):
             self.helper.set_pair_secondary_write_lock(replica_pair_id)
             self.helper.sync_replication_pair(replica_pair_id)
         except Exception:
-            LOG.exception(_LE('Failed to completely switch over '
-                              'replication pair %s.'), replica_pair_id)
+            LOG.exception('Failed to completely switch over '
+                          'replication pair %s.', replica_pair_id)
 
             # for all the rest steps,
             # because secondary share is accessible now,
@@ -222,15 +222,15 @@ class ReplicaPairManager(object):
         except Exception:
             # Ignore this exception because replication pair may at some
             # abnormal status that supports deleting.
-            LOG.warning(_LW('Failed to split replication pair %s '
-                            'before deleting it. Ignore this exception, '
-                            'and try to delete anyway.'),
+            LOG.warning('Failed to split replication pair %s '
+                        'before deleting it. Ignore this exception, '
+                        'and try to delete anyway.',
                         replica_pair_id)
 
         try:
             self.helper.delete_replication_pair(replica_pair_id)
         except Exception:
-            LOG.exception(_LE('Failed to delete replication pair %s.'),
+            LOG.exception('Failed to delete replication pair %s.',
                           replica_pair_id)
             raise
 

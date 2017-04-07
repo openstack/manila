@@ -32,7 +32,7 @@ from manila.common import constants
 from manila.data import rpcapi as data_rpcapi
 from manila.db import base
 from manila import exception
-from manila.i18n import _, _LE, _LI, _LW
+from manila.i18n import _
 from manila import policy
 from manila import quota
 from manila.scheduler import rpcapi as scheduler_rpcapi
@@ -148,22 +148,22 @@ class API(base.Base):
                 return (usages[name]['reserved'] + usages[name]['in_use'])
 
             if 'gigabytes' in overs:
-                LOG.warning(_LW("Quota exceeded for %(s_pid)s, "
-                                "tried to create "
-                                "%(s_size)sG share (%(d_consumed)dG of "
-                                "%(d_quota)dG already consumed)."), {
-                                    's_pid': context.project_id,
-                                    's_size': size,
-                                    'd_consumed': _consumed('gigabytes'),
-                                    'd_quota': quotas['gigabytes']})
+                LOG.warning("Quota exceeded for %(s_pid)s, "
+                            "tried to create "
+                            "%(s_size)sG share (%(d_consumed)dG of "
+                            "%(d_quota)dG already consumed).", {
+                                's_pid': context.project_id,
+                                's_size': size,
+                                'd_consumed': _consumed('gigabytes'),
+                                'd_quota': quotas['gigabytes']})
                 raise exception.ShareSizeExceedsAvailableQuota()
             elif 'shares' in overs:
-                LOG.warning(_LW("Quota exceeded for %(s_pid)s, "
-                                "tried to create "
-                                "share (%(d_consumed)d shares "
-                                "already consumed)."), {
-                                    's_pid': context.project_id,
-                                    'd_consumed': _consumed('shares')})
+                LOG.warning("Quota exceeded for %(s_pid)s, "
+                            "tried to create "
+                            "share (%(d_consumed)d shares "
+                            "already consumed).", {
+                                's_pid': context.project_id,
+                                'd_consumed': _consumed('shares')})
                 raise exception.ShareLimitExceeded(allowed=quotas['shares'])
 
         try:
@@ -524,7 +524,7 @@ class API(base.Base):
             msg = _("Cannot delete last active replica.")
             raise exception.ReplicationException(reason=msg)
 
-        LOG.info(_LI("Deleting replica %s."), id)
+        LOG.info("Deleting replica %s.", id)
 
         self.db.share_replica_update(
             context, share_replica['id'],
@@ -927,7 +927,7 @@ class API(base.Base):
         except Exception as e:
             reservations = None
             LOG.exception(
-                _LE("Failed to update quota for deleting share: %s"), e)
+                ("Failed to update quota for deleting share: %s"), e)
 
         for share_instance in share.instances:
             if share_instance['host']:
@@ -984,7 +984,7 @@ class API(base.Base):
         share_groups = self.db.share_group_get_all_by_share_server(
             context, server['id'])
         if share_groups:
-            LOG.error(_LE("share server '%(ssid)s' in use by share groups."),
+            LOG.error("share server '%(ssid)s' in use by share groups.",
                       {'ssid': server['id']})
             raise exception.ShareServerInUse(share_server_id=server['id'])
 
@@ -1020,18 +1020,18 @@ class API(base.Base):
                 return (usages[name]['reserved'] + usages[name]['in_use'])
 
             if 'snapshot_gigabytes' in overs:
-                msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
-                          "%(s_size)sG snapshot (%(d_consumed)dG of "
-                          "%(d_quota)dG already consumed).")
+                msg = ("Quota exceeded for %(s_pid)s, tried to create "
+                       "%(s_size)sG snapshot (%(d_consumed)dG of "
+                       "%(d_quota)dG already consumed).")
                 LOG.warning(msg, {'s_pid': context.project_id,
                                   's_size': size,
                                   'd_consumed': _consumed('gigabytes'),
                                   'd_quota': quotas['snapshot_gigabytes']})
                 raise exception.SnapshotSizeExceedsAvailableQuota()
             elif 'snapshots' in overs:
-                msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
-                          "snapshot (%(d_consumed)d snapshots "
-                          "already consumed).")
+                msg = ("Quota exceeded for %(s_pid)s, tried to create "
+                       "snapshot (%(d_consumed)d snapshots "
+                       "already consumed).")
                 LOG.warning(msg, {'s_pid': context.project_id,
                                   'd_consumed': _consumed('snapshots')})
                 raise exception.SnapshotLimitExceeded(
@@ -1190,17 +1190,17 @@ class API(base.Base):
         if (new_share_network_id == share_instance['share_network_id'] and
                 new_share_type_id == share_instance['share_type_id'] and
                 dest_host == share_instance['host']):
-            msg = _LI("Destination host (%(dest_host)s), share network "
-                      "(%(dest_sn)s) or share type (%(dest_st)s) are the same "
-                      "as the current host's '%(src_host)s', '%(src_sn)s' and "
-                      "'%(src_st)s' respectively. Nothing to be done.") % {
-                'dest_host': dest_host,
-                'dest_sn': new_share_network_id,
-                'dest_st': new_share_type_id,
-                'src_host': share_instance['host'],
-                'src_sn': share_instance['share_network_id'],
-                'src_st': share_instance['share_type_id'],
-            }
+            msg = ("Destination host (%(dest_host)s), share network "
+                   "(%(dest_sn)s) or share type (%(dest_st)s) are the same "
+                   "as the current host's '%(src_host)s', '%(src_sn)s' and "
+                   "'%(src_st)s' respectively. Nothing to be done.") % {
+                       'dest_host': dest_host,
+                       'dest_sn': new_share_network_id,
+                       'dest_st': new_share_type_id,
+                       'src_host': share_instance['host'],
+                       'src_sn': share_instance['share_network_id'],
+                       'src_st': share_instance['share_type_id'],
+                       }
             LOG.info(msg)
             self.db.share_update(
                 context, share['id'],
@@ -1304,8 +1304,8 @@ class API(base.Base):
         elif share['task_state'] == (
                 constants.TASK_STATE_DATA_COPYING_IN_PROGRESS):
             data_rpc = data_rpcapi.DataAPI()
-            LOG.info(_LI("Sending request to get share migration information"
-                     " of share %s.") % share['id'])
+            LOG.info("Sending request to get share migration information"
+                     " of share %s." % share['id'])
 
             services = self.db.service_get_all_by_topic(context, 'manila-data')
 
@@ -1404,8 +1404,8 @@ class API(base.Base):
                 constants.TASK_STATE_DATA_COPYING_IN_PROGRESS):
 
             data_rpc = data_rpcapi.DataAPI()
-            LOG.info(_LI("Sending request to cancel migration of "
-                         "share %s.") % share['id'])
+            LOG.info("Sending request to cancel migration of "
+                     "share %s." % share['id'])
 
             services = self.db.service_get_all_by_topic(context, 'manila-data')
 
@@ -1796,9 +1796,9 @@ class API(base.Base):
             def _consumed(name):
                 return usages[name]['reserved'] + usages[name]['in_use']
 
-            msg = _LE("Quota exceeded for %(s_pid)s, tried to extend share "
-                      "by %(s_size)sG, (%(d_consumed)dG of %(d_quota)dG "
-                      "already consumed).")
+            msg = ("Quota exceeded for %(s_pid)s, tried to extend share "
+                   "by %(s_size)sG, (%(d_consumed)dG of %(d_quota)dG "
+                   "already consumed).")
             LOG.error(msg, {'s_pid': context.project_id,
                             's_size': size_increase,
                             'd_consumed': _consumed('gigabytes'),
@@ -1810,7 +1810,7 @@ class API(base.Base):
 
         self.update(context, share, {'status': constants.STATUS_EXTENDING})
         self.share_rpcapi.extend_share(context, share, new_size, reservations)
-        LOG.info(_LI("Extend share request issued successfully."),
+        LOG.info("Extend share request issued successfully.",
                  resource=share)
 
     def shrink(self, context, share, new_size):
@@ -1843,9 +1843,9 @@ class API(base.Base):
 
         self.update(context, share, {'status': constants.STATUS_SHRINKING})
         self.share_rpcapi.shrink_share(context, share, new_size)
-        LOG.info(_LI("Shrink share (id=%(id)s) request issued successfully."
-                     " New size: %(size)s") % {'id': share['id'],
-                                               'size': new_size})
+        LOG.info("Shrink share (id=%(id)s) request issued successfully."
+                 " New size: %(size)s" % {'id': share['id'],
+                                          'size': new_size})
 
     def snapshot_allow_access(self, context, snapshot, access_type, access_to):
         """Allow access to a share snapshot."""

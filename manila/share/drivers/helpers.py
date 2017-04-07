@@ -20,7 +20,7 @@ from oslo_log import log
 
 from manila.common import constants as const
 from manila import exception
-from manila.i18n import _, _LW
+from manila.i18n import _
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -242,12 +242,12 @@ class NFSHelper(NASHelperBase):
                         (const.ACCESS_LEVEL_RO, const.ACCESS_LEVEL_RW))
                 except (exception.InvalidShareAccess,
                         exception.InvalidShareAccessLevel):
-                    LOG.warning(_LW(
+                    LOG.warning(
                         "Unsupported access level %(level)s or access type "
                         "%(type)s, skipping removal of access rule to "
-                        "%(to)s.") % {'level': access['access_level'],
-                                      'type': access['access_type'],
-                                      'to': access['access_to']})
+                        "%(to)s." % {'level': access['access_level'],
+                                     'type': access['access_type'],
+                                     'to': access['access_to']})
                     continue
                 self._ssh_exec(server, ['sudo', 'exportfs', '-u',
                                ':'.join((access['access_to'], local_path))])
@@ -260,12 +260,12 @@ class NFSHelper(NASHelperBase):
                     re.escape(local_path) + '[\s\n]*' + re.escape(
                         access['access_to']), out)
                 if found_item is not None:
-                    LOG.warning(_LW("Access rule %(type)s:%(to)s already "
-                                    "exists for share %(name)s") % {
-                        'to': access['access_to'],
-                        'type': access['access_type'],
-                        'name': share_name
-                    })
+                    LOG.warning("Access rule %(type)s:%(to)s already "
+                                "exists for share %(name)s" % {
+                                    'to': access['access_to'],
+                                    'type': access['access_type'],
+                                    'name': share_name
+                                })
                 else:
                     rules_options = '%s,no_subtree_check'
                     if access['access_level'] == const.ACCESS_LEVEL_RW:
@@ -433,8 +433,8 @@ class CIFSHelperIPAccess(CIFSHelperBase):
             self._ssh_exec(
                 server, ['sudo', 'net', 'conf', 'delshare', share_name])
         except exception.ProcessExecutionError as e:
-            LOG.warning(_LW("Caught error trying delete share: %(error)s, try"
-                            "ing delete it forcibly."), {'error': e.stderr})
+            LOG.warning("Caught error trying delete share: %(error)s, try"
+                        "ing delete it forcibly.", {'error': e.stderr})
             self._ssh_exec(server, ['sudo', 'smbcontrol', 'all', 'close-share',
                                     share_name])
 

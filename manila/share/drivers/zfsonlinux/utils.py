@@ -28,7 +28,7 @@ import six
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LE, _LI, _LW
+from manila.i18n import _
 from manila.share import driver
 from manila.share.drivers.ganesha import utils as ganesha_utils
 from manila import utils
@@ -103,7 +103,7 @@ class ExecuteMixin(driver.ExecuteMixin):
         try:
             return self.execute(*cmd, **kwargs)
         except exception.ProcessExecutionError as e:
-            LOG.warning(_LW("Failed to run command, got error: %s"), e)
+            LOG.warning("Failed to run command, got error: %s", e)
             raise
 
     def _get_option(self, resource_name, option_name, pool_level=False,
@@ -201,8 +201,8 @@ class NFSviaZFSHelper(ExecuteMixin, NASHelperBase):
                 self._is_kernel_version = True
             except exception.ProcessExecutionError as e:
                 LOG.info(
-                    _LI("Looks like ZFS kernel module is absent. "
-                        "Assuming FUSE version is installed. Error: %s"), e)
+                    "Looks like ZFS kernel module is absent. "
+                    "Assuming FUSE version is installed. Error: %s", e)
                 self._is_kernel_version = False
         return self._is_kernel_version
 
@@ -215,7 +215,7 @@ class NFSviaZFSHelper(ExecuteMixin, NASHelperBase):
         try:
             self.execute('sudo', 'exportfs')
         except exception.ProcessExecutionError:
-            LOG.exception(_LE("Call of 'exportfs' utility returned error."))
+            LOG.exception("Call of 'exportfs' utility returned error.")
             raise
 
         # Init that class instance attribute on start of manila-share service
@@ -300,8 +300,8 @@ class NFSviaZFSHelper(ExecuteMixin, NASHelperBase):
                 break
         else:
             LOG.warning(
-                _LW("Dataset with '%(name)s' NAME is absent on backend. "
-                    "Access rules were not applied."), {'name': dataset_name})
+                "Dataset with '%(name)s' NAME is absent on backend. "
+                "Access rules were not applied.", {'name': dataset_name})
 
         # NOTE(vponomaryov): Setting of ZFS share options does not remove rules
         # that were added and then removed. So, remove them explicitly.

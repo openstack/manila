@@ -25,8 +25,8 @@ import six
 
 from manila.data import utils as data_utils
 from manila import exception
+from manila.i18n import _
 from manila import utils
-from manila.i18n import _, _LE, _LI, _LW
 
 hpe3parclient = importutils.try_import("hpe3parclient")
 if hpe3parclient:
@@ -167,14 +167,14 @@ class HPE3ParMediator(object):
             LOG.exception(msg)
             raise exception.ShareBackendException(message=msg)
 
-        LOG.info(_LI("HPE3ParMediator %(version)s, "
-                     "hpe3parclient %(client_version)s"),
+        LOG.info("HPE3ParMediator %(version)s, "
+                 "hpe3parclient %(client_version)s",
                  {"version": self.VERSION,
                   "client_version": hpe3parclient.get_version_string()})
 
         try:
             wsapi_version = self._client.getWsApiVersion()['build']
-            LOG.info(_LI("3PAR WSAPI %s"), wsapi_version)
+            LOG.info("3PAR WSAPI %s", wsapi_version)
         except Exception as e:
             msg = (_('Failed to get 3PAR WSAPI version: %s') %
                    six.text_type(e))
@@ -200,7 +200,7 @@ class HPE3ParMediator(object):
         try:
             self._client.http.unauthenticate()
         except Exception as e:
-            msg = _LW("Failed to Logout from 3PAR (%(url)s) because %(err)s")
+            msg = ("Failed to Logout from 3PAR (%(url)s) because %(err)s")
             LOG.warning(msg, {'url': self.hpe3par_api_url,
                               'err': six.text_type(e)})
             # don't raise exception on logout()
@@ -346,8 +346,8 @@ class HPE3ParMediator(object):
         if nfs_options is None:
             nfs_options = extra_specs.get('hp3par:nfs_options')
             if nfs_options:
-                msg = _LW("hp3par:nfs_options is deprecated. Use "
-                          "hpe3par:nfs_options instead.")
+                msg = ("hp3par:nfs_options is deprecated. Use "
+                       "hpe3par:nfs_options instead.")
                 LOG.warning(msg)
 
         if nfs_options:
@@ -391,8 +391,8 @@ class HPE3ParMediator(object):
                                    comment=comment)
 
         if 'hp3par_flash_cache' in extra_specs:
-            msg = _LW("hp3par_flash_cache is deprecated. Use "
-                      "hpe3par_flash_cache instead.")
+            msg = ("hp3par_flash_cache is deprecated. Use "
+                   "hpe3par_flash_cache instead.")
             LOG.warning(msg)
 
         if protocol == 'nfs':
@@ -425,8 +425,8 @@ class HPE3ParMediator(object):
                 if opt_value is None:
                     opt_value = extra_specs.get('hp3par:smb_%s' % smb_opt)
                     if opt_value:
-                        msg = _LW("hp3par:smb_* is deprecated. Use "
-                                  "hpe3par:smb_* instead.")
+                        msg = ("hp3par:smb_* is deprecated. Use "
+                               "hpe3par:smb_* instead.")
                         LOG.warning(msg)
 
                 if opt_value:
@@ -653,10 +653,10 @@ class HPE3ParMediator(object):
 
         if protocol == "smb" and (not self.hpe3par_cifs_admin_access_username
            or not self.hpe3par_cifs_admin_access_password):
-            LOG.warning(_LW("hpe3par_cifs_admin_access_username and "
-                            "hpe3par_cifs_admin_access_password must be "
-                            "provided in order for CIFS shares created from "
-                            "snapshots to be writable."))
+            LOG.warning("hpe3par_cifs_admin_access_username and "
+                        "hpe3par_cifs_admin_access_password must be "
+                        "provided in order for CIFS shares created from "
+                        "snapshots to be writable.")
             return self.create_share(
                 orig_project_id,
                 share_id,
@@ -735,8 +735,8 @@ class HPE3ParMediator(object):
                         protocol, fpg, vfs, fstore, comment)
 
             except Exception as e:
-                msg = _LE('Exception during mount and copy from RO snapshot '
-                          'to RW share: %s')
+                msg = ('Exception during mount and copy from RO snapshot '
+                       'to RW share: %s')
                 LOG.error(msg, e)
                 self._delete_share(share_name, protocol, fpg, vfs, fstore)
                 raise
@@ -862,8 +862,8 @@ class HPE3ParMediator(object):
                 self._update_capacity_quotas(
                     fstore, 0, share_size, fpg, vfs)
             except Exception as e:
-                msg = _LW('Exception during cleanup of deleted '
-                          'share %(share)s in filestore %(fstore)s: %(e)s')
+                msg = ('Exception during cleanup of deleted '
+                       'share %(share)s in filestore %(fstore)s: %(e)s')
                 data = {
                     'fstore': fstore,
                     'share': share_name,
@@ -878,10 +878,10 @@ class HPE3ParMediator(object):
         # return out and log a warning.
         if protocol == "smb" and (not self.hpe3par_cifs_admin_access_username
            or not self.hpe3par_cifs_admin_access_password):
-            LOG.warning(_LW("hpe3par_cifs_admin_access_username and "
-                            "hpe3par_cifs_admin_access_password must be "
-                            "provided in order for the file tree to be "
-                            "properly deleted."))
+            LOG.warning("hpe3par_cifs_admin_access_username and "
+                        "hpe3par_cifs_admin_access_password must be "
+                        "provided in order for the file tree to be "
+                        "properly deleted.")
             return
 
         mount_location = "%s%s" % (self.hpe3par_share_mount_path, share_name)
@@ -978,8 +978,8 @@ class HPE3ParMediator(object):
         try:
             utils.execute('mkdir', mount_location, run_as_root=True)
         except Exception as err:
-            message = (_LW("There was an error creating mount directory: "
-                           "%s. The nested file tree will not be deleted."),
+            message = ("There was an error creating mount directory: "
+                       "%s. The nested file tree will not be deleted.",
                        six.text_type(err))
             LOG.warning(message)
 
@@ -1004,8 +1004,8 @@ class HPE3ParMediator(object):
                 protocol, fpg, vfs, fstore, share_ip)
             self._mount_share(protocol, mount_location, mount_dir)
         except Exception as err:
-            message = (_LW("There was an error mounting the super share: "
-                           "%s. The nested file tree will not be deleted."),
+            message = ("There was an error mounting the super share: "
+                       "%s. The nested file tree will not be deleted.",
                        six.text_type(err))
             LOG.warning(message)
 
@@ -1013,8 +1013,8 @@ class HPE3ParMediator(object):
         try:
             utils.execute('umount', mount_location, run_as_root=True)
         except Exception as err:
-            message = _LW("There was an error unmounting the share at "
-                          "%(mount_location)s: %(error)s")
+            message = ("There was an error unmounting the share at "
+                       "%(mount_location)s: %(error)s")
             msg_data = {
                 'mount_location': mount_location,
                 'error': six.text_type(err),
@@ -1025,8 +1025,8 @@ class HPE3ParMediator(object):
         try:
             utils.execute('rm', '-rf', directory, run_as_root=True)
         except Exception as err:
-            message = (_LW("There was an error removing the share: "
-                           "%s. The nested file tree will not be deleted."),
+            message = ("There was an error removing the share: "
+                       "%s. The nested file tree will not be deleted.",
                        six.text_type(err))
             LOG.warning(message)
 
@@ -1212,8 +1212,8 @@ class HPE3ParMediator(object):
             self._client.startfsnapclean(fpg, reclaimStrategy='maxspeed')
         except Exception:
             # Remove already happened so only log this.
-            LOG.exception(_LE('Unexpected exception calling startfsnapclean '
-                              'for FPG %(fpg)s.'), {'fpg': fpg})
+            LOG.exception('Unexpected exception calling startfsnapclean '
+                          'for FPG %(fpg)s.', {'fpg': fpg})
 
     @staticmethod
     def _validate_access_type(protocol, access_type):

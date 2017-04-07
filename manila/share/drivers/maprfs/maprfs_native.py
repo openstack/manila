@@ -26,7 +26,7 @@ from oslo_utils import units
 
 from manila import context
 from manila import exception
-from manila.i18n import _, _LW, _LI
+from manila.i18n import _
 from manila.share import api
 from manila.share import driver
 
@@ -258,8 +258,8 @@ class MapRFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         """Deletes share storage."""
         volume_name = self._get_volume_name(context, share)
         if volume_name == "error":
-            LOG.info(_LI("Skipping deleting share with name %s, as it does not"
-                         " exist on the backend"), share['name'])
+            LOG.info("Skipping deleting share with name %s, as it does not"
+                     " exist on the backend", share['name'])
             return
         try:
             self._maprfs_util.delete_volume(volume_name)
@@ -295,7 +295,7 @@ class MapRFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             #  method shouldn`t raise exception if share does
             #  not exist actually
             if not self._maprfs_util.volume_exists(volume_name):
-                LOG.warning(_LW('Can not get share %s.'), share['name'])
+                LOG.warning('Can not get share %s.', share['name'])
                 return
             # check update
             if add_rules or delete_rules:
@@ -337,10 +337,10 @@ class MapRFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             raise exception.MapRFSException(msg=msg)
 
         if not self.configuration.maprfs_cldb_ip:
-            LOG.warning(_LW('CLDB nodes are not specified!'))
+            LOG.warning('CLDB nodes are not specified!')
 
         if not self.configuration.maprfs_zookeeper_ip:
-            LOG.warning(_LW('Zookeeper nodes are not specified!'))
+            LOG.warning('Zookeeper nodes are not specified!')
 
         if not self._check_maprfs_state():
             msg = _('MapR-FS is not in healthy state.')
@@ -383,7 +383,7 @@ class MapRFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             location = self._get_share_export_locations(share, path=share_path)
             if size == 0:
                 size = used
-                msg = _LW(
+                msg = (
                     'Share %s has no size quota. Total used value will be'
                     ' used as share size')
                 LOG.warning(msg, share['name'])

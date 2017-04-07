@@ -24,7 +24,7 @@ from oslo_log import log
 import six
 
 from manila import exception
-from manila.i18n import _, _LE, _LW
+from manila.i18n import _
 from manila.share.drivers.ganesha import utils as ganesha_utils
 
 LOG = log.getLogger(__name__)
@@ -205,7 +205,7 @@ class GlusterManager(object):
                       exc.exit_code in error_policy):
                     return
                 if logmsg:
-                    LOG.error(_LE("%s: GlusterFS instrumentation failed.") %
+                    LOG.error("%s: GlusterFS instrumentation failed." %
                               logmsg)
                 raise exception.GlusterfsException(
                     _("GlusterFS management command '%(cmd)s' failed "
@@ -248,7 +248,7 @@ class GlusterManager(object):
     def _get_vol_option_via_info(self, option):
         """Get the value of an option set on a GlusterFS volume via volinfo."""
         args = ('--xml', 'volume', 'info', self.volume)
-        out, err = self.gluster_call(*args, log=_LE("retrieving volume info"))
+        out, err = self.gluster_call(*args, log=("retrieving volume info"))
 
         if not out:
             raise exception.GlusterfsException(
@@ -332,7 +332,7 @@ class GlusterManager(object):
         :returns: version (as tuple of strings, example: ('3', '6', '0beta2'))
         """
         out, err = self.gluster_call('--version',
-                                     log=_LE("GlusterFS version query"))
+                                     log=("GlusterFS version query"))
         try:
             owords = out.split()
             if owords[0] != 'glusterfs':
@@ -393,7 +393,7 @@ def _mount_gluster_vol(execute, gluster_export, mount_path, ensure=False):
         execute(*command, run_as_root=True)
     except exception.ProcessExecutionError as exc:
         if ensure and 'already mounted' in exc.stderr:
-            LOG.warning(_LW("%s is already mounted."), gluster_export)
+            LOG.warning("%s is already mounted.", gluster_export)
         else:
             raise exception.GlusterfsException(
                 'Unable to mount Gluster volume'
@@ -431,8 +431,8 @@ def _restart_gluster_vol(gluster_mgr):
     # this odd-behaviour of Gluster-CLI.
     gluster_mgr.gluster_call(
         'volume', 'stop', gluster_mgr.volume, '--mode=script',
-        log=_LE("stopping GlusterFS volume %s") % gluster_mgr.volume)
+        log=("stopping GlusterFS volume %s") % gluster_mgr.volume)
 
     gluster_mgr.gluster_call(
         'volume', 'start', gluster_mgr.volume,
-        log=_LE("starting GlusterFS volume %s") % gluster_mgr.volume)
+        log=("starting GlusterFS volume %s") % gluster_mgr.volume)

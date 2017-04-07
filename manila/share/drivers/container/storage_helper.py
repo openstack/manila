@@ -20,7 +20,7 @@ from oslo_config import cfg
 from oslo_log import log
 
 from manila import exception
-from manila.i18n import _, _LW
+from manila.i18n import _
 from manila.share import driver
 
 
@@ -85,7 +85,7 @@ class LVMHelper(driver.ExecuteMixin):
         try:
             self._execute("umount", to_remove, run_as_root=True)
         except exception.ProcessExecutionError as e:
-            LOG.warning(_LW("Failed to umount helper directory %s."),
+            LOG.warning("Failed to umount helper directory %s.",
                         to_remove)
             LOG.error(e)
         # (aovchinnikov): bug 1621784 manifests itself in jamming logical
@@ -94,7 +94,7 @@ class LVMHelper(driver.ExecuteMixin):
             self._execute("lvremove", "-f", "--autobackup", "n",
                           to_remove, run_as_root=True)
         except exception.ProcessExecutionError as e:
-            LOG.warning(_LW("Failed to remove logical volume %s.") % to_remove)
+            LOG.warning("Failed to remove logical volume %s." % to_remove)
             LOG.error(e)
 
     def extend_share(self, share, new_size, share_server=None):

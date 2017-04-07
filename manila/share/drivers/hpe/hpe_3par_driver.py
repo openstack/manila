@@ -27,7 +27,7 @@ import six
 
 from manila.common import config
 from manila import exception
-from manila.i18n import _, _LI
+from manila.i18n import _
 from manila.share import driver
 from manila.share.drivers.hpe import hpe_3par_mediator
 from manila.share import share_types
@@ -236,7 +236,7 @@ class HPE3ParShareDriver(driver.ShareDriver):
     def do_setup(self, context):
         """Any initialization the share driver does while starting."""
 
-        LOG.info(_LI("Starting share driver %(driver_name)s (%(version)s)"),
+        LOG.info("Starting share driver %(driver_name)s (%(version)s)",
                  {'driver_name': self.__class__.__name__,
                   'version': self.VERSION})
 
@@ -636,8 +636,8 @@ class HPE3ParShareDriver(driver.ShareDriver):
 
         if not self._hpe3par:
             LOG.info(
-                _LI("Skipping capacity and capabilities update. Setup has not "
-                    "completed."))
+                "Skipping capacity and capabilities update. Setup has not "
+                "completed.")
         else:
             for fpg in self.fpgs:
                 fpg_status = self._hpe3par.get_fpg_status(fpg)
