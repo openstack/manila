@@ -14,7 +14,6 @@
 #    under the License.
 
 import os
-import six
 
 import ddt
 import mock
@@ -127,7 +126,7 @@ class DataServiceHelperTestCase(test.TestCase):
         data_copy_helper.CONF.data_node_access_ip = 'fake'
         data_copy_helper.CONF.data_node_access_admin_user = 'fake'
         expected = [{
-            'access_type': six.next(six.iteritems(mapping))[0],
+            'access_type': list(mapping.keys())[0],
             'access_level': constants.ACCESS_LEVEL_RW,
             'access_to': 'fake',
         }]

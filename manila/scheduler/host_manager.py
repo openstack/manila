@@ -593,7 +593,7 @@ class HostManager(object):
                 pool_key = '.'.join([host, pool.pool_name])
                 all_pools[pool_key] = pool
 
-        return six.itervalues(all_pools)
+        return all_pools.values()
 
     def get_pools(self, context, filters=None):
         """Returns a dict of all pools on all hosts HostManager knows about."""
