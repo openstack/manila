@@ -15,7 +15,6 @@
 
 import types
 
-from manila.i18n import _LW
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import fnmatch
@@ -100,7 +99,7 @@ def create_ssl_context(configuration):
             context.check_hostname = False
             context.verify_mode = ssl.CERT_NONE
     except AttributeError:
-        LOG.warning(_LW('Creating ssl context is not supported on this '
-                        'version of Python, ssl verification is disabled.'))
+        LOG.warning('Creating ssl context is not supported on this '
+                    'version of Python, ssl verification is disabled.')
         context = None
     return context

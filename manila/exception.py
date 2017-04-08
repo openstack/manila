@@ -30,7 +30,6 @@ import six
 import webob.exc
 
 from manila.i18n import _
-from manila.i18n import _LE
 
 LOG = log.getLogger(__name__)
 
@@ -92,9 +91,9 @@ class ManilaException(Exception):
             except Exception:
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
-                LOG.exception(_LE('Exception in string format operation.'))
+                LOG.exception('Exception in string format operation.')
                 for name, value in kwargs.items():
-                    LOG.error(_LE("%(name)s: %(value)s"), {
+                    LOG.error("%(name)s: %(value)s", {
                         'name': name, 'value': value})
                 if CONF.fatal_exception_format_errors:
                     raise

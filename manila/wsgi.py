@@ -41,7 +41,7 @@ import webob.exc
 
 from manila.common import config
 from manila import exception
-from manila.i18n import _, _LE, _LI
+from manila.i18n import _
 
 socket_opts = [
     cfg.IntOpt('backlog',
@@ -183,7 +183,7 @@ class Server(service.ServiceBase):
                                {'host': host, 'port': port})
 
         (self._host, self._port) = self._socket.getsockname()[0:2]
-        LOG.info(_LI("%(name)s listening on %(_host)s:%(_port)s"),
+        LOG.info("%(name)s listening on %(_host)s:%(_port)s",
                  {'name': self.name, '_host': self._host, '_port': self._port})
 
     def start(self):
@@ -231,8 +231,8 @@ class Server(service.ServiceBase):
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(
-                        _LE("Failed to start %(name)s on %(_host)s:%(_port)s "
-                            "with SSL support."),
+                        ("Failed to start %(name)s on %(_host)s:%(_port)s "
+                         "with SSL support."),
                         {"name": self.name, "_host": self._host,
                          "_port": self._port}
                     )
@@ -267,7 +267,7 @@ class Server(service.ServiceBase):
         :returns: None
 
         """
-        LOG.info(_LI("Stopping WSGI server."))
+        LOG.info("Stopping WSGI server.")
         if self._server is not None:
             # Resize pool to stop new requests from being processed
             self._pool.resize(0)
@@ -286,7 +286,7 @@ class Server(service.ServiceBase):
                 self._pool.waitall()
                 self._server.wait()
         except greenlet.GreenletExit:
-            LOG.info(_LI("WSGI server has stopped."))
+            LOG.info("WSGI server has stopped.")
 
     def reset(self):
         """Reset server greenpool size to default.
