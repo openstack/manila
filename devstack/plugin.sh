@@ -659,7 +659,10 @@ function install_manila {
     setup_develop $MANILA_DIR
 
     if is_service_enabled m-shr; then
-        _install_nfs_and_samba
+
+        if [[ ! $(systemctl is-active nfs-ganesha.service) == 'active' ]]; then
+            _install_nfs_and_samba
+        fi
 
         if [ "$SHARE_DRIVER" == "manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver" ]; then
             if [[ $(sudo zfs list &> /dev/null && sudo zpool list &> /dev/null || echo 'absent') == 'absent' ]]; then
