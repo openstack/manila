@@ -3,7 +3,7 @@
 # process, which may cause wedges in the gate later.
 
 # pbr should be first
-pbr>=2.0.0 # Apache-2.0
+pbr!=2.1.0,>=2.0.0 # Apache-2.0
 
 alembic>=0.8.10 # MIT
 Babel!=2.4.0,>=2.3.4 # BSD
