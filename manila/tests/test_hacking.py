@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import itertools
 import sys
 import textwrap
 
@@ -57,15 +58,18 @@ class HackingTestCase(test.TestCase):
     should pass.
     """
 
-    def test_no_translate_debug_logs(self):
-        self.assertEqual(1, len(list(checks.no_translate_debug_logs(
-            "LOG.debug(_('foo'))", "manila/scheduler/foo.py"))))
+    @ddt.data(*itertools.product(
+        ('', '_', '_LE', '_LI', '_LW'),
+        ('audit', 'debug', 'error', 'info', 'warn', 'warning', 'critical',
+         'exception',)))
+    @ddt.unpack
+    def test_no_translate_logs(self, log_marker, log_method):
+        code = "LOG.{0}({1}('foo'))".format(log_method, log_marker)
 
-        self.assertEqual(0, len(list(checks.no_translate_debug_logs(
-            "LOG.debug('foo')", "manila/scheduler/foo.py"))))
-
-        self.assertEqual(0, len(list(checks.no_translate_debug_logs(
-            "LOG.info(_('foo'))", "manila/scheduler/foo.py"))))
+        if log_marker:
+            self.assertEqual(1, len(list(checks.no_translate_logs(code))))
+        else:
+            self.assertEqual(0, len(list(checks.no_translate_logs(code))))
 
     def test_check_explicit_underscore_import(self):
         self.assertEqual(1, len(list(checks.check_explicit_underscore_import(

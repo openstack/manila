@@ -37,8 +37,11 @@ Guidelines for writing new hacking checks
 UNDERSCORE_IMPORT_FILES = []
 
 translated_log = re.compile(
-    r"(.)*LOG\.(audit|error|info|warn|warning|critical|exception)"
-    "\(\s*_\(\s*('|\")")
+    r"(.)*LOG\."
+    r"(audit|debug|error|info|warn|warning|critical|exception)"
+    r"\("
+    r"(_|_LE|_LI|_LW)"
+    r"\(")
 string_translation = re.compile(r"[^_]*_\(\s*('|\")")
 underscore_import_check = re.compile(r"(.)*import _$")
 underscore_import_check_multi = re.compile(r"(.)*import (.)*_, (.)*")
@@ -97,21 +100,9 @@ class BaseASTChecker(ast.NodeVisitor):
         return False
 
 
-def no_translate_debug_logs(logical_line, filename):
-    """Check for 'LOG.debug(_('
-
-    As per our translation policy,
-    https://wiki.openstack.org/wiki/LoggingStandards#Log_Translation
-    we shouldn't translate debug level logs.
-
-    * This check assumes that 'LOG' is a logger.
-    * Use filename so we can start enforcing this in specific folders instead
-      of needing to do so all at once.
-
-    M319
-    """
-    if logical_line.startswith("LOG.debug(_("):
-        yield(0, "M319 Don't translate debug level logs")
+def no_translate_logs(logical_line):
+    if translated_log.match(logical_line):
+        yield(0, "M359 Don't translate log messages!")
 
 
 class CheckLoggingFormatArgs(BaseASTChecker):
@@ -196,8 +187,7 @@ def check_explicit_underscore_import(logical_line, filename):
           underscore_import_check_multi.match(logical_line) or
           custom_underscore_check.match(logical_line)):
         UNDERSCORE_IMPORT_FILES.append(filename)
-    elif (translated_log.match(logical_line) or
-          string_translation.match(logical_line)):
+    elif string_translation.match(logical_line):
         yield(0, "M323: Found use of _() without explicit import of _ !")
 
 
@@ -340,7 +330,7 @@ def no_log_warn_check(logical_line):
 
 def factory(register):
     register(check_explicit_underscore_import)
-    register(no_translate_debug_logs)
+    register(no_translate_logs)
     register(CheckForStrUnicodeExc)
     register(CheckLoggingFormatArgs)
     register(CheckForTransAdd)
