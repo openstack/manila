@@ -391,7 +391,7 @@ class ShareMixin(object):
         return webob.Response(status_int=202)
 
     def _access_list(self, req, id, body):
-        """list share access rules."""
+        """List share access rules."""
         context = req.environ['manila.context']
 
         share = self.share_api.get(context, id)
