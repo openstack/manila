@@ -19,33 +19,19 @@
 Test WSGI basics and provide some helper functions for other WSGI tests.
 """
 
-from manila import test
-
+from oslo_service import wsgi
 import routes
-import six
 import webob
 
-from manila import wsgi
+from manila import test
+from manila.wsgi import common as common_wsgi
 
 
 class Test(test.TestCase):
 
-    def test_debug(self):
-
-        class Application(wsgi.Application):
-            """Dummy application to test debug."""
-
-            def __call__(self, environ, start_response):
-                start_response("200", [("X-Test", "checking")])
-                return [six.b('Test result')]
-
-        application = wsgi.Debug(Application())
-        result = webob.Request.blank('/').get_response(application)
-        self.assertEqual(six.b("Test result"), result.body)
-
     def test_router(self):
 
-        class Application(wsgi.Application):
+        class Application(common_wsgi.Application):
             """Test application to call from router."""
 
             def __call__(self, environ, start_response):

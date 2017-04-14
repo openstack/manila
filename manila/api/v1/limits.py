@@ -33,7 +33,7 @@ from manila.api.openstack import wsgi
 from manila.api.views import limits as limits_views
 from manila.i18n import _
 from manila import quota
-from manila import wsgi as base_wsgi
+from manila.wsgi import common as base_wsgi
 
 QUOTAS = quota.QUOTAS
 

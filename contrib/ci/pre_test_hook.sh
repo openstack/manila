@@ -85,6 +85,12 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     driver_path="manila.tests.share.drivers.dummy.DummyDriver"
     DEFAULT_EXTRA_SPECS="'snapshot_support=True create_share_from_snapshot_support=True revert_to_snapshot_support=True mount_snapshot_support=True'"
     echo "MANILA_SERVICE_IMAGE_ENABLED=False" >> $localconf
+
+    # Run dummy driver CI job using standalone approach for running
+    # manila API service just because we need to test this approach too,
+    # that is very useful for development needs.
+    echo "MANILA_USE_MOD_WSGI=False" >> $localconf
+
     echo "SHARE_DRIVER=$driver_path" >> $localconf
     echo "SUPPRESS_ERRORS_IN_CLEANUP=False" >> $localconf
     echo "MANILA_REPLICA_STATE_UPDATE_INTERVAL=10" >> $localconf

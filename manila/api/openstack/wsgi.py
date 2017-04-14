@@ -31,7 +31,8 @@ from manila.common import constants
 from manila import exception
 from manila.i18n import _
 from manila import policy
-from manila import wsgi
+from manila import utils
+from manila.wsgi import common as wsgi
 
 LOG = log.getLogger(__name__)
 
@@ -860,15 +861,20 @@ class Resource(wsgi.Application):
 
         if hasattr(response, 'headers'):
             for hdr, val in response.headers.items():
-                # Headers must be utf-8 strings
-                response.headers[hdr] = six.text_type(val)
+                val = utils.convert_str(val)
+                response.headers[hdr] = val
 
             if not request.api_version_request.is_null():
                 response.headers[API_VERSION_REQUEST_HEADER] = (
                     request.api_version_request.get_string())
                 if request.api_version_request.experimental:
+                    # NOTE(vponomaryov): Translate our boolean header
+                    # to string explicitly to avoid 'TypeError' failure
+                    # running manila API under Apache + mod-wsgi.
+                    # It is safe to do so, because all headers are returned as
+                    # strings anyway.
                     response.headers[EXPERIMENTAL_API_REQUEST_HEADER] = (
-                        request.api_version_request.experimental)
+                        '%s' % request.api_version_request.experimental)
                 response.headers['Vary'] = API_VERSION_REQUEST_HEADER
 
         return response
@@ -1280,14 +1286,19 @@ class Fault(webob.exc.HTTPException):
                 'message': self.wrapped_exc.explanation}}
         if code == 413:
             retry = self.wrapped_exc.headers['Retry-After']
-            fault_data[fault_name]['retryAfter'] = retry
+            fault_data[fault_name]['retryAfter'] = '%s' % retry
 
         if not req.api_version_request.is_null():
             self.wrapped_exc.headers[API_VERSION_REQUEST_HEADER] = (
                 req.api_version_request.get_string())
             if req.api_version_request.experimental:
+                # NOTE(vponomaryov): Translate our boolean header
+                # to string explicitly to avoid 'TypeError' failure
+                # running manila API under Apache + mod-wsgi.
+                # It is safe to do so, because all headers are returned as
+                # strings anyway.
                 self.wrapped_exc.headers[EXPERIMENTAL_API_REQUEST_HEADER] = (
-                    req.api_version_request.experimental)
+                    '%s' % req.api_version_request.experimental)
             self.wrapped_exc.headers['Vary'] = API_VERSION_REQUEST_HEADER
 
         content_type = req.best_match_content_type()
@@ -1330,7 +1341,7 @@ class OverLimitFault(webob.exc.HTTPException):
     def _retry_after(retry_time):
         delay = int(math.ceil(retry_time - time.time()))
         retry_after = delay if delay > 0 else 0
-        headers = {'Retry-After': '%d' % retry_after}
+        headers = {'Retry-After': '%s' % retry_after}
         return headers
 
     @webob.dec.wsgify(RequestClass=Request)

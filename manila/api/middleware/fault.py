@@ -21,7 +21,7 @@ import webob.exc
 
 from manila.api.openstack import wsgi
 from manila import utils
-from manila import wsgi as base_wsgi
+from manila.wsgi import common as base_wsgi
 
 LOG = log.getLogger(__name__)
 

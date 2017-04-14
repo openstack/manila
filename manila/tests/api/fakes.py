@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_service import wsgi
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import routes
@@ -33,7 +34,6 @@ from manila.api import versions
 from manila.common import constants
 from manila import context
 from manila import exception
-from manila import wsgi
 
 
 FAKE_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'

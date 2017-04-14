@@ -185,7 +185,7 @@ class ExperimentalAPITestCase(test.TestCase):
         self.assertEqual('2.0', response.headers[version_header_name])
 
         if experimental:
-            self.assertEqual(experimental,
+            self.assertEqual('%s' % experimental,
                              response.headers.get(experimental_header_name))
         else:
             self.assertNotIn(experimental_header_name, response.headers)

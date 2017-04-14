@@ -36,6 +36,7 @@ from oslo_concurrency import lockutils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
+from oslo_utils import encodeutils
 from oslo_utils import importutils
 from oslo_utils import netutils
 from oslo_utils import strutils
@@ -518,6 +519,24 @@ def require_driver_initialized(func):
             raise exception.DriverNotInitialized(driver=driver_name)
         return func(self, *args, **kwargs)
     return wrapper
+
+
+def convert_str(text):
+    """Convert to native string.
+
+    Convert bytes and Unicode strings to native strings:
+
+    * convert to bytes on Python 2:
+      encode Unicode using encodeutils.safe_encode()
+    * convert to Unicode on Python 3: decode bytes from UTF-8
+    """
+    if six.PY2:
+        return encodeutils.safe_encode(text)
+    else:
+        if isinstance(text, bytes):
+            return text.decode('utf-8')
+        else:
+            return text
 
 
 def translate_string_size_to_float(string, multiplier='G'):

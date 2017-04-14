@@ -386,7 +386,7 @@ class WillNotSchedule(ManilaException):
 class QuotaError(ManilaException):
     message = _("Quota exceeded: code=%(code)s.")
     code = 413
-    headers = {'Retry-After': 0}
+    headers = {'Retry-After': '0'}
     safe = True
 
 

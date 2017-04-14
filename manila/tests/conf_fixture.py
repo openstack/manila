@@ -17,6 +17,7 @@
 import os
 
 from oslo_policy import opts
+from oslo_service import wsgi
 
 from manila.common import config
 
@@ -38,6 +39,7 @@ def set_defaults(conf):
     _safe_set_of_opts(conf, 'service_instance_user', 'fake_user')
     _API_PASTE_PATH = os.path.abspath(os.path.join(CONF.state_path,
                                                    'etc/manila/api-paste.ini'))
+    wsgi.register_opts(conf)
     _safe_set_of_opts(conf, 'api_paste_config', _API_PASTE_PATH)
     _safe_set_of_opts(conf, 'share_driver',
                       'manila.tests.fake_driver.FakeShareDriver')

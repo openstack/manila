@@ -1,0 +1,25 @@
+Listen %PORT%
+LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\" %D(us)" manila_combined
+
+<VirtualHost *:%PORT%>
+    WSGIDaemonProcess manila-api processes=%APIWORKERS% threads=2 user=%USER% display-name=%{GROUP}
+    WSGIProcessGroup manila-api
+    WSGIScriptAlias / %MANILA_BIN_DIR%/manila-wsgi
+    WSGIApplicationGroup %{GLOBAL}
+    WSGIPassAuthorization On
+    <IfVersion >= 2.4>
+      ErrorLogFormat "%{cu}t %M"
+    </IfVersion>
+    ErrorLog /var/log/%APACHE_NAME%/manila_api.log
+    CustomLog /var/log/%APACHE_NAME%/manila_api_access.log manila_combined
+
+    <Directory %MANILA_BIN_DIR%>
+        <IfVersion >= 2.4>
+            Require all granted
+        </IfVersion>
+        <IfVersion < 2.4>
+            Order allow,deny
+            Allow from all
+        </IfVersion>
+    </Directory>
+</VirtualHost>

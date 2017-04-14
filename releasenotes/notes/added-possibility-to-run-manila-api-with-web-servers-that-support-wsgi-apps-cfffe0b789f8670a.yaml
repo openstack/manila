@@ -1,0 +1,8 @@
+---
+features:
+  - Manila API service now can be run using web servers that support
+    WSGI applications.
+upgrade:
+  - Deprecated path 'manila.api.openstack:FaultWrapper' to 'FaultWrapper'
+    was removed and now only current path is available, which
+    is 'manila.api.middleware.fault:FaultWrapper'.
