@@ -1183,8 +1183,7 @@ EXPANDED_PROCESSOR_COUNTERS = [
 
 def get_config_cmode():
     config = na_fakes.create_configuration_cmode()
-    config.local_conf.set_override('share_backend_name', BACKEND_NAME,
-                                   enforce_type=True)
+    config.local_conf.set_override('share_backend_name', BACKEND_NAME)
     config.reserved_share_percentage = 5
     config.netapp_login = CLIENT_KWARGS['username']
     config.netapp_password = CLIENT_KWARGS['password']

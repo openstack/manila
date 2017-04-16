@@ -181,7 +181,7 @@ class TestCase(base_test.BaseTestCase):
     def flags(self, **kw):
         """Override flag variables for a test."""
         for k, v in kw.items():
-            CONF.set_override(k, v, enforce_type=True)
+            CONF.set_override(k, v)
 
     def start_service(self, name, host=None, **kwargs):
         host = host and host or uuidutils.generate_uuid()

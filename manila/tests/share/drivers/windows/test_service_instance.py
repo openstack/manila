@@ -82,7 +82,7 @@ class WindowsServiceInstanceManagerTestCase(test.TestCase):
 
         if not use_cert_auth:
             mock_check_complexity.assert_called_once_with(
-                str(mock.sentinel.password))
+                mock.sentinel.password)
 
     @ddt.data(False, True)
     def test_get_auth_info(self, use_cert_auth):
@@ -165,7 +165,7 @@ class WindowsServiceInstanceManagerTestCase(test.TestCase):
             expected_kwargs = dict(user_data=mock_cert_data)
         else:
             expected_kwargs = dict(
-                meta=dict(admin_pass=str(mock.sentinel.admin_pass)))
+                meta=dict(admin_pass=mock.sentinel.admin_pass))
 
         create_kwargs = self._mgr._get_service_instance_create_kwargs()
 

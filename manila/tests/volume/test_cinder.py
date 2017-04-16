@@ -190,8 +190,7 @@ class CinderApiTestCase(test.TestCase):
         volume['attach_status'] = "detached"
         instance = {'availability_zone': 'zone1'}
         volume['availability_zone'] = 'zone2'
-        cinder.CONF.set_override('cross_az_attach', False, 'cinder',
-                                 enforce_type=True)
+        cinder.CONF.set_override('cross_az_attach', False, 'cinder')
         self.assertRaises(exception.InvalidVolume,
                           self.api.check_attach, self.ctx, volume, instance)
         volume['availability_zone'] = 'zone1'
@@ -203,8 +202,7 @@ class CinderApiTestCase(test.TestCase):
         volume['attach_status'] = "detached"
         volume['availability_zone'] = 'zone1'
         instance = {'availability_zone': 'zone1'}
-        cinder.CONF.set_override('cross_az_attach', False, 'cinder',
-                                 enforce_type=True)
+        cinder.CONF.set_override('cross_az_attach', False, 'cinder')
         self.assertIsNone(self.api.check_attach(self.ctx, volume, instance))
         cinder.CONF.reset()
 

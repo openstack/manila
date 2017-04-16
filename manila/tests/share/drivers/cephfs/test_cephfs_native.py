@@ -427,8 +427,7 @@ class CephFSNativeDriverTestCase(test.TestCase):
     def test_connect_noevict(self):
         # When acting as "admin", driver should skip evicting
         self._driver.configuration.local_conf.set_override('cephfs_auth_id',
-                                                           "admin",
-                                                           enforce_type=True)
+                                                           "admin")
 
         self._driver.create_share(self._context,
                                   self._share)

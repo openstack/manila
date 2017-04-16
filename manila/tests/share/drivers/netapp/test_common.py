@@ -120,8 +120,7 @@ class NetAppDriverFactoryTestCase(test.TestCase):
 
                 config = na_fakes.create_configuration()
                 config.local_conf.set_override('driver_handles_share_servers',
-                                               mode == na_common.MULTI_SVM,
-                                               enforce_type=True)
+                                               mode == na_common.MULTI_SVM)
                 kwargs = {
                     'configuration': config,
                     'private_storage': mock.Mock(),
@@ -136,8 +135,7 @@ class NetAppDriverFactoryTestCase(test.TestCase):
     def test_create_driver_case_insensitive(self):
 
         config = na_fakes.create_configuration()
-        config.local_conf.set_override('driver_handles_share_servers', True,
-                                       enforce_type=True)
+        config.local_conf.set_override('driver_handles_share_servers', True)
 
         kwargs = {
             'configuration': config,
