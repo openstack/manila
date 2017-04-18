@@ -281,11 +281,18 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
             # remove dir
             self._execute('rmdir', mount_path, run_as_root=True)
 
+    def ensure_shares(self, context, shares):
+        updates = {}
+        for share in shares:
+            updates[share['id']] = {
+                'export_locations': self.ensure_share(context, share)}
+        return updates
+
     def ensure_share(self, ctx, share, share_server=None):
         """Ensure that storage are mounted and exported."""
         device_name = self._get_local_path(share)
         self._mount_device(share, device_name)
-        self._get_helper(share).create_exports(
+        return self._get_helper(share).create_exports(
             self.share_server, share['name'], recreate=True)
 
     def _delete_share(self, ctx, share):
@@ -515,3 +522,9 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
                               share['id'])
 
         return updated_shares
+
+    def get_backend_info(self, context):
+        return {
+            'export_ips': ','.join(self.share_server['public_addresses']),
+            'db_version': utils.get_recent_db_migration_id(),
+        }

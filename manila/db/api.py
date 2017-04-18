@@ -1323,3 +1323,15 @@ def message_destroy(context, message_id):
 def cleanup_expired_messages(context):
     """Soft delete expired messages"""
     return IMPL.cleanup_expired_messages(context)
+
+
+def backend_info_get(context, host):
+    """Get hash info for given host."""
+    return IMPL.backend_info_get(context, host)
+
+
+def backend_info_update(context, host, value=None,
+                        delete_existing=False):
+    """Update hash info for host."""
+    return IMPL.backend_info_update(context, host=host, value=value,
+                                    delete_existing=delete_existing)

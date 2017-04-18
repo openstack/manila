@@ -19,6 +19,7 @@
 from oslo_config import cfg
 
 from manila.common import constants
+from manila.db import migration
 from manila import rpc
 from manila import utils
 
@@ -147,3 +148,7 @@ def _usage_from_share(share_ref, share_instance_ref, **extra_usage_info):
     usage_info.update(extra_usage_info)
 
     return usage_info
+
+
+def get_recent_db_migration_id():
+    return migration.version()

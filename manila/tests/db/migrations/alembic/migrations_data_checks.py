@@ -2537,3 +2537,28 @@ class NewDescriptionColumnChecks(BaseMigrationChecks):
         db_result = engine.execute(table.select())
         for record in db_result:
             self.test_case.assertFalse(hasattr(record, 'description'))
+
+
+@map_to_migration('4a482571410f')
+class BackenInfoTableChecks(BaseMigrationChecks):
+    new_table_name = 'backend_info'
+
+    def setup_upgrade_data(self, engine):
+        pass
+
+    def check_upgrade(self, engine, data):
+        data = {
+            'host': 'test_host',
+            'info_hash': 'test_hash',
+            'created_at': datetime.datetime(2017, 7, 10, 18, 5, 58),
+            'updated_at': None,
+            'deleted_at': None,
+            'deleted': 0,
+        }
+
+        new_table = utils.load_table(self.new_table_name, engine)
+        engine.execute(new_table.insert(data))
+
+    def check_downgrade(self, engine):
+        self.test_case.assertRaises(sa_exc.NoSuchTableError, utils.load_table,
+                                    self.new_table_name, engine)

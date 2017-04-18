@@ -1220,6 +1220,13 @@ class Message(BASE, ManilaBase):
     deleted = Column(String(36), default='False')
 
 
+class BackendInfo(BASE, ManilaBase):
+    """Represent Backend Info."""
+    __tablename__ = "backend_info"
+    host = Column(String(255), primary_key=True)
+    info_hash = Column(String(255))
+
+
 def register_models():
     """Register Models and create metadata.
 
