@@ -2832,6 +2832,21 @@ class ShareManagerTestCase(test.TestCase):
                     context.get_admin_context(), fake_share)
                 self.assertEqual(1, mock_LOG.exception.call_count)
 
+    def test_ensure_share_instance_pool_notexist_and_get_from_driver(self):
+        fake_share_instance = {'host': 'host@backend', 'id': 1,
+                               'status': constants.STATUS_AVAILABLE}
+        fake_host_expected_value = 'fake_pool'
+        self.mock_object(self.share_manager.db, 'share_instance_update')
+        self.mock_object(self.share_manager.driver, 'get_pool',
+                         mock.Mock(return_value='fake_pool'))
+
+        host = self.share_manager._ensure_share_instance_has_pool(
+            context.get_admin_context(), fake_share_instance)
+
+        self.share_manager.db.share_instance_update.assert_any_call(
+            mock.ANY, 1, {'host': 'host@backend#fake_pool'})
+        self.assertEqual(fake_host_expected_value, host)
+
     def test__form_server_setup_info(self):
         def fake_network_allocations_get_for_share_server(*args, **kwargs):
             if kwargs.get('label') != 'admin':

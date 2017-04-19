@@ -258,7 +258,7 @@ class ShareManager(manager.SchedulerDependentManager):
             if pool:
                 new_host = share_utils.append_host(
                     share_instance['host'], pool)
-                self.db.share_update(
+                self.db.share_instance_update(
                     ctxt, share_instance['id'], {'host': new_host})
 
         return pool
