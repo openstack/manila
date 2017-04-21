@@ -2,8 +2,8 @@
 Team and repository tags
 ========================
 
-.. image:: http://governance.openstack.org/badges/manila.svg
-    :target: http://governance.openstack.org/reference/tags/index.html
+.. image:: https://governance.openstack.org/badges/manila.svg
+    :target: https://governance.openstack.org/reference/tags/index.html
 
 .. Change things from this point on
 
@@ -16,7 +16,7 @@ identified itself as "Manila."  It was abstracted from the Cinder
 project.
 
 * Wiki: https://wiki.openstack.org/Manila
-* Developer docs: http://docs.openstack.org/developer/manila
+* Developer docs: https://docs.openstack.org/developer/manila
 
 Getting Started
 ---------------
@@ -28,7 +28,7 @@ If you'd like to run from the master branch, you can clone the git repo:
 For developer information please see
 `HACKING.rst <https://github.com/openstack/manila/blob/master/HACKING.rst>`_
 
-You can raise bugs here http://bugs.launchpad.net/manila
+You can raise bugs here https://bugs.launchpad.net/manila
 
 Python client
 -------------
