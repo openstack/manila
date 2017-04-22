@@ -2169,3 +2169,25 @@ class ShareGroupNewConsistentSnapshotSupportColumnChecks(BaseMigrationChecks):
         self.test_case.assertEqual(1, db_result.rowcount)
         for sg in db_result:
             self.test_case.assertFalse(hasattr(sg, self.new_attr_name))
+
+
+@map_to_migration('7d142971c4ef')
+class ReservationExpireIndexChecks(BaseMigrationChecks):
+
+    def setup_upgrade_data(self, engine):
+        pass
+
+    def _get_reservations_expire_delete_index(self, engine):
+        reservation_table = utils.load_table('reservations', engine)
+        members = ['deleted', 'expire']
+        for idx in reservation_table.indexes:
+            if sorted(idx.columns.keys()) == members:
+                return idx
+
+    def check_upgrade(self, engine, data):
+        self.test_case.assertTrue(
+            self._get_reservations_expire_delete_index(engine))
+
+    def check_downgrade(self, engine):
+        self.test_case.assertFalse(
+            self._get_reservations_expire_delete_index(engine))

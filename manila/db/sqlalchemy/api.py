@@ -1085,10 +1085,14 @@ def reservation_expire(context):
                                         session=session, read_deleted="no").\
             filter(models.Reservation.expire < current_time)
 
-        for reservation in reservation_query.join(models.QuotaUsage).all():
+        for reservation in reservation_query.all():
             if reservation.delta >= 0:
-                reservation.usage.reserved -= reservation.delta
-                session.add(reservation.usage)
+                quota_usage = model_query(context, models.QuotaUsage,
+                                          session=session,
+                                          read_deleted="no").filter(
+                    models.QuotaUsage.id == reservation.usage_id).first()
+                quota_usage.reserved -= reservation.delta
+                session.add(quota_usage)
 
         reservation_query.soft_delete(synchronize_session=False)
 

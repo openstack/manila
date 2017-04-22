@@ -21,6 +21,7 @@ Scheduler Service
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_service import periodic_task
 from oslo_utils import excutils
 from oslo_utils import importutils
 
@@ -29,6 +30,7 @@ from manila import context
 from manila import db
 from manila import exception
 from manila import manager
+from manila import quota
 from manila import rpc
 from manila.share import rpcapi as share_rpcapi
 
@@ -75,7 +77,7 @@ class SchedulerManager(manager.Manager):
             scheduler_driver = MAPPING[scheduler_driver]
 
         self.driver = importutils.import_object(scheduler_driver)
-        super(SchedulerManager, self).__init__(*args, **kwargs)
+        super(self.__class__, self).__init__(*args, **kwargs)
 
     def init_host(self):
         ctxt = context.get_admin_context()
@@ -221,6 +223,10 @@ class SchedulerManager(manager.Manager):
 
         if share_group_id:
             db.share_group_update(context, share_group_id, share_group_state)
+
+    @periodic_task.periodic_task(spacing=600, run_immediately=True)
+    def _expire_reservations(self, context):
+        quota.QUOTAS.expire(context)
 
     def create_share_group(self, context, share_group_id, request_spec=None,
                            filter_properties=None):
