@@ -15,7 +15,6 @@
 
 import ddt
 import mock
-from oslo_service import loopingcall
 from tooz import coordination as tooz_coordination
 from tooz import locking as tooz_locking
 
@@ -43,9 +42,6 @@ class MockToozLock(tooz_locking.Lock):
         self.active_locks.remove(self.name)
 
 
-@mock.patch('time.sleep', lambda _: None)
-@mock.patch('eventlet.sleep', lambda _: None)
-@mock.patch('random.uniform', lambda _a, _b: 0)
 @ddt.ddt
 class CoordinatorTestCase(test.TestCase):
 
@@ -53,24 +49,16 @@ class CoordinatorTestCase(test.TestCase):
         super(CoordinatorTestCase, self).setUp()
         self.get_coordinator = self.mock_object(tooz_coordination,
                                                 'get_coordinator')
-        self.heartbeat = self.mock_object(coordination.Coordinator,
-                                          'heartbeat')
 
-    @ddt.data(True, False)
-    def test_coordinator_start_with_heartbeat(self, requires_beating):
-        mock_start_heartbeat = mock.Mock(
-            loopingcall, 'FixedIntervalLoopingCall').return_value
-        self.mock_object(loopingcall, 'FixedIntervalLoopingCall',
-                         mock.Mock(return_value=mock_start_heartbeat))
+    def test_coordinator_start(self):
         crd = self.get_coordinator.return_value
-        crd.requires_beating = requires_beating
 
         agent = coordination.Coordinator()
         agent.start()
 
         self.assertTrue(self.get_coordinator.called)
         self.assertTrue(crd.start.called)
-        self.assertEqual(requires_beating, mock_start_heartbeat.start.called)
+        self.assertTrue(agent.started)
 
     def test_coordinator_stop(self):
         crd = self.get_coordinator.return_value
@@ -83,6 +71,7 @@ class CoordinatorTestCase(test.TestCase):
 
         self.assertTrue(crd.stop.called)
         self.assertIsNone(agent.coordinator)
+        self.assertFalse(agent.started)
 
     def test_coordinator_lock(self):
         crd = self.get_coordinator.return_value
@@ -110,29 +99,6 @@ class CoordinatorTestCase(test.TestCase):
         agent = coordination.Coordinator()
         self.assertRaises(tooz_coordination.ToozError, agent.start)
         self.assertFalse(agent.started)
-        self.assertFalse(self.heartbeat.called)
-
-    def test_coordinator_reconnect(self):
-        start_online = iter([True] + [False] * 5 + [True])
-        heartbeat_online = iter((False, True, True))
-
-        def raiser(cond):
-            if not cond:
-                raise tooz_coordination.ToozConnectionError('err')
-
-        crd = self.get_coordinator.return_value
-        crd.start.side_effect = lambda *_: raiser(next(start_online))
-        crd.heartbeat.side_effect = lambda *_: raiser(next(heartbeat_online))
-
-        agent = coordination.Coordinator()
-        agent.start()
-
-        self.assertRaises(tooz_coordination.ToozConnectionError,
-                          agent._heartbeat)
-        self.assertEqual(1, self.get_coordinator.call_count)
-        agent._reconnect()
-        self.assertEqual(7, self.get_coordinator.call_count)
-        agent._heartbeat()
 
 
 @mock.patch.object(coordination.LOCK_COORDINATOR, 'get_lock')

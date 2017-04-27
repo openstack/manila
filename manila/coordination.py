@@ -13,14 +13,10 @@
 """Tooz Coordination and locking utilities."""
 
 import inspect
-import itertools
-import random
 
 import decorator
-import eventlet
 from oslo_config import cfg
 from oslo_log import log
-from oslo_service import loopingcall
 from oslo_utils import uuidutils
 import six
 from tooz import coordination
@@ -40,15 +36,28 @@ coordination_opts = [
     cfg.FloatOpt('heartbeat',
                  default=1.0,
                  help='Number of seconds between heartbeats for distributed '
-                      'coordination.'),
+                      'coordination.  No longer used since distributed '
+                      'coordination manages its heartbeat internally.',
+                 deprecated_for_removal=True,
+                 deprecated_reason='This option is no longer used.',
+                 deprecated_since='16.0.0'),
     cfg.FloatOpt('initial_reconnect_backoff',
                  default=0.1,
                  help='Initial number of seconds to wait after failed '
-                      'reconnection.'),
+                      'reconnection.  No longer used since distributed '
+                      'coordination manages its heartbeat internally.',
+                 deprecated_for_removal=True,
+                 deprecated_reason='This option is no longer used.',
+                 deprecated_since='16.0.0'),
     cfg.FloatOpt('max_reconnect_backoff',
                  default=60.0,
                  help='Maximum number of seconds between sequential '
-                      'reconnection retries.'),
+                      'reconnection retries.  No longer used since '
+                      'distributed coordination manages its heartbeat '
+                      'internally.',
+                 deprecated_for_removal=True,
+                 deprecated_reason='This option is no longer used.',
+                 deprecated_since='16.0.0'),
 ]
 
 CONF = cfg.CONF
@@ -71,47 +80,24 @@ class Coordinator(object):
         self.agent_id = agent_id or uuidutils.generate_uuid()
         self.started = False
         self.prefix = prefix
-        self._heartbeat_thread = loopingcall.FixedIntervalLoopingCall(
-            self.heartbeat)
-
-    def _is_active(self):
-        return self.started
 
     def start(self):
-        """Connect to coordination back end and start heartbeat."""
-        if not self._is_active():
-            try:
-                self._start()
-                self.started = True
-                # NOTE(gouthamr): Start heartbeat in separate thread to avoid
-                # being blocked by long co-routines.
-                if self.coordinator and self.coordinator.requires_beating:
-                    LOG.debug("This tooz lock management back end supports "
-                              "heart beats. Spawning a new thread to "
-                              "send regular heart beats.")
-                    self._heartbeat_thread.start(
-                        cfg.CONF.coordination.heartbeat)
-                else:
-                    LOG.debug("This tooz lock management back end does not "
-                              "support heart beats.")
-            except coordination.ToozError:
-                LOG.exception('Error starting coordination back end.')
-                raise
-            LOG.info('Coordination back end started successfully.')
+        """Connect to coordination back end."""
+        if self.started:
+            return
+
+        # NOTE(gouthamr): Tooz expects member_id as a byte string.
+        member_id = (self.prefix + self.agent_id).encode('ascii')
+        self.coordinator = coordination.get_coordinator(
+            cfg.CONF.coordination.backend_url, member_id)
+        self.coordinator.start(start_heart=True)
+        self.started = True
 
     def stop(self):
-        """Disconnect from coordination back end and stop heartbeat."""
-        msg = _('Stopped Coordinator (Agent ID: %(agent)s, prefix: '
-                '%(prefix)s)')
+        """Disconnect from coordination back end."""
+        msg = 'Stopped Coordinator (Agent ID: %(agent)s, prefix: %(prefix)s)'
         msg_args = {'agent': self.agent_id, 'prefix': self.prefix}
-        if self._is_active():
-
-            debug_msg = ('Stopping heartbeat thread for coordinator with '
-                         '(Agent ID: %(agent)s, prefix: %(prefix)s).')
-            LOG.debug(debug_msg, msg_args)
-            if self._heartbeat_thread is not None:
-                self._heartbeat_thread.stop()
-                self._heartbeat_thread = None
+        if self.started:
             self.coordinator.stop()
             self.coordinator = None
             self.started = False
@@ -126,63 +112,10 @@ class Coordinator(object):
         """
         # NOTE(gouthamr): Tooz expects lock name as a byte string
         lock_name = (self.prefix + name).encode('ascii')
-        if self._is_active():
+        if self.started:
             return self.coordinator.get_lock(lock_name)
         else:
             raise exception.LockCreationFailed(_('Coordinator uninitialized.'))
-
-    def heartbeat(self):
-        """Coordinator heartbeat.
-
-        Method that every couple of seconds (config: `coordination.heartbeat`)
-        sends heartbeat to prove that the member is not dead.
-
-        If connection to coordination back end is broken it tries to
-        reconnect every couple of seconds
-        (config: `coordination.initial_reconnect_backoff` up to
-        `coordination.max_reconnect_backoff`)
-
-        """
-        if self._is_active():
-            try:
-                self._heartbeat()
-            except coordination.ToozConnectionError:
-                self._reconnect()
-
-    def _start(self):
-        # NOTE(gouthamr): Tooz expects member_id as a byte string.
-        member_id = (self.prefix + self.agent_id).encode('ascii')
-        self.coordinator = coordination.get_coordinator(
-            cfg.CONF.coordination.backend_url, member_id)
-        self.coordinator.start()
-
-    def _heartbeat(self):
-        try:
-            self.coordinator.heartbeat()
-        except coordination.ToozConnectionError:
-            LOG.exception('Connection error while sending a heartbeat '
-                          'to coordination back end.')
-            raise
-        except coordination.ToozError:
-            LOG.exception('Error sending a heartbeat to coordination '
-                          'back end.')
-
-    def _reconnect(self):
-        """Reconnect with jittered exponential back off."""
-        LOG.info('Reconnecting to coordination back end.')
-        cap = cfg.CONF.coordination.max_reconnect_backoff
-        backoff = base = cfg.CONF.coordination.initial_reconnect_backoff
-        for attempt in itertools.count(1):
-            try:
-                self._start()
-                break
-            except coordination.ToozError:
-                backoff = min(cap, random.uniform(base, backoff * 3))
-                msg = ('Reconnect attempt %(attempt)s failed. '
-                       'Next try in %(backoff).2fs.')
-                LOG.warning(msg, {'attempt': attempt, 'backoff': backoff})
-                eventlet.sleep(backoff)
-        LOG.info('Reconnected to coordination back end.')
 
 
 LOCK_COORDINATOR = Coordinator(prefix='manila-')
