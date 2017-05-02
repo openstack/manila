@@ -68,8 +68,13 @@ class ShareInstancesAPITest(test.TestCase):
         self.assertEqual([i['id'] for i in expected],
                          [i['id'] for i in actual])
 
-    def test_index(self):
-        req = self._get_request('/share_instances')
+    @ddt.data("2.3", "2.34", "2.35")
+    def test_index(self, version):
+        url = '/share_instances'
+        if (api_version_request.APIVersionRequest(version) >=
+                api_version_request.APIVersionRequest('2.35')):
+            url += "?export_location_path=/admin/export/location"
+        req = self._get_request(url, version=version)
         req_context = req.environ['manila.context']
         share_instances_count = 3
         test_instances = [
@@ -77,8 +82,15 @@ class ShareInstancesAPITest(test.TestCase):
             for s in range(0, share_instances_count)
         ]
 
+        db.share_export_locations_update(
+            self.admin_context, test_instances[0]['id'],
+            '/admin/export/location', False)
+
         actual_result = self.controller.index(req)
 
+        if (api_version_request.APIVersionRequest(version) >=
+                api_version_request.APIVersionRequest('2.35')):
+            test_instances = test_instances[:1]
         self._validate_ids_in_share_instances_list(
             test_instances, actual_result['share_instances'])
         self.mock_policy_check.assert_called_once_with(

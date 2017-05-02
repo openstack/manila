@@ -1202,13 +1202,35 @@ def share_instance_get(context, share_instance_id, session=None,
 
 
 @require_admin_context
-def share_instances_get_all(context):
+def share_instances_get_all(context, filters=None):
     session = get_session()
-    return model_query(
+    query = model_query(
         context, models.ShareInstance, session=session, read_deleted="no",
     ).options(
         joinedload('export_locations'),
-    ).all()
+    )
+
+    filters = filters or {}
+
+    export_location_id = filters.get('export_location_id')
+    export_location_path = filters.get('export_location_path')
+    if export_location_id or export_location_path:
+        query = query.join(
+            models.ShareInstanceExportLocations,
+            models.ShareInstanceExportLocations.share_instance_id ==
+            models.ShareInstance.id)
+        if export_location_path:
+            query = query.filter(
+                models.ShareInstanceExportLocations.path ==
+                export_location_path)
+        if export_location_id:
+            query = query.filter(
+                models.ShareInstanceExportLocations.uuid ==
+                export_location_id)
+
+    # Returns list of share instances that satisfy filters.
+    query = query.all()
+    return query
 
 
 @require_context
@@ -1594,6 +1616,23 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
     # Apply filters
     if not filters:
         filters = {}
+
+    export_location_id = filters.get('export_location_id')
+    export_location_path = filters.get('export_location_path')
+    if export_location_id or export_location_path:
+        query = query.join(
+            models.ShareInstanceExportLocations,
+            models.ShareInstanceExportLocations.share_instance_id ==
+            models.ShareInstance.id)
+        if export_location_path:
+            query = query.filter(
+                models.ShareInstanceExportLocations.path ==
+                export_location_path)
+        if export_location_id:
+            query = query.filter(
+                models.ShareInstanceExportLocations.uuid ==
+                export_location_id)
+
     if 'metadata' in filters:
         for k, v in filters['metadata'].items():
             query = query.filter(

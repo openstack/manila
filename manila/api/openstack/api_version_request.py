@@ -102,13 +102,16 @@ REST_API_VERSION_HISTORY = """
              access_list API.
     * 2.34 - Added 'availability_zone_id' and 'consistent_snapshot_support'
              fields to 'share_group' object.
+    * 2.35 - Added support to retrieve shares filtered by export_location_id
+             and export_location_path.
+
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.34"
+_MAX_API_VERSION = "2.35"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

@@ -206,6 +206,22 @@ consistency_group_id_5:
   in: query
   required: false
   type: string
+export_location_id_query:
+  description: |
+    The export location UUID that can be used to filter shares or
+    share instances.
+  in: query
+  required: false
+  type: string
+  min_version: 2.35
+export_location_path_query:
+  description: |
+    The export location path that can be used to filter shares or
+    share instances.
+  in: query
+  required: false
+  type: string
+  min_version: 2.35
 extra_specs_1:
   description: |
     The extra specifications as a set of one or more

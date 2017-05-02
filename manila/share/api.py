@@ -1490,6 +1490,12 @@ class API(base.Base):
 
         # Prepare filters
         filters = {}
+        if 'export_location_id' in search_opts:
+            filters['export_location_id'] = search_opts.pop(
+                'export_location_id')
+        if 'export_location_path' in search_opts:
+            filters['export_location_path'] = search_opts.pop(
+                'export_location_path')
         if 'metadata' in search_opts:
             filters['metadata'] = search_opts.pop('metadata')
             if not isinstance(filters['metadata'], dict):

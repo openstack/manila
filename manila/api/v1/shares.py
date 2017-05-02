@@ -100,10 +100,14 @@ class ShareMixin(object):
 
     def index(self, req):
         """Returns a summary list of shares."""
+        req.GET.pop('export_location_id', None)
+        req.GET.pop('export_location_path', None)
         return self._get_shares(req, is_detail=False)
 
     def detail(self, req):
         """Returns a detailed list of shares."""
+        req.GET.pop('export_location_id', None)
+        req.GET.pop('export_location_path', None)
         return self._get_shares(req, is_detail=True)
 
     def _get_shares(self, req, is_detail):
@@ -159,7 +163,8 @@ class ShareMixin(object):
             'display_name', 'status', 'share_server_id', 'volume_type_id',
             'share_type_id', 'snapshot_id', 'host', 'share_network_id',
             'is_public', 'metadata', 'extra_specs', 'sort_key', 'sort_dir',
-            'share_group_id', 'share_group_snapshot_id'
+            'share_group_id', 'share_group_snapshot_id',
+            'export_location_id', 'export_location_path'
         )
 
     def update(self, req, id, body):
