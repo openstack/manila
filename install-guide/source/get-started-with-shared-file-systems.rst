@@ -37,4 +37,4 @@ Messaging queue
   Routes information between the Shared File Systems processes.
 
 For more information, see `Configuration Reference Guide
-<http://docs.openstack.org/mitaka/config-reference/shared-file-systems.html>`_.
+<http://docs.openstack.org/ocata/config-reference/shared-file-systems.html>`_.

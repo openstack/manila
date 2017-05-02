@@ -11,7 +11,7 @@ Shared File Systems service.
    The manila-share process can run in two modes, with and without handling of
    share servers. Some drivers may support either modes; while some may only
    support one of the two modes. See the `Configuration Reference
-   <http://docs.openstack.org/mitaka/config-reference/shared-file-systems.html>`_
+   <http://docs.openstack.org/ocata/config-reference/shared-file-systems.html>`_
    to determine if the driver you choose supports the driver mode desired.
    This tutorial describes setting up each driver mode using an example driver
    for the mode.
