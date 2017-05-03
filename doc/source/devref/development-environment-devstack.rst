@@ -59,6 +59,12 @@ Enable the manila plugin adding the following line to the end of the local.conf 
 
     enable_plugin manila https://github.com/openstack/manila
 
+If you would like to install python-manilaclient from git, add to local.conf:
+
+::
+
+    LIBS_FROM_GIT="python-manilaclient"
+
 Manila UI
 `````````
 

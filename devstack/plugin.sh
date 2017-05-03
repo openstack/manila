@@ -672,10 +672,20 @@ function _install_nfs_and_samba {
     fi
 }
 
+# install_manilaclient - Collect source and prepare
+#   In order to install from git, add LIBS_FROM_GIT="python-manilaclient"
+#   to local.conf
+function install_manilaclient {
+    if use_library_from_git "python-manilaclient"; then
+        git_clone $MANILACLIENT_REPO $MANILACLIENT_DIR $MANILACLIENT_BRANCH
+        setup_develop $MANILACLIENT_DIR
+    else
+        pip_install python-manilaclient
+    fi
+}
+
 # install_manila - Collect source and prepare
 function install_manila {
-    git_clone $MANILACLIENT_REPO $MANILACLIENT_DIR $MANILACLIENT_BRANCH
-    setup_develop $MANILACLIENT_DIR
     setup_develop $MANILA_DIR
 
     if is_service_enabled m-shr; then
@@ -928,6 +938,8 @@ function install_libraries {
 
 # Main dispatcher
 if [[ "$1" == "stack" && "$2" == "install" ]]; then
+    echo_summary "Installing Manila Client"
+    install_manilaclient
     echo_summary "Installing Manila"
     install_manila
     set_cinder_quotas
