@@ -129,15 +129,17 @@ class TestBaseFilterHandler(test.TestCase):
     def test_get_filtered_objects_return_none(self, fake3_filter_all,
                                               fake4_filter_all):
         filter_classes = [FakeFilter1, FakeFilter2, FakeFilter3, FakeFilter4]
-        result = self._get_filtered_objects(filter_classes)
+        result, last_filter = self._get_filtered_objects(filter_classes)
         self.assertIsNone(result)
         self.assertFalse(fake4_filter_all.called)
+        self.assertEqual('FakeFilter3', last_filter)
 
     def test_get_filtered_objects(self):
         filter_objs_expected = [1, 2, 3, 4]
         filter_classes = [FakeFilter1, FakeFilter2, FakeFilter3, FakeFilter4]
-        result = self._get_filtered_objects(filter_classes)
+        result, last_filter = self._get_filtered_objects(filter_classes)
         self.assertEqual(filter_objs_expected, result)
+        self.assertEqual('FakeFilter4', last_filter)
 
     def test_get_filtered_objects_with_filter_run_once(self):
         filter_objs_expected = [1, 2, 3, 4]
@@ -146,14 +148,16 @@ class TestBaseFilterHandler(test.TestCase):
         with mock.patch.object(FakeFilter5, 'filter_all',
                                return_value=filter_objs_expected
                                ) as fake5_filter_all:
-            result = self._get_filtered_objects(filter_classes)
+            result, last_filter = self._get_filtered_objects(filter_classes)
             self.assertEqual(filter_objs_expected, result)
             self.assertEqual(1, fake5_filter_all.call_count)
 
-            result = self._get_filtered_objects(filter_classes, index=1)
+            result, last_filter = self._get_filtered_objects(
+                filter_classes, index=1)
             self.assertEqual(filter_objs_expected, result)
             self.assertEqual(1, fake5_filter_all.call_count)
 
-            result = self._get_filtered_objects(filter_classes, index=2)
+            result, last_filter = self._get_filtered_objects(
+                filter_classes, index=2)
             self.assertEqual(filter_objs_expected, result)
             self.assertEqual(1, fake5_filter_all.call_count)

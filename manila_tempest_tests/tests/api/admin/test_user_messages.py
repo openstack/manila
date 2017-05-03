@@ -87,7 +87,12 @@ class UserMessageTest(base.BaseSharesAdminTest):
         self.assertEqual(set(MESSAGE_KEYS), set(message.keys()))
         self.assertTrue(uuidutils.is_uuid_like(message['id']))
         self.assertEqual('001', message['action_id'])
-        self.assertEqual('002', message['detail_id'])
+        # don't check specific detail_id which may vary
+        # depending on order of filters, we can still check
+        # user_message
+        self.assertIn(
+            'No storage could be allocated for this share request',
+            message['user_message'])
         self.assertEqual('SHARE', message['resource_type'])
         self.assertTrue(uuidutils.is_uuid_like(message['resource_id']))
         self.assertEqual('ERROR', message['message_level'])
