@@ -1,0 +1,5 @@
+---
+fixes:
+  - When use driver_handles_share_servers driver,
+    reset the tap device after manila-share service
+    start.
