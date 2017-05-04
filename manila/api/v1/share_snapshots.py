@@ -119,7 +119,7 @@ class ShareSnapshotMixin(object):
         return snapshots
 
     def _get_snapshots_search_options(self):
-        """Return share search options allowed by non-admin."""
+        """Return share snapshot search options allowed by non-admin."""
         return ('display_name', 'name', 'status', 'share_id', 'size')
 
     def update(self, req, id, body):
