@@ -17,6 +17,7 @@ from oslo_log import log
 import six
 
 from manila.share import driver
+from manila.tests import fake_service_instance
 
 LOG = log.getLogger(__name__)
 
@@ -39,7 +40,12 @@ class FakeShareDriver(driver.ShareDriver):
     """
 
     def __init__(self, *args, **kwargs):
+        self._setup_service_instance_manager()
         super(FakeShareDriver, self).__init__([True, False], *args, **kwargs)
+
+    def _setup_service_instance_manager(self):
+        self.service_instance_manager = (
+            fake_service_instance.FakeServiceInstanceManager())
 
     def manage_existing(self, share, driver_options):
         LOG.debug("Fake share driver: manage")
