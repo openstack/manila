@@ -104,6 +104,8 @@ REST_API_VERSION_HISTORY = """
              fields to 'share_group' object.
     * 2.35 - Added support to retrieve shares filtered by export_location_id
              and export_location_path.
+    * 2.36 - Added like filter support in ``shares``, ``snapshots``,
+             ``share-networks``, ``share-groups`` list APIs.
 
 """
 
@@ -111,7 +113,7 @@ REST_API_VERSION_HISTORY = """
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.35"
+_MAX_API_VERSION = "2.36"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

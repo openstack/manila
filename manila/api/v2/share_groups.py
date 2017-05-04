@@ -20,6 +20,7 @@ import webob
 from webob import exc
 
 from manila.api import common
+from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila.api.views import share_groups as share_group_views
 from manila import db
@@ -96,6 +97,9 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
         search_opts.pop('offset', None)
         sort_key = search_opts.pop('sort_key', 'created_at')
         sort_dir = search_opts.pop('sort_dir', 'desc')
+        if req.api_version_request < api_version.APIVersionRequest("2.36"):
+            search_opts.pop('name~', None)
+            search_opts.pop('description~', None)
         if 'group_type_id' in search_opts:
             search_opts['share_group_type_id'] = search_opts.pop(
                 'group_type_id')

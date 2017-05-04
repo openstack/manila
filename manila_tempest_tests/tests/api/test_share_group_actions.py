@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 from tempest import config
 from tempest.lib.common.utils import data_utils
 import testtools
@@ -21,6 +22,7 @@ from testtools import testcase as tc
 
 from manila_tempest_tests.common import constants
 from manila_tempest_tests.tests.api import base
+from manila_tempest_tests import utils
 
 CONF = config.CONF
 
@@ -28,6 +30,7 @@ CONF = config.CONF
 @testtools.skipUnless(
     CONF.share.run_share_group_tests, 'Share Group tests disabled.')
 @base.skip_if_microversion_lt(constants.MIN_SHARE_GROUP_MICROVERSION)
+@ddt.ddt
 class ShareGroupActionsTest(base.BaseSharesTest):
     """Covers share group functionality."""
 
@@ -157,11 +160,14 @@ class ShareGroupActionsTest(base.BaseSharesTest):
             self.assertEqual(1, len(gen), msg)
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
-    def test_list_share_groups_with_detail_min(self):
-
+    @ddt.data(constants.MIN_SHARE_GROUP_MICROVERSION, '2.36')
+    def test_list_share_groups_with_detail_min(self, version):
+        params = None
+        if utils.is_microversion_ge(version, '2.36'):
+            params = {'name~': 'tempest', 'description~': 'tempest'}
         # List share groups
         share_groups = self.shares_v2_client.list_share_groups(
-            detailed=True, version=constants.MIN_SHARE_GROUP_MICROVERSION)
+            detailed=True, params=params, version=version)
 
         # Verify keys
         for sg in share_groups:

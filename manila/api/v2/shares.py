@@ -415,28 +415,30 @@ class ShareController(shares.ShareMixin,
     def revert(self, req, id, body=None):
         return self._revert(req, id, body)
 
-    @wsgi.Controller.api_version("2.0", "2.34")  # noqa
-    def index(self, req):  # pylint: disable=E0102
+    @wsgi.Controller.api_version("2.0")
+    def index(self, req):
         """Returns a summary list of shares."""
-        req.GET.pop('export_location_id', None)
-        req.GET.pop('export_location_path', None)
+        if req.api_version_request < api_version.APIVersionRequest("2.35"):
+            req.GET.pop('export_location_id', None)
+            req.GET.pop('export_location_path', None)
+
+        if req.api_version_request < api_version.APIVersionRequest("2.36"):
+            req.GET.pop('name~', None)
+            req.GET.pop('description~', None)
+
         return self._get_shares(req, is_detail=False)
 
-    @wsgi.Controller.api_version("2.35")  # noqa
-    def index(self, req):  # pylint: disable=E0102
-        """Returns a summary list of shares."""
-        return self._get_shares(req, is_detail=False)
-
-    @wsgi.Controller.api_version("2.0", "2.34")  # noqa
-    def detail(self, req):  # pylint: disable=E0102
+    @wsgi.Controller.api_version("2.0")
+    def detail(self, req):
         """Returns a detailed list of shares."""
-        req.GET.pop('export_location_id', None)
-        req.GET.pop('export_location_path', None)
-        return self._get_shares(req, is_detail=True)
+        if req.api_version_request < api_version.APIVersionRequest("2.35"):
+            req.GET.pop('export_location_id', None)
+            req.GET.pop('export_location_path', None)
 
-    @wsgi.Controller.api_version("2.35")  # noqa
-    def detail(self, req):  # pylint: disable=E0102
-        """Returns a detailed list of shares."""
+        if req.api_version_request < api_version.APIVersionRequest("2.36"):
+            req.GET.pop('name~', None)
+            req.GET.pop('description~', None)
+
         return self._get_shares(req, is_detail=True)
 
 

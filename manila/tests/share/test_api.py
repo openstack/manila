@@ -46,6 +46,7 @@ CONF = cfg.CONF
 _FAKE_LIST_OF_ALL_SHARES = [
     {
         'name': 'foo',
+        'description': 'ds',
         'status': constants.STATUS_AVAILABLE,
         'project_id': 'fake_pid_1',
         'share_server_id': 'fake_server_1',
@@ -57,7 +58,8 @@ _FAKE_LIST_OF_ALL_SHARES = [
         'share_server_id': 'fake_server_2',
     },
     {
-        'name': 'foo',
+        'name': 'foo1',
+        'description': 'ds1',
         'status': constants.STATUS_AVAILABLE,
         'project_id': 'fake_pid_2',
         'share_server_id': 'fake_server_3',
@@ -309,6 +311,21 @@ class ShareAPITestCase(test.TestCase):
             project_id='fake_pid_2', filters={}, is_public=False
         )
         self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[1::2], shares)
+
+    def test_get_all_admin_filter_by_inexact_filter(self):
+        ctx = context.RequestContext('fake_uid', 'fake_pid_2', is_admin=True)
+        self.mock_object(db_api, 'share_get_all_by_project',
+                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES))
+        shares = self.api.get_all(ctx, {'name~': 'foo', 'description~': 'ds'})
+        share_api.policy.check_policy.assert_has_calls([
+            mock.call(ctx, 'share', 'get_all'),
+        ])
+        db_api.share_get_all_by_project.assert_called_once_with(
+            ctx, sort_dir='desc', sort_key='created_at',
+            project_id='fake_pid_2',
+            filters={}, is_public=False
+        )
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[0::2], shares)
 
     @ddt.data('id', 'path')
     def test_get_all_admin_filter_by_export_location(self, type):
@@ -1888,6 +1905,24 @@ class ShareAPITestCase(test.TestCase):
         result = self.api.get_all_snapshots(ctx, search_opts)
 
         self.assertEqual([search_opts], result)
+        share_api.policy.check_policy.assert_called_once_with(
+            ctx, 'share_snapshot', 'get_all_snapshots')
+        db_api.share_snapshot_get_all_by_project.assert_called_once_with(
+            ctx, 'fakepid', sort_dir='desc', sort_key='share_id',
+            filters=search_opts)
+
+    def test_get_all_snapshots_not_admin_inexact_search_opts(self):
+        search_opts = {'name~': 'foo', 'description~': 'ds'}
+        fake_objs = [{'name': 'fo', 'description': 'd'},
+                     {'name': 'foo', 'description': 'ds'},
+                     {'name': 'foo1', 'description': 'ds1'}]
+        ctx = context.RequestContext('fakeuid', 'fakepid', is_admin=False)
+        self.mock_object(db_api, 'share_snapshot_get_all_by_project',
+                         mock.Mock(return_value=fake_objs))
+
+        result = self.api.get_all_snapshots(ctx, search_opts)
+
+        self.assertEqual(fake_objs[1:], result)
         share_api.policy.check_policy.assert_called_once_with(
             ctx, 'share_snapshot', 'get_all_snapshots')
         db_api.share_snapshot_get_all_by_project.assert_called_once_with(

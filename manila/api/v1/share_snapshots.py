@@ -72,10 +72,14 @@ class ShareSnapshotMixin(object):
 
     def index(self, req):
         """Returns a summary list of snapshots."""
+        req.GET.pop('name~', None)
+        req.GET.pop('description~', None)
         return self._get_snapshots(req, is_detail=False)
 
     def detail(self, req):
         """Returns a detailed list of snapshots."""
+        req.GET.pop('name~', None)
+        req.GET.pop('description~', None)
         return self._get_snapshots(req, is_detail=True)
 
     def _get_snapshots(self, req, is_detail):
@@ -96,6 +100,12 @@ class ShareSnapshotMixin(object):
         # from Cinder v1 and v2 APIs.
         if 'name' in search_opts:
             search_opts['display_name'] = search_opts.pop('name')
+
+        # like filter
+        for key, db_key in (('name~', 'display_name~'),
+                            ('description~', 'display_description~')):
+            if key in search_opts:
+                search_opts[db_key] = search_opts.pop(key)
 
         common.remove_invalid_options(context, search_opts,
                                       self._get_snapshots_search_options())
@@ -120,7 +130,8 @@ class ShareSnapshotMixin(object):
 
     def _get_snapshots_search_options(self):
         """Return share snapshot search options allowed by non-admin."""
-        return ('display_name', 'name', 'status', 'share_id', 'size')
+        return ('display_name', 'name', 'status', 'share_id', 'size',
+                'display_name~', 'display_description~')
 
     def update(self, req, id, body):
         """Update a snapshot."""

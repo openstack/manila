@@ -184,13 +184,19 @@ class ShareSnapshotAPITest(test.TestCase):
         }
         self.assertEqual(expected, res_dict)
 
-    def _snapshot_list_summary_with_search_opts(self, use_admin_context):
+    def _snapshot_list_summary_with_search_opts(self, version,
+                                                use_admin_context):
         search_opts = fake_share.search_opts()
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.36')):
+            search_opts.pop('name')
+            search_opts['display_name~'] = 'fake_name'
         # fake_key should be filtered for non-admin
         url = '/snapshots?fake_key=fake_value'
         for k, v in search_opts.items():
             url = url + '&' + k + '=' + v
-        req = fakes.HTTPRequest.blank(url, use_admin_context=use_admin_context)
+        req = fakes.HTTPRequest.blank(
+            url, use_admin_context=use_admin_context, version=version)
 
         snapshots = [
             {'id': 'id1', 'display_name': 'n1', 'status': 'fake_status', },
@@ -203,10 +209,14 @@ class ShareSnapshotAPITest(test.TestCase):
         result = self.controller.index(req)
 
         search_opts_expected = {
-            'display_name': search_opts['name'],
             'status': search_opts['status'],
             'share_id': search_opts['share_id'],
         }
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.36')):
+            search_opts_expected['display_name~'] = 'fake_name'
+        else:
+            search_opts_expected['display_name'] = search_opts['name']
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
         share_api.API.get_all_snapshots.assert_called_once_with(
@@ -220,11 +230,15 @@ class ShareSnapshotAPITest(test.TestCase):
         self.assertEqual(
             snapshots[1]['display_name'], result['snapshots'][0]['name'])
 
-    def test_snapshot_list_summary_with_search_opts_by_non_admin(self):
-        self._snapshot_list_summary_with_search_opts(use_admin_context=False)
-
-    def test_snapshot_list_summary_with_search_opts_by_admin(self):
-        self._snapshot_list_summary_with_search_opts(use_admin_context=True)
+    @ddt.data({'version': '2.35', 'use_admin_context': True},
+              {'version': '2.36', 'use_admin_context': True},
+              {'version': '2.35', 'use_admin_context': False},
+              {'version': '2.36', 'use_admin_context': False})
+    @ddt.unpack
+    def test_snapshot_list_summary_with_search_opts(self, version,
+                                                    use_admin_context):
+        self._snapshot_list_summary_with_search_opts(
+            version=version, use_admin_context=use_admin_context)
 
     def _snapshot_list_detail_with_search_opts(self, use_admin_context):
         search_opts = fake_share.search_opts()

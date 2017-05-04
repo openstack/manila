@@ -813,6 +813,19 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
         self.assertDictMatch(dict(expected_group), dict(group))
         self.assertEqual(fake_project, group['project_id'])
 
+    def test_share_group_get_all_by_like_filter(self):
+        expected_group = db_utils.create_share_group(
+            name='test1', description='test1')
+        db_utils.create_share_group(name='fake', description='fake')
+
+        groups = db_api.share_group_get_all(
+            self.ctxt, detailed=True,
+            filters={'name~': 'test', 'description~': 'test'})
+
+        self.assertEqual(1, len(groups))
+        group = groups[0]
+        self.assertDictMatch(dict(expected_group), dict(group))
+
     def test_share_group_update(self):
         fake_name = "my_fake_name"
         expected_group = db_utils.create_share_group()

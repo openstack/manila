@@ -71,6 +71,22 @@ class ShareNetworkListMixin(object):
                                 for ss in ss_list))
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    @base.skip_if_microversion_lt("2.36")
+    def test_list_share_networks_like_filter(self):
+        valid_filter_opts = {
+            'name': 'sn_with_ldap_ss',
+            'description': 'fake',
+        }
+
+        listed = self.shares_v2_client.list_share_networks_with_detail(
+            {'name~': 'ldap_ss', 'description~': 'fa'})
+        self.assertTrue(any(self.sn_with_ldap_ss['id'] == sn['id']
+                            for sn in listed))
+        for sn in listed:
+            self.assertTrue(all(value in sn[key] for key, value in
+                                valid_filter_opts.items()))
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_list_share_networks_all_filter_opts(self):
         valid_filter_opts = {
             'created_before': '2002-10-10',

@@ -1500,8 +1500,12 @@ class ShareAPITest(test.TestCase):
     @ddt.data({'use_admin_context': False, 'version': '2.4'},
               {'use_admin_context': True, 'version': '2.4'},
               {'use_admin_context': True, 'version': '2.35'},
-              {'use_admin_context': False, 'version': '2.35'})
-    def share_list_summary_with_search_opts(self, use_admin_context, version):
+              {'use_admin_context': False, 'version': '2.35'},
+              {'use_admin_context': True, 'version': '2.36'},
+              {'use_admin_context': False, 'version': '2.36'})
+    @ddt.unpack
+    def test_share_list_summary_with_search_opts(self, use_admin_context,
+                                                 version):
         search_opts = {
             'name': 'fake_name',
             'status': constants.STATUS_AVAILABLE,
@@ -1519,6 +1523,11 @@ class ShareAPITest(test.TestCase):
             'export_location_id': 'fake_export_location_id',
             'export_location_path': 'fake_export_location_path',
         }
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.36')):
+            search_opts.update(
+                {'display_name~': 'fake',
+                 'display_description~': 'fake'})
         if use_admin_context:
             search_opts['host'] = 'fake_host'
         # fake_key should be filtered for non-admin
@@ -1555,6 +1564,11 @@ class ShareAPITest(test.TestCase):
                 search_opts['export_location_id'])
             search_opts_expected['export_location_path'] = (
                 search_opts['export_location_path'])
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.36')):
+            search_opts_expected.update(
+                {'display_name~': search_opts['display_name~'],
+                 'display_description~': search_opts['display_description~']})
 
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})

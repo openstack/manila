@@ -120,6 +120,8 @@ SUPPORTED_SHARE_PROTOCOLS = (
 
 SECURITY_SERVICES_ALLOWED_TYPES = ['active_directory', 'ldap', 'kerberos']
 
+LIKE_FILTER = ['name~', 'description~']
+
 NFS_EXPORTS_FILE = '/etc/exports'
 NFS_EXPORTS_FILE_TEMP = '/var/lib/nfs/etab'
 

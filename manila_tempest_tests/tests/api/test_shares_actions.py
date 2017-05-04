@@ -337,6 +337,15 @@ class SharesActionsTest(base.BaseSharesTest):
         self.assertEqual(self.share_name, shares[0]["name"])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    @base.skip_if_microversion_lt("2.36")
+    def test_list_shares_with_detail_filter_by_nonexistent_name(self):
+        # list shares by name, at least one share is expected
+        params = {"name~": 'tempest-share'}
+        shares = self.shares_v2_client.list_shares_with_detail(params)
+        for share in shares:
+            self.assertIn('tempest-share', share["name"])
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_list_shares_with_detail_filter_by_fake_name(self):
         # list shares by fake name, no shares are expected
         params = {"name": data_utils.rand_name("fake-nonexistent-name")}
@@ -481,16 +490,18 @@ class SharesActionsTest(base.BaseSharesTest):
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
-    @ddt.data(None, '2.16', LATEST_MICROVERSION)
+    @ddt.data(None, '2.16', '2.36', LATEST_MICROVERSION)
     def test_list_snapshots_with_detail(self, version):
-
+        params = None
+        if version and utils.is_microversion_ge(version, '2.36'):
+            params = {'name~': 'tempest', 'description~': 'tempest'}
         # list share snapshots
         if version is None:
             snaps = self.shares_client.list_snapshots_with_detail()
         else:
             utils.skip_if_microversion_not_supported(version)
             snaps = self.shares_v2_client.list_snapshots_with_detail(
-                version=version)
+                version=version, params=params)
 
         # verify keys
         expected_keys = ["status", "links", "share_id", "name",

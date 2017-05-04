@@ -22,6 +22,7 @@ import webob
 from webob import exc
 
 from manila.api import common
+from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila.api.v1 import share_snapshots
 from manila.api.views import share_snapshots as snapshot_views
@@ -281,6 +282,22 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
     @wsgi.Controller.authorize
     def access_list(self, req, snapshot_id):
         return self._access_list(req, snapshot_id)
+
+    @wsgi.Controller.api_version("2.0")
+    def index(self, req):
+        """Returns a summary list of shares."""
+        if req.api_version_request < api_version.APIVersionRequest("2.36"):
+            req.GET.pop('name~', None)
+            req.GET.pop('description~', None)
+        return self._get_snapshots(req, is_detail=False)
+
+    @wsgi.Controller.api_version("2.0")
+    def detail(self, req):
+        """Returns a detailed list of shares."""
+        if req.api_version_request < api_version.APIVersionRequest("2.36"):
+            req.GET.pop('name~', None)
+            req.GET.pop('description~', None)
+        return self._get_snapshots(req, is_detail=True)
 
 
 def create_resource():
