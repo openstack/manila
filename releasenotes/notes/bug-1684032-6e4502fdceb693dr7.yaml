@@ -1,0 +1,8 @@
+---
+fixes:
+  - When upgrading manila to a new release, if a share driver has added
+    support for storage pools in the new release, shares belonging to
+    such drivers would be iteratively updated by manila. This is done by
+    querying the back end driver for the storage pool that each share is
+    hosted within. A bug affecting the database update in this path has
+    been fixed.
