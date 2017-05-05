@@ -1963,6 +1963,14 @@ class ShareActionsTest(test.TestCase):
 
         access = self.controller.allow_access(req, share['id'], body)
 
+        if api_version.APIVersionRequest(version) >= (
+                api_version.APIVersionRequest("2.33")):
+            expected_access.update(
+                {
+                    'created_at': updated_access['created_at'],
+                    'updated_at': updated_access['updated_at'],
+                })
+
         self.assertEqual(expected_access, access['access'])
         share_api.API.allow_access.assert_called_once_with(
             req.environ['manila.context'], share, 'user',

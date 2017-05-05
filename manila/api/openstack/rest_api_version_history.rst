@@ -191,3 +191,7 @@ user documentation.
 2.32
 ----
   Added mountable snapshots APIs.
+
+2.33
+----
+  Added created_at and updated_at in access_list API.

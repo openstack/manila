@@ -494,6 +494,15 @@ class ShareRulesTest(base.BaseSharesTest):
             rule = self.shares_v2_client.create_access_rule(
                 self.share["id"], self.access_type, self.access_to,
                 version=version)
+
+        # verify added rule keys since 2.33 when create rule
+        if utils.is_microversion_ge(version, '2.33'):
+            self.assertIn('created_at', list(rule.keys()))
+            self.assertIn('updated_at', list(rule.keys()))
+        else:
+            self.assertNotIn('created_at', list(rule.keys()))
+            self.assertNotIn('updated_at', list(rule.keys()))
+
         # rules must start out in 'new' until 2.28 & 'queued_to_apply' after
         if utils.is_microversion_le(version, "2.27"):
             self.assertEqual("new", rule['state'])
@@ -522,6 +531,8 @@ class ShareRulesTest(base.BaseSharesTest):
         keys = ("id", "access_type", "access_to", "access_level")
         if utils.is_microversion_ge(version, '2.21'):
             keys += ("access_key", )
+        if utils.is_microversion_ge(version, '2.33'):
+            keys += ("created_at", "updated_at", )
         for key in keys:
             [self.assertIn(key, r.keys()) for r in rules]
         for key in ('deleted', 'deleted_at', 'instance_mappings'):
