@@ -28,10 +28,10 @@ if storops:
 from manila.common import constants as const
 from manila import exception
 from manila.i18n import _
+from manila.share.drivers.dell_emc.common.enas import utils as enas_utils
 from manila.share.drivers.dell_emc.plugins import base as driver
 from manila.share.drivers.dell_emc.plugins.unity import client
 from manila.share.drivers.dell_emc.plugins.unity import utils as unity_utils
-from manila.share.drivers.dell_emc.plugins.vnx import utils as emc_utils
 from manila.share import utils as share_utils
 from manila import utils
 
@@ -64,14 +64,14 @@ CONF = cfg.CONF
 CONF.register_opts(UNITY_OPTS)
 
 
-@emc_utils.decorate_all_methods(emc_utils.log_enter_exit,
-                                debug_only=True)
+@enas_utils.decorate_all_methods(enas_utils.log_enter_exit,
+                                 debug_only=True)
 class UnityStorageConnection(driver.StorageConnection):
     """Implements Unity specific functionality for EMC Manila driver."""
 
     IP_ALLOCATIONS = 1
 
-    @emc_utils.log_enter_exit
+    @enas_utils.log_enter_exit
     def __init__(self, *args, **kwargs):
         super(UnityStorageConnection, self).__init__(*args, **kwargs)
         if 'configuration' in kwargs:

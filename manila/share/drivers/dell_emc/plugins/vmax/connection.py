@@ -25,11 +25,11 @@ from oslo_utils import units
 from manila.common import constants as const
 from manila import exception
 from manila.i18n import _
+from manila.share.drivers.dell_emc.common.enas import constants
+from manila.share.drivers.dell_emc.common.enas import utils as enas_utils
 from manila.share.drivers.dell_emc.plugins import base as driver
 from manila.share.drivers.dell_emc.plugins.vmax import (
     object_manager as manager)
-from manila.share.drivers.dell_emc.plugins.vmax import constants
-from manila.share.drivers.dell_emc.plugins.vmax import utils as vmax_utils
 from manila.share import utils as share_utils
 from manila import utils
 
@@ -53,12 +53,12 @@ CONF = cfg.CONF
 CONF.register_opts(VMAX_OPTS)
 
 
-@vmax_utils.decorate_all_methods(vmax_utils.log_enter_exit,
+@enas_utils.decorate_all_methods(enas_utils.log_enter_exit,
                                  debug_only=True)
 class VMAXStorageConnection(driver.StorageConnection):
     """Implements vmax specific functionality for EMC Manila driver."""
 
-    @vmax_utils.log_enter_exit
+    @enas_utils.log_enter_exit
     def __init__(self, *args, **kwargs):
         super(VMAXStorageConnection, self).__init__(*args, **kwargs)
         if 'configuration' in kwargs:
@@ -154,7 +154,7 @@ class VMAXStorageConnection(driver.StorageConnection):
         self._get_context('FileSystem').extend(share['id'], pool_name,
                                                nwe_size)
 
-    @vmax_utils.log_enter_exit
+    @enas_utils.log_enter_exit
     def _create_cifs_share(self, share_name, share_server):
         """Create CIFS share."""
         vdm_name = self._get_share_server_name(share_server)
@@ -186,7 +186,7 @@ class VMAXStorageConnection(driver.StorageConnection):
 
         return locations
 
-    @vmax_utils.log_enter_exit
+    @enas_utils.log_enter_exit
     def _create_nfs_share(self, share_name, share_server):
         """Create NFS share."""
         vdm_name = self._get_share_server_name(share_server)
@@ -264,7 +264,7 @@ class VMAXStorageConnection(driver.StorageConnection):
             raise exception.InvalidShare(
                 reason=_('Unsupported share protocol'))
 
-    @vmax_utils.log_enter_exit
+    @enas_utils.log_enter_exit
     def _delete_cifs_share(self, share, share_server):
         """Delete CIFS share."""
         vdm_name = self._get_share_server_name(share_server)
@@ -275,7 +275,7 @@ class VMAXStorageConnection(driver.StorageConnection):
 
         self._deallocate_container(name, vdm_name)
 
-    @vmax_utils.log_enter_exit
+    @enas_utils.log_enter_exit
     def _delete_nfs_share(self, share, share_server):
         """Delete NFS share."""
         vdm_name = self._get_share_server_name(share_server)
@@ -286,7 +286,7 @@ class VMAXStorageConnection(driver.StorageConnection):
 
         self._deallocate_container(name, vdm_name)
 
-    @vmax_utils.log_enter_exit
+    @enas_utils.log_enter_exit
     def _deallocate_container(self, share_name, vdm_name):
         """Delete underneath objects of the share."""
         path = '/' + share_name
@@ -347,7 +347,7 @@ class VMAXStorageConnection(driver.StorageConnection):
                 reason=(_('Invalid NAS protocol supplied: %s.')
                         % share_proto))
 
-    @vmax_utils.log_enter_exit
+    @enas_utils.log_enter_exit
     def _cifs_allow_access(self, context, share, access, share_server):
         """Allow access to CIFS share."""
         vdm_name = self._get_share_server_name(share_server)
@@ -381,7 +381,7 @@ class VMAXStorageConnection(driver.StorageConnection):
             server['domain'],
             access=cifs_access)
 
-    @vmax_utils.log_enter_exit
+    @enas_utils.log_enter_exit
     def _nfs_allow_access(self, context, share, access, share_server):
         """Allow access to NFS share."""
         vdm_name = self._get_share_server_name(share_server)
@@ -423,7 +423,7 @@ class VMAXStorageConnection(driver.StorageConnection):
         elif share_proto == 'NFS':
             self._nfs_clear_access(share_name, share_server, white_list)
 
-    @vmax_utils.log_enter_exit
+    @enas_utils.log_enter_exit
     def _cifs_clear_access(self, share_name, share_server, white_list):
         """Clear access for CIFS share except hosts in the white list."""
         vdm_name = self._get_share_server_name(share_server)
@@ -444,7 +444,7 @@ class VMAXStorageConnection(driver.StorageConnection):
             domain=server['domain'],
             white_list_users=white_list)
 
-    @vmax_utils.log_enter_exit
+    @enas_utils.log_enter_exit
     def _nfs_clear_access(self, share_name, share_server, white_list):
         """Clear access for NFS share except hosts in the white list."""
         self._get_context('NFSShare').clear_share_access(
@@ -464,7 +464,7 @@ class VMAXStorageConnection(driver.StorageConnection):
             raise exception.InvalidShare(
                 reason=_('Unsupported share protocol'))
 
-    @vmax_utils.log_enter_exit
+    @enas_utils.log_enter_exit
     def _cifs_deny_access(self, share, access, share_server):
         """Deny access to CIFS share."""
         vdm_name = self._get_share_server_name(share_server)
@@ -498,7 +498,7 @@ class VMAXStorageConnection(driver.StorageConnection):
             server['domain'],
             access=cifs_access)
 
-    @vmax_utils.log_enter_exit
+    @enas_utils.log_enter_exit
     def _nfs_deny_access(self, share, access, share_server):
         """Deny access to NFS share."""
         vdm_name = self._get_share_server_name(share_server)
@@ -539,7 +539,7 @@ class VMAXStorageConnection(driver.StorageConnection):
 
             real_pools = set([item for item in backend_pools])
             conf_pools = set([item.strip() for item in pools])
-            matched_pools, unmatched_pools = vmax_utils.do_match_any(
+            matched_pools, unmatched_pools = enas_utils.do_match_any(
                 real_pools, conf_pools)
 
             if not matched_pools:
@@ -581,7 +581,7 @@ class VMAXStorageConnection(driver.StorageConnection):
                       "Data Mover can be used.")
             return real_ports
 
-        matched_ports, unmanaged_ports = vmax_utils.do_match_any(
+        matched_ports, unmanaged_ports = enas_utils.do_match_any(
             real_ports, self.port_conf)
 
         if not matched_ports:
@@ -739,7 +739,7 @@ class VMAXStorageConnection(driver.StorageConnection):
             'nfs_if': nfs_if,
         }
 
-    @vmax_utils.log_enter_exit
+    @enas_utils.log_enter_exit
     def _vdm_exist(self, name):
         status, out = self._get_context('VDM').get(name)
         if constants.STATUS_OK != status:

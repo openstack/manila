@@ -1,4 +1,4 @@
-# Copyright (c) 2015 EMC Corporation.
+# Copyright (c) 2016 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -161,7 +161,13 @@ class EMCNFSShareMock(mock.Mock):
         return True
 
 
-def patch_get_managed_ports(*arg, **kwargs):
+def patch_get_managed_ports_vnx(*arg, **kwargs):
     return mock.patch('manila.share.drivers.dell_emc.plugins.vnx.connection.'
                       'VNXStorageConnection.get_managed_ports',
+                      mock.Mock(*arg, **kwargs))
+
+
+def patch_get_managed_ports_vmax(*arg, **kwargs):
+    return mock.patch('manila.share.drivers.dell_emc.plugins.vmax.connection.'
+                      'VMAXStorageConnection.get_managed_ports',
                       mock.Mock(*arg, **kwargs))

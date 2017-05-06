@@ -129,6 +129,7 @@ class FakeData(object):
     fake_error_msg = 'fake error message'
 
     emc_share_backend = 'vnx'
+    vmax_share_backend = 'vmax'
     emc_nas_server = '192.168.1.20'
     emc_nas_login = 'fakename'
     emc_nas_password = 'fakepassword'
@@ -1484,11 +1485,14 @@ class NFSShareTestData(StorageObjectTestData):
 
 
 class FakeEMCShareDriver(object):
-    def __init__(self):
+    def __init__(self, enas_type='vnx'):
         self.configuration = conf.Configuration(None)
         self.configuration.append_config_values = mock.Mock(return_value=0)
         self.configuration.emc_share_backend = FakeData.emc_share_backend
         self.configuration.vnx_server_container = FakeData.mover_name
+        if enas_type == 'vmax':
+            self.configuration.emc_share_backend = FakeData.vmax_share_backend
+            self.configuration.vmax_server_container = FakeData.mover_name
         self.configuration.emc_nas_server = FakeData.emc_nas_server
         self.configuration.emc_nas_login = FakeData.emc_nas_login
         self.configuration.emc_nas_password = FakeData.emc_nas_password
@@ -1584,6 +1588,12 @@ NETWORK_INFO = {
 
 STATS = dict(
     share_backend_name='VNX',
+    vendor_name='EMC',
+    storage_protocol='NFS_CIFS',
+    driver_version='2.0.0,')
+
+STATS_VMAX = dict(
+    share_backend_name='VMAX',
     vendor_name='EMC',
     storage_protocol='NFS_CIFS',
     driver_version='2.0.0,')

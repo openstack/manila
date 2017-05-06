@@ -20,16 +20,17 @@ from lxml import builder
 import mock
 from oslo_concurrency import processutils
 
-from manila.common import constants as const
 from manila import exception
+
+from manila.common import constants as const
+from manila.share.drivers.dell_emc.common.enas import connector
+from manila.share.drivers.dell_emc.common.enas import constants
+from manila.share.drivers.dell_emc.common.enas import xml_api_parser as parser
 from manila.share.drivers.dell_emc.plugins.vmax import (
     object_manager as manager)
-from manila.share.drivers.dell_emc.plugins.vmax import connector
-from manila.share.drivers.dell_emc.plugins.vmax import constants
-from manila.share.drivers.dell_emc.plugins.vmax import xml_api_parser as parser
 from manila import test
-from manila.tests.share.drivers.dell_emc.plugins.vmax import fakes
-from manila.tests.share.drivers.dell_emc.plugins.vmax import utils
+from manila.tests.share.drivers.dell_emc.common.enas import fakes
+from manila.tests.share.drivers.dell_emc.common.enas import utils
 
 
 class StorageObjectManagerTestCase(test.TestCase):
@@ -38,7 +39,7 @@ class StorageObjectManagerTestCase(test.TestCase):
     def setUp(self):
         super(StorageObjectManagerTestCase, self).setUp()
 
-        emd_share_driver = fakes.FakeEMCShareDriver()
+        emd_share_driver = fakes.FakeEMCShareDriver('vmax')
 
         self.manager = manager.StorageObjectManager(
             emd_share_driver.configuration)
@@ -80,7 +81,7 @@ class StorageObjectTestCaseBase(test.TestCase):
     def setUp(self):
         super(StorageObjectTestCaseBase, self).setUp()
 
-        emd_share_driver = fakes.FakeEMCShareDriver()
+        emd_share_driver = fakes.FakeEMCShareDriver('vmax')
 
         self.manager = manager.StorageObjectManager(
             emd_share_driver.configuration)
@@ -98,7 +99,6 @@ class StorageObjectTestCaseBase(test.TestCase):
 
 
 class StorageObjectTestCase(StorageObjectTestCaseBase):
-
     def test_xml_api_retry(self):
         hook = utils.RequestSideEffect()
         hook.append(self.base.resp_need_retry())
@@ -489,7 +489,7 @@ class FileSystemTestCase(StorageObjectTestCaseBase):
                                      self.fs.src_fileystems_name,
                                      self.pool.pool_name,
                                      self.vdm.vdm_name,
-                                     self.mover.interconnect_id,)
+                                     self.mover.interconnect_id)
 
         ssh_calls = [
             mock.call(self.fs.cmd_create_from_ckpt(), False),
@@ -1076,11 +1076,11 @@ class VDMTestCase(StorageObjectTestCaseBase):
     def test_detach_nfs_interface_with_error(self):
         self.ssh_hook.append(ex=processutils.ProcessExecutionError(
             stdout=self.vdm.fake_output))
-        self.ssh_hook.append(self.vdm.output_get_interfaces(
+        self.ssh_hook.append(self.vdm.output_get_interfaces_vdm(
             self.mover.interface_name2))
         self.ssh_hook.append(ex=processutils.ProcessExecutionError(
             stdout=self.vdm.fake_output))
-        self.ssh_hook.append(self.vdm.output_get_interfaces(
+        self.ssh_hook.append(self.vdm.output_get_interfaces_vdm(
             nfs_interface=fakes.FakeData.interface_name1))
 
         context = self.manager.getStorageContext('VDM')
@@ -1103,7 +1103,7 @@ class VDMTestCase(StorageObjectTestCaseBase):
         context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
 
     def test_get_cifs_nfs_interface(self):
-        self.ssh_hook.append(self.vdm.output_get_interfaces())
+        self.ssh_hook.append(self.vdm.output_get_interfaces_vdm())
 
         context = self.manager.getStorageContext('VDM')
         context.conn['SSH'].run_ssh = mock.Mock(side_effect=self.ssh_hook)
