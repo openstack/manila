@@ -41,17 +41,17 @@ class HookBaseTestCase(test.TestCase):
         super(HookBaseTestCase, self).setUp()
         self.context = context.get_admin_context()
         self.default_config = {
-            "enable_pre_hooks": "fake_enable_pre_hooks",
-            "enable_post_hooks": "fake_enable_post_hooks",
-            "enable_periodic_hooks": "fake_enable_periodic_hooks",
-            "suppress_pre_hooks_errors": "fake_suppress_pre_hook_errors",
-            "suppress_post_hooks_errors": "fake_suppress_post_hook_errors",
+            "enable_pre_hooks": True,
+            "enable_post_hooks": True,
+            "enable_periodic_hooks": True,
+            "suppress_pre_hooks_errors": True,
+            "suppress_post_hooks_errors": True,
         }
         for k, v in self.default_config.items():
             hook.CONF.set_default(k, v)
 
     def _fake_safe_get(self, key):
-        return self.default_config.get(key) + "_safe_get"
+        return self.default_config.get(key)
 
     def _get_hook_instance(self, set_configuration=True, host="fake_host"):
         if set_configuration:
