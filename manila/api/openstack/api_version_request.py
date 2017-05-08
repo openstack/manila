@@ -98,13 +98,15 @@ REST_API_VERSION_HISTORY = """
     * 2.30 - Added cast_rules_to_readonly field to share_instances.
     * 2.31 - Convert consistency groups to share groups.
     * 2.32 - Added mountable snapshots APIs.
+    * 2.33 - Added 'created_at' and 'updated_at' to the response of
+             access_list API.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.32"
+_MAX_API_VERSION = "2.33"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

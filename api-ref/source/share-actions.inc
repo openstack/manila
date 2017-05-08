@@ -182,6 +182,8 @@ Response parameters
    - state: state
    - access_list: access_list
    - id: access_rule_id
+   - created_at: access_rule_created_at
+   - updated_at: access_rule_updated_at
 
 Response example
 ----------------

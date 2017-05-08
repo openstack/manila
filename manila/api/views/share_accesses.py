@@ -25,6 +25,7 @@ class ViewBuilder(common.ViewBuilder):
     _detail_version_modifiers = [
         "add_access_key",
         "translate_transitional_statuses",
+        "add_created_at_and_updated_at",
     ]
 
     def list_view(self, request, accesses):
@@ -62,6 +63,11 @@ class ViewBuilder(common.ViewBuilder):
     @common.ViewBuilder.versioned_method("2.21")
     def add_access_key(self, context, access_dict, access):
         access_dict['access_key'] = access.get('access_key')
+
+    @common.ViewBuilder.versioned_method("2.33")
+    def add_created_at_and_updated_at(self, context, access_dict, access):
+        access_dict['created_at'] = access.get('created_at')
+        access_dict['updated_at'] = access.get('updated_at')
 
     @common.ViewBuilder.versioned_method("1.0", "2.27")
     def translate_transitional_statuses(self, context, access_dict, access):
