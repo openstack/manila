@@ -36,13 +36,13 @@ Restrictions
 
 - Current implementation has been tested only on Ubuntu. Devstack plugin won't
   work on other distributions however it should be possible to install
-  prerequisits and set the driver up manually;
+  prerequisites and set the driver up manually;
 - The only supported protocol is CIFS;
 - The following features are not implemented:
   * Manage/unmanage share;
   * Shrink share;
   * Create/delete snapshots;
-  * Create a share fron a snapshot;
+  * Create a share from a snapshot;
   * Manage/unmanage snapshots.
 
 Known problems
