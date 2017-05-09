@@ -55,7 +55,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.library._client = mock.Mock()
         self.client = self.library._client
-        self.context = mock.Mock()
 
     def test_init(self):
         self.assertEqual(fake.VSERVER1, self.library._vserver)

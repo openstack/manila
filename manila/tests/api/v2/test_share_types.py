@@ -564,7 +564,6 @@ class ShareTypeAccessTest(test.TestCase):
         super(self.__class__, self).setUp()
         self.controller = types.ShareTypesController()
         self.req = FakeRequest()
-        self.context = self.req.environ['manila.context']
         self.mock_object(db, 'share_type_get', fake_share_type_get)
         self.mock_object(db, 'share_type_get_all', fake_share_type_get_all)
 

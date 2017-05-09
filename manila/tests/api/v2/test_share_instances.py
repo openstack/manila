@@ -39,7 +39,6 @@ class ShareInstancesAPITest(test.TestCase):
         super(self.__class__, self).setUp()
         self.controller = share_instances.ShareInstancesController()
         self.resource_name = self.controller.resource_name
-        self.context = context.RequestContext('admin', 'fake', True)
         self.mock_policy_check = self.mock_object(
             policy, 'check_policy', mock.Mock(return_value=True))
         self.admin_context = context.RequestContext('admin', 'fake', True)

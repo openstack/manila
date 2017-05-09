@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_context import context
-
 from manila.scheduler.filters import driver
 from manila import test
 from manila.tests.scheduler import fakes
@@ -24,7 +22,6 @@ class HostFiltersTestCase(test.TestCase):
 
     def setUp(self):
         super(HostFiltersTestCase, self).setUp()
-        self.context = context.RequestContext('fake', 'fake')
         self.filter = driver.DriverFilter()
 
     def test_passing_function(self):

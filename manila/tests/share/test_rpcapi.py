@@ -34,7 +34,6 @@ class ShareRpcAPITestCase(test.TestCase):
 
     def setUp(self):
         super(ShareRpcAPITestCase, self).setUp()
-        self.context = context.get_admin_context()
         share = db_utils.create_share(
             availability_zone=CONF.storage_availability_zone,
             status=constants.STATUS_AVAILABLE

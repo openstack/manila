@@ -29,7 +29,6 @@ class HostFiltersTestCase(test.TestCase):
 
     def setUp(self):
         super(HostFiltersTestCase, self).setUp()
-        self.context = context.RequestContext('fake', 'fake')
         self.filter = availability_zone.AvailabilityZoneFilter()
 
     @staticmethod

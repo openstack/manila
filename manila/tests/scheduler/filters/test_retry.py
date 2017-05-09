@@ -15,7 +15,6 @@
 Tests For RetryFilter.
 """
 
-from manila import context
 from manila.scheduler.filters import retry
 from manila import test
 from manila.tests.scheduler import fakes
@@ -26,7 +25,6 @@ class HostFiltersTestCase(test.TestCase):
 
     def setUp(self):
         super(HostFiltersTestCase, self).setUp()
-        self.context = context.RequestContext('fake', 'fake')
         self.filter = retry.RetryFilter()
 
     def test_retry_filter_disabled(self):

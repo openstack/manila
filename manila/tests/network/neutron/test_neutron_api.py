@@ -19,7 +19,6 @@ from neutronclient.common import exceptions as neutron_client_exc
 from neutronclient.v2_0 import client as clientv20
 from oslo_config import cfg
 
-from manila import context
 from manila.db import base
 from manila import exception
 from manila.network.neutron import api as neutron_api
@@ -152,7 +151,6 @@ class NeutronApiTest(test.TestCase):
 
     def setUp(self):
         super(NeutronApiTest, self).setUp()
-        self.context = context.get_admin_context()
         self.mock_object(base, 'Base', fakes.FakeModel)
         self.mock_object(
             clientv20, 'Client', mock.Mock(return_value=FakeNeutronClient()))
