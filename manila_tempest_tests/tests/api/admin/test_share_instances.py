@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 from tempest import config
 from testtools import testcase as tc
 
@@ -22,6 +23,7 @@ from manila_tempest_tests import utils
 CONF = config.CONF
 
 
+@ddt.ddt
 class ShareInstancesTest(base.BaseSharesAdminTest):
 
     @classmethod
@@ -49,9 +51,9 @@ class ShareInstancesTest(base.BaseSharesAdminTest):
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_list_share_instances_v2_3(self):
-        """Test that we get at least the share instance back for the share."""
-        share_instances = self.shares_v2_client.get_instances_of_share(
-            self.share['id'], version='2.3'
+        """Test that we list the share instance back."""
+        share_instances = self.shares_v2_client.list_share_instances(
+            version='2.3'
         )
 
         share_ids = [si['share_id'] for si in share_instances]
@@ -59,7 +61,9 @@ class ShareInstancesTest(base.BaseSharesAdminTest):
         msg = 'Share instance for share %s was not found.' % self.share['id']
         self.assertIn(self.share['id'], share_ids, msg)
 
-    def _get_share_instance(self, version):
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    @ddt.data('2.3', '2.9', '2.10', '2.30')
+    def test_get_share_instance(self, version):
         """Test that we get the proper keys back for the instance."""
         share_instances = self.shares_v2_client.get_instances_of_share(
             self.share['id'], version=version,
@@ -88,19 +92,3 @@ class ShareInstancesTest(base.BaseSharesAdminTest):
                          'Share instance %s returned incorrect keys; '
                          'expected %s, got %s.' % (
                              si['id'], expected_keys, actual_keys))
-
-    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
-    def test_get_share_instance_v2_3(self):
-        self._get_share_instance('2.3')
-
-    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
-    def test_get_share_instance_v2_9(self):
-        self._get_share_instance('2.9')
-
-    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
-    def test_get_share_instance_v2_10(self):
-        self._get_share_instance('2.10')
-
-    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
-    def test_get_share_instance_v2_30(self):
-        self._get_share_instance('2.30')
