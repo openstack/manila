@@ -17,7 +17,6 @@
 Tests For Scheduler Host Filters.
 """
 
-from oslo_context import context
 from oslo_serialization import jsonutils
 
 from manila.scheduler.filters import base_host
@@ -38,7 +37,6 @@ class HostFiltersTestCase(test.TestCase):
 
     def setUp(self):
         super(HostFiltersTestCase, self).setUp()
-        self.context = context.RequestContext('fake', 'fake')
         self.json_query = jsonutils.dumps(
             ['and', ['>=', '$free_ram_mb', 1024],
              ['>=', '$free_disk_mb', 200 * 1024]])

@@ -17,7 +17,6 @@ Tests For CapacityFilter.
 
 import ddt
 
-from manila import context
 from manila.scheduler.filters import capacity
 from manila import test
 from manila.tests.scheduler import fakes
@@ -30,7 +29,6 @@ class HostFiltersTestCase(test.TestCase):
 
     def setUp(self):
         super(HostFiltersTestCase, self).setUp()
-        self.context = context.RequestContext('fake', 'fake')
         self.filter = capacity.CapacityFilter()
 
     def _stub_service_is_up(self, ret_value):

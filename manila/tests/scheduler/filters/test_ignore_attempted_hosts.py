@@ -17,7 +17,6 @@
 Tests For IgnoreAttemptedHost filter.
 """
 
-from oslo_context import context
 
 from manila.scheduler.filters import ignore_attempted_hosts
 from manila import test
@@ -29,7 +28,6 @@ class HostFiltersTestCase(test.TestCase):
 
     def setUp(self):
         super(HostFiltersTestCase, self).setUp()
-        self.context = context.RequestContext('fake', 'fake')
         self.filter = ignore_attempted_hosts.IgnoreAttemptedHostsFilter()
 
     def test_ignore_attempted_hosts_filter_disabled(self):

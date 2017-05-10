@@ -60,7 +60,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._client = mock.Mock()
         self.library._client.get_ontapi_version.return_value = (1, 21)
         self.client = self.library._client
-        self.context = mock.Mock()
 
     def test_check_for_setup_error_cluster_creds_no_vserver(self):
         self.library._have_cluster_creds = True

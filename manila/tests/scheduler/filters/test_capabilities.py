@@ -18,7 +18,6 @@ Tests For CapabilitiesFilter.
 """
 
 import ddt
-from oslo_context import context
 
 from manila.scheduler.filters import capabilities
 from manila import test
@@ -31,7 +30,6 @@ class HostFiltersTestCase(test.TestCase):
 
     def setUp(self):
         super(HostFiltersTestCase, self).setUp()
-        self.context = context.RequestContext('fake', 'fake')
         self.filter = capabilities.CapabilitiesFilter()
 
     def _do_test_type_filter_extra_specs(self, ecaps, especs, passes):
