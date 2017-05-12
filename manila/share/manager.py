@@ -270,27 +270,29 @@ class ShareManager(manager.SchedulerDependentManager):
         """Initialization for a standalone service."""
 
         ctxt = context.get_admin_context()
-        LOG.debug("Start initialization of driver: '%(driver)s"
-                  "@%(host)s'",
-                  {"driver": self.driver.__class__.__name__,
-                   "host": self.host})
-        try:
-            self.driver.do_setup(ctxt)
-            self.driver.check_for_setup_error()
-        except Exception:
-            LOG.exception(
-                ("Error encountered during initialization of driver "
-                 "'%(name)s' on '%(host)s' host."), {
-                    "name": self.driver.__class__.__name__,
-                    "host": self.host,
-                }
-            )
+        driver_host_pair = "{}@{}".format(
+            self.driver.__class__.__name__,
+            self.host)
+
+        # we want to retry to setup the driver. In case of a multi-backend
+        # scenario, working backends are usable and the non-working ones (where
+        # do_setup() or check_for_setup_error() fail) retry.
+        @utils.retry(Exception, interval=2, backoff_rate=2,
+                     backoff_sleep_max=600, retries=0)
+        def _driver_setup():
             self.driver.initialized = False
-            # we don't want to continue since we failed
-            # to initialize the driver correctly.
-            return
-        else:
-            self.driver.initialized = True
+            LOG.debug("Start initialization of driver: '%s'", driver_host_pair)
+            try:
+                self.driver.do_setup(ctxt)
+                self.driver.check_for_setup_error()
+            except Exception:
+                LOG.exception("Error encountered during initialization of "
+                              "driver %s", driver_host_pair)
+                raise
+            else:
+                self.driver.initialized = True
+
+        _driver_setup()
 
         share_instances = self.db.share_instances_get_all_by_host(ctxt,
                                                                   self.host)

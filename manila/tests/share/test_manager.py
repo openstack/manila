@@ -52,6 +52,10 @@ def fake_replica(**kwargs):
     return fakes.fake_replica(for_manager=True, **kwargs)
 
 
+class CustomTimeSleepException(Exception):
+    pass
+
+
 class LockedOperationsTestCase(test.TestCase):
 
     class FakeManager(object):
@@ -219,8 +223,11 @@ class ShareManagerTestCase(test.TestCase):
     def test_call_driver_when_its_init_failed(self, method_name):
         self.mock_object(self.share_manager.driver, 'do_setup',
                          mock.Mock(side_effect=Exception()))
-        self.share_manager.init_host()
-
+        # break the endless retry loop
+        with mock.patch("time.sleep",
+                        side_effect=CustomTimeSleepException()):
+            self.assertRaises(CustomTimeSleepException,
+                              self.share_manager.init_host)
         self.assertRaises(
             exception.DriverNotInitialized,
             getattr(self.share_manager, method_name),
@@ -234,11 +241,15 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(manager.LOG, 'exception')
         self.share_manager.driver.initialized = False
 
-        self.share_manager.init_host()
+        with mock.patch("time.sleep",
+                        side_effect=CustomTimeSleepException()):
+            self.assertRaises(CustomTimeSleepException,
+                              self.share_manager.init_host)
 
         manager.LOG.exception.assert_called_once_with(
-            mock.ANY, {'name': self.share_manager.driver.__class__.__name__,
-                       'host': self.share_manager.host})
+            mock.ANY, "%(name)s@%(host)s" %
+            {'name': self.share_manager.driver.__class__.__name__,
+             'host': self.share_manager.host})
         self.assertFalse(self.share_manager.driver.initialized)
 
     def _setup_init_mocks(self, setup_access_rules=True):

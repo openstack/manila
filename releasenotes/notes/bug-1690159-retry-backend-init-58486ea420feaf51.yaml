@@ -1,0 +1,5 @@
+---
+fixes:
+  - Retry to initialize the manila-share driver for every backend in case
+    there was an error during initialization. That way even a temporary broken
+    backend can be initialized later without restarting manila-share.
