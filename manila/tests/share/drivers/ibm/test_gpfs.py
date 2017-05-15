@@ -42,6 +42,7 @@ class GPFSShareDriverTestCase(test.TestCase):
         super(GPFSShareDriverTestCase, self).setUp()
         self._context = context.get_admin_context()
         self._gpfs_execute = mock.Mock(return_value=('', ''))
+        self.GPFS_PATH = '/usr/lpp/mmfs/bin/'
 
         self._helper_fake = mock.Mock()
         CONF.set_default('driver_handles_share_servers', False)
@@ -398,8 +399,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self._driver._gpfs_execute = mock.Mock(return_value=0)
         self._driver._delete_share_snapshot(self.snapshot)
         self._driver._gpfs_execute.assert_called_once_with(
-            'mmdelsnapshot', self.fakedev, self.snapshot['name'],
-            '-j', self.snapshot['share_name']
+            self.GPFS_PATH + 'mmdelsnapshot', self.fakedev,
+            self.snapshot['name'], '-j', self.snapshot['share_name']
         )
         self._driver._get_gpfs_device.assert_called_once_with()
 
@@ -412,8 +413,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                           self._driver._delete_share_snapshot, self.snapshot)
         self._driver._get_gpfs_device.assert_called_once_with()
         self._driver._gpfs_execute.assert_called_once_with(
-            'mmdelsnapshot', self.fakedev, self.snapshot['name'],
-            '-j', self.snapshot['share_name']
+            self.GPFS_PATH + 'mmdelsnapshot', self.fakedev,
+            self.snapshot['name'], '-j', self.snapshot['share_name']
         )
 
     def test_extend_share(self):
@@ -426,10 +427,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self._driver._gpfs_execute = mock.Mock(return_value=True)
         self._driver._extend_share(self.share, 10)
         self._driver._gpfs_execute.assert_called_once_with(
-            'mmsetquota',
-            self.fakedev + ':' + self.share['name'],
-            '--block',
-            '0:10G')
+            self.GPFS_PATH + 'mmsetquota', self.fakedev + ':' +
+            self.share['name'], '--block', '0:10G')
         self._driver._get_gpfs_device.assert_called_once_with()
 
     def test__extend_share_exception(self):
@@ -439,12 +438,9 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         )
         self.assertRaises(exception.GPFSException,
                           self._driver._extend_share, self.share, 10)
-        self._driver._gpfs_execute.assert_called_once_with('mmsetquota',
-                                                           self.fakedev +
-                                                           ':' +
-                                                           self.share['name'],
-                                                           '--block',
-                                                           '0:10G')
+        self._driver._gpfs_execute.assert_called_once_with(
+            self.GPFS_PATH + 'mmsetquota', self.fakedev + ':' +
+            self.share['name'], '--block', '0:10G')
         self._driver._get_gpfs_device.assert_called_once_with()
 
     def test_update_access_allow(self):
@@ -535,14 +531,16 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         fakeout = "mmgetstate::state:\nmmgetstate::active:"
         self._driver._gpfs_execute = mock.Mock(return_value=(fakeout, ''))
         result = self._driver._check_gpfs_state()
-        self._driver._gpfs_execute.assert_called_once_with('mmgetstate', '-Y')
+        self._driver._gpfs_execute.assert_called_once_with(
+            self.GPFS_PATH + 'mmgetstate', '-Y')
         self.assertEqual(result, True)
 
     def test__check_gpfs_state_down(self):
         fakeout = "mmgetstate::state:\nmmgetstate::down:"
         self._driver._gpfs_execute = mock.Mock(return_value=(fakeout, ''))
         result = self._driver._check_gpfs_state()
-        self._driver._gpfs_execute.assert_called_once_with('mmgetstate', '-Y')
+        self._driver._gpfs_execute.assert_called_once_with(
+            self.GPFS_PATH + 'mmgetstate', '-Y')
         self.assertEqual(result, False)
 
     def test__check_gpfs_state_wrong_output_exception(self):
@@ -550,7 +548,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self._driver._gpfs_execute = mock.Mock(return_value=(fakeout, ''))
         self.assertRaises(exception.GPFSException,
                           self._driver._check_gpfs_state)
-        self._driver._gpfs_execute.assert_called_once_with('mmgetstate', '-Y')
+        self._driver._gpfs_execute.assert_called_once_with(
+            self.GPFS_PATH + 'mmgetstate', '-Y')
 
     def test__check_gpfs_state_exception(self):
         self._driver._gpfs_execute = mock.Mock(
@@ -558,7 +557,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         )
         self.assertRaises(exception.GPFSException,
                           self._driver._check_gpfs_state)
-        self._driver._gpfs_execute.assert_called_once_with('mmgetstate', '-Y')
+        self._driver._gpfs_execute.assert_called_once_with(
+            self.GPFS_PATH + 'mmgetstate', '-Y')
 
     def test__is_dir_success(self):
         fakeoutput = "directory"
@@ -591,8 +591,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
     def test__is_gpfs_path_ok(self):
         self._driver._gpfs_execute = mock.Mock(return_value=0)
         result = self._driver._is_gpfs_path(self.fakefspath)
-        self._driver._gpfs_execute.assert_called_once_with('mmlsattr',
-                                                           self.fakefspath)
+        self._driver._gpfs_execute.assert_called_once_with(
+            self.GPFS_PATH + 'mmlsattr', self.fakefspath)
         self.assertEqual(result, True)
 
     def test__is_gpfs_path_exception(self):
@@ -602,8 +602,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self.assertRaises(exception.GPFSException,
                           self._driver._is_gpfs_path,
                           self.fakefspath)
-        self._driver._gpfs_execute.assert_called_once_with('mmlsattr',
-                                                           self.fakefspath)
+        self._driver._gpfs_execute.assert_called_once_with(
+            self.GPFS_PATH + 'mmlsattr', self.fakefspath)
 
     def test__get_gpfs_device(self):
         fakeout = "Filesystem\n" + self.fakedev
@@ -628,20 +628,17 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self._driver._local_path = mock.Mock(return_value=self.fakesharepath)
         self._driver._get_gpfs_device = mock.Mock(return_value=self.fakedev)
         self._driver._create_share(self.share)
-        self._driver._gpfs_execute.assert_any_call('mmcrfileset',
-                                                   self.fakedev,
-                                                   self.share['name'],
-                                                   '--inode-space', 'new')
-        self._driver._gpfs_execute.assert_any_call('mmlinkfileset',
-                                                   self.fakedev,
-                                                   self.share['name'],
-                                                   '-J', self.fakesharepath)
-        self._driver._gpfs_execute.assert_any_call('mmsetquota', self.fakedev +
-                                                   ':' + self.share['name'],
-                                                   '--block', '0:' + sizestr)
-        self._driver._gpfs_execute.assert_any_call('chmod',
-                                                   '777',
-                                                   self.fakesharepath)
+        self._driver._gpfs_execute.assert_any_call(
+            self.GPFS_PATH + 'mmcrfileset', self.fakedev, self.share['name'],
+            '--inode-space', 'new')
+        self._driver._gpfs_execute.assert_any_call(
+            self.GPFS_PATH + 'mmlinkfileset', self.fakedev, self.share['name'],
+            '-J', self.fakesharepath)
+        self._driver._gpfs_execute.assert_any_call(
+            self.GPFS_PATH + 'mmsetquota', self.fakedev + ':' +
+            self.share['name'], '--block', '0:' + sizestr)
+        self._driver._gpfs_execute.assert_any_call(
+            'chmod', '777', self.fakesharepath)
 
         self._driver._local_path.assert_called_once_with(self.share['name'])
         self._driver._get_gpfs_device.assert_called_once_with()
@@ -656,21 +653,19 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                           self._driver._create_share, self.share)
         self._driver._get_gpfs_device.assert_called_once_with()
         self._driver._local_path.assert_called_once_with(self.share['name'])
-        self._driver._gpfs_execute.assert_called_once_with('mmcrfileset',
-                                                           self.fakedev,
-                                                           self.share['name'],
-                                                           '--inode-space',
-                                                           'new')
+        self._driver._gpfs_execute.assert_called_once_with(
+            self.GPFS_PATH + 'mmcrfileset', self.fakedev, self.share['name'],
+            '--inode-space', 'new')
 
     def test__delete_share(self):
         self._driver._gpfs_execute = mock.Mock(return_value=True)
         self._driver._get_gpfs_device = mock.Mock(return_value=self.fakedev)
         self._driver._delete_share(self.share)
         self._driver._gpfs_execute.assert_any_call(
-            'mmunlinkfileset', self.fakedev, self.share['name'],
-            '-f', ignore_exit_code=[2])
+            self.GPFS_PATH + 'mmunlinkfileset', self.fakedev,
+            self.share['name'], '-f', ignore_exit_code=[2])
         self._driver._gpfs_execute.assert_any_call(
-            'mmdelfileset', self.fakedev, self.share['name'],
+            self.GPFS_PATH + 'mmdelfileset', self.fakedev, self.share['name'],
             '-f', ignore_exit_code=[2])
         self._driver._get_gpfs_device.assert_called_once_with()
 
@@ -683,16 +678,16 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                           self._driver._delete_share, self.share)
         self._driver._get_gpfs_device.assert_called_once_with()
         self._driver._gpfs_execute.assert_called_once_with(
-            'mmunlinkfileset', self.fakedev, self.share['name'],
-            '-f', ignore_exit_code=[2])
+            self.GPFS_PATH + 'mmunlinkfileset', self.fakedev,
+            self.share['name'], '-f', ignore_exit_code=[2])
 
     def test__create_share_snapshot(self):
         self._driver._gpfs_execute = mock.Mock(return_value=True)
         self._driver._get_gpfs_device = mock.Mock(return_value=self.fakedev)
         self._driver._create_share_snapshot(self.snapshot)
         self._driver._gpfs_execute.assert_called_once_with(
-            'mmcrsnapshot', self.fakedev, self.snapshot['name'],
-            '-j', self.snapshot['share_name']
+            self.GPFS_PATH + 'mmcrsnapshot', self.fakedev,
+            self.snapshot['name'], '-j', self.snapshot['share_name']
         )
         self._driver._get_gpfs_device.assert_called_once_with()
 
@@ -705,8 +700,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                           self._driver._create_share_snapshot, self.snapshot)
         self._driver._get_gpfs_device.assert_called_once_with()
         self._driver._gpfs_execute.assert_called_once_with(
-            'mmcrsnapshot', self.fakedev, self.snapshot['name'],
-            '-j', self.snapshot['share_name']
+            self.GPFS_PATH + 'mmcrsnapshot', self.fakedev,
+            self.snapshot['name'], '-j', self.snapshot['share_name']
         )
 
     def test__create_share_from_snapshot(self):
@@ -746,7 +741,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         result = self._driver._is_share_valid(self.fakedev, self.fakesharepath)
 
         self._driver._gpfs_execute.assert_called_once_with(
-            'mmlsfileset', self.fakedev, '-J', self.fakesharepath, '-L', '-Y')
+            self.GPFS_PATH + 'mmlsfileset', self.fakedev, '-J',
+            self.fakesharepath, '-L', '-Y')
         if fakeout == "mmlsfileset::allocInodes:\nmmlsfileset::100096:":
             self.assertTrue(result)
         else:
@@ -761,7 +757,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                           self.fakesharepath)
 
         self._driver._gpfs_execute.assert_called_once_with(
-            'mmlsfileset', self.fakedev, '-J', self.fakesharepath, '-L', '-Y')
+            self.GPFS_PATH + 'mmlsfileset', self.fakedev, '-J',
+            self.fakesharepath, '-L', '-Y')
 
     def test__is_share_valid_no_share_exist_exception(self):
         fakeout = "mmlsfileset::allocInodes:"
@@ -772,7 +769,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                           self.fakesharepath)
 
         self._driver._gpfs_execute.assert_called_once_with(
-            'mmlsfileset', self.fakedev, '-J', self.fakesharepath, '-L', '-Y')
+            self.GPFS_PATH + 'mmlsfileset', self.fakedev, '-J',
+            self.fakesharepath, '-L', '-Y')
 
     def test__get_share_name(self):
         fakeout = "mmlsfileset::filesetName:\nmmlsfileset::existingshare:"
@@ -791,7 +789,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                           self.fakesharepath)
 
         self._driver._gpfs_execute.assert_called_once_with(
-            'mmlsfileset', self.fakedev, '-J', self.fakesharepath, '-L', '-Y')
+            self.GPFS_PATH + 'mmlsfileset', self.fakedev, '-J',
+            self.fakesharepath, '-L', '-Y')
 
     def test__get_share_name_no_share_exist_exception(self):
         fakeout = "mmlsfileset::filesetName:"
@@ -802,7 +801,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                           self.fakesharepath)
 
         self._driver._gpfs_execute.assert_called_once_with(
-            'mmlsfileset', self.fakedev, '-J', self.fakesharepath, '-L', '-Y')
+            self.GPFS_PATH + 'mmlsfileset', self.fakedev, '-J',
+            self.fakesharepath, '-L', '-Y')
 
     @ddt.data("mmlsquota::blockLimit:\nmmlsquota::1048577",
               "mmlsquota::blockLimit:\nmmlsquota::1048576",
@@ -815,35 +815,27 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         actual_size, actual_path = self._driver._manage_existing(
             self.fakedev, self.share, self.fakeexistingshare)
 
-        self._driver._gpfs_execute.assert_any_call('mmunlinkfileset',
-                                                   self.fakedev,
-                                                   self.fakeexistingshare,
-                                                   '-f')
-        self._driver._gpfs_execute.assert_any_call('mmchfileset',
-                                                   self.fakedev,
-                                                   self.fakeexistingshare,
-                                                   '-j', self.share['name'])
-        self._driver._gpfs_execute.assert_any_call('mmlinkfileset',
-                                                   self.fakedev,
-                                                   self.share['name'],
-                                                   '-J', self.fakesharepath)
-        self._driver._gpfs_execute.assert_any_call('chmod',
-                                                   '777',
-                                                   self.fakesharepath)
+        self._driver._gpfs_execute.assert_any_call(
+            self.GPFS_PATH + 'mmunlinkfileset', self.fakedev,
+            self.fakeexistingshare, '-f')
+        self._driver._gpfs_execute.assert_any_call(
+            self.GPFS_PATH + 'mmchfileset', self.fakedev,
+            self.fakeexistingshare, '-j', self.share['name'])
+        self._driver._gpfs_execute.assert_any_call(
+            self.GPFS_PATH + 'mmlinkfileset', self.fakedev, self.share['name'],
+            '-J', self.fakesharepath)
+        self._driver._gpfs_execute.assert_any_call(
+            'chmod', '777', self.fakesharepath)
         if fakeout == "mmlsquota::blockLimit:\nmmlsquota::1048577":
-            self._driver._gpfs_execute.assert_called_with('mmsetquota',
-                                                          self.fakedev + ':' +
-                                                          self.share['name'],
-                                                          '--block',
-                                                          '0:2G')
+            self._driver._gpfs_execute.assert_called_with(
+                self.GPFS_PATH + 'mmsetquota', self.fakedev + ':' +
+                self.share['name'], '--block', '0:2G')
             self.assertEqual(2, actual_size)
             self.assertEqual('fakelocation', actual_path)
         elif fakeout == "mmlsquota::blockLimit:\nmmlsquota::0":
-            self._driver._gpfs_execute.assert_called_with('mmsetquota',
-                                                          self.fakedev + ':' +
-                                                          self.share['name'],
-                                                          '--block',
-                                                          '0:1G')
+            self._driver._gpfs_execute.assert_called_with(
+                self.GPFS_PATH + 'mmsetquota', self.fakedev + ':' +
+                self.share['name'], '--block', '0:1G')
             self.assertEqual(1, actual_size)
             self.assertEqual('fakelocation', actual_path)
         else:
@@ -861,7 +853,8 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
 
         self._driver._local_path.assert_called_once_with(self.share['name'])
         self._driver._gpfs_execute.assert_called_once_with(
-            'mmunlinkfileset', self.fakedev, self.fakeexistingshare, '-f')
+            self.GPFS_PATH + 'mmunlinkfileset', self.fakedev,
+            self.fakeexistingshare, '-f')
 
     def test__manage_existing_fileset_creation_exception(self):
         self._driver._local_path = mock.Mock(return_value=self.fakesharepath)
@@ -874,10 +867,10 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
 
         self._driver._local_path.assert_any_call(self.share['name'])
         self._driver._gpfs_execute.assert_has_calls([
-            mock.call('mmunlinkfileset', self.fakedev, self.fakeexistingshare,
-                      '-f'),
-            mock.call('mmchfileset', self.fakedev, self.fakeexistingshare,
-                      '-j', self.share['name'])])
+            mock.call(self.GPFS_PATH + 'mmunlinkfileset', self.fakedev,
+                      self.fakeexistingshare, '-f'),
+            mock.call(self.GPFS_PATH + 'mmchfileset', self.fakedev,
+                      self.fakeexistingshare, '-j', self.share['name'])])
 
     def test__manage_existing_fileset_relink_exception(self):
         self._driver._local_path = mock.Mock(return_value=self.fakesharepath)
@@ -890,12 +883,12 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
 
         self._driver._local_path.assert_any_call(self.share['name'])
         self._driver._gpfs_execute.assert_has_calls([
-            mock.call('mmunlinkfileset', self.fakedev, self.fakeexistingshare,
-                      '-f'),
-            mock.call('mmchfileset', self.fakedev, self.fakeexistingshare,
-                      '-j', self.share['name']),
-            mock.call('mmlinkfileset', self.fakedev, self.share['name'], '-J',
-                      self.fakesharepath)])
+            mock.call(self.GPFS_PATH + 'mmunlinkfileset', self.fakedev,
+                      self.fakeexistingshare, '-f'),
+            mock.call(self.GPFS_PATH + 'mmchfileset', self.fakedev,
+                      self.fakeexistingshare, '-j', self.share['name']),
+            mock.call(self.GPFS_PATH + 'mmlinkfileset', self.fakedev,
+                      self.share['name'], '-J', self.fakesharepath)])
 
     def test__manage_existing_permission_change_exception(self):
         self._driver._local_path = mock.Mock(return_value=self.fakesharepath)
@@ -908,12 +901,12 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
 
         self._driver._local_path.assert_any_call(self.share['name'])
         self._driver._gpfs_execute.assert_has_calls([
-            mock.call('mmunlinkfileset', self.fakedev, self.fakeexistingshare,
-                      '-f'),
-            mock.call('mmchfileset', self.fakedev, self.fakeexistingshare,
-                      '-j', self.share['name']),
-            mock.call('mmlinkfileset', self.fakedev, self.share['name'], '-J',
-                      self.fakesharepath),
+            mock.call(self.GPFS_PATH + 'mmunlinkfileset', self.fakedev,
+                      self.fakeexistingshare, '-f'),
+            mock.call(self.GPFS_PATH + 'mmchfileset', self.fakedev,
+                      self.fakeexistingshare, '-j', self.share['name']),
+            mock.call(self.GPFS_PATH + 'mmlinkfileset', self.fakedev,
+                      self.share['name'], '-J', self.fakesharepath),
             mock.call('chmod', '777', self.fakesharepath)])
 
     def test__manage_existing_checking_quota_of_fileset_exception(self):
@@ -927,15 +920,15 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
 
         self._driver._local_path.assert_any_call(self.share['name'])
         self._driver._gpfs_execute.assert_has_calls([
-            mock.call('mmunlinkfileset', self.fakedev, self.fakeexistingshare,
-                      '-f'),
-            mock.call('mmchfileset', self.fakedev, self.fakeexistingshare,
-                      '-j', self.share['name']),
-            mock.call('mmlinkfileset', self.fakedev, self.share['name'], '-J',
-                      self.fakesharepath),
+            mock.call(self.GPFS_PATH + 'mmunlinkfileset', self.fakedev,
+                      self.fakeexistingshare, '-f'),
+            mock.call(self.GPFS_PATH + 'mmchfileset', self.fakedev,
+                      self.fakeexistingshare, '-j', self.share['name']),
+            mock.call(self.GPFS_PATH + 'mmlinkfileset', self.fakedev,
+                      self.share['name'], '-J', self.fakesharepath),
             mock.call('chmod', '777', self.fakesharepath),
-            mock.call('mmlsquota', '-j', self.share['name'], '-Y',
-                      self.fakedev)])
+            mock.call(self.GPFS_PATH + 'mmlsquota', '-j', self.share['name'],
+                      '-Y', self.fakedev)])
 
     def test__manage_existing_unable_to_get_quota_of_fileset_exception(self):
         fakeout = "mmlsquota::blockLimit:"
@@ -947,23 +940,20 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                           self.share, self.fakeexistingshare)
 
         self._driver._local_path.assert_any_call(self.share['name'])
-        self._driver._gpfs_execute.assert_any_call('mmunlinkfileset',
-                                                   self.fakedev,
-                                                   self.fakeexistingshare,
-                                                   '-f')
-        self._driver._gpfs_execute.assert_any_call('mmchfileset',
-                                                   self.fakedev,
-                                                   self.fakeexistingshare,
-                                                   '-j', self.share['name'])
-        self._driver._gpfs_execute.assert_any_call('mmlinkfileset',
-                                                   self.fakedev,
-                                                   self.share['name'],
-                                                   '-J', self.fakesharepath)
-        self._driver._gpfs_execute.assert_any_call('chmod',
-                                                   '777',
-                                                   self.fakesharepath)
+        self._driver._gpfs_execute.assert_any_call(
+            self.GPFS_PATH + 'mmunlinkfileset', self.fakedev,
+            self.fakeexistingshare, '-f')
+        self._driver._gpfs_execute.assert_any_call(
+            self.GPFS_PATH + 'mmchfileset', self.fakedev,
+            self.fakeexistingshare, '-j', self.share['name'])
+        self._driver._gpfs_execute.assert_any_call(
+            self.GPFS_PATH + 'mmlinkfileset', self.fakedev,
+            self.share['name'], '-J', self.fakesharepath)
+        self._driver._gpfs_execute.assert_any_call(
+            'chmod', '777', self.fakesharepath)
         self._driver._gpfs_execute.assert_called_with(
-            'mmlsquota', '-j', self.share['name'], '-Y', self.fakedev)
+            self.GPFS_PATH + 'mmlsquota', '-j', self.share['name'],
+            '-Y', self.fakedev)
 
     def test__manage_existing_set_quota_of_fileset_less_than_1G_exception(
             self):
@@ -980,17 +970,17 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
 
         self._driver._local_path.assert_any_call(self.share['name'])
         self._driver._gpfs_execute.assert_has_calls([
-            mock.call('mmunlinkfileset', self.fakedev, self.fakeexistingshare,
-                      '-f'),
-            mock.call('mmchfileset', self.fakedev, self.fakeexistingshare,
-                      '-j', self.share['name']),
-            mock.call('mmlinkfileset', self.fakedev, self.share['name'], '-J',
-                      self.fakesharepath),
+            mock.call(self.GPFS_PATH + 'mmunlinkfileset', self.fakedev,
+                      self.fakeexistingshare, '-f'),
+            mock.call(self.GPFS_PATH + 'mmchfileset', self.fakedev,
+                      self.fakeexistingshare, '-j', self.share['name']),
+            mock.call(self.GPFS_PATH + 'mmlinkfileset', self.fakedev,
+                      self.share['name'], '-J', self.fakesharepath),
             mock.call('chmod', '777', self.fakesharepath),
-            mock.call('mmlsquota', '-j', self.share['name'], '-Y',
-                      self.fakedev),
-            mock.call('mmsetquota', self.fakedev + ':' + self.share['name'],
-                      '--block', '0:' + sizestr)])
+            mock.call(self.GPFS_PATH + 'mmlsquota', '-j', self.share['name'],
+                      '-Y', self.fakedev),
+            mock.call(self.GPFS_PATH + 'mmsetquota', self.fakedev + ':' +
+                      self.share['name'], '--block', '0:' + sizestr)])
 
     def test__manage_existing_set_quota_of_fileset_grater_than_1G_exception(
             self):
@@ -1007,17 +997,17 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
 
         self._driver._local_path.assert_any_call(self.share['name'])
         self._driver._gpfs_execute.assert_has_calls([
-            mock.call('mmunlinkfileset', self.fakedev, self.fakeexistingshare,
-                      '-f'),
-            mock.call('mmchfileset', self.fakedev, self.fakeexistingshare,
-                      '-j', self.share['name']),
-            mock.call('mmlinkfileset', self.fakedev, self.share['name'], '-J',
-                      self.fakesharepath),
+            mock.call(self.GPFS_PATH + 'mmunlinkfileset', self.fakedev,
+                      self.fakeexistingshare, '-f'),
+            mock.call(self.GPFS_PATH + 'mmchfileset', self.fakedev,
+                      self.fakeexistingshare, '-j', self.share['name']),
+            mock.call(self.GPFS_PATH + 'mmlinkfileset', self.fakedev,
+                      self.share['name'], '-J', self.fakesharepath),
             mock.call('chmod', '777', self.fakesharepath),
-            mock.call('mmlsquota', '-j', self.share['name'], '-Y',
-                      self.fakedev),
-            mock.call('mmsetquota', self.fakedev + ':' + self.share['name'],
-                      '--block', '0:' + sizestr)])
+            mock.call(self.GPFS_PATH + 'mmlsquota', '-j', self.share['name'],
+                      '-Y', self.fakedev),
+            mock.call(self.GPFS_PATH + 'mmsetquota', self.fakedev + ':' +
+                      self.share['name'], '--block', '0:' + sizestr)])
 
     def test_manage_existing(self):
         self._driver._manage_existing = mock.Mock(return_value=('1',
@@ -1417,7 +1407,7 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                           local_path)
 
         self._ces_helper._execute.assert_called_once_with(
-            'mmnfs', 'export', 'list', '-n', local_path, '-Y')
+            self.GPFS_PATH + 'mmnfs', 'export', 'list', '-n', local_path, '-Y')
 
     @ddt.data('44.3.2.11', '1:2:3:4:5:6:7:8')
     def test__fix_export_data(self, ip):
@@ -1456,7 +1446,7 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                          self._ces_helper._has_client_access(local_path, ip))
 
         self._ces_helper._execute.assert_called_once_with(
-            'mmnfs', 'export', 'list', '-n', local_path, '-Y')
+            self.GPFS_PATH + 'mmnfs', 'export', 'list', '-n', local_path, '-Y')
 
     def test_ces_remove_export_no_exports(self):
         mock_out = self.fake_ces_exports_not_found
@@ -1467,7 +1457,7 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self._ces_helper.remove_export(local_path, self.share)
 
         self._ces_helper._execute.assert_called_once_with(
-            'mmnfs', 'export', 'list', '-n', local_path, '-Y')
+            self.GPFS_PATH + 'mmnfs', 'export', 'list', '-n', local_path, '-Y')
 
     def test_ces_remove_export_existing_exports(self):
         mock_out = self.fake_ces_exports
@@ -1478,8 +1468,10 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self._ces_helper.remove_export(local_path, self.share)
 
         self._ces_helper._execute.assert_has_calls([
-            mock.call('mmnfs', 'export', 'list', '-n', local_path, '-Y'),
-            mock.call('mmnfs', 'export', 'remove', local_path),
+            mock.call(self.GPFS_PATH + 'mmnfs', 'export', 'list', '-n',
+                      local_path, '-Y'),
+            mock.call(self.GPFS_PATH + 'mmnfs', 'export', 'remove',
+                      local_path),
         ])
 
     def test_ces_remove_export_exception(self):
@@ -1505,9 +1497,10 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self._ces_helper.allow_access(local_path, self.share, access)
 
         self._ces_helper._execute.assert_has_calls([
-            mock.call('mmnfs', 'export', 'list', '-n', local_path, '-Y'),
-            mock.call('mmnfs', 'export', 'add', local_path, '-c',
-                      access['access_to'] + '(' + export_opts + ')')])
+            mock.call(self.GPFS_PATH + 'mmnfs', 'export', 'list', '-n',
+                      local_path, '-Y'),
+            mock.call(self.GPFS_PATH + 'mmnfs', 'export', 'add', local_path,
+                      '-c', access['access_to'] + '(' + export_opts + ')')])
 
     def test_ces_allow_access_existing_exports(self):
         mock_out = self.fake_ces_exports
@@ -1525,9 +1518,11 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
                                       self.access)
 
         self._ces_helper._execute.assert_has_calls([
-            mock.call('mmnfs', 'export', 'list', '-n', local_path, '-Y'),
-            mock.call('mmnfs', 'export', 'change', local_path, '--nfsadd',
-                      access['access_to'] + '(' + export_opts + ')')])
+            mock.call(self.GPFS_PATH + 'mmnfs', 'export', 'list', '-n',
+                      local_path, '-Y'),
+            mock.call(self.GPFS_PATH + 'mmnfs', 'export', 'change', local_path,
+                      '--nfsadd', access['access_to'] + '(' +
+                      export_opts + ')')])
 
     def test_ces_allow_access_invalid_access_type(self):
         access = fake_share.fake_access(access_type='test')
@@ -1556,9 +1551,10 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self._ces_helper.deny_access(local_path, self.share, access)
 
         self._ces_helper._execute.assert_has_calls([
-            mock.call('mmnfs', 'export', 'list', '-n', local_path, '-Y'),
-            mock.call('mmnfs', 'export', 'change', local_path, '--nfsremove',
-                      access['access_to'])])
+            mock.call(self.GPFS_PATH + 'mmnfs', 'export', 'list', '-n',
+                      local_path, '-Y'),
+            mock.call(self.GPFS_PATH + 'mmnfs', 'export', 'change', local_path,
+                      '--nfsremove', access['access_to'])])
 
     def test_ces_deny_access_exception(self):
         access = self.access
@@ -1580,9 +1576,11 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self._ces_helper.resync_access(local_path, self.share, access_rules)
 
         self._ces_helper._execute.assert_has_calls([
-            mock.call('mmnfs', 'export', 'list', '-n', local_path, '-Y'),
-            mock.call('mmnfs', 'export', 'add', local_path, '-c',
-                      self.access['access_to'] + '(' + "access_type=rw" + ')')
+            mock.call(self.GPFS_PATH + 'mmnfs', 'export', 'list', '-n',
+                      local_path, '-Y'),
+            mock.call(self.GPFS_PATH + 'mmnfs', 'export', 'add', local_path,
+                      '-c', self.access['access_to'] + '(' + "access_type=rw" +
+                      ')')
         ])
         share_types.get_extra_specs_from_share.assert_called_once_with(
             self.share)
@@ -1618,8 +1616,9 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         to_add = access_rules[0]['access_to'] + '(' + "access_type=rw" + ')'
         to_change = access_rules[1]['access_to'] + '(' + "access_type=ro" + ')'
         self._ces_helper._execute.assert_has_calls([
-            mock.call('mmnfs', 'export', 'list', '-n', local_path, '-Y'),
-            mock.call('mmnfs', 'export', 'change', local_path,
+            mock.call(self.GPFS_PATH + 'mmnfs', 'export', 'list', '-n',
+                      local_path, '-Y'),
+            mock.call(self.GPFS_PATH + 'mmnfs', 'export', 'change', local_path,
                       '--nfsremove', SortedMatch(self.assertEqual, to_remove),
                       '--nfsadd', to_add,
                       '--nfschange', to_change)
@@ -1634,4 +1633,4 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self._ces_helper.resync_access(local_path, None, [])
 
         self._ces_helper._execute.assert_called_once_with(
-            'mmnfs', 'export', 'list', '-n', local_path, '-Y')
+            self.GPFS_PATH + 'mmnfs', 'export', 'list', '-n', local_path, '-Y')
