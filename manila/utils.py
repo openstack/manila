@@ -432,7 +432,7 @@ class ComparableMixin(object):
 
 
 def retry(exception, interval=1, retries=10, backoff_rate=2,
-          wait_random=False):
+          wait_random=False, backoff_sleep_max=None):
     """A wrapper around retrying library.
 
     This decorator allows to log and to check 'retries' input param.
@@ -445,12 +445,13 @@ def retry(exception, interval=1, retries=10, backoff_rate=2,
     :param interval: param 'interval' is used to calculate time interval
                      between retries:
                      interval * backoff_rate ^ previous_attempt_number
-    :param retries: number of retries.
+    :param retries: number of retries. Use 0 for an infinite retry loop.
     :param backoff_rate: param 'backoff_rate' is used to calculate time
                          interval between retries:
                          interval * backoff_rate ^ previous_attempt_number
     :param wait_random: boolean value to enable retry with random wait timer.
-
+    :param backoff_sleep_max: Maximum number of seconds for the calculated
+                              backoff sleep. Use None if no maximum is needed.
     """
     def _retry_on_exception(e):
         return isinstance(e, exception)
@@ -464,6 +465,9 @@ def retry(exception, interval=1, retries=10, backoff_rate=2,
         else:
             wait_val = wait_for * 1000.0
 
+        if backoff_sleep_max:
+            wait_val = min(backoff_sleep_max * 1000.0, wait_val)
+
         LOG.debug("Sleeping for %s seconds.", (wait_val / 1000.0))
         return wait_val
 
@@ -472,11 +476,11 @@ def retry(exception, interval=1, retries=10, backoff_rate=2,
         LOG.debug("Failed attempt %s", previous_attempt_number)
         LOG.debug("Have been at this for %s seconds",
                   delay_since_first_attempt)
-        return previous_attempt_number == retries
+        return retries > 0 and previous_attempt_number == retries
 
-    if retries < 1:
+    if retries < 0:
         raise ValueError(_('Retries must be greater than or '
-                           'equal to 1 (received: %s).') % retries)
+                           'equal to 0 (received: %s).') % retries)
 
     def _decorator(f):
 

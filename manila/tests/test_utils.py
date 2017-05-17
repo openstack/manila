@@ -649,6 +649,28 @@ class TestRetryDecorator(test.TestCase):
             self.assertRaises(ValueError, raise_unexpected_error)
             self.assertFalse(mock_sleep.called)
 
+    def test_wrong_retries_num(self):
+        self.assertRaises(ValueError, utils.retry, exception.ManilaException,
+                          retries=-1)
+
+    def test_max_backoff_sleep(self):
+        self.counter = 0
+
+        with mock.patch.object(time, 'sleep') as mock_sleep:
+            @utils.retry(exception.ManilaException,
+                         retries=0,
+                         backoff_rate=2,
+                         backoff_sleep_max=4)
+            def fails_then_passes():
+                self.counter += 1
+                if self.counter < 5:
+                    raise exception.ManilaException(data='fake')
+                else:
+                    return 'success'
+
+            self.assertEqual('success', fails_then_passes())
+            mock_sleep.assert_has_calls(map(mock.call, [2, 4, 4, 4]))
+
 
 @ddt.ddt
 class RequireDriverInitializedTestCase(test.TestCase):
