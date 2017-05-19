@@ -1,0 +1,8 @@
+---
+features:
+  - Switched to tooz internal heartbeat feature in the coordination system.
+deprecations:
+  - Deprecated 'coordination.heartbeat',
+    'coordination.initial_reconnect_backoff' and
+    'coordination.max_reconnect_backoff' configuration options which are not
+    used anymore.
