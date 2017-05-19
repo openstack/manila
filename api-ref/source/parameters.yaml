@@ -2375,6 +2375,21 @@ security_service_name:
   in: body
   required: true
   type: string
+security_service_ou:
+  description: |
+    The security service ou.
+  in: body
+  required: true
+  type: string
+  min_version: 2.44
+security_service_ou_request:
+  description: |
+    The security service ou. An organizational unit
+    can be added to specify where the share ends up.
+  in: body
+  required: false
+  type: string
+  min_version: 2.44
 security_service_password:
   description: |
     The user password, if you specify a ``user``.

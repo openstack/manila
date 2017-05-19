@@ -3443,6 +3443,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 ss_type = security_service['type']
                 data = {
                     'name': security_service['name'],
+                    'ou': security_service['ou'],
                     'domain': security_service['domain'],
                     'server': security_service['server'],
                     'dns_ip': security_service['dns_ip'],

@@ -27,6 +27,8 @@ You can configure a security service with these options:
 
 - A domain.
 
+- An ou, the organizational unit. (available starting with API version 2.44)
+
 - A user or group name.
 
 - The password for the user, if you specify a user name.
@@ -118,6 +120,7 @@ Response parameters
    - user: security_service_user
    - password: security_service_password
    - domain: security_service_domain
+   - ou: security_service_ou
    - server: security_service_server
    - updated_at: security_service_updated_at
    - created_at: security_service_created_at
@@ -173,6 +176,7 @@ Response parameters
    - user: security_service_user
    - password: security_service_password
    - domain: security_service_domain
+   - ou: security_service_ou
    - server: security_service_server
    - updated_at: security_service_updated_at
    - created_at: security_service_created_at
@@ -218,6 +222,7 @@ Request
    - user: security_service_user_request
    - password: security_service_password_request
    - domain: security_service_domain_request
+   - ou: security_service_ou_request
    - server: security_service_server_request
 
 Request example
@@ -241,6 +246,7 @@ Response parameters
    - user: security_service_user
    - password: security_service_password
    - domain: security_service_domain
+   - ou: security_service_ou
    - server: security_service_server
    - updated_at: security_service_updated_at
    - created_at: security_service_created_at
@@ -293,6 +299,7 @@ Request
    - user: security_service_user_request
    - password: security_service_password_request
    - domain: security_service_domain_request
+   - ou: security_service_ou_request
    - server: security_service_server_request
 
 Request example
@@ -316,6 +323,7 @@ Response parameters
    - user: security_service_user
    - password: security_service_password
    - domain: security_service_domain
+   - ou: security_service_ou
    - server: security_service_server
    - updated_at: security_service_updated_at
    - created_at: security_service_created_at

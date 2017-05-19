@@ -238,3 +238,7 @@ user documentation.
 2.43
 ----
   Added filter search by extra spec for share type list.
+
+2.44
+----
+  Added 'ou' field to 'security_service' object.

@@ -2858,6 +2858,7 @@ class ShareManagerTestCase(test.TestCase):
         for ss_type in constants.SECURITY_SERVICES_ALLOWED_TYPES:
             network_info['security_services'].append({
                 'name': 'fake_name' + ss_type,
+                'ou': 'fake_ou' + ss_type,
                 'domain': 'fake_domain' + ss_type,
                 'server': 'fake_server' + ss_type,
                 'dns_ip': 'fake_dns_ip' + ss_type,
