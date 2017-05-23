@@ -139,6 +139,10 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         self.sshpool = None
         self.ssh_connections = {}
         self._gpfs_execute = None
+        if self.configuration.is_gpfs_node:
+            self.GPFS_PATH = ''
+        else:
+            self.GPFS_PATH = '/usr/lpp/mmfs/bin/'
 
     def do_setup(self, context):
         """Any initialization the share driver does while starting."""
@@ -236,7 +240,7 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
     def _check_gpfs_state(self):
         try:
-            out, __ = self._gpfs_execute('mmgetstate', '-Y')
+            out, __ = self._gpfs_execute(self.GPFS_PATH + 'mmgetstate', '-Y')
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to check GPFS state. Error: %(excmsg)s.') %
                    {'excmsg': e})
@@ -269,7 +273,7 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
     def _is_gpfs_path(self, directory):
         try:
-            self._gpfs_execute('mmlsattr', directory)
+            self._gpfs_execute(self.GPFS_PATH + 'mmlsattr', directory)
         except exception.ProcessExecutionError as e:
             msg = (_('%(dir)s is not on GPFS filesystem. Error: %(excmsg)s.') %
                    {'dir': directory, 'excmsg': e})
@@ -320,8 +324,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
         # create fileset for the share, link it to root path and set max size
         try:
-            self._gpfs_execute('mmcrfileset', fsdev, sharename,
-                               '--inode-space', 'new')
+            self._gpfs_execute(self.GPFS_PATH + 'mmcrfileset', fsdev,
+                               sharename, '--inode-space', 'new')
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to create fileset on %(fsdev)s for '
                      'the share %(sharename)s. Error: %(excmsg)s.') %
@@ -331,8 +335,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             raise exception.GPFSException(msg)
 
         try:
-            self._gpfs_execute('mmlinkfileset', fsdev, sharename, '-J',
-                               sharepath)
+            self._gpfs_execute(self.GPFS_PATH + 'mmlinkfileset', fsdev,
+                               sharename, '-J', sharepath)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to link fileset for the share %(sharename)s. '
                      'Error: %(excmsg)s.') %
@@ -341,8 +345,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             raise exception.GPFSException(msg)
 
         try:
-            self._gpfs_execute('mmsetquota', fsdev + ':' + sharename,
-                               '--block', '0:' + sizestr)
+            self._gpfs_execute(self.GPFS_PATH + 'mmsetquota', fsdev + ':' +
+                               sharename, '--block', '0:' + sizestr)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to set quota for the share %(sharename)s. '
                      'Error: %(excmsg)s.') %
@@ -373,7 +377,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
         # unlink and delete the share's fileset
         try:
-            self._gpfs_execute('mmunlinkfileset', fsdev, sharename, '-f',
+            self._gpfs_execute(self.GPFS_PATH + 'mmunlinkfileset', fsdev,
+                               sharename, '-f',
                                ignore_exit_code=ignore_exit_code)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed unlink fileset for share %(sharename)s. '
@@ -383,7 +388,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             raise exception.GPFSException(msg)
 
         try:
-            self._gpfs_execute('mmdelfileset', fsdev, sharename, '-f',
+            self._gpfs_execute(self.GPFS_PATH + 'mmdelfileset', fsdev,
+                               sharename, '-f',
                                ignore_exit_code=ignore_exit_code)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed delete fileset for share %(sharename)s. '
@@ -420,8 +426,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         )
 
         try:
-            self._gpfs_execute('mmcrsnapshot', fsdev, snapshot['name'],
-                               '-j', sharename)
+            self._gpfs_execute(self.GPFS_PATH + 'mmcrsnapshot', fsdev,
+                               snapshot['name'], '-j', sharename)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to create snapshot %(snapshot)s. '
                      'Error: %(excmsg)s.') %
@@ -435,8 +441,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         fsdev = self._get_gpfs_device()
 
         try:
-            self._gpfs_execute('mmdelsnapshot', fsdev, snapshot['name'],
-                               '-j', sharename)
+            self._gpfs_execute(self.GPFS_PATH + 'mmdelsnapshot', fsdev,
+                               snapshot['name'], '-j', sharename)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to delete snapshot %(snapshot)s. '
                      'Error: %(excmsg)s.') %
@@ -464,8 +470,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         sizestr = '%sG' % new_size
         fsdev = self._get_gpfs_device()
         try:
-            self._gpfs_execute('mmsetquota', fsdev + ':' + sharename,
-                               '--block', '0:' + sizestr)
+            self._gpfs_execute(self.GPFS_PATH + 'mmsetquota', fsdev + ':' +
+                               sharename, '--block', '0:' + sizestr)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to set quota for the share %(sharename)s. '
                      'Error: %(excmsg)s.') %
@@ -571,8 +577,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
     def _is_share_valid(self, fsdev, location):
         try:
-            out, __ = self._gpfs_execute('mmlsfileset', fsdev, '-J',
-                                         location, '-L', '-Y')
+            out, __ = self._gpfs_execute(self.GPFS_PATH + 'mmlsfileset', fsdev,
+                                         '-J', location, '-L', '-Y')
         except exception.ProcessExecutionError:
             msg = (_('Given share path %(share_path)s does not exist at '
                      'mount point %(mount_point)s.')
@@ -593,8 +599,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
     def _get_share_name(self, fsdev, location):
         try:
-            out, __ = self._gpfs_execute('mmlsfileset', fsdev, '-J',
-                                         location, '-L', '-Y')
+            out, __ = self._gpfs_execute(self.GPFS_PATH + 'mmlsfileset', fsdev,
+                                         '-J', location, '-L', '-Y')
         except exception.ProcessExecutionError:
             msg = (_('Given share path %(share_path)s does not exist at '
                      'mount point %(mount_point)s.')
@@ -617,7 +623,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         new_share_name = share['name']
         new_export_location = self._local_path(new_share_name)
         try:
-            self._gpfs_execute('mmunlinkfileset', fsdev, old_share_name, '-f')
+            self._gpfs_execute(self.GPFS_PATH + 'mmunlinkfileset', fsdev,
+                               old_share_name, '-f')
         except exception.ProcessExecutionError:
             msg = _('Failed to unlink fileset for share %s.') % new_share_name
             LOG.exception(msg)
@@ -625,8 +632,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         LOG.debug('Unlinked the fileset of share %s.', old_share_name)
 
         try:
-            self._gpfs_execute('mmchfileset', fsdev, old_share_name,
-                               '-j', new_share_name)
+            self._gpfs_execute(self.GPFS_PATH + 'mmchfileset', fsdev,
+                               old_share_name, '-j', new_share_name)
         except exception.ProcessExecutionError:
             msg = _('Failed to rename fileset for share %s.') % new_share_name
             LOG.exception(msg)
@@ -635,8 +642,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                   {'old_share': old_share_name, 'new_share': new_share_name})
 
         try:
-            self._gpfs_execute('mmlinkfileset', fsdev, new_share_name, '-J',
-                               new_export_location)
+            self._gpfs_execute(self.GPFS_PATH + 'mmlinkfileset', fsdev,
+                               new_share_name, '-J', new_export_location)
         except exception.ProcessExecutionError:
             msg = _('Failed to link fileset for the share %s.'
                     ) % new_share_name
@@ -656,8 +663,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         LOG.debug('Changed the permission of share %s.', new_share_name)
 
         try:
-            out, __ = self._gpfs_execute('mmlsquota', '-j', new_share_name,
-                                         '-Y', fsdev)
+            out, __ = self._gpfs_execute(self.GPFS_PATH + 'mmlsquota', '-j',
+                                         new_share_name, '-Y', fsdev)
         except exception.ProcessExecutionError:
             msg = _('Failed to check size for share %s.') % new_share_name
             LOG.exception(msg)
@@ -678,8 +685,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         # (units.Mi * KB = 1GB)
         if share_size < units.Mi:
             try:
-                self._gpfs_execute('mmsetquota', fsdev + ':' + new_share_name,
-                                   '--block', '0:1G')
+                self._gpfs_execute(self.GPFS_PATH + 'mmsetquota', fsdev + ':' +
+                                   new_share_name, '--block', '0:1G')
             except exception.ProcessExecutionError:
                 msg = _('Failed to set quota for share %s.') % new_share_name
                 LOG.exception(msg)
@@ -693,8 +700,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             share_size = int(math.ceil(float(share_size) / units.Mi))
             if orig_share_size != share_size * units.Mi:
                 try:
-                    self._gpfs_execute('mmsetquota', fsdev + ':' +
-                                       new_share_name, '--block', '0:' +
+                    self._gpfs_execute(self.GPFS_PATH + 'mmsetquota', fsdev +
+                                       ':' + new_share_name, '--block', '0:' +
                                        str(share_size) + 'G')
                 except exception.ProcessExecutionError:
                     msg = _('Failed to set quota for share %s.'
@@ -1027,10 +1034,14 @@ class CESHelper(NASHelperBase):
     def __init__(self, execute, config_object):
         super(CESHelper, self).__init__(execute, config_object)
         self._execute = execute
+        if self.configuration.is_gpfs_node:
+            self.GPFS_PATH = ''
+        else:
+            self.GPFS_PATH = '/usr/lpp/mmfs/bin/'
 
     def _execute_mmnfs_command(self, cmd, err_msg):
         try:
-            out, __ = self._execute('mmnfs', 'export', *cmd)
+            out, __ = self._execute(self.GPFS_PATH + 'mmnfs', 'export', *cmd)
         except exception.ProcessExecutionError as e:
             msg = (_('%(err_msg)s Error: %(e)s.')
                    % {'err_msg': err_msg, 'e': e})
