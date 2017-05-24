@@ -1529,10 +1529,10 @@ class ShareAPITest(test.TestCase):
                 'display_name': 'n2',
                 'status': constants.STATUS_AVAILABLE,
                 'snapshot_id': 'fake_snapshot_id',
-                'share_type_id': 'fake_share_type_id',
                 'instance': {
                     'host': 'fake_host',
                     'share_network_id': 'fake_share_network_id',
+                    'share_type_id': 'fake_share_type_id',
                 },
             },
             {'id': 'id3', 'display_name': 'n3'},
@@ -1571,7 +1571,8 @@ class ShareAPITest(test.TestCase):
         self.assertEqual(
             shares[1]['status'], result['shares'][0]['status'])
         self.assertEqual(
-            shares[1]['share_type_id'], result['shares'][0]['share_type'])
+            shares[1]['instance']['share_type_id'],
+            result['shares'][0]['share_type'])
         self.assertEqual(
             shares[1]['snapshot_id'], result['shares'][0]['snapshot_id'])
         if use_admin_context:
@@ -2546,7 +2547,12 @@ class ShareManageTest(test.TestCase):
         }
         self._setup_manage_mocks()
         return_share = mock.Mock(
-            return_value=stubs.stub_share('fake', instance={}))
+            return_value=stubs.stub_share(
+                'fake',
+                instance={
+                    'share_type_id': '1',
+                })
+            )
         self.mock_object(
             share_api.API, 'manage', return_share)
         share = {
