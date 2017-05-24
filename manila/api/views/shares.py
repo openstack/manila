@@ -65,12 +65,13 @@ class ViewBuilder(common.ViewBuilder):
 
         export_locations = share.get('export_locations', [])
 
-        if share['share_type_id'] and share.get('share_type'):
-            share_type = share['share_type']['name']
-        else:
-            share_type = share['share_type_id']
-
         share_instance = share.get('instance') or {}
+
+        if share_instance.get('share_type'):
+            share_type = share_instance.get('share_type').get('name')
+        else:
+            share_type = share_instance.get('share_type_id')
+
         share_dict = {
             'id': share.get('id'),
             'size': share.get('size'),
@@ -109,11 +110,13 @@ class ViewBuilder(common.ViewBuilder):
 
     @common.ViewBuilder.versioned_method("2.6")
     def modify_share_type_field(self, context, share_dict, share):
-        share_type = share.get('share_type_id')
+        share_instance = share.get('instance') or {}
+
+        share_type = share_instance.get('share_type_id')
 
         share_type_name = None
-        if share.get('share_type'):
-            share_type_name = share.get('share_type').get('name')
+        if share_instance.get('share_type'):
+            share_type_name = share_instance.get('share_type').get('name')
 
         share_dict.update({
             'share_type_name': share_type_name,

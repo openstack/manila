@@ -39,7 +39,12 @@ class ViewBuilderTestCase(test.TestCase):
             'export_location': 'fake_export_location',
             'export_locations': ['fake_export_location'],
             'access_rules_status': 'fake_rule_status',
-            'instance': {},
+            'instance': {
+                'share_type': {
+                    'name': 'fake_share_type_name',
+                },
+                'share_type_id': 'fake_share_type_id',
+            },
             'replication_type': 'fake_replication_type',
             'has_replicas': False,
             'user_id': 'fake_userid',
