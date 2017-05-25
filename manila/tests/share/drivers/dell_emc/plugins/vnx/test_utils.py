@@ -14,6 +14,8 @@
 #    under the License.
 
 import ddt
+import mock
+import ssl
 
 from manila.share.drivers.dell_emc.plugins.vnx import utils
 from manila import test
@@ -42,3 +44,30 @@ class VNXUtilsTestCase(test.TestCase):
             full, matchers)
         self.assertEqual(matched, real_matched)
         self.assertEqual(unmatched, real_unmatched)
+
+
+class SslContextTestCase(test.TestCase):
+
+    def test_create_ssl_context(self):
+        configuration = mock.Mock()
+        configuration.emc_ssl_cert_verify = True
+        configuration.emc_ssl_cert_path = "./cert_path/"
+        self.mock_object(ssl, 'create_default_context')
+        context = utils.create_ssl_context(configuration)
+        self.assertIsNotNone(context)
+
+    def test_create_ssl_context_no_verify(self):
+        configuration = mock.Mock()
+        configuration.emc_ssl_cert_verify = False
+        self.mock_object(ssl, 'create_default_context')
+        context = utils.create_ssl_context(configuration)
+        self.assertFalse(context.check_hostname)
+
+    def test_no_create_default_context(self):
+        """Test scenario of running on python 2.7.8 or earlier."""
+        configuration = mock.Mock()
+        configuration.emc_ssl_cert_verify = False
+        self.mock_object(ssl, 'create_default_context',
+                         mock.Mock(side_effect=AttributeError))
+        context = utils.create_ssl_context(configuration)
+        self.assertIsNone(context)
