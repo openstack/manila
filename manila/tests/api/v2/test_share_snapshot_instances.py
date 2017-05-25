@@ -52,14 +52,6 @@ class ShareSnapshotInstancesApiTest(test.TestCase):
             use_admin_context=True)
         self.mock_policy_check = self.mock_object(policy, 'check_policy')
 
-    def _get_request(self, uri, context=None):
-        if context is None:
-            context = self.admin_context
-        req = fakes.HTTPRequest.blank('/snapshot_instances',
-                                      version="2.19")
-        req.environ['manila.context'] = context
-        return req
-
     def _get_fake_snapshot_instance(self, summary=False, **values):
         snapshot_instance = fake_share.fake_snapshot_instance(
             as_primitive=True)
