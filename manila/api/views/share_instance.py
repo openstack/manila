@@ -17,6 +17,7 @@ class ViewBuilder(common.ViewBuilder):
     """Model a server API response as a python dictionary."""
 
     _collection_name = 'share_instances'
+    _collection_links = 'share_instances_links'
 
     _detail_version_modifiers = [
         "remove_export_locations",
@@ -60,7 +61,7 @@ class ViewBuilder(common.ViewBuilder):
         instances_dict = {self._collection_name: instances_list}
 
         if instances_links:
-            instances_dict[self._collection_name] = instances_links
+            instances_dict[self._collection_links] = instances_links
 
         return instances_dict
 

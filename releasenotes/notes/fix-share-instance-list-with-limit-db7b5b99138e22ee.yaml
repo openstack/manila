@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixed share instance list with limit number API display error.
+    Change _collection_name to _collection_links when we want to
+    show instances_links.
