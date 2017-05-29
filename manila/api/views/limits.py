@@ -15,7 +15,7 @@
 
 import datetime
 
-from oslo_utils import timeutils
+from manila import utils
 
 
 class ViewBuilder(object):
@@ -99,5 +99,5 @@ class ViewBuilder(object):
             "value": rate_limit["value"],
             "remaining": int(rate_limit["remaining"]),
             "unit": rate_limit["unit"],
-            "next-available": timeutils.isotime(at=next_avail),
+            "next-available": utils.isotime(at=next_avail),
         }
