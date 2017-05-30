@@ -322,20 +322,22 @@ class ServiceInstanceManager(object):
             LOG.warning("Name for service instance security group is not "
                         "provided. Skipping security group step.")
             return None
-        s_groups = [s for s in self.compute_api.security_group_list(context)
-                    if s.name == name]
+        s_groups = self.network_helper.neutron_api.security_group_list({
+            "name": name,
+        })['security_groups']
+        s_groups = [s for s in s_groups if s['name'] == name]
         if not s_groups:
             # Creating security group
             if not description:
-                description = "This security group is intended "\
-                              "to be used by share service."
+                description = ("This security group is intended "
+                               "to be used by share service.")
             LOG.debug("Creating security group with name '%s'.", name)
-            sg = self.compute_api.security_group_create(
-                context, name, description)
+            sg = self.network_helper.neutron_api.security_group_create(
+                name, description)['security_group']
             for protocol, ports in const.SERVICE_INSTANCE_SECGROUP_DATA:
-                self.compute_api.security_group_rule_create(
+                self.network_helper.neutron_api.security_group_rule_create(
                     context,
-                    parent_group_id=sg.id,
+                    parent_group_id=sg['id'],
                     ip_protocol=protocol,
                     from_port=ports[0],
                     to_port=ports[1],
@@ -542,7 +544,7 @@ class ServiceInstanceManager(object):
 
             security_group = self._get_or_create_security_group(context)
             if security_group:
-                sg_id = security_group.id
+                sg_id = security_group['id']
                 LOG.debug(
                     "Adding security group '%(sg)s' to server '%(si)s'.",
                     dict(sg=sg_id, si=service_instance["id"]))
