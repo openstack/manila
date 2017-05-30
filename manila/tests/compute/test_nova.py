@@ -69,22 +69,11 @@ class FakeNovaClient(object):
         def get(self, net_id):
             return Network(net_id)
 
-    class FixedIPs(object):
-        def get(self, fixed_ip):
-            return dict(address=fixed_ip)
-
-        def reserve(self, fixed_ip):
-            return None
-
-        def unreserve(self, fixed_ip):
-            return None
-
     def __init__(self):
         self.servers = self.Servers()
         self.volumes = self.Volumes()
         self.keypairs = self.servers
         self.networks = self.Networks()
-        self.fixed_ips = self.FixedIPs()
 
 
 @nova.translate_server_exception
@@ -220,6 +209,38 @@ class NovaApiTestCase(test.TestCase):
                          mock.Mock(return_value=self.novaclient))
         self.mock_object(nova, '_untranslate_server_summary_view',
                          lambda server: server)
+
+    def test_image_list_novaclient_has_no_proxy(self):
+        image_list = ['fake', 'image', 'list']
+
+        class FakeGlanceClient(object):
+            def list(self):
+                return image_list
+
+        self.novaclient.glance = FakeGlanceClient()
+
+        result = self.api.image_list(self.ctx)
+
+        self.assertEqual(image_list, result)
+
+    def test_image_list_novaclient_has_proxy(self):
+        image_list1 = ['fake', 'image', 'list1']
+        image_list2 = ['fake', 'image', 'list2']
+
+        class FakeImagesClient(object):
+            def list(self):
+                return image_list1
+
+        class FakeGlanceClient(object):
+            def list(self):
+                return image_list2
+
+        self.novaclient.images = FakeImagesClient()
+        self.novaclient.glance = FakeGlanceClient()
+
+        result = self.api.image_list(self.ctx)
+
+        self.assertEqual(image_list1, result)
 
     def test_server_create(self):
         result = self.api.server_create(self.ctx, 'server_name', 'fake_image',
@@ -371,28 +392,6 @@ class NovaApiTestCase(test.TestCase):
     def test_keypair_list(self):
         self.assertEqual([{'id': 'id1'}, {'id': 'id2'}],
                          self.api.keypair_list(self.ctx))
-
-    def test_fixed_ip_get(self):
-        fixed_ip = 'fake_fixed_ip'
-        result = self.api.fixed_ip_get(self.ctx, fixed_ip)
-        self.assertIsInstance(result, dict)
-        self.assertEqual(fixed_ip, result['address'])
-
-    def test_fixed_ip_reserve(self):
-        fixed_ip = 'fake_fixed_ip'
-        result = self.api.fixed_ip_reserve(self.ctx, fixed_ip)
-        self.assertIsNone(result)
-
-    def test_fixed_ip_unreserve(self):
-        fixed_ip = 'fake_fixed_ip'
-        result = self.api.fixed_ip_unreserve(self.ctx, fixed_ip)
-        self.assertIsNone(result)
-
-    def test_network_get(self):
-        net_id = 'fake_net_id'
-        net = self.api.network_get(self.ctx, net_id)
-        self.assertIsInstance(net, dict)
-        self.assertEqual(net_id, net['id'])
 
 
 class ToDictTestCase(test.TestCase):

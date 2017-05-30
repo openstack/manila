@@ -306,39 +306,13 @@ class API(base.Base):
         return novaclient(context).keypairs.list()
 
     def image_list(self, context):
-        return novaclient(context).images.list()
+        client = novaclient(context)
+        if hasattr(client, 'images'):
+            # Old novaclient with 'images' API proxy
+            return client.images.list()
+        # New novaclient without 'images' API proxy
+        return client.glance.list()
 
     def add_security_group_to_server(self, context, server, security_group):
         return novaclient(context).servers.add_security_group(server,
                                                               security_group)
-
-    def security_group_create(self, context, name, description=""):
-        return novaclient(context).security_groups.create(name, description)
-
-    def security_group_get(self, context, group_id):
-        return novaclient(context).security_groups.get(group_id)
-
-    def security_group_list(self, context, search_opts=None):
-        return novaclient(context).security_groups.list(search_opts)
-
-    def security_group_rule_create(self, context, parent_group_id,
-                                   ip_protocol=None, from_port=None,
-                                   to_port=None, cidr=None, group_id=None):
-        return novaclient(context).security_group_rules.create(
-            parent_group_id, ip_protocol, from_port, to_port, cidr, group_id)
-
-    def security_group_rule_delete(self, context, rule):
-        return novaclient(context).security_group_rules.delete(rule)
-
-    def fixed_ip_reserve(self, context, fixed_ip):
-        return novaclient(context).fixed_ips.reserve(fixed_ip)
-
-    def fixed_ip_unreserve(self, context, fixed_ip):
-        return novaclient(context).fixed_ips.unreserve(fixed_ip)
-
-    def fixed_ip_get(self, context, fixed_ip):
-        return _to_dict(novaclient(context).fixed_ips.get(fixed_ip))
-
-    def network_get(self, context, network_id):
-        """Return network data by its ID."""
-        return _to_dict(novaclient(context).networks.get(network_id))
