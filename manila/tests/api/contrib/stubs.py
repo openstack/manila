@@ -54,6 +54,7 @@ def stub_share(id, **kwargs):
         'share_network_id': None,
         'share_server_id': 'fake_share_server_id',
         'access_rules_status': 'active',
+        'share_type_id': '1',
     }
     if 'instance' in kwargs:
         share_instance.update(kwargs.pop('instance'))
