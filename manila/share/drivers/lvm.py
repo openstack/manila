@@ -275,7 +275,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         except exception.ProcessExecutionError:
             LOG.warning("Can't remove share %r", share['id'])
         except exception.InvalidShare as exc:
-            LOG.warning(str(exc))
+            LOG.warning(exc)
 
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
