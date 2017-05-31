@@ -1203,22 +1203,29 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                                snapshot_name)
         self.assertEqual(snapshot_name, model_update['provider_location'])
 
-    def test_revert_to_snapshot(self):
+    @ddt.data(True, False)
+    def test_revert_to_snapshot(self, use_snap_provider_location):
 
         vserver_client = mock.Mock()
         self.mock_object(self.library,
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  vserver_client)))
+        fake_snapshot = copy.deepcopy(fake.SNAPSHOT)
+        if use_snap_provider_location:
+            fake_snapshot['provider_location'] = 'fake-provider-location'
+        else:
+            del fake_snapshot['provider_location']
 
         result = self.library.revert_to_snapshot(
-            self.context, fake.SNAPSHOT, share_server=fake.SHARE_SERVER)
+            self.context, fake_snapshot, share_server=fake.SHARE_SERVER)
 
         self.assertIsNone(result)
         share_name = self.library._get_backend_share_name(
-            fake.SNAPSHOT['share_id'])
-        snapshot_name = self.library._get_backend_snapshot_name(
-            fake.SNAPSHOT['id'])
+            fake_snapshot['share_id'])
+        snapshot_name = (self.library._get_backend_snapshot_name(
+            fake_snapshot['id']) if not use_snap_provider_location
+            else 'fake-provider-location')
         vserver_client.restore_snapshot.assert_called_once_with(share_name,
                                                                 snapshot_name)
 
@@ -3679,11 +3686,18 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         snapshot_list = [fake_snapshot, fake_snapshot_2, fake_snapshot_3]
         return replica_list, snapshot_list
 
-    def test_revert_to_replicated_snapshot(self):
+    @ddt.data(True, False)
+    def test_revert_to_replicated_snapshot(self, use_snap_provider_location):
 
         replica_list, snapshot_list = self._get_fake_replicas_and_snapshots()
         fake_replica, fake_replica_2, fake_replica_3 = replica_list
         fake_snapshot, fake_snapshot_2, fake_snapshot_3 = snapshot_list
+
+        if not use_snap_provider_location:
+            del fake_snapshot['provider_location']
+            del fake_snapshot_2['provider_location']
+            del fake_snapshot_3['provider_location']
+
         share_name = self.library._get_backend_share_name(
             fake_snapshot['share_id'])
         snapshot_name = self.library._get_backend_snapshot_name(

@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed the NetApp ONTAP driver to handle reverting to replicated
+    and migrated snapshots.

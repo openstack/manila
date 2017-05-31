@@ -798,7 +798,8 @@ class NetAppCmodeFileStorageLibrary(object):
         """Reverts a share (in place) to the specified snapshot."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_name = self._get_backend_share_name(snapshot['share_id'])
-        snapshot_name = self._get_backend_snapshot_name(snapshot['id'])
+        snapshot_name = (snapshot.get('provider_location') or
+                         self._get_backend_snapshot_name(snapshot['id']))
         LOG.debug('Restoring snapshot %s', snapshot_name)
         vserver_client.restore_snapshot(share_name, snapshot_name)
 
@@ -1651,8 +1652,10 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_name = self._get_backend_share_name(
             active_replica_snapshot['share_id'])
-        snapshot_name = self._get_backend_snapshot_name(
-            active_replica_snapshot['id'])
+        snapshot_name = (
+            active_replica_snapshot.get('provider_location') or
+            self._get_backend_snapshot_name(active_replica_snapshot['id']))
+
         LOG.debug('Restoring snapshot %s', snapshot_name)
 
         dm_session = data_motion.DataMotionSession()
