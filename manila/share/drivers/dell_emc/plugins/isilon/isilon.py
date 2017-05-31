@@ -20,6 +20,7 @@ import os
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import units
+from requests.exceptions import HTTPError
 import six
 
 from manila.common import constants as const
@@ -253,7 +254,7 @@ class IsilonStorageConnection(base.StorageConnection):
             host_acl.append(allowed_ip)
             data = {'host_acl': host_acl}
             url = ('{0}/platform/1/protocols/smb/shares/{1}'
-                   .format(self._server_url, smb_share['name']))
+                   .format(self._server_url, share['name']))
             r = self._isilon_api.request('PUT', url, data=data)
             r.raise_for_status()
 
@@ -402,3 +403,114 @@ class IsilonStorageConnection(base.StorageConnection):
     def teardown_server(self, server_details, security_services=None):
         """Teardown share server."""
         # TODO(Shaun Edwards): Look into supporting share servers
+
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
+        """Update share access."""
+        if share['share_proto'] == 'NFS':
+            state_map = self._update_access_nfs(share, access_rules)
+        if share['share_proto'] == 'CIFS':
+            state_map = self._update_access_cifs(share, access_rules)
+        return state_map
+
+    def _update_access_nfs(self, share, access_rules):
+        """Updates access on a NFS share."""
+        nfs_rw_ips = set()
+        nfs_ro_ips = set()
+        rule_state_map = {}
+        for rule in access_rules:
+            rule_state_map[rule['access_id']] = {
+                'state': 'error'
+            }
+
+        for rule in access_rules:
+            if rule['access_level'] == const.ACCESS_LEVEL_RW:
+                nfs_rw_ips.add(rule['access_to'])
+            elif rule['access_level'] == const.ACCESS_LEVEL_RO:
+                nfs_ro_ips.add(rule['access_to'])
+
+        export_id = self._isilon_api.lookup_nfs_export(
+            self._get_container_path(share))
+        if export_id is None:
+            # share does not exist on backend (set all rules to error state)
+            return rule_state_map
+        data = {
+            'clients': list(nfs_rw_ips),
+            'read_only_clients': list(nfs_ro_ips)
+        }
+        url = ('{0}/platform/1/protocols/nfs/exports/{1}'
+               .format(self._server_url, six.text_type(export_id)))
+        r = self._isilon_api.request('PUT', url, data=data)
+        try:
+            r.raise_for_status()
+        except HTTPError:
+            return rule_state_map
+
+        # if we finish the bulk rule update with no error set rules to active
+        for rule in access_rules:
+            rule_state_map[rule['access_id']]['state'] = 'active'
+        return rule_state_map
+
+    def _update_access_cifs(self, share, access_rules):
+        """Clear access on a CIFS share."""
+        cifs_ip_set = set()
+        users = set()
+        for rule in access_rules:
+            if rule['access_type'] == 'ip':
+                cifs_ip_set.add('allow:' + rule['access_to'])
+            elif rule['access_type'] == 'user':
+                users.add(rule['access_to'])
+
+        smb_share = self._isilon_api.lookup_smb_share(share['name'])
+
+        backend_smb_user_permissions = smb_share['permissions']
+        perms_to_remove = []
+        for perm in backend_smb_user_permissions:
+            if perm['trustee']['name'] not in users:
+                perms_to_remove.append(perm)
+        for perm in perms_to_remove:
+            backend_smb_user_permissions.remove(perm)
+
+        data = {
+            'host_acl': list(cifs_ip_set),
+            'permissions': backend_smb_user_permissions,
+        }
+
+        url = ('{0}/platform/1/protocols/smb/shares/{1}'
+               .format(self._server_url, share['name']))
+        r = self._isilon_api.request('PUT', url, data=data)
+        try:
+            r.raise_for_status()
+        except HTTPError:
+            # clear access rules failed so set all access rules to error state
+            rule_state_map = {}
+            for rule in access_rules:
+                rule_state_map[rule['access_id']] = {
+                    'state': 'error'
+                }
+            return rule_state_map
+
+        # add access rules that don't exist on backend
+        rule_state_map = {}
+        for rule in access_rules:
+            rule_state_map[rule['access_id']] = {
+                'state': 'error'
+            }
+            try:
+                if rule['access_type'] == 'ip':
+                    self._cifs_allow_access_ip(rule['access_to'], share,
+                                               rule['access_level'])
+                    rule_state_map[rule['access_id']]['state'] = 'active'
+                elif rule['access_type'] == 'user':
+                    backend_users = set()
+                    for perm in backend_smb_user_permissions:
+                        backend_users.add(perm['trustee']['name'])
+                    if rule['access_to'] not in backend_users:
+                        self._cifs_allow_access_user(
+                            rule['access_to'], share, rule['access_level'])
+                    rule_state_map[rule['access_id']]['state'] = 'active'
+                else:
+                    continue
+            except exception.ManilaException:
+                pass
+        return rule_state_map

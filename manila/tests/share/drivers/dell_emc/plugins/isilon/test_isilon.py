@@ -17,10 +17,12 @@ import ddt
 import mock
 from oslo_log import log
 from oslo_utils import units
+from requests.exceptions import HTTPError
 import six
 
 from manila.common import constants as const
 from manila import exception
+from manila.i18n import _
 from manila.share.drivers.dell_emc.plugins.isilon import isilon
 from manila.share.drivers.dell_emc.plugins.isilon import isilon_api
 from manila import test
@@ -764,3 +766,420 @@ class IsilonTest(test.TestCase):
         expected_quota_size = new_share_size * units.Gi
         self._mock_isilon_api.quota_set.assert_called_once_with(
             share_path, 'directory', expected_quota_size)
+
+    def test_update_access_add_nfs(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": 'NFS',
+        }
+        fake_export_id = 4
+        self._mock_isilon_api.lookup_nfs_export.return_value = fake_export_id
+        self._mock_isilon_api.get_nfs_export.return_value = {
+            'clients': [],
+            'read_only_clients': []
+        }
+        nfs_access = {
+            'access_type': 'ip',
+            'access_to': '10.1.1.10',
+            'access_level': const.ACCESS_LEVEL_RW,
+            'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
+        }
+        access_rules = [nfs_access]
+        add_rules = [nfs_access]
+        delete_rules = []
+
+        rule_map = self.storage_connection.update_access(
+            self.mock_context, share, access_rules, add_rules,
+            delete_rules, share_server=None)
+
+        expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
+                        str(fake_export_id))
+        expected_data = {'clients': ['10.1.1.10'], 'read_only_clients': []}
+        expected_rule_map = {
+            '09960614-8574-4e03-89cf-7cf267b0bd08': {
+                'state': 'active'
+            }
+        }
+        self._mock_isilon_api.request.assert_called_once_with(
+            'PUT', expected_url, data=expected_data)
+        self.assertEqual(expected_rule_map, rule_map)
+
+    def test_update_access_add_cifs(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": 'CIFS',
+        }
+        access = {
+            'access_type': 'user',
+            'access_to': 'foo',
+            'access_level': const.ACCESS_LEVEL_RW,
+            'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
+        }
+        add_rules = [access]
+        access_rules = [access]
+
+        rule_map = self.storage_connection.update_access(
+            self.mock_context, share, access_rules, add_rules, [])
+
+        self._mock_isilon_api.smb_permissions_add.assert_called_once_with(
+            self.SHARE_NAME, 'foo', isilon_api.SmbPermission.rw)
+        expected_rule_map = {
+            '09960614-8574-4e03-89cf-7cf267b0bd08': {
+                'state': 'active'
+            }
+        }
+        self.assertEqual(expected_rule_map, rule_map)
+
+    def test_update_access_delete_nfs(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": 'NFS',
+        }
+        fake_export_id = 4
+        self._mock_isilon_api.lookup_nfs_export.return_value = fake_export_id
+        # simulate an IP added to the whitelist
+        ip_addr = '10.0.0.4'
+        ip_addr_ro = '10.0.0.50'
+        self._mock_isilon_api.get_nfs_export.return_value = {
+            'clients': [ip_addr], 'read_only_clients': [ip_addr_ro]}
+        nfs_access_del_1 = {
+            'access_type': 'ip',
+            'access_to': ip_addr,
+            'access_level': const.ACCESS_LEVEL_RW
+        }
+        nfs_access_del_2 = {
+            'access_type': 'ip',
+            'access_to': ip_addr,
+            'access_level': const.ACCESS_LEVEL_RW
+        }
+        access_rules = []
+        delete_rules = [nfs_access_del_1, nfs_access_del_2]
+
+        rule_map = self.storage_connection.update_access(
+            self.mock_context, share, access_rules, [], delete_rules)
+
+        expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
+                        six.text_type(fake_export_id))
+        expected_data = {'clients': [], 'read_only_clients': []}
+        self._mock_isilon_api.request.assert_called_once_with(
+            'PUT', expected_url, data=expected_data)
+        self.assertEqual({}, rule_map)
+
+    def test_update_access_delete_cifs(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": 'CIFS',
+        }
+        delete_rule = {
+            'access_type': 'user',
+            'access_to': 'newuser',
+            'access_level': const.ACCESS_LEVEL_RW,
+            'access_id': '29960614-8574-4e03-89cf-7cf267b0bd08'
+        }
+        access_rules = []
+        delete_rules = [delete_rule]
+        self._mock_isilon_api.lookup_smb_share.return_value = {
+            'permissions': [
+                {
+                    'permission': 'change',
+                    'permission_type': 'allow',
+                    'trustee': {
+                        'id': 'SID:S-1-5-21',
+                        'name': 'newuser',
+                        'type': 'user',
+                    }
+
+                }
+            ]
+        }
+
+        rule_map = self.storage_connection.update_access(
+            self.mock_context, share, access_rules, [], delete_rules)
+
+        expected_url = (self.API_URL + '/platform/1/protocols/smb/shares/' +
+                        self.SHARE_NAME)
+        self._mock_isilon_api.request.assert_called_once_with(
+            'PUT', expected_url, data={'permissions': [], 'host_acl': []})
+        self.assertEqual({}, rule_map)
+
+    def test_update_access_nfs_share_not_found(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": 'NFS',
+        }
+        access = {
+            'access_type': 'user',
+            'access_to': 'foouser',
+            'access_level': const.ACCESS_LEVEL_RW,
+            'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
+        }
+        access_rules = [access]
+        add_rules = [access]
+        self._mock_isilon_api.lookup_nfs_export.return_value = None
+
+        rule_map = self.storage_connection.update_access(
+            self.mock_context, share, access_rules, add_rules, [])
+
+        expected_rule_map = {
+            '09960614-8574-4e03-89cf-7cf267b0bd08': {
+                'state': 'error'
+            }
+        }
+        self.assertEqual(expected_rule_map, rule_map)
+
+    def test_update_access_nfs_http_error_on_clear_rules(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": 'NFS',
+        }
+        access = {
+            'access_type': 'user',
+            'access_to': 'foouser',
+            'access_level': const.ACCESS_LEVEL_RW,
+            'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
+        }
+        access_rules = [access]
+        add_rules = [access]
+        self._mock_isilon_api.request.return_value.raise_for_status.\
+            side_effect = HTTPError
+
+        rule_map = self.storage_connection.update_access(
+            self.mock_context, share, access_rules, add_rules, [])
+
+        expected_rule_map = {
+            '09960614-8574-4e03-89cf-7cf267b0bd08': {
+                'state': 'error'
+            }
+        }
+        self.assertEqual(expected_rule_map, rule_map)
+
+    def test_update_access_cifs_http_error_on_clear_rules(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": 'CIFS',
+        }
+        access = {
+            'access_type': 'user',
+            'access_to': 'foo',
+            'access_level': const.ACCESS_LEVEL_RW,
+            'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
+        }
+        add_rules = [access]
+        access_rules = [access]
+        self._mock_isilon_api.request.return_value.raise_for_status.\
+            side_effect = HTTPError
+
+        rule_map = self.storage_connection.update_access(
+            self.mock_context, share, access_rules, add_rules, [])
+
+        expected_rule_map = {
+            '09960614-8574-4e03-89cf-7cf267b0bd08': {
+                'state': 'error'
+            }
+        }
+        self.assertEqual(expected_rule_map, rule_map)
+
+    def test_update_access_cifs_share_backend_error(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": 'CIFS',
+        }
+        access = {
+            'access_type': 'user',
+            'access_to': 'foo',
+            'access_level': const.ACCESS_LEVEL_RW,
+            'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
+        }
+        add_rules = [access]
+        access_rules = [access]
+        message = _('Only "RW" and "RO" access levels are supported.')
+        self._mock_isilon_api.smb_permissions_add.side_effect = \
+            exception.ShareBackendException(message=message)
+
+        rule_map = self.storage_connection.update_access(
+            self.mock_context, share, access_rules, add_rules, [])
+
+        expected_rule_map = {
+            '09960614-8574-4e03-89cf-7cf267b0bd08': {
+                'state': 'error'
+            }
+        }
+        self.assertEqual(expected_rule_map, rule_map)
+
+    def test_update_access_cifs_invalid_access_type(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": 'CIFS',
+        }
+        access = {
+            'access_type': 'foo',
+            'access_to': 'foo',
+            'access_level': const.ACCESS_LEVEL_RW,
+            'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
+        }
+        add_rules = [access]
+        access_rules = [access]
+
+        rule_map = self.storage_connection.update_access(
+            self.mock_context, share, access_rules, add_rules, [])
+
+        expected_rule_map = {
+            '09960614-8574-4e03-89cf-7cf267b0bd08': {
+                'state': 'error'
+            }
+        }
+        self.assertEqual(expected_rule_map, rule_map)
+
+    def test_update_access_recover_nfs(self):
+        # verify that new ips are added and ips not in rules are removed
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": 'NFS',
+        }
+        fake_export_id = 4
+        self._mock_isilon_api.lookup_nfs_export.return_value = fake_export_id
+        self._mock_isilon_api.get_nfs_export.return_value = {
+            'clients': ['10.1.1.8'],
+            'read_only_clients': ['10.2.0.2']
+        }
+        nfs_access_1 = {
+            'access_type': 'ip',
+            'access_to': '10.1.1.10',
+            'access_level': const.ACCESS_LEVEL_RW,
+            'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
+        }
+        nfs_access_2 = {
+            'access_type': 'ip',
+            'access_to': '10.1.1.2',
+            'access_level': const.ACCESS_LEVEL_RO,
+            'access_id': '19960614-8574-4e03-89cf-7cf267b0bd08'
+        }
+        access_rules = [nfs_access_1, nfs_access_2]
+
+        rule_map = self.storage_connection.update_access(
+            self.mock_context, share, access_rules, [], [])
+
+        expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
+                        six.text_type(fake_export_id))
+        expected_data = {
+            'clients': ['10.1.1.10'],
+            'read_only_clients': ['10.1.1.2']
+        }
+        expected_rule_map = {
+            '09960614-8574-4e03-89cf-7cf267b0bd08': {
+                'state': 'active'
+            },
+            '19960614-8574-4e03-89cf-7cf267b0bd08': {
+                'state': 'active'
+            }
+        }
+        self._mock_isilon_api.request.assert_called_once_with(
+            'PUT', expected_url, data=expected_data)
+        self.assertEqual(expected_rule_map, rule_map)
+
+    def test_update_access_recover_cifs(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": 'CIFS',
+        }
+        mock_smb_share_1 = {
+            'host_acl': ['allow:10.1.2.3', 'allow:10.1.1.12'],
+            'permissions': [
+                {
+                    'permission': 'change',
+                    'permission_type': 'allow',
+                    'trustee': {
+                        'id': 'SID:S-1-5-21',
+                        'name': 'foouser',
+                        'type': 'user',
+                    }
+                },
+                {
+                    'permission': 'ro',
+                    'permission_type': 'allow',
+                    'trustee': {
+                        'id': 'SID:S-1-5-22',
+                        'name': 'testuser',
+                        'type': 'user',
+                    }
+                }
+            ]
+        }
+        mock_smb_share_2 = {
+            'host_acl': ['allow:10.1.2.3', 'allow:10.1.1.12',
+                         'allow:10.1.1.10'],
+            'permissions': [
+                {
+                    'permission': 'change',
+                    'permission_type': 'allow',
+                    'trustee': {
+                        'id': 'SID:S-1-5-21',
+                        'name': 'foouser',
+                        'type': 'user',
+                    }
+                },
+                {
+                    'permission': 'ro',
+                    'permission_type': 'allow',
+                    'trustee': {
+                        'id': 'SID:S-1-5-22',
+                        'name': 'testuser',
+                        'type': 'user',
+                    }
+                }
+            ]
+        }
+        self._mock_isilon_api.lookup_smb_share.side_effect = [
+            mock_smb_share_1, mock_smb_share_2]
+
+        access_1 = {
+            'access_type': 'ip',
+            'access_to': '10.1.1.10',
+            'access_level': const.ACCESS_LEVEL_RW,
+            'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
+        }
+        access_2 = {
+            'access_type': 'user',
+            'access_to': 'testuser',
+            'access_level': const.ACCESS_LEVEL_RO,
+            'access_id': '19960614-8574-4e03-89cf-7cf267b0bd08'
+        }
+        access_rules = [access_1, access_2]
+
+        rule_map = self.storage_connection.update_access(
+            self.mock_context, share, access_rules, [], [])
+
+        expected_url = (self.API_URL + '/platform/1/protocols/smb/shares/' +
+                        self.SHARE_NAME)
+        expected_data = {
+            'host_acl': ['allow:10.1.1.10'],
+            'permissions': [
+                {
+                    'permission': 'ro',
+                    'permission_type': 'allow',
+                    'trustee': {
+                        'id': 'SID:S-1-5-22',
+                        'name': 'testuser',
+                        'type': 'user',
+                    }
+                }
+            ]
+        }
+        expected_rule_map = {
+            '09960614-8574-4e03-89cf-7cf267b0bd08': {
+                'state': 'active'
+            },
+            '19960614-8574-4e03-89cf-7cf267b0bd08': {
+                'state': 'active'
+            }
+        }
+        self.assertEqual(2, self._mock_isilon_api.lookup_smb_share.call_count)
+        http_method, url = self._mock_isilon_api.request.call_args[0]
+        data = self._mock_isilon_api.request.call_args[1]['data']
+        self.assertEqual('PUT', http_method)
+        self.assertEqual(expected_url, url)
+        self.assertEqual(expected_data['host_acl'], data['host_acl'])
+        self.assertEqual(1, len(data['permissions']))
+        self.assertEqual(expected_data['permissions'][0],
+                         data['permissions'][0])
+        self.assertEqual(expected_rule_map, rule_map)
