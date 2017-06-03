@@ -89,6 +89,9 @@ class ShareManagerTestCase(test.TestCase):
             "manila.share.manager.ShareManager")
         self.mock_object(self.share_manager.driver, 'do_setup')
         self.mock_object(self.share_manager.driver, 'check_for_setup_error')
+        self.share_manager.driver._stats = {
+            'share_group_stats': {'consistent_snapshot_support': None},
+        }
         self.context = context.get_admin_context()
         self.share_manager.driver.initialized = True
         mock.patch.object(
@@ -3226,10 +3229,13 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.create_share_group(self.context, "fake_id")
 
-        self.share_manager.db.share_group_update.\
-            assert_called_once_with(mock.ANY, 'fake_id',
-                                    {'status': constants.STATUS_AVAILABLE,
-                                     'created_at': mock.ANY})
+        self.share_manager.db.share_group_update.assert_called_once_with(
+            mock.ANY, 'fake_id', {
+                'status': constants.STATUS_AVAILABLE,
+                'created_at': mock.ANY,
+                'consistent_snapshot_support': None,
+            }
+        )
 
     def test_create_cg_with_share_network_driver_not_handles_servers(self):
         manager.CONF.set_default('driver_handles_share_servers', False)
@@ -3281,8 +3287,12 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.create_share_group(self.context, "fake_id")
 
         self.share_manager.db.share_group_update.assert_called_once_with(
-            mock.ANY, 'fake_id',
-            {'status': constants.STATUS_AVAILABLE, 'created_at': mock.ANY})
+            mock.ANY, 'fake_id', {
+                'status': constants.STATUS_AVAILABLE,
+                'created_at': mock.ANY,
+                'consistent_snapshot_support': None,
+            }
+        )
 
     def test_create_share_group_with_update(self):
         fake_group = {'id': 'fake_id'}
@@ -3298,10 +3308,13 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.db.share_group_update.\
             assert_any_call(mock.ANY, 'fake_id', {'foo': 'bar'})
-        self.share_manager.db.share_group_update.\
-            assert_any_call(mock.ANY, 'fake_id',
-                            {'status': constants.STATUS_AVAILABLE,
-                             'created_at': mock.ANY})
+        self.share_manager.db.share_group_update.assert_any_call(
+            mock.ANY, 'fake_id', {
+                'status': constants.STATUS_AVAILABLE,
+                'created_at': mock.ANY,
+                'consistent_snapshot_support': None,
+            }
+        )
 
     def test_create_share_group_with_error(self):
         fake_group = {'id': 'fake_id'}
@@ -3318,7 +3331,11 @@ class ShareManagerTestCase(test.TestCase):
                           self.context, "fake_id")
 
         self.share_manager.db.share_group_update.assert_called_once_with(
-            mock.ANY, 'fake_id', {'status': constants.STATUS_ERROR})
+            mock.ANY, 'fake_id', {
+                'status': constants.STATUS_ERROR,
+                'consistent_snapshot_support': None,
+            }
+        )
 
     def test_create_share_group_from_sg_snapshot(self):
         fake_group = {
@@ -3348,7 +3365,9 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.db.share_group_update.assert_called_once_with(
             mock.ANY, 'fake_id',
-            {'status': constants.STATUS_AVAILABLE, 'created_at': mock.ANY})
+            {'status': constants.STATUS_AVAILABLE,
+             'created_at': mock.ANY,
+             'consistent_snapshot_support': None})
         self.share_manager.db.share_server_get(mock.ANY, 'fake_ss_id')
         mock_create_sg_from_sg_snap.assert_called_once_with(
             mock.ANY, fake_group, fake_snap, share_server=fake_ss)
@@ -3415,7 +3434,9 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.db.share_group_update.assert_called_once_with(
             mock.ANY, 'fake_id',
-            {'status': constants.STATUS_AVAILABLE, 'created_at': mock.ANY})
+            {'status': constants.STATUS_AVAILABLE,
+             'created_at': mock.ANY,
+             'consistent_snapshot_support': None})
 
     def test_create_share_group_from_share_group_snapshot_with_update(self):
         fake_group = {
@@ -3439,8 +3460,12 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.share_group_update.assert_any_call(
             mock.ANY, 'fake_id', {'foo': 'bar'})
         self.share_manager.db.share_group_update.assert_any_call(
-            mock.ANY, 'fake_id',
-            {'status': constants.STATUS_AVAILABLE, 'created_at': mock.ANY})
+            mock.ANY, 'fake_id', {
+                'status': constants.STATUS_AVAILABLE,
+                'created_at': mock.ANY,
+                'consistent_snapshot_support': None,
+            }
+        )
 
     def test_create_share_group_from_sg_snapshot_with_share_update(self):
         fake_share = {'id': 'fake_share_id'}
@@ -3474,8 +3499,12 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.share_export_locations_update.assert_any_call(
             mock.ANY, 'fake_share_id', fake_export_locations)
         self.share_manager.db.share_group_update.assert_any_call(
-            mock.ANY, 'fake_id',
-            {'status': constants.STATUS_AVAILABLE, 'created_at': mock.ANY})
+            mock.ANY, 'fake_id', {
+                'status': constants.STATUS_AVAILABLE,
+                'created_at': mock.ANY,
+                'consistent_snapshot_support': None,
+            }
+        )
 
     def test_create_share_group_from_sg_snapshot_with_error(self):
         fake_group = {
@@ -3502,7 +3531,11 @@ class ShareManagerTestCase(test.TestCase):
                           self.context, "fake_id")
 
         self.share_manager.db.share_group_update.assert_called_once_with(
-            mock.ANY, 'fake_id', {'status': constants.STATUS_ERROR})
+            mock.ANY, 'fake_id', {
+                'status': constants.STATUS_ERROR,
+                'consistent_snapshot_support': None,
+            }
+        )
 
     def test_create_share_group_from_sg_snapshot_with_share_error(self):
         fake_share = {'id': 'fake_share_id'}
@@ -3532,7 +3565,11 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.share_instance_update.assert_any_call(
             mock.ANY, 'fake_share_id', {'status': constants.STATUS_ERROR})
         self.share_manager.db.share_group_update.assert_called_once_with(
-            mock.ANY, 'fake_id', {'status': constants.STATUS_ERROR})
+            mock.ANY, 'fake_id', {
+                'status': constants.STATUS_ERROR,
+                'consistent_snapshot_support': None,
+            }
+        )
 
     def test_delete_share_group(self):
         fake_group = {'id': 'fake_id'}

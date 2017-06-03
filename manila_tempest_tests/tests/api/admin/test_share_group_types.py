@@ -136,13 +136,16 @@ class ShareGroupTypesTest(base.BaseSharesAdminTest):
 
         self.assertDictMatch(group_specs, sg_type['group_specs'])
 
-        group_specs = {'key1': 'value3', 'key2': 'value2'}
+        group_specs = {'key1': 'value1', 'key2': 'value2'}
 
         self.shares_v2_client.update_share_group_type_spec(
             sg_type['id'], 'key1', 'value3')
         sg_type = self.shares_v2_client.get_share_group_type(sg_type['id'])
 
-        self.assertDictMatch(group_specs, sg_type['group_specs'])
+        self.assertIn('key1', sg_type['group_specs'])
+        self.assertIn('key2', sg_type['group_specs'])
+        self.assertEqual('value3', sg_type['group_specs']['key1'])
+        self.assertEqual(group_specs['key2'], sg_type['group_specs']['key2'])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_update_all_share_group_type_specs_min(self):
@@ -164,7 +167,9 @@ class ShareGroupTypesTest(base.BaseSharesAdminTest):
             sg_type['id'], group_specs)
         sg_type = self.shares_v2_client.get_share_group_type(sg_type['id'])
 
-        self.assertDictMatch(group_specs, sg_type['group_specs'])
+        for k, v in group_specs.items():
+            self.assertIn(k, sg_type['group_specs'])
+            self.assertEqual(v, sg_type['group_specs'][k])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_delete_single_share_group_type_spec_min(self):

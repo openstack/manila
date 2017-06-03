@@ -48,7 +48,7 @@ class ShareGroupsTest(base.BaseSharesAdminTest):
             cleanup_in_class=True,
             version=constants.MIN_SHARE_GROUP_MICROVERSION)
 
-    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_create_share_group_with_single_share_type_min(self):
         share_group = self.create_share_group(
             share_group_type_id=self.sg_type['id'],
@@ -81,7 +81,7 @@ class ShareGroupsTest(base.BaseSharesAdminTest):
             'Expected %s, got %s' % (
                 share_group['id'], expected_share_types, actual_share_types))
 
-    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_create_share_group_with_multiple_share_types_min(self):
         share_group = self.create_share_group(
             share_group_type_id=self.sg_type['id'],
@@ -114,7 +114,7 @@ class ShareGroupsTest(base.BaseSharesAdminTest):
             'Expected %s, got %s' % (
                 share_group['id'], expected_share_types, actual_share_types))
 
-    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_default_share_group_type_applied(self):
         default_type = self.shares_v2_client.get_default_share_group_type()
         default_share_types = default_type['share_types']
@@ -142,7 +142,7 @@ class ShareGroupsTest(base.BaseSharesAdminTest):
 
     @testtools.skipUnless(
         CONF.share.multitenancy_enabled, "Only for multitenancy.")
-    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_create_sg_from_snapshot_verify_share_server_information_min(self):
         # Create a share group
         orig_sg = self.create_share_group(
@@ -173,3 +173,19 @@ class ShareGroupsTest(base.BaseSharesAdminTest):
             orig_sg['share_network_id'], new_sg['share_network_id'])
         self.assertEqual(
             orig_sg['share_server_id'], new_sg['share_server_id'])
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    def test_create_sg_with_sg_type_but_without_any_group_specs(self):
+        # Create share group type not specifying any group specs
+        sg_type = self.create_share_group_type(
+            name=data_utils.rand_name("tempest-manila"),
+            share_types=[self.share_type['id']],
+            group_specs={},
+            cleanup_in_class=False)
+
+        # Create share group, it should be created always, because we do not
+        # restrict choice anyhow.
+        self.create_share_group(
+            share_type_ids=[self.share_type['id']],
+            share_group_type_id=sg_type['id'],
+            cleanup_in_class=False)

@@ -690,9 +690,6 @@ class ShareDriverTestCase(test.TestCase):
         self.assertEqual(
             snapshots_are_supported,
             child_class_instance._stats["snapshot_support"])
-        self.assertEqual(
-            snapshots_are_supported,
-            child_class_instance._stats["share_group_snapshot_support"])
         self.assertTrue(child_class_instance.configuration.safe_get.called)
 
     def test_create_share_group_from_share_group_snapshot(self):
@@ -843,7 +840,7 @@ class ShareDriverTestCase(test.TestCase):
             'name': None
         }
         share_driver = self._instantiate_share_driver(None, False)
-        share_driver._stats['share_group_snapshot_support'] = True
+        share_driver._stats['snapshot_support'] = True
         mock_create_snap = self.mock_object(
             share_driver, 'create_snapshot',
             mock.Mock(side_effect=lambda *args, **kwargs: {
@@ -917,7 +914,7 @@ class ShareDriverTestCase(test.TestCase):
         expected_exception = exception.ManilaException
 
         share_driver = self._instantiate_share_driver(None, False)
-        share_driver._stats['share_group_snapshot_support'] = True
+        share_driver._stats['snapshot_support'] = True
         mock_create_snap = self.mock_object(
             share_driver, 'create_snapshot',
             mock.Mock(side_effect=[None, expected_exception]))
@@ -985,7 +982,7 @@ class ShareDriverTestCase(test.TestCase):
             'name': None
         }
         share_driver = self._instantiate_share_driver(None, False)
-        share_driver._stats['share_group_snapshot_support'] = False
+        share_driver._stats['snapshot_support'] = False
 
         self.assertRaises(
             exception.ShareGroupSnapshotNotSupported,
@@ -1006,7 +1003,7 @@ class ShareDriverTestCase(test.TestCase):
             'name': None
         }
         share_driver = self._instantiate_share_driver(None, False)
-        share_driver._stats['share_group_snapshot_support'] = True
+        share_driver._stats['snapshot_support'] = True
 
         share_group_snapshot_update, member_update_list = (
             share_driver.create_share_group_snapshot(

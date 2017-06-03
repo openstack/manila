@@ -3522,7 +3522,10 @@ class ShareManager(manager.SchedulerDependentManager):
                 self.db.share_group_update(
                     context,
                     share_group_ref['id'],
-                    {'status': constants.STATUS_ERROR})
+                    {'status': constants.STATUS_ERROR,
+                     'consistent_snapshot_support': self.driver._stats[
+                         'share_group_stats'].get(
+                             'consistent_snapshot_support')})
                 for share in shares:
                     self.db.share_instance_update(
                         context, share['id'],
@@ -3533,10 +3536,13 @@ class ShareManager(manager.SchedulerDependentManager):
         for share in shares:
             self.db.share_instance_update(
                 context, share['id'], {'status': constants.STATUS_AVAILABLE})
-        self.db.share_group_update(context,
-                                   share_group_ref['id'],
-                                   {'status': status,
-                                    'created_at': now})
+        self.db.share_group_update(
+            context,
+            share_group_ref['id'],
+            {'status': status,
+             'created_at': now,
+             'consistent_snapshot_support': self.driver._stats[
+                 'share_group_stats'].get('consistent_snapshot_support')})
         LOG.info("Share group %s: created successfully", share_group_id)
 
         # TODO(ameade): Add notification for create.end
