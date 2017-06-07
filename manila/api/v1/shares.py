@@ -204,6 +204,7 @@ class ShareMixin(object):
             raise exc.HTTPUnprocessableEntity()
 
         share = body['share']
+        availability_zone_id = None
 
         # NOTE(rushiagr): Manila API allows 'name' instead of 'display_name'.
         if share.get('name'):
@@ -224,18 +225,32 @@ class ShareMixin(object):
         LOG.info(msg, context=context)
 
         availability_zone = share.get('availability_zone')
-
         if availability_zone:
             try:
-                db.availability_zone_get(context, availability_zone)
+                availability_zone_id = db.availability_zone_get(
+                    context, availability_zone).id
             except exception.AvailabilityZoneNotFound as e:
                 raise exc.HTTPNotFound(explanation=six.text_type(e))
 
+        share_group_id = share.get('share_group_id')
+        if share_group_id:
+            try:
+                share_group = db.share_group_get(context, share_group_id)
+            except exception.ShareGroupNotFound as e:
+                raise exc.HTTPNotFound(explanation=six.text_type(e))
+            sg_az_id = share_group['availability_zone_id']
+            if availability_zone and availability_zone_id != sg_az_id:
+                msg = _("Share cannot have AZ ('%(s_az)s') different than "
+                        "share group's one (%(sg_az)s).") % {
+                            's_az': availability_zone_id, 'sg_az': sg_az_id}
+                raise exception.InvalidInput(msg)
+            availability_zone_id = sg_az_id
+
         kwargs = {
-            'availability_zone': availability_zone,
+            'availability_zone': availability_zone_id,
             'metadata': share.get('metadata'),
             'is_public': share.get('is_public', False),
-            'share_group_id': share.get('share_group_id')
+            'share_group_id': share_group_id,
         }
 
         snapshot_id = share.get('snapshot_id')
@@ -311,7 +326,7 @@ class ShareMixin(object):
         # and create share with share group features not
         # need this check.
         if (not share_network_id and not snapshot
-                and not share.get('share_group_id')
+                and not share_group_id
                 and share_type and share_type.get('extra_specs')
                 and (strutils.bool_from_string(share_type.get('extra_specs').
                      get('driver_handles_share_servers')))):

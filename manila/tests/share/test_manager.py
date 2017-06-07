@@ -3218,7 +3218,10 @@ class ShareManagerTestCase(test.TestCase):
                          self.share_manager.last_capabilities)
 
     def test_create_share_group(self):
-        fake_group = {'id': 'fake_id'}
+        fake_group = {
+            'id': 'fake_id',
+            'availability_zone_id': 'fake_az',
+        }
         self.mock_object(self.share_manager.db, 'share_group_get',
                          mock.Mock(return_value=fake_group))
         self.mock_object(self.share_manager.db, 'share_group_update',
@@ -3234,6 +3237,7 @@ class ShareManagerTestCase(test.TestCase):
                 'status': constants.STATUS_AVAILABLE,
                 'created_at': mock.ANY,
                 'consistent_snapshot_support': None,
+                'availability_zone_id': fake_group['availability_zone_id'],
             }
         )
 
@@ -3270,6 +3274,7 @@ class ShareManagerTestCase(test.TestCase):
             'id': 'fake_id',
             'share_network_id': share_network_id,
             'host': "fake_host",
+            'availability_zone_id': 'fake_az',
         }
         self.mock_object(
             self.share_manager.db, 'share_group_get',
@@ -3291,11 +3296,15 @@ class ShareManagerTestCase(test.TestCase):
                 'status': constants.STATUS_AVAILABLE,
                 'created_at': mock.ANY,
                 'consistent_snapshot_support': None,
+                'availability_zone_id': fake_group['availability_zone_id'],
             }
         )
 
     def test_create_share_group_with_update(self):
-        fake_group = {'id': 'fake_id'}
+        fake_group = {
+            'id': 'fake_id',
+            'availability_zone_id': 'fake_az',
+        }
         self.mock_object(self.share_manager.db, 'share_group_get',
                          mock.Mock(return_value=fake_group))
         self.mock_object(self.share_manager.db, 'share_group_update',
@@ -3313,11 +3322,15 @@ class ShareManagerTestCase(test.TestCase):
                 'status': constants.STATUS_AVAILABLE,
                 'created_at': mock.ANY,
                 'consistent_snapshot_support': None,
+                'availability_zone_id': fake_group['availability_zone_id'],
             }
         )
 
     def test_create_share_group_with_error(self):
-        fake_group = {'id': 'fake_id'}
+        fake_group = {
+            'id': 'fake_id',
+            'availability_zone_id': 'fake_az',
+        }
         self.mock_object(self.share_manager.db, 'share_group_get',
                          mock.Mock(return_value=fake_group))
         self.mock_object(self.share_manager.db, 'share_group_update',
@@ -3334,6 +3347,7 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY, 'fake_id', {
                 'status': constants.STATUS_ERROR,
                 'consistent_snapshot_support': None,
+                'availability_zone_id': fake_group['availability_zone_id'],
             }
         )
 
@@ -3343,6 +3357,7 @@ class ShareManagerTestCase(test.TestCase):
             'source_share_group_snapshot_id': 'fake_snap_id',
             'shares': [],
             'share_server_id': 'fake_ss_id',
+            'availability_zone_id': 'fake_az',
         }
         fake_ss = {'id': 'fake_ss_id', 'share_network_id': 'fake_sn'}
         fake_snap = {'id': 'fake_snap_id', 'share_group_snapshot_members': [],
@@ -3367,6 +3382,7 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY, 'fake_id',
             {'status': constants.STATUS_AVAILABLE,
              'created_at': mock.ANY,
+             'availability_zone_id': fake_group['availability_zone_id'],
              'consistent_snapshot_support': None})
         self.share_manager.db.share_server_get(mock.ANY, 'fake_ss_id')
         mock_create_sg_from_sg_snap.assert_called_once_with(
@@ -3414,6 +3430,7 @@ class ShareManagerTestCase(test.TestCase):
             'source_share_group_snapshot_id': 'fake_snap_id',
             'shares': [],
             'share_network_id': share_network_id,
+            'availability_zone_id': 'fake_az',
         }
         fake_snap = {'id': 'fake_snap_id', 'share_group_snapshot_members': []}
         self.mock_object(self.share_manager.db, 'share_group_get',
@@ -3436,13 +3453,15 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY, 'fake_id',
             {'status': constants.STATUS_AVAILABLE,
              'created_at': mock.ANY,
-             'consistent_snapshot_support': None})
+             'consistent_snapshot_support': None,
+             'availability_zone_id': fake_group['availability_zone_id']})
 
     def test_create_share_group_from_share_group_snapshot_with_update(self):
         fake_group = {
             'id': 'fake_id',
             'source_share_group_snapshot_id': 'fake_snap_id',
             'shares': [],
+            'availability_zone_id': 'fake_az',
         }
         fake_snap = {'id': 'fake_snap_id', 'share_group_snapshot_members': []}
         self.mock_object(self.share_manager.db, 'share_group_get',
@@ -3464,6 +3483,7 @@ class ShareManagerTestCase(test.TestCase):
                 'status': constants.STATUS_AVAILABLE,
                 'created_at': mock.ANY,
                 'consistent_snapshot_support': None,
+                'availability_zone_id': fake_group['availability_zone_id'],
             }
         )
 
@@ -3474,6 +3494,7 @@ class ShareManagerTestCase(test.TestCase):
             'id': 'fake_id',
             'source_share_group_snapshot_id': 'fake_snap_id',
             'shares': [fake_share],
+            'availability_zone_id': 'fake_az',
         }
         fake_snap = {'id': 'fake_snap_id', 'share_group_snapshot_members': []}
         self.mock_object(self.share_manager.db, 'share_group_get',
@@ -3503,6 +3524,7 @@ class ShareManagerTestCase(test.TestCase):
                 'status': constants.STATUS_AVAILABLE,
                 'created_at': mock.ANY,
                 'consistent_snapshot_support': None,
+                'availability_zone_id': fake_group['availability_zone_id'],
             }
         )
 
@@ -3511,6 +3533,7 @@ class ShareManagerTestCase(test.TestCase):
             'id': 'fake_id',
             'source_share_group_snapshot_id': 'fake_snap_id',
             'shares': [],
+            'availability_zone_id': 'fake_az',
         }
         fake_snap = {'id': 'fake_snap_id', 'share_group_snapshot_members': []}
         self.mock_object(self.share_manager.db, 'share_group_get',
@@ -3534,6 +3557,7 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY, 'fake_id', {
                 'status': constants.STATUS_ERROR,
                 'consistent_snapshot_support': None,
+                'availability_zone_id': fake_group['availability_zone_id'],
             }
         )
 
@@ -3543,6 +3567,7 @@ class ShareManagerTestCase(test.TestCase):
             'id': 'fake_id',
             'source_share_group_snapshot_id': 'fake_snap_id',
             'shares': [fake_share],
+            'availability_zone_id': 'fake_az',
         }
         fake_snap = {'id': 'fake_snap_id', 'share_group_snapshot_members': []}
         self.mock_object(self.share_manager.db, 'share_group_get',
@@ -3568,6 +3593,7 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY, 'fake_id', {
                 'status': constants.STATUS_ERROR,
                 'consistent_snapshot_support': None,
+                'availability_zone_id': fake_group['availability_zone_id'],
             }
         )
 

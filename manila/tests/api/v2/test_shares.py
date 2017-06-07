@@ -480,6 +480,96 @@ class ShareAPITest(test.TestCase):
         expected['share']['source_share_group_snapshot_member_id'] = None
         self.assertEqual(expected, res_dict)
 
+    def test_share_create_with_sg_and_availability_zone(self):
+        sg_id = 'fake_sg_id'
+        az_id = 'bar_az_id'
+        self.mock_object(share_api.API, 'create', self.create_mock)
+        self.mock_object(
+            db, 'availability_zone_get',
+            mock.Mock(return_value=type('ReqAZ', (object, ), {"id": az_id})))
+        self.mock_object(
+            db, 'share_group_get',
+            mock.Mock(return_value={"availability_zone_id": az_id}))
+        body = {"share": {
+            "size": 100,
+            "share_proto": "fakeproto",
+            "availability_zone": az_id,
+            "share_group_id": sg_id,
+        }}
+        req = fakes.HTTPRequest.blank(
+            '/shares', version="2.31", experimental=True)
+
+        self.controller.create(req, body)
+
+        db.availability_zone_get.assert_called_once_with(
+            req.environ['manila.context'], az_id)
+        db.share_group_get.assert_called_once_with(
+            req.environ['manila.context'], sg_id)
+        share_api.API.create.assert_called_once_with(
+            req.environ['manila.context'],
+            body['share']['share_proto'].upper(),
+            body['share']['size'],
+            None,
+            None,
+            share_group_id=body['share']['share_group_id'],
+            is_public=False,
+            metadata=None,
+            snapshot_id=None,
+            availability_zone=az_id)
+
+    def test_share_create_with_sg_and_different_availability_zone(self):
+        sg_id = 'fake_sg_id'
+        sg_az = 'foo_az_id'
+        req_az = 'bar_az_id'
+        self.mock_object(share_api.API, 'create', self.create_mock)
+        self.mock_object(
+            db, 'availability_zone_get',
+            mock.Mock(return_value=type('ReqAZ', (object, ), {"id": req_az})))
+        self.mock_object(
+            db, 'share_group_get',
+            mock.Mock(return_value={"availability_zone_id": sg_az}))
+        body = {"share": {
+            "size": 100,
+            "share_proto": "fakeproto",
+            "availability_zone": req_az,
+            "share_group_id": sg_id,
+        }}
+        req = fakes.HTTPRequest.blank(
+            '/shares', version="2.31", experimental=True)
+
+        self.assertRaises(
+            exception.InvalidInput, self.controller.create, req, body)
+
+        db.availability_zone_get.assert_called_once_with(
+            req.environ['manila.context'], req_az)
+        db.share_group_get.assert_called_once_with(
+            req.environ['manila.context'], sg_id)
+        self.assertEqual(0, share_api.API.create.call_count)
+
+    def test_share_create_with_nonexistent_share_group(self):
+        sg_id = 'fake_sg_id'
+        self.mock_object(share_api.API, 'create', self.create_mock)
+        self.mock_object(db, 'availability_zone_get')
+        self.mock_object(
+            db, 'share_group_get',
+            mock.Mock(side_effect=exception.ShareGroupNotFound(
+                share_group_id=sg_id)))
+        body = {"share": {
+            "size": 100,
+            "share_proto": "fakeproto",
+            "share_group_id": sg_id,
+        }}
+        req = fakes.HTTPRequest.blank(
+            '/shares', version="2.31", experimental=True)
+
+        self.assertRaises(
+            webob.exc.HTTPNotFound, self.controller.create, req, body)
+
+        self.assertEqual(0, db.availability_zone_get.call_count)
+        self.assertEqual(0, share_api.API.create.call_count)
+        db.share_group_get.assert_called_once_with(
+            req.environ['manila.context'], sg_id)
+
     def test_share_create_with_valid_default_share_type(self):
         self.mock_object(share_types, 'get_share_type_by_name',
                          mock.Mock(return_value=self.vt))

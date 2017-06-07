@@ -43,6 +43,7 @@ def fake_share_group(id, **kwargs):
         'name': None,
         'description': None,
         'host': None,
+        'availability_zone_id': None,
         'share_group_type_id': None,
         'source_share_group_snapshot_id': None,
         'share_network_id': None,

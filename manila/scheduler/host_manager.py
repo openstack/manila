@@ -60,6 +60,7 @@ host_manager_opts = [
     cfg.ListOpt(
         'scheduler_default_share_group_filters',
         default=[
+            'AvailabilityZoneFilter',
             'ConsistentSnapshotFilter',
         ],
         help='Which filter class names to use for filtering hosts '
