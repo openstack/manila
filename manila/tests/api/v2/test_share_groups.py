@@ -53,7 +53,7 @@ class ShareGroupAPITest(test.TestCase):
         self.fake_share_type = {'id': six.text_type(uuidutils.generate_uuid())}
         self.fake_share_group_type = {
             'id': six.text_type(uuidutils.generate_uuid())}
-        self.api_version = '2.31'
+        self.api_version = '2.34'
         self.request = fakes.HTTPRequest.blank(
             '/share-groups', version=self.api_version, experimental=True)
         self.flags(rpc_backend='manila.openstack.common.rpc.impl_fake')
@@ -94,7 +94,8 @@ class ShareGroupAPITest(test.TestCase):
             'name': None,
             'description': None,
             'host': None,
-            'availability_zone_id': None,
+            'availability_zone': None,
+            'consistent_snapshot_support': None,
             'source_share_group_snapshot_id': None,
             'share_group_type_id': self.fake_share_group_type.get('id'),
             'share_network_id': uuidutils.generate_uuid(),
@@ -112,10 +113,9 @@ class ShareGroupAPITest(test.TestCase):
             'name': share_group_db_dict['name'],
             'description': share_group_db_dict['description'],
             'host': share_group_db_dict['host'],
-            # NOTE(vponomaryov): uncomment following when API start returning
-            # availability zone value.
-            # 'availability_zone_id': share_group_db_dict[
-            #     'availability_zone_id'],
+            'availability_zone': share_group_db_dict['availability_zone'],
+            'consistent_snapshot_support': share_group_db_dict[
+                'consistent_snapshot_support'],
             'source_share_group_snapshot_id': share_group_db_dict[
                 'source_share_group_snapshot_id'],
             'share_group_type_id': share_group_db_dict['share_group_type_id'],

@@ -20,6 +20,9 @@ class ShareGroupViewBuilder(common.ViewBuilder):
     """Model a share group API response as a python dictionary."""
 
     _collection_name = 'share_groups'
+    _detail_version_modifiers = [
+        "add_consistent_snapshot_support_and_az_id_fields_to_sg",
+    ]
 
     def summary_list(self, request, share_groups):
         """Show a list of share groups without many details."""
@@ -57,12 +60,20 @@ class ShareGroupViewBuilder(common.ViewBuilder):
             'share_types': [st['share_type_id'] for st in share_group.get(
                 'share_types')],
             'links': self._get_links(request, share_group['id']),
-            # TODO(vponomaryov): add 'consistent_snapshot_support' key in Pike.
         }
+        self.update_versioned_resource_dict(
+            request, share_group_dict, share_group)
         if context.is_admin:
             share_group_dict['share_server_id'] = share_group.get(
                 'share_server_id')
         return {'share_group': share_group_dict}
+
+    @common.ViewBuilder.versioned_method("2.34")
+    def add_consistent_snapshot_support_and_az_id_fields_to_sg(
+            self, context, sg_dict, sg):
+        sg_dict['availability_zone'] = sg.get('availability_zone')
+        sg_dict['consistent_snapshot_support'] = sg.get(
+            'consistent_snapshot_support')
 
     def _list_view(self, func, request, shares):
         """Provide a view for a list of share groups."""

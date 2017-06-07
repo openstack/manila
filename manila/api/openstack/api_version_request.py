@@ -100,13 +100,15 @@ REST_API_VERSION_HISTORY = """
     * 2.32 - Added mountable snapshots APIs.
     * 2.33 - Added 'created_at' and 'updated_at' to the response of
              access_list API.
+    * 2.34 - Added 'availability_zone_id' and 'consistent_snapshot_support'
+             fields to 'share_group' object.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.33"
+_MAX_API_VERSION = "2.34"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

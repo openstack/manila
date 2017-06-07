@@ -1,0 +1,5 @@
+---
+features:
+  - added two new fields to share groups API - 'availability_zone_id' and
+    'consistent_snapshot_support' to be able to get to know these attributes
+    of a share group.
