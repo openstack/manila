@@ -66,9 +66,9 @@ gpfs_share_opts = [
                default='$state_path/mnt',
                help='Base folder where exported shares are located.'),
     cfg.StrOpt('gpfs_nfs_server_type',
-               default='KNFS',
-               help=('NFS Server type. Valid choices are "KNFS" (kernel NFS) '
-                     'or "CES" (Ganesha NFS).')),
+               default='CES',
+               help=('NFS Server type. Valid choices are "CES" (Ganesha NFS) '
+                     'or "KNFS" (Kernel NFS).')),
     cfg.ListOpt('gpfs_nfs_server_list',
                 help=('A list of the fully qualified NFS server names that '
                       'make up the OpenStack Manila configuration.')),

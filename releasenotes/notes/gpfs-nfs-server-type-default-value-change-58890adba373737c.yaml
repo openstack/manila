@@ -1,0 +1,6 @@
+---
+other:
+  - |
+    Changing the default value of 'gpfs_nfs_server_type' configuration
+    parameter from KNFS to CES as Spectrum Scale provide NFS service with
+    Ganesha server by default.
