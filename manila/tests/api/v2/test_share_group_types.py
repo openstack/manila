@@ -298,11 +298,13 @@ class ShareGroupTypesAPITest(test.TestCase):
         mock_get.assert_called_once_with(mock.ANY, GROUP_TYPE_1['name'])
         self.assertEqual(expected_type, res_dict['share_group_type'])
 
-    def test_create_with_group_specs(self):
-        fake_group_specs = {'my_fake_group_spec': 'false'}
+    @ddt.data(
+        None, {'my_fake_group_spec': 'false'},
+    )
+    def test_create_with_group_specs(self, specs):
         fake_type = copy.deepcopy(GROUP_TYPE_1)
         fake_type['share_types'] = [{'share_type_id': SHARE_TYPE_ID}]
-        fake_type['group_specs'] = fake_group_specs
+        fake_type['group_specs'] = specs
         mock_create = self.mock_object(share_group_types, 'create')
         mock_get = self.mock_object(
             share_group_types, 'get_by_name',
@@ -311,23 +313,48 @@ class ShareGroupTypesAPITest(test.TestCase):
         fake_body = {'share_group_type': {
             'name': GROUP_TYPE_1['name'],
             'share_types': [SHARE_TYPE_ID],
-            'group_specs': fake_group_specs,
+            'group_specs': specs,
         }}
         expected_type = {
             'id': GROUP_TYPE_1['id'],
             'name': GROUP_TYPE_1['name'],
             'is_public': True,
-            'group_specs': fake_group_specs,
+            'group_specs': specs,
             'share_types': [SHARE_TYPE_ID],
         }
 
         res_dict = self.controller._create(req, fake_body)
 
         mock_create.assert_called_once_with(
-            mock.ANY, GROUP_TYPE_1['name'], [SHARE_TYPE_ID], fake_group_specs,
+            mock.ANY, GROUP_TYPE_1['name'], [SHARE_TYPE_ID], specs,
             True)
         mock_get.assert_called_once_with(mock.ANY, GROUP_TYPE_1['name'])
         self.assertEqual(expected_type, res_dict['share_group_type'])
+
+    @ddt.data(
+        'str', ['l', 'i', 's', 't'], set([1]), ('t', 'u', 'p', 'l', 'e'), 1,
+        {"foo": 1}, {1: "foo"}, {"foo": "bar", "quuz": []}
+    )
+    def test_create_with_wrong_group_specs(self, specs):
+        fake_type = copy.deepcopy(GROUP_TYPE_1)
+        fake_type['share_types'] = [{'share_type_id': SHARE_TYPE_ID}]
+        fake_type['group_specs'] = specs
+        mock_create = self.mock_object(share_group_types, 'create')
+        mock_get = self.mock_object(
+            share_group_types, 'get_by_name',
+            mock.Mock(return_value=fake_type))
+        req = fake_request('/v2/fake/share-group-types')
+        fake_body = {'share_group_type': {
+            'name': GROUP_TYPE_1['name'],
+            'share_types': [SHARE_TYPE_ID],
+            'group_specs': specs,
+        }}
+
+        self.assertRaises(
+            webob.exc.HTTPBadRequest, self.controller._create, req, fake_body)
+
+        self.assertEqual(0, mock_create.call_count)
+        self.assertEqual(0, mock_get.call_count)
 
     def test_create_private_share_group_type(self):
         fake_type = copy.deepcopy(GROUP_TYPE_1)

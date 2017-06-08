@@ -70,6 +70,15 @@ class ShareGroupTypesAdminNegativeTest(base.BaseSharesMixedTest):
             "x" * 256, client=self.admin_shares_v2_client)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
+    def test_create_share_group_type_with_wrong_value_for_group_specs(self):
+        self.assertRaises(
+            lib_exc.BadRequest,
+            self.admin_shares_v2_client.create_share_group_type,
+            name=data_utils.rand_name("tempest_manila"),
+            share_types=[self.share_type['share_type']['id']],
+            group_specs="expecting_error_code_400")
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_get_share_group_type_using_nonexistent_id(self):
         self.assertRaises(
             lib_exc.NotFound,
