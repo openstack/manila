@@ -75,7 +75,7 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
 
         self.mock_object(gpfs.os.path, 'exists', mock.Mock(return_value=True))
         self._driver._helpers = {
-            'KNFS': self._helper_fake
+            'CES': self._helper_fake
         }
         self.share = fake_share.fake_share(share_proto='NFS',
                                            host='fakehost@fakehost#GPFS')
@@ -216,7 +216,7 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
 
     def test_setup_helpers(self):
         self._driver._helpers = {}
-        CONF.set_default('gpfs_share_helpers', ['KNFS=fakenfs'])
+        CONF.set_default('gpfs_share_helpers', ['CES=fakenfs'])
         self.mock_object(gpfs.importutils, 'import_class',
                          mock.Mock(return_value=self._helper_fake))
         self._driver._setup_helpers()
