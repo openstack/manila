@@ -372,3 +372,34 @@ class API(object):
         except neutron_client_exc.NeutronClientException as e:
             raise exception.NetworkException(code=e.status_code,
                                              message=e.message)
+
+    def security_group_list(self, search_opts=None):
+        try:
+            return self.client.list_security_groups(**search_opts)
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(
+                code=e.status_code, message=e.message)
+
+    def security_group_create(self, name, description=""):
+        try:
+            return self.client.create_security_group(
+                {"name": name, "description": description})
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(
+                code=e.status_code, message=e.message)
+
+    def security_group_rule_create(self, parent_group_id,
+                                   ip_protocol=None, from_port=None,
+                                   to_port=None, cidr=None, group_id=None):
+        try:
+            return self.client.create_security_group_rule({
+                "parent_group_id": parent_group_id,
+                "ip_protocol": ip_protocol,
+                "from_port": from_port,
+                "to_port": to_port,
+                "cidr": cidr,
+                "group_id": group_id,
+            })
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(
+                code=e.status_code, message=e.message)

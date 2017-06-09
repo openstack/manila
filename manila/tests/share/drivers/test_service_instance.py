@@ -97,6 +97,12 @@ class FakeNetworkHelper(service_instance.BaseNetworkhelper):
     def NAME(self):
         return service_instance.NEUTRON_NAME
 
+    @property
+    def neutron_api(self):
+        if not hasattr(self, '_neutron_api'):
+            self._neutron_api = mock.Mock()
+        return self._neutron_api
+
     def __init__(self, service_instance_manager):
         self.get_config_option = service_instance_manager.get_config_option
 
@@ -356,78 +362,66 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             'service_instance_security_group')
 
     def test_security_group_name_from_config_and_sg_exist(self):
-        fake_secgroup = fake_compute.FakeSecurityGroup(name="fake_sg_name")
-        self.mock_object(self._manager, 'get_config_option',
-                         mock.Mock(return_value="fake_sg_name"))
-        self.mock_object(self._manager.compute_api, 'security_group_list',
-                         mock.Mock(return_value=[fake_secgroup, ]))
-        result = self._manager._get_or_create_security_group(
-            self._manager.admin_context)
-        self.assertEqual(fake_secgroup, result)
-        self._manager.get_config_option.assert_has_calls([
-            mock.call('service_instance_security_group'),
-        ])
-        self._manager.compute_api.security_group_list.assert_called_once_with(
-            self._manager.admin_context)
-
-    def test_security_group_creation_with_name_from_config(self):
-        name = "fake_sg_name"
+        name = "fake_sg_name_from_config"
         desc = "fake_sg_description"
-        fake_secgroup = fake_compute.FakeSecurityGroup(name=name,
-                                                       description=desc)
+        fake_secgroup = {'id': 'fake_sg_id', 'name': name, 'description': desc}
         self.mock_object(self._manager, 'get_config_option',
                          mock.Mock(return_value=name))
-        self.mock_object(self._manager.compute_api, 'security_group_list',
-                         mock.Mock(return_value=[]))
-        self.mock_object(self._manager.compute_api, 'security_group_create',
-                         mock.Mock(return_value=fake_secgroup))
-        self.mock_object(self._manager.compute_api,
-                         'security_group_rule_create')
+        neutron_api = self._manager.network_helper.neutron_api
+        neutron_api.security_group_list.return_value = {
+            'security_groups': [fake_secgroup]}
+
+        result = self._manager._get_or_create_security_group(
+            self._manager.admin_context)
+
+        self.assertEqual(fake_secgroup, result)
+        self._manager.get_config_option.assert_called_once_with(
+            'service_instance_security_group')
+        neutron_api.security_group_list.assert_called_once_with({"name": name})
+
+    @ddt.data(None, 'fake_name')
+    def test_security_group_creation_with_name_from_config(self, name):
+        config_name = "fake_sg_name_from_config"
+        desc = "fake_sg_description"
+        fake_secgroup = {'id': 'fake_sg_id', 'name': name, 'description': desc}
+        self.mock_object(self._manager, 'get_config_option',
+                         mock.Mock(return_value=name or config_name))
+        neutron_api = self._manager.network_helper.neutron_api
+        neutron_api.security_group_list.return_value = {'security_groups': []}
+        neutron_api.security_group_create.return_value = {
+            'security_group': fake_secgroup,
+        }
+
         result = self._manager._get_or_create_security_group(
             context=self._manager.admin_context,
-            name=None,
+            name=name,
             description=desc,
         )
-        self.assertEqual(fake_secgroup, result)
-        self._manager.compute_api.security_group_list.assert_called_once_with(
-            self._manager.admin_context)
-        self._manager.compute_api.security_group_create.\
-            assert_called_once_with(self._manager.admin_context, name, desc)
-        self._manager.get_config_option.assert_has_calls([
-            mock.call('service_instance_security_group'),
-        ])
 
-    def test_security_group_creation_with_provided_name(self):
-        name = "fake_sg_name"
-        fake_secgroup = fake_compute.FakeSecurityGroup(name=name)
-        self.mock_object(self._manager.compute_api, 'security_group_list',
-                         mock.Mock(return_value=[]))
-        self.mock_object(self._manager.compute_api, 'security_group_create',
-                         mock.Mock(return_value=fake_secgroup))
-        self.mock_object(self._manager.compute_api,
-                         'security_group_rule_create')
-        result = self._manager._get_or_create_security_group(
-            context=self._manager.admin_context, name=name)
-        self._manager.compute_api.security_group_list.assert_called_once_with(
-            self._manager.admin_context)
-        self._manager.compute_api.security_group_create.\
-            assert_called_once_with(
-                self._manager.admin_context, name, mock.ANY)
         self.assertEqual(fake_secgroup, result)
+        if not name:
+            self._manager.get_config_option.assert_called_once_with(
+                'service_instance_security_group')
+        neutron_api.security_group_list.assert_called_once_with(
+            {"name": name or config_name})
+        neutron_api.security_group_create.assert_called_once_with(
+            name or config_name, desc)
 
     def test_security_group_two_sg_in_list(self):
         name = "fake_name"
-        fake_secgroup1 = fake_compute.FakeSecurityGroup(name=name)
-        fake_secgroup2 = fake_compute.FakeSecurityGroup(name=name)
-        self.mock_object(self._manager.compute_api, 'security_group_list',
-                         mock.Mock(return_value=[fake_secgroup1,
-                                                 fake_secgroup2]))
+        fake_secgroup1 = {'id': 'fake_sg_id1', 'name': name}
+        fake_secgroup2 = {'id': 'fake_sg_id2', 'name': name}
+        neutron_api = self._manager.network_helper.neutron_api
+        neutron_api.security_group_list.return_value = {
+            'security_groups': [fake_secgroup1, fake_secgroup2]}
+
         self.assertRaises(exception.ServiceInstanceException,
                           self._manager._get_or_create_security_group,
                           self._manager.admin_context,
                           name)
-        self._manager.compute_api.security_group_list.assert_called_once_with(
-            self._manager.admin_context)
+
+        neutron_api.security_group_list.assert_called_once_with(
+            {"name": name})
 
     @ddt.data(
         dict(),
@@ -897,7 +891,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
 
         server_create = dict(id='fakeid', status='CREATING', networks=dict())
         net_name = self._manager.get_config_option("service_network_name")
-        sg = type('FakeSG', (object, ), dict(id='fakeid', name='fakename'))
+        sg = {'id': 'fakeid', 'name': 'fakename'}
         ip_address = 'fake_ip_address'
         service_image_id = 'fake_service_image_id'
         key_data = 'fake_key_name', 'fake_key_path'
@@ -972,7 +966,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self._manager.admin_context, server_create['id'])
         self._manager.compute_api.add_security_group_to_server.\
             assert_called_once_with(
-                self._manager.admin_context, server_get['id'], sg.id)
+                self._manager.admin_context, server_get['id'], sg['id'])
         self._manager.network_helper.get_network_name.assert_has_calls([])
 
     def test___create_service_instance_neutron_no_admin_ip(self):
@@ -986,7 +980,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
 
         server_create = {'id': 'fakeid', 'status': 'CREATING', 'networks': {}}
         net_name = self._manager.get_config_option("service_network_name")
-        sg = type('FakeSG', (object, ), {'id': 'fakeid', 'name': 'fakename'})
+        sg = {'id': 'fakeid', 'name': 'fakename'}
         ip_address = 'fake_ip_address'
         service_image_id = 'fake_service_image_id'
         key_data = 'fake_key_name', 'fake_key_path'
@@ -1047,7 +1041,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self._manager.admin_context, server_create['id'])
         self._manager.compute_api.add_security_group_to_server.\
             assert_called_once_with(
-                self._manager.admin_context, server_get['id'], sg.id)
+                self._manager.admin_context, server_get['id'], sg['id'])
         self._manager.network_helper.get_network_name.assert_has_calls([])
 
     @ddt.data(
