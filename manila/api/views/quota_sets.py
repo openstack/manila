@@ -19,8 +19,12 @@ from manila.api import common
 class ViewBuilder(common.ViewBuilder):
 
     _collection_name = "quota_set"
+    _detail_version_modifiers = [
+        "add_share_group_quotas",
+    ]
 
-    def detail_list(self, quota_set, project_id=None, share_type=None):
+    def detail_list(self, request, quota_set, project_id=None,
+                    share_type=None):
         """Detailed view of quota set."""
         keys = (
             'shares',
@@ -31,6 +35,21 @@ class ViewBuilder(common.ViewBuilder):
         view = {key: quota_set.get(key) for key in keys}
         if project_id:
             view['id'] = project_id
-        if not share_type:
+        if share_type:
+            # NOTE(vponomaryov): remove share groups related data for quotas
+            # that are share-type based.
+            quota_set.pop('share_groups', None)
+            quota_set.pop('share_group_snapshots', None)
+        else:
             view['share_networks'] = quota_set.get('share_networks')
+        self.update_versioned_resource_dict(request, view, quota_set)
         return {self._collection_name: view}
+
+    @common.ViewBuilder.versioned_method("2.40")
+    def add_share_group_quotas(self, context, view, quota_set):
+        share_groups = quota_set.get('share_groups')
+        share_group_snapshots = quota_set.get('share_group_snapshots')
+        if share_groups is not None:
+            view['share_groups'] = share_groups
+        if share_group_snapshots is not None:
+            view['share_group_snapshots'] = share_group_snapshots

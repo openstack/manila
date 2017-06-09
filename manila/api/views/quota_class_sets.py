@@ -19,8 +19,11 @@ from manila.api import common
 class ViewBuilder(common.ViewBuilder):
 
     _collection_name = "quota_class_set"
+    _detail_version_modifiers = [
+        "add_share_group_quotas",
+    ]
 
-    def detail_list(self, quota_set, quota_class=None):
+    def detail_list(self, request, quota_class_set, quota_class=None):
         """Detailed view of quota class set."""
         keys = (
             'shares',
@@ -29,7 +32,17 @@ class ViewBuilder(common.ViewBuilder):
             'snapshot_gigabytes',
             'share_networks',
         )
-        view = {key: quota_set.get(key) for key in keys}
+        view = {key: quota_class_set.get(key) for key in keys}
         if quota_class:
             view['id'] = quota_class
+        self.update_versioned_resource_dict(request, view, quota_class_set)
         return {self._collection_name: view}
+
+    @common.ViewBuilder.versioned_method("2.40")
+    def add_share_group_quotas(self, context, view, quota_class_set):
+        share_groups = quota_class_set.get('share_groups')
+        share_group_snapshots = quota_class_set.get('share_group_snapshots')
+        if share_groups is not None:
+            view['share_groups'] = share_groups
+        if share_group_snapshots is not None:
+            view['share_group_snapshots'] = share_group_snapshots

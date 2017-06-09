@@ -428,6 +428,16 @@ class ShareNetworksLimitExceeded(QuotaError):
                 "allowed (%(allowed)d) exceeded.")
 
 
+class ShareGroupsLimitExceeded(QuotaError):
+    message = _(
+        "Maximum number of allowed share-groups is exceeded.")
+
+
+class ShareGroupSnapshotsLimitExceeded(QuotaError):
+    message = _(
+        "Maximum number of allowed share-group-snapshots is exceeded.")
+
+
 class GlusterfsException(ManilaException):
     message = _("Unknown Gluster exception.")
 

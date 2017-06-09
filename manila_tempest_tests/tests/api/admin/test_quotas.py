@@ -17,11 +17,15 @@ import ddt
 from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions as lib_exc
+import testtools
 from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
+from manila_tempest_tests import utils
 
 CONF = config.CONF
+PRE_SHARE_GROUPS_MICROVERSION = "2.39"
+SHARE_GROUPS_MICROVERSION = "2.40"
 
 
 @ddt.ddt
@@ -44,6 +48,9 @@ class SharesAdminQuotasTest(base.BaseSharesAdminTest):
         self.assertGreater(int(quotas["shares"]), -2)
         self.assertGreater(int(quotas["snapshots"]), -2)
         self.assertGreater(int(quotas["share_networks"]), -2)
+        if utils.is_microversion_supported(SHARE_GROUPS_MICROVERSION):
+            self.assertGreater(int(quotas["share_groups"]), -2)
+            self.assertGreater(int(quotas["share_group_snapshots"]), -2)
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_show_quotas(self):
@@ -53,6 +60,9 @@ class SharesAdminQuotasTest(base.BaseSharesAdminTest):
         self.assertGreater(int(quotas["shares"]), -2)
         self.assertGreater(int(quotas["snapshots"]), -2)
         self.assertGreater(int(quotas["share_networks"]), -2)
+        if utils.is_microversion_supported(SHARE_GROUPS_MICROVERSION):
+            self.assertGreater(int(quotas["share_groups"]), -2)
+            self.assertGreater(int(quotas["share_group_snapshots"]), -2)
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_show_quotas_for_user(self):
@@ -63,6 +73,28 @@ class SharesAdminQuotasTest(base.BaseSharesAdminTest):
         self.assertGreater(int(quotas["shares"]), -2)
         self.assertGreater(int(quotas["snapshots"]), -2)
         self.assertGreater(int(quotas["share_networks"]), -2)
+        if utils.is_microversion_supported(SHARE_GROUPS_MICROVERSION):
+            self.assertGreater(int(quotas["share_groups"]), -2)
+            self.assertGreater(int(quotas["share_group_snapshots"]), -2)
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    @base.skip_if_microversion_not_supported(PRE_SHARE_GROUPS_MICROVERSION)
+    def test_show_sg_quotas_using_too_old_microversion(self):
+        quotas = self.shares_v2_client.show_quotas(
+            self.tenant_id, version=PRE_SHARE_GROUPS_MICROVERSION)
+
+        for key in ('share_groups', 'share_group_snapshots'):
+            self.assertNotIn(key, quotas)
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    @base.skip_if_microversion_not_supported(PRE_SHARE_GROUPS_MICROVERSION)
+    def test_show_sg_quotas_for_user_using_too_old_microversion(self):
+        quotas = self.shares_v2_client.show_quotas(
+            self.tenant_id, self.user_id,
+            version=PRE_SHARE_GROUPS_MICROVERSION)
+
+        for key in ('share_groups', 'share_group_snapshots'):
+            self.assertNotIn(key, quotas)
 
     @ddt.data(
         ('id', True),
@@ -93,12 +125,16 @@ class SharesAdminQuotasTest(base.BaseSharesAdminTest):
         for key in ('shares', 'gigabytes', 'snapshots', 'snapshot_gigabytes'):
             self.assertEqual(st_quotas[key], p_quotas[key])
 
+        # Verify that we do not have share groups related quotas
+        # for share types.
+        for key in ('share_groups', 'share_group_snapshots'):
+            self.assertNotIn(key, st_quotas)
+
 
 @ddt.ddt
 class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
 
     force_tenant_isolation = True
-    client_version = '2'
 
     @classmethod
     def resource_setup(cls):
@@ -109,8 +145,7 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
 
     def setUp(self):
         super(self.__class__, self).setUp()
-        self.client = self.get_client_with_isolated_creds(
-            client_version=self.client_version)
+        self.client = self.get_client_with_isolated_creds(client_version='2')
         self.tenant_id = self.client.tenant_id
         self.user_id = self.client.user_id
 
@@ -124,6 +159,24 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         updated = self.client.update_quotas(self.tenant_id, shares=new_quota)
         self.assertEqual(new_quota, int(updated["shares"]))
 
+    @ddt.data(
+        "share_groups",
+        "share_group_snapshots",
+    )
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    @testtools.skipUnless(
+        CONF.share.run_share_group_tests, 'Share Group tests disabled.')
+    @utils.skip_if_microversion_not_supported(SHARE_GROUPS_MICROVERSION)
+    def test_update_tenant_quota_share_groups(self, quota_key):
+        # Get current quotas
+        quotas = self.client.show_quotas(self.tenant_id)
+        new_quota = int(quotas[quota_key]) + 2
+
+        # Set new quota
+        updated = self.client.update_quotas(
+            self.tenant_id, **{quota_key: new_quota})
+        self.assertEqual(new_quota, int(updated[quota_key]))
+
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_update_user_quota_shares(self):
         # get current quotas
@@ -134,6 +187,24 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         updated = self.client.update_quotas(
             self.tenant_id, self.user_id, shares=new_quota)
         self.assertEqual(new_quota, int(updated["shares"]))
+
+    @ddt.data(
+        "share_groups",
+        "share_group_snapshots",
+    )
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    @testtools.skipUnless(
+        CONF.share.run_share_group_tests, 'Share Group tests disabled.')
+    @utils.skip_if_microversion_not_supported(SHARE_GROUPS_MICROVERSION)
+    def test_update_user_quota_share_groups(self, quota_key):
+        # Get current quotas
+        quotas = self.client.show_quotas(self.tenant_id, self.user_id)
+        new_quota = int(quotas[quota_key]) - 1
+
+        # Set new quota
+        updated = self.client.update_quotas(
+            self.tenant_id, self.user_id, **{quota_key: new_quota})
+        self.assertEqual(new_quota, int(updated[quota_key]))
 
     def _create_share_type(self):
         share_type = self.create_share_type(
@@ -280,44 +351,63 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_reset_tenant_quotas(self):
-        # get default_quotas
+        # Get default_quotas
         default = self.client.default_quotas(self.tenant_id)
 
-        # get current quotas
+        # Get current quotas
         custom = self.client.show_quotas(self.tenant_id)
 
-        # make quotas for update
-        shares = int(custom["shares"]) + 2
-        snapshots = int(custom["snapshots"]) + 2
-        gigabytes = int(custom["gigabytes"]) + 2
-        snapshot_gigabytes = int(custom["snapshot_gigabytes"]) + 2
-        share_networks = int(custom["share_networks"]) + 2
+        # Make quotas for update
+        data = {
+            "shares": int(custom["shares"]) + 2,
+            "snapshots": int(custom["snapshots"]) + 2,
+            "gigabytes": int(custom["gigabytes"]) + 2,
+            "snapshot_gigabytes": int(custom["snapshot_gigabytes"]) + 2,
+            "share_networks": int(custom["share_networks"]) + 2,
+        }
+        if (utils.is_microversion_supported(SHARE_GROUPS_MICROVERSION) and
+                CONF.share.run_share_group_tests):
+            data["share_groups"] = int(custom["share_groups"]) + 2
+            data["share_group_snapshots"] = (
+                int(custom["share_group_snapshots"]) + 2)
 
         # set new quota
-        updated = self.client.update_quotas(
-            self.tenant_id,
-            shares=shares,
-            snapshots=snapshots,
-            gigabytes=gigabytes,
-            snapshot_gigabytes=snapshot_gigabytes,
-            share_networks=share_networks)
-        self.assertEqual(shares, int(updated["shares"]))
-        self.assertEqual(snapshots, int(updated["snapshots"]))
-        self.assertEqual(gigabytes, int(updated["gigabytes"]))
-        self.assertEqual(snapshot_gigabytes,
-                         int(updated["snapshot_gigabytes"]))
-        self.assertEqual(share_networks, int(updated["share_networks"]))
+        updated = self.client.update_quotas(self.tenant_id, **data)
+        self.assertEqual(data["shares"], int(updated["shares"]))
+        self.assertEqual(data["snapshots"], int(updated["snapshots"]))
+        self.assertEqual(data["gigabytes"], int(updated["gigabytes"]))
+        self.assertEqual(
+            data["snapshot_gigabytes"], int(updated["snapshot_gigabytes"]))
+        self.assertEqual(
+            data["share_networks"], int(updated["share_networks"]))
+        if (utils.is_microversion_supported(SHARE_GROUPS_MICROVERSION) and
+                CONF.share.run_share_group_tests):
+            self.assertEqual(
+                data["share_groups"], int(updated["share_groups"]))
+            self.assertEqual(
+                data["share_group_snapshots"],
+                int(updated["share_group_snapshots"]))
 
-        # reset customized quotas
+        # Reset customized quotas
         self.client.reset_quotas(self.tenant_id)
 
-        # verify quotas
+        # Verify quotas
         reseted = self.client.show_quotas(self.tenant_id)
         self.assertEqual(int(default["shares"]), int(reseted["shares"]))
         self.assertEqual(int(default["snapshots"]), int(reseted["snapshots"]))
         self.assertEqual(int(default["gigabytes"]), int(reseted["gigabytes"]))
-        self.assertEqual(int(default["share_networks"]),
-                         int(reseted["share_networks"]))
+        self.assertEqual(
+            int(default["snapshot_gigabytes"]),
+            int(reseted["snapshot_gigabytes"]))
+        self.assertEqual(
+            int(default["share_networks"]), int(reseted["share_networks"]))
+        if (utils.is_microversion_supported(SHARE_GROUPS_MICROVERSION) and
+                CONF.share.run_share_group_tests):
+            self.assertEqual(
+                int(default["share_groups"]), int(reseted["share_groups"]))
+            self.assertEqual(
+                int(default["share_group_snapshots"]),
+                int(reseted["share_group_snapshots"]))
 
     @ddt.data(
         ('id', True),
@@ -450,6 +540,29 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
 
         self.assertEqual(-1, quotas.get('share_networks'))
 
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    @testtools.skipUnless(
+        CONF.share.run_share_group_tests, 'Share Group tests disabled.')
+    @utils.skip_if_microversion_not_supported(SHARE_GROUPS_MICROVERSION)
+    def test_unlimited_quota_for_share_groups(self):
+        self.client.update_quotas(self.tenant_id, share_groups=-1)
+
+        quotas = self.client.show_quotas(self.tenant_id)
+
+        self.assertEqual(-1, quotas.get('share_groups'))
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    @testtools.skipUnless(
+        CONF.share.run_share_group_tests, 'Share Group tests disabled.')
+    @utils.skip_if_microversion_not_supported(SHARE_GROUPS_MICROVERSION)
+    def test_unlimited_user_quota_for_share_group_snapshots(self):
+        self.client.update_quotas(
+            self.tenant_id, self.user_id, share_group_snapshots=-1)
+
+        quotas = self.client.show_quotas(self.tenant_id, self.user_id)
+
+        self.assertEqual(-1, quotas.get('share_group_snapshots'))
+
     @ddt.data(11, -1)
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_update_user_quotas_bigger_than_project_quota(self, user_quota):
@@ -541,3 +654,82 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
             for key in ('shares', 'gigabytes'):
                 self.assertEqual(0, quotas[key]['reserved'])
                 self.assertEqual(0, quotas[key]['in_use'])
+
+    def _check_sg_usages(self, quotas, in_use, limit):
+        """Helper method for 'test_share_group_quotas_usages' test."""
+        self.assertEqual(0, int(quotas['share_groups']['reserved']))
+        self.assertEqual(in_use, int(quotas['share_groups']['in_use']))
+        self.assertEqual(limit, int(quotas['share_groups']['limit']))
+
+    def _check_sgs_usages(self, quotas, in_use):
+        """Helper method for 'test_share_group_quotas_usages' test."""
+        self.assertEqual(0, int(quotas['share_group_snapshots']['reserved']))
+        self.assertEqual(
+            in_use, int(quotas['share_group_snapshots']['in_use']))
+        self.assertEqual(1, int(quotas['share_group_snapshots']['limit']))
+
+    def _check_usages(self, sg_in_use, sgs_in_use):
+        """Helper method for 'test_share_group_quotas_usages' test."""
+        p_quotas = self.client.detail_quotas(tenant_id=self.tenant_id)
+        u_quotas = self.client.detail_quotas(
+            tenant_id=self.tenant_id, user_id=self.user_id)
+        self._check_sg_usages(p_quotas, sg_in_use, 3)
+        self._check_sg_usages(u_quotas, sg_in_use, 2)
+        self._check_sgs_usages(p_quotas, sgs_in_use)
+        self._check_sgs_usages(u_quotas, sgs_in_use)
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    @testtools.skipUnless(
+        CONF.share.run_share_group_tests, 'Share Group tests disabled.')
+    @base.skip_if_microversion_lt(SHARE_GROUPS_MICROVERSION)
+    def test_share_group_quotas_usages(self):
+        # Set quotas for project (3 SG, 1 SGS) and user (2 SG, 1 SGS)
+        self.client.update_quotas(
+            self.tenant_id, share_groups=3, share_group_snapshots=1)
+        self.client.update_quotas(
+            self.tenant_id, user_id=self.user_id,
+            share_groups=2, share_group_snapshots=1)
+
+        # Check usages, they should be 0s
+        self._check_usages(0, 0)
+
+        # Create SG1 and check usages
+        share_group1 = self.create_share_group(
+            cleanup_in_class=False, client=self.client)
+        self._check_usages(1, 0)
+
+        # Create SGS1 and check usages
+        sg_snapshot = self.create_share_group_snapshot_wait_for_active(
+            share_group1['id'], cleanup_in_class=False, client=self.client)
+        self._check_usages(1, 1)
+
+        # Create SG2 from SGS1 and check usages
+        share_group2 = self.create_share_group(
+            cleanup_in_class=False, client=self.client,
+            source_share_group_snapshot_id=sg_snapshot['id'])
+        self._check_usages(2, 1)
+
+        # Try create SGS2, fail, then check usages
+        self.assertRaises(
+            lib_exc.OverLimit,
+            self.create_share_group,
+            client=self.client, cleanup_in_class=False)
+        self._check_usages(2, 1)
+
+        # Delete SG2 and check usages
+        self.client.delete_share_group(share_group2['id'])
+        self.client.wait_for_resource_deletion(
+            share_group_id=share_group2['id'])
+        self._check_usages(1, 1)
+
+        # Delete SGS1 and check usages
+        self.client.delete_share_group_snapshot(sg_snapshot['id'])
+        self.client.wait_for_resource_deletion(
+            share_group_snapshot_id=sg_snapshot['id'])
+        self._check_usages(1, 0)
+
+        # Delete SG1 and check usages
+        self.client.delete_share_group(share_group1['id'])
+        self.client.wait_for_resource_deletion(
+            share_group_id=share_group1['id'])
+        self._check_usages(0, 0)

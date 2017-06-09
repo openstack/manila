@@ -44,7 +44,7 @@ class QuotaClassSetsMixin(object):
             raise webob.exc.HTTPForbidden()
 
         return self._view_builder.detail_list(
-            QUOTAS.get_class_quotas(context, id), id)
+            req, QUOTAS.get_class_quotas(context, id), id)
 
     @wsgi.Controller.authorize("update")
     def _update(self, req, id, body):
@@ -60,7 +60,7 @@ class QuotaClassSetsMixin(object):
                 except exception.AdminRequired:
                     raise webob.exc.HTTPForbidden()
         return self._view_builder.detail_list(
-            QUOTAS.get_class_quotas(context, quota_class))
+            req, QUOTAS.get_class_quotas(context, quota_class))
 
 
 class QuotaClassSetsControllerLegacy(QuotaClassSetsMixin, wsgi.Controller):

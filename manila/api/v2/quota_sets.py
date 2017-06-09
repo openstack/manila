@@ -79,9 +79,19 @@ class QuotaSetsMixin(object):
         share_type = params.get('share_type', [None])[0]
         if share_type:
             msg = _("'share_type' key is not supported by this microversion. "
-                    "Use 2.38 or greater microversion to be able "
+                    "Use 2.39 or greater microversion to be able "
                     "to use 'share_type' quotas.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
+
+    @staticmethod
+    def _ensure_share_group_related_args_are_absent(body):
+        body = body.get('quota_set', body)
+        for key in ('share_groups', 'share_group_snapshots'):
+            if body.get(key):
+                msg = _("'%(key)s' key is not supported by this microversion. "
+                        "Use 2.40 or greater microversion to be able "
+                        "to use '%(key)s' quotas.") % {"key": key}
+                raise webob.exc.HTTPBadRequest(explanation=msg)
 
     def _get_quotas(self, context, project_id, user_id=None,
                     share_type_id=None, usages=False):
@@ -112,14 +122,16 @@ class QuotaSetsMixin(object):
             share_type_id = self._get_share_type_id(context, share_type)
             quotas = self._get_quotas(
                 context, id, user_id, share_type_id, usages=detail)
-            return self._view_builder.detail_list(quotas, id, share_type_id)
+            return self._view_builder.detail_list(
+                req, quotas, id, share_type_id)
         except exception.NotAuthorized:
             raise webob.exc.HTTPForbidden()
 
     @wsgi.Controller.authorize('show')
     def _defaults(self, req, id):
         context = req.environ['manila.context']
-        return self._view_builder.detail_list(QUOTAS.get_defaults(context), id)
+        return self._view_builder.detail_list(
+            req, QUOTAS.get_defaults(context), id)
 
     @wsgi.Controller.authorize("update")
     def _update(self, req, id, body):
@@ -132,6 +144,12 @@ class QuotaSetsMixin(object):
         share_type = params.get('share_type', [None])[0]
         self._validate_user_id_and_share_type_args(user_id, share_type)
         share_type_id = self._get_share_type_id(context, share_type)
+        body = body.get('quota_set', {})
+        if share_type and body.get('share_groups',
+                                   body.get('share_group_snapshots')):
+            msg = _("Share type quotas handle only 'shares', 'gigabytes', "
+                    "'snapshots' and 'snapshot_gigabytes' quotas.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
 
         try:
             settable_quotas = QUOTAS.get_settable_quotas(
@@ -140,7 +158,7 @@ class QuotaSetsMixin(object):
         except exception.NotAuthorized:
             raise webob.exc.HTTPForbidden()
 
-        for key, value in body.get('quota_set', {}).items():
+        for key, value in body.items():
             if key == 'share_networks' and share_type_id:
                 msg = _("'share_networks' quota cannot be set for share type. "
                         "It can be set only for project or user.")
@@ -171,7 +189,7 @@ class QuotaSetsMixin(object):
         except exception.NotAuthorized:
             raise webob.exc.HTTPForbidden()
 
-        for key, value in body.get('quota_set', {}).items():
+        for key, value in body.items():
             if key in NON_QUOTA_KEYS or (not value and value != 0):
                 continue
             # validate whether already used and reserved exceeds the new
@@ -216,6 +234,7 @@ class QuotaSetsMixin(object):
             except exception.AdminRequired:
                 raise webob.exc.HTTPForbidden()
         return self._view_builder.detail_list(
+            req,
             self._get_quotas(
                 context, id, user_id=user_id, share_type_id=share_type_id),
             share_type=share_type_id,
@@ -262,6 +281,7 @@ class QuotaSetsControllerLegacy(QuotaSetsMixin, wsgi.Controller):
     @wsgi.Controller.api_version('1.0', '2.6')
     def update(self, req, id, body):
         self._ensure_share_type_arg_is_absent(req)
+        self._ensure_share_group_related_args_are_absent(body)
         return self._update(req, id, body)
 
     @wsgi.Controller.api_version('1.0', '2.6')
@@ -297,6 +317,8 @@ class QuotaSetsController(QuotaSetsMixin, wsgi.Controller):
     def update(self, req, id, body):
         if req.api_version_request < api_version.APIVersionRequest("2.39"):
             self._ensure_share_type_arg_is_absent(req)
+        elif req.api_version_request < api_version.APIVersionRequest("2.40"):
+            self._ensure_share_group_related_args_are_absent(body)
         return self._update(req, id, body)
 
     @wsgi.Controller.api_version('2.7')

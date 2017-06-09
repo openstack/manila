@@ -27,15 +27,15 @@ from manila.common import constants
 from manila.db import base
 from manila import exception
 from manila.i18n import _
+from manila import quota
 from manila.scheduler import rpcapi as scheduler_rpcapi
 from manila import share
 from manila.share import rpcapi as share_rpcapi
 from manila.share import share_types
 
-
 CONF = cfg.CONF
-
 LOG = log.getLogger(__name__)
+QUOTAS = quota.QUOTAS
 
 
 class API(base.Base):
@@ -138,6 +138,28 @@ class API(base.Base):
                     "types supported by the share group type.")
             raise exception.InvalidInput(reason=msg)
 
+        try:
+            reservations = QUOTAS.reserve(context, share_groups=1)
+        except exception.OverQuota as e:
+            overs = e.kwargs['overs']
+            usages = e.kwargs['usages']
+            quotas = e.kwargs['quotas']
+
+            def _consumed(name):
+                return (usages[name]['reserved'] + usages[name]['in_use'])
+
+            if 'share_groups' in overs:
+                msg = ("Quota exceeded for '%(s_uid)s' user in '%(s_pid)s' "
+                       "project. (%(d_consumed)d of "
+                       "%(d_quota)d already consumed).")
+                LOG.warning(msg, {
+                    's_pid': context.project_id,
+                    's_uid': context.user_id,
+                    'd_consumed': _consumed('share_groups'),
+                    'd_quota': quotas['share_groups'],
+                })
+            raise exception.ShareGroupsLimitExceeded()
+
         options = {
             'share_group_type_id': share_group_type_id,
             'source_share_group_snapshot_id': source_share_group_snapshot_id,
@@ -154,9 +176,9 @@ class API(base.Base):
         if original_share_group:
             options['host'] = original_share_group['host']
 
-        share_group = self.db.share_group_create(context, options)
-
+        share_group = None
         try:
+            share_group = self.db.share_group_create(context, options)
             if share_group_snapshot:
                 members = self.db.share_group_snapshot_members_get_all(
                     context, source_share_group_snapshot_id)
@@ -178,8 +200,16 @@ class API(base.Base):
                         share_network_id=share_network_id)
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.share_group_destroy(
-                    context.elevated(), share_group['id'])
+                if share_group:
+                    self.db.share_group_destroy(
+                        context.elevated(), share_group['id'])
+                QUOTAS.rollback(context, reservations)
+
+        try:
+            QUOTAS.commit(context, reservations)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                QUOTAS.rollback(context, reservations)
 
         request_spec = {'share_group_id': share_group['id']}
         request_spec.update(options)
@@ -224,7 +254,30 @@ class API(base.Base):
         share_group = self.db.share_group_update(
             context, share_group_id, {'status': constants.STATUS_DELETING})
 
-        self.share_rpcapi.delete_share_group(context, share_group)
+        try:
+            reservations = QUOTAS.reserve(
+                context,
+                share_groups=-1,
+                project_id=share_group['project_id'],
+                user_id=share_group['user_id'],
+            )
+        except exception.OverQuota as e:
+            reservations = None
+            LOG.exception(
+                ("Failed to update quota for deleting share group: %s"), e)
+
+        try:
+            self.share_rpcapi.delete_share_group(context, share_group)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                QUOTAS.rollback(context, reservations)
+
+        if reservations:
+            QUOTAS.commit(
+                context, reservations,
+                project_id=share_group['project_id'],
+                user_id=share_group['user_id'],
+            )
 
     def update(self, context, group, fields):
         return self.db.share_group_update(context, group['id'], fields)
@@ -285,8 +338,31 @@ class API(base.Base):
                           "status": constants.STATUS_AVAILABLE})
                 raise exception.InvalidShareGroup(reason=msg)
 
-        snap = self.db.share_group_snapshot_create(context, options)
         try:
+            reservations = QUOTAS.reserve(context, share_group_snapshots=1)
+        except exception.OverQuota as e:
+            overs = e.kwargs['overs']
+            usages = e.kwargs['usages']
+            quotas = e.kwargs['quotas']
+
+            def _consumed(name):
+                return (usages[name]['reserved'] + usages[name]['in_use'])
+
+            if 'share_group_snapshots' in overs:
+                msg = ("Quota exceeded for '%(s_uid)s' user in '%(s_pid)s' "
+                       "project. (%(d_consumed)d of "
+                       "%(d_quota)d already consumed).")
+                LOG.warning(msg, {
+                    's_pid': context.project_id,
+                    's_uid': context.user_id,
+                    'd_consumed': _consumed('share_group_snapshots'),
+                    'd_quota': quotas['share_group_snapshots'],
+                })
+            raise exception.ShareGroupSnapshotsLimitExceeded()
+
+        snap = None
+        try:
+            snap = self.db.share_group_snapshot_create(context, options)
             members = []
             for s in shares:
                 member_options = {
@@ -308,7 +384,15 @@ class API(base.Base):
         except Exception:
             with excutils.save_and_reraise_exception():
                 # This will delete the snapshot and all of it's members
-                self.db.share_group_snapshot_destroy(context, snap['id'])
+                if snap:
+                    self.db.share_group_snapshot_destroy(context, snap['id'])
+                QUOTAS.rollback(context, reservations)
+
+        try:
+            QUOTAS.commit(context, reservations)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                QUOTAS.rollback(context, reservations)
 
         return snap
 
@@ -325,9 +409,29 @@ class API(base.Base):
         self.db.share_group_snapshot_update(
             context, snap_id, {'status': constants.STATUS_DELETING})
 
+        try:
+            reservations = QUOTAS.reserve(
+                context,
+                share_group_snapshots=-1,
+                project_id=snap['project_id'],
+                user_id=snap['user_id'],
+            )
+        except exception.OverQuota as e:
+            reservations = None
+            LOG.exception(
+                ("Failed to update quota for deleting share group snapshot: "
+                 "%s"), e)
+
         # Cast to share manager
         self.share_rpcapi.delete_share_group_snapshot(
             context, snap, share_group['host'])
+
+        if reservations:
+            QUOTAS.commit(
+                context, reservations,
+                project_id=snap['project_id'],
+                user_id=snap['user_id'],
+            )
 
     def update_share_group_snapshot(self, context, share_group_snapshot,
                                     fields):

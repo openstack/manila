@@ -79,7 +79,10 @@ def fake_share_group_snapshot(id, **kwargs):
 class ShareGroupsAPITestCase(test.TestCase):
     def setUp(self):
         super(ShareGroupsAPITestCase, self).setUp()
-        self.context = context.get_admin_context()
+        self.user_id = 'fake_user_id'
+        self.project_id = 'fake_project_id'
+        self.context = context.RequestContext(
+            user_id=self.user_id, project_id=self.project_id, is_admin=True)
         self.scheduler_rpcapi = mock.Mock()
         self.share_rpcapi = mock.Mock()
         self.share_api = mock.Mock()
@@ -108,8 +111,12 @@ class ShareGroupsAPITestCase(test.TestCase):
                 {'share_type_id': self.fake_share_type_2['id']},
             ]
         }
-        self.mock_object(db_driver, 'share_group_type_get',
-                         mock.Mock(return_value=self.fake_share_group_type))
+        self.mock_object(
+            db_driver, 'share_group_type_get',
+            mock.Mock(return_value=self.fake_share_group_type))
+        self.mock_object(share_group_api.QUOTAS, 'reserve')
+        self.mock_object(share_group_api.QUOTAS, 'commit')
+        self.mock_object(share_group_api.QUOTAS, 'rollback')
 
     def test_create_empty_request(self):
         share_group = fake_share_group(
@@ -126,6 +133,11 @@ class ShareGroupsAPITestCase(test.TestCase):
 
         db_driver.share_group_create.assert_called_once_with(
             self.context, expected_values)
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_groups=1)
+        share_group_api.QUOTAS.commit.assert_called_once_with(
+            self.context, share_group_api.QUOTAS.reserve.return_value)
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_request_spec(self):
         """Ensure the correct values are sent to the scheduler."""
@@ -150,6 +162,11 @@ class ShareGroupsAPITestCase(test.TestCase):
         self.scheduler_rpcapi.create_share_group.assert_called_once_with(
             self.context, share_group_id=share_group['id'],
             request_spec=expected_request_spec, filter_properties={})
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_groups=1)
+        share_group_api.QUOTAS.commit.assert_called_once_with(
+            self.context, share_group_api.QUOTAS.reserve.return_value)
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_with_name(self):
         fake_name = 'fake_name'
@@ -172,6 +189,11 @@ class ShareGroupsAPITestCase(test.TestCase):
         self.scheduler_rpcapi.create_share_group.assert_called_once_with(
             self.context, share_group_id=share_group['id'],
             request_spec=mock.ANY, filter_properties={})
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_groups=1)
+        share_group_api.QUOTAS.commit.assert_called_once_with(
+            self.context, share_group_api.QUOTAS.reserve.return_value)
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_with_description(self):
         fake_desc = 'fake_desc'
@@ -190,6 +212,11 @@ class ShareGroupsAPITestCase(test.TestCase):
 
         db_driver.share_group_create.assert_called_once_with(
             self.context, expected_values)
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_groups=1)
+        share_group_api.QUOTAS.commit.assert_called_once_with(
+            self.context, share_group_api.QUOTAS.reserve.return_value)
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_with_multiple_share_types(self):
         fake_share_types = [self.fake_share_type, self.fake_share_type_2]
@@ -213,6 +240,11 @@ class ShareGroupsAPITestCase(test.TestCase):
 
         db_driver.share_group_create.assert_called_once_with(
             self.context, expected_values)
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_groups=1)
+        share_group_api.QUOTAS.commit.assert_called_once_with(
+            self.context, share_group_api.QUOTAS.reserve.return_value)
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_with_share_type_not_found(self):
         self.mock_object(share_types, 'get_share_type',
@@ -233,6 +265,31 @@ class ShareGroupsAPITestCase(test.TestCase):
             exception.InvalidInput,
             self.api.create,
             self.context, share_type_ids=[self.fake_share_type['id']])
+
+        share_group_api.QUOTAS.reserve.assert_not_called()
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_not_called()
+
+    def test_create_with_error_on_quota_reserve(self):
+        overs = ["share_groups"]
+        usages = {"share_groups": {"reserved": 1, "in_use": 3, "limit": 4}}
+        quotas = {"share_groups": 5}
+        share_group_api.QUOTAS.reserve.side_effect = exception.OverQuota(
+            overs=overs,
+            usages=usages,
+            quotas=quotas,
+        )
+        self.mock_object(share_group_api.LOG, "warning")
+
+        self.assertRaises(
+            exception.ShareGroupsLimitExceeded,
+            self.api.create, self.context)
+
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_groups=1)
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_not_called()
+        share_group_api.LOG.warning.assert_called_once_with(mock.ANY, mock.ANY)
 
     def test_create_driver_handles_share_servers_is_false_with_net_id(self):
         fake_share_types = [self.fake_share_type]
@@ -266,6 +323,10 @@ class ShareGroupsAPITestCase(test.TestCase):
             self.api.create,
             self.context, share_type_ids=fake_share_type_ids)
 
+        share_group_api.QUOTAS.reserve.assert_not_called()
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_not_called()
+
     def test_create_with_conflicting_share_type_and_share_network(self):
         fake_share_type = {
             'name': 'default',
@@ -282,6 +343,10 @@ class ShareGroupsAPITestCase(test.TestCase):
             self.api.create,
             self.context, share_type_ids=fake_share_types,
             share_network_id="fake_sn")
+
+        share_group_api.QUOTAS.reserve.assert_not_called()
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_with_source_share_group_snapshot_id(self):
         snap = fake_share_group_snapshot(
@@ -341,6 +406,11 @@ class ShareGroupsAPITestCase(test.TestCase):
             self.context, expected_values)
         self.share_rpcapi.create_share_group.assert_called_once_with(
             self.context, share_group, orig_share_group['host'])
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_groups=1)
+        share_group_api.QUOTAS.commit.assert_called_once_with(
+            self.context, share_group_api.QUOTAS.reserve.return_value)
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_with_source_share_group_snapshot_id_with_member(self):
         snap = fake_share_group_snapshot(
@@ -403,6 +473,11 @@ class ShareGroupsAPITestCase(test.TestCase):
         self.assertTrue(self.share_api.create.called)
         self.share_rpcapi.create_share_group.assert_called_once_with(
             self.context, share_group, orig_share_group['host'])
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_groups=1)
+        share_group_api.QUOTAS.commit.assert_called_once_with(
+            self.context, share_group_api.QUOTAS.reserve.return_value)
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_with_source_sg_snapshot_id_with_members_error(self):
         snap = fake_share_group_snapshot(
@@ -465,6 +540,12 @@ class ShareGroupsAPITestCase(test.TestCase):
         self.assertEqual(2, self.share_api.create.call_count)
         self.assertEqual(1, db_driver.share_group_destroy.call_count)
 
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_groups=1)
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_called_once_with(
+            self.context, share_group_api.QUOTAS.reserve.return_value)
+
     def test_create_with_source_sg_snapshot_id_error_snapshot_status(self):
         snap = fake_share_group_snapshot(
             "fake_source_share_group_snapshot_id",
@@ -477,6 +558,10 @@ class ShareGroupsAPITestCase(test.TestCase):
             exception.InvalidShareGroupSnapshot,
             self.api.create,
             self.context, source_share_group_snapshot_id=snap['id'])
+
+        share_group_api.QUOTAS.reserve.assert_not_called()
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_with_source_sg_snapshot_id_snap_not_found(self):
         snap = fake_share_group_snapshot(
@@ -491,6 +576,10 @@ class ShareGroupsAPITestCase(test.TestCase):
             exception.ShareGroupSnapshotNotFound,
             self.api.create,
             self.context, source_share_group_snapshot_id=snap['id'])
+
+        share_group_api.QUOTAS.reserve.assert_not_called()
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_with_multiple_fields(self):
         fake_desc = 'fake_desc'
@@ -512,6 +601,11 @@ class ShareGroupsAPITestCase(test.TestCase):
 
         db_driver.share_group_create.assert_called_once_with(
             self.context, expected_values)
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_groups=1)
+        share_group_api.QUOTAS.commit.assert_called_once_with(
+            self.context, share_group_api.QUOTAS.reserve.return_value)
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_with_error_on_creation(self):
         share_group = fake_share_group(
@@ -528,11 +622,16 @@ class ShareGroupsAPITestCase(test.TestCase):
 
         db_driver.share_group_create.assert_called_once_with(
             self.context, expected_values)
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_groups=1)
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_called_once_with(
+            self.context, share_group_api.QUOTAS.reserve.return_value)
 
     def test_delete_creating_no_host(self):
         share_group = fake_share_group(
-            'fakeid', user_id=self.context.user_id,
-            project_id=self.context.project_id,
+            'fakeid', user_id=self.user_id + '_different_user',
+            project_id=self.project_id + '_in_different_project',
             status=constants.STATUS_CREATING)
         self.mock_object(db_driver, 'share_group_destroy')
 
@@ -540,6 +639,9 @@ class ShareGroupsAPITestCase(test.TestCase):
 
         db_driver.share_group_destroy.assert_called_once_with(
             mock.ANY, share_group['id'])
+        share_group_api.QUOTAS.reserve.assert_not_called()
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_delete_creating_with_host(self):
         share_group = fake_share_group(
@@ -553,8 +655,8 @@ class ShareGroupsAPITestCase(test.TestCase):
 
     def test_delete_available(self):
         share_group = fake_share_group(
-            'fakeid', user_id=self.context.user_id,
-            project_id=self.context.project_id,
+            'fakeid', user_id=self.user_id + '_different_user',
+            project_id=self.project_id + '_in_different_project',
             status=constants.STATUS_AVAILABLE, host="fake_host")
         deleted_share_group = copy.deepcopy(share_group)
         deleted_share_group['status'] = constants.STATUS_DELETING
@@ -570,6 +672,16 @@ class ShareGroupsAPITestCase(test.TestCase):
             {'status': constants.STATUS_DELETING})
         self.share_rpcapi.delete_share_group.assert_called_once_with(
             self.context, deleted_share_group)
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_groups=-1,
+            project_id=share_group['project_id'],
+            user_id=share_group['user_id'])
+        share_group_api.QUOTAS.commit.assert_called_once_with(
+            self.context,
+            share_group_api.QUOTAS.reserve.return_value,
+            project_id=share_group['project_id'],
+            user_id=share_group['user_id'])
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_delete_error_with_host(self):
         share_group = fake_share_group(
@@ -591,6 +703,16 @@ class ShareGroupsAPITestCase(test.TestCase):
             {'status': constants.STATUS_DELETING})
         self.api.share_rpcapi.delete_share_group.assert_called_once_with(
             self.context, deleted_share_group)
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_groups=-1,
+            project_id=share_group['project_id'],
+            user_id=share_group['user_id'])
+        share_group_api.QUOTAS.commit.assert_called_once_with(
+            self.context,
+            share_group_api.QUOTAS.reserve.return_value,
+            project_id=share_group['project_id'],
+            user_id=share_group['user_id'])
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_delete_error_without_host(self):
         share_group = fake_share_group(
@@ -603,6 +725,9 @@ class ShareGroupsAPITestCase(test.TestCase):
 
         db_driver.share_group_destroy.assert_called_once_with(
             mock.ANY, share_group['id'])
+        share_group_api.QUOTAS.reserve.assert_not_called()
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_delete_with_shares(self):
         share_group = fake_share_group(
@@ -617,6 +742,10 @@ class ShareGroupsAPITestCase(test.TestCase):
             exception.InvalidShareGroup,
             self.api.delete, self.context, share_group)
 
+        share_group_api.QUOTAS.reserve.assert_not_called()
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_not_called()
+
     def test_delete_with_share_group_snapshots(self):
         share_group = fake_share_group(
             'fakeid', user_id=self.context.user_id,
@@ -629,6 +758,10 @@ class ShareGroupsAPITestCase(test.TestCase):
         self.assertRaises(
             exception.InvalidShareGroup,
             self.api.delete, self.context, share_group)
+
+        share_group_api.QUOTAS.reserve.assert_not_called()
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     @ddt.data({}, {"name": "fake_name"}, {"description": "fake_description"})
     def test_update(self, expected_values):
@@ -739,6 +872,11 @@ class ShareGroupsAPITestCase(test.TestCase):
             self.context, expected_values)
         self.share_rpcapi.create_share_group_snapshot.assert_called_once_with(
             self.context, snap, share_group['host'])
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_group_snapshots=1)
+        share_group_api.QUOTAS.commit.assert_called_once_with(
+            self.context, share_group_api.QUOTAS.reserve.return_value)
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_sg_snapshot_minimal_request_no_members_with_name(self):
         fake_name = 'fake_name'
@@ -772,6 +910,11 @@ class ShareGroupsAPITestCase(test.TestCase):
             self.context, expected_values)
         self.share_rpcapi.create_share_group_snapshot.assert_called_once_with(
             self.context, snap, share_group['host'])
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_group_snapshots=1)
+        share_group_api.QUOTAS.commit.assert_called_once_with(
+            self.context, share_group_api.QUOTAS.reserve.return_value)
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_group_snapshot_minimal_request_no_members_with_desc(self):
         fake_description = 'fake_description'
@@ -807,6 +950,11 @@ class ShareGroupsAPITestCase(test.TestCase):
             self.context, expected_values)
         self.share_rpcapi.create_share_group_snapshot.assert_called_once_with(
             self.context, snap, share_group['host'])
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_group_snapshots=1)
+        share_group_api.QUOTAS.commit.assert_called_once_with(
+            self.context, share_group_api.QUOTAS.reserve.return_value)
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_share_group_snapshot_group_does_not_exist(self):
         share_group = fake_share_group(
@@ -837,6 +985,46 @@ class ShareGroupsAPITestCase(test.TestCase):
 
         db_driver.share_group_get.assert_called_once_with(
             self.context, share_group['id'])
+        share_group_api.QUOTAS.reserve.assert_not_called()
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_not_called()
+
+    def test_create_share_group_snapshot_failure_reserving_quota(self):
+        overs = ["share_group_snapshots"]
+        usages = {"share_group_snapshots": {
+            "reserved": 1,
+            "in_use": 3,
+            "limit": 4,
+        }}
+        quotas = {"share_group_snapshots": 5}
+        share_group = fake_share_group(
+            "fake_group_id", user_id=self.context.user_id,
+            project_id=self.context.project_id,
+            status=constants.STATUS_AVAILABLE)
+        self.mock_object(
+            db_driver, "share_group_get", mock.Mock(return_value=share_group))
+        self.mock_object(
+            db_driver, "share_get_all_by_share_group_id",
+            mock.Mock(return_value=[]))
+        share_group_api.QUOTAS.reserve.side_effect = exception.OverQuota(
+            overs=overs,
+            usages=usages,
+            quotas=quotas,
+        )
+        self.mock_object(share_group_api.LOG, "warning")
+
+        self.assertRaises(
+            exception.ShareGroupSnapshotsLimitExceeded,
+            self.api.create_share_group_snapshot,
+            self.context, share_group_id=share_group["id"])
+
+        db_driver.share_group_get.assert_called_once_with(
+            self.context, share_group["id"])
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_group_snapshots=1)
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_not_called()
+        share_group_api.LOG.warning.assert_called_once_with(mock.ANY, mock.ANY)
 
     def test_create_share_group_snapshot_group_in_creating(self):
         self.mock_object(
@@ -851,6 +1039,9 @@ class ShareGroupsAPITestCase(test.TestCase):
 
         db_driver.share_group_get.assert_called_once_with(
             self.context, "fake_id")
+        share_group_api.QUOTAS.reserve.assert_not_called()
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_share_group_snapshot_with_member(self):
         share_group = fake_share_group(
@@ -898,6 +1089,11 @@ class ShareGroupsAPITestCase(test.TestCase):
             self.context, expected_member_values)
         self.share_rpcapi.create_share_group_snapshot.assert_called_once_with(
             self.context, snap, share_group['host'])
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_group_snapshots=1)
+        share_group_api.QUOTAS.commit.assert_called_once_with(
+            self.context, share_group_api.QUOTAS.reserve.return_value)
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_share_group_snapshot_with_member_share_in_creating(self):
         share_group = fake_share_group(
@@ -919,6 +1115,9 @@ class ShareGroupsAPITestCase(test.TestCase):
 
         db_driver.share_group_get.assert_called_once_with(
             self.context, share_group['id'])
+        share_group_api.QUOTAS.reserve.assert_not_called()
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_share_group_snapshot_with_two_members(self):
         share_group = fake_share_group(
@@ -979,6 +1178,11 @@ class ShareGroupsAPITestCase(test.TestCase):
             self.context, expected_member_2_values)
         self.share_rpcapi.create_share_group_snapshot.assert_called_once_with(
             self.context, snap, share_group['host'])
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_group_snapshots=1)
+        share_group_api.QUOTAS.commit.assert_called_once_with(
+            self.context, share_group_api.QUOTAS.reserve.return_value)
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_create_share_group_snapshot_error_creating_member(self):
         share_group = fake_share_group(
@@ -1031,6 +1235,11 @@ class ShareGroupsAPITestCase(test.TestCase):
             self.context, expected_member_values)
         db_driver.share_group_snapshot_destroy.assert_called_once_with(
             self.context, snap['id'])
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_group_snapshots=1)
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_called_once_with(
+            self.context, share_group_api.QUOTAS.reserve.return_value)
 
     def test_delete_share_group_snapshot(self):
         share_group = fake_share_group('fake_id', host="fake_host")
@@ -1049,6 +1258,44 @@ class ShareGroupsAPITestCase(test.TestCase):
             self.context, sg_snap['id'], {'status': constants.STATUS_DELETING})
         self.share_rpcapi.delete_share_group_snapshot.assert_called_once_with(
             self.context, sg_snap, share_group['host'])
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_group_snapshots=-1,
+            project_id=share_group['project_id'],
+            user_id=share_group['user_id'])
+        share_group_api.QUOTAS.commit.assert_called_once_with(
+            self.context, share_group_api.QUOTAS.reserve.return_value,
+            project_id=share_group['project_id'],
+            user_id=share_group['user_id'])
+        share_group_api.QUOTAS.rollback.assert_not_called()
+
+    def test_delete_share_group_snapshot_fail_on_quota_reserve(self):
+        share_group = fake_share_group('fake_id', host="fake_host")
+        sg_snap = fake_share_group_snapshot(
+            'fake_groupsnap_id', share_group_id='fake_id',
+            status=constants.STATUS_AVAILABLE)
+        self.mock_object(db_driver, 'share_group_get',
+                         mock.Mock(return_value=share_group))
+        self.mock_object(db_driver, 'share_group_snapshot_update')
+        share_group_api.QUOTAS.reserve.side_effect = exception.OverQuota(
+            'Failure')
+        self.mock_object(share_group_api.LOG, 'exception')
+
+        self.api.delete_share_group_snapshot(self.context, sg_snap)
+
+        db_driver.share_group_get.assert_called_once_with(
+            self.context, "fake_id")
+        db_driver.share_group_snapshot_update.assert_called_once_with(
+            self.context, sg_snap['id'], {'status': constants.STATUS_DELETING})
+        self.share_rpcapi.delete_share_group_snapshot.assert_called_once_with(
+            self.context, sg_snap, share_group['host'])
+        share_group_api.QUOTAS.reserve.assert_called_once_with(
+            self.context, share_group_snapshots=-1,
+            project_id=share_group['project_id'],
+            user_id=share_group['user_id'])
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_not_called()
+        share_group_api.LOG.exception.assert_called_once_with(
+            mock.ANY, mock.ANY)
 
     def test_delete_share_group_snapshot_group_does_not_exist(self):
         snap = fake_share_group_snapshot(
@@ -1064,6 +1311,9 @@ class ShareGroupsAPITestCase(test.TestCase):
 
         db_driver.share_group_get.assert_called_once_with(
             self.context, "fake_id")
+        share_group_api.QUOTAS.reserve.assert_not_called()
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     def test_delete_share_group_snapshot_creating_status(self):
         snap = fake_share_group_snapshot(
@@ -1077,6 +1327,9 @@ class ShareGroupsAPITestCase(test.TestCase):
 
         db_driver.share_group_get.assert_called_once_with(
             self.context, snap['share_group_id'])
+        share_group_api.QUOTAS.reserve.assert_not_called()
+        share_group_api.QUOTAS.commit.assert_not_called()
+        share_group_api.QUOTAS.rollback.assert_not_called()
 
     @ddt.data({}, {"name": "fake_name"})
     def test_update_share_group_snapshot_no_values(self, expected_values):

@@ -222,3 +222,7 @@ user documentation.
 2.39
 ----
   Added share-type quotas.
+
+2.40
+----
+  Added share group and share group snapshot quotas.

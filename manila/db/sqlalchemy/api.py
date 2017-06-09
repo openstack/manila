@@ -317,12 +317,30 @@ def _sync_share_networks(context, project_id, user_id, session,
     return {'share_networks': share_networks_count}
 
 
+def _sync_share_groups(context, project_id, user_id, session,
+                       share_type_id=None):
+    share_groups_count = count_share_groups(
+        context, project_id, user_id, share_type_id=share_type_id,
+        session=session)
+    return {'share_groups': share_groups_count}
+
+
+def _sync_share_group_snapshots(context, project_id, user_id, session,
+                                share_type_id=None):
+    share_group_snapshots_count = count_share_group_snapshots(
+        context, project_id, user_id, share_type_id=share_type_id,
+        session=session)
+    return {'share_group_snapshots': share_group_snapshots_count}
+
+
 QUOTA_SYNC_FUNCTIONS = {
     '_sync_shares': _sync_shares,
     '_sync_snapshots': _sync_snapshots,
     '_sync_gigabytes': _sync_gigabytes,
     '_sync_snapshot_gigabytes': _sync_snapshot_gigabytes,
     '_sync_share_networks': _sync_share_networks,
+    '_sync_share_groups': _sync_share_groups,
+    '_sync_share_group_snapshots': _sync_share_group_snapshots,
 }
 
 
@@ -4221,6 +4239,41 @@ def get_all_shares_by_share_group(context, share_group_id, session=None):
             project_only=True, read_deleted="no").
             filter_by(share_group_id=share_group_id).
             all())
+
+
+@require_context
+def count_share_groups(context, project_id, user_id=None,
+                       share_type_id=None, session=None):
+    query = model_query(
+        context, models.ShareGroup,
+        func.count(models.ShareGroup.id),
+        read_deleted="no",
+        session=session).filter_by(project_id=project_id)
+    if share_type_id:
+        query = query.join("share_group_share_type_mappings").filter_by(
+            share_type_id=share_type_id)
+    elif user_id is not None:
+        query = query.filter_by(user_id=user_id)
+    return query.first()[0]
+
+
+@require_context
+def count_share_group_snapshots(context, project_id, user_id=None,
+                                share_type_id=None, session=None):
+    query = model_query(
+        context, models.ShareGroupSnapshot,
+        func.count(models.ShareGroupSnapshot.id),
+        read_deleted="no",
+        session=session).filter_by(project_id=project_id)
+    if share_type_id:
+        query = query.join(
+            "share_group"
+        ).join(
+            "share_group_share_type_mappings"
+        ).filter_by(share_type_id=share_type_id)
+    elif user_id is not None:
+        query = query.filter_by(user_id=user_id)
+    return query.first()[0]
 
 
 @require_context
