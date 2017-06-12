@@ -15,6 +15,7 @@
 
 import re
 
+import ddt
 import mock
 from oslo_serialization import jsonutils
 import six
@@ -32,18 +33,27 @@ test_ganesha_cnf = """EXPORT {
     Export_Id = 101;
     CLIENT {
         Clients = ip1;
+        Access_Level = ro;
+    }
+    CLIENT {
+        Clients = ip2;
+        Access_Level = rw;
     }
 }"""
 test_dict_unicode = {
     u'EXPORT': {
         u'Export_Id': 101,
-        u'CLIENT': {u'Clients': u"ip1"}
+        u'CLIENT': [
+            {u'Clients': u"ip1", u'Access_Level': u'ro'},
+            {u'Clients': u"ip2", u'Access_Level': u'rw'}]
     }
 }
 test_dict_str = {
     'EXPORT': {
         'Export_Id': 101,
-        'CLIENT': {'Clients': "ip1"}
+        'CLIENT': [
+            {'Clients': 'ip1', 'Access_Level': 'ro'},
+            {'Clients': 'ip2', 'Access_Level': 'rw'}]
     }
 }
 
@@ -61,6 +71,11 @@ class GaneshaConfigTests(test.TestCase):
     ref_ganesha_cnf = """EXPORT {
     CLIENT {
         Clients = ip1;
+        Access_Level = ro;
+    }
+    CLIENT {
+        Clients = ip2;
+        Access_Level = rw;
     }
     Export_Id = 101;
 }"""
@@ -103,8 +118,14 @@ class GaneshaConfigTests(test.TestCase):
         Clients = ip1;
     }
 }"""
+        result_dict_unicode = {
+            u'EXPORT': {
+                u'CLIENT': {u'Clients': u'ip1'},
+                u'Export_Id': 101
+            }
+        }
         ret = manager._conf2json(test_ganesha_cnf_with_comment)
-        self.assertEqual(test_dict_unicode, jsonutils.loads(ret))
+        self.assertEqual(result_dict_unicode, jsonutils.loads(ret))
 
     def test_parseconf_ganesha_cnf_input(self):
         ret = manager.parseconf(test_ganesha_cnf)
@@ -126,6 +147,7 @@ class GaneshaConfigTests(test.TestCase):
                                            ganesha_cnf))
 
 
+@ddt.ddt
 class GaneshaManagerTestCase(test.TestCase):
     """Tests GaneshaManager."""
 
@@ -283,6 +305,41 @@ class GaneshaManagerTestCase(test.TestCase):
         manager.parseconf.assert_called_once_with(test_ganesha_cnf)
         self.assertEqual(test_dict_unicode, ret)
 
+    def test_check_export_file_exists(self):
+        self.mock_object(self._manager, '_getpath',
+                         mock.Mock(return_value=test_path))
+        self.mock_object(self._manager, 'execute',
+                         mock.Mock(return_value=(test_ganesha_cnf,)))
+
+        ret = self._manager._check_export_file_exists(test_name)
+
+        self._manager._getpath.assert_called_once_with(test_name)
+        self._manager.execute.assert_called_once_with(
+            'test', '-f', test_path, makelog=False, run_as_root=False)
+        self.assertTrue(ret)
+
+    @ddt.data(1, 4)
+    def test_check_export_file_exists_error(self, exit_code):
+        self.mock_object(self._manager, '_getpath',
+                         mock.Mock(return_value=test_path))
+        self.mock_object(
+            self._manager, 'execute',
+            mock.Mock(side_effect=exception.GaneshaCommandFailure(
+                exit_code=exit_code))
+        )
+
+        if exit_code == 1:
+            ret = self._manager._check_export_file_exists(test_name)
+            self.assertFalse(ret)
+        else:
+            self.assertRaises(exception.GaneshaCommandFailure,
+                              self._manager._check_export_file_exists,
+                              test_name)
+
+        self._manager._getpath.assert_called_once_with(test_name)
+        self._manager.execute.assert_called_once_with(
+            'test', '-f', test_path, makelog=False, run_as_root=False)
+
     def test_write_export_file(self):
         self.mock_object(manager, 'mkconf',
                          mock.Mock(return_value=test_ganesha_cnf))
@@ -415,6 +472,54 @@ class GaneshaManagerTestCase(test.TestCase):
         self._manager._rm_export_file.assert_called_once_with(test_name)
         self._manager._mkindex.assert_called_once_with()
         self.assertFalse(self._manager._remove_export_dbus.called)
+
+    def test_update_export(self):
+        confdict = {
+            'EXPORT': {
+                'Export_Id': 101,
+                'CLIENT': {'Clients': 'ip1', 'Access_Level': 'ro'},
+            }
+        }
+        self.mock_object(self._manager, '_read_export_file',
+                         mock.Mock(return_value=test_dict_unicode))
+        self.mock_object(self._manager, '_write_export_file',
+                         mock.Mock(return_value=test_path))
+        self.mock_object(self._manager, '_dbus_send_ganesha')
+
+        self._manager.update_export(test_name, confdict)
+
+        self._manager._read_export_file.assert_called_once_with(test_name)
+        self._manager._write_export_file.assert_called_once_with(test_name,
+                                                                 confdict)
+        self._manager._dbus_send_ganesha.assert_called_once_with(
+            'UpdateExport', 'string:' + test_path,
+            'string:EXPORT(Export_Id=101)')
+
+    def test_update_export_error(self):
+        confdict = {
+            'EXPORT': {
+                'Export_Id': 101,
+                'CLIENT': {'Clients': 'ip1', 'Access_Level': 'ro'},
+            }
+        }
+        self.mock_object(self._manager, '_read_export_file',
+                         mock.Mock(return_value=test_dict_unicode))
+        self.mock_object(self._manager, '_write_export_file',
+                         mock.Mock(return_value=test_path))
+        self.mock_object(
+            self._manager, '_dbus_send_ganesha',
+            mock.Mock(side_effect=exception.GaneshaCommandFailure))
+
+        self.assertRaises(exception.GaneshaCommandFailure,
+                          self._manager.update_export, test_name, confdict)
+
+        self._manager._read_export_file.assert_called_once_with(test_name)
+        self._manager._write_export_file.assert_has_calls([
+            mock.call(test_name, confdict),
+            mock.call(test_name, test_dict_unicode)])
+        self._manager._dbus_send_ganesha.assert_called_once_with(
+            'UpdateExport', 'string:' + test_path,
+            'string:EXPORT(Export_Id=101)')
 
     def test_remove_export(self):
         self.mock_object(self._manager, '_read_export_file',

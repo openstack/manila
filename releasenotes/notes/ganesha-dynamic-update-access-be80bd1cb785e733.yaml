@@ -1,0 +1,8 @@
+---
+features:
+  - The new class `ganesha.GaneshaNASHelper2` in the ganesha library uses
+    dynamic update of export feature of NFS-Ganesha versions v2.4 or newer
+    to modify access rules of a share in a clean way. It modifies exports
+    created per share rather than per share access rule (as with
+    `ganesha.GaneshaNASHelper`) that introduced limitations and unintuitive
+    end user experience.

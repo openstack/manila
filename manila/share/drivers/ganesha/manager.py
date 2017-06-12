@@ -130,12 +130,19 @@ def _dump_to_conf(confdict, out=sys.stdout, indent=0):
         for k, v in confdict.items():
             if v is None:
                 continue
-            out.write(' ' * (indent * IWIDTH) + k + ' ')
             if isinstance(v, dict):
+                out.write(' ' * (indent * IWIDTH) + k + ' ')
                 out.write("{\n")
                 _dump_to_conf(v, out, indent + 1)
                 out.write(' ' * (indent * IWIDTH) + '}')
+            elif isinstance(v, list):
+                for item in v:
+                    out.write(' ' * (indent * IWIDTH) + k + ' ')
+                    out.write("{\n")
+                    _dump_to_conf(item, out, indent + 1)
+                    out.write(' ' * (indent * IWIDTH) + '}\n')
             else:
+                out.write(' ' * (indent * IWIDTH) + k + ' ')
                 out.write('= ')
                 _dump_to_conf(v, out, indent)
                 out.write(';')
@@ -152,14 +159,39 @@ def parseconf(conf):
     """Parse Ganesha config.
 
     Both native format and JSON are supported.
+
+    Convert config to a (nested) dictionary.
     """
+    def list_to_dict(l):
+        # Convert a list of key-value pairs stored as tuples to a dict.
+        # For tuples with identical keys, preserve all the values in a
+        # list. e.g., argument [('k', 'v1'), ('k', 'v2')] to function
+        # returns {'k': ['v1', 'v2']}.
+        d = {}
+        for i in l:
+            if isinstance(i, tuple):
+                k, v = i
+                if isinstance(v, list):
+                    v = list_to_dict(v)
+                if k in d:
+                    d[k] = [d[k]]
+                    d[k].append(v)
+                else:
+                    d[k] = v
+        return d
 
     try:
         # allow config to be specified in JSON --
         # for sake of people who might feel Ganesha config foreign.
         d = jsonutils.loads(conf)
     except ValueError:
-        d = jsonutils.loads(_conf2json(conf))
+        # Customize JSON decoder to convert Ganesha config to a list
+        # of key-value pairs stored as tuples. This allows multiple
+        # occurrences of a config block to be later converted to a
+        # dict key-value pair, with block name being the key and a
+        # list of block contents being the value.
+        l = jsonutils.loads(_conf2json(conf), object_pairs_hook=lambda x: x)
+        d = list_to_dict(l)
     return d
 
 
@@ -251,6 +283,18 @@ class GaneshaManager(object):
         return parseconf(self.execute("cat", self._getpath(name),
                                       message='reading export ' + name)[0])
 
+    def _check_export_file_exists(self, name):
+        """Check whether export exists."""
+        try:
+            self.execute('test', '-f', self._getpath(name), makelog=False,
+                         run_as_root=False)
+            return True
+        except exception.GaneshaCommandFailure as e:
+            if e.exit_code == 1:
+                return False
+            else:
+                raise
+
     def _write_export_file(self, name, confdict):
         """Write confdict to the export file of name."""
         for k, v in ganesha_utils.walk(confdict):
@@ -298,6 +342,20 @@ class GaneshaManager(object):
                 u()
             if not _mkindex_called:
                 self._mkindex()
+            raise
+
+    def update_export(self, name, confdict):
+        """Update an export to Ganesha specified by confdict."""
+        xid = confdict["EXPORT"]["Export_Id"]
+        old_confdict = self._read_export_file(name)
+
+        path = self._write_export_file(name, confdict)
+        try:
+            self._dbus_send_ganesha("UpdateExport", "string:" + path,
+                                    "string:EXPORT(Export_Id=%d)" % xid)
+        except Exception:
+            # Revert the export file update.
+            self._write_export_file(name, old_confdict)
             raise
 
     def remove_export(self, name):
