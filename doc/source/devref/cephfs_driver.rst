@@ -52,6 +52,14 @@ The following operations are supported with CephFS backend:
 - Create/delete consistency group (CG)
 - Create/delete CG snapshot
 
+.. warning::
+
+    CephFS currently supports snapshots as an experimental feature, therefore
+    the snapshot support with the CephFS Native driver is also experimental
+    and should not be used in production environments. For more information,
+    see
+    (http://docs.ceph.com/docs/master/cephfs/experimental-features/#snapshots).
+
 Prerequisites
 -------------
 
@@ -103,6 +111,13 @@ Enable snapshots in Ceph if you want to use them in manila:
 
     ceph mds set allow_new_snaps true --yes-i-really-mean-it
 
+.. warning::
+    Note that the snapshot support for the CephFS Native driver is experimental
+    and is known to have several caveats for use. Only enable this and the
+    equivalent ``manila.conf`` option if you understand these risks. See
+    (http://docs.ceph.com/docs/master/cephfs/experimental-features/#snapshots)
+    for more details.
+
 In the server running the :term:`manila-share` service, you can place the
 ``ceph.conf`` and ``manila.keyring`` files in the /etc/ceph directory.  Set the
 same owner for the :term:`manila-share` process and the ``manila.keyring``
@@ -144,7 +159,7 @@ Create a section like this to define a CephFS backend:
     cephfs_conf_path = /etc/ceph/ceph.conf
     cephfs_auth_id = manila
     cephfs_cluster_name = ceph
-    cephfs_enable_snapshots = True
+    cephfs_enable_snapshots = false
 
 Set ``driver-handles-share-servers`` to ``False`` as the driver does not
 manage the lifecycle of ``share-servers``.  To let the driver perform snapshot
@@ -277,9 +292,10 @@ deployments.
 
 - The guests have direct access to Ceph's public network.
 
-- The snapshot support of the driver is disabled by default.
+- The snapshot support of the driver is disabled by default. The
   ``cephfs_enable_snapshots`` configuration option needs to be set to ``True``
-  to allow snapshot operations.
+  to allow snapshot operations. Snapshot support will also need to be enabled
+  on the backend CephFS storage.
 
 - Snapshots are read-only.  A user can read a snapshot's contents from the
   ``.snap/{manila-snapshot-id}_{unknown-id}`` folder within the mounted
