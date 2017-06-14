@@ -160,7 +160,7 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
 
         # List projects that have access for share type - none expected
         access = self.shares_v2_client.list_access_to_share_type(st_id)
-        self.assertEqual([], access)
+        self.assertEmpty(access)
 
         # Add project access to share type
         access = self.shares_v2_client.add_access_to_share_type(
@@ -187,4 +187,4 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
 
         # List projects that have access for share type - none expected
         access = self.shares_v2_client.list_access_to_share_type(st_id)
-        self.assertEqual([], access)
+        self.assertEmpty(access)

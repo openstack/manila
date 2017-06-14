@@ -217,7 +217,7 @@ class ShareGroupTypesTest(base.BaseSharesAdminTest):
 
         # List projects that have access for share group type - none expected
         access = self.shares_v2_client.list_access_to_share_group_type(sgt_id)
-        self.assertEqual([], access)
+        self.assertEmpty(access)
 
         # Add project access to share group type
         access = self.shares_v2_client.add_access_to_share_group_type(
@@ -242,4 +242,4 @@ class ShareGroupTypesTest(base.BaseSharesAdminTest):
 
         # List projects that have access for share group type - none expected
         access = self.shares_v2_client.list_access_to_share_group_type(sgt_id)
-        self.assertEqual([], access)
+        self.assertEmpty(access)
