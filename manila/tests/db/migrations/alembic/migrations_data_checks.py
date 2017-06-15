@@ -2262,7 +2262,7 @@ class SquashSGSnapshotMembersAndSSIModelsChecks(BaseMigrationChecks):
     share_group_snapshot_id = uuidutils.generate_uuid()
     share_group_snapshot_member_id = uuidutils.generate_uuid()
     keys = (
-        'user_id', 'project_id', 'size', 'share_proto', 'share_id',
+        'user_id', 'project_id', 'size', 'share_proto',
         'share_group_snapshot_id',
     )
 
@@ -2341,7 +2341,6 @@ class SquashSGSnapshotMembersAndSSIModelsChecks(BaseMigrationChecks):
                 'project_id': ('p' * 255),
                 'share_proto': ('s' * 255),
                 'size': 123456789,
-                'share_id': self.share_id,
                 'share_group_snapshot_id': self.share_group_snapshot_id,
             }))
 

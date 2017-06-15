@@ -905,9 +905,9 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
         si2 = db_utils.create_share_instance(share_id=share2['id'])
         sg_snap = db_utils.create_share_group_snapshot(sg['id'])
         db_utils.create_share_group_snapshot_member(
-            sg_snap['id'], share_id=share['id'], share_instance_id=si['id'])
+            sg_snap['id'], share_instance_id=si['id'])
         db_utils.create_share_group_snapshot_member(
-            sg_snap['id'], share_id=share2['id'], share_instance_id=si2['id'])
+            sg_snap['id'], share_instance_id=si2['id'])
 
         count = db_api.count_share_group_snapshot_members_in_share(
             self.ctxt, share['id'])
@@ -1084,7 +1084,6 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
         self.assertTrue(hasattr(instance, 'share_id'))
         self.assertIn('name', instance_dict)
         self.assertIn('share_name', instance_dict)
-        self.assertIn('share_id', instance_dict)
 
     @ddt.data(None, constants.STATUS_ERROR)
     def test_share_snapshot_instance_get_all_with_filters_some(self, status):

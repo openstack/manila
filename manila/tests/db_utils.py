@@ -58,7 +58,6 @@ def create_share_group_snapshot_member(share_group_snapshot_id, **kwargs):
     member = {
         'share_proto': "NFS",
         'size': 0,
-        'share_id': None,
         'share_instance_id': None,
         'user_id': 'fake',
         'project_id': 'fake',

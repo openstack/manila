@@ -4020,8 +4020,12 @@ def count_share_group_snapshot_members_in_share(context, share_id,
     return model_query(
         context, models.ShareSnapshotInstance, session=session,
         project_only=True, read_deleted="no",
-    ).filter_by(
-        share_id=share_id,
+    ).join(
+        models.ShareInstance,
+        models.ShareInstance.id == (
+            models.ShareSnapshotInstance.share_instance_id),
+    ).filter(
+        models.ShareInstance.share_id == share_id,
     ).count()
 
 

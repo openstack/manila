@@ -874,7 +874,6 @@ class ShareGroupsAPITestCase(test.TestCase):
             'status': constants.STATUS_CREATING,
             'size': share['size'],
             'share_proto': share['share_proto'],
-            'share_id': share['id'],
             'share_instance_id': mock.ANY,
         }
         self.mock_object(
@@ -945,7 +944,6 @@ class ShareGroupsAPITestCase(test.TestCase):
             'status': constants.STATUS_CREATING,
             'size': share['size'],
             'share_proto': share['share_proto'],
-            'share_id': share['id'],
             'share_instance_id': mock.ANY,
         }
         expected_member_2_values = {
@@ -955,7 +953,6 @@ class ShareGroupsAPITestCase(test.TestCase):
             'status': constants.STATUS_CREATING,
             'size': share_2['size'],
             'share_proto': share_2['share_proto'],
-            'share_id': share_2['id'],
             'share_instance_id': mock.ANY,
         }
         self.mock_object(
@@ -1005,7 +1002,6 @@ class ShareGroupsAPITestCase(test.TestCase):
             'status': constants.STATUS_CREATING,
             'size': share['size'],
             'share_proto': share['share_proto'],
-            'share_id': share['id'],
             'share_instance_id': mock.ANY,
         }
         self.mock_object(

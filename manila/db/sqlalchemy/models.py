@@ -704,7 +704,7 @@ class ShareSnapshot(BASE, ManilaBase):
 class ShareSnapshotInstance(BASE, ManilaBase):
     """Represents a snapshot of a share."""
     __tablename__ = 'share_snapshot_instances'
-    _extra_keys = ['name', 'share_name']
+    _extra_keys = ['name', 'share_id', 'share_name']
 
     @property
     def name(self):
@@ -713,6 +713,12 @@ class ShareSnapshotInstance(BASE, ManilaBase):
     @property
     def share_name(self):
         return CONF.share_name_template % self.share_instance_id
+
+    @property
+    def share_id(self):
+        # NOTE(u_glide): This property required for compatibility
+        # with share drivers
+        return self.share_instance_id
 
     id = Column(String(36), primary_key=True)
     deleted = Column(String(36), default='False')
@@ -724,7 +730,6 @@ class ShareSnapshotInstance(BASE, ManilaBase):
     provider_location = Column(String(255))
     share_proto = Column(String(255))
     size = Column(Integer)
-    share_id = Column(String(36), nullable=True)
     share_group_snapshot_id = Column(String(36), nullable=True)
     user_id = Column(String(255))
     project_id = Column(String(255))

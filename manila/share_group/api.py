@@ -161,9 +161,10 @@ class API(base.Base):
                 members = self.db.share_group_snapshot_members_get_all(
                     context, source_share_group_snapshot_id)
                 for member in members:
-                    share = self.db.share_get(context, member['share_id'])
+                    share_instance = self.db.share_instance_get(
+                        context, member['share_instance_id'])
                     share_type = share_types.get_share_type(
-                        context, share['share_type_id'])
+                        context, share_instance['share_type_id'])
                     self.share_api.create(
                         context,
                         member['share_proto'],
@@ -295,7 +296,6 @@ class API(base.Base):
                     'status': constants.STATUS_CREATING,
                     'size': s['size'],
                     'share_proto': s['share_proto'],
-                    'share_id': s['id'],
                     'share_instance_id': s.instance['id']
                 }
                 member = self.db.share_group_snapshot_member_create(
