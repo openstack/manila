@@ -143,8 +143,8 @@ class ShareTypesController(wsgi.Controller):
         """Creates a new share type."""
         context = req.environ['manila.context']
 
-        if not self.is_valid_body(body, 'share_type') and \
-                not self.is_valid_body(body, 'volume_type'):
+        if (not self.is_valid_body(body, 'share_type') and
+                not self.is_valid_body(body, 'volume_type')):
             raise webob.exc.HTTPBadRequest()
 
         elif self.is_valid_body(body, 'share_type'):

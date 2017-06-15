@@ -272,8 +272,8 @@ class ShareMixin(object):
             parent_share_net_id = parent_share.instance['share_network_id']
             if share_network_id:
                 if share_network_id != parent_share_net_id:
-                    msg = "Share network ID should be the same as snapshot's" \
-                          " parent share's or empty"
+                    msg = ("Share network ID should be the same as snapshot's"
+                           " parent share's or empty")
                     raise exc.HTTPBadRequest(explanation=msg)
             elif parent_share_net_id:
                 share_network_id = parent_share_net_id
