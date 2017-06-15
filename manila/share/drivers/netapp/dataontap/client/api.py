@@ -149,8 +149,8 @@ class NaServer(object):
         try:
             self._api_major_version = int(major)
             self._api_minor_version = int(minor)
-            self._api_version = six.text_type(major) + "." + \
-                six.text_type(minor)
+            self._api_version = (six.text_type(major) + "." +
+                                 six.text_type(minor))
         except ValueError:
             raise ValueError('Major and minor versions must be integers')
         self._refresh_conn = True
@@ -228,8 +228,8 @@ class NaServer(object):
         if self._trace:
             LOG.debug("Request: %s", request_element.to_string(pretty=True))
 
-        if not hasattr(self, '_opener') or not self._opener \
-                or self._refresh_conn:
+        if (not hasattr(self, '_opener') or not self._opener
+                or self._refresh_conn):
             self._build_opener()
         try:
             if hasattr(self, '_timeout'):
@@ -262,15 +262,15 @@ class NaServer(object):
         result = self.invoke_elem(na_element, enable_tunneling)
         if result.has_attr('status') and result.get_attr('status') == 'passed':
             return result
-        code = result.get_attr('errno')\
-            or result.get_child_content('errorno')\
-            or 'ESTATUSFAILED'
+        code = (result.get_attr('errno')
+                or result.get_child_content('errorno')
+                or 'ESTATUSFAILED')
         if code == ESIS_CLONE_NOT_LICENSED:
             msg = 'Clone operation failed: FlexClone not licensed.'
         else:
-            msg = result.get_attr('reason')\
-                or result.get_child_content('reason')\
-                or 'Execution status is failed due to unknown reason'
+            msg = (result.get_attr('reason')
+                   or result.get_child_content('reason')
+                   or 'Execution status is failed due to unknown reason')
         raise NaApiError(code, msg)
 
     def _create_request(self, na_element, enable_tunneling=False):
@@ -291,19 +291,19 @@ class NaServer(object):
     def _enable_tunnel_request(self, netapp_elem):
         """Enables vserver or vfiler tunneling."""
         if hasattr(self, '_vfiler') and self._vfiler:
-            if hasattr(self, '_api_major_version') and \
-                    hasattr(self, '_api_minor_version') and \
-                    self._api_major_version >= 1 and \
-                    self._api_minor_version >= 7:
+            if (hasattr(self, '_api_major_version') and
+                    hasattr(self, '_api_minor_version') and
+                    self._api_major_version >= 1 and
+                    self._api_minor_version >= 7):
                 netapp_elem.add_attr('vfiler', self._vfiler)
             else:
                 raise ValueError('ontapi version has to be atleast 1.7'
                                  ' to send request to vfiler')
         if hasattr(self, '_vserver') and self._vserver:
-            if hasattr(self, '_api_major_version') and \
-                    hasattr(self, '_api_minor_version') and \
-                    self._api_major_version >= 1 and \
-                    self._api_minor_version >= 15:
+            if (hasattr(self, '_api_major_version') and
+                    hasattr(self, '_api_minor_version') and
+                    self._api_major_version >= 1 and
+                    self._api_minor_version >= 15):
                 netapp_elem.add_attr('vfiler', self._vserver)
             else:
                 raise ValueError('ontapi version has to be atleast 1.15'

@@ -79,9 +79,9 @@ class RestHelper(object):
         except Exception as err:
             LOG.error('\nBad response from server: %(url)s.'
                       ' Error: %(err)s', {'url': url, 'err': err})
-            res = '{"error":{"code":%s,' \
-                  '"description":"Connect server error"}}' \
-                  % constants.ERROR_CONNECT_TO_SERVER
+            res = ('{"error":{"code":%s,'
+                   '"description":"Connect server error"}}'
+                   % constants.ERROR_CONNECT_TO_SERVER)
 
         try:
             result = jsonutils.loads(res)

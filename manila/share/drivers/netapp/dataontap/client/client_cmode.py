@@ -1368,9 +1368,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def _get_kerberos_service_principal_name(self, security_service,
                                              vserver_name):
-        return 'nfs/' + vserver_name.replace('_', '-') + '.' + \
-               security_service['domain'] + '@' + \
-               security_service['domain'].upper()
+        return ('nfs/' + vserver_name.replace('_', '-') + '.' +
+                security_service['domain'] + '@' +
+                security_service['domain'].upper())
 
     @na_utils.trace
     def configure_dns(self, security_service):

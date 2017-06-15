@@ -181,8 +181,8 @@ class RestClientURL(object):  # pylint: disable=R0902
             result = self.post("/access/v1")
             del self.headers['authorization']
             if result.status == http_client.CREATED:
-                self.headers['x-auth-session'] = \
-                    result.get_header('x-auth-session')
+                self.headers['x-auth-session'] = (
+                    result.get_header('x-auth-session'))
                 self.do_logout = True
                 log_debug_msg(self, ('ZFSSA version: %s')
                               % result.get_header('x-zfssa-version'))
