@@ -337,12 +337,12 @@ def service_destroy(context, service_id):
 
 @require_admin_context
 def service_get(context, service_id, session=None):
-    result = model_query(
+    result = (model_query(
         context,
         models.Service,
-        session=session).\
-        filter_by(id=service_id).\
-        first()
+        session=session).
+        filter_by(id=service_id).
+        first())
     if not result:
         raise exception.ServiceNotFound(service_id=service_id)
 
@@ -361,21 +361,21 @@ def service_get_all(context, disabled=None):
 
 @require_admin_context
 def service_get_all_by_topic(context, topic):
-    return model_query(
-        context, models.Service, read_deleted="no").\
-        filter_by(disabled=False).\
-        filter_by(topic=topic).\
-        all()
+    return (model_query(
+        context, models.Service, read_deleted="no").
+        filter_by(disabled=False).
+        filter_by(topic=topic).
+        all())
 
 
 @require_admin_context
 def service_get_by_host_and_topic(context, host, topic):
-    result = model_query(
-        context, models.Service, read_deleted="no").\
-        filter_by(disabled=False).\
-        filter_by(host=host).\
-        filter_by(topic=topic).\
-        first()
+    result = (model_query(
+        context, models.Service, read_deleted="no").
+        filter_by(disabled=False).
+        filter_by(host=host).
+        filter_by(topic=topic).
+        first())
     if not result:
         raise exception.ServiceNotFound(service_id=host)
     return result
@@ -384,14 +384,14 @@ def service_get_by_host_and_topic(context, host, topic):
 @require_admin_context
 def _service_get_all_topic_subquery(context, session, topic, subq, label):
     sort_value = getattr(subq.c, label)
-    return model_query(context, models.Service,
-                       func.coalesce(sort_value, 0),
-                       session=session, read_deleted="no").\
-        filter_by(topic=topic).\
-        filter_by(disabled=False).\
-        outerjoin((subq, models.Service.host == subq.c.host)).\
-        order_by(sort_value).\
-        all()
+    return (model_query(context, models.Service,
+                        func.coalesce(sort_value, 0),
+                        session=session, read_deleted="no").
+            filter_by(topic=topic).
+            filter_by(disabled=False).
+            outerjoin((subq, models.Service.host == subq.c.host)).
+            order_by(sort_value).
+            all())
 
 
 @require_admin_context
@@ -400,13 +400,13 @@ def service_get_all_share_sorted(context):
     with session.begin():
         topic = CONF.share_topic
         label = 'share_gigabytes'
-        subq = model_query(context, models.Share,
-                           func.sum(models.Share.size).label(label),
-                           session=session, read_deleted="no").\
-            join(models.ShareInstance,
-                 models.ShareInstance.share_id == models.Share.id).\
-            group_by(models.ShareInstance.host).\
-            subquery()
+        subq = (model_query(context, models.Share,
+                            func.sum(models.Share.size).label(label),
+                            session=session, read_deleted="no").
+                join(models.ShareInstance,
+                     models.ShareInstance.share_id == models.Share.id).
+                group_by(models.ShareInstance.host).
+                subquery())
         return _service_get_all_topic_subquery(context,
                                                session,
                                                topic,
@@ -416,10 +416,10 @@ def service_get_all_share_sorted(context):
 
 @require_admin_context
 def service_get_by_args(context, host, binary):
-    result = model_query(context, models.Service).\
-        filter_by(host=host).\
-        filter_by(binary=binary).\
-        first()
+    result = (model_query(context, models.Service).
+              filter_by(host=host).
+              filter_by(binary=binary).
+              first())
 
     if not result:
         raise exception.HostBinaryNotFound(host=host, binary=binary)
@@ -461,11 +461,11 @@ def service_update(context, service_id, values):
 
 @require_context
 def quota_get(context, project_id, resource, session=None):
-    result = model_query(context, models.Quota, session=session,
-                         read_deleted="no").\
-        filter_by(project_id=project_id).\
-        filter_by(resource=resource).\
-        first()
+    result = (model_query(context, models.Quota, session=session,
+                          read_deleted="no").
+              filter_by(project_id=project_id).
+              filter_by(resource=resource).
+              first())
 
     if not result:
         raise exception.ProjectQuotaNotFound(project_id=project_id)
@@ -477,12 +477,12 @@ def quota_get(context, project_id, resource, session=None):
 def quota_get_all_by_project_and_user(context, project_id, user_id):
     authorize_project_context(context, project_id)
 
-    user_quotas = model_query(context, models.ProjectUserQuota,
-                              models.ProjectUserQuota.resource,
-                              models.ProjectUserQuota.hard_limit).\
-        filter_by(project_id=project_id).\
-        filter_by(user_id=user_id).\
-        all()
+    user_quotas = (model_query(context, models.ProjectUserQuota,
+                               models.ProjectUserQuota.resource,
+                               models.ProjectUserQuota.hard_limit).
+                   filter_by(project_id=project_id).
+                   filter_by(user_id=user_id).
+                   all())
 
     result = {'project_id': project_id, 'user_id': user_id}
     for quota in user_quotas:
@@ -495,9 +495,9 @@ def quota_get_all_by_project_and_user(context, project_id, user_id):
 def quota_get_all_by_project(context, project_id):
     authorize_project_context(context, project_id)
 
-    rows = model_query(context, models.Quota, read_deleted="no").\
-        filter_by(project_id=project_id).\
-        all()
+    rows = (model_query(context, models.Quota, read_deleted="no").
+            filter_by(project_id=project_id).
+            all())
 
     result = {'project_id': project_id}
     for row in rows:
@@ -510,9 +510,9 @@ def quota_get_all_by_project(context, project_id):
 def quota_get_all(context, project_id):
     authorize_project_context(context, project_id)
 
-    result = model_query(context, models.ProjectUserQuota).\
-        filter_by(project_id=project_id).\
-        all()
+    result = (model_query(context, models.ProjectUserQuota).
+              filter_by(project_id=project_id).
+              all())
 
     return result
 
@@ -522,16 +522,16 @@ def quota_create(context, project_id, resource, limit, user_id=None):
     per_user = user_id and resource not in PER_PROJECT_QUOTAS
 
     if per_user:
-        check = model_query(context, models.ProjectUserQuota).\
-            filter_by(project_id=project_id).\
-            filter_by(user_id=user_id).\
-            filter_by(resource=resource).\
-            all()
+        check = (model_query(context, models.ProjectUserQuota).
+                 filter_by(project_id=project_id).
+                 filter_by(user_id=user_id).
+                 filter_by(resource=resource).
+                 all())
     else:
-        check = model_query(context, models.Quota).\
-            filter_by(project_id=project_id).\
-            filter_by(resource=resource).\
-            all()
+        check = (model_query(context, models.Quota).
+                 filter_by(project_id=project_id).
+                 filter_by(resource=resource).
+                 all())
     if check:
         raise exception.QuotaExists(project_id=project_id, resource=resource)
 
@@ -552,9 +552,9 @@ def quota_create(context, project_id, resource, limit, user_id=None):
 def quota_update(context, project_id, resource, limit, user_id=None):
     per_user = user_id and resource not in PER_PROJECT_QUOTAS
     model = models.ProjectUserQuota if per_user else models.Quota
-    query = model_query(context, model).\
-        filter_by(project_id=project_id).\
-        filter_by(resource=resource)
+    query = (model_query(context, model).
+             filter_by(project_id=project_id).
+             filter_by(resource=resource))
     if per_user:
         query = query.filter_by(user_id=user_id)
 
@@ -572,11 +572,11 @@ def quota_update(context, project_id, resource, limit, user_id=None):
 
 @require_context
 def quota_class_get(context, class_name, resource, session=None):
-    result = model_query(context, models.QuotaClass, session=session,
-                         read_deleted="no").\
-        filter_by(class_name=class_name).\
-        filter_by(resource=resource).\
-        first()
+    result = (model_query(context, models.QuotaClass, session=session,
+                          read_deleted="no").
+              filter_by(class_name=class_name).
+              filter_by(resource=resource).
+              first())
 
     if not result:
         raise exception.QuotaClassNotFound(class_name=class_name)
@@ -586,9 +586,9 @@ def quota_class_get(context, class_name, resource, session=None):
 
 @require_context
 def quota_class_get_default(context):
-    rows = model_query(context, models.QuotaClass, read_deleted="no").\
-        filter_by(class_name=_DEFAULT_QUOTA_NAME).\
-        all()
+    rows = (model_query(context, models.QuotaClass, read_deleted="no").
+            filter_by(class_name=_DEFAULT_QUOTA_NAME).
+            all())
 
     result = {'class_name': _DEFAULT_QUOTA_NAME}
     for row in rows:
@@ -601,9 +601,9 @@ def quota_class_get_default(context):
 def quota_class_get_all_by_name(context, class_name):
     authorize_quota_class_context(context, class_name)
 
-    rows = model_query(context, models.QuotaClass, read_deleted="no").\
-        filter_by(class_name=class_name).\
-        all()
+    rows = (model_query(context, models.QuotaClass, read_deleted="no").
+            filter_by(class_name=class_name).
+            all())
 
     result = {'class_name': class_name}
     for row in rows:
@@ -627,10 +627,10 @@ def quota_class_create(context, class_name, resource, limit):
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def quota_class_update(context, class_name, resource, limit):
-    result = model_query(context, models.QuotaClass, read_deleted="no").\
-        filter_by(class_name=class_name).\
-        filter_by(resource=resource).\
-        update({'hard_limit': limit})
+    result = (model_query(context, models.QuotaClass, read_deleted="no").
+              filter_by(class_name=class_name).
+              filter_by(resource=resource).
+              update({'hard_limit': limit}))
 
     if not result:
         raise exception.QuotaClassNotFound(class_name=class_name)
@@ -641,9 +641,9 @@ def quota_class_update(context, class_name, resource, limit):
 
 @require_context
 def quota_usage_get(context, project_id, resource, user_id=None):
-    query = model_query(context, models.QuotaUsage, read_deleted="no").\
-        filter_by(project_id=project_id).\
-        filter_by(resource=resource)
+    query = (model_query(context, models.QuotaUsage, read_deleted="no").
+             filter_by(project_id=project_id).
+             filter_by(resource=resource))
     if user_id:
         if resource not in PER_PROJECT_QUOTAS:
             result = query.filter_by(user_id=user_id).first()
@@ -660,8 +660,8 @@ def quota_usage_get(context, project_id, resource, user_id=None):
 
 def _quota_usage_get_all(context, project_id, user_id=None):
     authorize_project_context(context, project_id)
-    query = model_query(context, models.QuotaUsage, read_deleted="no").\
-        filter_by(project_id=project_id)
+    query = (model_query(context, models.QuotaUsage, read_deleted="no").
+             filter_by(project_id=project_id))
     result = {'project_id': project_id}
     if user_id:
         query = query.filter(or_(models.QuotaUsage.user_id == user_id,
@@ -724,12 +724,12 @@ def quota_usage_update(context, project_id, user_id, resource, **kwargs):
         if key in kwargs:
             updates[key] = kwargs[key]
 
-    result = model_query(context, models.QuotaUsage, read_deleted="no").\
-        filter_by(project_id=project_id).\
-        filter_by(resource=resource).\
-        filter(or_(models.QuotaUsage.user_id == user_id,
-                   models.QuotaUsage.user_id is None)).\
-        update(updates)
+    result = (model_query(context, models.QuotaUsage, read_deleted="no").
+              filter_by(project_id=project_id).
+              filter_by(resource=resource).
+              filter(or_(models.QuotaUsage.user_id == user_id,
+                         models.QuotaUsage.user_id is None)).
+              update(updates))
 
     if not result:
         raise exception.QuotaUsageNotFound(project_id=project_id)
@@ -762,24 +762,24 @@ def _reservation_create(context, uuid, usage, project_id, user_id, resource,
 
 def _get_user_quota_usages(context, session, project_id, user_id):
     # Broken out for testability
-    rows = model_query(context, models.QuotaUsage,
-                       read_deleted="no",
-                       session=session).\
-        filter_by(project_id=project_id).\
-        filter(or_(models.QuotaUsage.user_id == user_id,
-                   models.QuotaUsage.user_id is None)).\
-        with_lockmode('update').\
-        all()
+    rows = (model_query(context, models.QuotaUsage,
+                        read_deleted="no",
+                        session=session).
+            filter_by(project_id=project_id).
+            filter(or_(models.QuotaUsage.user_id == user_id,
+                       models.QuotaUsage.user_id is None)).
+            with_lockmode('update').
+            all())
     return {row.resource: row for row in rows}
 
 
 def _get_project_quota_usages(context, session, project_id):
-    rows = model_query(context, models.QuotaUsage,
-                       read_deleted="no",
-                       session=session).\
-        filter_by(project_id=project_id).\
-        with_lockmode('update').\
-        all()
+    rows = (model_query(context, models.QuotaUsage,
+                        read_deleted="no",
+                        session=session).
+            filter_by(project_id=project_id).
+            with_lockmode('update').
+            all())
     result = dict()
     # Get the total count of in_use,reserved
     for row in rows:
@@ -992,11 +992,11 @@ def _quota_reservations_query(session, context, reservations):
     """Return the relevant reservations."""
 
     # Get the listed reservations
-    return model_query(context, models.Reservation,
-                       read_deleted="no",
-                       session=session).\
-        filter(models.Reservation.uuid.in_(reservations)).\
-        with_lockmode('update')
+    return (model_query(context, models.Reservation,
+                        read_deleted="no",
+                        session=session).
+            filter(models.Reservation.uuid.in_(reservations)).
+            with_lockmode('update'))
 
 
 @require_context
@@ -1034,45 +1034,45 @@ def reservation_rollback(context, reservations, project_id=None, user_id=None):
 def quota_destroy_all_by_project_and_user(context, project_id, user_id):
     session = get_session()
     with session.begin():
-        model_query(context, models.ProjectUserQuota, session=session,
-                    read_deleted="no").\
-            filter_by(project_id=project_id).\
-            filter_by(user_id=user_id).soft_delete(synchronize_session=False)
+        (model_query(context, models.ProjectUserQuota, session=session,
+                     read_deleted="no").
+         filter_by(project_id=project_id).
+         filter_by(user_id=user_id).soft_delete(synchronize_session=False))
 
-        model_query(context, models.QuotaUsage,
-                    session=session, read_deleted="no").\
-            filter_by(project_id=project_id).\
-            filter_by(user_id=user_id).soft_delete(synchronize_session=False)
+        (model_query(context, models.QuotaUsage,
+                     session=session, read_deleted="no").
+         filter_by(project_id=project_id).
+         filter_by(user_id=user_id).soft_delete(synchronize_session=False))
 
-        model_query(context, models.Reservation,
-                    session=session, read_deleted="no").\
-            filter_by(project_id=project_id).\
-            filter_by(user_id=user_id).soft_delete(synchronize_session=False)
+        (model_query(context, models.Reservation,
+                     session=session, read_deleted="no").
+         filter_by(project_id=project_id).
+         filter_by(user_id=user_id).soft_delete(synchronize_session=False))
 
 
 @require_admin_context
 def quota_destroy_all_by_project(context, project_id):
     session = get_session()
     with session.begin():
-        model_query(context, models.Quota, session=session,
-                    read_deleted="no").\
-            filter_by(project_id=project_id).\
-            soft_delete(synchronize_session=False)
+        (model_query(context, models.Quota, session=session,
+                     read_deleted="no").
+         filter_by(project_id=project_id).
+         soft_delete(synchronize_session=False))
 
-        model_query(context, models.ProjectUserQuota, session=session,
-                    read_deleted="no").\
-            filter_by(project_id=project_id).\
-            soft_delete(synchronize_session=False)
+        (model_query(context, models.ProjectUserQuota, session=session,
+                     read_deleted="no").
+         filter_by(project_id=project_id).
+         soft_delete(synchronize_session=False))
 
-        model_query(context, models.QuotaUsage,
-                    session=session, read_deleted="no").\
-            filter_by(project_id=project_id).\
-            soft_delete(synchronize_session=False)
+        (model_query(context, models.QuotaUsage,
+                     session=session, read_deleted="no").
+         filter_by(project_id=project_id).
+         soft_delete(synchronize_session=False))
 
-        model_query(context, models.Reservation,
-                    session=session, read_deleted="no").\
-            filter_by(project_id=project_id).\
-            soft_delete(synchronize_session=False)
+        (model_query(context, models.Reservation,
+                     session=session, read_deleted="no").
+         filter_by(project_id=project_id).
+         soft_delete(synchronize_session=False))
 
 
 @require_admin_context
@@ -1081,9 +1081,10 @@ def reservation_expire(context):
     session = get_session()
     with session.begin():
         current_time = timeutils.utcnow()
-        reservation_query = model_query(context, models.Reservation,
-                                        session=session, read_deleted="no").\
-            filter(models.Reservation.expire < current_time)
+        reservation_query = (model_query(
+            context, models.Reservation,
+            session=session, read_deleted="no").
+            filter(models.Reservation.expire < current_time))
 
         for reservation in reservation_query.all():
             if reservation.delta >= 0:
@@ -1458,8 +1459,8 @@ def share_replica_delete(context, share_replica_id, session=None):
 def _share_get_query(context, session=None):
     if session is None:
         session = get_session()
-    return model_query(context, models.Share, session=session).\
-        options(joinedload('share_metadata'))
+    return (model_query(context, models.Share, session=session).
+            options(joinedload('share_metadata')))
 
 
 def _metadata_refs(metadata_dict, meta_class):
@@ -1502,12 +1503,12 @@ def share_create(context, share_values, create_share_instance=True):
 
 @require_admin_context
 def share_data_get_for_project(context, project_id, user_id, session=None):
-    query = model_query(context, models.Share,
-                        func.count(models.Share.id),
-                        func.sum(models.Share.size),
-                        read_deleted="no",
-                        session=session).\
-        filter_by(project_id=project_id)
+    query = (model_query(context, models.Share,
+                         func.count(models.Share.id),
+                         func.sum(models.Share.size),
+                         read_deleted="no",
+                         session=session).
+             filter_by(project_id=project_id))
     if user_id:
         result = query.filter_by(user_id=user_id).first()
     else:
@@ -1677,8 +1678,8 @@ def share_delete(context, share_id):
 
         share_ref.soft_delete(session=session)
 
-        session.query(models.ShareMetadata).\
-            filter_by(share_id=share_id).soft_delete()
+        (session.query(models.ShareMetadata).
+            filter_by(share_id=share_id).soft_delete())
 
 
 ###################
@@ -1880,8 +1881,8 @@ def share_access_get_all_by_type_and_access(context, share_id, access_type,
 def share_access_delete_all_by_share(context, share_id):
     session = get_session()
     with session.begin():
-        session.query(models.ShareAccessMapping). \
-            filter_by(share_id=share_id).soft_delete()
+        (session.query(models.ShareAccessMapping).
+            filter_by(share_id=share_id).soft_delete())
 
 
 @require_context
@@ -1889,8 +1890,8 @@ def share_instance_access_delete(context, mapping_id):
     session = get_session()
     with session.begin():
 
-        mapping = session.query(models.ShareInstanceAccessMapping).\
-            filter_by(id=mapping_id).first()
+        mapping = (session.query(models.ShareInstanceAccessMapping).
+                   filter_by(id=mapping_id).first())
 
         if not mapping:
             exception.NotFound()
@@ -2122,12 +2123,12 @@ def share_snapshot_create(context, create_values,
 
 @require_admin_context
 def snapshot_data_get_for_project(context, project_id, user_id, session=None):
-    query = model_query(context, models.ShareSnapshot,
-                        func.count(models.ShareSnapshot.id),
-                        func.sum(models.ShareSnapshot.size),
-                        read_deleted="no",
-                        session=session).\
-        filter_by(project_id=project_id)
+    query = (model_query(context, models.ShareSnapshot,
+                         func.count(models.ShareSnapshot.id),
+                         func.sum(models.ShareSnapshot.size),
+                         read_deleted="no",
+                         session=session).
+             filter_by(project_id=project_id))
 
     if user_id:
         result = query.filter_by(user_id=user_id).first()
@@ -2139,12 +2140,12 @@ def snapshot_data_get_for_project(context, project_id, user_id, session=None):
 
 @require_context
 def share_snapshot_get(context, snapshot_id, session=None):
-    result = model_query(context, models.ShareSnapshot, session=session,
-                         project_only=True).\
-        filter_by(id=snapshot_id).\
-        options(joinedload('share')).\
-        options(joinedload('instances')).\
-        first()
+    result = (model_query(context, models.ShareSnapshot, session=session,
+                          project_only=True).
+              filter_by(id=snapshot_id).
+              options(joinedload('share')).
+              options(joinedload('instances')).
+              first())
 
     if not result:
         raise exception.ShareSnapshotNotFound(snapshot_id=snapshot_id)
@@ -2539,8 +2540,8 @@ def share_metadata_get(context, share_id):
 @require_context
 @require_share_exists
 def share_metadata_delete(context, share_id, key):
-    _share_metadata_get_query(context, share_id).\
-        filter_by(key=key).soft_delete()
+    (_share_metadata_get_query(context, share_id).
+        filter_by(key=key).soft_delete())
 
 
 @require_context
@@ -2550,10 +2551,10 @@ def share_metadata_update(context, share_id, metadata, delete):
 
 
 def _share_metadata_get_query(context, share_id, session=None):
-    return model_query(context, models.ShareMetadata, session=session,
-                       read_deleted="no").\
-        filter_by(share_id=share_id).\
-        options(joinedload('share'))
+    return (model_query(context, models.ShareMetadata, session=session,
+                        read_deleted="no").
+            filter_by(share_id=share_id).
+            options(joinedload('share')))
 
 
 def _share_metadata_get(context, share_id, session=None):
@@ -2607,9 +2608,9 @@ def _share_metadata_update(context, share_id, metadata, delete, session=None):
 
 
 def _share_metadata_get_item(context, share_id, key, session=None):
-    result = _share_metadata_get_query(context, share_id, session=session).\
-        filter_by(key=key).\
-        first()
+    result = (_share_metadata_get_query(context, share_id, session=session).
+              filter_by(key=key).
+              first())
 
     if not result:
         raise exception.ShareMetadataNotFound(metadata_key=key,
@@ -2925,8 +2926,8 @@ def security_service_update(context, id, values):
 
 @require_context
 def security_service_get(context, id, session=None):
-    result = _security_service_get_query(context, session=session).\
-        filter_by(id=id).first()
+    result = (_security_service_get_query(context, session=session).
+              filter_by(id=id).first())
 
     if result is None:
         raise exception.SecurityServiceNotFound(security_service_id=id)
@@ -2940,8 +2941,8 @@ def security_service_get_all(context):
 
 @require_context
 def security_service_get_all_by_project(context, project_id):
-    return _security_service_get_query(context).\
-        filter_by(project_id=project_id).all()
+    return (_security_service_get_query(context).
+            filter_by(project_id=project_id).all())
 
 
 def _security_service_get_query(context, session=None):
@@ -2956,10 +2957,10 @@ def _security_service_get_query(context, session=None):
 def _network_get_query(context, session=None):
     if session is None:
         session = get_session()
-    return model_query(context, models.ShareNetwork, session=session).\
-        options(joinedload('share_instances'),
-                joinedload('security_services'),
-                joinedload('share_servers'))
+    return (model_query(context, models.ShareNetwork, session=session).
+            options(joinedload('share_instances'),
+                    joinedload('security_services'),
+                    joinedload('share_servers')))
 
 
 @require_context
@@ -3018,12 +3019,12 @@ def share_network_get_all_by_project(context, project_id, user_id=None,
 @require_context
 def share_network_get_all_by_security_service(context, security_service_id):
     session = get_session()
-    return model_query(context, models.ShareNetwork, session=session).\
-        join(models.ShareNetworkSecurityServiceAssociation,
-             models.ShareNetwork.id ==
-             models.ShareNetworkSecurityServiceAssociation.share_network_id).\
-        filter_by(security_service_id=security_service_id, deleted=0).\
-        options(joinedload('share_servers')).all()
+    return (model_query(context, models.ShareNetwork, session=session).
+            join(models.ShareNetworkSecurityServiceAssociation,
+            models.ShareNetwork.id ==
+            models.ShareNetworkSecurityServiceAssociation.share_network_id).
+            filter_by(security_service_id=security_service_id, deleted=0).
+            options(joinedload('share_servers')).all())
 
 
 @require_context
@@ -3031,12 +3032,13 @@ def share_network_add_security_service(context, id, security_service_id):
     session = get_session()
 
     with session.begin():
-        assoc_ref = model_query(
-            context,
-            models.ShareNetworkSecurityServiceAssociation,
-            session=session).\
-            filter_by(share_network_id=id).\
-            filter_by(security_service_id=security_service_id).first()
+        assoc_ref = (model_query(
+                     context,
+                     models.ShareNetworkSecurityServiceAssociation,
+                     session=session).
+                     filter_by(share_network_id=id).
+                     filter_by(
+                     security_service_id=security_service_id).first())
 
         if assoc_ref:
             msg = "Already associated"
@@ -3063,12 +3065,12 @@ def share_network_remove_security_service(context, id, security_service_id):
         share_nw_ref = share_network_get(context, id, session=session)
         security_service_get(context, security_service_id, session=session)
 
-        assoc_ref = model_query(
+        assoc_ref = (model_query(
             context,
             models.ShareNetworkSecurityServiceAssociation,
-            session=session).\
-            filter_by(share_network_id=id).\
-            filter_by(security_service_id=security_service_id).first()
+            session=session).
+            filter_by(share_network_id=id).
+            filter_by(security_service_id=security_service_id).first())
 
         if assoc_ref:
             assoc_ref.soft_delete(session)
@@ -3088,10 +3090,10 @@ def share_network_remove_security_service(context, id, security_service_id):
 def _server_get_query(context, session=None):
     if session is None:
         session = get_session()
-    return model_query(context, models.ShareServer, session=session).\
-        options(joinedload('share_instances'),
-                joinedload('network_allocations'),
-                joinedload('share_network'))
+    return (model_query(context, models.ShareServer, session=session).
+            options(joinedload('share_instances'),
+                    joinedload('network_allocations'),
+                    joinedload('share_network')))
 
 
 @require_context
@@ -3128,8 +3130,8 @@ def share_server_update(context, id, values):
 
 @require_context
 def share_server_get(context, server_id, session=None):
-    result = _server_get_query(context, session).filter_by(id=server_id)\
-        .first()
+    result = (_server_get_query(context, session).filter_by(id=server_id)
+              .first())
     if result is None:
         raise exception.ShareServerNotFound(share_server_id=server_id)
     return result
@@ -3139,10 +3141,11 @@ def share_server_get(context, server_id, session=None):
 def share_server_get_all_by_host_and_share_net_valid(context, host,
                                                      share_net_id,
                                                      session=None):
-    result = _server_get_query(context, session).filter_by(host=host)\
-        .filter_by(share_network_id=share_net_id)\
-        .filter(models.ShareServer.status.in_(
-            (constants.STATUS_CREATING, constants.STATUS_ACTIVE))).all()
+    result = (_server_get_query(context, session).filter_by(host=host)
+              .filter_by(share_network_id=share_net_id)
+              .filter(models.ShareServer.status.in_(
+                      (constants.STATUS_CREATING,
+                       constants.STATUS_ACTIVE))).all())
     if not result:
         filters_description = ('share_network_id is "%(share_net_id)s",'
                                ' host is "%(host)s" and status in'
@@ -3174,12 +3177,12 @@ def share_server_get_all_unused_deletable(context, host, updated_before):
         constants.STATUS_ACTIVE,
         constants.STATUS_ERROR,
     )
-    result = _server_get_query(context)\
-        .filter_by(host=host)\
-        .filter(~models.ShareServer.share_groups.any())\
-        .filter(~models.ShareServer.share_instances.any())\
-        .filter(models.ShareServer.status.in_(valid_server_status))\
-        .filter(models.ShareServer.updated_at < updated_before).all()
+    result = (_server_get_query(context)
+              .filter_by(host=host)
+              .filter(~models.ShareServer.share_groups.any())
+              .filter(~models.ShareServer.share_instances.any())
+              .filter(models.ShareServer.status.in_(valid_server_status))
+              .filter(models.ShareServer.updated_at < updated_before).all())
     return result
 
 
@@ -3205,10 +3208,10 @@ def share_server_backend_details_delete(context, share_server_id,
                                         session=None):
     if not session:
         session = get_session()
-    share_server_details = model_query(context,
-                                       models.ShareServerBackendDetails,
-                                       session=session)\
-        .filter_by(share_server_id=share_server_id).all()
+    share_server_details = (model_query(context,
+                                        models.ShareServerBackendDetails,
+                                        session=session)
+                            .filter_by(share_server_id=share_server_id).all())
     for item in share_server_details:
         item.soft_delete(session)
 
@@ -3331,8 +3334,8 @@ def network_allocation_delete(context, id):
 def network_allocation_get(context, id, session=None):
     if session is None:
         session = get_session()
-    result = model_query(context, models.NetworkAllocation, session=session).\
-        filter_by(id=id).first()
+    result = (model_query(context, models.NetworkAllocation, session=session).
+              filter_by(id=id).first())
     if result is None:
         raise exception.NotFound()
     return result
@@ -3341,8 +3344,8 @@ def network_allocation_get(context, id, session=None):
 @require_context
 def network_allocations_get_by_ip_address(context, ip_address):
     session = get_session()
-    result = model_query(context, models.NetworkAllocation, session=session).\
-        filter_by(ip_address=ip_address).all()
+    result = (model_query(context, models.NetworkAllocation, session=session).
+              filter_by(ip_address=ip_address).all())
     return result or []
 
 
@@ -3440,11 +3443,11 @@ def share_type_create(context, values, projects=None):
 def _share_type_get_query(context, session=None, read_deleted=None,
                           expected_fields=None):
     expected_fields = expected_fields or []
-    query = model_query(context,
-                        models.ShareTypes,
-                        session=session,
-                        read_deleted=read_deleted). \
-        options(joinedload('extra_specs'))
+    query = (model_query(context,
+                         models.ShareTypes,
+                         session=session,
+                         read_deleted=read_deleted).
+             options(joinedload('extra_specs')))
 
     if 'projects' in expected_fields:
         query = query.options(joinedload('projects'))
@@ -3492,9 +3495,9 @@ def share_type_get_all(context, inactive=False, filters=None):
 
 
 def _share_type_get_id_from_share_type_query(context, id, session=None):
-    return model_query(
-        context, models.ShareTypes, read_deleted="no", session=session).\
-        filter_by(id=id)
+    return (model_query(
+            context, models.ShareTypes, read_deleted="no", session=session).
+            filter_by(id=id))
 
 
 def _share_type_get_id_from_share_type(context, id, session=None):
@@ -3509,10 +3512,10 @@ def _share_type_get(context, id, session=None, inactive=False,
                     expected_fields=None):
     expected_fields = expected_fields or []
     read_deleted = "yes" if inactive else "no"
-    result = _share_type_get_query(
-        context, session, read_deleted, expected_fields). \
-        filter_by(id=id). \
-        first()
+    result = (_share_type_get_query(
+              context, session, read_deleted, expected_fields).
+              filter_by(id=id).
+              first())
 
     if not result:
         raise exception.ShareTypeNotFound(share_type_id=id)
@@ -3535,10 +3538,10 @@ def share_type_get(context, id, inactive=False, expected_fields=None):
 
 
 def _share_type_get_by_name(context, name, session=None):
-    result = model_query(context, models.ShareTypes, session=session).\
-        options(joinedload('extra_specs')).\
-        filter_by(name=name).\
-        first()
+    result = (model_query(context, models.ShareTypes, session=session).
+              options(joinedload('extra_specs')).
+              filter_by(name=name).
+              first())
 
     if not result:
         raise exception.ShareTypeNotFoundByName(share_type_name=name)
@@ -3572,9 +3575,9 @@ def share_type_destroy(context, id):
     session = get_session()
     with session.begin():
         _share_type_get(context, id, session)
-        results = model_query(context, models.ShareInstance, session=session,
-                              read_deleted="no").\
-            filter_by(share_type_id=id).count()
+        results = (model_query(context, models.ShareInstance, session=session,
+                               read_deleted="no").
+                   filter_by(share_type_id=id).count())
         share_group_count = model_query(
             context,
             models.ShareGroupShareTypeMapping,
@@ -3585,10 +3588,10 @@ def share_type_destroy(context, id):
             LOG.error('ShareType %s deletion failed, ShareType in use.',
                       id)
             raise exception.ShareTypeInUse(share_type_id=id)
-        model_query(context, models.ShareTypeExtraSpecs, session=session).\
-            filter_by(share_type_id=id).soft_delete()
-        model_query(context, models.ShareTypes, session=session).\
-            filter_by(id=id).soft_delete()
+        (model_query(context, models.ShareTypeExtraSpecs, session=session).
+            filter_by(share_type_id=id).soft_delete())
+        (model_query(context, models.ShareTypes, session=session).
+            filter_by(id=id).soft_delete())
 
 
 def _share_type_access_query(context, session=None):
@@ -3599,8 +3602,8 @@ def _share_type_access_query(context, session=None):
 @require_admin_context
 def share_type_access_get_all(context, type_id):
     share_type_id = _share_type_get_id_from_share_type(context, type_id)
-    return _share_type_access_query(context).\
-        filter_by(share_type_id=share_type_id).all()
+    return (_share_type_access_query(context).
+            filter_by(share_type_id=share_type_id).all())
 
 
 @require_admin_context
@@ -3627,10 +3630,10 @@ def share_type_access_remove(context, type_id, project_id):
     """Remove given tenant from the share type access list."""
     share_type_id = _share_type_get_id_from_share_type(context, type_id)
 
-    count = _share_type_access_query(context).\
-        filter_by(share_type_id=share_type_id).\
-        filter_by(project_id=project_id).\
-        soft_delete(synchronize_session=False)
+    count = (_share_type_access_query(context).
+             filter_by(share_type_id=share_type_id).
+             filter_by(project_id=project_id).
+             soft_delete(synchronize_session=False))
     if count == 0:
         raise exception.ShareTypeAccessNotFound(
             share_type_id=type_id, project_id=project_id)
@@ -3639,16 +3642,16 @@ def share_type_access_remove(context, type_id, project_id):
 
 
 def _share_type_extra_specs_query(context, share_type_id, session=None):
-    return model_query(context, models.ShareTypeExtraSpecs, session=session,
-                       read_deleted="no").\
-        filter_by(share_type_id=share_type_id).\
-        options(joinedload('share_type'))
+    return (model_query(context, models.ShareTypeExtraSpecs, session=session,
+                        read_deleted="no").
+            filter_by(share_type_id=share_type_id).
+            options(joinedload('share_type')))
 
 
 @require_context
 def share_type_extra_specs_get(context, share_type_id):
-    rows = _share_type_extra_specs_query(context, share_type_id).\
-        all()
+    rows = (_share_type_extra_specs_query(context, share_type_id).
+            all())
 
     result = {}
     for row in rows:
@@ -3662,8 +3665,8 @@ def share_type_extra_specs_delete(context, share_type_id, key):
     session = get_session()
     with session.begin():
         _share_type_extra_specs_get_item(context, share_type_id, key, session)
-        _share_type_extra_specs_query(context, share_type_id, session).\
-            filter_by(key=key).soft_delete()
+        (_share_type_extra_specs_query(context, share_type_id, session).
+            filter_by(key=key).soft_delete())
 
 
 def _share_type_extra_specs_get_item(context, share_type_id, key,
@@ -3827,13 +3830,13 @@ def purge_deleted_records(context, age_in_days):
 
 def _share_group_get(context, share_group_id, session=None):
     session = session or get_session()
-    result = model_query(context, models.ShareGroup,
-                         session=session,
-                         project_only=True,
-                         read_deleted='no').\
-        filter_by(id=share_group_id).\
-        options(joinedload('share_types')).\
-        first()
+    result = (model_query(context, models.ShareGroup,
+                          session=session,
+                          project_only=True,
+                          read_deleted='no').
+              filter_by(id=share_group_id).
+              options(joinedload('share_types')).
+              first())
 
     if not result:
         raise exception.ShareGroupNotFound(share_group_id=share_group_id)
@@ -3973,21 +3976,20 @@ def share_group_destroy(context, share_group_id):
 @require_context
 def count_shares_in_share_group(context, share_group_id, session=None):
     session = session or get_session()
-    return model_query(
-        context, models.Share, session=session,
-        project_only=True, read_deleted="no").\
-        filter_by(share_group_id=share_group_id).\
-        count()
+    return (model_query(context, models.Share, session=session,
+                        project_only=True, read_deleted="no").
+            filter_by(share_group_id=share_group_id).
+            count())
 
 
 @require_context
 def get_all_shares_by_share_group(context, share_group_id, session=None):
     session = session or get_session()
-    return model_query(
-        context, models.Share, session=session,
-        project_only=True, read_deleted="no").\
-        filter_by(share_group_id=share_group_id).\
-        all()
+    return (model_query(
+            context, models.Share, session=session,
+            project_only=True, read_deleted="no").
+            filter_by(share_group_id=share_group_id).
+            all())
 
 
 @require_context
@@ -4006,11 +4008,11 @@ def count_share_group_snapshots_in_share_group(context, share_group_id,
 def count_share_groups_in_share_network(context, share_network_id,
                                         session=None):
     session = session or get_session()
-    return model_query(
-        context, models.ShareGroup, session=session,
-        project_only=True, read_deleted="no").\
-        filter_by(share_network_id=share_network_id).\
-        count()
+    return (model_query(
+            context, models.ShareGroup, session=session,
+            project_only=True, read_deleted="no").
+            filter_by(share_network_id=share_network_id).
+            count())
 
 
 @require_context
