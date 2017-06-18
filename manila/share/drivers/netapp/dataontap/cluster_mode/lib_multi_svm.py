@@ -332,12 +332,16 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         vserver_client = self._get_api_client(vserver=vserver)
         network_interfaces = vserver_client.get_network_interfaces()
 
-        vlan = None
-        if network_interfaces:
-            home_port = network_interfaces[0]['home-port']
-            vlan = home_port.split('-')[1]
+        interfaces_on_vlans = []
+        vlans = []
+        for interface in network_interfaces:
+            if '-' in interface['home-port']:
+                interfaces_on_vlans.append(interface)
+                vlans.append(interface['home-port'])
 
-        @utils.synchronized('netapp-VLAN-%s' % vlan, external=True)
+        vlans = '-'.join(set(sorted(vlans))) if vlans else None
+
+        @utils.synchronized('netapp-VLANs-%s' % vlans, external=True)
         def _delete_vserver_with_lock():
             self._client.delete_vserver(vserver,
                                         vserver_client,
@@ -347,15 +351,15 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     ipspace_name):
                 self._client.delete_ipspace(ipspace_name)
 
-            self._delete_vserver_vlan(network_interfaces)
+            self._delete_vserver_vlans(interfaces_on_vlans)
 
         return _delete_vserver_with_lock()
 
     @na_utils.trace
-    def _delete_vserver_vlan(self, vserver_network_interfaces):
+    def _delete_vserver_vlans(self, network_interfaces_on_vlans):
         """Delete Vserver's VLAN configuration from ports"""
 
-        for interface in vserver_network_interfaces:
+        for interface in network_interfaces_on_vlans:
             try:
                 home_port = interface['home-port']
                 port, vlan = home_port.split('-')

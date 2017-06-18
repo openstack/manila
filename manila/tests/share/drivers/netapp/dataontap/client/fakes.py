@@ -96,6 +96,27 @@ NETWORK_INTERFACES = [{
     'home-port': VLAN_PORT
 }]
 
+NETWORK_INTERFACES_MULTIPLE = [
+    {
+        'interface_name': 'fake_interface',
+        'address': IP_ADDRESS,
+        'vserver': VSERVER_NAME,
+        'netmask': NETMASK,
+        'role': 'data',
+        'home-node': NODE_NAME,
+        'home-port': VLAN_PORT,
+    },
+    {
+        'interface_name': 'fake_interface_2',
+        'address': '10.10.12.10',
+        'vserver': VSERVER_NAME,
+        'netmask': NETMASK,
+        'role': 'data',
+        'home-node': NODE_NAME,
+        'home-port': PORT,
+    }
+]
+
 IPSPACES = [{
     'uuid': 'fake_uuid',
     'ipspace': IPSPACE_NAME,
