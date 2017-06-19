@@ -120,8 +120,8 @@ class APIRouter(manila.api.openstack.APIRouter):
         mapper.resource("limit", "limits",
                         controller=self.resources['limits'])
 
-        self.resources["security_services"] = \
-            security_service.create_resource()
+        self.resources["security_services"] = (
+            security_service.create_resource())
         mapper.resource("security-service", "security-services",
                         controller=self.resources['security_services'],
                         collection={'detail': 'GET'})

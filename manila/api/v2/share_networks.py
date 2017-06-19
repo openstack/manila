@@ -207,10 +207,10 @@ class ShareNetworkController(wsgi.Controller):
         if share_network['share_servers']:
             for value in update_values:
                 if value not in ['name', 'description']:
-                    msg = _("Cannot update share network %s. It is used by "
-                            "share servers. Only 'name' and 'description' "
-                            "fields are available for update")\
-                        % share_network['id']
+                    msg = (_("Cannot update share network %s. It is used by "
+                             "share servers. Only 'name' and 'description' "
+                             "fields are available for update") %
+                           share_network['id'])
                     raise exc.HTTPForbidden(explanation=msg)
 
         try:
