@@ -230,6 +230,7 @@ USER_NETWORK_ALLOCATIONS = [
         'network_type': 'vlan',
         'label': 'user',
         'mtu': MTU,
+        'gateway': '10.10.10.1',
     },
     {
         'id': '7eabdeed-bad2-46ea-bd0f-a33884c869e0',
@@ -239,6 +240,30 @@ USER_NETWORK_ALLOCATIONS = [
         'network_type': 'vlan',
         'label': 'user',
         'mtu': MTU,
+        'gateway': '10.10.10.1',
+    }
+]
+
+USER_NETWORK_ALLOCATIONS_IPV6 = [
+    {
+        'id': '234dbb10-9a36-46f2-8d89-3d909830c356',
+        'ip_address': 'fd68:1a09:66ab:8d51:0:10:0:1',
+        'cidr': 'fd68:1a09:66ab:8d51::/64',
+        'segmentation_id': '2000',
+        'network_type': 'vlan',
+        'label': 'user',
+        'mtu': MTU,
+        'gateway': 'fd68:1a09:66ab:8d51:0:0:0:1',
+    },
+    {
+        'id': '6677deed-bad2-46ea-bd0f-a33884c869e0',
+        'ip_address': 'fd68:1a09:66ab:8d51:0:10:0:2',
+        'cidr': 'fd68:1a09:66ab:8d51::/64',
+        'segmentation_id': '2000',
+        'network_type': 'vlan',
+        'label': 'user',
+        'mtu': MTU,
+        'gateway': 'fd68:1a09:66ab:8d51:0:0:0:1',
     }
 ]
 
@@ -251,6 +276,7 @@ ADMIN_NETWORK_ALLOCATIONS = [
         'network_type': 'flat',
         'label': 'admin',
         'mtu': MTU,
+        'gateway': '10.10.20.1'
     },
 ]
 
@@ -1199,3 +1225,11 @@ def get_config_cmode():
     config.netapp_volume_snapshot_reserve_percent = 8
     config.netapp_vserver = VSERVER1
     return config
+
+
+def get_network_info(user_network_allocation, admin_network_allocation):
+    net_info = copy.deepcopy(NETWORK_INFO)
+    net_info['network_allocations'] = user_network_allocation
+    net_info['admin_network_allocations'] = admin_network_allocation
+
+    return net_info
