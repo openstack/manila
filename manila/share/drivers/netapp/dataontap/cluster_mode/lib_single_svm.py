@@ -79,8 +79,8 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
                              else 'Vserver')
         LOG.info(msg % msg_args)
 
-        super(NetAppCmodeSingleSVMFileStorageLibrary, self).\
-            check_for_setup_error()
+        (super(NetAppCmodeSingleSVMFileStorageLibrary, self).
+            check_for_setup_error())
 
     @na_utils.trace
     def _get_vserver(self, share_server=None):
@@ -115,8 +115,8 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
         vserver_client.prune_deleted_nfs_export_policies()
         vserver_client.prune_deleted_snapshots()
 
-        super(NetAppCmodeSingleSVMFileStorageLibrary, self).\
-            _handle_housekeeping_tasks()
+        (super(NetAppCmodeSingleSVMFileStorageLibrary, self).
+            _handle_housekeeping_tasks())
 
     @na_utils.trace
     def _find_matching_aggregates(self):

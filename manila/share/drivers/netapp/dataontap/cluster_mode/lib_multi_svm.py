@@ -63,8 +63,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     'netapp_aggregate_name_search_pattern is set correctly.')
             raise exception.NetAppException(msg)
 
-        super(NetAppCmodeMultiSVMFileStorageLibrary, self).\
-            check_for_setup_error()
+        (super(NetAppCmodeMultiSVMFileStorageLibrary, self).
+            check_for_setup_error())
 
     @na_utils.trace
     def _get_vserver(self, share_server=None):
@@ -102,8 +102,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         self._client.prune_deleted_nfs_export_policies()
         self._client.prune_deleted_snapshots()
 
-        super(NetAppCmodeMultiSVMFileStorageLibrary, self).\
-            _handle_housekeeping_tasks()
+        (super(NetAppCmodeMultiSVMFileStorageLibrary, self).
+            _handle_housekeeping_tasks())
 
     @na_utils.trace
     def _find_matching_aggregates(self):
