@@ -71,11 +71,11 @@ class GaneshaConfigTests(test.TestCase):
     ref_ganesha_cnf = """EXPORT {
     CLIENT {
         Clients = ip1;
-        Access_Level = ro;
+        Access_Level = "ro";
     }
     CLIENT {
         Clients = ip2;
-        Access_Level = rw;
+        Access_Level = "rw";
     }
     Export_Id = 101;
 }"""

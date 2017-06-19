@@ -120,6 +120,10 @@ class GaneshaNASHelper(NASHelperBase):
         """Subclass this to create FSAL block."""
         return {}
 
+    def _cleanup_fsal_hook(self, base_path, share, access):
+        """Callback for FSAL specific cleanup after removing an export."""
+        pass
+
     def _allow_access(self, base_path, share, access):
         """Allow access to the share."""
         if access['access_type'] != 'ip':
@@ -239,3 +243,4 @@ class GaneshaNASHelper2(GaneshaNASHelper):
         else:
             # No clients have access to the share. Remove export.
             self.ganesha.remove_export(share['name'])
+            self._cleanup_fsal_hook(None, share, None)

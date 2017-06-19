@@ -141,6 +141,11 @@ def _dump_to_conf(confdict, out=sys.stdout, indent=0):
                     out.write("{\n")
                     _dump_to_conf(item, out, indent + 1)
                     out.write(' ' * (indent * IWIDTH) + '}\n')
+            # The 'CLIENTS' Ganesha string option is an exception in that it's
+            # string value can't be enclosed within quotes as can be done for
+            # other string options in a valid Ganesha conf file.
+            elif k.upper() == 'CLIENTS':
+                out.write(' ' * (indent * IWIDTH) + k + ' = ' + v + ';')
             else:
                 out.write(' ' * (indent * IWIDTH) + k + ' ')
                 out.write('= ')
@@ -149,10 +154,7 @@ def _dump_to_conf(confdict, out=sys.stdout, indent=0):
             out.write('\n')
     else:
         dj = jsonutils.dumps(confdict)
-        if confdict == dj[1:-1]:
-            out.write(confdict)
-        else:
-            out.write(dj)
+        out.write(dj)
 
 
 def parseconf(conf):
