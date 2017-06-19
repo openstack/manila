@@ -524,7 +524,7 @@ class API(base.Base):
             msg = _("Cannot delete last active replica.")
             raise exception.ReplicationException(reason=msg)
 
-        LOG.info("Deleting replica %s.", id)
+        LOG.info("Deleting replica %s.", share_replica['id'])
 
         self.db.share_replica_update(
             context, share_replica['id'],
