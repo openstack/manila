@@ -37,7 +37,6 @@ def upgrade():
     op.add_column(SSI_TABLE_NAME, sa.Column('project_id', sa.String(255)))
     op.add_column(SSI_TABLE_NAME, sa.Column('size', sa.Integer))
     op.add_column(SSI_TABLE_NAME, sa.Column('share_proto', sa.String(255)))
-    op.add_column(SSI_TABLE_NAME, sa.Column('share_id', sa.String(36)))
     op.add_column(
         SSI_TABLE_NAME, sa.Column('share_group_snapshot_id', sa.String(36)))
 
@@ -53,7 +52,6 @@ def upgrade():
         ported_data.append({
             "id": ssgm_record.id,
             "share_group_snapshot_id": ssgm_record.share_group_snapshot_id,
-            "share_id": ssgm_record.share_id,
             "share_instance_id": ssgm_record.share_instance_id,
             "size": ssgm_record.size,
             "status": ssgm_record.status,
@@ -108,25 +106,33 @@ def downgrade():
     # have not null 'share_snapshot_group_id' to new table
     connection = op.get_bind()
     ssi_table = utils.load_table(SSI_TABLE_NAME, connection)
+    share_instances_table = utils.load_table("share_instances", connection)
     ssgm_table = utils.load_table(SGSM_TABLE_NAME, connection)
     ported_data = []
-    for ssi_record in connection.execute(ssi_table.select().where(
-            ssi_table.c.share_group_snapshot_id.isnot(None))):
+    for row in connection.execute(
+            ssi_table.join(
+                share_instances_table,
+                share_instances_table.c.id == ssi_table.c.share_instance_id
+            ).select(use_labels=True).where(
+                ssi_table.c.share_group_snapshot_id.isnot(None),
+            )):
         ported_data.append({
-            "id": ssi_record.id,
-            "share_group_snapshot_id": ssi_record.share_group_snapshot_id,
-            "share_id": ssi_record.share_id,
-            "share_instance_id": ssi_record.share_instance_id,
-            "size": ssi_record.size,
-            "status": ssi_record.status,
-            "share_proto": ssi_record.share_proto,
-            "user_id": ssi_record.user_id,
-            "project_id": ssi_record.project_id,
-            "provider_location": ssi_record.provider_location,
-            "created_at": ssi_record.created_at,
-            "updated_at": ssi_record.updated_at,
-            "deleted_at": ssi_record.deleted_at,
-            "deleted": ssi_record.deleted or "False",
+            "id": row.share_snapshot_instances_id,
+            "share_group_snapshot_id": (
+                row.share_snapshot_instances_share_group_snapshot_id),
+            "share_id": row.share_instances_share_id,
+            "share_instance_id": row.share_instances_id,
+            "size": row.share_snapshot_instances_size,
+            "status": row.share_snapshot_instances_status,
+            "share_proto": row.share_snapshot_instances_share_proto,
+            "user_id": row.share_snapshot_instances_user_id,
+            "project_id": row.share_snapshot_instances_project_id,
+            "provider_location": (
+                row.share_snapshot_instances_provider_location),
+            "created_at": row.share_snapshot_instances_created_at,
+            "updated_at": row.share_snapshot_instances_updated_at,
+            "deleted_at": row.share_snapshot_instances_deleted_at,
+            "deleted": row.share_snapshot_instances_deleted or "False",
         })
 
     # Copy share group snapshot members to new table
@@ -139,7 +145,7 @@ def downgrade():
 
     # Remove redundant fields from 'share_snapshot_instance' table
     for column_name in ('user_id', 'project_id', 'size', 'share_proto',
-                        'share_id', 'share_group_snapshot_id'):
+                        'share_group_snapshot_id'):
         op.drop_column(SSI_TABLE_NAME, column_name)
 
     # Add back FK for 'snapshot_id' field

@@ -40,7 +40,7 @@ class ShareGroupSnapshotViewBuilder(common.ViewBuilder):
                 'project_id': member.get('project_id'),
                 'share_group_snapshot_id': member.get(
                     'share_group_snapshot_id'),
-                'share_id': member.get('share_id'),
+                'share_id': member.get('share_instance', {}).get('share_id'),
                 # TODO(vponomaryov): add 'provider_location' key in Pike.
             }
             members_list.append(member_dict)
@@ -89,7 +89,7 @@ class ShareGroupSnapshotViewBuilder(common.ViewBuilder):
             member_dict = {
                 'id': member.get('id'),
                 'size': member.get('size'),
-                'share_id': member.get('share_id'),
+                'share_id': member.get('share_instance', {}).get('share_id'),
             }
             members_list.append(member_dict)
 

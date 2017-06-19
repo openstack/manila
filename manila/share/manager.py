@@ -3449,7 +3449,6 @@ class ShareManager(manager.SchedulerDependentManager):
             for member in snap_ref['share_group_snapshot_members']:
                 member['share'] = self.db.share_instance_get(
                     context, member['share_instance_id'], with_share_data=True)
-                member['share_id'] = member['share_instance_id']
             if 'share_group' in snap_ref:
                 parent_share_server_id = snap_ref['share_group'][
                     'share_server_id']
@@ -3605,7 +3604,6 @@ class ShareManager(manager.SchedulerDependentManager):
         for member in snap_ref['share_group_snapshot_members']:
             member['share'] = self.db.share_instance_get(
                 context, member['share_instance_id'], with_share_data=True)
-            member['share_id'] = member['share_instance_id']
 
         status = constants.STATUS_AVAILABLE
         now = timeutils.utcnow()
@@ -3704,7 +3702,6 @@ class ShareManager(manager.SchedulerDependentManager):
         for member in snap_ref['share_group_snapshot_members']:
             member['share'] = self.db.share_instance_get(
                 context, member['share_instance_id'], with_share_data=True)
-            member['share_id'] = member['share_instance_id']
 
         snapshot_update = False
 
