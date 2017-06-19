@@ -55,17 +55,18 @@ def upgrade():
         sa.Column('id', sa.Integer))
 
     # NOTE(vponomaryov): field 'deleted' is integer here.
-    existing_extra_specs = session.query(es_table).\
-        filter(es_table.c.spec_key == constants.ExtraSpecs.SNAPSHOT_SUPPORT).\
-        filter(es_table.c.deleted == 0).\
-        all()
+    existing_extra_specs = (session.query(es_table).
+                            filter(es_table.c.spec_key ==
+                                   constants.ExtraSpecs.SNAPSHOT_SUPPORT).
+                            filter(es_table.c.deleted == 0).
+                            all())
     exclude_st_ids = [es.share_type_id for es in existing_extra_specs]
 
     # NOTE(vponomaryov): field 'deleted' is string here.
-    share_types = session.query(st_table).\
-        filter(st_table.c.deleted.in_(('0', 'False', ))).\
-        filter(st_table.c.id.notin_(exclude_st_ids)).\
-        all()
+    share_types = (session.query(st_table).
+                   filter(st_table.c.deleted.in_(('0', 'False', ))).
+                   filter(st_table.c.id.notin_(exclude_st_ids)).
+                   all())
     session.close_all()
 
     extra_specs = []
