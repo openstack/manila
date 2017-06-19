@@ -498,42 +498,42 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                 self.delete_flag = True
 
             if url == "/NFS_SHARE_AUTH_CLIENT":
-                data, self.allow_ro_flag, self.allow_rw_flag = \
-                    allow_access('NFS', method, data)
+                data, self.allow_ro_flag, self.allow_rw_flag = (
+                    allow_access('NFS', method, data))
                 self.allow_flag = True
 
             if url == "/CIFS_SHARE_AUTH_CLIENT":
-                data, self.allow_ro_flag, self.allow_rw_flag = \
-                    allow_access('CIFS', method, data)
+                data, self.allow_ro_flag, self.allow_rw_flag = (
+                    allow_access('CIFS', method, data))
                 self.allow_flag = True
 
-            if url == "/FSSNAPSHOT?TYPE=48&PARENTID=4"\
-                      "&&sortby=TIMESTAMP,d&range=[0-2000]":
+            if url == ("/FSSNAPSHOT?TYPE=48&PARENTID=4"
+                       "&&sortby=TIMESTAMP,d&range=[0-2000]"):
                 data = """{"error":{"code":0},
                 "data":[{"ID":"3",
                 "NAME":"share_snapshot_fake_snapshot_uuid"}]}"""
                 self.delete_flag = True
 
-            if url == "/NFS_SHARE_AUTH_CLIENT?"\
-                      "filter=PARENTID::1&range=[0-100]":
+            if url == ("/NFS_SHARE_AUTH_CLIENT?"
+                       "filter=PARENTID::1&range=[0-100]"):
                 data = """{"error":{"code":0},
                     "data":[{"ID":"0",
                     "NAME":"100.112.0.1_fail"}]}"""
 
-            if url == "/CIFS_SHARE_AUTH_CLIENT?"\
-                      "filter=PARENTID::2&range=[0-100]":
+            if url == ("/CIFS_SHARE_AUTH_CLIENT?"
+                       "filter=PARENTID::2&range=[0-100]"):
                 data = """{"error":{"code":0},
                     "data":[{"ID":"0",
                     "NAME":"user_name_fail"}]}"""
 
-            if url == "/NFS_SHARE_AUTH_CLIENT?"\
-                      "filter=PARENTID::1&range=[100-200]":
+            if url == ("/NFS_SHARE_AUTH_CLIENT?"
+                       "filter=PARENTID::1&range=[100-200]"):
                 data = """{"error":{"code":0},
                     "data":[{"ID":"5",
                     "NAME":"100.112.0.2"}]}"""
 
-            if url == "/CIFS_SHARE_AUTH_CLIENT?"\
-                      "filter=PARENTID::2&range=[100-200]":
+            if url == ("/CIFS_SHARE_AUTH_CLIENT?"
+                       "filter=PARENTID::2&range=[100-200]"):
                 data = """{"error":{"code":0},
                     "data":[{"ID":"6",
                     "NAME":"user_exist"}]}"""
@@ -560,9 +560,9 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                 data = """{"error":{"code":0},"data":{
                             "COUNT":"196"}}"""
 
-            if url == "/NFS_SHARE_AUTH_CLIENT/count?filter=PARENTID::1"\
-                      or url == "/CIFS_SHARE_AUTH_CLIENT/count?filter="\
-                      "PARENTID::2":
+            if (url == "/NFS_SHARE_AUTH_CLIENT/count?filter=PARENTID::1"
+                or url == ("/CIFS_SHARE_AUTH_CLIENT/count?filter="
+                           "PARENTID::2")):
                 data = """{"error":{"code":0},"data":{
                             "COUNT":"196"}}"""
 
@@ -3318,8 +3318,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
 
     def test_setup_server_invalid_ipv4(self):
         netwot_info_invali_ipv4 = self.fake_network_info
-        netwot_info_invali_ipv4['network_allocations'][0]['ip_address'] =\
-            "::1/128"
+        netwot_info_invali_ipv4['network_allocations'][0]['ip_address'] = (
+            "::1/128")
         self.assertRaises(exception.InvalidInput,
                           self.driver._setup_server,
                           netwot_info_invali_ipv4)

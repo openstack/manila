@@ -708,9 +708,9 @@ class ShareAPITestCase(test.TestCase):
 
         self.api.create_instance(self.context, share)
 
-        self.api.scheduler_rpcapi.create_share_instance.\
+        (self.api.scheduler_rpcapi.create_share_instance.
             assert_called_once_with(
-                self.context, request_spec=mock.ANY, filter_properties={})
+                self.context, request_spec=mock.ANY, filter_properties={}))
         self.assertFalse(self.api.share_rpcapi.create_share_instance.called)
 
     def test_create_instance_share_group_snapshot_member(self):
@@ -1432,8 +1432,8 @@ class ShareAPITestCase(test.TestCase):
         self.api.delete_share_server(self.context, server)
         db_api.share_instances_get_all_by_share_server.assert_called_once_with(
             self.context, server['id'])
-        db_api.share_group_get_all_by_share_server.\
-            assert_called_once_with(self.context, server['id'])
+        (db_api.share_group_get_all_by_share_server.
+            assert_called_once_with(self.context, server['id']))
         self.share_rpcapi.delete_share_server.assert_called_once_with(
             self.context, server_returned)
 
@@ -1463,8 +1463,8 @@ class ShareAPITestCase(test.TestCase):
 
         db_api.share_instances_get_all_by_share_server.assert_called_once_with(
             self.context, server['id'])
-        db_api.share_group_get_all_by_share_server.\
-            assert_called_once_with(self.context, server['id'])
+        (db_api.share_group_get_all_by_share_server.
+            assert_called_once_with(self.context, server['id']))
 
     @mock.patch.object(db_api, 'share_snapshot_instance_update', mock.Mock())
     def test_delete_snapshot(self):

@@ -115,8 +115,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library.do_setup(self.context)
 
         mock_get_api_client.assert_called_once_with()
-        self.library._client.check_for_cluster_credentials.\
-            assert_called_once_with()
+        (self.library._client.check_for_cluster_credentials.
+            assert_called_once_with())
         self.assertEqual('fake_perf_library', self.library._perf_library)
 
     def test_check_for_setup_error(self):
@@ -295,8 +295,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         result = self.library._get_aggregate_space()
 
-        self.library._client.get_cluster_aggregate_capacities.\
-            assert_called_once_with(fake.AGGREGATES)
+        (self.library._client.get_cluster_aggregate_capacities.
+            assert_called_once_with(fake.AGGREGATES))
         self.assertDictEqual(fake.AGGREGATE_CAPACITIES, result)
 
     def test_get_aggregate_space_no_cluster_creds(self):
@@ -311,8 +311,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         result = self.library._get_aggregate_space()
 
-        self.library._client.get_vserver_aggregate_capacities.\
-            assert_called_once_with(fake.AGGREGATES)
+        (self.library._client.get_vserver_aggregate_capacities.
+            assert_called_once_with(fake.AGGREGATES))
         self.assertDictEqual(fake.AGGREGATE_CAPACITIES, result)
 
     def test_get_aggregate_node_cluster_creds(self):
@@ -324,8 +324,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         result = self.library._get_aggregate_node(fake.AGGREGATE)
 
-        self.library._client.get_node_for_aggregate.\
-            assert_called_once_with(fake.AGGREGATE)
+        (self.library._client.get_node_for_aggregate.
+            assert_called_once_with(fake.AGGREGATE))
         self.assertEqual(fake.CLUSTER_NODE, result)
 
     def test_get_aggregate_node_no_cluster_creds(self):

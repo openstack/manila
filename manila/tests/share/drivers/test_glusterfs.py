@@ -450,8 +450,8 @@ class GaneshaNFSHelperTestCase(test.TestCase):
 
         ret = self._helper._default_config_hook()
 
-        glusterfs.ganesha.GaneshaNASHelper._default_config_hook.\
-            assert_called_once_with()
+        (glusterfs.ganesha.GaneshaNASHelper._default_config_hook.
+            assert_called_once_with())
         glusterfs.ganesha_utils.path_from.assert_called_once_with(
             glusterfs.__file__, 'conf')
         self._helper._load_conf_dir.assert_called_once_with(

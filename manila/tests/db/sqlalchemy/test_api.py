@@ -1838,11 +1838,12 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
                                                   self.share_nw_dict['id'],
                                                   security_dict1['id'])
 
-        result = db_api.model_query(
-            self.fake_context,
-            models.ShareNetworkSecurityServiceAssociation).\
-            filter_by(security_service_id=security_dict1['id']).\
-            filter_by(share_network_id=self.share_nw_dict['id']).first()
+        result = (db_api.model_query(
+                  self.fake_context,
+                  models.ShareNetworkSecurityServiceAssociation).
+                  filter_by(security_service_id=security_dict1['id']).
+                  filter_by(share_network_id=self.share_nw_dict['id']).
+                  first())
 
         self.assertIsNotNone(result)
 
@@ -1902,11 +1903,11 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
                                                      self.share_nw_dict['id'],
                                                      security_dict1['id'])
 
-        result = db_api.model_query(
-            self.fake_context,
-            models.ShareNetworkSecurityServiceAssociation).\
-            filter_by(security_service_id=security_dict1['id']).\
-            filter_by(share_network_id=self.share_nw_dict['id']).first()
+        result = (db_api.model_query(
+                  self.fake_context,
+                  models.ShareNetworkSecurityServiceAssociation).
+                  filter_by(security_service_id=security_dict1['id']).
+                  filter_by(share_network_id=self.share_nw_dict['id']).first())
 
         self.assertIsNone(result)
 

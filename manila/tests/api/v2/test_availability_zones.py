@@ -72,8 +72,8 @@ class AvailabilityZonesAPITest(test.TestCase):
 
         result = az_controller.index(req)
 
-        availability_zones.db.availability_zone_get_all.\
-            assert_called_once_with(ctxt)
+        (availability_zones.db.availability_zone_get_all.
+            assert_called_once_with(ctxt))
         mock_policy_check.assert_called_once_with(
             ctxt, controller.resource_name, 'index')
         self.assertIsInstance(result, dict)

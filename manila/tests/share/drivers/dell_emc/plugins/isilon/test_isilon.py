@@ -940,8 +940,8 @@ class IsilonTest(test.TestCase):
         }
         access_rules = [access]
         add_rules = [access]
-        self._mock_isilon_api.request.return_value.raise_for_status.\
-            side_effect = HTTPError
+        (self._mock_isilon_api.request.return_value.raise_for_status.
+            side_effect) = HTTPError
 
         rule_map = self.storage_connection.update_access(
             self.mock_context, share, access_rules, add_rules, [])
@@ -966,8 +966,8 @@ class IsilonTest(test.TestCase):
         }
         add_rules = [access]
         access_rules = [access]
-        self._mock_isilon_api.request.return_value.raise_for_status.\
-            side_effect = HTTPError
+        (self._mock_isilon_api.request.return_value.raise_for_status.
+            side_effect) = HTTPError
 
         rule_map = self.storage_connection.update_access(
             self.mock_context, share, access_rules, add_rules, [])
@@ -993,8 +993,8 @@ class IsilonTest(test.TestCase):
         add_rules = [access]
         access_rules = [access]
         message = _('Only "RW" and "RO" access levels are supported.')
-        self._mock_isilon_api.smb_permissions_add.side_effect = \
-            exception.ShareBackendException(message=message)
+        self._mock_isilon_api.smb_permissions_add.side_effect = (
+            exception.ShareBackendException(message=message))
 
         rule_map = self.storage_connection.update_access(
             self.mock_context, share, access_rules, add_rules, [])

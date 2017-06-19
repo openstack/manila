@@ -337,15 +337,15 @@ class NovaApiTestCase(test.TestCase):
         self.mock_object(self.novaclient.volumes, 'create_server_volume')
         self.api.instance_volume_attach(self.ctx, 'instance_id',
                                         'vol_id', 'device')
-        self.novaclient.volumes.create_server_volume.\
-            assert_called_once_with('instance_id', 'vol_id', 'device')
+        (self.novaclient.volumes.create_server_volume.
+            assert_called_once_with('instance_id', 'vol_id', 'device'))
 
     def test_instance_volume_detach(self):
         self.mock_object(self.novaclient.volumes, 'delete_server_volume')
         self.api.instance_volume_detach(self.ctx, 'instance_id',
                                         'att_id')
-        self.novaclient.volumes.delete_server_volume.\
-            assert_called_once_with('instance_id', 'att_id')
+        (self.novaclient.volumes.delete_server_volume.
+            assert_called_once_with('instance_id', 'att_id'))
 
     def test_instance_volumes_list(self):
         self.mock_object(
@@ -369,8 +369,8 @@ class NovaApiTestCase(test.TestCase):
         self.mock_object(self.novaclient.volumes, 'update_server_volume')
         self.api.update_server_volume(self.ctx, 'instance_id', 'att_id',
                                       'new_vol_id')
-        self.novaclient.volumes.update_server_volume.\
-            assert_called_once_with('instance_id', 'att_id', 'new_vol_id')
+        (self.novaclient.volumes.update_server_volume.
+            assert_called_once_with('instance_id', 'att_id', 'new_vol_id'))
 
     def test_keypair_create(self):
         self.mock_object(self.novaclient.keypairs, 'create')
@@ -380,14 +380,14 @@ class NovaApiTestCase(test.TestCase):
     def test_keypair_import(self):
         self.mock_object(self.novaclient.keypairs, 'create')
         self.api.keypair_import(self.ctx, 'keypair_name', 'fake_pub_key')
-        self.novaclient.keypairs.create.\
-            assert_called_once_with('keypair_name', 'fake_pub_key')
+        (self.novaclient.keypairs.create.
+            assert_called_once_with('keypair_name', 'fake_pub_key'))
 
     def test_keypair_delete(self):
         self.mock_object(self.novaclient.keypairs, 'delete')
         self.api.keypair_delete(self.ctx, 'fake_keypair_id')
-        self.novaclient.keypairs.delete.\
-            assert_called_once_with('fake_keypair_id')
+        (self.novaclient.keypairs.delete.
+            assert_called_once_with('fake_keypair_id'))
 
     def test_keypair_list(self):
         self.assertEqual([{'id': 'id1'}, {'id': 'id2'}],

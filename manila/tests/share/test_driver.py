@@ -512,8 +512,8 @@ class ShareDriverTestCase(test.TestCase):
         share_driver.allocate_admin_network(ctxt, share_server)
 
         mock_get_admin_network_allocations_number.assert_called_once_with()
-        share_driver.admin_network_api.allocate_network.\
-            assert_called_once_with(ctxt, share_server, count=1)
+        (share_driver.admin_network_api.allocate_network.
+            assert_called_once_with(ctxt, share_server, count=1))
 
     def test_allocate_admin_network_count_1_api_not_initialized(self):
         share_driver = self._instantiate_share_driver(None, True, None)

@@ -283,13 +283,13 @@ class StandaloneNetworkPluginTest(test.TestCase):
 
         instance.deallocate_network(fake_context, share_server_id)
 
-        instance.db.network_allocations_get_for_share_server.\
-            assert_called_once_with(fake_context, share_server_id)
-        instance.db.network_allocation_delete.\
+        (instance.db.network_allocations_get_for_share_server.
+            assert_called_once_with(fake_context, share_server_id))
+        (instance.db.network_allocation_delete.
             assert_has_calls([
                 mock.call(fake_context, 'fake1'),
                 mock.call(fake_context, 'fake2'),
-            ])
+            ]))
 
     def test_allocate_network_zero_addresses_ipv4(self):
         data = {
