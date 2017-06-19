@@ -609,6 +609,31 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 raise exception.NetAppException(msg % msg_args)
 
     @na_utils.trace
+    def create_route(self, gateway, destination='0.0.0.0/0'):
+        try:
+            api_args = {
+                'destination': destination,
+                'gateway': gateway,
+                'return-record': 'true',
+            }
+            self.send_request('net-routes-create', api_args)
+        except netapp_api.NaApiError as e:
+            p = re.compile('.*Duplicate route exists.*', re.IGNORECASE)
+            if (e.code == netapp_api.EAPIERROR and re.match(p, e.message)):
+                LOG.debug('Route to %(destination)s via gateway %(gateway)s '
+                          'exists.',
+                          {'destination': destination, 'gateway': gateway})
+            else:
+                msg = _('Failed to create a route to %(destination)s via '
+                        'gateway %(gateway)s: %(err_msg)s')
+                msg_args = {
+                    'destination': destination,
+                    'gateway': gateway,
+                    'err_msg': e.message,
+                }
+                raise exception.NetAppException(msg % msg_args)
+
+    @na_utils.trace
     def _ensure_broadcast_domain_for_port(self, node, port, mtu,
                                           ipspace=DEFAULT_IPSPACE):
         """Ensure a port is in a broadcast domain.  Create one if necessary.

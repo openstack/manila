@@ -1045,6 +1045,57 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           fake.PORT,
                           fake.VLAN)
 
+    def test_create_route(self):
+        api_response = netapp_api.NaElement(
+            fake.NET_ROUTES_CREATE_RESPONSE)
+        expected_api_args = {
+            'destination': fake.SUBNET,
+            'gateway': fake.GATEWAY,
+            'return-record': 'true',
+        }
+        self.mock_object(
+            self.client, 'send_request', mock.Mock(return_value=api_response))
+
+        self.client.create_route(fake.GATEWAY, destination=fake.SUBNET)
+
+        self.client.send_request.assert_called_once_with(
+            'net-routes-create', expected_api_args)
+
+    def test_create_route_duplicate(self):
+        self.mock_object(client_cmode.LOG, 'debug')
+        expected_api_args = {
+            'destination': fake.SUBNET,
+            'gateway': fake.GATEWAY,
+            'return-record': 'true',
+        }
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(side_effect=self._mock_api_error(
+                code=netapp_api.EAPIERROR, message='Duplicate route exists.')))
+
+        self.client.create_route(fake.GATEWAY, destination=fake.SUBNET)
+
+        self.client.send_request.assert_called_once_with(
+            'net-routes-create', expected_api_args)
+        self.assertEqual(1, client_cmode.LOG.debug.call_count)
+
+    def test_create_route_api_error(self):
+        expected_api_args = {
+            'destination': fake.SUBNET,
+            'gateway': fake.GATEWAY,
+            'return-record': 'true',
+        }
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(side_effect=self._mock_api_error()))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.create_route,
+                          fake.GATEWAY, destination=fake.SUBNET)
+
+        self.client.send_request.assert_called_once_with(
+            'net-routes-create', expected_api_args)
+
     def test_ensure_broadcast_domain_for_port_domain_match(self):
 
         port_info = {

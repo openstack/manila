@@ -1,0 +1,7 @@
+---
+fixes:
+  - The NetApp DHSS=True driver now creates static routes with the gateway
+    specified on the tenant networks. Potential beneficiaries of this bug-fix
+    are deployers/users whose CIFS security service (e.g. Active Directory)
+    is not part of the tenant network, but a route exists via the tenant
+    network gateway.

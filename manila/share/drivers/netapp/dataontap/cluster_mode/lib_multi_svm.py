@@ -181,6 +181,9 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                                            network_info,
                                            ipspace_name)
 
+            self._create_vserver_routes(vserver_client,
+                                        network_info)
+
             vserver_client.enable_nfs(
                 self.configuration.netapp_enabled_share_protocols)
 
@@ -253,6 +256,20 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         self._create_lif(vserver_client, vserver_name, ipspace_name,
                          node_name, lif_name, network_allocation)
+
+    @na_utils.trace
+    def _create_vserver_routes(self, vserver_client, network_info):
+        """Create Vserver route and set gateways."""
+        route_gateways = []
+        # NOTE(gouthamr): Use the gateway from the tenant subnet/s
+        # for the static routes. Do not configure a route for the admin
+        # subnet because fast path routing will work for incoming
+        # connections and there are no requirements for outgoing
+        # connections on the admin network yet.
+        for net_allocation in (network_info['network_allocations']):
+            if net_allocation['gateway'] not in route_gateways:
+                vserver_client.create_route(net_allocation['gateway'])
+                route_gateways.append(net_allocation['gateway'])
 
     @na_utils.trace
     def _get_node_data_port(self, node):
@@ -358,7 +375,6 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
     @na_utils.trace
     def _delete_vserver_vlans(self, network_interfaces_on_vlans):
         """Delete Vserver's VLAN configuration from ports"""
-
         for interface in network_interfaces_on_vlans:
             try:
                 home_port = interface['home-port']
