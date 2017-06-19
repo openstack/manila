@@ -175,13 +175,13 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.init_host()
 
         self.assertTrue(self.share_manager.driver.initialized)
-        self.share_manager.db.share_instances_get_all_by_host.\
+        (self.share_manager.db.share_instances_get_all_by_host.
             assert_called_once_with(utils.IsAMatcher(context.RequestContext),
-                                    self.share_manager.host)
+                                    self.share_manager.host))
         self.share_manager.driver.do_setup.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext))
-        self.share_manager.driver.check_for_setup_error.\
-            assert_called_once_with()
+        (self.share_manager.driver.check_for_setup_error.
+            assert_called_once_with())
 
     @ddt.data(
         "connection_get_info",
@@ -318,9 +318,9 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.init_host()
 
         # verification of call
-        self.share_manager.db.share_instances_get_all_by_host.\
+        (self.share_manager.db.share_instances_get_all_by_host.
             assert_called_once_with(utils.IsAMatcher(context.RequestContext),
-                                    self.share_manager.host)
+                                    self.share_manager.host))
         exports_update = self.share_manager.db.share_export_locations_update
         exports_update.assert_has_calls([
             mock.call(mock.ANY, instances[0]['id'], fake_export_locations),
@@ -328,8 +328,8 @@ class ShareManagerTestCase(test.TestCase):
         ])
         self.share_manager.driver.do_setup.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext))
-        self.share_manager.driver.check_for_setup_error.\
-            assert_called_once_with()
+        (self.share_manager.driver.check_for_setup_error.
+            assert_called_once_with())
         self.share_manager._ensure_share_instance_has_pool.assert_has_calls([
             mock.call(utils.IsAMatcher(context.RequestContext), instances[0]),
             mock.call(utils.IsAMatcher(context.RequestContext), instances[2]),
@@ -344,9 +344,9 @@ class ShareManagerTestCase(test.TestCase):
             mock.call(utils.IsAMatcher(context.RequestContext), instances[2],
                       share_server=share_server),
         ])
-        self.share_manager.publish_service_capabilities.\
+        (self.share_manager.publish_service_capabilities.
             assert_called_once_with(
-                utils.IsAMatcher(context.RequestContext))
+                utils.IsAMatcher(context.RequestContext)))
         self.share_manager.access_helper.update_access_rules.assert_has_calls([
             mock.call(mock.ANY, instances[4]['id'], share_server=share_server),
         ])
@@ -376,9 +376,9 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.init_host()
 
         # verification of call
-        self.share_manager.db.share_instances_get_all_by_host.\
+        (self.share_manager.db.share_instances_get_all_by_host.
             assert_called_once_with(utils.IsAMatcher(context.RequestContext),
-                                    self.share_manager.host)
+                                    self.share_manager.host))
         self.share_manager.driver.do_setup.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext))
         self.share_manager.driver.check_for_setup_error.assert_called_with()
@@ -396,9 +396,9 @@ class ShareManagerTestCase(test.TestCase):
             mock.call(utils.IsAMatcher(context.RequestContext), instances[2],
                       share_server=share_server),
         ])
-        self.share_manager.publish_service_capabilities.\
+        (self.share_manager.publish_service_capabilities.
             assert_called_once_with(
-                utils.IsAMatcher(context.RequestContext))
+                utils.IsAMatcher(context.RequestContext)))
         manager.LOG.info.assert_any_call(
             mock.ANY,
             {'task': constants.TASK_STATE_MIGRATION_IN_PROGRESS,
@@ -438,9 +438,9 @@ class ShareManagerTestCase(test.TestCase):
         smanager.init_host()
 
         # verification of call
-        smanager.db.share_instances_get_all_by_host.\
+        (smanager.db.share_instances_get_all_by_host.
             assert_called_once_with(utils.IsAMatcher(context.RequestContext),
-                                    smanager.host)
+                                    smanager.host))
         smanager.driver.do_setup.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext))
         smanager.driver.check_for_setup_error.assert_called_with()
@@ -458,9 +458,9 @@ class ShareManagerTestCase(test.TestCase):
             mock.call(utils.IsAMatcher(context.RequestContext), instances[2],
                       share_server=share_server),
         ])
-        self.share_manager.publish_service_capabilities.\
+        (self.share_manager.publish_service_capabilities.
             assert_called_once_with(
-                utils.IsAMatcher(context.RequestContext))
+                utils.IsAMatcher(context.RequestContext)))
         manager.LOG.info.assert_any_call(
             mock.ANY,
             {'task': constants.TASK_STATE_MIGRATION_IN_PROGRESS,
@@ -1769,12 +1769,12 @@ class ShareManagerTestCase(test.TestCase):
             self.context,
             fake_share.instance['id'],
         )
-        db.share_server_get_all_by_host_and_share_net_valid.\
+        (db.share_server_get_all_by_host_and_share_net_valid.
             assert_called_once_with(
                 utils.IsAMatcher(context.RequestContext),
                 self.share_manager.host,
                 fake_share['share_network_id'],
-            )
+            ))
         db.share_server_create.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), mock.ANY)
         db.share_instance_update.assert_has_calls([
@@ -2137,8 +2137,8 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager.manage_share,
             self.context, share_id, driver_options)
 
-        self.share_manager.driver.manage_existing.\
-            assert_called_once_with(mock.ANY, driver_options)
+        (self.share_manager.driver.manage_existing.
+            assert_called_once_with(mock.ANY, driver_options))
 
         self.share_manager.db.share_update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), share_id,
@@ -2163,8 +2163,8 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager.manage_share,
             self.context, share_id, driver_options)
 
-        self.share_manager.driver.manage_existing.\
-            assert_called_once_with(mock.ANY, driver_options)
+        (self.share_manager.driver.manage_existing.
+            assert_called_once_with(mock.ANY, driver_options))
         self.share_manager.db.share_update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), share_id,
             {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
@@ -2190,8 +2190,8 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager.manage_share,
             self.context, share_id, driver_options)
 
-        self.share_manager.driver.manage_existing.\
-            assert_called_once_with(mock.ANY, driver_options)
+        (self.share_manager.driver.manage_existing.
+            assert_called_once_with(mock.ANY, driver_options))
         self.share_manager.db.share_update.assert_called_once_with(
             mock.ANY, share_id,
             {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
@@ -2226,13 +2226,13 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.manage_share(self.context, share_id, driver_options)
 
-        self.share_manager.driver.manage_existing.\
-            assert_called_once_with(mock.ANY, driver_options)
+        (self.share_manager.driver.manage_existing.
+            assert_called_once_with(mock.ANY, driver_options))
         if export_locations:
-            self.share_manager.db.share_export_locations_update.\
+            (self.share_manager.db.share_export_locations_update.
                 assert_called_once_with(
                     utils.IsAMatcher(context.RequestContext),
-                    share.instance['id'], export_locations, delete=True)
+                    share.instance['id'], export_locations, delete=True))
         else:
             self.assertFalse(
                 self.share_manager.db.share_export_locations_update.called)
@@ -2328,8 +2328,8 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.unmanage_share(self.context, share_id)
 
-        self.share_manager.driver.unmanage.\
-            assert_called_once_with(mock.ANY)
+        (self.share_manager.driver.unmanage.
+            assert_called_once_with(mock.ANY))
         self.share_manager.db.share_instance_delete.assert_called_once_with(
             mock.ANY, share_instance_id)
 
@@ -2344,8 +2344,8 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.unmanage_share(self.context, share['id'])
 
-        self.share_manager.driver.unmanage.\
-            assert_called_once_with(mock.ANY)
+        (self.share_manager.driver.unmanage.
+            assert_called_once_with(mock.ANY))
         self.share_manager.db.share_instance_delete.assert_called_once_with(
             mock.ANY, share_instance_id)
 
@@ -2628,7 +2628,7 @@ class ShareManagerTestCase(test.TestCase):
             network_info)
         self.share_manager.driver.setup_server.assert_called_once_with(
             network_info, metadata=metadata)
-        self.share_manager.db.share_server_backend_details_set.\
+        (self.share_manager.db.share_server_backend_details_set.
             assert_has_calls([
                 mock.call(self.context, share_server['id'],
                           {'security_service_' + sec_services[0]['type']:
@@ -2640,7 +2640,7 @@ class ShareManagerTestCase(test.TestCase):
                           {'security_service_' + sec_services[2]['type']:
                               jsonutils.dumps(sec_services[2])}),
                 mock.call(self.context, share_server['id'], server_info),
-            ])
+            ]))
         self.share_manager.db.share_server_update.assert_called_once_with(
             self.context, share_server['id'],
             {'status': constants.STATUS_ACTIVE})
@@ -2734,9 +2734,9 @@ class ShareManagerTestCase(test.TestCase):
 
         # verify results
         if detail_data_proper:
-            self.share_manager.db.share_server_backend_details_set.\
+            (self.share_manager.db.share_server_backend_details_set.
                 assert_called_once_with(
-                    self.context, share_server['id'], server_info)
+                    self.context, share_server['id'], server_info))
         self.share_manager._form_server_setup_info.assert_called_once_with(
             self.context, share_server, share_network)
         self.share_manager.db.share_server_update.assert_called_once_with(
@@ -2887,11 +2887,11 @@ class ShareManagerTestCase(test.TestCase):
             self.context, fake_share_server, fake_share_network)
 
         self.assertEqual(expected, network_info)
-        self.share_manager.db.network_allocations_get_for_share_server.\
+        (self.share_manager.db.network_allocations_get_for_share_server.
             assert_has_calls([
                 mock.call(self.context, fake_share_server['id'], label='user'),
                 mock.call(self.context, fake_share_server['id'], label='admin')
-            ])
+            ]))
 
     @ddt.data(
         {'network_info': {'network_type': 'vlan', 'segmentation_id': '100'}},
@@ -3315,8 +3315,8 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.create_share_group(self.context, "fake_id")
 
-        self.share_manager.db.share_group_update.\
-            assert_any_call(mock.ANY, 'fake_id', {'foo': 'bar'})
+        (self.share_manager.db.share_group_update.
+            assert_any_call(mock.ANY, 'fake_id', {'foo': 'bar'}))
         self.share_manager.db.share_group_update.assert_any_call(
             mock.ANY, 'fake_id', {
                 'status': constants.STATUS_AVAILABLE,
@@ -4090,8 +4090,8 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager.migration_wait_access_rules_timeout)
 
         if exc is None:
-            self.share_manager.driver.connection_get_info.\
-                assert_called_once_with(self.context, instance, server)
+            (self.share_manager.driver.connection_get_info.
+                assert_called_once_with(self.context, instance, server))
             rpcapi.ShareAPI.connection_get_info.assert_called_once_with(
                 self.context, new_instance)
             data_rpc.DataAPI.migration_start.assert_called_once_with(
@@ -4676,9 +4676,10 @@ class ShareManagerTestCase(test.TestCase):
              assert_called_once_with(self.context, share, instance['id'],
                                      helper=helper, supress_errors=cancelled))
         if status == constants.TASK_STATE_MIGRATION_CANCELLED:
-            self.share_manager.db.share_instance_update.\
-                assert_called_once_with(self.context, instance['id'],
-                                        {'status': constants.STATUS_AVAILABLE})
+            (self.share_manager.db.share_instance_update.
+                assert_called_once_with(
+                    self.context, instance['id'],
+                    {'status': constants.STATUS_AVAILABLE}))
             self.share_manager.db.share_update.assert_called_once_with(
                 self.context, share['id'],
                 {'task_state': constants.TASK_STATE_MIGRATION_CANCELLED})
@@ -4847,8 +4848,8 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.share_update.assert_called_once_with(
             self.context, share['id'],
             {'task_state': constants.TASK_STATE_MIGRATION_COMPLETING})
-        migration_api.ShareMigrationHelper.apply_new_access_rules.\
-            assert_called_once_with(new_instance)
+        (migration_api.ShareMigrationHelper.apply_new_access_rules.
+            assert_called_once_with(new_instance))
         delete_mock.assert_called_once_with(instance)
 
     @ddt.data(constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS,

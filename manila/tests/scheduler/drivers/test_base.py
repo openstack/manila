@@ -50,8 +50,8 @@ class SchedulerTestCase(test.TestCase):
                                'update_service_capabilities', mock.Mock()):
             self.driver.update_service_capabilities(
                 service_name, host, capabilities)
-            self.driver.host_manager.update_service_capabilities.\
-                assert_called_once_with(service_name, host, capabilities)
+            (self.driver.host_manager.update_service_capabilities.
+                assert_called_once_with(service_name, host, capabilities))
 
     def test_hosts_up(self):
         service1 = {'host': 'host1'}

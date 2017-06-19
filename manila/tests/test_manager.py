@@ -110,9 +110,9 @@ class SchedulerDependentManagerTestCase(test.TestCase):
 
         self.sched_manager._publish_service_capabilities(self.context)
 
-        self.sched_manager.scheduler_rpcapi.update_service_capabilities.\
+        (self.sched_manager.scheduler_rpcapi.update_service_capabilities.
             assert_called_once_with(
-                self.context, self.service_name, self.host, last_capabilities)
+                self.context, self.service_name, self.host, last_capabilities))
         manager.LOG.debug.assert_called_once_with(mock.ANY)
 
     @ddt.data(None, '', [], {}, {'foo': 'bar'})

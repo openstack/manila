@@ -632,8 +632,8 @@ class IsilonApiTest(test.TestCase):
             }
             m.get(papi_share_url, status_code=200, json=share_data)
 
-            auth_url = '{0}/platform/1/auth/mapping/users/lookup?user={1}' \
-                       ''.format(self._mock_url, user)
+            auth_url = ('{0}/platform/1/auth/mapping/users/lookup?user={1}'
+                        ''.format(self._mock_url, user))
             example_sid = 'SID:S-1-5-21'
             sid_json = {
                 'id': example_sid,
@@ -675,8 +675,8 @@ class IsilonApiTest(test.TestCase):
         }
         m.get(papi_share_url, status_code=200, json=share_data)
 
-        auth_url = '{0}/platform/1/auth/mapping/users/lookup?user={1}' \
-                   ''.format(self._mock_url, user)
+        auth_url = ('{0}/platform/1/auth/mapping/users/lookup?user={1}'
+                    ''.format(self._mock_url, user))
         example_sid = 'SID:S-1-5-21'
         sid_json = {
             'id': example_sid,

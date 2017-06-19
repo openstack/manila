@@ -98,8 +98,8 @@ def make_create_body(name="test_share_1", extra_specs=None,
         extra_specs = {}
 
     if spec_driver_handles_share_servers is not None:
-        extra_specs[constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS] =\
-            spec_driver_handles_share_servers
+        extra_specs[constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS] = (
+            spec_driver_handles_share_servers)
 
     body = {
         "share_type": {

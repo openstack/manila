@@ -836,9 +836,9 @@ class HostStateTestCase(test.TestCase):
                                                context=fake_context)
 
         result = fake_host.__repr__()
-        expected = "host: 'host1', free_capacity_gb: None, " \
-                   "pools: {'Backend1': host: 'host1#Backend1', " \
-                   "free_capacity_gb: 15000, pools: None}"
+        expected = ("host: 'host1', free_capacity_gb: None, "
+                    "pools: {'Backend1': host: 'host1#Backend1', "
+                    "free_capacity_gb: 15000, pools: None}")
         self.assertEqual(expected, result)
 
 

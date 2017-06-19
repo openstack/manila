@@ -63,9 +63,9 @@ class ShareUnmanageTest(test.TestCase):
         actual_result = self.controller.unmanage(self.request, share['id'])
 
         self.assertEqual(202, actual_result.status_int)
-        self.controller.share_api.db.share_snapshot_get_all_for_share.\
+        (self.controller.share_api.db.share_snapshot_get_all_for_share.
             assert_called_once_with(
-                self.request.environ['manila.context'], share['id'])
+                self.request.environ['manila.context'], share['id']))
         self.controller.share_api.get.assert_called_once_with(
             self.request.environ['manila.context'], share['id'])
         share_api.API.unmanage.assert_called_once_with(
@@ -90,9 +90,9 @@ class ShareUnmanageTest(test.TestCase):
             self.controller.unmanage, self.request, share['id'])
 
         self.assertFalse(self.controller.share_api.unmanage.called)
-        self.controller.share_api.db.share_snapshot_get_all_for_share.\
+        (self.controller.share_api.db.share_snapshot_get_all_for_share.
             assert_called_once_with(
-                self.request.environ['manila.context'], share['id'])
+                self.request.environ['manila.context'], share['id']))
         self.controller.share_api.get.assert_called_once_with(
             self.request.environ['manila.context'], share['id'])
         self.mock_policy_check.assert_called_once_with(

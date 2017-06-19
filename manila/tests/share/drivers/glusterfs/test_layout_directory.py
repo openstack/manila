@@ -182,8 +182,8 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
         self.assertTrue(common._mount_gluster_vol.called)
 
     def test_ensure_gluster_vol_mounted_error(self):
-        common._mount_gluster_vol =\
-            mock.Mock(side_effect=exception.GlusterfsException)
+        common._mount_gluster_vol = (
+            mock.Mock(side_effect=exception.GlusterfsException))
 
         self.assertRaises(exception.GlusterfsException,
                           self._layout._ensure_gluster_vol_mounted)
@@ -205,12 +205,12 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
     def test_update_share_stats(self):
         test_statvfs = mock.Mock(f_frsize=4096, f_blocks=524288,
                                  f_bavail=524288)
-        self._layout._get_mount_point_for_gluster_vol = \
-            mock.Mock(return_value='/mnt/nfs/testvol')
+        self._layout._get_mount_point_for_gluster_vol = (
+            mock.Mock(return_value='/mnt/nfs/testvol'))
         some_no = 42
         not_some_no = some_no + 1
-        os_stat = lambda path: mock.Mock(st_dev=some_no) if path == '/mnt/nfs' \
-            else mock.Mock(st_dev=not_some_no)
+        os_stat = (lambda path: mock.Mock(st_dev=some_no) if path == '/mnt/nfs'
+                   else mock.Mock(st_dev=not_some_no))
         with mock.patch.object(os, 'statvfs', return_value=test_statvfs):
             with mock.patch.object(os, 'stat', os_stat):
 
@@ -223,8 +223,8 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
                 self.assertEqual(test_data, ret)
 
     def test_update_share_stats_gluster_mnt_unavailable(self):
-        self._layout._get_mount_point_for_gluster_vol = \
-            mock.Mock(return_value='/mnt/nfs/testvol')
+        self._layout._get_mount_point_for_gluster_vol = (
+            mock.Mock(return_value='/mnt/nfs/testvol'))
         some_no = 42
         with mock.patch.object(os, 'stat',
                                return_value=mock.Mock(st_dev=some_no)):
@@ -342,8 +342,8 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
         self.assertIsNone(ret)
 
     def test_delete_share(self):
-        self._layout._get_local_share_path =\
-            mock.Mock(return_value='/mnt/nfs/testvol/fakename')
+        self._layout._get_local_share_path = (
+            mock.Mock(return_value='/mnt/nfs/testvol/fakename'))
 
         self._layout.delete_share(self._context, self.share)
 
@@ -351,8 +351,8 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
                          fake_utils.fake_execute_get_log())
 
     def test_cannot_delete_share(self):
-        self._layout._get_local_share_path =\
-            mock.Mock(return_value='/mnt/nfs/testvol/fakename')
+        self._layout._get_local_share_path = (
+            mock.Mock(return_value='/mnt/nfs/testvol/fakename'))
 
         def exec_runner(*ignore_args, **ignore_kw):
             raise exception.ProcessExecutionError

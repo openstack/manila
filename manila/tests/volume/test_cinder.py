@@ -263,14 +263,14 @@ class CinderApiTestCase(test.TestCase):
     def test_initialize_connection(self):
         self.mock_object(self.cinderclient.volumes, 'initialize_connection')
         self.api.initialize_connection(self.ctx, 'id1', 'connector')
-        self.cinderclient.volumes.initialize_connection.\
-            assert_called_once_with('id1', 'connector')
+        (self.cinderclient.volumes.initialize_connection.
+         assert_called_once_with('id1', 'connector'))
 
     def test_terminate_connection(self):
         self.mock_object(self.cinderclient.volumes, 'terminate_connection')
         self.api.terminate_connection(self.ctx, 'id1', 'connector')
-        self.cinderclient.volumes.terminate_connection.\
-            assert_called_once_with('id1', 'connector')
+        (self.cinderclient.volumes.terminate_connection.
+         assert_called_once_with('id1', 'connector'))
 
     def test_delete(self):
         self.mock_object(self.cinderclient.volumes, 'delete')

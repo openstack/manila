@@ -225,9 +225,9 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         for k, v in data.items():
             self.assertIn(k, res_dict['extra_specs'])
             self.assertEqual(v, res_dict['extra_specs'][k])
-        manila.db.share_type_extra_specs_update_or_create.\
+        (manila.db.share_type_extra_specs_update_or_create.
             assert_called_once_with(
-                req.environ['manila.context'], 1, body['extra_specs'])
+                req.environ['manila.context'], 1, body['extra_specs']))
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'create')
 
@@ -277,9 +277,9 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
         self.assertEqual(mock_return_value['key1'],
                          res_dict['extra_specs']['other_alphanum.-_:'])
-        manila.db.share_type_extra_specs_update_or_create.\
+        (manila.db.share_type_extra_specs_update_or_create.
             assert_called_once_with(
-                req.environ['manila.context'], 1, body['extra_specs'])
+                req.environ['manila.context'], 1, body['extra_specs']))
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'create')
 
@@ -312,8 +312,8 @@ class ShareTypesExtraSpecsTest(test.TestCase):
                          res_dict['extra_specs']['other2_alphanum.-_:'])
         self.assertEqual(mock_return_value['key3'],
                          res_dict['extra_specs']['other3_alphanum.-_:'])
-        manila.db.share_type_extra_specs_update_or_create.\
-            assert_called_once_with(req_context, 1, body['extra_specs'])
+        (manila.db.share_type_extra_specs_update_or_create.
+            assert_called_once_with(req_context, 1, body['extra_specs']))
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'create')
 
@@ -332,8 +332,8 @@ class ShareTypesExtraSpecsTest(test.TestCase):
 
         self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
         self.assertTrue(res_dict[DRIVER_HANDLES_SHARE_SERVERS])
-        manila.db.share_type_extra_specs_update_or_create.\
-            assert_called_once_with(req_context, 1, body)
+        (manila.db.share_type_extra_specs_update_or_create.
+            assert_called_once_with(req_context, 1, body))
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'update')
 

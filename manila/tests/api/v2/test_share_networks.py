@@ -217,9 +217,9 @@ class ShareNetworkAPITest(test.TestCase):
 
         db_api.share_network_get.assert_called_once_with(
             self.req.environ['manila.context'], share_nw['id'])
-        db_api.share_instances_get_all_by_share_network.\
+        (db_api.share_instances_get_all_by_share_network.
             assert_called_once_with(self.req.environ['manila.context'],
-                                    share_nw['id'])
+                                    share_nw['id']))
         self.controller.share_rpcapi.delete_share_server.assert_has_calls([
             mock.call(self.req.environ['manila.context'], 'foo'),
             mock.call(self.req.environ['manila.context'], 'bar')])
@@ -257,9 +257,9 @@ class ShareNetworkAPITest(test.TestCase):
         db_api.share_network_get.assert_called_once_with(
             self.req.environ['manila.context'], share_nw['id'])
 
-        db_api.share_instances_get_all_by_share_network.\
+        (db_api.share_instances_get_all_by_share_network.
             assert_called_once_with(self.req.environ['manila.context'],
-                                    share_nw['id'])
+                                    share_nw['id']))
 
         self.controller.share_rpcapi.delete_share_server.assert_has_calls([
             mock.call(self.req.environ['manila.context'], 'foo'),
@@ -288,9 +288,9 @@ class ShareNetworkAPITest(test.TestCase):
 
         db_api.share_network_get.assert_called_once_with(
             self.req.environ['manila.context'], share_nw['id'])
-        db_api.share_instances_get_all_by_share_network.\
+        (db_api.share_instances_get_all_by_share_network.
             assert_called_once_with(self.req.environ['manila.context'],
-                                    share_nw['id'])
+                                    share_nw['id']))
 
     def test_delete_in_use_by_share_group(self):
         share_nw = fake_share_network.copy()
@@ -376,9 +376,9 @@ class ShareNetworkAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank(
             '/share_networks?security_service_id=fake-ss-id')
         result = self.controller.index(req)
-        db_api.share_network_get_all_by_security_service.\
+        (db_api.share_network_get_all_by_security_service.
             assert_called_once_with(req.environ['manila.context'],
-                                    'fake-ss-id')
+                                    'fake-ss-id'))
         self.assertEqual(1, len(result[share_networks.RESOURCES_NAME]))
         self._check_share_network_view_shortened(
             result[share_networks.RESOURCES_NAME][0],
@@ -442,9 +442,9 @@ class ShareNetworkAPITest(test.TestCase):
             '/share_networks?security_service_id=fake-ss-id&project_id=fake',
             use_admin_context=True)
         result = self.controller.index(req)
-        db_api.share_network_get_all_by_security_service.\
+        (db_api.share_network_get_all_by_security_service.
             assert_called_once_with(req.environ['manila.context'],
-                                    'fake-ss-id')
+                                    'fake-ss-id'))
         self.assertEqual(1, len(result[share_networks.RESOURCES_NAME]))
         self._check_share_network_view_shortened(
             result[share_networks.RESOURCES_NAME][0],

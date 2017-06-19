@@ -64,8 +64,8 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
 
         self.helper.delete_share(fake.NFS_SHARE, fake.SHARE_NAME)
 
-        self.mock_client.clear_nfs_export_policy_for_volume.\
-            assert_called_once_with(fake.SHARE_NAME)
+        (self.mock_client.clear_nfs_export_policy_for_volume.
+            assert_called_once_with(fake.SHARE_NAME))
         self.mock_client.soft_delete_nfs_export_policy.assert_called_once_with(
             fake.EXPORT_POLICY_NAME)
 
@@ -230,8 +230,8 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
 
         self.mock_client.create_nfs_export_policy.assert_called_once_with(
             fake.EXPORT_POLICY_NAME)
-        self.mock_client.set_nfs_export_policy_for_volume.\
-            assert_called_once_with(fake.SHARE_NAME, fake.EXPORT_POLICY_NAME)
+        (self.mock_client.set_nfs_export_policy_for_volume.
+            assert_called_once_with(fake.SHARE_NAME, fake.EXPORT_POLICY_NAME))
         self.assertFalse(self.mock_client.rename_nfs_export_policy.called)
 
     def test_ensure_export_policy_rename(self):

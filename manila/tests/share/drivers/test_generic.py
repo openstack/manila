@@ -179,8 +179,8 @@ class GenericShareDriverTestCase(test.TestCase):
         compute.API.assert_called_once_with()
         self._driver._setup_helpers.assert_called_once_with()
         if not dhss:
-            self._driver.service_instance_manager.get_common_server.\
-                assert_called_once_with()
+            (self._driver.service_instance_manager.get_common_server.
+                assert_called_once_with())
             self._driver._is_share_server_active.assert_called_once_with(
                 self._context, fake_server)
         else:
@@ -213,8 +213,8 @@ class GenericShareDriverTestCase(test.TestCase):
         volume.API.assert_called_once_with()
         compute.API.assert_called_once_with()
         self._driver._setup_helpers.assert_called_once_with()
-        self._driver.service_instance_manager.get_common_server.\
-            assert_has_calls([mock.call()] * 3)
+        (self._driver.service_instance_manager.get_common_server.
+            assert_has_calls([mock.call()] * 3))
         self._driver._is_share_server_active.assert_has_calls(
             [mock.call(self._context, fake_server)] * 2)
         mock_sleep.assert_has_calls([mock.call(5)] * 2)
@@ -543,9 +543,9 @@ class GenericShareDriverTestCase(test.TestCase):
         result = self._driver._attach_volume(self._context, self.share,
                                              'fake_inst_id', available_volume)
 
-        self._driver.compute_api.instance_volume_attach.\
+        (self._driver.compute_api.instance_volume_attach.
             assert_called_once_with(self._context, 'fake_inst_id',
-                                    available_volume['id'])
+                                    available_volume['id']))
         self._driver.volume_api.get.assert_called_once_with(
             self._context, attached_volume['id'])
         self.assertEqual(attached_volume, result)
@@ -732,11 +732,11 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver._detach_volume(self._context, self.share,
                                     self.server['backend_details'])
 
-        self._driver.compute_api.instance_volume_detach.\
+        (self._driver.compute_api.instance_volume_detach.
             assert_called_once_with(
                 self._context,
                 self.server['backend_details']['instance_id'],
-                available_volume['id'])
+                available_volume['id']))
         self._driver.volume_api.get.assert_called_once_with(
             self._context, available_volume['id'])
 
@@ -944,13 +944,13 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self._driver.delete_share(self._context, self.share)
 
-        self._driver.service_instance_manager.get_common_server.\
-            assert_called_once_with()
+        (self._driver.service_instance_manager.get_common_server.
+            assert_called_once_with())
         self._driver._deallocate_container.assert_called_once_with(
             self._driver.admin_context, self.share)
-        self._driver.service_instance_manager.ensure_service_instance.\
+        (self._driver.service_instance_manager.ensure_service_instance.
             assert_called_once_with(
-                self._context, self.server['backend_details'])
+                self._context, self.server['backend_details']))
 
     def test_delete_share(self):
         self.mock_object(self._driver, '_unmount_device')
@@ -969,9 +969,9 @@ class GenericShareDriverTestCase(test.TestCase):
             self.server['backend_details'])
         self._driver._deallocate_container.assert_called_once_with(
             self._driver.admin_context, self.share)
-        self._driver.service_instance_manager.ensure_service_instance.\
+        (self._driver.service_instance_manager.ensure_service_instance.
             assert_called_once_with(
-                self._context, self.server['backend_details'])
+                self._context, self.server['backend_details']))
 
     def test_detach_volume_with_volume_not_found(self):
         fake_vol = fake_volume.FakeVolume()
@@ -1048,9 +1048,9 @@ class GenericShareDriverTestCase(test.TestCase):
         self.assertFalse(self._driver._detach_volume.called)
         self._driver._deallocate_container.assert_called_once_with(
             self._driver.admin_context, self.share)
-        self._driver.service_instance_manager.ensure_service_instance.\
+        (self._driver.service_instance_manager.ensure_service_instance.
             assert_called_once_with(
-                self._context, self.server['backend_details'])
+                self._context, self.server['backend_details']))
 
     def test_delete_share_invalid_helper(self):
         self._driver._helpers = {'CIFS': self._helper_cifs}
@@ -1156,10 +1156,10 @@ class GenericShareDriverTestCase(test.TestCase):
                                    share_server=self.server)
 
         # asserts
-        self._driver._helpers[self.share['share_proto']].\
+        (self._driver._helpers[self.share['share_proto']].
             update_access.assert_called_once_with(
                 self.server['backend_details'], self.share['name'],
-                access_rules, add_rules=add_rules, delete_rules=delete_rules)
+                access_rules, add_rules=add_rules, delete_rules=delete_rules))
 
     @ddt.data(fake_share.fake_share(),
               fake_share.fake_share(share_proto='NFSBOGUS'),
@@ -1201,9 +1201,9 @@ class GenericShareDriverTestCase(test.TestCase):
             'router_id': 'fake_router_id',
         }
         self._driver.teardown_server(server_details)
-        self._driver.service_instance_manager.delete_service_instance.\
+        (self._driver.service_instance_manager.delete_service_instance.
             assert_called_once_with(
-                self._driver.admin_context, server_details)
+                self._driver.admin_context, server_details))
 
     def test_ssh_exec_connection_not_exist(self):
         ssh_conn_timeout = 30
@@ -1372,9 +1372,9 @@ class GenericShareDriverTestCase(test.TestCase):
             self._driver.service_instance_manager.get_common_server.call_count)
         self._driver._is_device_mounted.assert_called_once_with(
             fake_path, None)
-        self._driver._helpers[share['share_proto']].\
+        (self._driver._helpers[share['share_proto']].
             get_share_path_by_export_location.assert_called_once_with(
-                None, share['export_locations'][0]['path'])
+                None, share['export_locations'][0]['path']))
 
     def test_manage_share_not_attached_to_cinder_volume_invalid_size(self):
         share = get_fake_manage_share()
@@ -1397,9 +1397,9 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self._driver._get_mounted_share_size.assert_called_once_with(
             fake_path, server_details)
-        self._driver._helpers[share['share_proto']].\
+        (self._driver._helpers[share['share_proto']].
             get_share_path_by_export_location.assert_called_once_with(
-                server_details, share['export_locations'][0]['path'])
+                server_details, share['export_locations'][0]['path']))
 
     def test_manage_share_not_attached_to_cinder_volume(self):
         share = get_fake_manage_share()
@@ -1424,12 +1424,12 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self.assertEqual(
             {'size': share_size, 'export_locations': fake_exports}, result)
-        self._driver._helpers[share['share_proto']].get_exports_for_share.\
+        (self._driver._helpers[share['share_proto']].get_exports_for_share.
             assert_called_once_with(
-                server_details, share['export_locations'][0]['path'])
-        self._driver._helpers[share['share_proto']].\
+                server_details, share['export_locations'][0]['path']))
+        (self._driver._helpers[share['share_proto']].
             get_share_path_by_export_location.assert_called_once_with(
-                server_details, share['export_locations'][0]['path'])
+                server_details, share['export_locations'][0]['path']))
         self._driver._get_mounted_share_size.assert_called_once_with(
             fake_path, server_details)
         self.assertFalse(self._driver._get_volume.called)
@@ -1493,9 +1493,9 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self.assertEqual(
             {'size': fake_size, 'export_locations': fake_exports}, result)
-        self._driver._helpers[share['share_proto']].get_exports_for_share.\
+        (self._driver._helpers[share['share_proto']].get_exports_for_share.
             assert_called_once_with(
-                server_details, share['export_locations'][0]['path'])
+                server_details, share['export_locations'][0]['path']))
         expected_volume_update = {
             'name': self._driver._get_volume_name(share['id'])
         }
@@ -1602,10 +1602,10 @@ class GenericShareDriverTestCase(test.TestCase):
             self.assertFalse(self._driver._extend_volume.called)
             self.assertFalse(self._driver._attach_volume.called)
 
-        self._helper_nfs.disable_access_for_maintenance.\
-            assert_called_once_with(srv_details, 'test_share')
-        self._helper_nfs.restore_access_after_maintenance.\
-            assert_called_once_with(srv_details, 'test_share')
+        (self._helper_nfs.disable_access_for_maintenance.
+            assert_called_once_with(srv_details, 'test_share'))
+        (self._helper_nfs.restore_access_after_maintenance.
+            assert_called_once_with(srv_details, 'test_share'))
         self.assertTrue(self._driver._resize_filesystem.called)
 
     def test_extend_volume(self):
@@ -1828,11 +1828,11 @@ class GenericDriverEnsureServerTestCase(test.TestCase):
         actual = fake(self.dhss_false, self._context)
 
         self.assertEqual(self.server, actual)
-        self.dhss_false.service_instance_manager.\
-            get_common_server.assert_called_once_with()
-        self.dhss_false.service_instance_manager.ensure_service_instance.\
+        (self.dhss_false.service_instance_manager.
+            get_common_server.assert_called_once_with())
+        (self.dhss_false.service_instance_manager.ensure_service_instance.
             assert_called_once_with(
-                self._context, self.server['backend_details'])
+                self._context, self.server['backend_details']))
 
     @ddt.data({'id': 'without_details'},
               {'id': 'with_details', 'backend_details': {'foo': 'bar'}})
@@ -1849,9 +1849,9 @@ class GenericDriverEnsureServerTestCase(test.TestCase):
         actual = fake(self.dhss_true, self._context, share_server=self.server)
 
         self.assertEqual(self.server, actual)
-        self.dhss_true.service_instance_manager.ensure_service_instance.\
+        (self.dhss_true.service_instance_manager.ensure_service_instance.
             assert_called_once_with(
-                self._context, self.server['backend_details'])
+                self._context, self.server['backend_details']))
 
     def test_share_servers_are_handled_invalid_server_provided(self):
         server = {'id': 'without_details'}

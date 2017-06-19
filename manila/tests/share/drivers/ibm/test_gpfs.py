@@ -92,12 +92,12 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
         self.remote_ip2 = "2.2.2.2"
         gpfs_nfs_server_list = [self.remote_ip, self.local_ip, self.remote_ip2,
                                 "fake_location"]
-        self._knfs_helper.configuration.gpfs_nfs_server_list = \
-            gpfs_nfs_server_list
-        self._ces_helper.configuration.gpfs_nfs_server_list = \
-            gpfs_nfs_server_list
-        self._ces_helper.configuration.ganesha_config_path = \
-            "fake_ganesha_config_path"
+        self._knfs_helper.configuration.gpfs_nfs_server_list = (
+            gpfs_nfs_server_list)
+        self._ces_helper.configuration.gpfs_nfs_server_list = (
+            gpfs_nfs_server_list)
+        self._ces_helper.configuration.ganesha_config_path = (
+            "fake_ganesha_config_path")
         self.sshlogin = "fake_login"
         self.sshkey = "fake_sshkey"
         self.gservice = "fake_ganesha_service"
@@ -233,22 +233,22 @@ mmcesnfslsexport:nfsexports:HEADER:version:reserved:reserved:Path:Delegations:Cl
 
     def test__local_path(self):
         sharename = 'fakesharename'
-        self._driver.configuration.gpfs_mount_point_base =\
-            self.fakefspath
+        self._driver.configuration.gpfs_mount_point_base = (
+            self.fakefspath)
         local_path = self._driver._local_path(sharename)
         self.assertEqual(self.fakefspath + '/' + sharename,
                          local_path)
 
     def test__get_share_path(self):
-        self._driver.configuration.gpfs_mount_point_base =\
-            self.fakefspath
+        self._driver.configuration.gpfs_mount_point_base = (
+            self.fakefspath)
         share_path = self._driver._get_share_path(self.share)
         self.assertEqual(self.fakefspath + '/' + self.share['name'],
                          share_path)
 
     def test__get_snapshot_path(self):
-        self._driver.configuration.gpfs_mount_point_base =\
-            self.fakefspath
+        self._driver.configuration.gpfs_mount_point_base = (
+            self.fakefspath)
         snapshot_path = self._driver._get_snapshot_path(self.snapshot)
         self.assertEqual(self.fakefspath + '/' + self.snapshot['share_name'] +
                          '/.snapshots/' + self.snapshot['name'],

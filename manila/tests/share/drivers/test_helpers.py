@@ -551,8 +551,8 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
             "metadata": {"export_location_metadata_example": "example"}
         }]
         self.assertEqual(expected_export_location, result)
-        self._helper._get_share_group_name_from_export_location.\
-            assert_called_once_with(export_location)
+        (self._helper._get_share_group_name_from_export_location.
+            assert_called_once_with(export_location))
 
     @ddt.data(
         {'public_address_with_suffix': 'foo'},
@@ -583,8 +583,8 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
         self.assertEqual('/bar/quuz', result)
         self._helper._ssh_exec.assert_called_once_with(
             fake_server, ['sudo', 'net', 'conf', 'getparm', 'foo', 'path'])
-        self._helper._get_share_group_name_from_export_location.\
-            assert_called_once_with(export_location)
+        (self._helper._get_share_group_name_from_export_location.
+            assert_called_once_with(export_location))
 
     def test_disable_access_for_maintenance(self):
         allowed_hosts = ['test', 'test2']

@@ -377,9 +377,9 @@ class HDFSNativeShareDriverTestCase(test.TestCase):
             'fake_hdfs_bin', 'fsck', '/')
 
     def test__get_available_capacity(self):
-        fake_out = 'Configured Capacity: 2.4\n' + \
-            'Total Capacity: 2\n' + \
-            'DFS free: 1'
+        fake_out = ('Configured Capacity: 2.4\n' +
+                    'Total Capacity: 2\n' +
+                    'DFS free: 1')
         self._driver._hdfs_execute = mock.Mock(return_value=(fake_out, ''))
         total, free = self._driver._get_available_capacity()
         self._driver._hdfs_execute.assert_called_once_with(

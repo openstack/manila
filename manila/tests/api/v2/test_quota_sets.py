@@ -374,11 +374,11 @@ class QuotaSetsControllerTest(test.TestCase):
         )
         self.assertTrue(hasattr(result, 'status_code'))
         self.assertEqual(202, result.status_code)
-        quota_sets.QUOTAS.destroy_all_by_project_and_user. \
+        (quota_sets.QUOTAS.destroy_all_by_project_and_user.
             assert_called_once_with(
                 REQ_WITH_USER.environ['manila.context'],
                 project_id,
-                REQ_WITH_USER.environ['manila.context'].user_id)
+                REQ_WITH_USER.environ['manila.context'].user_id))
         self.assertFalse(quota_sets.QUOTAS.destroy_all_by_project.called)
         self.mock_policy_check.assert_called_once_with(
             REQ_WITH_USER.environ['manila.context'], self.resource_name,

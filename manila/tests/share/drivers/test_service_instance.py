@@ -964,9 +964,9 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             availability_zone=service_instance.CONF.storage_availability_zone)
         self._manager.compute_api.server_get.assert_called_once_with(
             self._manager.admin_context, server_create['id'])
-        self._manager.compute_api.add_security_group_to_server.\
+        (self._manager.compute_api.add_security_group_to_server.
             assert_called_once_with(
-                self._manager.admin_context, server_get['id'], sg['id'])
+                self._manager.admin_context, server_get['id'], sg['id']))
         self._manager.network_helper.get_network_name.assert_has_calls([])
 
     def test___create_service_instance_neutron_no_admin_ip(self):
@@ -1039,9 +1039,9 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             availability_zone=service_instance.CONF.storage_availability_zone)
         self._manager.compute_api.server_get.assert_called_once_with(
             self._manager.admin_context, server_create['id'])
-        self._manager.compute_api.add_security_group_to_server.\
+        (self._manager.compute_api.add_security_group_to_server.
             assert_called_once_with(
-                self._manager.admin_context, server_get['id'], sg['id'])
+                self._manager.admin_context, server_get['id'], sg['id']))
         self._manager.network_helper.get_network_name.assert_has_calls([])
 
     @ddt.data(
@@ -1320,14 +1320,14 @@ class NeutronNetworkHelperTestCase(test.TestCase):
             'connect_share_server_to_tenant_network', 'get_config_option']
         for attr in attrs:
             self.assertTrue(hasattr(instance, attr), "No attr '%s'" % attr)
-        service_instance.NeutronNetworkHelper._get_service_network_id.\
-            assert_called_once_with()
+        (service_instance.NeutronNetworkHelper._get_service_network_id.
+            assert_called_once_with())
         self.assertEqual('DEFAULT', instance.neutron_api.config_group_name)
 
     def test_init_neutron_network_plugin_with_driver_config_group(self):
         self.fake_manager.driver_config = mock.Mock()
-        self.fake_manager.driver_config.config_group =\
-            'fake_config_group'
+        self.fake_manager.driver_config.config_group = (
+            'fake_config_group')
         self.fake_manager.driver_config.network_config_group = None
         instance = self._init_neutron_network_plugin()
         self.assertEqual('fake_config_group',
@@ -1335,10 +1335,10 @@ class NeutronNetworkHelperTestCase(test.TestCase):
 
     def test_init_neutron_network_plugin_with_network_config_group(self):
         self.fake_manager.driver_config = mock.Mock()
-        self.fake_manager.driver_config.config_group =\
-            "fake_config_group"
-        self.fake_manager.driver_config.network_config_group =\
-            "fake_network_config_group"
+        self.fake_manager.driver_config.config_group = (
+            "fake_config_group")
+        self.fake_manager.driver_config.network_config_group = (
+            "fake_network_config_group")
         instance = self._init_neutron_network_plugin()
         self.assertEqual('fake_network_config_group',
                          instance.neutron_api.config_group_name)
@@ -1416,8 +1416,8 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         self.assertRaises(exception.ManilaException,
                           lambda: helper.service_network_id)
 
-        service_instance.neutron.API.get_all_admin_project_networks.\
-            assert_has_calls([mock.call()])
+        (service_instance.neutron.API.get_all_admin_project_networks.
+            assert_has_calls([mock.call()]))
 
     @ddt.data(dict(), dict(subnet_id='foo'), dict(router_id='bar'))
     def test_teardown_network_no_service_data(self, server_details):
@@ -1558,10 +1558,10 @@ class NeutronNetworkHelperTestCase(test.TestCase):
 
         instance.teardown_network(server_details)
 
-        service_instance.neutron.API.router_remove_interface.\
-            assert_called_once_with('bar', 'foo')
-        service_instance.neutron.API.update_subnet.\
-            assert_called_once_with('foo', '')
+        (service_instance.neutron.API.router_remove_interface.
+            assert_called_once_with('bar', 'foo'))
+        (service_instance.neutron.API.update_subnet.
+            assert_called_once_with('foo', ''))
         service_instance.neutron.API.list_ports.assert_called_once_with(
             fields=['fixed_ips', 'device_id', 'device_owner'])
 
@@ -1584,10 +1584,10 @@ class NeutronNetworkHelperTestCase(test.TestCase):
 
         instance.teardown_network(server_details)
 
-        service_instance.neutron.API.router_remove_interface.\
-            assert_called_once_with('bar', 'foo')
-        service_instance.neutron.API.update_subnet.\
-            assert_called_once_with('foo', '')
+        (service_instance.neutron.API.router_remove_interface.
+            assert_called_once_with('bar', 'foo'))
+        (service_instance.neutron.API.update_subnet.
+            assert_called_once_with('foo', ''))
         service_instance.neutron.API.list_ports.assert_called_once_with(
             fields=['fixed_ips', 'device_id', 'device_owner'])
 
@@ -1612,8 +1612,8 @@ class NeutronNetworkHelperTestCase(test.TestCase):
             exception.NetworkException,
             instance.teardown_network, server_details)
 
-        service_instance.neutron.API.router_remove_interface.\
-            assert_called_once_with('bar', 'foo')
+        (service_instance.neutron.API.router_remove_interface.
+            assert_called_once_with('bar', 'foo'))
         self.assertFalse(service_instance.neutron.API.update_subnet.called)
         service_instance.neutron.API.list_ports.assert_called_once_with(
             fields=['fixed_ips', 'device_id', 'device_owner'])
@@ -1671,8 +1671,8 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         result = instance.setup_network(network_info)
 
         self.assertEqual(expected, result)
-        instance.setup_connectivity_with_service_instances.\
-            assert_called_once_with()
+        (instance.setup_connectivity_with_service_instances.
+            assert_called_once_with())
         instance._get_service_subnet.assert_called_once_with(mock.ANY)
         instance._get_cidr_for_subnet.assert_called_once_with()
         self.assertTrue(service_instance.neutron.API.subnet_create.called)
@@ -1722,8 +1722,8 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         result = instance.setup_network(network_info)
 
         self.assertEqual(expected, result)
-        instance.setup_connectivity_with_service_instances.\
-            assert_called_once_with()
+        (instance.setup_connectivity_with_service_instances.
+            assert_called_once_with())
         self.assertTrue(service_instance.neutron.API.create_port.called)
 
     @ddt.data(None, exception.NetworkException(code=400))
@@ -1779,16 +1779,16 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         result = instance.setup_network(network_info)
 
         self.assertEqual(expected, result)
-        instance.setup_connectivity_with_service_instances.\
-            assert_called_once_with()
+        (instance.setup_connectivity_with_service_instances.
+            assert_called_once_with())
         instance._get_service_subnet.assert_called_once_with(mock.ANY)
         instance._get_cidr_for_subnet.assert_called_once_with()
         self.assertTrue(service_instance.neutron.API.subnet_create.called)
         self.assertTrue(service_instance.neutron.API.create_port.called)
         instance._get_private_router.assert_called_once_with(
             network_info['neutron_net_id'], network_info['neutron_subnet_id'])
-        service_instance.neutron.API.router_add_interface.\
-            assert_called_once_with(router['id'], service_subnet['id'])
+        (service_instance.neutron.API.router_add_interface.
+            assert_called_once_with(router['id'], service_subnet['id']))
 
     def test_setup_network_using_router_addon_of_interface_failed(self):
         network_info = dict(
@@ -1816,8 +1816,8 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         instance._get_service_subnet.assert_called_once_with(mock.ANY)
         instance._get_private_router.assert_called_once_with(
             network_info['neutron_net_id'], network_info['neutron_subnet_id'])
-        service_instance.neutron.API.router_add_interface.\
-            assert_called_once_with(router['id'], service_subnet['id'])
+        (service_instance.neutron.API.router_add_interface.
+            assert_called_once_with(router['id'], service_subnet['id']))
 
     def test_setup_network_using_router_connectivity_verification_fail(self):
         admin_project_id = 'fake_admin_project_id'
@@ -1859,16 +1859,16 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         self.assertRaises(
             exception.ManilaException, instance.setup_network, network_info)
 
-        instance.setup_connectivity_with_service_instances.\
-            assert_called_once_with()
+        (instance.setup_connectivity_with_service_instances.
+            assert_called_once_with())
         instance._get_service_subnet.assert_called_once_with(mock.ANY)
         instance._get_cidr_for_subnet.assert_called_once_with()
         self.assertTrue(service_instance.neutron.API.subnet_create.called)
         self.assertTrue(service_instance.neutron.API.create_port.called)
         instance._get_private_router.assert_called_once_with(
             network_info['neutron_net_id'], network_info['neutron_subnet_id'])
-        service_instance.neutron.API.router_add_interface.\
-            assert_called_once_with(router['id'], service_subnet['id'])
+        (service_instance.neutron.API.router_add_interface.
+            assert_called_once_with(router['id'], service_subnet['id']))
         service_instance.neutron.API.delete_port.assert_has_calls([
             mock.call(self.service_port['id'])])
 
