@@ -626,9 +626,9 @@ class HostManager(object):
                     host, pool.pool_name)
                 host_name = share_utils.extract_host(
                     fully_qualified_pool_name, level='host')
-                backend_name = share_utils.extract_host(
-                    fully_qualified_pool_name, level='backend').split('@')[1] \
-                    if '@' in fully_qualified_pool_name else None
+                backend_name = (share_utils.extract_host(
+                    fully_qualified_pool_name, level='backend').split('@')[1]
+                    if '@' in fully_qualified_pool_name else None)
                 pool_name = share_utils.extract_host(
                     fully_qualified_pool_name, level='pool')
 
