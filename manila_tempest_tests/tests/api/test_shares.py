@@ -164,8 +164,8 @@ class SharesNFSTest(base.BaseSharesTest):
 
         # verify share, created from snapshot
         get = self.shares_client.get_share(s2["id"])
-        msg = "Expected snapshot_id %s as "\
-              "source of share %s" % (snap["id"], get["snapshot_id"])
+        msg = ("Expected snapshot_id %s as "
+               "source of share %s" % (snap["id"], get["snapshot_id"]))
         self.assertEqual(get["snapshot_id"], snap["id"], msg)
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
