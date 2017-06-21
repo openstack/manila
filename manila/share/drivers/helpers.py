@@ -76,9 +76,15 @@ class NASHelperBase(object):
 
     @staticmethod
     def _verify_server_has_public_address(server):
-        if 'public_address' not in server:
+        if 'public_address' in server:
+            pass
+        elif 'public_addresses' in server:
+            if not isinstance(server['public_addresses'], list):
+                raise exception.ManilaException(_("public_addresses must be "
+                                                  "a list"))
+        else:
             raise exception.ManilaException(
-                _("Can not get 'public_address' for generation of export."))
+                _("Can not get public_address(es) for generation of export."))
 
     def _get_export_location_template(self, export_location_or_path):
         """Returns template of export location.
@@ -97,24 +103,29 @@ class NASHelperBase(object):
             export_location_or_path)
         export_locations = []
 
+        if 'public_addresses' in server:
+            pairs = list(map(lambda addr: (addr, False),
+                             server['public_addresses']))
+        else:
+            pairs = [(server['public_address'], False)]
+
         # NOTE(vponomaryov):
         # Generic driver case: 'admin_ip' exists only in case of DHSS=True
         # mode and 'ip' exists in case of DHSS=False mode.
         # Use one of these for creation of export location for service needs.
-        # LVM driver will have only single export location.
         service_address = server.get("admin_ip", server.get("ip"))
-        for ip, is_admin in ((server['public_address'], False),
-                             (service_address, True)):
-            if ip:
-                export_locations.append({
-                    "path": export_location_template % ip,
-                    "is_admin_only": is_admin,
-                    "metadata": {
-                        # TODO(vponomaryov): remove this fake metadata when
-                        # proper appears.
-                        "export_location_metadata_example": "example",
-                    },
-                })
+        if service_address:
+            pairs.append((service_address, True))
+        for ip, is_admin in pairs:
+            export_locations.append({
+                "path": export_location_template % ip,
+                "is_admin_only": is_admin,
+                "metadata": {
+                    # TODO(vponomaryov): remove this fake metadata when
+                    # proper appears.
+                    "export_location_metadata_example": "example",
+                },
+            })
         return export_locations
 
     def get_share_path_by_export_location(self, server, export_location):

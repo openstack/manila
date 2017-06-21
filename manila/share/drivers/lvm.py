@@ -40,7 +40,11 @@ share_opts = [
                default='$state_path/mnt',
                help='Base folder where exported shares are located.'),
     cfg.StrOpt('lvm_share_export_ip',
+               deprecated_for_removal=True,
+               deprecated_reason='Use lvm_share_export_ips instead.',
                help='IP to be added to export string.'),
+    cfg.ListOpt('lvm_share_export_ips',
+                help='List of IPs to export shares.'),
     cfg.IntOpt('lvm_share_mirrors',
                default=0,
                help='If set, create LVMs with multiple mirrors. Note that '
@@ -68,11 +72,19 @@ class LVMMixin(driver.ExecuteMixin):
                                  run_as_root=True)
         volume_groups = out.split()
         if self.configuration.lvm_share_volume_group not in volume_groups:
-            msg = (_("share volume group %s doesn't exist")
+            msg = (_("Share volume group %s doesn't exist.")
                    % self.configuration.lvm_share_volume_group)
             raise exception.InvalidParameterValue(err=msg)
-        if not self.configuration.lvm_share_export_ip:
-            msg = (_("lvm_share_export_ip isn't specified"))
+
+        if (self.configuration.lvm_share_export_ip and
+                self.configuration.lvm_share_export_ips):
+            msg = (_("Only one of lvm_share_export_ip or lvm_share_export_ips"
+                     " may be specified."))
+            raise exception.InvalidParameterValue(err=msg)
+        if not (self.configuration.lvm_share_export_ip or
+                self.configuration.lvm_share_export_ips):
+            msg = (_("Neither lvm_share_export_ip nor lvm_share_export_ips is"
+                     " specified."))
             raise exception.InvalidParameterValue(err=msg)
 
     def _allocate_container(self, share):
@@ -146,10 +158,15 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         # Set of parameters used for compatibility with
         # Generic driver's helpers.
         self.share_server = {
-            'public_address': self.configuration.lvm_share_export_ip,
             'instance_id': self.backend_name,
             'lock_name': 'manila_lvm',
         }
+        if self.configuration.lvm_share_export_ip:
+            self.share_server['public_addresses'] = [
+                self.configuration.lvm_share_export_ip]
+        else:
+            self.share_server['public_addresses'] = (
+                self.configuration.lvm_share_export_ips)
 
     def _ssh_exec_as_root(self, server, command, check_exit_code=True):
         kwargs = {}
