@@ -100,9 +100,9 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
                                                           share["name"])
         self.assertEqual(self.share_name, str(share["name"]), msg)
 
-        msg = "Expected description: '%s', "\
-              "actual description: '%s'" % (self.share_desc,
-                                            share["description"])
+        msg = ("Expected description: '%s', "
+               "actual description: '%s'" % (self.share_desc,
+                                             share["description"]))
         self.assertEqual(self.share_desc, str(share["description"]), msg)
 
         msg = "Expected size: '%s', actual size: '%s'" % (
@@ -330,12 +330,14 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
                                                           get["name"])
         self.assertEqual(self.snap_name, get["name"], msg)
 
-        msg = "Expected description: '%s', "\
-              "actual description: '%s'" % (self.snap_desc, get["description"])
+        msg = ("Expected description: '%s', "
+               "actual description: '%s'" % (self.snap_desc,
+                                             get["description"]))
         self.assertEqual(self.snap_desc, get["description"], msg)
 
-        msg = "Expected share_id: '%s', "\
-              "actual share_id: '%s'" % (self.shares[0]["id"], get["share_id"])
+        msg = ("Expected share_id: '%s', "
+               "actual share_id: '%s'" % (self.shares[0]["id"],
+                                          get["share_id"]))
         self.assertEqual(self.shares[0]["id"], get["share_id"], msg)
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)

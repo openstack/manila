@@ -961,8 +961,8 @@ class NetworkScenarioTest(ScenarioTest):
                                                  nic)
         source_host = source.ssh_client.host
         if should_succeed:
-            msg = "Timed out waiting for %s to become reachable from %s" \
-                % (dest, source_host)
+            msg = ("Timed out waiting for %s to become reachable from %s"
+                   % (dest, source_host))
         else:
             msg = "%s is reachable from %s" % (dest, source_host)
         self.assertTrue(result, msg)

@@ -115,9 +115,9 @@ class SharesActionsTest(base.BaseSharesTest):
                                                           share["name"])
         self.assertEqual(self.share_name, six.text_type(share["name"]), msg)
 
-        msg = "Expected description: '%s', "\
-              "actual description: '%s'" % (self.share_desc,
-                                            share["description"])
+        msg = ("Expected description: '%s', "
+               "actual description: '%s'" % (self.share_desc,
+                                             share["description"]))
         self.assertEqual(
             self.share_desc, six.text_type(share["description"]), msg)
 

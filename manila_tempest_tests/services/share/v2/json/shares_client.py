@@ -337,8 +337,8 @@ class SharesV2Client(shares_client.SharesClient):
             if instance_status == status:
                 return
             elif 'error' in instance_status.lower():
-                raise share_exceptions. \
-                    ShareInstanceBuildErrorException(id=instance_id)
+                raise share_exceptions.ShareInstanceBuildErrorException(
+                    id=instance_id)
 
             if int(time.time()) - start >= self.build_timeout:
                 message = ('Share instance %s failed to reach %s status within'

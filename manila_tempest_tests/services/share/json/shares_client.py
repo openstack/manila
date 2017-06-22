@@ -238,8 +238,8 @@ class SharesClient(rest_client.RestClient):
             if share_status == status:
                 return
             elif 'error' in share_status.lower():
-                raise share_exceptions.\
-                    ShareBuildErrorException(share_id=share_id)
+                raise share_exceptions.ShareBuildErrorException(
+                    share_id=share_id)
 
             if int(time.time()) - start >= self.build_timeout:
                 message = ('Share %s failed to reach %s status within '
@@ -259,8 +259,8 @@ class SharesClient(rest_client.RestClient):
             body = self.get_snapshot(snapshot_id)
             snapshot_status = body['status']
             if 'error' in snapshot_status:
-                raise share_exceptions.\
-                    SnapshotBuildErrorException(snapshot_id=snapshot_id)
+                raise share_exceptions.SnapshotBuildErrorException(
+                    snapshot_id=snapshot_id)
 
             if int(time.time()) - start >= self.build_timeout:
                 message = ('Share Snapshot %s failed to reach %s status '
@@ -280,8 +280,8 @@ class SharesClient(rest_client.RestClient):
                     rule_status = rule['state']
                     break
             if 'error' in rule_status:
-                raise share_exceptions.\
-                    AccessRuleBuildErrorException(rule_id=rule_id)
+                raise share_exceptions.AccessRuleBuildErrorException(
+                    rule_id=rule_id)
 
             if int(time.time()) - start >= self.build_timeout:
                 message = ('Share Access Rule %s failed to reach %s status '
