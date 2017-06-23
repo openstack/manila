@@ -222,8 +222,9 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
     def wait_for_active_instance(self, instance_id):
         waiters.wait_for_server_status(
-            self.manager.servers_client, instance_id, "ACTIVE")
-        return self.manager.servers_client.show_server(instance_id)["server"]
+            self.os_primary.servers_client, instance_id, "ACTIVE")
+        return self.os_primary.servers_client.show_server(
+            instance_id)["server"]
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_mount_share_one_vm(self):

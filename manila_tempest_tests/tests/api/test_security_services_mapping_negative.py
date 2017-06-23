@@ -95,7 +95,7 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_delete_ss_from_sn_used_by_share_server(self):
         sn = self.shares_client.get_share_network(
-            self.os.shares_client.share_network_id)
+            self.os_primary.shares_client.share_network_id)
         fresh_sn = self.create_share_network(
             neutron_net_id=sn["neutron_net_id"],
             neutron_subnet_id=sn["neutron_subnet_id"])
