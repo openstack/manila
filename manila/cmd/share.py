@@ -24,6 +24,8 @@ import sys
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_reports import guru_meditation_report as gmr
+from oslo_reports import opts as gmr_opts
 
 from manila import i18n
 i18n.enable_lazy()
@@ -38,10 +40,12 @@ CONF = cfg.CONF
 
 def main():
     log.register_options(CONF)
+    gmr_opts.set_defaults(CONF)
     CONF(sys.argv[1:], project='manila',
          version=version.version_string())
     log.setup(CONF, "manila")
     utils.monkey_patch()
+    gmr.TextGuruMeditation.setup_autorun(version, conf=CONF)
     launcher = service.process_launcher()
     if CONF.enabled_share_backends:
         for backend in CONF.enabled_share_backends:
