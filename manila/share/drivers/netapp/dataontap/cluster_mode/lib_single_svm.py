@@ -115,6 +115,10 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
         vserver_client.prune_deleted_nfs_export_policies()
         vserver_client.prune_deleted_snapshots()
 
+        if self._have_cluster_creds:
+            # Harvest soft-deleted QoS policy groups
+            vserver_client.remove_unused_qos_policy_groups()
+
         (super(NetAppCmodeSingleSVMFileStorageLibrary, self).
             _handle_housekeeping_tasks())
 

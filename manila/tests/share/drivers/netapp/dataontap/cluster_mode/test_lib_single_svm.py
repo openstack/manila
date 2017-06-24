@@ -165,8 +165,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         }
         self.assertEqual(expected, result)
 
-    def test_handle_housekeeping_tasks(self):
-
+    @ddt.data(True, False)
+    def test_handle_housekeeping_tasks_with_cluster_creds(self, have_creds):
+        self.library._have_cluster_creds = have_creds
         mock_vserver_client = mock.Mock()
         self.mock_object(self.library,
                          '_get_api_client',
@@ -179,6 +180,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertTrue(
             mock_vserver_client.prune_deleted_nfs_export_policies.called)
         self.assertTrue(mock_vserver_client.prune_deleted_snapshots.called)
+        self.assertIs(
+            have_creds,
+            mock_vserver_client.remove_unused_qos_policy_groups.called)
         self.assertTrue(mock_super.called)
 
     @ddt.data(True, False)

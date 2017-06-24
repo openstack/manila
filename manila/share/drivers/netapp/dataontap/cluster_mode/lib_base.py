@@ -82,6 +82,15 @@ class NetAppCmodeFileStorageLibrary(object):
         'compression': 'netapp:compression',
     }
 
+    QOS_SPECS = {
+        'netapp:maxiops': 'maxiops',
+        'netapp:maxiopspergib': 'maxiopspergib',
+        'netapp:maxbps': 'maxbps',
+        'netapp:maxbpspergib': 'maxbpspergib',
+    }
+
+    SIZE_DEPENDENT_QOS_SPECS = {'maxiopspergib', 'maxbpspergib'}
+
     def __init__(self, driver_name, **kwargs):
         na_utils.validate_driver_instantiation(**kwargs)
 
@@ -207,6 +216,11 @@ class NetAppCmodeFileStorageLibrary(object):
         """Get snapshot name according to snapshot name template."""
         return 'share_cg_snapshot_' + snapshot_id.replace('-', '_')
 
+    def _get_backend_qos_policy_group_name(self, share_id):
+        """Get QoS policy name according to QoS policy group name template."""
+        return self.configuration.netapp_qos_policy_group_name_template % {
+            'share_id': share_id.replace('-', '_')}
+
     @na_utils.trace
     def _get_aggregate_space(self):
         aggregates = self._find_matching_aggregates()
@@ -273,9 +287,12 @@ class NetAppCmodeFileStorageLibrary(object):
         aggr_space = self._get_aggregate_space()
         aggregates = aggr_space.keys()
 
-        # Get up-to-date node utilization metrics just once.
         if self._have_cluster_creds:
+            # Get up-to-date node utilization metrics just once.
             self._perf_library.update_performance_cache({}, self._ssc_stats)
+            qos_support = True
+        else:
+            qos_support = False
 
         for aggr_name in sorted(aggregates):
 
@@ -298,7 +315,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 'total_capacity_gb': total_capacity_gb,
                 'free_capacity_gb': free_capacity_gb,
                 'allocated_capacity_gb': allocated_capacity_gb,
-                'qos': 'False',
+                'qos': qos_support,
                 'reserved_percentage': reserved_percentage,
                 'dedupe': [True, False],
                 'compression': [True, False],
@@ -423,7 +440,7 @@ class NetAppCmodeFileStorageLibrary(object):
     def create_share(self, context, share, share_server):
         """Creates new share."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
-        self._allocate_container(share, vserver_client)
+        self._allocate_container(share, vserver, vserver_client)
         return self._create_export(share, share_server, vserver,
                                    vserver_client)
 
@@ -432,12 +449,14 @@ class NetAppCmodeFileStorageLibrary(object):
                                    share_server=None):
         """Creates new share from snapshot."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
-        self._allocate_container_from_snapshot(share, snapshot, vserver_client)
+        self._allocate_container_from_snapshot(
+            share, snapshot, vserver, vserver_client)
         return self._create_export(share, share_server, vserver,
                                    vserver_client)
 
     @na_utils.trace
-    def _allocate_container(self, share, vserver_client, replica=False):
+    def _allocate_container(self, share, vserver, vserver_client,
+                            replica=False):
         """Create new share on aggregate."""
         share_name = self._get_backend_share_name(share['id'])
 
@@ -447,7 +466,8 @@ class NetAppCmodeFileStorageLibrary(object):
             msg = _("Pool is not available in the share host field.")
             raise exception.InvalidHost(reason=msg)
 
-        provisioning_options = self._get_provisioning_options_for_share(share)
+        provisioning_options = self._get_provisioning_options_for_share(
+            share, vserver, replica=replica)
 
         if replica:
             # If this volume is intended to be a replication destination,
@@ -582,8 +602,55 @@ class NetAppCmodeFileStorageLibrary(object):
         # provisioning methods from the client API library.
         return dict(zip(provisioning_args, provisioning_values))
 
+    def _get_normalized_qos_specs(self, extra_specs):
+        if not extra_specs.get('qos'):
+            return {}
+
+        normalized_qos_specs = {
+            self.QOS_SPECS[key.lower()]: value
+            for key, value in extra_specs.items()
+            if self.QOS_SPECS.get(key.lower())
+        }
+        if not normalized_qos_specs:
+            msg = _("The extra-spec 'qos' is set to True, but no netapp "
+                    "supported qos-specs have been specified in the share "
+                    "type. Cannot provision a QoS policy. Specify any of the "
+                    "following extra-specs and try again: %s")
+            raise exception.NetAppException(msg % list(self.QOS_SPECS))
+
+        # TODO(gouthamr): Modify check when throughput floors are allowed
+        if len(normalized_qos_specs) > 1:
+            msg = _('Only one NetApp QoS spec can be set at a time. '
+                    'Specified QoS limits: %s')
+            raise exception.NetAppException(msg % normalized_qos_specs)
+
+        return normalized_qos_specs
+
+    def _get_max_throughput(self, share_size, qos_specs):
+        # QoS limits are exclusive of one another.
+        if 'maxiops' in qos_specs:
+            return '%siops' % qos_specs['maxiops']
+        elif 'maxiopspergib' in qos_specs:
+            return '%siops' % six.text_type(
+                int(qos_specs['maxiopspergib']) * int(share_size))
+        elif 'maxbps' in qos_specs:
+            return '%sB/s' % qos_specs['maxbps']
+        elif 'maxbpspergib' in qos_specs:
+            return '%sB/s' % six.text_type(
+                int(qos_specs['maxbpspergib']) * int(share_size))
+
     @na_utils.trace
-    def _get_provisioning_options_for_share(self, share):
+    def _create_qos_policy_group(self, share, vserver, qos_specs):
+        max_throughput = self._get_max_throughput(share['size'], qos_specs)
+        qos_policy_group_name = self._get_backend_qos_policy_group_name(
+            share['id'])
+        self._client.qos_policy_group_create(qos_policy_group_name, vserver,
+                                             max_throughput=max_throughput)
+        return qos_policy_group_name
+
+    @na_utils.trace
+    def _get_provisioning_options_for_share(self, share, vserver,
+                                            replica=False):
         """Return provisioning options from a share.
 
         Starting with a share, this method gets the extra specs, rationalizes
@@ -594,7 +661,13 @@ class NetAppCmodeFileStorageLibrary(object):
         extra_specs = share_types.get_extra_specs_from_share(share)
         extra_specs = self._remap_standard_boolean_extra_specs(extra_specs)
         self._check_extra_specs_validity(share, extra_specs)
-        return self._get_provisioning_options(extra_specs)
+        provisioning_options = self._get_provisioning_options(extra_specs)
+        qos_specs = self._get_normalized_qos_specs(extra_specs)
+        if qos_specs and not replica:
+            qos_policy_group = self._create_qos_policy_group(
+                share, vserver, qos_specs)
+            provisioning_options['qos_policy_group'] = qos_policy_group
+        return provisioning_options
 
     @na_utils.trace
     def _get_provisioning_options(self, specs):
@@ -627,7 +700,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
     @na_utils.trace
     def _allocate_container_from_snapshot(
-            self, share, snapshot, vserver_client,
+            self, share, snapshot, vserver, vserver_client,
             snapshot_name_func=_get_backend_snapshot_name):
         """Clones existing share."""
         share_name = self._get_backend_share_name(share['id'])
@@ -637,7 +710,8 @@ class NetAppCmodeFileStorageLibrary(object):
         else:
             parent_snapshot_name = snapshot['provider_location']
 
-        provisioning_options = self._get_provisioning_options_for_share(share)
+        provisioning_options = self._get_provisioning_options_for_share(
+            share, vserver)
 
         LOG.debug('Creating share from snapshot %s', snapshot['id'])
         vserver_client.create_volume_clone(share_name, parent_share_name,
@@ -667,6 +741,10 @@ class NetAppCmodeFileStorageLibrary(object):
         if self._share_exists(share_name, vserver_client):
             self._remove_export(share, vserver_client)
             self._deallocate_container(share_name, vserver_client)
+            qos_policy_for_share = self._get_backend_qos_policy_group_name(
+                share['id'])
+            self._client.mark_qos_policy_group_for_deletion(
+                qos_policy_for_share)
         else:
             LOG.info("Share %s does not exist.", share['id'])
 
@@ -856,7 +934,7 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def manage_existing(self, share, driver_options):
         vserver, vserver_client = self._get_vserver(share_server=None)
-        share_size = self._manage_container(share, vserver_client)
+        share_size = self._manage_container(share, vserver, vserver_client)
         export_locations = self._create_export(share, None, vserver,
                                                vserver_client)
         return {'size': share_size, 'export_locations': export_locations}
@@ -866,7 +944,7 @@ class NetAppCmodeFileStorageLibrary(object):
         pass
 
     @na_utils.trace
-    def _manage_container(self, share, vserver_client):
+    def _manage_container(self, share, vserver, vserver_client):
         """Bring existing volume under management as a share."""
 
         protocol_helper = self._get_helper(share)
@@ -890,6 +968,9 @@ class NetAppCmodeFileStorageLibrary(object):
             msg = _('Volume %(volume)s not found on aggregate %(aggr)s.')
             msg_args = {'volume': volume_name, 'aggr': aggregate_name}
             raise exception.ManageInvalidShare(reason=msg % msg_args)
+
+        # When calculating the size, round up to the next GB.
+        volume_size = int(math.ceil(float(volume['size']) / units.Gi))
 
         # Ensure volume is manageable
         self._validate_volume_for_manage(volume, vserver_client)
@@ -918,8 +999,13 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver_client.set_volume_name(volume_name, share_name)
         vserver_client.mount_volume(share_name)
 
+        qos_policy_group_name = self._modify_or_create_qos_for_existing_share(
+            share, extra_specs, vserver, vserver_client)
+        if qos_policy_group_name:
+            provisioning_options['qos_policy_group'] = qos_policy_group_name
+
         # Modify volume to match extra specs
-        vserver_client.manage_volume(aggregate_name, share_name,
+        vserver_client.modify_volume(aggregate_name, share_name,
                                      **provisioning_options)
 
         # Save original volume info to private storage
@@ -929,8 +1015,7 @@ class NetAppCmodeFileStorageLibrary(object):
         }
         self.private_storage.update(share['id'], original_data)
 
-        # When calculating the size, round up to the next GB.
-        return int(math.ceil(float(volume['size']) / units.Gi))
+        return volume_size
 
     @na_utils.trace
     def _validate_volume_for_manage(self, volume, vserver_client):
@@ -1039,7 +1124,7 @@ class NetAppCmodeFileStorageLibrary(object):
         for clone in clone_list:
 
             self._allocate_container_from_snapshot(
-                clone['share'], clone['snapshot'], vserver_client,
+                clone['share'], clone['snapshot'], vserver, vserver_client,
                 NetAppCmodeFileStorageLibrary._get_backend_cg_snapshot_name)
 
             export_locations = self._create_export(clone['share'],
@@ -1152,6 +1237,27 @@ class NetAppCmodeFileStorageLibrary(object):
         return None, None
 
     @na_utils.trace
+    def _adjust_qos_policy_with_volume_resize(self, share, new_size,
+                                              vserver_client):
+        # Adjust QoS policy on a share if any
+        if self._have_cluster_creds:
+            share_name = self._get_backend_share_name(share['id'])
+            share_on_the_backend = vserver_client.get_volume(share_name)
+            qos_policy_on_share = share_on_the_backend['qos-policy-group-name']
+            if qos_policy_on_share is None:
+                return
+
+            extra_specs = share_types.get_extra_specs_from_share(share)
+            qos_specs = self._get_normalized_qos_specs(extra_specs)
+            size_dependent_specs = {k: v for k, v in qos_specs.items() if k in
+                                    self.SIZE_DEPENDENT_QOS_SPECS}
+            if size_dependent_specs:
+                max_throughput = self._get_max_throughput(
+                    new_size, size_dependent_specs)
+                self._client.qos_policy_group_modify(
+                    qos_policy_on_share, max_throughput)
+
+    @na_utils.trace
     def extend_share(self, share, new_size, share_server=None):
         """Extends size of existing share."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
@@ -1159,6 +1265,8 @@ class NetAppCmodeFileStorageLibrary(object):
         LOG.debug('Extending share %(name)s to %(size)s GB.',
                   {'name': share_name, 'size': new_size})
         vserver_client.set_volume_size(share_name, new_size)
+        self._adjust_qos_policy_with_volume_resize(share, new_size,
+                                                   vserver_client)
 
     @na_utils.trace
     def shrink_share(self, share, new_size, share_server=None):
@@ -1168,6 +1276,8 @@ class NetAppCmodeFileStorageLibrary(object):
         LOG.debug('Shrinking share %(name)s to %(size)s GB.',
                   {'name': share_name, 'size': new_size})
         vserver_client.set_volume_size(share_name, new_size)
+        self._adjust_qos_policy_with_volume_resize(share, new_size,
+                                                   vserver_client)
 
     @na_utils.trace
     def update_access(self, context, share, access_rules, add_rules,
@@ -1288,7 +1398,8 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver_client = data_motion.get_client_for_backend(
             dest_backend, vserver_name=vserver)
 
-        self._allocate_container(new_replica, vserver_client, replica=True)
+        self._allocate_container(new_replica, vserver, vserver_client,
+                                 replica=True)
 
         # 2. Setup SnapMirror
         dm_session.create_snapmirror(active_replica, new_replica)
@@ -1454,7 +1565,51 @@ class NetAppCmodeFileStorageLibrary(object):
                                                      replica_list)
                 new_replica_list.append(r)
 
+        self._handle_qos_on_replication_change(dm_session,
+                                               new_active_replica,
+                                               orig_active_replica,
+                                               share_server=share_server)
+
         return new_replica_list
+
+    def _handle_qos_on_replication_change(self, dm_session, new_active_replica,
+                                          orig_active_replica,
+                                          share_server=None):
+        # QoS operations: Remove and purge QoS policy on old active replica
+        # if any and create a new policy on the destination if necessary.
+        extra_specs = share_types.get_extra_specs_from_share(
+            orig_active_replica)
+        qos_specs = self._get_normalized_qos_specs(extra_specs)
+
+        if qos_specs and self._have_cluster_creds:
+            dm_session.remove_qos_on_old_active_replica(orig_active_replica)
+            # Check if a QoS policy already exists for the promoted replica,
+            # if it does, modify it as necessary, else create it:
+            try:
+                new_active_replica_qos_policy = (
+                    self._get_backend_qos_policy_group_name(
+                        new_active_replica['id']))
+                vserver, vserver_client = self._get_vserver(
+                    share_server=share_server)
+
+                volume_name_on_backend = self._get_backend_share_name(
+                    new_active_replica['id'])
+                if not self._client.qos_policy_group_exists(
+                        new_active_replica_qos_policy):
+                    self._create_qos_policy_group(
+                        new_active_replica, vserver, qos_specs)
+                else:
+                    max_throughput = self._get_max_throughput(
+                        new_active_replica['size'], qos_specs)
+                    self._client.qos_policy_group_modify(
+                        new_active_replica_qos_policy, max_throughput)
+                vserver_client.set_qos_policy_group_for_volume(
+                    volume_name_on_backend, new_active_replica_qos_policy)
+
+                LOG.info("QoS policy applied successfully for promoted "
+                         "replica: %s", new_active_replica['id'])
+            except Exception:
+                LOG.exception("Could not apply QoS to the promoted replica.")
 
     def _convert_destination_replica_to_independent(
             self, context, dm_session, orig_active_replica, replica,
@@ -1721,12 +1876,13 @@ class NetAppCmodeFileStorageLibrary(object):
                     destination_host, level='backend_name')
                 destination_aggregate = share_utils.extract_host(
                     destination_host, level='pool')
-                # Validate new share type extra-specs are valid on the
-                # destination
+                # Validate new extra-specs are valid on the destination
                 extra_specs = share_types.get_extra_specs_from_share(
                     destination_share)
                 self._check_extra_specs_validity(
                     destination_share, extra_specs)
+                # TODO(gouthamr): Check whether QoS min-throughputs can be
+                # honored on the destination aggregate when supported.
                 self._check_aggregate_extra_specs_validity(
                     destination_aggregate, extra_specs)
 
@@ -1916,11 +2072,15 @@ class NetAppCmodeFileStorageLibrary(object):
         extra_specs = share_types.get_extra_specs_from_share(
             destination_share)
         provisioning_options = self._get_provisioning_options(extra_specs)
+        qos_policy_group_name = self._modify_or_create_qos_for_existing_share(
+            destination_share, extra_specs, vserver, vserver_client)
+        if qos_policy_group_name:
+            provisioning_options['qos_policy_group'] = qos_policy_group_name
         destination_aggregate = share_utils.extract_host(
             destination_share['host'], level='pool')
 
         # Modify volume to match extra specs
-        vserver_client.manage_volume(destination_aggregate,
+        vserver_client.modify_volume(destination_aggregate,
                                      new_share_volume_name,
                                      **provisioning_options)
 
@@ -1953,6 +2113,70 @@ class NetAppCmodeFileStorageLibrary(object):
             'export_locations': export_locations,
             'snapshot_updates': snapshot_updates,
         }
+
+    @na_utils.trace
+    def _modify_or_create_qos_for_existing_share(self, share, extra_specs,
+                                                 vserver, vserver_client):
+        """Gets/Creates QoS policy for an existing FlexVol.
+
+        The share's assigned QoS policy is renamed and adjusted if the policy
+        is exclusive to the FlexVol. If the policy includes other workloads
+        besides the FlexVol, a new policy is created with the specs necessary.
+        """
+        qos_specs = self._get_normalized_qos_specs(extra_specs)
+        if not qos_specs:
+            return
+
+        backend_share_name = self._get_backend_share_name(share['id'])
+        qos_policy_group_name = self._get_backend_qos_policy_group_name(
+            share['id'])
+
+        create_new_qos_policy_group = True
+
+        backend_volume = vserver_client.get_volume(
+            backend_share_name)
+        backend_volume_size = int(
+            math.ceil(float(backend_volume['size']) / units.Gi))
+
+        LOG.debug("Checking for a pre-existing QoS policy group that "
+                  "is exclusive to the volume %s." % backend_share_name)
+
+        # Does the volume have an exclusive QoS policy that we can rename?
+        if backend_volume['qos-policy-group-name'] is not None:
+            existing_qos_policy_group = self._client.qos_policy_group_get(
+                backend_volume['qos-policy-group-name'])
+            if existing_qos_policy_group['num-workloads'] == 1:
+                # Yay, can set max-throughput and rename
+
+                msg = ("Found pre-existing QoS policy %(policy)s and it is "
+                       "exclusive to the volume %(volume)s. Modifying and "
+                       "renaming this policy to %(new_policy)s.")
+                msg_args = {
+                    'policy': backend_volume['qos-policy-group-name'],
+                    'volume': backend_share_name,
+                    'new_policy': qos_policy_group_name,
+                }
+                LOG.debug(msg, msg_args)
+
+                max_throughput = self._get_max_throughput(
+                    backend_volume_size, qos_specs)
+                self._client.qos_policy_group_modify(
+                    backend_volume['qos-policy-group-name'], max_throughput)
+                self._client.qos_policy_group_rename(
+                    backend_volume['qos-policy-group-name'],
+                    qos_policy_group_name)
+                create_new_qos_policy_group = False
+
+        if create_new_qos_policy_group:
+            share_obj = {
+                'size': backend_volume_size,
+                'id': share['id'],
+            }
+            LOG.debug("No existing QoS policy group found for "
+                      "volume. Creating  a new one with name %s.",
+                      qos_policy_group_name)
+            self._create_qos_policy_group(share_obj, vserver, qos_specs)
+        return qos_policy_group_name
 
     def _wait_for_cutover_completion(self, source_share, share_server):
 

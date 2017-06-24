@@ -610,6 +610,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                            share_server=fake.SHARE_SERVER)
 
         mock_allocate_container.assert_called_once_with(fake.SHARE,
+                                                        fake.VSERVER1,
                                                         vserver_client)
         mock_create_export.assert_called_once_with(fake.SHARE,
                                                    fake.SHARE_SERVER,
@@ -641,6 +642,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_allocate_container_from_snapshot.assert_called_once_with(
             fake.SHARE,
             fake.SNAPSHOT,
+            fake.VSERVER1,
             vserver_client)
         mock_create_export.assert_called_once_with(fake.SHARE,
                                                    fake.SHARE_SERVER,
@@ -653,13 +655,17 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             return_value=fake.SHARE_NAME))
         self.mock_object(share_utils, 'extract_host', mock.Mock(
             return_value=fake.POOL_NAME))
-        self.mock_object(
+        mock_get_provisioning_opts = self.mock_object(
             self.library, '_get_provisioning_options_for_share',
             mock.Mock(return_value=copy.deepcopy(fake.PROVISIONING_OPTIONS)))
         vserver_client = mock.Mock()
 
         self.library._allocate_container(fake.EXTRA_SPEC_SHARE,
+                                         fake.VSERVER1,
                                          vserver_client)
+
+        mock_get_provisioning_opts.assert_called_once_with(
+            fake.EXTRA_SPEC_SHARE, fake.VSERVER1, replica=False)
 
         vserver_client.create_volume.assert_called_once_with(
             fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
@@ -680,13 +686,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             return_value=fake.SHARE_NAME))
         self.mock_object(share_utils, 'extract_host', mock.Mock(
             return_value=fake.POOL_NAME))
-        self.mock_object(
+        mock_get_provisioning_opts = self.mock_object(
             self.library, '_get_provisioning_options_for_share',
             mock.Mock(return_value=copy.deepcopy(fake.PROVISIONING_OPTIONS)))
         vserver_client = mock.Mock()
 
-        self.library._allocate_container(fake.EXTRA_SPEC_SHARE,
+        self.library._allocate_container(fake.EXTRA_SPEC_SHARE, fake.VSERVER1,
                                          vserver_client, replica=True)
+
+        mock_get_provisioning_opts.assert_called_once_with(
+            fake.EXTRA_SPEC_SHARE, fake.VSERVER1, replica=True)
 
         vserver_client.create_volume.assert_called_once_with(
             fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
@@ -706,7 +715,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertRaises(exception.InvalidHost,
                           self.library._allocate_container, fake.SHARE,
-                          vserver_client)
+                          fake.VSERVER1, vserver_client)
 
         self.library._get_backend_share_name.assert_called_once_with(
             fake.SHARE['id'])
@@ -775,31 +784,53 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.EXTRA_SPEC_SHARE, fake.INVALID_EXTRA_SPEC_COMBO,
             list(self.library.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP))
 
-    def test_get_provisioning_options_for_share(self):
+    @ddt.data({'extra_specs': fake.EXTRA_SPEC, 'is_replica': False},
+              {'extra_specs': fake.EXTRA_SPEC_WITH_QOS, 'is_replica': True},
+              {'extra_specs': fake.EXTRA_SPEC, 'is_replica': False},
+              {'extra_specs': fake.EXTRA_SPEC_WITH_QOS, 'is_replica': True})
+    @ddt.unpack
+    def test_get_provisioning_options_for_share(self, extra_specs, is_replica):
 
+        qos = True if fake.QOS_EXTRA_SPEC in extra_specs else False
         mock_get_extra_specs_from_share = self.mock_object(
             share_types, 'get_extra_specs_from_share',
-            mock.Mock(return_value=fake.EXTRA_SPEC))
+            mock.Mock(return_value=extra_specs))
         mock_remap_standard_boolean_extra_specs = self.mock_object(
             self.library, '_remap_standard_boolean_extra_specs',
-            mock.Mock(return_value=fake.EXTRA_SPEC))
+            mock.Mock(return_value=extra_specs))
         mock_check_extra_specs_validity = self.mock_object(
             self.library, '_check_extra_specs_validity')
         mock_get_provisioning_options = self.mock_object(
             self.library, '_get_provisioning_options',
             mock.Mock(return_value=fake.PROVISIONING_OPTIONS))
+        mock_get_normalized_qos_specs = self.mock_object(
+            self.library, '_get_normalized_qos_specs',
+            mock.Mock(return_value={fake.QOS_NORMALIZED_SPEC: 3000}))
+        mock_create_qos_policy_group = self.mock_object(
+            self.library, '_create_qos_policy_group', mock.Mock(
+                return_value=fake.QOS_POLICY_GROUP_NAME))
 
         result = self.library._get_provisioning_options_for_share(
-            fake.EXTRA_SPEC_SHARE)
+            fake.EXTRA_SPEC_SHARE, fake.VSERVER1, replica=is_replica)
 
-        self.assertEqual(fake.PROVISIONING_OPTIONS, result)
+        if qos and is_replica:
+            expected_provisioning_opts = fake.PROVISIONING_OPTIONS
+            self.assertFalse(mock_create_qos_policy_group.called)
+        else:
+            expected_provisioning_opts = fake.PROVISIONING_OPTIONS_WITH_QOS
+            mock_create_qos_policy_group.assert_called_once_with(
+                fake.EXTRA_SPEC_SHARE, fake.VSERVER1,
+                {fake.QOS_NORMALIZED_SPEC: 3000})
+
+        self.assertEqual(expected_provisioning_opts, result)
         mock_get_extra_specs_from_share.assert_called_once_with(
             fake.EXTRA_SPEC_SHARE)
         mock_remap_standard_boolean_extra_specs.assert_called_once_with(
-            fake.EXTRA_SPEC)
+            extra_specs)
         mock_check_extra_specs_validity.assert_called_once_with(
-            fake.EXTRA_SPEC_SHARE, fake.EXTRA_SPEC)
-        mock_get_provisioning_options.assert_called_once_with(fake.EXTRA_SPEC)
+            fake.EXTRA_SPEC_SHARE, extra_specs)
+        mock_get_provisioning_options.assert_called_once_with(extra_specs)
+        mock_get_normalized_qos_specs.assert_called_once_with(extra_specs)
 
     def test_get_provisioning_options(self):
         result = self.library._get_provisioning_options(fake.EXTRA_SPEC)
@@ -879,6 +910,66 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertEqual(fake.PROVISIONING_OPTIONS_STRING_DEFAULT, result)
 
+    @ddt.data({}, {'foo': 'bar'}, {'netapp:maxiops': '3000'},
+              {'qos': True, 'netapp:absiops': '3000'},
+              {'qos': True, 'netapp:maxiops:': '3000'})
+    def test_get_normalized_qos_specs_no_qos_specs(self, extra_specs):
+        if 'qos' in extra_specs:
+            self.assertRaises(exception.NetAppException,
+                              self.library._get_normalized_qos_specs,
+                              extra_specs)
+        else:
+            self.assertDictMatch(
+                {}, self.library._get_normalized_qos_specs(extra_specs))
+
+    @ddt.data({'qos': True, 'netapp:maxiops': '3000', 'netapp:maxbps': '9000'},
+              {'qos': True, 'netapp:maxiopspergib': '1000',
+               'netapp:maxiops': '1000'})
+    def test_get_normalized_qos_specs_multiple_qos_specs(self, extra_specs):
+        self.assertRaises(exception.NetAppException,
+                          self.library._get_normalized_qos_specs,
+                          extra_specs)
+
+    @ddt.data({'qos': True, 'netapp:maxIOPS': '3000'},
+              {'qos': True, 'netapp:MAxBPs': '3000', 'clem': 'son'},
+              {'qos': True, 'netapp:maxbps': '3000', 'tig': 'ers'},
+              {'qos': True, 'netapp:MAXiopSPerGib': '3000', 'kin': 'gsof'},
+              {'qos': True, 'netapp:maxiopspergib': '3000', 'coll': 'ege'},
+              {'qos': True, 'netapp:maxBPSperGiB': '3000', 'foot': 'ball'})
+    def test_get_normalized_qos_specs(self, extra_specs):
+        expected_normalized_spec = {
+            key.lower().split('netapp:')[1]: value
+            for key, value in extra_specs.items() if 'netapp:' in key
+        }
+
+        qos_specs = self.library._get_normalized_qos_specs(extra_specs)
+
+        self.assertDictMatch(expected_normalized_spec, qos_specs)
+        self.assertEqual(1, len(qos_specs))
+
+    @ddt.data({'qos': {'maxiops': '3000'}, 'expected': '3000iops'},
+              {'qos': {'maxbps': '3000'}, 'expected': '3000B/s'},
+              {'qos': {'maxbpspergib': '3000'}, 'expected': '12000B/s'},
+              {'qos': {'maxiopspergib': '3000'}, 'expected': '12000iops'})
+    @ddt.unpack
+    def test_get_max_throughput(self, qos, expected):
+
+        throughput = self.library._get_max_throughput(4, qos)
+
+        self.assertEqual(expected, throughput)
+
+    def test_create_qos_policy_group(self):
+        mock_qos_policy_create = self.mock_object(
+            self.library._client, 'qos_policy_group_create')
+
+        self.library._create_qos_policy_group(
+            fake.SHARE, fake.VSERVER1, {'maxiops': '3000'})
+
+        expected_policy_name = 'qos_share_' + fake.SHARE['id'].replace(
+            '-', '_')
+        mock_qos_policy_create.assert_called_once_with(
+            expected_policy_name, fake.VSERVER1, max_throughput='3000iops')
+
     def test_check_if_max_files_is_valid_with_negative_integer(self):
         self.assertRaises(exception.NetAppException,
                           self.library._check_if_max_files_is_valid,
@@ -898,6 +989,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(exception.InvalidHost,
                           self.library._allocate_container,
                           fake_share,
+                          fake.VSERVER1,
                           vserver_client)
 
     def test_check_aggregate_extra_specs_validity(self):
@@ -923,9 +1015,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     @ddt.data(None, 'fake_location')
     def test_allocate_container_from_snapshot(self, provider_location):
 
-        self.mock_object(
+        mock_get_provisioning_opts = self.mock_object(
             self.library, '_get_provisioning_options_for_share',
             mock.Mock(return_value=copy.deepcopy(fake.PROVISIONING_OPTIONS)))
+        vserver = fake.VSERVER1
         vserver_client = mock.Mock()
 
         fake_snapshot = copy.deepcopy(fake.SNAPSHOT)
@@ -933,6 +1026,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.library._allocate_container_from_snapshot(fake.SHARE,
                                                        fake_snapshot,
+                                                       vserver,
                                                        vserver_client)
 
         share_name = self.library._get_backend_share_name(fake.SHARE['id'])
@@ -940,6 +1034,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SNAPSHOT['share_id'])
         parent_snapshot_name = self.library._get_backend_snapshot_name(
             fake.SNAPSHOT['id']) if not provider_location else 'fake_location'
+        mock_get_provisioning_opts.assert_called_once_with(
+            fake.SHARE, fake.VSERVER1)
         vserver_client.create_volume_clone.assert_called_once_with(
             share_name, parent_share_name, parent_snapshot_name,
             thin_provisioned=True, snapshot_policy='default',
@@ -983,10 +1079,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                   share_server=fake.SHARE_SERVER)
 
         share_name = self.library._get_backend_share_name(fake.SHARE['id'])
+        qos_policy_name = self.library._get_backend_qos_policy_group_name(
+            fake.SHARE['id'])
         mock_share_exists.assert_called_once_with(share_name, vserver_client)
         mock_remove_export.assert_called_once_with(fake.SHARE, vserver_client)
         mock_deallocate_container.assert_called_once_with(share_name,
                                                           vserver_client)
+        (self.library._client.mark_qos_policy_group_for_deletion
+         .assert_called_once_with(qos_policy_name))
         self.assertEqual(0, lib_base.LOG.info.call_count)
 
     @ddt.data(exception.InvalidInput(reason='fake_reason'),
@@ -1011,6 +1111,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertFalse(mock_share_exists.called)
         self.assertFalse(mock_remove_export.called)
         self.assertFalse(mock_deallocate_container.called)
+        self.assertFalse(
+            self.library._client.mark_qos_policy_group_for_deletion.called)
         self.assertEqual(1, lib_base.LOG.warning.call_count)
 
     def test_delete_share_not_found(self):
@@ -1035,6 +1137,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_share_exists.assert_called_once_with(share_name, vserver_client)
         self.assertFalse(mock_remove_export.called)
         self.assertFalse(mock_deallocate_container.called)
+        self.assertFalse(
+            self.library._client.mark_qos_policy_group_for_deletion.called)
         self.assertEqual(1, lib_base.LOG.info.call_count)
 
     def test_deallocate_container(self):
@@ -1403,6 +1507,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'export_locations': fake.NFS_EXPORTS
         }
         mock_manage_container.assert_called_once_with(fake.SHARE,
+                                                      fake.VSERVER1,
                                                       vserver_client)
         mock_create_export.assert_called_once_with(fake.SHARE,
                                                    None,
@@ -1416,9 +1521,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertIsNone(result)
 
-    def test_manage_container(self):
+    @ddt.data(True, False)
+    def test_manage_container_with_qos(self, qos):
 
         vserver_client = mock.Mock()
+        qos_policy_group_name = fake.QOS_POLICY_GROUP_NAME if qos else None
+        extra_specs = fake.EXTRA_SPEC_WITH_QOS if qos else fake.EXTRA_SPEC
+        provisioning_opts = self.library._get_provisioning_options(extra_specs)
+        if qos:
+            provisioning_opts['qos_policy_group'] = fake.QOS_POLICY_GROUP_NAME
 
         share_to_manage = copy.deepcopy(fake.SHARE)
         share_to_manage['export_location'] = fake.EXPORT_LOCATION
@@ -1438,15 +1549,19 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             '_validate_volume_for_manage')
         self.mock_object(share_types,
                          'get_extra_specs_from_share',
-                         mock.Mock(return_value=fake.EXTRA_SPEC))
+                         mock.Mock(return_value=extra_specs))
         mock_check_extra_specs_validity = self.mock_object(
             self.library,
             '_check_extra_specs_validity')
         mock_check_aggregate_extra_specs_validity = self.mock_object(
             self.library,
             '_check_aggregate_extra_specs_validity')
+        mock_modify_or_create_qos_policy = self.mock_object(
+            self.library, '_modify_or_create_qos_for_existing_share',
+            mock.Mock(return_value=qos_policy_group_name))
 
         result = self.library._manage_container(share_to_manage,
+                                                fake.VSERVER1,
                                                 vserver_client)
 
         mock_get_volume_to_manage.assert_called_once_with(
@@ -1454,18 +1569,19 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_validate_volume_for_manage.assert_called_once_with(
             fake.FLEXVOL_TO_MANAGE, vserver_client)
         mock_check_extra_specs_validity.assert_called_once_with(
-            share_to_manage, fake.EXTRA_SPEC)
+            share_to_manage, extra_specs)
         mock_check_aggregate_extra_specs_validity.assert_called_once_with(
-            fake.POOL_NAME, fake.EXTRA_SPEC)
+            fake.POOL_NAME, extra_specs)
         vserver_client.unmount_volume.assert_called_once_with(
             fake.FLEXVOL_NAME)
         vserver_client.set_volume_name.assert_called_once_with(
             fake.FLEXVOL_NAME, fake.SHARE_NAME)
         vserver_client.mount_volume.assert_called_once_with(
             fake.SHARE_NAME)
-        vserver_client.manage_volume.assert_called_once_with(
-            fake.POOL_NAME, fake.SHARE_NAME,
-            **self.library._get_provisioning_options(fake.EXTRA_SPEC))
+        vserver_client.modify_volume.assert_called_once_with(
+            fake.POOL_NAME, fake.SHARE_NAME, **provisioning_opts)
+        mock_modify_or_create_qos_policy.assert_called_once_with(
+            share_to_manage, extra_specs, fake.VSERVER1, vserver_client)
 
         original_data = {
             'original_name': fake.FLEXVOL_TO_MANAGE['name'],
@@ -1494,6 +1610,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(exception.ManageInvalidShare,
                           self.library._manage_container,
                           share_to_manage,
+                          fake.VSERVER1,
                           vserver_client)
 
     def test_manage_container_not_found(self):
@@ -1516,6 +1633,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(exception.ManageInvalidShare,
                           self.library._manage_container,
                           share_to_manage,
+                          fake.VSERVER1,
                           vserver_client)
 
     def test_manage_container_invalid_extra_specs(self):
@@ -1545,6 +1663,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(exception.ManageExistingShareTypeMismatch,
                           self.library._manage_container,
                           share_to_manage,
+                          fake.VSERVER1,
                           vserver_client)
 
     def test_validate_volume_for_manage(self):
@@ -1782,10 +1901,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_allocate_container_from_snapshot.assert_has_calls([
             mock.call(fake.COLLATED_CGSNAPSHOT_INFO[0]['share'],
                       fake.COLLATED_CGSNAPSHOT_INFO[0]['snapshot'],
+                      fake.VSERVER1,
                       vserver_client,
                       mock.ANY),
             mock.call(fake.COLLATED_CGSNAPSHOT_INFO[1]['share'],
                       fake.COLLATED_CGSNAPSHOT_INFO[1]['snapshot'],
+                      fake.VSERVER1,
                       vserver_client,
                       mock.ANY),
         ])
@@ -2034,6 +2155,68 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_vserver.assert_called_once_with(
             share_server=fake.SHARE_SERVER)
 
+    def test_adjust_qos_policy_with_volume_resize_no_cluster_creds(self):
+        self.library._have_cluster_creds = False
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+
+        retval = self.library._adjust_qos_policy_with_volume_resize(
+            fake.SHARE, 10, mock.Mock())
+
+        self.assertIsNone(retval)
+        share_types.get_extra_specs_from_share.assert_not_called()
+
+    def test_adjust_qos_policy_with_volume_resize_no_qos_on_share(self):
+        self.library._have_cluster_creds = True
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+        vserver_client = mock.Mock()
+        self.mock_object(vserver_client, 'get_volume',
+                         mock.Mock(return_value=fake.FLEXVOL_WITHOUT_QOS))
+
+        retval = self.library._adjust_qos_policy_with_volume_resize(
+            fake.SHARE, 10, vserver_client)
+
+        self.assertIsNone(retval)
+        share_types.get_extra_specs_from_share.assert_not_called()
+
+    def test_adjust_qos_policy_with_volume_resize_no_size_dependent_qos(self):
+        self.library._have_cluster_creds = True
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value=fake.EXTRA_SPEC_WITH_QOS))
+        vserver_client = mock.Mock()
+        self.mock_object(vserver_client, 'get_volume',
+                         mock.Mock(return_value=fake.FLEXVOL_WITH_QOS))
+        self.mock_object(self.library, '_get_max_throughput')
+        self.mock_object(self.library._client, 'qos_policy_group_modify')
+
+        retval = self.library._adjust_qos_policy_with_volume_resize(
+            fake.SHARE, 10, vserver_client)
+
+        self.assertIsNone(retval)
+        share_types.get_extra_specs_from_share.assert_called_once_with(
+            fake.SHARE)
+        self.library._get_max_throughput.assert_not_called()
+        self.library._client.qos_policy_group_modify.assert_not_called()
+
+    def test_adjust_qos_policy_with_volume_resize(self):
+        self.library._have_cluster_creds = True
+        self.mock_object(
+            share_types, 'get_extra_specs_from_share',
+            mock.Mock(return_value=fake.EXTRA_SPEC_WITH_SIZE_DEPENDENT_QOS))
+        vserver_client = mock.Mock()
+        self.mock_object(vserver_client, 'get_volume',
+                         mock.Mock(return_value=fake.FLEXVOL_WITH_QOS))
+        self.mock_object(self.library._client, 'qos_policy_group_modify')
+
+        retval = self.library._adjust_qos_policy_with_volume_resize(
+            fake.SHARE, 10, vserver_client)
+
+        expected_max_throughput = '10000B/s'
+        self.assertIsNone(retval)
+        share_types.get_extra_specs_from_share.assert_called_once_with(
+            fake.SHARE)
+        self.library._client.qos_policy_group_modify.assert_called_once_with(
+            fake.QOS_POLICY_GROUP_NAME, expected_max_throughput)
+
     def test_extend_share(self):
 
         vserver_client = mock.Mock()
@@ -2041,6 +2224,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  vserver_client)))
+        mock_adjust_qos_policy = self.mock_object(
+            self.library, '_adjust_qos_policy_with_volume_resize')
+
         mock_set_volume_size = self.mock_object(vserver_client,
                                                 'set_volume_size')
         new_size = fake.SHARE['size'] * 2
@@ -2048,6 +2234,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library.extend_share(fake.SHARE, new_size)
 
         mock_set_volume_size.assert_called_once_with(fake.SHARE_NAME, new_size)
+        mock_adjust_qos_policy.assert_called_once_with(
+            fake.SHARE, new_size, vserver_client)
 
     def test_shrink_share(self):
 
@@ -2056,6 +2244,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  vserver_client)))
+        mock_adjust_qos_policy = self.mock_object(
+            self.library, '_adjust_qos_policy_with_volume_resize')
         mock_set_volume_size = self.mock_object(vserver_client,
                                                 'set_volume_size')
         new_size = fake.SHARE['size'] - 1
@@ -2063,6 +2253,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library.shrink_share(fake.SHARE, new_size)
 
         mock_set_volume_size.assert_called_once_with(fake.SHARE_NAME, new_size)
+        mock_adjust_qos_policy.assert_called_once_with(
+            fake.SHARE, new_size, vserver_client)
 
     def test_update_access(self):
 
@@ -2774,6 +2966,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=mock.Mock()))
         self.mock_object(self.library, '_create_export',
                          mock.Mock(return_value='fake_export_location'))
+        self.mock_object(self.library, '_handle_qos_on_replication_change')
 
         replicas = self.library.promote_replica(
             None, [self.fake_replica, self.fake_replica_2],
@@ -2783,7 +2976,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.fake_replica, self.fake_replica, self.fake_replica_2,
             mock.ANY
         )
-
         self.assertEqual(2, len(replicas))
         actual_replica_1 = list(filter(
             lambda x: x['id'] == self.fake_replica['id'], replicas))[0]
@@ -2797,6 +2989,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          actual_replica_2['export_locations'])
         self.assertEqual(constants.STATUS_ACTIVE,
                          actual_replica_2['access_rules_status'])
+        self.library._handle_qos_on_replication_change.assert_called_once()
 
     def test_promote_replica_destination_unreachable(self):
         self.mock_object(self.library,
@@ -2806,6 +2999,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_get_helper',
                          mock.Mock(return_value=mock.Mock()))
+        self.mock_object(self.library, '_handle_qos_on_replication_change')
+
         self.mock_object(self.library, '_create_export',
                          mock.Mock(return_value='fake_export_location'))
         self.mock_object(
@@ -2822,6 +3017,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          actual_replica['replica_state'])
         self.assertEqual(constants.STATUS_ERROR,
                          actual_replica['status'])
+        self.assertFalse(
+            self.library._handle_qos_on_replication_change.called)
 
     def test_promote_replica_more_than_two_replicas(self):
         fake_replica_3 = copy.deepcopy(self.fake_replica_2)
@@ -2831,6 +3028,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  mock.Mock())))
+        self.mock_object(self.library, '_handle_qos_on_replication_change')
         self.mock_object(self.library,
                          '_get_helper',
                          mock.Mock(return_value=mock.Mock()))
@@ -2864,12 +3062,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             lambda x: x['id'] == fake_replica_3['id'], replicas))[0]
         self.assertEqual(constants.REPLICA_STATE_OUT_OF_SYNC,
                          actual_replica_3['replica_state'])
+        self.library._handle_qos_on_replication_change.assert_called_once()
 
     def test_promote_replica_with_access_rules(self):
         self.mock_object(self.library,
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  mock.Mock())))
+        self.mock_object(self.library, '_handle_qos_on_replication_change')
         mock_helper = mock.Mock()
         self.mock_object(self.library,
                          '_get_helper',
@@ -2891,6 +3091,112 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_helper.update_access.assert_called_once_with(self.fake_replica_2,
                                                           share_name,
                                                           [fake.SHARE_ACCESS])
+        self.library._handle_qos_on_replication_change.assert_called_once()
+
+    @ddt.data({'extra_specs': {'netapp:snapshot_policy': 'none'},
+               'have_cluster_creds': True},
+              # Test Case 2 isn't possible input
+              {'extra_specs': {'qos': True, 'netapp:maxiops': '3000'},
+               'have_cluster_creds': False})
+    @ddt.unpack
+    def test_handle_qos_on_replication_change_nothing_to_handle(
+            self, extra_specs, have_cluster_creds):
+
+        self.library._have_cluster_creds = have_cluster_creds
+        self.mock_object(lib_base.LOG, 'exception')
+        self.mock_object(lib_base.LOG, 'info')
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value=extra_specs))
+
+        retval = self.library._handle_qos_on_replication_change(
+            self.mock_dm_session, self.fake_replica_2, self.fake_replica,
+            share_server=fake.SHARE_SERVER)
+
+        self.assertIsNone(retval)
+        lib_base.LOG.exception.assert_not_called()
+        lib_base.LOG.info.assert_not_called()
+
+    def test_handle_qos_on_replication_change_exception(self):
+        self.library._have_cluster_creds = True
+        extra_specs = {'qos': True, fake.QOS_EXTRA_SPEC: '3000'}
+        vserver_client = mock.Mock()
+        self.mock_object(lib_base.LOG, 'exception')
+        self.mock_object(lib_base.LOG, 'info')
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value=extra_specs))
+        self.mock_object(self.library, '_get_vserver', mock.Mock(
+            return_value=(fake.VSERVER1, vserver_client)))
+        self.mock_object(self.library._client, 'qos_policy_group_exists',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library._client, 'qos_policy_group_modify',
+                         mock.Mock(side_effect=netapp_api.NaApiError))
+
+        retval = self.library._handle_qos_on_replication_change(
+            self.mock_dm_session, self.fake_replica_2, self.fake_replica,
+            share_server=fake.SHARE_SERVER)
+
+        self.assertIsNone(retval)
+        (self.mock_dm_session.remove_qos_on_old_active_replica
+         .assert_called_once_with(self.fake_replica))
+        lib_base.LOG.exception.assert_called_once()
+        lib_base.LOG.info.assert_not_called()
+        vserver_client.set_qos_policy_group_for_volume.assert_not_called()
+
+    def test_handle_qos_on_replication_change_modify_existing_policy(self):
+        self.library._have_cluster_creds = True
+        extra_specs = {'qos': True, fake.QOS_EXTRA_SPEC: '3000'}
+        vserver_client = mock.Mock()
+        volume_name_on_backend = self.library._get_backend_share_name(
+            self.fake_replica_2['id'])
+        self.mock_object(lib_base.LOG, 'exception')
+        self.mock_object(lib_base.LOG, 'info')
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value=extra_specs))
+        self.mock_object(self.library, '_get_vserver', mock.Mock(
+            return_value=(fake.VSERVER1, vserver_client)))
+        self.mock_object(self.library._client, 'qos_policy_group_exists',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library._client, 'qos_policy_group_modify')
+        self.mock_object(self.library, '_create_qos_policy_group')
+
+        retval = self.library._handle_qos_on_replication_change(
+            self.mock_dm_session, self.fake_replica_2, self.fake_replica,
+            share_server=fake.SHARE_SERVER)
+
+        self.assertIsNone(retval)
+        self.library._client.qos_policy_group_modify.assert_called_once_with(
+            'qos_' + volume_name_on_backend, '3000iops')
+        vserver_client.set_qos_policy_group_for_volume.assert_called_once_with(
+            volume_name_on_backend, 'qos_' + volume_name_on_backend)
+        self.library._create_qos_policy_group.assert_not_called()
+        lib_base.LOG.exception.assert_not_called()
+        lib_base.LOG.info.assert_called_once()
+
+    def test_handle_qos_on_replication_change_create_new_policy(self):
+        self.library._have_cluster_creds = True
+        extra_specs = {'qos': True, fake.QOS_EXTRA_SPEC: '3000'}
+        vserver_client = mock.Mock()
+        self.mock_object(lib_base.LOG, 'exception')
+        self.mock_object(lib_base.LOG, 'info')
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value=extra_specs))
+        self.mock_object(self.library, '_get_vserver', mock.Mock(
+            return_value=(fake.VSERVER1, vserver_client)))
+        self.mock_object(self.library._client, 'qos_policy_group_exists',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library._client, 'qos_policy_group_modify')
+        self.mock_object(self.library, '_create_qos_policy_group')
+
+        retval = self.library._handle_qos_on_replication_change(
+            self.mock_dm_session, self.fake_replica_2, self.fake_replica,
+            share_server=fake.SHARE_SERVER)
+
+        self.assertIsNone(retval)
+        self.library._create_qos_policy_group.assert_called_once_with(
+            self.fake_replica_2, fake.VSERVER1, {'maxiops': '3000'})
+        self.library._client.qos_policy_group_modify.assert_not_called()
+        lib_base.LOG.exception.assert_not_called()
+        lib_base.LOG.info.assert_called_once()
 
     def test_convert_destination_replica_to_independent(self):
         self.mock_object(self.library,
@@ -2958,6 +3264,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  mock.Mock())))
+        self.mock_object(self.library, '_handle_qos_on_replication_change')
         self.mock_object(self.library,
                          '_get_helper',
                          mock.Mock(return_value=fake_helper))
@@ -2986,6 +3293,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          actual_replica_2['export_locations'])
         self.assertEqual(constants.SHARE_INSTANCE_RULES_SYNCING,
                          actual_replica_2['access_rules_status'])
+        self.library._handle_qos_on_replication_change.assert_called_once()
 
     def test_convert_destination_replica_to_independent_with_access_rules(
             self):
@@ -4353,9 +4661,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(side_effect=vol_move_side_effects))
         self.mock_object(share_types, 'get_extra_specs_from_share',
                          mock.Mock(return_value=fake.EXTRA_SPEC))
-        self.mock_object(self.library, '_get_provisioning_options',
-                         mock.Mock(return_value=fake.PROVISIONING_OPTIONS))
-        self.mock_object(vserver_client, 'manage_volume')
+        self.mock_object(
+            self.library, '_get_provisioning_options',
+            mock.Mock(return_value=fake.PROVISIONING_OPTIONS_WITH_QOS))
+        self.mock_object(
+            self.library, '_modify_or_create_qos_for_existing_share',
+            mock.Mock(return_value=fake.QOS_POLICY_GROUP_NAME))
+        self.mock_object(vserver_client, 'modify_volume')
 
         src_share = fake_share.fake_share_instance(id='source-share-instance')
         dest_share = fake_share.fake_share_instance(id='dest-share-instance')
@@ -4378,8 +4690,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._create_export.assert_called_once_with(
             dest_share, fake.SHARE_SERVER, fake.VSERVER1, vserver_client,
             clear_current_export_policy=False)
-        vserver_client.manage_volume.assert_called_once_with(
-            dest_aggr, 'new_share_name', **fake.PROVISIONING_OPTIONS)
+        vserver_client.modify_volume.assert_called_once_with(
+            dest_aggr, 'new_share_name', **fake.PROVISIONING_OPTIONS_WITH_QOS)
         mock_info_log.assert_called_once()
         if phase != 'completed':
             self.assertEqual(2, mock_warning_log.call_count)
@@ -4389,3 +4701,81 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.assertFalse(mock_warning_log.called)
             mock_debug_log.assert_called_once()
             mock_move_status_check.assert_called_once()
+
+    def test_modify_or_create_qos_for_existing_share_no_qos_extra_specs(self):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library, '_get_backend_qos_policy_group_name')
+        self.mock_object(vserver_client, 'get_volume')
+        self.mock_object(self.library, '_create_qos_policy_group')
+
+        retval = self.library._modify_or_create_qos_for_existing_share(
+            fake.SHARE, fake.EXTRA_SPEC, fake.VSERVER1, vserver_client)
+
+        self.assertIsNone(retval)
+        self.library._get_backend_qos_policy_group_name.assert_not_called()
+        vserver_client.get_volume.assert_not_called()
+        self.library._create_qos_policy_group.assert_not_called()
+
+    def test_modify_or_create_qos_for_existing_share_no_existing_qos(self):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library, '_get_backend_qos_policy_group_name')
+        self.mock_object(vserver_client, 'get_volume',
+                         mock.Mock(return_value=fake.FLEXVOL_WITHOUT_QOS))
+        self.mock_object(self.library, '_create_qos_policy_group')
+        self.mock_object(self.library._client, 'qos_policy_group_modify')
+        qos_policy_name = self.library._get_backend_qos_policy_group_name(
+            fake.SHARE['id'])
+
+        retval = self.library._modify_or_create_qos_for_existing_share(
+            fake.SHARE, fake.EXTRA_SPEC_WITH_QOS, fake.VSERVER1,
+            vserver_client)
+
+        share_obj = {
+            'size': 2,
+            'id': fake.SHARE['id'],
+        }
+        self.assertEqual(qos_policy_name, retval)
+        self.library._client.qos_policy_group_modify.assert_not_called()
+        self.library._create_qos_policy_group.assert_called_once_with(
+            share_obj, fake.VSERVER1, {'maxiops': '3000'})
+
+    @ddt.data(utils.annotated('volume_has_shared_qos_policy', (2, )),
+              utils.annotated('volume_has_nonshared_qos_policy', (1, )))
+    def test_modify_or_create_qos_for_existing_share(self, num_workloads):
+        vserver_client = mock.Mock()
+        num_workloads = num_workloads[0]
+        qos_policy = copy.deepcopy(fake.QOS_POLICY_GROUP)
+        qos_policy['num-workloads'] = num_workloads
+        extra_specs = fake.EXTRA_SPEC_WITH_QOS
+        self.mock_object(vserver_client, 'get_volume',
+                         mock.Mock(return_value=fake.FLEXVOL_WITH_QOS))
+        self.mock_object(self.library._client, 'qos_policy_group_get',
+                         mock.Mock(return_value=qos_policy))
+        mock_qos_policy_modify = self.mock_object(
+            self.library._client, 'qos_policy_group_modify')
+        mock_qos_policy_rename = self.mock_object(
+            self.library._client, 'qos_policy_group_rename')
+        mock_create_qos_policy = self.mock_object(
+            self.library, '_create_qos_policy_group')
+        new_qos_policy_name = self.library._get_backend_qos_policy_group_name(
+            fake.SHARE['id'])
+
+        retval = self.library._modify_or_create_qos_for_existing_share(
+            fake.SHARE, extra_specs, fake.VSERVER1, vserver_client)
+
+        self.assertEqual(new_qos_policy_name, retval)
+        if num_workloads == 1:
+            mock_create_qos_policy.assert_not_called()
+            mock_qos_policy_modify.assert_called_once_with(
+                fake.QOS_POLICY_GROUP_NAME, '3000iops')
+            mock_qos_policy_rename.assert_called_once_with(
+                fake.QOS_POLICY_GROUP_NAME, new_qos_policy_name)
+        else:
+            share_obj = {
+                'size': 2,
+                'id': fake.SHARE['id'],
+            }
+            mock_create_qos_policy.assert_called_once_with(
+                share_obj, fake.VSERVER1, {'maxiops': '3000'})
+            self.library._client.qos_policy_group_modify.assert_not_called()
+            self.library._client.qos_policy_group_rename.assert_not_called()

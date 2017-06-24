@@ -1422,7 +1422,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                       thin_provisioned=False, snapshot_policy=None,
                       language=None, dedup_enabled=False,
                       compression_enabled=False, max_files=None,
-                      snapshot_reserve=None, volume_type='rw', **options):
+                      snapshot_reserve=None, volume_type='rw',
+                      qos_policy_group=None, **options):
 
         """Creates a volume."""
         api_args = {
@@ -1442,6 +1443,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         if snapshot_reserve is not None:
             api_args['percentage-snapshot-reserve'] = six.text_type(
                 snapshot_reserve)
+        if qos_policy_group is not None:
+            api_args['qos-policy-group-name'] = qos_policy_group
         self.send_request('volume-create', api_args)
 
         # cDOT compression requires that deduplication be enabled.
@@ -1573,11 +1576,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('volume-rename', api_args)
 
     @na_utils.trace
-    def manage_volume(self, aggregate_name, volume_name,
+    def modify_volume(self, aggregate_name, volume_name,
                       thin_provisioned=False, snapshot_policy=None,
                       language=None, dedup_enabled=False,
-                      compression_enabled=False, max_files=None, **options):
-        """Update volume as needed to bring under management as a share."""
+                      compression_enabled=False, max_files=None,
+                      qos_policy_group=None, **options):
+        """Update backend volume for a share as necessary."""
         api_args = {
             'query': {
                 'volume-attributes': {
@@ -1594,7 +1598,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                     'volume-snapshot-attributes': {},
                     'volume-space-attributes': {
                         'space-guarantee': ('none' if thin_provisioned else
-                                            'volume')
+                                            'volume'),
                     },
                 },
             },
@@ -1609,6 +1613,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             api_args['attributes']['volume-attributes'][
                 'volume-snapshot-attributes'][
                     'snapshot-policy'] = snapshot_policy
+        if qos_policy_group:
+            api_args['attributes']['volume-attributes'][
+                'volume-qos-attributes'] = {
+                'policy-group-name': qos_policy_group,
+            }
 
         self.send_request('volume-modify-iter', api_args)
 
@@ -1766,9 +1775,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                         'type': None,
                         'style': None,
                     },
+                    'volume-qos-attributes': {
+                        'policy-group-name': None,
+                    },
                     'volume-space-attributes': {
                         'size': None,
-                    }
+                    },
                 },
             },
         }
@@ -1789,6 +1801,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         volume_id_attributes = volume_attributes.get_child_by_name(
             'volume-id-attributes') or netapp_api.NaElement('none')
+        volume_qos_attributes = volume_attributes.get_child_by_name(
+            'volume-qos-attributes') or netapp_api.NaElement('none')
         volume_space_attributes = volume_attributes.get_child_by_name(
             'volume-space-attributes') or netapp_api.NaElement('none')
 
@@ -1803,6 +1817,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'type': volume_id_attributes.get_child_content('type'),
             'style': volume_id_attributes.get_child_content('style'),
             'size': volume_space_attributes.get_child_content('size'),
+            'qos-policy-group-name': volume_qos_attributes.get_child_content(
+                'policy-group-name')
         }
         return volume
 
@@ -1883,9 +1899,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                         'style': None,
                         'owning-vserver-name': None,
                     },
+                    'volume-qos-attributes': {
+                        'policy-group-name': None,
+                    },
                     'volume-space-attributes': {
                         'size': None,
-                    }
+                    },
                 },
             },
         }
@@ -1899,6 +1918,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'volume-attributes') or netapp_api.NaElement('none')
         volume_id_attributes = volume_attributes.get_child_by_name(
             'volume-id-attributes') or netapp_api.NaElement('none')
+        volume_qos_attributes = volume_attributes.get_child_by_name(
+            'volume-qos-attributes') or netapp_api.NaElement('none')
         volume_space_attributes = volume_attributes.get_child_by_name(
             'volume-space-attributes') or netapp_api.NaElement('none')
 
@@ -1913,12 +1934,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'owning-vserver-name': volume_id_attributes.get_child_content(
                 'owning-vserver-name'),
             'size': volume_space_attributes.get_child_content('size'),
+            'qos-policy-group-name': volume_qos_attributes.get_child_content(
+                'policy-group-name')
+
         }
         return volume
 
     @na_utils.trace
     def create_volume_clone(self, volume_name, parent_volume_name,
-                            parent_snapshot_name=None, split=False, **options):
+                            parent_snapshot_name=None, split=False,
+                            qos_policy_group=None, **options):
         """Clones a volume."""
         api_args = {
             'volume': volume_name,
@@ -1926,6 +1951,10 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'parent-snapshot': parent_snapshot_name,
             'junction-path': '/%s' % volume_name,
         }
+
+        if qos_policy_group is not None:
+            api_args['qos-policy-group-name'] = qos_policy_group
+
         self.send_request('volume-clone-create', api_args)
 
         if split:
@@ -2509,6 +2538,27 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 'volume-attributes': {
                     'volume-export-attributes': {
                         'policy': policy_name,
+                    },
+                },
+            },
+        }
+        self.send_request('volume-modify-iter', api_args)
+
+    @na_utils.trace
+    def set_qos_policy_group_for_volume(self, volume_name,
+                                        qos_policy_group_name):
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                    },
+                },
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-qos-attributes': {
+                        'policy-group-name': qos_policy_group_name,
                     },
                 },
             },
@@ -3443,3 +3493,132 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'phase': volume_move_info.get_child_content('phase'),
         }
         return status_info
+
+    @na_utils.trace
+    def qos_policy_group_exists(self, qos_policy_group_name):
+        """Checks if a QoS policy group exists."""
+        try:
+            self.qos_policy_group_get(qos_policy_group_name)
+        except exception.NetAppException:
+            return False
+        return True
+
+    @na_utils.trace
+    def qos_policy_group_get(self, qos_policy_group_name):
+        """Checks if a QoS policy group exists."""
+        api_args = {
+            'query': {
+                'qos-policy-group-info': {
+                    'policy-group': qos_policy_group_name,
+                },
+            },
+            'desired-attributes': {
+                'qos-policy-group-info': {
+                    'policy-group': None,
+                    'vserver': None,
+                    'max-throughput': None,
+                    'num-workloads': None
+                },
+            },
+        }
+        result = self.send_request('qos-policy-group-get-iter', api_args,
+                                   False)
+        if not self._has_records(result):
+            msg = _("No QoS policy group found with name %s.")
+            raise exception.NetAppException(msg % qos_policy_group_name)
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        qos_policy_group_info = attributes_list.get_child_by_name(
+            'qos-policy-group-info') or netapp_api.NaElement('none')
+
+        policy_info = {
+            'policy-group': qos_policy_group_info.get_child_content(
+                'policy-group'),
+            'vserver': qos_policy_group_info.get_child_content('vserver'),
+            'max-throughput': qos_policy_group_info.get_child_content(
+                'max-throughput'),
+            'num-workloads': int(qos_policy_group_info.get_child_content(
+                'num-workloads')),
+        }
+        return policy_info
+
+    @na_utils.trace
+    def qos_policy_group_create(self, qos_policy_group_name, vserver,
+                                max_throughput=None):
+        """Creates a QoS policy group."""
+        api_args = {
+            'policy-group': qos_policy_group_name,
+            'vserver': vserver,
+        }
+        if max_throughput:
+            api_args['max-throughput'] = max_throughput
+        return self.send_request('qos-policy-group-create', api_args, False)
+
+    @na_utils.trace
+    def qos_policy_group_modify(self, qos_policy_group_name, max_throughput):
+        """Modifies a QoS policy group."""
+        api_args = {
+            'policy-group': qos_policy_group_name,
+            'max-throughput': max_throughput,
+        }
+        return self.send_request('qos-policy-group-modify', api_args, False)
+
+    @na_utils.trace
+    def qos_policy_group_delete(self, qos_policy_group_name):
+        """Attempts to delete a QoS policy group."""
+        api_args = {'policy-group': qos_policy_group_name}
+        return self.send_request('qos-policy-group-delete', api_args, False)
+
+    @na_utils.trace
+    def qos_policy_group_rename(self, qos_policy_group_name, new_name):
+        """Renames a QoS policy group."""
+        api_args = {
+            'policy-group-name': qos_policy_group_name,
+            'new-name': new_name,
+        }
+        return self.send_request('qos-policy-group-rename', api_args, False)
+
+    @na_utils.trace
+    def mark_qos_policy_group_for_deletion(self, qos_policy_group_name):
+        """Soft delete backing QoS policy group for a manila share."""
+        # NOTE(gouthamr): ONTAP deletes storage objects asynchronously. As
+        # long as garbage collection hasn't occurred, assigned QoS policy may
+        # still be tagged "in use". So, we rename the QoS policy group using a
+        # specific pattern and later attempt on a best effort basis to
+        # delete any QoS policy groups matching that pattern.
+
+        if self.qos_policy_group_exists(qos_policy_group_name):
+            new_name = DELETED_PREFIX + qos_policy_group_name
+            try:
+                self.qos_policy_group_rename(qos_policy_group_name, new_name)
+            except netapp_api.NaApiError as ex:
+                msg = ('Rename failure in cleanup of cDOT QoS policy '
+                       'group %(name)s: %(ex)s')
+                msg_args = {'name': qos_policy_group_name, 'ex': ex}
+                LOG.warning(msg, msg_args)
+            # Attempt to delete any QoS policies named "deleted_manila-*".
+            self.remove_unused_qos_policy_groups()
+
+    @na_utils.trace
+    def remove_unused_qos_policy_groups(self):
+        """Deletes all QoS policy groups that are marked for deletion."""
+        api_args = {
+            'query': {
+                'qos-policy-group-info': {
+                    'policy-group': '%s*' % DELETED_PREFIX,
+                }
+            },
+            'max-records': 3500,
+            'continue-on-failure': 'true',
+            'return-success-list': 'false',
+            'return-failure-list': 'false',
+        }
+
+        try:
+            self.send_request('qos-policy-group-delete-iter', api_args, False)
+        except netapp_api.NaApiError as ex:
+            msg = 'Could not delete QoS policy groups. Details: %(ex)s'
+            msg_args = {'ex': ex}
+            LOG.debug(msg, msg_args)
