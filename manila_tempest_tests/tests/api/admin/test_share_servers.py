@@ -195,6 +195,9 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data(True, False)
+    @testtools.skipIf(CONF.share.share_network_id != "",
+                      "This test is not suitable for pre-existing "
+                      "share_network.")
     def test_delete_share_server(self, delete_share_network):
         # Get network and subnet from existing share_network and reuse it
         # to be able to delete share_server after test ends.
