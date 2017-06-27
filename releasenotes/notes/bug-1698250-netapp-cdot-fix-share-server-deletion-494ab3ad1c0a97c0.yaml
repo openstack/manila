@@ -1,0 +1,4 @@
+---
+fixes:
+  - The NetApp cDOT DHSS=True drivers have been fixed to not assume that share
+    servers are only provisioned on segmented (VLAN) networks.
