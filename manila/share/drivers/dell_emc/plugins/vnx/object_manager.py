@@ -1015,7 +1015,8 @@ class VDM(StorageObject):
                     if_name = m_if.group('if').strip()
                     if 'cifs' == m_if.group('type') and if_name != '':
                         interfaces['cifs'].append(if_name)
-                    elif 'vdm' == m_if.group('type') and if_name != '':
+                    elif (m_if.group('type') in ('vdm', 'nfs')
+                          and if_name != ''):
                         interfaces['nfs'].append(if_name)
 
         return interfaces

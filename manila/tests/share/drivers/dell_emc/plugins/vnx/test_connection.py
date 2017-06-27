@@ -716,7 +716,7 @@ class StorageConnectionTestCase(test.TestCase):
         xml_req_mock = utils.EMCMock(side_effect=hook)
         self.connection.manager.connectors['XML'].request = xml_req_mock
         ssh_hook = utils.SSHSideEffect()
-        ssh_hook.append(self.vdm.output_get_interfaces(nfs_interface=''))
+        ssh_hook.append(self.vdm.output_get_interfaces_vdm(nfs_interface=''))
         ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
         self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
 
@@ -755,7 +755,7 @@ class StorageConnectionTestCase(test.TestCase):
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
         ssh_hook = utils.SSHSideEffect()
-        ssh_hook.append(self.vdm.output_get_interfaces(nfs_interface=''))
+        ssh_hook.append(self.vdm.output_get_interfaces_vdm(nfs_interface=''))
         ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
         self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
 
@@ -805,7 +805,7 @@ class StorageConnectionTestCase(test.TestCase):
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
         ssh_hook = utils.SSHSideEffect()
-        ssh_hook.append(self.vdm.output_get_interfaces())
+        ssh_hook.append(self.vdm.output_get_interfaces_vdm())
         ssh_hook.append()
         ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
         self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
@@ -848,7 +848,7 @@ class StorageConnectionTestCase(test.TestCase):
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
         ssh_hook = utils.SSHSideEffect()
-        ssh_hook.append(self.vdm.output_get_interfaces())
+        ssh_hook.append(self.vdm.output_get_interfaces_vdm())
         ssh_hook.append()
         ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
         self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
@@ -906,7 +906,7 @@ class StorageConnectionTestCase(test.TestCase):
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
         ssh_hook = utils.SSHSideEffect()
-        ssh_hook.append(self.vdm.output_get_interfaces())
+        ssh_hook.append(self.vdm.output_get_interfaces_vdm())
         ssh_hook.append()
         ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
         self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
@@ -947,7 +947,7 @@ class StorageConnectionTestCase(test.TestCase):
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
         ssh_hook = utils.SSHSideEffect()
-        ssh_hook.append(self.vdm.output_get_interfaces())
+        ssh_hook.append(self.vdm.output_get_interfaces_vdm())
         ssh_hook.append()
         ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
         self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock

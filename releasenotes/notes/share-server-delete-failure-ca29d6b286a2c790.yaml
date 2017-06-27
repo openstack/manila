@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fix the issue of deleting share server in VNX driver. The VNX driver failed
+    to detect the NFS interface of share server, so the detach and deletion of
+    NFS interface were skipped.
