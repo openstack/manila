@@ -75,6 +75,8 @@ VLAN = '1001'
 VLAN_PORT = 'e0a-1001'
 IP_ADDRESS = '10.10.10.10'
 NETMASK = '255.255.255.0'
+GATEWAY = '10.10.10.1'
+SUBNET = '10.10.10.0/24'
 NET_ALLOCATION_ID = 'fake_allocation_id'
 LIF_NAME_TEMPLATE = 'os_%(net_allocation_id)s'
 LIF_NAME = LIF_NAME_TEMPLATE % {'net_allocation_id': NET_ALLOCATION_ID}
@@ -2312,6 +2314,23 @@ PERF_OBJECT_INSTANCE_LIST_INFO_RESPONSE = etree.XML("""
       </instance-info>
     </instances>
   </results>""")
+
+NET_ROUTES_CREATE_RESPONSE = etree.XML("""
+  <results status="passed">
+    <result>
+      <net-vs-routes-info>
+        <address-family>ipv4</address-family>
+        <destination>%(subnet)s</destination>
+        <gateway>%(gateway)s</gateway>
+        <metric>20</metric>
+        <vserver>%(vserver)s</vserver>
+      </net-vs-routes-info>
+    </result>
+  </results>""" % {
+    'gateway': GATEWAY,
+    'vserver': VSERVER_NAME,
+    'subnet': SUBNET,
+})
 
 FAKE_VOL_XML = """<volume-info xmlns='http://www.netapp.com/filer/admin'>
     <name>open123</name>

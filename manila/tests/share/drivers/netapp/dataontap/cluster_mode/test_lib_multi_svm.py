@@ -313,20 +313,24 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=fake.IPSPACE))
         self.mock_object(self.library, '_create_vserver_lifs')
         self.mock_object(self.library, '_create_vserver_admin_lif')
+        self.mock_object(self.library, '_create_vserver_routes')
 
         self.library._create_vserver(vserver_name, fake.NETWORK_INFO)
 
-        self.library._create_ipspace.assert_called_with(fake.NETWORK_INFO)
-        self.library._client.create_vserver.assert_called_with(
+        self.library._create_ipspace.assert_called_once_with(fake.NETWORK_INFO)
+        self.library._client.create_vserver.assert_called_once_with(
             vserver_name, fake.ROOT_VOLUME_AGGREGATE, fake.ROOT_VOLUME,
             fake.AGGREGATES, fake.IPSPACE)
-        self.library._get_api_client.assert_called_with(vserver=vserver_name)
-        self.library._create_vserver_lifs.assert_called_with(
+        self.library._get_api_client.assert_called_once_with(
+            vserver=vserver_name)
+        self.library._create_vserver_lifs.assert_called_once_with(
             vserver_name, vserver_client, fake.NETWORK_INFO, fake.IPSPACE)
-        self.library._create_vserver_admin_lif.assert_called_with(
+        self.library._create_vserver_admin_lif.assert_called_once_with(
             vserver_name, vserver_client, fake.NETWORK_INFO, fake.IPSPACE)
+        self.library._create_vserver_routes.assert_called_once_with(
+            vserver_client, fake.NETWORK_INFO)
         vserver_client.enable_nfs.assert_called_once_with(versions)
-        self.library._client.setup_security_services.assert_called_with(
+        self.library._client.setup_security_services.assert_called_once_with(
             fake.NETWORK_INFO['security_services'], vserver_client,
             vserver_name)
 
@@ -514,6 +518,22 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                fake.IPSPACE)
 
         self.assertFalse(self.library._create_lif.called)
+
+    @ddt.data(
+        fake.get_network_info(fake.USER_NETWORK_ALLOCATIONS,
+                              fake.ADMIN_NETWORK_ALLOCATIONS),
+        fake.get_network_info(fake.USER_NETWORK_ALLOCATIONS_IPV6,
+                              fake.ADMIN_NETWORK_ALLOCATIONS))
+    def test_create_vserver_routes(self, network_info):
+        expected_gateway = network_info['network_allocations'][0]['gateway']
+        vserver_client = mock.Mock()
+        self.mock_object(vserver_client, 'create_route')
+
+        retval = self.library._create_vserver_routes(
+            vserver_client, network_info)
+
+        self.assertIsNone(retval)
+        vserver_client.create_route.assert_called_once_with(expected_gateway)
 
     def test_get_node_data_port(self):
 
