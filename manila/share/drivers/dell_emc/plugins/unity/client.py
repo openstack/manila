@@ -212,18 +212,14 @@ class UnityClient(object):
             LOG.info(_LI('Snapshot %(snap)s on Filesystem %(fs)s already '
                          'exists.'), {'snap': name, 'fs': filesystem.name})
 
-    def create_snap_of_snap(self, src_snap, dst_snap_name, snap_type):
-        access_type = enums.FilesystemSnapAccessTypeEnum.PROTOCOL
-        if snap_type == 'checkpoint':
-            access_type = enums.FilesystemSnapAccessTypeEnum.CHECKPOINT
-
+    def create_snap_of_snap(self, src_snap, dst_snap_name):
         if isinstance(src_snap, six.string_types):
             snap = self.get_snapshot(name=src_snap)
         else:
             snap = src_snap
 
         try:
-            return snap.create_snap(dst_snap_name, fs_access_type=access_type)
+            return snap.create_snap(dst_snap_name)
         except storops_ex.UnitySnapNameInUseError:
             return self.get_snapshot(dst_snap_name)
 

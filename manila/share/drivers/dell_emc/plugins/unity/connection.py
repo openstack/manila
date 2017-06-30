@@ -213,8 +213,7 @@ class UnityStorageConnection(driver.StorageConnection):
             raise exception.EMCUnityError(err=message)
 
         backend_snap = self.client.create_snap_of_snap(snapshot['id'],
-                                                       share_name,
-                                                       snap_type='snapshot')
+                                                       share_name)
 
         locations = None
         if share_proto == 'CIFS':
@@ -274,9 +273,7 @@ class UnityStorageConnection(driver.StorageConnection):
 
         snapshot_name = snapshot['id']
         if self._is_share_from_snapshot(backend_share):
-            self.client.create_snap_of_snap(backend_share.snap,
-                                            snapshot_name,
-                                            snap_type='checkpoint')
+            self.client.create_snap_of_snap(backend_share.snap, snapshot_name)
         else:
             self.client.create_snapshot(backend_share.filesystem,
                                         snapshot_name)
