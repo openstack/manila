@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 from tempest import config
 from tempest.lib.common.utils import data_utils
 import testtools
@@ -23,6 +24,7 @@ from manila_tempest_tests.tests.api import base
 CONF = config.CONF
 
 
+@ddt.ddt
 class SharesActionsAdminTest(base.BaseSharesAdminTest):
     """Covers share functionality, that doesn't related to share type."""
 
@@ -235,6 +237,32 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         self.assertGreater(len(shares), 0)
         for share in shares:
             self.assertEqual(filters['host'], share['host'])
+
+    @base.skip_if_microversion_lt("2.35")
+    @ddt.data(('path', True), ('id', True), ('path', False), ('id', False))
+    @ddt.unpack
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    def test_list_shares_or_with_detail_filter_by_export_location(
+            self, export_location_type, enable_detail):
+        export_locations = self.shares_v2_client.list_share_export_locations(
+            self.shares[0]['id'])
+        if not isinstance(export_locations, (list, tuple, set)):
+            export_locations = (export_locations, )
+
+        filters = {
+            'export_location_' + export_location_type:
+                export_locations[0][export_location_type],
+        }
+        # list shares
+        if enable_detail:
+            shares = self.shares_v2_client.list_shares_with_detail(
+                params=filters)
+        else:
+            shares = self.shares_v2_client.list_shares(params=filters)
+
+        # verify response
+        self.assertEqual(1, len(shares))
+        self.assertEqual(self.shares[0]['id'], shares[0]['id'])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipIf(

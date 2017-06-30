@@ -113,6 +113,8 @@ Request
    - project_id: project_id_6
    - is_public: is_public
    - consistency_group_id: consistency_group_id_6
+   - export_location_id: export_location_id_query
+   - export_location_path: export_location_path_query
 
 Response parameters
 -------------------
@@ -164,6 +166,8 @@ Request
    - project_id: project_id_6
    - is_public: is_public
    - consistency_group_id: consistency_group_id_6
+   - export_location_id: export_location_id_query
+   - export_location_path: export_location_path_query
 
 Response parameters
 -------------------

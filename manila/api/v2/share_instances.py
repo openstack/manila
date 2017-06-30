@@ -15,6 +15,7 @@
 
 from webob import exc
 
+from manila.api import common
 from manila.api.openstack import wsgi
 from manila.api.views import share_instance as instance_view
 from manila import db
@@ -61,12 +62,26 @@ class ShareInstancesController(wsgi.Controller, wsgi.AdminActionsMixin):
     def instance_force_delete(self, req, id, body):
         return self._force_delete(req, id, body)
 
-    @wsgi.Controller.api_version("2.3")
+    @wsgi.Controller.api_version("2.3", "2.34")  # noqa
     @wsgi.Controller.authorize
-    def index(self, req):
+    def index(self, req):  # pylint: disable=E0102
         context = req.environ['manila.context']
 
+        req.GET.pop('export_location_id', None)
+        req.GET.pop('export_location_path', None)
         instances = db.share_instances_get_all(context)
+        return self._view_builder.detail_list(req, instances)
+
+    @wsgi.Controller.api_version("2.35")  # noqa
+    @wsgi.Controller.authorize
+    def index(self, req):  # pylint: disable=E0102
+        context = req.environ['manila.context']
+        filters = {}
+        filters.update(req.GET)
+        common.remove_invalid_options(
+            context, filters, ('export_location_id', 'export_location_path'))
+
+        instances = db.share_instances_get_all(context, filters)
         return self._view_builder.detail_list(req, instances)
 
     @wsgi.Controller.api_version("2.3")

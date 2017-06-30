@@ -335,6 +335,29 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
         self.assertEqual('share-%s' % instance['id'], instance['name'])
 
+    @ddt.data('id', 'path')
+    def test_share_instance_get_all_by_export_location(self, type):
+        share = db_utils.create_share()
+        initial_location = ['fake_export_location']
+        db_api.share_export_locations_update(self.ctxt, share.instance['id'],
+                                             initial_location, False)
+
+        if type == 'id':
+            export_location = (
+                db_api.share_export_locations_get_by_share_id(self.ctxt,
+                                                              share['id']))
+            value = export_location[0]['uuid']
+        else:
+            value = 'fake_export_location'
+
+        instances = db_api.share_instances_get_all(
+            self.ctxt, filters={'export_location_' + type: value})
+
+        self.assertEqual(1, len(instances))
+        instance = instances[0]
+
+        self.assertEqual('share-%s' % instance['id'], instance['name'])
+
     @ddt.data('host', 'share_group_id')
     def test_share_get_all_sort_by_share_instance_fields(self, sort_key):
         shares = [db_utils.create_share(**{sort_key: n, 'size': 1})
@@ -345,6 +368,36 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
         self.assertEqual(2, len(actual_result))
         self.assertEqual(shares[0]['id'], actual_result[1]['id'])
+
+    @ddt.data('id', 'path')
+    def test_share_get_all_by_export_location(self, type):
+        share = db_utils.create_share()
+        initial_location = ['fake_export_location']
+        db_api.share_export_locations_update(self.ctxt, share.instance['id'],
+                                             initial_location, False)
+        if type == 'id':
+            export_location = db_api.share_export_locations_get_by_share_id(
+                self.ctxt, share['id'])
+            value = export_location[0]['uuid']
+        else:
+            value = 'fake_export_location'
+
+        actual_result = db_api.share_get_all(
+            self.ctxt, filters={'export_location_' + type: value})
+
+        self.assertEqual(1, len(actual_result))
+        self.assertEqual(share['id'], actual_result[0]['id'])
+
+    @ddt.data('id', 'path')
+    def test_share_get_all_by_export_location_not_exist(self, type):
+        share = db_utils.create_share()
+        initial_location = ['fake_export_location']
+        db_api.share_export_locations_update(self.ctxt, share.instance['id'],
+                                             initial_location, False)
+        filter = {'export_location_' + type: 'export_location_not_exist'}
+        actual_result = db_api.share_get_all(self.ctxt, filters=filter)
+
+        self.assertEqual(0, len(actual_result))
 
     @ddt.data(None, 'writable')
     def test_share_get_has_replicas_field(self, replication_type):

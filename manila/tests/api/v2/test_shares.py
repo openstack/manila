@@ -1497,7 +1497,11 @@ class ShareAPITest(test.TestCase):
                           req,
                           1)
 
-    def _share_list_summary_with_search_opts(self, use_admin_context):
+    @ddt.data({'use_admin_context': False, 'version': '2.4'},
+              {'use_admin_context': True, 'version': '2.4'},
+              {'use_admin_context': True, 'version': '2.35'},
+              {'use_admin_context': False, 'version': '2.35'})
+    def share_list_summary_with_search_opts(self, use_admin_context, version):
         search_opts = {
             'name': 'fake_name',
             'status': constants.STATUS_AVAILABLE,
@@ -1512,6 +1516,8 @@ class ShareAPITest(test.TestCase):
             'limit': '1',
             'offset': '1',
             'is_public': 'False',
+            'export_location_id': 'fake_export_location_id',
+            'export_location_path': 'fake_export_location_path',
         }
         if use_admin_context:
             search_opts['host'] = 'fake_host'
@@ -1519,7 +1525,8 @@ class ShareAPITest(test.TestCase):
         url = '/shares?fake_key=fake_value'
         for k, v in search_opts.items():
             url = url + '&' + k + '=' + v
-        req = fakes.HTTPRequest.blank(url, use_admin_context=use_admin_context)
+        req = fakes.HTTPRequest.blank(url, version=version,
+                                      use_admin_context=use_admin_context)
 
         shares = [
             {'id': 'id1', 'display_name': 'n1'},
@@ -1537,12 +1544,18 @@ class ShareAPITest(test.TestCase):
             'share_server_id': search_opts['share_server_id'],
             'share_type_id': search_opts['share_type_id'],
             'snapshot_id': search_opts['snapshot_id'],
-
             'share_network_id': search_opts['share_network_id'],
             'metadata': {'k1': 'v1'},
             'extra_specs': {'k2': 'v2'},
             'is_public': 'False',
         }
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.35')):
+            search_opts_expected['export_location_id'] = (
+                search_opts['export_location_id'])
+            search_opts_expected['export_location_path'] = (
+                search_opts['export_location_path'])
+
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
             search_opts_expected['host'] = search_opts['host']
@@ -1556,12 +1569,6 @@ class ShareAPITest(test.TestCase):
         self.assertEqual(shares[1]['id'], result['shares'][0]['id'])
         self.assertEqual(
             shares[1]['display_name'], result['shares'][0]['name'])
-
-    def test_share_list_summary_with_search_opts_by_non_admin(self):
-        self._share_list_summary_with_search_opts(use_admin_context=False)
-
-    def test_share_list_summary_with_search_opts_by_admin(self):
-        self._share_list_summary_with_search_opts(use_admin_context=True)
 
     def test_share_list_summary(self):
         self.mock_object(share_api.API, 'get_all',
@@ -1588,7 +1595,11 @@ class ShareAPITest(test.TestCase):
         }
         self.assertEqual(expected, res_dict)
 
-    def _share_list_detail_with_search_opts(self, use_admin_context):
+    @ddt.data({'use_admin_context': False, 'version': '2.4'},
+              {'use_admin_context': True, 'version': '2.4'},
+              {'use_admin_context': True, 'version': '2.35'},
+              {'use_admin_context': False, 'version': '2.35'})
+    def _share_list_detail_with_search_opts(self, use_admin_context, version):
         search_opts = {
             'name': 'fake_name',
             'status': constants.STATUS_AVAILABLE,
@@ -1603,6 +1614,8 @@ class ShareAPITest(test.TestCase):
             'limit': '1',
             'offset': '1',
             'is_public': 'False',
+            'export_location_id': 'fake_export_location_id',
+            'export_location_path': 'fake_export_location_path',
         }
         if use_admin_context:
             search_opts['host'] = 'fake_host'
@@ -1610,7 +1623,8 @@ class ShareAPITest(test.TestCase):
         url = '/shares/detail?fake_key=fake_value'
         for k, v in search_opts.items():
             url = url + '&' + k + '=' + v
-        req = fakes.HTTPRequest.blank(url, use_admin_context=use_admin_context)
+        req = fakes.HTTPRequest.blank(url, version=version,
+                                      use_admin_context=use_admin_context)
 
         shares = [
             {'id': 'id1', 'display_name': 'n1'},
@@ -1627,6 +1641,7 @@ class ShareAPITest(test.TestCase):
             },
             {'id': 'id3', 'display_name': 'n3'},
         ]
+
         self.mock_object(share_api.API, 'get_all',
                          mock.Mock(return_value=shares))
 
@@ -1643,6 +1658,13 @@ class ShareAPITest(test.TestCase):
             'extra_specs': {'k2': 'v2'},
             'is_public': 'False',
         }
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.35')):
+            search_opts_expected['export_location_id'] = (
+                search_opts['export_location_id'])
+            search_opts_expected['export_location_path'] = (
+                search_opts['export_location_path'])
+
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
             search_opts_expected['host'] = search_opts['host']
@@ -1671,12 +1693,10 @@ class ShareAPITest(test.TestCase):
         self.assertEqual(
             shares[1]['instance']['share_network_id'],
             result['shares'][0]['share_network_id'])
-
-    def test_share_list_detail_with_search_opts_by_non_admin(self):
-        self._share_list_detail_with_search_opts(use_admin_context=False)
-
-    def test_share_list_detail_with_search_opts_by_admin(self):
-        self._share_list_detail_with_search_opts(use_admin_context=True)
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.35')):
+            self.assertEqual(shares[1]['export_location'],
+                             result['shares'][0]['export_location'])
 
     def _list_detail_common_expected(self, admin=False):
         share_dict = {

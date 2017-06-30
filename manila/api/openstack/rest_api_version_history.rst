@@ -200,3 +200,8 @@ user documentation.
 ----
   Added 'availability_zone_id' and 'consistent_snapshot_support' fields to
   'share_group' object.
+
+2.35
+----
+  Added support to retrieve shares filtered by export_location_id and
+  export_location_path.

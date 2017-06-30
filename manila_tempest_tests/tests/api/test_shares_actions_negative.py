@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 from tempest import config
 from tempest.lib import exceptions as lib_exc
 import testtools
@@ -23,6 +24,7 @@ from manila_tempest_tests.tests.api import base
 CONF = config.CONF
 
 
+@ddt.ddt
 class SharesActionsNegativeTest(base.BaseSharesMixedTest):
     @classmethod
     def resource_setup(cls):
@@ -134,3 +136,32 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
                           self.shares_client.shrink_share,
                           share['id'],
                           new_size)
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    @base.skip_if_microversion_not_supported("2.34")
+    @ddt.data('path', 'id')
+    def test_list_shares_with_export_location_and_invalid_version(
+            self, export_location_type):
+        # In API versions <v2.35, querying the share API by export
+        # location path or ID should have no effect. Those filters were
+        # supported from v2.35
+        filters = {
+            'export_location_' + export_location_type: 'fake',
+        }
+        shares = self.shares_v2_client.list_shares(
+            params=filters, version="2.34")
+
+        self.assertGreater(len(shares), 0)
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    @base.skip_if_microversion_lt("2.35")
+    @ddt.data('path', 'id')
+    def test_list_shares_with_export_location_not_exist(
+            self, export_location_type):
+        filters = {
+            'export_location_' + export_location_type: 'fake_not_exist',
+        }
+        shares = self.shares_v2_client.list_shares(
+            params=filters)
+
+        self.assertEqual(0, len(shares))

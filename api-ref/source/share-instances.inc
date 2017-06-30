@@ -25,6 +25,8 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - tenant_id: tenant_id_1
+   - export_location_id: export_location_id_query
+   - export_location_path: export_location_path_query
 
 Response parameters
 -------------------

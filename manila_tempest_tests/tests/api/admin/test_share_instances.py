@@ -14,13 +14,10 @@
 #    under the License.
 
 import ddt
-from tempest import config
 from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
 from manila_tempest_tests import utils
-
-CONF = config.CONF
 
 
 @ddt.ddt
@@ -92,3 +89,26 @@ class ShareInstancesTest(base.BaseSharesAdminTest):
                          'Share instance %s returned incorrect keys; '
                          'expected %s, got %s.' % (
                              si['id'], expected_keys, actual_keys))
+
+    @ddt.data('path', 'id')
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    @base.skip_if_microversion_lt("2.35")
+    def test_list_share_instances_with_export_location_path_and_id(
+            self, export_location_type):
+        share_instances_except = (
+            self.shares_v2_client.get_instances_of_share(
+                self.share['id']))
+        export_locations = (
+            self.shares_v2_client.list_share_instance_export_locations(
+                share_instances_except[0]['id']))
+
+        filters = {
+            'export_location_' + export_location_type:
+                export_locations[0][export_location_type],
+        }
+        share_instances = self.shares_v2_client.list_share_instances(
+            params=filters)
+
+        self.assertEqual(1, len(share_instances))
+        self.assertEqual(share_instances_except[0]['id'],
+                         share_instances[0]['id'])

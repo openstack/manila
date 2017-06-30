@@ -415,6 +415,30 @@ class ShareController(shares.ShareMixin,
     def revert(self, req, id, body=None):
         return self._revert(req, id, body)
 
+    @wsgi.Controller.api_version("2.0", "2.34")  # noqa
+    def index(self, req):  # pylint: disable=E0102
+        """Returns a summary list of shares."""
+        req.GET.pop('export_location_id', None)
+        req.GET.pop('export_location_path', None)
+        return self._get_shares(req, is_detail=False)
+
+    @wsgi.Controller.api_version("2.35")  # noqa
+    def index(self, req):  # pylint: disable=E0102
+        """Returns a summary list of shares."""
+        return self._get_shares(req, is_detail=False)
+
+    @wsgi.Controller.api_version("2.0", "2.34")  # noqa
+    def detail(self, req):  # pylint: disable=E0102
+        """Returns a detailed list of shares."""
+        req.GET.pop('export_location_id', None)
+        req.GET.pop('export_location_path', None)
+        return self._get_shares(req, is_detail=True)
+
+    @wsgi.Controller.api_version("2.35")  # noqa
+    def detail(self, req):  # pylint: disable=E0102
+        """Returns a detailed list of shares."""
+        return self._get_shares(req, is_detail=True)
+
 
 def create_resource():
     return wsgi.Resource(ShareController())

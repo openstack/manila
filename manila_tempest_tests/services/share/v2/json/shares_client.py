@@ -294,8 +294,11 @@ class SharesV2Client(shares_client.SharesClient):
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
-    def list_share_instances(self, version=LATEST_MICROVERSION):
-        resp, body = self.get("share_instances", version=version)
+    def list_share_instances(self, version=LATEST_MICROVERSION,
+                             params=None):
+        uri = 'share_instances'
+        uri += '?%s' % urlparse.urlencode(params) if params else ''
+        resp, body = self.get(uri, version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
