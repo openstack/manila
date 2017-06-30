@@ -19,6 +19,7 @@ import os
 import ddt
 import mock
 from oslo_config import cfg
+from oslo_utils import timeutils
 
 from manila.common import constants as const
 from manila import context
@@ -591,3 +592,64 @@ class LVMShareDriverTestCase(test.TestCase):
             update_access.assert_called_once_with(
             self.server, self.snapshot['name'],
             access_rules, add_rules=add_rules, delete_rules=delete_rules))
+
+    @mock.patch.object(timeutils, 'utcnow', mock.Mock(
+                       return_value='fake_date'))
+    def test_update_share_usage_size(self):
+        mount_path = self._get_mount_path(self.share)
+        self._os.path.exists.return_value = True
+        self.mock_object(
+            self._driver,
+            '_execute',
+            mock.Mock(return_value=(
+                "Mounted on                    Used "
+                + mount_path + "               1G", None)))
+
+        update_shares = self._driver.update_share_usage_size(
+            self._context, [self.share, ])
+        self._os.path.exists.assert_called_with(mount_path)
+        self.assertEqual(
+            [{'id': 'fakeid', 'used_size': '1',
+              'gathered_at': 'fake_date'}],
+            update_shares)
+        self._driver._execute.assert_called_once_with(
+            'df', '-l', '--output=target,used',
+            '--block-size=g')
+
+    @mock.patch.object(timeutils, 'utcnow', mock.Mock(
+                       return_value='fake_date'))
+    def test_update_share_usage_size_multiple_share(self):
+        share1 = fake_share(id='fakeid_get_fail', name='get_fail')
+        share2 = fake_share(id='fakeid_success', name='get_success')
+        share3 = fake_share(id='fakeid_not_exist', name='get_not_exist')
+
+        mount_path2 = self._get_mount_path(share2)
+        mount_path3 = self._get_mount_path(share3)
+        self._os.path.exists.side_effect = [True, True, False]
+        self.mock_object(
+            self._driver,
+            '_execute',
+            mock.Mock(return_value=(
+                "Mounted on                    Used "
+                + mount_path2 + "               1G", None)))
+
+        update_shares = self._driver.update_share_usage_size(
+            self._context, [share1, share2, share3])
+        self._os.path.exists.assert_called_with(mount_path3)
+        self.assertEqual(
+            [{'gathered_at': 'fake_date',
+              'id': 'fakeid_success', 'used_size': '1'}],
+            update_shares)
+        self._driver._execute.assert_called_with(
+            'df', '-l', '--output=target,used',
+            '--block-size=g')
+
+    def test_update_share_usage_size_fail(self):
+        def _fake_exec(*args, **kwargs):
+            raise exception.ProcessExecutionError(stderr="error")
+
+        self.mock_object(self._driver, '_execute', _fake_exec)
+        self.assertRaises(exception.ProcessExecutionError,
+                          self._driver.update_share_usage_size,
+                          self._context,
+                          [self.share])

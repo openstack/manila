@@ -6303,6 +6303,46 @@ class ShareManagerTestCase(test.TestCase):
             self.context, share_instance['id'],
             share_server='fake_share_server')
 
+    @mock.patch('manila.tests.fake_notifier.FakeNotifier._notify')
+    def test_update_share_usage_size(self, mock_notify):
+        instances = self._setup_init_mocks(setup_access_rules=False)
+        update_shares = [{'id': 'fake_id', 'used_size': '3',
+                          'gathered_at': 'fake'}]
+        mock_notify.assert_not_called()
+
+        manager = self.share_manager
+        self.mock_object(manager, 'driver')
+        self.mock_object(manager.db, 'share_instances_get_all_by_host',
+                         mock.Mock(return_value=instances))
+        self.mock_object(manager.db, 'share_instance_get',
+                         mock.Mock(side_effect=instances))
+        mock_driver_call = self.mock_object(
+            manager.driver, 'update_share_usage_size',
+            mock.Mock(return_value=update_shares))
+        self.share_manager.update_share_usage_size(self.context)
+        self.assert_notify_called(mock_notify,
+                                  (['INFO', 'share.consumed.size'], ))
+        mock_driver_call.assert_called_once_with(
+            self.context, instances)
+
+    @mock.patch('manila.tests.fake_notifier.FakeNotifier._notify')
+    def test_update_share_usage_size_fail(self, mock_notify):
+        instances = self._setup_init_mocks(setup_access_rules=False)
+        mock_notify.assert_not_called()
+
+        self.mock_object(self.share_manager, 'driver')
+        self.mock_object(self.share_manager.db,
+                         'share_instances_get_all_by_host',
+                         mock.Mock(return_value=instances))
+        self.mock_object(self.share_manager.db, 'share_instance_get',
+                         mock.Mock(side_effect=instances))
+        self.mock_object(
+            self.share_manager.driver, 'update_share_usage_size',
+            mock.Mock(side_effect=exception.ProcessExecutionError))
+        mock_log_exception = self.mock_object(manager.LOG, 'exception')
+        self.share_manager.update_share_usage_size(self.context)
+        self.assertTrue(mock_log_exception.called)
+
 
 @ddt.ddt
 class HookWrapperTestCase(test.TestCase):

@@ -34,6 +34,7 @@ import time
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_utils import timeutils
 
 from manila.common import constants
 from manila import exception
@@ -628,3 +629,12 @@ class DummyDriver(driver.ShareDriver):
                       "progress": total_progress
                   })
         return {"total_progress": total_progress}
+
+    def update_share_usage_size(self, context, shares):
+        share_updates = []
+        gathered_at = timeutils.utcnow()
+        for s in shares:
+            share_updates.append({'id': s['id'],
+                                  'used_size':  1,
+                                  'gathered_at': gathered_at})
+        return share_updates

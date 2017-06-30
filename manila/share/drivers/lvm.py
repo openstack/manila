@@ -25,6 +25,7 @@ import re
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import importutils
+from oslo_utils import timeutils
 import six
 
 from manila import exception
@@ -444,3 +445,30 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         helper.update_access(self.share_server,
                              snapshot['name'], access_rules,
                              add_rules=add_rules, delete_rules=delete_rules)
+
+    def update_share_usage_size(self, context, shares):
+        updated_shares = []
+        out, err = self._execute(
+            'df', '-l', '--output=target,used',
+            '--block-size=g')
+        gathered_at = timeutils.utcnow()
+
+        for share in shares:
+            try:
+                mount_path = self._get_mount_path(share)
+                if os.path.exists(mount_path):
+                    used_size = (re.findall(
+                        mount_path + "\s*[0-9.]+G", out)[0].
+                        split(' ')[-1][:-1])
+                    updated_shares.append({'id': share['id'],
+                                           'used_size': used_size,
+                                           'gathered_at': gathered_at})
+                else:
+                    raise exception.NotFound(
+                        _("Share mount path %s could not be "
+                          "found.") % mount_path)
+            except Exception:
+                LOG.exception("Failed to gather 'used_size' for share %s.",
+                              share['id'])
+
+        return updated_shares

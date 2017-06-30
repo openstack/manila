@@ -2422,3 +2422,27 @@ class ShareDriver(object):
         :param share_server: None or Share server model
         """
         raise NotImplementedError()
+
+    def update_share_usage_size(self, context, shares):
+        """Invoked to get the usage size of given shares.
+
+        Driver can use this method to update the share usage size of
+        the shares. To do that, a dictionary of shares should be
+        returned.
+        :param shares: None or a list of all shares for updates.
+        :returns: An empty list or a list of dictionary of updates in the
+        following format. The value of "used_size" can be specified in GiB
+        units, as a floating point number::
+
+            [
+                {
+                    'id': '09960614-8574-4e03-89cf-7cf267b0bd08',
+                    'used_size': '200',
+                    'gathered_at': datetime.datetime(2017, 8, 10, 15, 14, 6),
+                },
+            ]
+
+        """
+        LOG.debug("This backend does not support gathering 'used_size' of "
+                  "shares created on it.")
+        return []
