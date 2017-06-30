@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixed bug in Dell EMC Unity driver that caused shares created from
+    snapshots to contain data from the original shares, instead of data from
+    their snapshots.
