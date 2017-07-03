@@ -1549,7 +1549,12 @@ class ShareManager(manager.SchedulerDependentManager):
         context = context.elevated()
 
         share_instance = self._get_share_instance(context, share_instance_id)
-        share_network_id = share_instance.get('share_network_id', None)
+        share_id = share_instance.get('share_id')
+        share_network_id = share_instance.get('share_network_id')
+        share = self.db.share_get(context, share_id)
+
+        self._notify_about_share_usage(context, share,
+                                       share_instance, "create.start")
 
         if not share_instance['availability_zone']:
             share_instance = self.db.share_instance_update(
@@ -1641,7 +1646,6 @@ class ShareManager(manager.SchedulerDependentManager):
         else:
             LOG.info("Share instance %s created successfully.",
                      share_instance_id)
-            share = self.db.share_get(context, share_instance['share_id'])
             updates = {
                 'status': constants.STATUS_AVAILABLE,
                 'launched_at': timeutils.utcnow(),
@@ -1650,6 +1654,9 @@ class ShareManager(manager.SchedulerDependentManager):
                 updates['replica_state'] = constants.REPLICA_STATE_ACTIVE
 
             self.db.share_instance_update(context, share_instance_id, updates)
+
+            self._notify_about_share_usage(context, share,
+                                           share_instance, "create.end")
 
     def _update_share_replica_access_rules_state(self, context,
                                                  share_replica_id, state):
@@ -2544,7 +2551,12 @@ class ShareManager(manager.SchedulerDependentManager):
         """Delete a share instance."""
         context = context.elevated()
         share_instance = self._get_share_instance(context, share_instance_id)
+        share_id = share_instance.get('share_id')
         share_server = self._get_share_server(context, share_instance)
+        share = self.db.share_get(context, share_id)
+
+        self._notify_about_share_usage(context, share,
+                                       share_instance, "delete.start")
 
         try:
             self.access_helper.update_access_rules(
@@ -2597,6 +2609,9 @@ class ShareManager(manager.SchedulerDependentManager):
                  share_instance_id)
 
         self._check_delete_share_server(context, share_instance)
+
+        self._notify_about_share_usage(context, share,
+                                       share_instance, "delete.end")
 
     def _check_delete_share_server(self, context, share_instance):
 
@@ -3336,6 +3351,9 @@ class ShareManager(manager.SchedulerDependentManager):
         project_id = share['project_id']
         user_id = share['user_id']
 
+        self._notify_about_share_usage(context, share,
+                                       share_instance, "extend.start")
+
         try:
             self.driver.extend_share(
                 share_instance, new_size, share_server=share_server)
@@ -3369,6 +3387,9 @@ class ShareManager(manager.SchedulerDependentManager):
 
         LOG.info("Extend share completed successfully.", resource=share)
 
+        self._notify_about_share_usage(context, share,
+                                       share_instance, "extend.end")
+
     @add_hooks
     @utils.require_driver_initialized
     def shrink_share(self, context, share_id, new_size):
@@ -3379,6 +3400,9 @@ class ShareManager(manager.SchedulerDependentManager):
         project_id = share['project_id']
         user_id = share['user_id']
         new_size = int(new_size)
+
+        self._notify_about_share_usage(context, share,
+                                       share_instance, "shrink.start")
 
         def error_occurred(exc, msg, status=constants.STATUS_SHRINKING_ERROR):
             LOG.exception(msg, resource=share)
@@ -3432,6 +3456,9 @@ class ShareManager(manager.SchedulerDependentManager):
         share = self.db.share_update(context, share['id'], share_update)
 
         LOG.info("Shrink share completed successfully.", resource=share)
+
+        self._notify_about_share_usage(context, share,
+                                       share_instance, "shrink.end")
 
     @utils.require_driver_initialized
     def create_share_group(self, context, share_group_id):
@@ -3816,3 +3843,9 @@ class ShareManager(manager.SchedulerDependentManager):
 
         self.snapshot_access_helper.update_access_rules(
             context, snapshot_instance['id'], share_server=share_server)
+
+    def _notify_about_share_usage(self, context, share, share_instance,
+                                  event_suffix, extra_usage_info=None):
+        share_utils.notify_about_share_usage(
+            context, share, share_instance, event_suffix,
+            extra_usage_info=extra_usage_info, host=self.host)

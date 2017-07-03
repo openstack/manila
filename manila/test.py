@@ -363,3 +363,13 @@ class TestCase(base_test.BaseTestCase):
     def is_microversion_ge(self, left, right):
         return (api_version.APIVersionRequest(left) >=
                 api_version.APIVersionRequest(right))
+
+    def assert_notify_called(self, mock_notify, calls):
+        for i in range(0, len(calls)):
+            mock_call = mock_notify.call_args_list[i]
+            call = calls[i]
+
+            posargs = mock_call[0]
+
+            self.assertEqual(call[0], posargs[0])
+            self.assertEqual(call[1], posargs[2])

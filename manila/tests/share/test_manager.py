@@ -1933,6 +1933,29 @@ class ShareManagerTestCase(test.TestCase):
             utils.IsAMatcher(context.RequestContext), fake_server,
             metadata={'request_host': 'fake_host'})
 
+    @mock.patch('manila.tests.fake_notifier.FakeNotifier._notify')
+    def test_create_delete_share_instance(self, mock_notify):
+        """Test share can be created and deleted."""
+        share = db_utils.create_share()
+
+        mock_notify.assert_not_called()
+
+        self.share_manager.create_share_instance(
+            self.context, share.instance['id'])
+
+        self.assert_notify_called(mock_notify,
+                                  (['INFO', 'share.create.start'],
+                                   ['INFO', 'share.create.end']))
+
+        self.share_manager.delete_share_instance(
+            self.context, share.instance['id'])
+
+        self.assert_notify_called(mock_notify,
+                                  (['INFO', 'share.create.start'],
+                                   ['INFO', 'share.create.end'],
+                                   ['INFO', 'share.delete.start'],
+                                   ['INFO', 'share.delete.end']))
+
     @ddt.data(True, False)
     def test_create_delete_share_instance_error(self, exception_update_access):
         """Test share can be created and deleted with error."""
@@ -2993,10 +3016,13 @@ class ShareManagerTestCase(test.TestCase):
             'server1')
         timeutils.utcnow.assert_called_once_with()
 
-    def test_extend_share_invalid(self):
+    @mock.patch('manila.tests.fake_notifier.FakeNotifier._notify')
+    def test_extend_share_invalid(self, mock_notify):
         share = db_utils.create_share()
         share_id = share['id']
         reservations = {}
+
+        mock_notify.assert_not_called()
 
         self.mock_object(self.share_manager, 'driver')
         self.mock_object(self.share_manager.db, 'share_update')
@@ -3015,7 +3041,8 @@ class ShareManagerTestCase(test.TestCase):
             user_id=six.text_type(share['user_id'])
         )
 
-    def test_extend_share(self):
+    @mock.patch('manila.tests.fake_notifier.FakeNotifier._notify')
+    def test_extend_share(self, mock_notify):
         share = db_utils.create_share()
         share_id = share['id']
         new_size = 123
@@ -3025,6 +3052,8 @@ class ShareManagerTestCase(test.TestCase):
         }
         reservations = {}
         fake_share_server = 'fake'
+
+        mock_notify.assert_not_called()
 
         manager = self.share_manager
         self.mock_object(manager, 'driver')
@@ -3051,6 +3080,10 @@ class ShareManagerTestCase(test.TestCase):
         manager.db.share_update.assert_called_once_with(
             mock.ANY, share_id, shr_update
         )
+
+        self.assert_notify_called(mock_notify,
+                                  (['INFO', 'share.extend.start'],
+                                   ['INFO', 'share.extend.end']))
 
     def test_shrink_share_quota_error(self):
         size = 5
@@ -3115,7 +3148,8 @@ class ShareManagerTestCase(test.TestCase):
         )
         self.assertTrue(self.share_manager.db.share_get.called)
 
-    def test_shrink_share(self):
+    @mock.patch('manila.tests.fake_notifier.FakeNotifier._notify')
+    def test_shrink_share(self, mock_notify):
         share = db_utils.create_share()
         share_id = share['id']
         new_size = 123
@@ -3125,6 +3159,8 @@ class ShareManagerTestCase(test.TestCase):
         }
         fake_share_server = 'fake'
         size_decrease = int(share['size']) - new_size
+
+        mock_notify.assert_not_called()
 
         manager = self.share_manager
         self.mock_object(manager, 'driver')
@@ -3157,6 +3193,10 @@ class ShareManagerTestCase(test.TestCase):
         manager.db.share_update.assert_called_once_with(
             mock.ANY, share_id, shr_update
         )
+
+        self.assert_notify_called(mock_notify,
+                                  (['INFO', 'share.shrink.start'],
+                                   ['INFO', 'share.shrink.end']))
 
     def test_report_driver_status_driver_handles_ss_false(self):
         fake_stats = {'field': 'val'}

@@ -16,6 +16,8 @@
 
 """Tests For miscellaneous util methods used with share."""
 
+import mock
+
 from manila.common import constants
 from manila.share import utils as share_utils
 from manila import test
@@ -159,3 +161,50 @@ class ShareUtilsTestCase(test.TestCase):
                         ]
         replica = share_utils.get_active_replica(replica_list)
         self.assertIsNone(replica)
+
+
+class NotifyUsageTestCase(test.TestCase):
+    @mock.patch('manila.share.utils._usage_from_share')
+    @mock.patch('manila.share.utils.CONF')
+    @mock.patch('manila.share.utils.rpc')
+    def test_notify_about_share_usage(self, mock_rpc, mock_conf, mock_usage):
+        mock_conf.host = 'host1'
+        output = share_utils.notify_about_share_usage(mock.sentinel.context,
+                                                      mock.sentinel.share,
+                                                      mock.sentinel.
+                                                      share_instance,
+                                                      'test_suffix')
+        self.assertIsNone(output)
+        mock_usage.assert_called_once_with(mock.sentinel.share,
+                                           mock.sentinel.share_instance)
+        mock_rpc.get_notifier.assert_called_once_with('share',
+                                                      'host1')
+        mock_rpc.get_notifier.return_value.info.assert_called_once_with(
+            mock.sentinel.context,
+            'share.test_suffix',
+            mock_usage.return_value)
+
+    @mock.patch('manila.share.utils._usage_from_share')
+    @mock.patch('manila.share.utils.CONF')
+    @mock.patch('manila.share.utils.rpc')
+    def test_notify_about_share_usage_with_kwargs(self, mock_rpc, mock_conf,
+                                                  mock_usage):
+        mock_conf.host = 'host1'
+        output = share_utils.notify_about_share_usage(mock.sentinel.context,
+                                                      mock.sentinel.share,
+                                                      mock.sentinel.
+                                                      share_instance,
+                                                      'test_suffix',
+                                                      extra_usage_info={
+                                                          'a': 'b', 'c': 'd'},
+                                                      host='host2')
+        self.assertIsNone(output)
+        mock_usage.assert_called_once_with(mock.sentinel.share,
+                                           mock.sentinel.share_instance,
+                                           a='b', c='d')
+        mock_rpc.get_notifier.assert_called_once_with('share',
+                                                      'host2')
+        mock_rpc.get_notifier.return_value.info.assert_called_once_with(
+            mock.sentinel.context,
+            'share.test_suffix',
+            mock_usage.return_value)
