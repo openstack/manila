@@ -758,8 +758,9 @@ class VDMTestData(StorageObjectTestData):
             '-vdm', self.vdm_name,
         ]
 
-    def output_get_interfaces(self, cifs_interface=FakeData.interface_name1,
-                              nfs_interface=FakeData.interface_name2):
+    def output_get_interfaces_vdm(self,
+                                  cifs_interface=FakeData.interface_name1,
+                                  nfs_interface=FakeData.interface_name2):
         return (
             """id        = %(vdmid)s
             name      = %(name)s
@@ -775,6 +776,31 @@ class VDMTestData(StorageObjectTestData):
                actual = loaded, active
             Interfaces to services mapping:
              interface=%(nfs_if_name)s :vdm
+             interface=%(cifs_if_name)s :cifs""" %
+            {'vdmid': self.vdm_id,
+             'name': self.vdm_name,
+             'nfs_if_name': nfs_interface,
+             'cifs_if_name': cifs_interface}
+        )
+
+    def output_get_interfaces_nfs(self,
+                                  cifs_interface=FakeData.interface_name1,
+                                  nfs_interface=FakeData.interface_name2):
+        return (
+            """id        = %(vdmid)s
+            name      = %(name)s
+            acl       = 0
+            type      = vdm
+            server    = server_2
+            rootfs    = root_fs_vdm_vdm-fakeid
+            I18N mode = UNICODE
+            mountedfs =
+            member_of =
+            status    :
+              defined = enabled
+               actual = loaded, active
+            Interfaces to services mapping:
+             interface=%(nfs_if_name)s :nfs
              interface=%(cifs_if_name)s :cifs""" %
             {'vdmid': self.vdm_id,
              'name': self.vdm_name,

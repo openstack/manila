@@ -853,6 +853,7 @@ class MountPointTestCase(StorageObjectTestCaseBase):
         context.conn['XML'].request.assert_has_calls(expected_calls)
 
 
+@ddt.ddt
 class VDMTestCase(StorageObjectTestCaseBase):
     def setUp(self):
         super(self.__class__, self).setUp()
@@ -1077,11 +1078,11 @@ class VDMTestCase(StorageObjectTestCaseBase):
     def test_detach_nfs_interface_with_error(self):
         self.ssh_hook.append(ex=processutils.ProcessExecutionError(
             stdout=self.vdm.fake_output))
-        self.ssh_hook.append(self.vdm.output_get_interfaces(
+        self.ssh_hook.append(self.vdm.output_get_interfaces_vdm(
             self.mover.interface_name2))
         self.ssh_hook.append(ex=processutils.ProcessExecutionError(
             stdout=self.vdm.fake_output))
-        self.ssh_hook.append(self.vdm.output_get_interfaces(
+        self.ssh_hook.append(self.vdm.output_get_interfaces_vdm(
             nfs_interface=fakes.FakeData.interface_name1))
 
         context = self.manager.getStorageContext('VDM')
@@ -1103,8 +1104,10 @@ class VDMTestCase(StorageObjectTestCaseBase):
         ]
         context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
 
-    def test_get_cifs_nfs_interface(self):
-        self.ssh_hook.append(self.vdm.output_get_interfaces())
+    @ddt.data(fakes.VDMTestData().output_get_interfaces_vdm(),
+              fakes.VDMTestData().output_get_interfaces_nfs())
+    def test_get_cifs_nfs_interface(self, fake_output):
+        self.ssh_hook.append(fake_output)
 
         context = self.manager.getStorageContext('VDM')
         context.conn['SSH'].run_ssh = mock.Mock(side_effect=self.ssh_hook)
