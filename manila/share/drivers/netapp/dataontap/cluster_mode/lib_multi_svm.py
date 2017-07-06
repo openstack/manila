@@ -356,7 +356,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 interfaces_on_vlans.append(interface)
                 vlans.append(interface['home-port'])
 
-        vlans = '-'.join(set(sorted(vlans))) if vlans else None
+        vlans = '-'.join(sorted(set(vlans))) if vlans else None
 
         @utils.synchronized('netapp-VLANs-%s' % vlans, external=True)
         def _delete_vserver_with_lock():
