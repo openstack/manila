@@ -20,6 +20,7 @@ from oslo_config import cfg
 
 from manila.common import constants
 from manila import rpc
+from manila import utils
 
 DEFAULT_POOL_NAME = '_pool0'
 CONF = cfg.CONF
@@ -109,6 +110,7 @@ def cast_access_object_to_dict_in_readonly(rules):
     return dict_rules
 
 
+@utils.if_notifications_enabled
 def notify_about_share_usage(context, share, share_instance,
                              event_suffix, extra_usage_info=None, host=None):
 

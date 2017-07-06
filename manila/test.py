@@ -30,6 +30,7 @@ from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 import oslo_i18n
+import oslo_messaging
 from oslo_messaging import conffixture as messaging_conffixture
 from oslo_utils import uuidutils
 import oslotest.base as base_test
@@ -140,6 +141,11 @@ class TestCase(base_test.BaseTestCase):
         self.messaging_conf.transport_driver = 'fake'
         self.messaging_conf.response_timeout = 15
         self.useFixture(self.messaging_conf)
+
+        oslo_messaging.get_notification_transport(CONF)
+        self.override_config('driver', ['test'],
+                             group='oslo_messaging_notifications')
+
         rpc.init(CONF)
 
         mock.patch('keystoneauth1.loading.load_auth_from_conf_options').start()
@@ -373,3 +379,8 @@ class TestCase(base_test.BaseTestCase):
 
             self.assertEqual(call[0], posargs[0])
             self.assertEqual(call[1], posargs[2])
+
+    def override_config(self, name, override, group=None):
+        """Cleanly override CONF variables."""
+        CONF.set_override(name, override, group)
+        self.addCleanup(CONF.clear_override, name, group)
