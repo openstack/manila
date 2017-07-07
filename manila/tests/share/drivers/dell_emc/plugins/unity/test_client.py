@@ -148,8 +148,7 @@ class TestClient(test.TestCase):
         snapshot = mocked_input['src_snapshot']
         dest_snap = mocked_input['dest_snapshot']
 
-        new_snap = client.create_snap_of_snap(
-            snapshot, dest_snap.name, 'checkpoint')
+        new_snap = client.create_snap_of_snap(snapshot, dest_snap.name)
 
         self.assertEqual(dest_snap.name, new_snap.name)
 
