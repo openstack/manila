@@ -1613,7 +1613,9 @@ class ShareAPITest(test.TestCase):
               {'use_admin_context': True, 'version': '2.4'},
               {'use_admin_context': True, 'version': '2.35'},
               {'use_admin_context': False, 'version': '2.35'})
-    def _share_list_detail_with_search_opts(self, use_admin_context, version):
+    @ddt.unpack
+    def test_share_list_detail_with_search_opts(self, use_admin_context,
+                                                version):
         search_opts = {
             'name': 'fake_name',
             'status': constants.STATUS_AVAILABLE,
@@ -1652,6 +1654,7 @@ class ShareAPITest(test.TestCase):
                     'share_network_id': 'fake_share_network_id',
                     'share_type_id': 'fake_share_type_id',
                 },
+                'has_replicas': False,
             },
             {'id': 'id3', 'display_name': 'n3'},
         ]
@@ -1707,10 +1710,6 @@ class ShareAPITest(test.TestCase):
         self.assertEqual(
             shares[1]['instance']['share_network_id'],
             result['shares'][0]['share_network_id'])
-        if (api_version.APIVersionRequest(version) >=
-                api_version.APIVersionRequest('2.35')):
-            self.assertEqual(shares[1]['export_location'],
-                             result['shares'][0]['export_location'])
 
     def _list_detail_common_expected(self, admin=False):
         share_dict = {
