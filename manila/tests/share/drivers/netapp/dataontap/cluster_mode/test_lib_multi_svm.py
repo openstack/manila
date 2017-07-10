@@ -671,11 +671,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_get_api_client',
                          mock.Mock(return_value=vserver_client))
-        mock_delete_vserver_vlan = self.mock_object(self.library,
-                                                    '_delete_vserver_vlan')
+        mock_delete_vserver_vlans = self.mock_object(self.library,
+                                                     '_delete_vserver_vlans')
+
+        net_interfaces = copy.deepcopy(c_fake.NETWORK_INTERFACES_MULTIPLE)
+        net_interfaces_with_vlans = [net_interfaces[0]]
+
         self.mock_object(vserver_client,
                          'get_network_interfaces',
-                         mock.Mock(return_value=c_fake.NETWORK_INTERFACES))
+                         mock.Mock(return_value=net_interfaces))
         security_services = fake.NETWORK_INFO['security_services']
 
         self.library._delete_vserver(fake.VSERVER1,
@@ -686,8 +690,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._client.delete_vserver.assert_called_once_with(
             fake.VSERVER1, vserver_client, security_services=security_services)
         self.assertFalse(self.library._client.delete_ipspace.called)
-        mock_delete_vserver_vlan.assert_called_once_with(
-            c_fake.NETWORK_INTERFACES)
+        mock_delete_vserver_vlans.assert_called_once_with(
+            net_interfaces_with_vlans)
 
     def test_delete_vserver_ipspace_has_data_vservers(self):
 
@@ -701,11 +705,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library._client,
                          'ipspace_has_data_vservers',
                          mock.Mock(return_value=True))
-        mock_delete_vserver_vlan = self.mock_object(self.library,
-                                                    '_delete_vserver_vlan')
-        self.mock_object(vserver_client,
-                         'get_network_interfaces',
-                         mock.Mock(return_value=c_fake.NETWORK_INTERFACES))
+        mock_delete_vserver_vlans = self.mock_object(self.library,
+                                                     '_delete_vserver_vlans')
+        self.mock_object(
+            vserver_client, 'get_network_interfaces',
+            mock.Mock(return_value=c_fake.NETWORK_INTERFACES_MULTIPLE))
         security_services = fake.NETWORK_INFO['security_services']
 
         self.library._delete_vserver(fake.VSERVER1,
@@ -716,8 +720,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._client.delete_vserver.assert_called_once_with(
             fake.VSERVER1, vserver_client, security_services=security_services)
         self.assertFalse(self.library._client.delete_ipspace.called)
-        mock_delete_vserver_vlan.assert_called_once_with(
-            c_fake.NETWORK_INTERFACES)
+        mock_delete_vserver_vlans.assert_called_once_with(
+            [c_fake.NETWORK_INTERFACES_MULTIPLE[0]])
 
     @ddt.data([], c_fake.NETWORK_INTERFACES)
     def test_delete_vserver_with_ipspace(self, interfaces):
@@ -732,8 +736,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library._client,
                          'ipspace_has_data_vservers',
                          mock.Mock(return_value=False))
-        mock_delete_vserver_vlan = self.mock_object(self.library,
-                                                    '_delete_vserver_vlan')
+        mock_delete_vserver_vlans = self.mock_object(self.library,
+                                                     '_delete_vserver_vlans')
         self.mock_object(vserver_client,
                          'get_network_interfaces',
                          mock.Mock(return_value=interfaces))
@@ -749,11 +753,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.VSERVER1, vserver_client, security_services=security_services)
         self.library._client.delete_ipspace.assert_called_once_with(
             fake.IPSPACE)
-        mock_delete_vserver_vlan.assert_called_once_with(interfaces)
+        mock_delete_vserver_vlans.assert_called_once_with(interfaces)
 
-    def test_delete_vserver_vlan(self):
+    def test_delete_vserver_vlans(self):
 
-        self.library._delete_vserver_vlan(c_fake.NETWORK_INTERFACES)
+        self.library._delete_vserver_vlans(c_fake.NETWORK_INTERFACES)
         for interface in c_fake.NETWORK_INTERFACES:
             home_port = interface['home-port']
             port, vlan = home_port.split('-')
@@ -761,7 +765,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library._client.delete_vlan.assert_called_once_with(
                 node, port, vlan)
 
-    def test_delete_vserver_vlan_client_error(self):
+    def test_delete_vserver_vlans_client_error(self):
 
         mock_exception_log = self.mock_object(lib_multi_svm.LOG, 'exception')
         self.mock_object(
@@ -769,7 +773,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'delete_vlan',
             mock.Mock(side_effect=exception.NetAppException("fake error")))
 
-        self.library._delete_vserver_vlan(c_fake.NETWORK_INTERFACES)
+        self.library._delete_vserver_vlans(c_fake.NETWORK_INTERFACES)
         for interface in c_fake.NETWORK_INTERFACES:
             home_port = interface['home-port']
             port, vlan = home_port.split('-')
