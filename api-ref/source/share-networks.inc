@@ -53,6 +53,8 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - tenant_id: tenant_id_path
+   - name~: name_inexact_query
+   - description~: description_inexact_query
 
 Response parameters
 -------------------
@@ -86,6 +88,8 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - tenant_id: tenant_id_path
+   - name~: name_inexact_query
+   - description~: description_inexact_query
 
 Response parameters
 -------------------

@@ -218,6 +218,14 @@ consistency_group_id_5:
   in: query
   required: false
   type: string
+description_inexact_query:
+  description: |
+    The description pattern that can be used to filter shares,
+    share snapshots, share networks or share groups.
+  in: query
+  required: false
+  type: string
+  min_version: 2.36
 detail_id:
   in: query
   required: false
@@ -312,6 +320,14 @@ name_13:
   in: query
   required: false
   type: string
+name_inexact_query:
+  description: |
+    The name pattern that can be used to filter shares,
+    share snapshots, share networks or share groups.
+  in: query
+  required: false
+  type: string
+  min_version: 2.36
 offset:
   description: |
     The offset to define start point of share
