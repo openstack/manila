@@ -35,6 +35,10 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
         if clear_current_export_policy:
             self._client.remove_cifs_share_access(share_name, 'Everyone')
 
+        # Ensure 'ntfs' security style
+        self._client.set_volume_security_style(share_name,
+                                               security_style='ntfs')
+
         # Return a callback that may be used for generating export paths
         # for this share.
         return (lambda export_address, share_name=share_name:
