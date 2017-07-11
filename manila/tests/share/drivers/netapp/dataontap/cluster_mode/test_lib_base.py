@@ -1120,7 +1120,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         expected = copy.deepcopy(fake.INTERFACE_ADDRESSES_WITH_METADATA)
         for key, value in expected.items():
-            value['preferred'] = None
+            value['preferred'] = False
 
         self.assertEqual(expected, result)
         mock_get_aggregate_node.assert_called_once_with(fake.POOL_NAME)

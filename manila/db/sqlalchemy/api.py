@@ -2855,6 +2855,11 @@ def export_location_metadata_update(context, export_location_uuid, metadata,
         # that will not take effect using one session and we will rewrite,
         # in that case, single record - first one added with this call.
         session = get_session()
+
+        if meta_value is None:
+            LOG.warning(_LW("%s should be properly defined in the driver."),
+                        meta_key)
+
         item = {"value": meta_value, "updated_at": timeutils.utcnow()}
 
         meta_ref = _export_location_metadata_get_query(
