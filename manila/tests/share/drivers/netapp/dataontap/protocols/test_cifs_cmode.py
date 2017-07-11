@@ -55,6 +55,8 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
             fake.SHARE_NAME)
         self.mock_client.remove_cifs_share_access.assert_called_once_with(
             fake.SHARE_NAME, 'Everyone')
+        self.mock_client.set_volume_security_style.assert_called_once_with(
+            fake.SHARE_NAME, security_style='ntfs')
 
     def test_delete_share(self):
 

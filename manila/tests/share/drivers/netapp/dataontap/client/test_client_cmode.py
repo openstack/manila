@@ -2831,6 +2831,49 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           fake.SHARE_NAME,
                           10)
 
+    @ddt.data(None, 'ntfs')
+    def test_set_volume_security_style(self, security_style):
+
+        api_response = netapp_api.NaElement(fake.VOLUME_MODIFY_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+        kwargs = {'security_style': security_style} if security_style else {}
+
+        self.client.set_volume_security_style(fake.SHARE_NAME, **kwargs)
+
+        volume_modify_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': fake.SHARE_NAME
+                    }
+                }
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-security-attributes': {
+                        'style': security_style or 'unix',
+                    },
+                },
+            },
+        }
+        self.client.send_request.assert_called_once_with(
+            'volume-modify-iter', volume_modify_iter_args)
+
+    def test_set_volume_security_style_api_error(self):
+
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_MODIFY_ITER_ERROR_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.set_volume_security_style,
+                          fake.SHARE_NAME,
+                          'ntfs')
+
     def test_volume_exists(self):
 
         api_response = netapp_api.NaElement(fake.VOLUME_GET_NAME_RESPONSE)
