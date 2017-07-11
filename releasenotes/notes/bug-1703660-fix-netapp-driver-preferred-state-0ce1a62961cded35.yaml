@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed the NetApp driver to report the correct value of the "preferred"
+    export location metadata where it cannot determine if there are any
+    "preferred" export locations.
