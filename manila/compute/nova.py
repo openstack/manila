@@ -287,10 +287,10 @@ class API(base.Base):
             novaclient(context).servers.update(instance_id, name=name)
         )
 
-    def update_server_volume(self, context, instance_id, attachment_id,
+    def update_server_volume(self, context, instance_id, volume_id,
                              new_volume_id):
         novaclient(context).volumes.update_server_volume(instance_id,
-                                                         attachment_id,
+                                                         volume_id,
                                                          new_volume_id)
 
     def keypair_create(self, context, name):
