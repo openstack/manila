@@ -91,8 +91,8 @@ class ShareGroupAPITest(test.TestCase):
             'user_id': 'fakeuser',
             'project_id': 'fakeproject',
             'status': constants.STATUS_CREATING,
-            'name': None,
-            'description': None,
+            'name': 'fake name',
+            'description': 'fake description',
             'host': None,
             'availability_zone': None,
             'consistent_snapshot_support': None,
@@ -746,6 +746,28 @@ class ShareGroupAPITest(test.TestCase):
 
         self.assertEqual(1, len(res_dict['share_groups']))
         self.assertEqual([expected2], res_dict['share_groups'])
+        self.mock_policy_check.assert_called_once_with(
+            req_context, self.resource_name, 'get_all')
+
+    def test_share_group_list_index_with_like_filter(self):
+        fake, expected = self._get_fake_simple_share_group(
+            name='fake_1', description='fake_ds_1')
+        fake2, expected2 = self._get_fake_simple_share_group(
+            name='fake_2', description='fake_ds_2')
+        self.mock_object(share_group_api.API, 'get_all',
+                         mock.Mock(return_value=[fake, fake2]))
+        req = fakes.HTTPRequest.blank(
+            '/share-groups?name~=fake&description~=fake',
+            version='2.36',
+            experimental=True)
+        req_context = req.environ['manila.context']
+
+        res_dict = self.controller.index(req)
+
+        expected.pop('description')
+        expected2.pop('description')
+        self.assertEqual(2, len(res_dict['share_groups']))
+        self.assertEqual([expected, expected2], res_dict['share_groups'])
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'get_all')
 

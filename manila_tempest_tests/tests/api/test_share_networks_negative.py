@@ -128,3 +128,16 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
         self.assertRaises(
             lib_exc.Conflict,
             self.shares_client.delete_share_network, new_sn['id'])
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    @base.skip_if_microversion_not_supported("2.35")
+    def test_list_shares_with_like_filter_not_exist(self):
+        filters = {
+            'name~': 'fake_not_exist',
+            'description~': 'fake_not_exist',
+        }
+        share_networks = (
+            self.shares_v2_client.list_share_networks_with_detail(
+                params=filters))
+
+        self.assertEqual(0, len(share_networks))

@@ -102,12 +102,16 @@ class ShareMixin(object):
         """Returns a summary list of shares."""
         req.GET.pop('export_location_id', None)
         req.GET.pop('export_location_path', None)
+        req.GET.pop('name~', None)
+        req.GET.pop('description~', None)
         return self._get_shares(req, is_detail=False)
 
     def detail(self, req):
         """Returns a detailed list of shares."""
         req.GET.pop('export_location_id', None)
         req.GET.pop('export_location_path', None)
+        req.GET.pop('name~', None)
+        req.GET.pop('description~', None)
         return self._get_shares(req, is_detail=True)
 
     def _get_shares(self, req, is_detail):
@@ -135,6 +139,13 @@ class ShareMixin(object):
         # from Cinder v1 and v2 APIs.
         if 'name' in search_opts:
             search_opts['display_name'] = search_opts.pop('name')
+
+        # like filter
+        for key, db_key in (('name~', 'display_name~'),
+                            ('description~', 'display_description~')):
+            if key in search_opts:
+                search_opts[db_key] = search_opts.pop(key)
+
         if sort_key == 'name':
             sort_key = 'display_name'
 
@@ -164,7 +175,8 @@ class ShareMixin(object):
             'share_type_id', 'snapshot_id', 'host', 'share_network_id',
             'is_public', 'metadata', 'extra_specs', 'sort_key', 'sort_dir',
             'share_group_id', 'share_group_snapshot_id',
-            'export_location_id', 'export_location_path'
+            'export_location_id', 'export_location_path', 'display_name~',
+            'display_description~'
         )
 
     def update(self, req, id, body):

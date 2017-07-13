@@ -23,6 +23,7 @@ import webob
 from webob import exc
 
 from manila.api import common
+from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila.api.views import share_networks as share_networks_views
 from manila.db import api as db_api
@@ -166,8 +167,15 @@ class ShareNetworkController(wsgi.Controller):
             for key, value in search_opts.items():
                 if key in ['ip_version', 'segmentation_id']:
                     value = int(value)
-                networks = [network for network in networks
-                            if network[key] == value]
+                if (req.api_version_request >=
+                        api_version.APIVersionRequest("2.36")):
+                    networks = [network for network in networks
+                                if network.get(key) == value or
+                                (value in network.get(key.rstrip('~'))
+                                 if network.get(key.rstrip('~')) else ())]
+                else:
+                    networks = [network for network in networks
+                                if network.get(key) == value]
 
         limited_list = common.limited(networks, req)
         return self._view_builder.build_share_networks(

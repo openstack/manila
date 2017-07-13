@@ -3903,11 +3903,17 @@ def _share_group_get_all(context, project_id=None, share_server_id=None,
         filters = {}
     no_key = 'key_is_absent'
     for k, v in filters.items():
-        filter_attr = getattr(models.ShareGroup, k, no_key)
+        temp_k = k.rstrip('~') if k in constants.LIKE_FILTER else k
+        filter_attr = getattr(models.ShareGroup, temp_k, no_key)
+
         if filter_attr == no_key:
             msg = _("Share groups cannot be filtered using '%s' key.")
             raise exception.InvalidInput(reason=msg % k)
-        query = query.filter(filter_attr == v)
+
+        if k in constants.LIKE_FILTER:
+            query = query.filter(filter_attr.op('LIKE')(u'%' + v + u'%'))
+        else:
+            query = query.filter(filter_attr == v)
 
     if project_id:
         query = query.filter(

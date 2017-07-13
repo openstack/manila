@@ -205,3 +205,8 @@ user documentation.
 ----
   Added support to retrieve shares filtered by export_location_id and
   export_location_path.
+
+2.36
+----
+  Added like filter support in ``shares``, ``snapshots``, ``share-networks``,
+  ``share-groups`` list APIs.

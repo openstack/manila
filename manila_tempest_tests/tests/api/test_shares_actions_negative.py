@@ -165,3 +165,29 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
             params=filters)
 
         self.assertEqual(0, len(shares))
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    @base.skip_if_microversion_not_supported("2.35")
+    def test_list_shares_with_like_filter_and_invalid_version(self):
+        # In API versions < v2.36, querying the share API by inexact
+        # filter (name or description) should have no effect. Those
+        # filters were supported from v2.36
+        filters = {
+            'name~': 'fake',
+            'description~': 'fake',
+        }
+        shares = self.shares_v2_client.list_shares(
+            params=filters, version="2.35")
+
+        self.assertGreater(len(shares), 0)
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    @base.skip_if_microversion_not_supported("2.35")
+    def test_list_shares_with_like_filter_not_exist(self):
+        filters = {
+            'name~': 'fake_not_exist',
+            'description~': 'fake_not_exist',
+        }
+        shares = self.shares_v2_client.list_shares(params=filters)
+
+        self.assertEqual(0, len(shares))
