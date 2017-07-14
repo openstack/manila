@@ -1,11 +1,11 @@
 ---
 prelude: >
     Add a new EMC Unity plugin in manila which allows user to create NFS/CIFS
-    share with a EMC Unity backend.
+    share with an EMC Unity backend.
 features:
   - |
     Add a new Unity plugin in manila which allows user to create NFS/CIFS
-    share with a EMC Unity backend.  This plugin performs the operations on
+    share with an EMC Unity backend.  This plugin performs the operations on
     Unity by REST API.
 issues:
   - EMC Unity does not support the same IP in different VLANs.

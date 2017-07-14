@@ -178,7 +178,7 @@ def create_snapshot_instance_export_locations(snapshot_id, **kwargs):
 
 
 def create_access(**kwargs):
-    """Create a access rule object."""
+    """Create an access rule object."""
     state = kwargs.pop('state', constants.ACCESS_STATE_QUEUED_TO_APPLY)
     access = {
         'access_type': 'fake_type',
