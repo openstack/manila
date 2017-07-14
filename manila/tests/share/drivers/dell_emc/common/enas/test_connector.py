@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Dell Inc. or its subsidiaries.
+# Copyright (c) 2015 EMC Corporation.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -21,10 +21,10 @@ from six.moves.urllib import request as url_request  # pylint: disable=E0611
 
 from manila import exception
 from manila.share import configuration as conf
-from manila.share.drivers.dell_emc.plugins.vmax import connector
+from manila.share.drivers.dell_emc.common.enas import connector
 from manila import test
-from manila.tests.share.drivers.dell_emc.plugins.vmax import fakes
-from manila.tests.share.drivers.dell_emc.plugins.vmax import utils as emc_utils
+from manila.tests.share.drivers.dell_emc.common.enas import fakes
+from manila.tests.share.drivers.dell_emc.common.enas import utils as enas_utils
 from manila import utils
 
 
@@ -110,7 +110,7 @@ class XMLAPIConnectorTest(test.TestCase):
         xml_socket = mock.Mock()
         xml_socket.read = mock.Mock(return_value=XML_CONN_TD.FAKE_RESP)
 
-        hook = emc_utils.RequestSideEffect()
+        hook = enas_utils.RequestSideEffect()
         hook.append(ex=url_error.HTTPError(XML_CONN_TD.req_url(),
                                            '403', 'fake_message', None, None))
         hook.append(xml_socket)
@@ -121,7 +121,7 @@ class XMLAPIConnectorTest(test.TestCase):
         self.XmlConnector.request(XML_CONN_TD.FAKE_BODY)
 
     def test_request_with_general_exception(self):
-        hook = emc_utils.RequestSideEffect()
+        hook = enas_utils.RequestSideEffect()
         hook.append(ex=url_error.HTTPError(XML_CONN_TD.req_url(),
                                            'error_code', 'fake_message',
                                            None, None))
@@ -160,6 +160,8 @@ class CmdConnectorTest(test.TestCase):
         self.configuration.emc_nas_login = fakes.FakeData.emc_nas_login
         self.configuration.emc_nas_password = fakes.FakeData.emc_nas_password
         self.configuration.emc_nas_server = fakes.FakeData.emc_nas_server
+        self.configuration.emc_ssl_cert_verify = False
+        self.configuration.emc_ssl_cert_path = None
 
         self.sshpool = MockSSHPool()
         with mock.patch.object(utils, "SSHPool",

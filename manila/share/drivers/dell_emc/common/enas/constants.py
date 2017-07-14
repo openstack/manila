@@ -39,7 +39,7 @@ MSG_INTERFACE_NON_EXISTENT = '13691781134'
 MSG_JOIN_DOMAIN = '13157007726'
 MSG_UNJOIN_DOMAIN = '13157007723'
 
-# Necessary to retry when VMAX database is locked for provisioning operation
+# Necessary to retry when ENAS database is locked for provisioning operation
 MSG_CODE_RETRY = '13421840537'
 
 IP_ALLOCATIONS = 2

@@ -1,4 +1,4 @@
-# Copyright (c) 2015 EMC Corporation.
+# Copyright (c) 2016 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -25,8 +25,8 @@ from six.moves.urllib import request as url_request  # pylint: disable=E0611
 
 from manila import exception
 from manila.i18n import _
-from manila.share.drivers.dell_emc.plugins.vnx import constants
-from manila.share.drivers.dell_emc.plugins.vnx import utils as vnx_utils
+from manila.share.drivers.dell_emc.common.enas import constants
+from manila.share.drivers.dell_emc.common.enas import utils as enas_utils
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -42,7 +42,7 @@ class XMLAPIConnector(object):
         self.auth_url = 'https://' + self.storage_ip + '/Login'
         self._url = 'https://{}/servlets/CelerraManagementServices'.format(
             self.storage_ip)
-        context = vnx_utils.create_ssl_context(configuration)
+        context = enas_utils.create_ssl_context(configuration)
         if context:
             https_handler = url_request.HTTPSHandler(context=context)
         else:
@@ -106,15 +106,15 @@ class XMLAPIConnector(object):
             resp_body = resp.read()
             self._http_log_resp(resp, resp_body)
         except url_error.HTTPError as http_err:
-            err = {'errorCode': -1,
-                   'httpStatusCode': http_err.code,
-                   'messages': six.text_type(http_err),
-                   'request': req_body}
-            msg = (_("The request is invalid. Reason: %(reason)s") %
-                   {'reason': err})
             if '403' == six.text_type(http_err.code):
                 raise exception.NotAuthorized()
             else:
+                err = {'errorCode': -1,
+                       'httpStatusCode': http_err.code,
+                       'messages': six.text_type(http_err),
+                       'request': req_body}
+                msg = (_("The request is invalid. Reason: %(reason)s") %
+                       {'reason': err})
                 raise exception.ManilaException(message=msg)
 
         return resp_body
@@ -156,10 +156,11 @@ class SSHConnector(object):
                 self.log_request(command, out, err)
 
                 return out, err
-            except processutils.ProcessExecutionError:
+            except processutils.ProcessExecutionError as e:
                 with excutils.save_and_reraise_exception():
-                    LOG.exception('Error running SSH command: %(cmd)s.',
-                                  {'cmd': command})
+                    LOG.error('Error running SSH command: %(cmd)s. '
+                              'Error: %(excmsg)s.',
+                              {'cmd': command, 'excmsg': e})
 
     def log_request(self, cmd, out, err):
         if not self.debug:

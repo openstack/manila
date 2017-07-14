@@ -25,10 +25,10 @@ import six
 from manila.common import constants as const
 from manila import exception
 from manila.i18n import _
-from manila.share.drivers.dell_emc.plugins.vmax import connector
-from manila.share.drivers.dell_emc.plugins.vmax import constants
-from manila.share.drivers.dell_emc.plugins.vmax import utils as vmax_utils
-from manila.share.drivers.dell_emc.plugins.vmax import xml_api_parser as parser
+from manila.share.drivers.dell_emc.common.enas import connector
+from manila.share.drivers.dell_emc.common.enas import constants
+from manila.share.drivers.dell_emc.common.enas import utils as vmax_utils
+from manila.share.drivers.dell_emc.common.enas import xml_api_parser as parser
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -1016,7 +1016,8 @@ class VDM(StorageObject):
                     if_name = m_if.group('if').strip()
                     if 'cifs' == m_if.group('type') and if_name != '':
                         interfaces['cifs'].append(if_name)
-                    elif 'vdm' == m_if.group('type') and if_name != '':
+                    elif (m_if.group('type') in ('vdm', 'nfs')
+                          and if_name != ''):
                         interfaces['nfs'].append(if_name)
 
         return interfaces

@@ -20,13 +20,13 @@ import mock
 from oslo_log import log
 
 from manila import exception
-from manila.share.drivers.dell_emc.plugins.vmax import connection
-from manila.share.drivers.dell_emc.plugins.vmax import connector
-from manila.share.drivers.dell_emc.plugins.vmax import object_manager
+from manila.share.drivers.dell_emc.common.enas import connector
+from manila.share.drivers.dell_emc.plugins.vnx import connection
+from manila.share.drivers.dell_emc.plugins.vnx import object_manager
 from manila import test
 from manila.tests import fake_share
-from manila.tests.share.drivers.dell_emc.plugins.vmax import fakes
-from manila.tests.share.drivers.dell_emc.plugins.vmax import utils
+from manila.tests.share.drivers.dell_emc.common.enas import fakes
+from manila.tests.share.drivers.dell_emc.common.enas import utils
 
 LOG = log.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class StorageConnectionTestCase(test.TestCase):
         super(StorageConnectionTestCase, self).setUp()
         self.emc_share_driver = fakes.FakeEMCShareDriver()
 
-        self.connection = connection.VMAXStorageConnection(LOG)
+        self.connection = connection.VNXStorageConnection(LOG)
 
         self.pool = fakes.PoolTestData()
         self.vdm = fakes.VDMTestData()
@@ -61,7 +61,7 @@ class StorageConnectionTestCase(test.TestCase):
         xml_req_mock = utils.EMCMock(side_effect=hook)
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
-        with mock.patch.object(connection.VMAXStorageConnection,
+        with mock.patch.object(connection.VNXStorageConnection,
                                '_get_managed_storage_pools',
                                mock.Mock()):
             self.connection.check_for_setup_error()
@@ -115,7 +115,7 @@ class StorageConnectionTestCase(test.TestCase):
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
         pool_conf = fakes.FakeData.pool_name
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCVnxXMLAPIError,
                           self.connection._get_managed_storage_pools,
                           pool_conf)
 
@@ -173,7 +173,7 @@ class StorageConnectionTestCase(test.TestCase):
         ssh_calls = [mock.call(self.cifs_share.cmd_disable_access(), True)]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
-        self.assertEqual([r'\\192.168.1.1\%s' % share['name']], location,
+        self.assertEqual(location, r'\\192.168.1.1\%s' % share['name'],
                          'CIFS export path is incorrect')
 
     def test_create_nfs_share(self):
@@ -204,7 +204,7 @@ class StorageConnectionTestCase(test.TestCase):
         ssh_calls = [mock.call(self.nfs_share.cmd_create(), True)]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
-        self.assertEqual('192.168.1.2:/%s' % share['name'], location,
+        self.assertEqual(location, '192.168.1.2:/%s' % share['name'],
                          'NFS export path is incorrect')
 
     def test_create_cifs_share_without_share_server(self):
@@ -219,7 +219,7 @@ class StorageConnectionTestCase(test.TestCase):
         share_server = copy.deepcopy(fakes.SHARE_SERVER)
         share_server['backend_details']['share_server_name'] = None
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCVnxXMLAPIError,
                           self.connection.create_share,
                           None, share, share_server)
 
@@ -233,7 +233,7 @@ class StorageConnectionTestCase(test.TestCase):
         xml_req_mock = utils.EMCMock(side_effect=hook)
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCVnxXMLAPIError,
                           self.connection.create_share,
                           None, share, share_server)
 
@@ -256,7 +256,7 @@ class StorageConnectionTestCase(test.TestCase):
         xml_req_mock = utils.EMCMock(side_effect=hook)
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCVnxXMLAPIError,
                           self.connection.create_share,
                           None, share, share_server)
 
@@ -333,7 +333,7 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
-        self.assertEqual([r'\\192.168.1.1\%s' % share['name']], location,
+        self.assertEqual(location, r'\\192.168.1.1\%s' % share['name'],
                          'CIFS export path is incorrect')
 
     def test_create_nfs_share_from_snapshot(self):
@@ -382,7 +382,7 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
-        self.assertEqual('192.168.1.2:/%s' % share['name'], location,
+        self.assertEqual(location, '192.168.1.2:/%s' % share['name'],
                          'NFS export path is incorrect')
 
     def test_create_share_with_incorrect_proto(self):
@@ -581,7 +581,7 @@ class StorageConnectionTestCase(test.TestCase):
         xml_req_mock = utils.EMCMock(side_effect=hook)
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCVnxXMLAPIError,
                           self.connection.create_snapshot,
                           None, snapshot, share_server)
 
@@ -609,7 +609,7 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         xml_req_mock.assert_has_calls(expected_calls)
 
-    @utils.patch_get_managed_ports(return_value=['cge-1-0'])
+    @utils.patch_get_managed_ports_vnx(return_value=['cge-1-0'])
     def test_setup_server(self):
         hook = utils.RequestSideEffect()
         hook.append(self.vdm.resp_get_but_not_found())
@@ -654,7 +654,7 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
-    @utils.patch_get_managed_ports(return_value=['cge-1-0'])
+    @utils.patch_get_managed_ports_vnx(return_value=['cge-1-0'])
     def test_setup_server_with_existing_vdm(self):
         hook = utils.RequestSideEffect()
         hook.append(self.vdm.resp_get_succeed())
@@ -698,12 +698,12 @@ class StorageConnectionTestCase(test.TestCase):
         network_info = copy.deepcopy(fakes.NETWORK_INFO)
         network_info['security_services'][0]['type'] = 'fake_type'
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCVnxXMLAPIError,
                           self.connection.setup_server,
                           network_info, None)
 
-    @utils.patch_get_managed_ports(
-        side_effect=exception.EMCVmaxXMLAPIError(
+    @utils.patch_get_managed_ports_vnx(
+        side_effect=exception.EMCVnxXMLAPIError(
             err="Get managed ports fail."))
     def test_setup_server_without_valid_physical_device(self):
         hook = utils.RequestSideEffect()
@@ -716,11 +716,11 @@ class StorageConnectionTestCase(test.TestCase):
         xml_req_mock = utils.EMCMock(side_effect=hook)
         self.connection.manager.connectors['XML'].request = xml_req_mock
         ssh_hook = utils.SSHSideEffect()
-        ssh_hook.append(self.vdm.output_get_interfaces(nfs_interface=''))
+        ssh_hook.append(self.vdm.output_get_interfaces_vdm(nfs_interface=''))
         ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
         self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCVnxXMLAPIError,
                           self.connection.setup_server,
                           fakes.NETWORK_INFO, None)
 
@@ -739,7 +739,7 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
-    @utils.patch_get_managed_ports(return_value=['cge-1-0'])
+    @utils.patch_get_managed_ports_vnx(return_value=['cge-1-0'])
     def test_setup_server_with_exception(self):
         hook = utils.RequestSideEffect()
         hook.append(self.vdm.resp_get_but_not_found())
@@ -755,11 +755,11 @@ class StorageConnectionTestCase(test.TestCase):
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
         ssh_hook = utils.SSHSideEffect()
-        ssh_hook.append(self.vdm.output_get_interfaces(nfs_interface=''))
+        ssh_hook.append(self.vdm.output_get_interfaces_vdm(nfs_interface=''))
         ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
         self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCVnxXMLAPIError,
                           self.connection.setup_server,
                           fakes.NETWORK_INFO, None)
 
@@ -805,7 +805,7 @@ class StorageConnectionTestCase(test.TestCase):
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
         ssh_hook = utils.SSHSideEffect()
-        ssh_hook.append(self.vdm.output_get_interfaces())
+        ssh_hook.append(self.vdm.output_get_interfaces_vdm())
         ssh_hook.append()
         ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
         self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
@@ -848,7 +848,7 @@ class StorageConnectionTestCase(test.TestCase):
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
         ssh_hook = utils.SSHSideEffect()
-        ssh_hook.append(self.vdm.output_get_interfaces())
+        ssh_hook.append(self.vdm.output_get_interfaces_vdm())
         ssh_hook.append()
         ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
         self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
@@ -906,7 +906,7 @@ class StorageConnectionTestCase(test.TestCase):
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
         ssh_hook = utils.SSHSideEffect()
-        ssh_hook.append(self.vdm.output_get_interfaces())
+        ssh_hook.append(self.vdm.output_get_interfaces_vdm())
         ssh_hook.append()
         ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
         self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
@@ -947,7 +947,7 @@ class StorageConnectionTestCase(test.TestCase):
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
         ssh_hook = utils.SSHSideEffect()
-        ssh_hook.append(self.vdm.output_get_interfaces())
+        ssh_hook.append(self.vdm.output_get_interfaces_vdm())
         ssh_hook.append()
         ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
         self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
@@ -1117,7 +1117,7 @@ class StorageConnectionTestCase(test.TestCase):
         xml_req_mock = utils.EMCMock(side_effect=hook)
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCVnxXMLAPIError,
                           self.connection._cifs_clear_access,
                           'share_name', server, None)
 
@@ -1238,7 +1238,7 @@ class StorageConnectionTestCase(test.TestCase):
         xml_req_mock = utils.EMCMock(side_effect=hook)
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCVnxXMLAPIError,
                           self.connection.allow_access,
                           None, share, access, share_server)
 
@@ -1376,7 +1376,7 @@ class StorageConnectionTestCase(test.TestCase):
         xml_req_mock = utils.EMCMock(side_effect=hook)
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCVnxXMLAPIError,
                           self.connection.deny_access,
                           None, share, access, share_server)
 
@@ -1430,49 +1430,18 @@ class StorageConnectionTestCase(test.TestCase):
         share = fakes.CIFS_SHARE
         access = fake_share.fake_access(access_type='fake_type')
 
-        hook = utils.RequestSideEffect()
-        hook.append(self.vdm.resp_get_succeed())
-        hook.append(self.cifs_server.resp_get_succeed(
-            mover_id=self.vdm.vdm_id, is_vdm=True, join_domain=True))
-        xml_req_mock = utils.EMCMock(side_effect=hook)
-        self.connection.manager.connectors['XML'].request = xml_req_mock
-
-        ssh_hook = utils.SSHSideEffect()
-        ssh_hook.append(self.cifs_share.output_allow_access())
-        ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
-        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
-
-        self.connection.deny_access(None, share, access, share_server)
-
-        ssh_calls = []
-        ssh_cmd_mock.assert_has_calls(ssh_calls)
-
-        expected_calls = []
-        xml_req_mock.assert_has_calls(expected_calls)
+        self.assertRaises(exception.InvalidShareAccess,
+                          self.connection.deny_access,
+                          None, share, access, share_server)
 
     def test_deny_nfs_access_with_incorrect_access_type(self):
         share_server = fakes.SHARE_SERVER
         share = fakes.NFS_SHARE
         access = fake_share.fake_access(access_type='fake_type')
 
-        rw_hosts = copy.deepcopy(fakes.FakeData.rw_hosts)
-        rw_hosts.append(access['access_to'])
-
-        ssh_hook = utils.SSHSideEffect()
-        ssh_hook.append(self.nfs_share.output_get_succeed(
-            rw_hosts=rw_hosts,
-            ro_hosts=fakes.FakeData.ro_hosts))
-        ssh_hook.append(self.nfs_share.output_set_access_success())
-        ssh_hook.append(self.nfs_share.output_get_succeed(
-            rw_hosts=fakes.FakeData.rw_hosts,
-            ro_hosts=fakes.FakeData.ro_hosts))
-        ssh_cmd_mock = utils.EMCNFSShareMock(side_effect=ssh_hook)
-        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
-
-        self.connection.deny_access(None, share, access, share_server)
-
-        ssh_calls = []
-        ssh_cmd_mock.assert_has_calls(ssh_calls)
+        self.assertRaises(exception.InvalidShareAccess,
+                          self.connection.deny_access,
+                          None, share, access, share_server)
 
     def test_update_share_stats(self):
         hook = utils.RequestSideEffect()
@@ -1507,7 +1476,7 @@ class StorageConnectionTestCase(test.TestCase):
         xml_req_mock = utils.EMCMock(side_effect=hook)
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCVnxXMLAPIError,
                           self.connection.update_share_stats,
                           fakes.STATS)
 
@@ -1544,7 +1513,7 @@ class StorageConnectionTestCase(test.TestCase):
         xml_req_mock = utils.EMCMock(side_effect=hook)
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCVnxXMLAPIError,
                           self.connection.get_pool,
                           share)
 
@@ -1560,7 +1529,7 @@ class StorageConnectionTestCase(test.TestCase):
         xml_req_mock = utils.EMCMock(side_effect=hook)
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCVnxXMLAPIError,
                           self.connection.get_pool,
                           share)
 
@@ -1580,7 +1549,7 @@ class StorageConnectionTestCase(test.TestCase):
         xml_req_mock = utils.EMCMock(side_effect=hook)
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCVnxXMLAPIError,
                           self.connection.get_pool,
                           share)
 
@@ -1632,5 +1601,5 @@ class StorageConnectionTestCase(test.TestCase):
         self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
         self.connection.port_conf = ['cge-2-0']
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCVnxXMLAPIError,
                           self.connection.get_managed_ports)

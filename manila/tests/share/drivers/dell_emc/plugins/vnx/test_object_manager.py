@@ -19,17 +19,18 @@ import time
 import ddt
 from lxml import builder
 import mock
+
 from oslo_concurrency import processutils
 
 from manila.common import constants as const
 from manila import exception
-from manila.share.drivers.dell_emc.plugins.vnx import connector
-from manila.share.drivers.dell_emc.plugins.vnx import constants
+from manila.share.drivers.dell_emc.common.enas import connector
+from manila.share.drivers.dell_emc.common.enas import constants
+from manila.share.drivers.dell_emc.common.enas import xml_api_parser as parser
 from manila.share.drivers.dell_emc.plugins.vnx import object_manager as manager
-from manila.share.drivers.dell_emc.plugins.vnx import xml_api_parser as parser
 from manila import test
-from manila.tests.share.drivers.dell_emc.plugins.vnx import fakes
-from manila.tests.share.drivers.dell_emc.plugins.vnx import utils
+from manila.tests.share.drivers.dell_emc.common.enas import fakes
+from manila.tests.share.drivers.dell_emc.common.enas import utils
 
 
 class StorageObjectManagerTestCase(test.TestCase):

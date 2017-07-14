@@ -20,13 +20,13 @@ import mock
 from oslo_log import log
 
 from manila import exception
+from manila.share.drivers.dell_emc.common.enas import connector
 from manila.share.drivers.dell_emc.plugins.vnx import connection
-from manila.share.drivers.dell_emc.plugins.vnx import connector
 from manila.share.drivers.dell_emc.plugins.vnx import object_manager
 from manila import test
 from manila.tests import fake_share
-from manila.tests.share.drivers.dell_emc.plugins.vnx import fakes
-from manila.tests.share.drivers.dell_emc.plugins.vnx import utils
+from manila.tests.share.drivers.dell_emc.common.enas import fakes
+from manila.tests.share.drivers.dell_emc.common.enas import utils
 
 LOG = log.getLogger(__name__)
 
@@ -609,7 +609,7 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         xml_req_mock.assert_has_calls(expected_calls)
 
-    @utils.patch_get_managed_ports(return_value=['cge-1-0'])
+    @utils.patch_get_managed_ports_vnx(return_value=['cge-1-0'])
     def test_setup_server(self):
         hook = utils.RequestSideEffect()
         hook.append(self.vdm.resp_get_but_not_found())
@@ -654,7 +654,7 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
-    @utils.patch_get_managed_ports(return_value=['cge-1-0'])
+    @utils.patch_get_managed_ports_vnx(return_value=['cge-1-0'])
     def test_setup_server_with_existing_vdm(self):
         hook = utils.RequestSideEffect()
         hook.append(self.vdm.resp_get_succeed())
@@ -702,7 +702,7 @@ class StorageConnectionTestCase(test.TestCase):
                           self.connection.setup_server,
                           network_info, None)
 
-    @utils.patch_get_managed_ports(
+    @utils.patch_get_managed_ports_vnx(
         side_effect=exception.EMCVnxXMLAPIError(
             err="Get managed ports fail."))
     def test_setup_server_without_valid_physical_device(self):
@@ -739,7 +739,7 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
-    @utils.patch_get_managed_ports(return_value=['cge-1-0'])
+    @utils.patch_get_managed_ports_vnx(return_value=['cge-1-0'])
     def test_setup_server_with_exception(self):
         hook = utils.RequestSideEffect()
         hook.append(self.vdm.resp_get_but_not_found())
