@@ -102,7 +102,7 @@ function correctly in manila, such as:
 - replication_type: string specifying the type of replication supported by
   the driver. Can be one of ('readable', 'writable' or 'dr').
 
-.. note:: for more information please see http://docs.openstack.org/developer/manila/devref/capabilities_and_extra_specs.html
+.. note:: for more information please see https://docs.openstack.org/manila/latest/devref/capabilities_and_extra_specs.html
 
 Continuous Integration systems
 ------------------------------
@@ -136,7 +136,7 @@ openstack-manuals, containing instructions on how to properly install and
 configure. The intended audience for this manual is cloud operators and
 administrators. Also, driver maintainers must update the manila share features
 support mapping documentation found at
-http://docs.openstack.org/developer/manila/devref/share_back_ends_feature_support_mapping.html
+https://docs.openstack.org/manila/latest/devref/share_back_ends_feature_support_mapping.html
 
 
 Manila optional requirements and features since Mitaka
@@ -215,4 +215,4 @@ report the ``replication_type`` they support as a capability and implement
 necessary methods.
 
 More details can be found at:
-http://docs.openstack.org/developer/manila/devref/share_replication.html
+https://docs.openstack.org/manila/latest/devref/share_replication.html

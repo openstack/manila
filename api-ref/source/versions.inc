@@ -19,7 +19,7 @@ Systems API:
   ``X-OpenStack-Manila-API-Version`` header
 
 Read more about microversion guidelines that the service adheres to `here
-<http://docs.openstack.org/developer/manila/devref/api_microversion_dev.html>`_
+<https://docs.openstack.org/manila/latest/devref/api_microversion_dev.html>`_
 
 
 List All Major Versions

@@ -100,7 +100,7 @@ Manila Developer Reference
 - Feel free to use it as a sandbox for other documentation that does not
   live in manila's code-tree.
 - **Link**: `Manila developer reference
-  <http://docs.openstack.org/developer/manila/>`_
+  <https://docs.openstack.org/manila/latest/>`_
 
 
 OpenStack Security Guide

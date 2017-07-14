@@ -11,7 +11,7 @@ information can be found in its `docs`_.
 In simple words: if you have installed manila project on the same machine as
 tempest, then tempest will find it.
 
-.. _docs: http://docs.openstack.org/developer/tempest/plugin.html#using-plugins
+.. _docs: https://docs.openstack.org/tempest/latest/plugin.html#using-plugins
 
 Configuration of manila-related tests in tempest.conf
 -----------------------------------------------------

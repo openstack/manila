@@ -19,8 +19,7 @@ neutron network and subnetwork:
 
 
 For more information about supported plug-ins for share networks,
-see `Manila Network Plugins <http://docs.openstack.org/developer/ma
-nila/adminref/network_plugins.html>`_.
+see `Manila Network Plugins <https://docs.openstack.org/manila/latest/adminref/network_plugins.html>`_.
 
 A share network has these attributes:
 
