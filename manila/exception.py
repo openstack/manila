@@ -206,6 +206,10 @@ class NotFound(ManilaException):
     safe = True
 
 
+class MessageNotFound(NotFound):
+    message = _("Message %(message_id)s could not be found.")
+
+
 class Found(ManilaException):
     message = _("Resource was found.")
     code = 302

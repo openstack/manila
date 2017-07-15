@@ -210,3 +210,7 @@ user documentation.
 ----
   Added like filter support in ``shares``, ``snapshots``, ``share-networks``,
   ``share-groups`` list APIs.
+
+2.37
+----
+  Added /messages APIs.

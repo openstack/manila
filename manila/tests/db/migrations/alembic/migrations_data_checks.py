@@ -2364,3 +2364,35 @@ class SquashSGSnapshotMembersAndSSIModelsChecks(BaseMigrationChecks):
         db_result = engine.execute(ssi_table.select().where(
             ssi_table.c.id == self.share_group_snapshot_member_id))
         self.test_case.assertEqual(0, db_result.rowcount)
+
+
+@map_to_migration('238720805ce1')
+class MessagesTableChecks(BaseMigrationChecks):
+    new_table_name = 'messages'
+
+    def setup_upgrade_data(self, engine):
+        pass
+
+    def check_upgrade(self, engine, data):
+        message_data = {
+            'id': uuidutils.generate_uuid(),
+            'project_id': 'x' * 255,
+            'request_id': 'x' * 255,
+            'resource_type': 'x' * 255,
+            'resource_id': 'y' * 36,
+            'action_id': 'y' * 10,
+            'detail_id': 'y' * 10,
+            'message_level': 'x' * 255,
+            'created_at': datetime.datetime(2017, 7, 10, 18, 5, 58),
+            'updated_at': None,
+            'deleted_at': None,
+            'deleted': 0,
+            'expires_at': datetime.datetime(2017, 7, 11, 18, 5, 58),
+        }
+
+        new_table = utils.load_table(self.new_table_name, engine)
+        engine.execute(new_table.insert(message_data))
+
+    def check_downgrade(self, engine):
+        self.test_case.assertRaises(sa_exc.NoSuchTableError, utils.load_table,
+                                    'messages', engine)

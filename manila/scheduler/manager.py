@@ -30,6 +30,8 @@ from manila import context
 from manila import db
 from manila import exception
 from manila import manager
+from manila.message import api as message_api
+from manila.message import message_field
 from manila import quota
 from manila import rpc
 from manila.share import rpcapi as share_rpcapi
@@ -77,6 +79,7 @@ class SchedulerManager(manager.Manager):
             scheduler_driver = MAPPING[scheduler_driver]
 
         self.driver = importutils.import_object(scheduler_driver)
+        self.message_api = message_api.API()
         super(self.__class__, self).__init__(*args, **kwargs)
 
     def init_host(self):
@@ -106,16 +109,15 @@ class SchedulerManager(manager.Manager):
             self.driver.schedule_create_share(context, request_spec,
                                               filter_properties)
         except exception.NoValidHost as ex:
-            self._set_share_state_and_notify('create_share',
-                                             {'status':
-                                              constants.STATUS_ERROR},
-                                             context, ex, request_spec)
+            self._set_share_state_and_notify(
+                'create_share', {'status': constants.STATUS_ERROR},
+                context, ex, request_spec,
+                message_field.Action.ALLOCATE_HOST)
         except Exception as ex:
             with excutils.save_and_reraise_exception():
-                self._set_share_state_and_notify('create_share',
-                                                 {'status':
-                                                  constants.STATUS_ERROR},
-                                                 context, ex, request_spec)
+                self._set_share_state_and_notify(
+                    'create_share', {'status': constants.STATUS_ERROR},
+                    context, ex, request_spec)
 
     def get_pools(self, context, filters=None):
         """Get active pools from the scheduler's cache."""
@@ -188,7 +190,7 @@ class SchedulerManager(manager.Manager):
                     _migrate_share_set_error(self, context, ex, request_spec)
 
     def _set_share_state_and_notify(self, method, state, context, ex,
-                                    request_spec):
+                                    request_spec, action=None):
 
         LOG.error("Failed to schedule %(method)s: %(ex)s",
                   {"method": method, "ex": ex})
@@ -199,6 +201,12 @@ class SchedulerManager(manager.Manager):
 
         if share_id:
             db.share_update(context, share_id, state)
+
+        if action:
+            self.message_api.create(
+                context, action, context.project_id,
+                resource_type=message_field.Resource.SHARE,
+                resource_id=share_id, exception=ex)
 
         payload = dict(request_spec=request_spec,
                        share_properties=properties,

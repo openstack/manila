@@ -50,6 +50,12 @@ export_location_id_path:
   in: path
   required: false
   type: string
+message_id:
+  description: |
+    The UUID of the message.
+  in: path
+  required: false
+  type: string
 security_service_id_path:
   description: |
     The UUID of the security service.
@@ -121,6 +127,12 @@ tenant_id_path:
   type: string
 
 # variables in query
+action_id:
+  in: query
+  required: false
+  type: string
+  description: >
+    The ID of the action during which the message was created.
 all_tenants:
   description: |
     (Admin only). Defines whether to list shares for
@@ -206,6 +218,12 @@ consistency_group_id_5:
   in: query
   required: false
   type: string
+detail_id:
+  in: query
+  required: false
+  type: string
+  description: >
+    The ID of the message detail.
 export_location_id_query:
   description: |
     The export location UUID that can be used to filter shares or
@@ -275,6 +293,12 @@ media_types:
   in: query
   required: false
   type: object
+message_level:
+  in: query
+  required: false
+  type: string
+  description: >
+    The message level.
 metadata_1:
   description: |
     One or more metadata key-value pairs, as a
@@ -313,6 +337,30 @@ project_id_6:
   description: |
     The UUID of the project in which the share was
     created. Useful with ``all_tenants`` parameter.
+  in: query
+  required: false
+  type: string
+project_id_messages:
+  description: |
+    The UUID of the project for which the message was created.
+  in: query
+  required: false
+  type: string
+request_id:
+  description: |
+    The UUID of the request during which the message was created.
+  in: query
+  required: false
+  type: string
+resource_id:
+  description: |
+    The UUID of the resource for which the message was created.
+  in: query
+  required: false
+  type: string
+resource_type:
+  description: |
+    The type of the resource for which the message was created.
   in: query
   required: false
   type: string
@@ -396,6 +444,15 @@ sort_key:
     ``project_id``, ``created_at``, ``updated_at``, ``display_name``,
     ``name``, ``share_type_id``, ``share_type``, ``share_network_id``,
     ``share_network``, ``snapshot_id``, or ``snapshot``.
+  in: query
+  required: false
+  type: string
+sort_key_messages:
+  description: |
+    The key to sort a list of messages. A valid value
+    is ``id``, ``project_id``, ``request_id``, ``resource_type``,
+    ``action_id``, ``detail_id``, ``resource_id``, ``message_level``,
+    ``expires_at``, ``created_at``.
   in: query
   required: false
   type: string
@@ -577,6 +634,12 @@ access_type:
   in: body
   required: true
   type: string
+action_id_body:
+  in: body
+  required: true
+  type: string
+  description: >
+    The ID of the action during which the message was created.
 alias:
   description: |
     The alias for the extension. For example,
@@ -1205,6 +1268,12 @@ description_9:
   in: body
   required: true
   type: string
+detail_id_body:
+  in: body
+  required: true
+  type: string
+  description: >
+    The ID of the message detail.
 disabled:
   description: |
     Indicates whether the service is disabled.
@@ -1782,6 +1851,24 @@ maxTotalSnapshotGigabytes:
   in: body
   required: true
   type: integer
+message_level_body:
+  in: body
+  required: true
+  type: string
+  description: >
+    The message level.
+message_links:
+  description: |
+    The message links.
+  in: body
+  required: true
+  type: array
+message_members_links:
+  description: |
+    The message member links.
+  in: body
+  required: true
+  type: array
 metadata:
   description: |
     One or more metadata key and value pairs as a
@@ -2114,6 +2201,12 @@ project_id_9:
   in: body
   required: true
   type: string
+project_id_messages_body:
+  description: |
+    The UUID of the project for which the message was created.
+  in: body
+  required: true
+  type: string
 protocol:
   description: |
     The Shared File Systems protocol of the share to
@@ -2292,6 +2385,12 @@ replication_type:
   in: body
   required: false
   type: string
+request_id_body:
+  description: |
+    The UUID of the request during which the message was created.
+  in: body
+  required: true
+  type: string
 required_extra_specs:
   description: |
     The required extra specifications for the share
@@ -2312,6 +2411,18 @@ reset_status:
   in: body
   required: true
   type: object
+resource_id_body:
+  description: |
+    The UUID of the resource for which the message was created.
+  in: body
+  required: true
+  type: string
+resource_type_body:
+  description: |
+    The type of the resource for which the message was created.
+  in: body
+  required: true
+  type: string
 security_service_created_at:
   description: |
     The date and time stamp when the security service was created.

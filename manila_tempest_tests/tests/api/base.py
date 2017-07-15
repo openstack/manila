@@ -998,6 +998,25 @@ class BaseSharesTest(test.BaseTestCase):
                                     "d2value": d2value
                                 })
 
+    def create_user_message(self):
+        """Trigger a 'no valid host' situation to generate a message."""
+        extra_specs = {
+            'vendor_name': 'foobar',
+            'driver_handles_share_servers': CONF.share.multitenancy_enabled,
+        }
+        share_type_name = data_utils.rand_name("share-type")
+
+        bogus_type = self.create_share_type(
+            name=share_type_name,
+            extra_specs=extra_specs)['share_type']
+
+        params = {'share_type_id': bogus_type['id'],
+                  'share_network_id': self.shares_v2_client.share_network_id}
+        share = self.shares_v2_client.create_share(**params)
+        self.addCleanup(self.shares_v2_client.delete_share, share['id'])
+        self.shares_v2_client.wait_for_share_status(share['id'], "error")
+        return self.shares_v2_client.wait_for_message(share['id'])
+
 
 class BaseSharesAltTest(BaseSharesTest):
     """Base test case class for all Shares Alt API tests."""

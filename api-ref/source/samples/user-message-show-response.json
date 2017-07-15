@@ -1,0 +1,24 @@
+{
+    "message": {
+        "links": [
+            {
+                "href": "http://192.168.122.180:8786/v2/2e3de76b49b444fd9dc7ca9f7048ce6b/messages/4b319d29-d5b7-4b6e-8e7c-8d6e53f3c3d5",
+                "rel": "self"
+            }, {
+                "href": "http://192.168.122.180:8786/2e3de76b49b444fd9dc7ca9f7048ce6b/messages/4b319d29-d5b7-4b6e-8e7c-8d6e53f3c3d5",
+                "rel": "bookmark"
+            }
+        ],
+        "resource_id": "351cc796-2d79-4a08-b878-a8ed933b6b68",
+        "message_level": "ERROR",
+        "user_message": "allocate host: No storage could be allocated for this share request. Trying again with a different size or share type may succeed.",
+        "expires_at": "2017-07-10T10:27:43.000000",
+        "id": "4b319d29-d5b7-4b6e-8e7c-8d6e53f3c3d5",
+        "created_at": "2017-07-10T10:26:43.000000",
+        "detail_id": "002",
+        "request_id": "req-24e7ccb6-a7d5-4ddd-a8e4-d8f72a4509c8",
+        "project_id": "2e3de76b49b444fd9dc7ca9f7048ce6b",
+        "resource_type": "SHARE",
+        "action_id": "001"
+    }
+}

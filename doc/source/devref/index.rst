@@ -35,6 +35,7 @@ Programming HowTos and Tutorials
     adding_release_notes
     commit_message_tags
     guru_meditation_report
+    user_messages
 
 
 Background Concepts for manila

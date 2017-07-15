@@ -25,6 +25,7 @@ Shared File Systems API
 .. include:: availability-zones.inc
 .. include:: os-share-manage.inc
 .. include:: quota-sets.inc
+.. include:: user-messages.inc
 
 ======================================
 Shared File Systems API (EXPERIMENTAL)
