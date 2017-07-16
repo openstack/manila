@@ -1,0 +1,5 @@
+---
+fixes:
+  - The NetApp driver has been fixed to ensure that share type changes
+    during driver optimized share migration will result in correction
+    of share properties as per the requested extra-specs.
