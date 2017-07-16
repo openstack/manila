@@ -1719,14 +1719,23 @@ class NetAppCmodeFileStorageLibrary(object):
             try:
                 backend = share_utils.extract_host(
                     destination_host, level='backend_name')
+                destination_aggregate = share_utils.extract_host(
+                    destination_host, level='pool')
+                # Validate new share type extra-specs are valid on the
+                # destination
+                extra_specs = share_types.get_extra_specs_from_share(
+                    destination_share)
+                self._check_extra_specs_validity(
+                    destination_share, extra_specs)
+                self._check_aggregate_extra_specs_validity(
+                    destination_aggregate, extra_specs)
+
                 data_motion.get_backend_configuration(backend)
 
                 source_vserver, __ = self._get_vserver(
                     share_server=share_server)
                 share_volume = self._get_backend_share_name(
                     source_share['id'])
-                destination_aggregate = share_utils.extract_host(
-                    destination_host, level='pool')
 
                 self._check_destination_vserver_for_vol_move(
                     source_share, source_vserver, destination_share_server)
@@ -1902,6 +1911,18 @@ class NetAppCmodeFileStorageLibrary(object):
         new_share_volume_name = self._get_backend_share_name(
             destination_share['id'])
         vserver_client.set_volume_name(share_volume, new_share_volume_name)
+
+        # Modify volume properties per share type extra-specs
+        extra_specs = share_types.get_extra_specs_from_share(
+            destination_share)
+        provisioning_options = self._get_provisioning_options(extra_specs)
+        destination_aggregate = share_utils.extract_host(
+            destination_share['host'], level='pool')
+
+        # Modify volume to match extra specs
+        vserver_client.manage_volume(destination_aggregate,
+                                     new_share_volume_name,
+                                     **provisioning_options)
 
         msg = _LI("Volume move operation for share %(shr)s has completed "
                   "successfully. Share has been moved from %(src)s to "
