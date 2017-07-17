@@ -6,7 +6,7 @@ Files under this directory tree are used for generating the documentation
 for the manila source code.
 
 Developer documentation is built to:
-http://docs.openstack.org/developer/manila/
+https://docs.openstack.org/manila/latest/
 
 Tools
 =====

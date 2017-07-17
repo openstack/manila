@@ -33,7 +33,7 @@ complete OpenStack development environments).
 You can check out `Setting up a development environment with devstack`_ for instructions
 on how to enable manila on devstack.
 
-.. _Setting up a development environment with devstack: http://docs.openstack.org/developer/manila/devref/development_environment_devstack.html
+.. _Setting up a development environment with devstack: https://docs.openstack.org/manila/latest/devref/development-environment-devstack.html
 
 Virtual environments
 --------------------
