@@ -425,6 +425,7 @@ class ShareController(shares.ShareMixin,
         if req.api_version_request < api_version.APIVersionRequest("2.36"):
             req.GET.pop('name~', None)
             req.GET.pop('description~', None)
+            req.GET.pop('description', None)
 
         return self._get_shares(req, is_detail=False)
 
@@ -438,6 +439,7 @@ class ShareController(shares.ShareMixin,
         if req.api_version_request < api_version.APIVersionRequest("2.36"):
             req.GET.pop('name~', None)
             req.GET.pop('description~', None)
+            req.GET.pop('description', None)
 
         return self._get_shares(req, is_detail=True)
 

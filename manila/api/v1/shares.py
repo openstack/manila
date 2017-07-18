@@ -104,6 +104,7 @@ class ShareMixin(object):
         req.GET.pop('export_location_path', None)
         req.GET.pop('name~', None)
         req.GET.pop('description~', None)
+        req.GET.pop('description', None)
         return self._get_shares(req, is_detail=False)
 
     def detail(self, req):
@@ -112,6 +113,7 @@ class ShareMixin(object):
         req.GET.pop('export_location_path', None)
         req.GET.pop('name~', None)
         req.GET.pop('description~', None)
+        req.GET.pop('description', None)
         return self._get_shares(req, is_detail=True)
 
     def _get_shares(self, req, is_detail):
@@ -139,6 +141,9 @@ class ShareMixin(object):
         # from Cinder v1 and v2 APIs.
         if 'name' in search_opts:
             search_opts['display_name'] = search_opts.pop('name')
+        if 'description' in search_opts:
+            search_opts['display_description'] = search_opts.pop(
+                'description')
 
         # like filter
         for key, db_key in (('name~', 'display_name~'),
@@ -176,7 +181,7 @@ class ShareMixin(object):
             'is_public', 'metadata', 'extra_specs', 'sort_key', 'sort_dir',
             'share_group_id', 'share_group_snapshot_id',
             'export_location_id', 'export_location_path', 'display_name~',
-            'display_description~'
+            'display_description~', 'description', 'display_description'
         )
 
     def update(self, req, id, body):

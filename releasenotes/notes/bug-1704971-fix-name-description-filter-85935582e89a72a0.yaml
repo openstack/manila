@@ -1,0 +1,12 @@
+---
+fixes:
+  - Fix the ``exact`` filters (name, description) in ``shares``,
+    ``snapshots``, ``share-networks`` list can be filter by ``inexact``
+    value.
+    We got the error because the ``description`` filter will be
+    skipped in ``shares``, ``snapshots`` list API, and we will directly
+    remove the ``inexact`` filter flag('~') and process the
+    ``exact`` filters (name, description) by ``inexact`` filter logic.
+    Now, we added ``description`` filter in ``shares``, ``snapshots`` list,
+    and check whether the filter keys has the '~' in the end in ``shares``,
+    ``snapshots``, ``share-networks`` list firstly.

@@ -450,22 +450,35 @@ class ShareNetworkAPITest(test.TestCase):
             result[share_networks.RESOURCES_NAME][0],
             fake_sn_with_ss_shortened)
 
+    @ddt.data(('name=fo', 0), ('description=d', 0),
+              ('name=foo&description=d', 0),
+              ('name=foo', 1), ('description=ds', 1),
+              ('name~=foo&description~=ds', 2),
+              ('name=foo&description~=ds', 1),
+              ('name~=foo&description=ds', 1))
+    @ddt.unpack
     @mock.patch.object(db_api, 'share_network_get_all_by_project',
                        mock.Mock())
-    def test_index_filter_by_like_filter(self):
-        db_api.share_network_get_all_by_project.return_value = [
-            fake_share_network,
-        ]
+    def test_index_filter_by_name_and_description(
+            self, filter, share_network_number):
+        fake_objs = [{'name': 'fo2', 'description': 'd2', 'id': 'fake1'},
+                     {'name': 'foo', 'description': 'ds', 'id': 'fake2'},
+                     {'name': 'foo1', 'description': 'ds1', 'id': 'fake3'}]
+        db_api.share_network_get_all_by_project.return_value = fake_objs
         req = fakes.HTTPRequest.blank(
-            '/share_networks?name~=fake&description~=fake',
+            '/share_networks?' + filter,
             use_admin_context=True, version='2.36')
         result = self.controller.index(req)
-        db_api.share_network_get_all_by_project.assert_called_once_with(
+        db_api.share_network_get_all_by_project.assert_called_with(
             req.environ['manila.context'], self.context.project_id)
-        self.assertEqual(1, len(result[share_networks.RESOURCES_NAME]))
-        self._check_share_network_view_shortened(
-            result[share_networks.RESOURCES_NAME][0],
-            fake_share_network_shortened)
+        self.assertEqual(share_network_number,
+                         len(result[share_networks.RESOURCES_NAME]))
+        if share_network_number > 0:
+            self._check_share_network_view_shortened(
+                result[share_networks.RESOURCES_NAME][0], fake_objs[1])
+        if share_network_number > 1:
+            self._check_share_network_view_shortened(
+                result[share_networks.RESOURCES_NAME][1], fake_objs[2])
 
     @mock.patch.object(db_api, 'share_network_get_all_by_project',
                        mock.Mock())

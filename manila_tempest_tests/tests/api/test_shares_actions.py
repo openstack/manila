@@ -338,7 +338,15 @@ class SharesActionsTest(base.BaseSharesTest):
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @base.skip_if_microversion_lt("2.36")
-    def test_list_shares_with_detail_filter_by_nonexistent_name(self):
+    def test_list_shares_with_detail_filter_by_existed_description(self):
+        # list shares by description, at least one share is expected
+        params = {"description": self.share_desc}
+        shares = self.shares_v2_client.list_shares_with_detail(params)
+        self.assertEqual(self.share_name, shares[0]["name"])
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    @base.skip_if_microversion_lt("2.36")
+    def test_list_shares_with_detail_filter_by_inexact_name(self):
         # list shares by name, at least one share is expected
         params = {"name~": 'tempest-share'}
         shares = self.shares_v2_client.list_shares_with_detail(params)
@@ -559,6 +567,22 @@ class SharesActionsTest(base.BaseSharesTest):
         for snap in snaps:
             self.assertEqual(filters['status'], snap['status'])
             self.assertEqual(filters['name'], snap['name'])
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
+    @base.skip_if_microversion_not_supported("2.35")
+    def test_list_snapshots_with_detail_filter_by_description(self):
+        filters = {'description': self.snap_desc}
+
+        # list snapshots
+        snaps = self.shares_client.list_snapshots_with_detail(
+            params=filters)
+
+        # verify response
+        self.assertGreater(len(snaps), 0)
+        for snap in snaps:
+            self.assertEqual(filters['description'], snap['description'])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(CONF.share.run_snapshot_tests,

@@ -15,6 +15,7 @@
 
 import ddt
 from tempest import config
+from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions as lib_exc
 import testtools
 from testtools import testcase as tc
@@ -30,7 +31,18 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
     def resource_setup(cls):
         super(SharesActionsNegativeTest, cls).resource_setup()
         cls.admin_client = cls.admin_shares_v2_client
-        cls.share = cls.create_share()
+        cls.share_name = data_utils.rand_name("tempest-share-name")
+        cls.share_desc = data_utils.rand_name("tempest-share-description")
+        cls.share = cls.create_share(
+            name=cls.share_name,
+            description=cls.share_desc)
+        if CONF.share.run_snapshot_tests:
+            # create snapshot
+            cls.snap_name = data_utils.rand_name("tempest-snapshot-name")
+            cls.snap_desc = data_utils.rand_name(
+                "tempest-snapshot-description")
+            cls.snap = cls.create_snapshot_wait_for_active(
+                cls.share["id"], cls.snap_name, cls.snap_desc)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(
@@ -167,7 +179,7 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
         self.assertEqual(0, len(shares))
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @base.skip_if_microversion_not_supported("2.35")
+    @base.skip_if_microversion_not_supported("2.36")
     def test_list_shares_with_like_filter_and_invalid_version(self):
         # In API versions < v2.36, querying the share API by inexact
         # filter (name or description) should have no effect. Those
@@ -182,12 +194,52 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
         self.assertGreater(len(shares), 0)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
-    @base.skip_if_microversion_not_supported("2.35")
+    @base.skip_if_microversion_not_supported("2.36")
     def test_list_shares_with_like_filter_not_exist(self):
         filters = {
             'name~': 'fake_not_exist',
             'description~': 'fake_not_exist',
         }
         shares = self.shares_v2_client.list_shares(params=filters)
+
+        self.assertEqual(0, len(shares))
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    def test_list_shares_with_name_not_exist(self):
+        filters = {
+            'name': "tempest-share",
+        }
+        shares = self.shares_v2_client.list_shares(params=filters)
+
+        self.assertEqual(0, len(shares))
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    @base.skip_if_microversion_not_supported("2.36")
+    def test_list_shares_with_description_not_exist(self):
+        filters = {
+            'description': "tempest-share",
+        }
+        shares = self.shares_v2_client.list_shares(params=filters)
+
+        self.assertEqual(0, len(shares))
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    @base.skip_if_microversion_not_supported("2.36")
+    def test_list_snapshots_with_description_not_exist(self):
+        filters = {
+            'description': "tempest-snapshot",
+        }
+        shares = self.shares_v2_client.list_snapshots_with_detail(
+            params=filters)
+
+        self.assertEqual(0, len(shares))
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
+    def test_list_snapshots_with_name_not_exist(self):
+        filters = {
+            'name': "tempest-snapshot",
+        }
+        shares = self.shares_v2_client.list_snapshots_with_detail(
+            params=filters)
 
         self.assertEqual(0, len(shares))
