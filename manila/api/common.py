@@ -13,12 +13,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ipaddress
 import os
 import re
+import six
 import string
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_utils import encodeutils
 from six.moves.urllib import parse
 import webob
 
@@ -343,32 +346,6 @@ def validate_username(access):
         raise webob.exc.HTTPBadRequest(explanation=exc_str)
 
 
-def validate_ip_range(ip_range):
-    ip_range = ip_range.split('/')
-    exc_str = ('Supported ip format examples:\n'
-               '\t10.0.0.2, 10.0.0.0/24')
-    if len(ip_range) > 2:
-        raise webob.exc.HTTPBadRequest(explanation=exc_str)
-    if len(ip_range) == 2:
-        try:
-            prefix = int(ip_range[1])
-            if prefix < 0 or prefix > 32:
-                raise ValueError()
-        except ValueError:
-            msg = 'IP prefix should be in range from 0 to 32.'
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-    ip_range = ip_range[0].split('.')
-    if len(ip_range) != 4:
-        raise webob.exc.HTTPBadRequest(explanation=exc_str)
-    for item in ip_range:
-        try:
-            if 0 <= int(item) <= 255:
-                continue
-            raise ValueError()
-        except ValueError:
-            raise webob.exc.HTTPBadRequest(explanation=exc_str)
-
-
 def validate_cephx_id(cephx_id):
     if not cephx_id:
         raise webob.exc.HTTPBadRequest(explanation=_(
@@ -389,14 +366,27 @@ def validate_cephx_id(cephx_id):
             'Ceph IDs may not contain periods.'))
 
 
+def validate_ip(access_to, enable_ipv6):
+    try:
+        if enable_ipv6:
+            validator = ipaddress.ip_network
+        else:
+            validator = ipaddress.IPv4Network
+        validator(six.text_type(access_to))
+    except ValueError as error:
+        err_msg = encodeutils.exception_to_unicode(error)
+        raise webob.exc.HTTPBadRequest(explanation=err_msg)
+
+
 def validate_access(*args, **kwargs):
 
     access_type = kwargs.get('access_type')
     access_to = kwargs.get('access_to')
     enable_ceph = kwargs.get('enable_ceph')
+    enable_ipv6 = kwargs.get('enable_ipv6')
 
     if access_type == 'ip':
-        validate_ip_range(access_to)
+        validate_ip(access_to, enable_ipv6)
     elif access_type == 'user':
         validate_username(access_to)
     elif access_type == 'cert':

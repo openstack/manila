@@ -259,19 +259,23 @@ class MiscFunctionsTest(test.TestCase):
     def test_validate_cephx_id_valid(self, test_id):
         common.validate_cephx_id(test_id)
 
-    @ddt.data(['ip', '1.1.1.1', False], ['user', 'alice', False],
-              ['cert', 'alice', False], ['cephx', 'alice', True],
-              ['ip', '172.24.41.0/24', False],)
+    @ddt.data(['ip', '1.1.1.1', False, False], ['user', 'alice', False, False],
+              ['cert', 'alice', False, False], ['cephx', 'alice', True, False],
+              ['ip', '172.24.41.0/24', False, False],
+              ['ip', '1001::1001', False, True],
+              ['ip', '1001::1000/120', False, True])
     @ddt.unpack
-    def test_validate_access(self, access_type, access_to, ceph):
+    def test_validate_access(self, access_type, access_to, ceph, enable_ipv6):
         common.validate_access(access_type=access_type, access_to=access_to,
-                               enable_ceph=ceph)
+                               enable_ceph=ceph, enable_ipv6=enable_ipv6)
 
     @ddt.data(['ip', 'alice', False], ['ip', '1.1.1.0/10/12', False],
               ['ip', '255.255.255.265', False], ['ip', '1.1.1.0/34', False],
               ['cert', '', False], ['cephx', 'client.alice', True],
               ['group', 'alice', True], ['cephx', 'alice', False],
-              ['cephx', '', True], ['user', 'bob', False])
+              ['cephx', '', True], ['user', 'bob', False],
+              ['ip', '1001::1001/256', False],
+              ['ip', '1001:1001/256', False],)
     @ddt.unpack
     def test_validate_access_exception(self, access_type, access_to, ceph):
         self.assertRaises(webob.exc.HTTPBadRequest, common.validate_access,

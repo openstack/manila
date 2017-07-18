@@ -214,3 +214,7 @@ user documentation.
 2.37
 ----
   Added /messages APIs.
+
+2.38
+----
+  Support IPv6 format validation in allow_access API to enable IPv6.

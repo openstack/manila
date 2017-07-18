@@ -343,6 +343,8 @@ class ShareController(shares.ShareMixin,
             kwargs['enable_ceph'] = True
         if req.api_version_request >= api_version.APIVersionRequest("2.28"):
             kwargs['allow_on_error_status'] = True
+        if req.api_version_request >= api_version.APIVersionRequest("2.38"):
+            kwargs['enable_ipv6'] = True
 
         return self._allow_access(*args, **kwargs)
 

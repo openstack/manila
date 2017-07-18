@@ -13,9 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import itertools
 
 import ddt
+import itertools
 from tempest import config
 from tempest.lib import exceptions as lib_exc
 import testtools
@@ -92,11 +92,15 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
         cls.access_to = "2.2.2.2"
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
-    @ddt.data(*set(['1.0', '2.9', '2.27', '2.28', LATEST_MICROVERSION]))
-    def test_create_delete_access_rules_with_one_ip(self, version):
-
-        # test data
-        access_to = "1.1.1.1"
+    @ddt.data(*itertools.chain(
+        itertools.product({'1.0', '2.9', '2.37', LATEST_MICROVERSION},
+                          {utils.rand_ip()}),
+        itertools.product({'2.37', LATEST_MICROVERSION},
+                          {utils.rand_ipv6_ip()})
+    ))
+    @ddt.unpack
+    def test_create_delete_access_rules_with_one_ip(self, version,
+                                                    access_to):
 
         # create rule
         if utils.is_microversion_eq(version, '1.0'):
@@ -140,11 +144,14 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
                 rule_id=rule["id"], share_id=self.share['id'], version=version)
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
-    @ddt.data(*set(['1.0', '2.9', '2.27', '2.28', LATEST_MICROVERSION]))
-    def test_create_delete_access_rule_with_cidr(self, version):
-
-        # test data
-        access_to = "1.2.3.4/32"
+    @ddt.data(*itertools.chain(
+        itertools.product({'1.0', '2.9', '2.37', LATEST_MICROVERSION},
+                          {utils.rand_ip(network=True)}),
+        itertools.product({'2.37', LATEST_MICROVERSION},
+                          {utils.rand_ipv6_ip(network=True)})
+    ))
+    @ddt.unpack
+    def test_create_delete_access_rule_with_cidr(self, version, access_to):
 
         # create rule
         if utils.is_microversion_eq(version, '1.0'):

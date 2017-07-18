@@ -159,7 +159,7 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
                 msg = _("Required parameter %s is empty.") % parameter
                 raise exc_response(explanation=msg)
 
-    def _allow(self, req, id, body):
+    def _allow(self, req, id, body, enable_ipv6=False):
         context = req.environ['manila.context']
 
         if not (body and self.is_valid_body(body, 'allow_access')):
@@ -175,7 +175,9 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
         access_type = access_data['access_type']
         access_to = access_data['access_to']
 
-        common.validate_access(access_type=access_type, access_to=access_to)
+        common.validate_access(access_type=access_type,
+                               access_to=access_to,
+                               enable_ipv6=enable_ipv6)
 
         snapshot = self.share_api.get_snapshot(context, id)
 
@@ -270,7 +272,10 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
     @wsgi.response(202)
     @wsgi.Controller.authorize
     def allow_access(self, req, id, body=None):
-        return self._allow(req, id, body)
+        enable_ipv6 = False
+        if req.api_version_request >= api_version.APIVersionRequest("2.38"):
+            enable_ipv6 = True
+        return self._allow(req, id, body, enable_ipv6)
 
     @wsgi.Controller.api_version('2.32')
     @wsgi.action('deny_access')

@@ -364,7 +364,11 @@ class ShareSnapshotAPITest(test.TestCase):
 
         self.assertEqual(expected, actual['snapshot_access_list'])
 
-    def test_allow_access(self):
+    @ddt.data(('1.1.1.1', '2.32'),
+              ('1.1.1.1', '2.38'),
+              ('1001::1001', '2.38'))
+    @ddt.unpack
+    def test_allow_access(self, ip_address, version):
         share = db_utils.create_share(mount_snapshot_support=True)
         snapshot = db_utils.create_snapshot(
             status=constants.STATUS_AVAILABLE, share_id=share['id'])
@@ -372,7 +376,7 @@ class ShareSnapshotAPITest(test.TestCase):
         access = {
             'id': 'fake_id',
             'access_type': 'ip',
-            'access_to': '1.1.1.1',
+            'access_to': ip_address,
             'state': 'new',
         }
 
@@ -384,7 +388,7 @@ class ShareSnapshotAPITest(test.TestCase):
                                         mock.Mock(return_value=access))
         body = {'allow_access': access}
         req = fakes.HTTPRequest.blank('/snapshots/%s/action' % snapshot['id'],
-                                      version='2.32')
+                                      version=version)
 
         actual = self.controller.allow_access(req, snapshot['id'], body)
 

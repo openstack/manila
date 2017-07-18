@@ -107,6 +107,8 @@ REST_API_VERSION_HISTORY = """
     * 2.36 - Added like filter support in ``shares``, ``snapshots``,
              ``share-networks``, ``share-groups`` list APIs.
     * 2.37 - Added /messages APIs.
+    * 2.38 - Support IPv6 validation in allow_access API to enable IPv6 in
+             manila.
 
 """
 
@@ -114,7 +116,7 @@ REST_API_VERSION_HISTORY = """
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.37"
+_MAX_API_VERSION = "2.38"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 
