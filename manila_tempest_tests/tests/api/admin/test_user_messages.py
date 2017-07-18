@@ -13,7 +13,7 @@
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 from tempest import config
-from tempest import test
+from tempest.lib import decorators
 
 from manila_tempest_tests.tests.api import base
 
@@ -43,7 +43,7 @@ class UserMessageTest(base.BaseSharesAdminTest):
         super(UserMessageTest, self).setUp()
         self.message = self.create_user_message()
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @decorators.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_list_messages(self):
         body = self.shares_v2_client.list_messages()
         self.assertIsInstance(body, list)
@@ -51,7 +51,7 @@ class UserMessageTest(base.BaseSharesAdminTest):
         message = body[0]
         self.assertEqual(set(MESSAGE_KEYS), set(message.keys()))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @decorators.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_list_messages_sorted_and_paginated(self):
         self.create_user_message()
         self.create_user_message()
@@ -68,7 +68,7 @@ class UserMessageTest(base.BaseSharesAdminTest):
         self.assertEqual(2, len(ids))
         self.assertEqual(ids, sorted(ids))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @decorators.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_list_messages_filtered(self):
         self.create_user_message()
         params = {'resource_id': self.message['resource_id']}
@@ -77,7 +77,7 @@ class UserMessageTest(base.BaseSharesAdminTest):
         ids = [x['id'] for x in body]
         self.assertEqual([self.message['id']], ids)
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @decorators.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_show_message(self):
         self.addCleanup(self.shares_v2_client.delete_message,
                         self.message['id'])
@@ -96,7 +96,7 @@ class UserMessageTest(base.BaseSharesAdminTest):
         self.assertGreater(expires_at, created_at)
         self.assertEqual(set(MESSAGE_KEYS), set(message.keys()))
 
-    @test.attr(type=[base.TAG_POSITIVE, base.TAG_API])
+    @decorators.attr(type=[base.TAG_POSITIVE, base.TAG_API])
     def test_delete_message(self):
         self.shares_v2_client.delete_message(self.message['id'])
         self.shares_v2_client.wait_for_resource_deletion(

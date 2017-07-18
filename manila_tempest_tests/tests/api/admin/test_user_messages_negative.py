@@ -12,8 +12,8 @@
 from oslo_utils import uuidutils
 import six
 from tempest import config
+from tempest.lib import decorators
 from tempest.lib import exceptions as lib_exc
-from tempest import test
 
 from manila_tempest_tests.tests.api import base
 
@@ -29,7 +29,7 @@ class UserMessageNegativeTest(base.BaseSharesAdminTest):
         super(UserMessageNegativeTest, self).setUp()
         self.message = self.create_user_message()
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @decorators.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_show_message_of_other_tenants(self):
         isolated_client = self.get_client_with_isolated_creds(
             type_of_creds='alt', client_version='2')
@@ -37,13 +37,13 @@ class UserMessageNegativeTest(base.BaseSharesAdminTest):
                           isolated_client.get_message,
                           self.message['id'])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @decorators.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_show_nonexistent_message(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_v2_client.get_message,
                           six.text_type(uuidutils.generate_uuid()))
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @decorators.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_delete_message_of_other_tenants(self):
         isolated_client = self.get_client_with_isolated_creds(
             type_of_creds='alt', client_version='2')
@@ -51,7 +51,7 @@ class UserMessageNegativeTest(base.BaseSharesAdminTest):
                           isolated_client.delete_message,
                           self.message['id'])
 
-    @test.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
+    @decorators.attr(type=[base.TAG_NEGATIVE, base.TAG_API])
     def test_delete_nonexistent_message(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_v2_client.delete_message,
