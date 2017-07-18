@@ -209,9 +209,9 @@ class WindowsSMBHelper(helpers.CIFSHelperBase):
                 LOG.warning(
                     "Unsupported access level %(level)s or access type "
                     "%(type)s, skipping removal of access rule to "
-                    "%(to)s." % {'level': deleted_rule['access_level'],
-                                 'type': deleted_rule['access_type'],
-                                 'to': deleted_rule['access_to']})
+                    "%(to)s.", {'level': deleted_rule['access_level'],
+                                'type': deleted_rule['access_type'],
+                                'to': deleted_rule['access_to']})
                 continue
             self._revoke_share_access(server, share_name,
                                       deleted_rule['access_to'])

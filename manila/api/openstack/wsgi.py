@@ -733,8 +733,8 @@ class Resource(wsgi.Application):
     def __call__(self, request):
         """WSGI method that controls (de)serialization and method dispatch."""
 
-        LOG.info("%(method)s %(url)s" % {"method": request.method,
-                                         "url": request.url})
+        LOG.info("%(method)s %(url)s", {"method": request.method,
+                                        "url": request.url})
         if self.support_api_request_version:
             # Set the version of the API requested based on the header
             try:
@@ -900,7 +900,7 @@ class Resource(wsgi.Application):
             # OK, it's an action; figure out which action...
             mtype = _MEDIA_TYPE_MAP.get(content_type)
             action_name = self.action_peek[mtype](body)
-            LOG.debug("Action body: %s" % body)
+            LOG.debug("Action body: %s", body)
         else:
             action_name = action
 

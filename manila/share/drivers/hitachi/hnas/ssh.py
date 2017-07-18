@@ -313,7 +313,7 @@ class HNASSSHBackend(object):
                         command = ['tree-clone-job-abort', job_id]
                         self._execute(command)
                         LOG.error("Timeout in snapshot creation from "
-                                  "source path %s." % src_path)
+                                  "source path %s.", src_path)
                         msg = _("Share snapshot of source path %s "
                                 "was not created.") % src_path
                         raise exception.HNASBackendException(msg=msg)

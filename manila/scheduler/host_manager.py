@@ -562,7 +562,7 @@ class HostManager(object):
         self.service_states[host] = capability_copy
 
         LOG.debug("Received %(service_name)s service update from "
-                  "%(host)s: %(cap)s" %
+                  "%(host)s: %(cap)s",
                   {'service_name': service_name, 'host': host,
                    'cap': capabilities})
 
@@ -578,7 +578,7 @@ class HostManager(object):
 
             # Warn about down services and remove them from host_state_map
             if not utils.service_is_up(service) or service['disabled']:
-                LOG.warning("Share service is down. (host: %s)." % host)
+                LOG.warning("Share service is down. (host: %s).", host)
                 continue
 
             # Create and register host_state if not in host_state_map

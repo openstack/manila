@@ -1956,7 +1956,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     msg = _("The driver was unable to delete access rules "
                             "for the replica: %s. Will attempt to delete "
                             "the replica anyway.")
-                    LOG.exception(msg % share_replica['id'])
+                    LOG.exception(msg, share_replica['id'])
                     exc_context.reraise = False
 
         try:
@@ -3265,7 +3265,7 @@ class ShareManager(manager.SchedulerDependentManager):
         share_server = self._get_share_server(context, share_instance)
 
         LOG.debug("Received request to update access for share instance"
-                  " %s." % share_instance_id)
+                  " %s.", share_instance_id)
 
         self.access_helper.update_access_rules(
             context,

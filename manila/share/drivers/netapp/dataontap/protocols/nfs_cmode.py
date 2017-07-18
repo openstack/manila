@@ -89,14 +89,14 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
 
         # Rename policy currently in force
         LOG.info('Renaming NFS export policy for share %(share)s to '
-                 '%(policy)s.' %
+                 '%(policy)s.',
                  {'share': share_name, 'policy': temp_old_export_policy_name})
         self._client.rename_nfs_export_policy(export_policy_name,
                                               temp_old_export_policy_name)
 
         # Switch share to the new policy
         LOG.info('Setting NFS export policy for share %(share)s to '
-                 '%(policy)s.' %
+                 '%(policy)s.',
                  {'share': share_name, 'policy': temp_new_export_policy_name})
         self._client.set_nfs_export_policy_for_volume(
             share_name, temp_new_export_policy_name)
@@ -106,7 +106,7 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
 
         # Rename new policy to its final name
         LOG.info('Renaming NFS export policy for share %(share)s to '
-                 '%(policy)s.' %
+                 '%(policy)s.',
                  {'share': share_name, 'policy': export_policy_name})
         self._client.rename_nfs_export_policy(temp_new_export_policy_name,
                                               export_policy_name)

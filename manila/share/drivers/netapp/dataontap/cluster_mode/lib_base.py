@@ -173,7 +173,7 @@ class NetAppCmodeFileStorageLibrary(object):
         if 'nfs' not in self._licenses and 'cifs' not in self._licenses:
             msg = 'Neither NFS nor CIFS is licensed on %(backend)s'
             msg_args = {'backend': self._backend_name}
-            LOG.error(msg % msg_args)
+            LOG.error(msg, msg_args)
 
         return self._licenses
 
@@ -1064,7 +1064,7 @@ class NetAppCmodeFileStorageLibrary(object):
             msg = _('Could not determine snapshot %(snap)s size from '
                     'volume %(vol)s.')
             msg_args = {'snap': existing_snapshot_name, 'vol': share_name}
-            LOG.exception(msg % msg_args)
+            LOG.exception(msg, msg_args)
             raise exception.ShareNotFound(share_id=snapshot['share_id'])
 
         # Ensure there aren't any mirrors on this volume
@@ -2139,7 +2139,7 @@ class NetAppCmodeFileStorageLibrary(object):
             math.ceil(float(backend_volume['size']) / units.Gi))
 
         LOG.debug("Checking for a pre-existing QoS policy group that "
-                  "is exclusive to the volume %s." % backend_share_name)
+                  "is exclusive to the volume %s.", backend_share_name)
 
         # Does the volume have an exclusive QoS policy that we can rename?
         if backend_volume['qos-policy-group-name'] is not None:

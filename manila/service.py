@@ -293,7 +293,7 @@ class WSGIService(service.ServiceBase):
         if self.workers is not None and self.workers < 1:
             LOG.warning(
                 "Value of config option %(name)s_workers must be integer "
-                "greater than 1.  Input value ignored." % {'name': name})
+                "greater than 1.  Input value ignored.", {'name': name})
             # Reset workers to default
             self.workers = None
         self.server = wsgi.Server(

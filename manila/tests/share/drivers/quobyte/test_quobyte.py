@@ -192,7 +192,8 @@ class QuobyteShareDriverTestCase(test.TestCase):
         self._driver.delete_share(self._context, self.share)
 
         mock_warning.assert_called_with(
-            'No volume found for share fake_project_uuid/fakename')
+            'No volume found for share %(project_id)s/%(name)s',
+            {'project_id': 'fake_project_uuid', 'name': 'fakename'})
 
     def test_allow_access(self):
         def rpc_handler(name, *args):

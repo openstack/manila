@@ -108,7 +108,7 @@ class NetAppDriver(object):
 
         fmt = {'storage_family': storage_family, 'driver_mode': driver_mode}
         LOG.info('Requested unified config: %(storage_family)s and '
-                 '%(driver_mode)s.' % fmt)
+                 '%(driver_mode)s.', fmt)
 
         family_meta = NETAPP_UNIFIED_DRIVER_REGISTRY.get(storage_family)
         if family_meta is None:
@@ -125,5 +125,5 @@ class NetAppDriver(object):
         kwargs['netapp_mode'] = 'proxy'
         driver = importutils.import_object(driver_loc, *args, **kwargs)
         LOG.info('NetApp driver of family %(storage_family)s and mode '
-                 '%(driver_mode)s loaded.' % fmt)
+                 '%(driver_mode)s loaded.', fmt)
         return driver

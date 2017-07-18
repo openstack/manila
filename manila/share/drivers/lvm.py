@@ -121,7 +121,7 @@ class LVMMixin(driver.ExecuteMixin):
             if "not found" not in exc.stderr:
                 LOG.exception("Error deleting volume")
                 raise
-            LOG.warning("Volume not found: %s" % exc.stderr)
+            LOG.warning("Volume not found: %s", exc.stderr)
 
     def _create_snapshot(self, context, snapshot):
         """Creates a snapshot."""

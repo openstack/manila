@@ -80,7 +80,7 @@ class RemoteClient(object):
         # Shell options below add more clearness on failures,
         # path is extended for some non-cirros guest oses (centos7)
         cmd = CONF.validation.ssh_shell_prologue + " " + cmd
-        LOG.debug("Remote command: %s" % cmd)
+        LOG.debug("Remote command: %s", cmd)
         return self.ssh_client.exec_command(cmd)
 
     @debug_ssh

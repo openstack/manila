@@ -2649,7 +2649,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 try:
                     client.delete_nfs_export_policy(policy)
                 except netapp_api.NaApiError:
-                    LOG.debug('Could not delete export policy %s.' % policy)
+                    LOG.debug('Could not delete export policy %s.', policy)
 
     @na_utils.trace
     def _get_deleted_nfs_export_policies(self):
@@ -2717,7 +2717,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             node_client.send_request('ems-autosupport-log', message_dict)
             LOG.debug('EMS executed successfully.')
         except netapp_api.NaApiError as e:
-            LOG.warning('Failed to invoke EMS. %s' % e)
+            LOG.warning('Failed to invoke EMS. %s', e)
 
     @na_utils.trace
     def get_aggregate(self, aggregate_name):
@@ -2741,7 +2741,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                                          desired_attributes=desired_attributes)
         except netapp_api.NaApiError:
             msg = _('Failed to get info for aggregate %s.')
-            LOG.exception(msg % aggregate_name)
+            LOG.exception(msg, aggregate_name)
             return {}
 
         if len(aggrs) < 1:
@@ -2814,7 +2814,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             result = self.send_iter_request('storage-disk-get-iter', api_args)
         except netapp_api.NaApiError:
             msg = _('Failed to get disk info for aggregate %s.')
-            LOG.exception(msg % aggregate_name)
+            LOG.exception(msg, aggregate_name)
             return disk_types
 
         attributes_list = result.get_child_by_name(

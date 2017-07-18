@@ -94,7 +94,7 @@ class LVMHelper(driver.ExecuteMixin):
             self._execute("lvremove", "-f", "--autobackup", "n",
                           to_remove, run_as_root=True)
         except exception.ProcessExecutionError as e:
-            LOG.warning("Failed to remove logical volume %s." % to_remove)
+            LOG.warning("Failed to remove logical volume %s.", to_remove)
             LOG.error(e)
 
     def extend_share(self, share, new_size, share_server=None):

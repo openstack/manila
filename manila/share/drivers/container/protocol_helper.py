@@ -110,7 +110,7 @@ class DockerCIFSHelper(object):
             existing_users = self._get_existing_users(server_id, share_name,
                                                       access)
         except TypeError:
-            LOG.warning("Can't access smbd at share %s." % share_name)
+            LOG.warning("Can't access smbd at share %s.", share_name)
             return
         else:
             allowed_users = " ".join(sorted(set(existing_users.split()) -

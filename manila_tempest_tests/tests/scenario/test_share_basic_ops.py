@@ -189,7 +189,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
                 first_address = net_addresses.values()[0][0]
                 ip = first_address['addr']
             except Exception:
-                LOG.debug("Instance: %s" % instance)
+                LOG.debug("Instance: %s", instance)
                 # In case on an error ip will be still none
                 LOG.exception("Instance does not have a valid IP address."
                               "Falling back to default")

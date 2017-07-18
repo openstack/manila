@@ -416,13 +416,13 @@ class DummyDriver(driver.ShareDriver):
     @slow_me_down
     def create_cgsnapshot(self, context, snap_dict, share_server=None):
         """Create a consistency group snapshot."""
-        LOG.debug("Successfully created CG snapshot %s." % snap_dict["id"])
+        LOG.debug("Successfully created CG snapshot %s.", snap_dict["id"])
         return None, None
 
     @slow_me_down
     def delete_cgsnapshot(self, context, snap_dict, share_server=None):
         """Delete a consistency group snapshot."""
-        LOG.debug("Successfully deleted CG snapshot %s." % snap_dict["id"])
+        LOG.debug("Successfully deleted CG snapshot %s.", snap_dict["id"])
         return None, None
 
     @slow_me_down
@@ -545,7 +545,7 @@ class DummyDriver(driver.ShareDriver):
 
         """
         LOG.debug(
-            "Migration of dummy share with ID '%s' has been started." %
+            "Migration of dummy share with ID '%s' has been started.",
             source_share["id"])
         self.migration_progress[source_share['share_id']] = 0
 
@@ -561,9 +561,9 @@ class DummyDriver(driver.ShareDriver):
         self.migration_progress[source_share["id"]] += 50
 
         LOG.debug(
-            "Migration of dummy share with ID '%s' is continuing, %s." %
-            (source_share["id"],
-             self.migration_progress[source_share["id"]]))
+            "Migration of dummy share with ID '%s' is continuing, %s.",
+            source_share["id"],
+            self.migration_progress[source_share["id"]])
 
         return self.migration_progress[source_share["id"]] == 100
 
@@ -596,7 +596,7 @@ class DummyDriver(driver.ShareDriver):
             }
         )
         LOG.debug(
-            "Migration of dummy share with ID '%s' has been completed." %
+            "Migration of dummy share with ID '%s' has been completed.",
             source_share_ref["id"])
         self.migration_progress.pop(source_share_ref["id"], None)
 
@@ -610,7 +610,7 @@ class DummyDriver(driver.ShareDriver):
             destination_share_server=None):
         """Is called to cancel driver migration."""
         LOG.debug(
-            "Migration of dummy share with ID '%s' has been canceled." %
+            "Migration of dummy share with ID '%s' has been canceled.",
             source_share["id"])
         self.migration_progress.pop(source_share["id"], None)
 

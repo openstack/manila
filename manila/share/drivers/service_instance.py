@@ -642,7 +642,7 @@ class ServiceInstanceManager(object):
                 break
 
             LOG.debug("Waiting for instance %(instance_id)s to be active. "
-                      "Current status: %(instance_status)s." %
+                      "Current status: %(instance_status)s.",
                       dict(instance_id=instance_id,
                            instance_status=instance_status))
             time.sleep(1)
@@ -960,7 +960,7 @@ class NeutronNetworkHelper(BaseNetworkhelper):
         except Exception as e:
             if 'does not exist' in six.text_type(e):
                 LOG.warning(
-                    "Device %s does not exist anymore." % device.name)
+                    "Device %s does not exist anymore.", device.name)
             else:
                 raise
         for addr in addr_list:

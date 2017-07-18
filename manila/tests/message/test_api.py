@@ -71,7 +71,8 @@ class MessageApiTest(test.TestCase):
         self.message_api.db.message_create.assert_called_once_with(
             self.ctxt, mock.ANY)
         exception_log.assert_called_once_with(
-            'Failed to create message record for request_id fakerequestid')
+            'Failed to create message record for request_id %s',
+            self.ctxt.request_id)
 
     def test_get(self):
         self.message_api.get(self.ctxt, 'fake_id')

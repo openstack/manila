@@ -245,9 +245,9 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
             self._get_project_name(context, share['project_id']))
         if not volume_uuid:
             LOG.warning("No volume found for "
-                        "share %(project_id)s/%(name)s"
-                        % {"project_id": share['project_id'],
-                           "name": share['name']})
+                        "share %(project_id)s/%(name)s",
+                        {"project_id": share['project_id'],
+                         "name": share['name']})
             return
 
         if self.configuration.quobyte_delete_shares:
@@ -274,7 +274,7 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
             share['name'],
             self._get_project_name(context, share['project_id']))
 
-        LOG.debug("Ensuring Quobyte share %s" % share['name'])
+        LOG.debug("Ensuring Quobyte share %s", share['name'])
 
         if not volume_uuid:
             raise (exception.ShareResourceNotFound(

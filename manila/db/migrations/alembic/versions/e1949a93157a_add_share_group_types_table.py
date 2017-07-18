@@ -141,5 +141,5 @@ def downgrade():
         try:
             op.drop_table(table_name)
         except Exception:
-            LOG.error("%s table not dropped" % table_name)
+            LOG.error("%s table not dropped", table_name)
             raise

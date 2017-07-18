@@ -247,7 +247,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         network_allocations = network_info.get('admin_network_allocations')
         if not network_allocations:
-            LOG.info('No admin network defined for Vserver %s.' %
+            LOG.info('No admin network defined for Vserver %s.',
                      vserver_name)
             return
 

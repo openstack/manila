@@ -205,7 +205,7 @@ class GlusterManager(object):
                       exc.exit_code in error_policy):
                     return
                 if logmsg:
-                    LOG.error("%s: GlusterFS instrumentation failed." %
+                    LOG.error("%s: GlusterFS instrumentation failed.",
                               logmsg)
                 raise exception.GlusterfsException(
                     _("GlusterFS management command '%(cmd)s' failed "

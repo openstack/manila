@@ -214,7 +214,7 @@ class RestHelper(object):
             utils.execute('chmod', '666', filepath, run_as_root=True)
 
         except Exception as err:
-            LOG.error('Bad response from change file: %s.' % err)
+            LOG.error('Bad response from change file: %s.', err)
             raise
 
     def create_share(self, share_name, fs_id, share_proto):

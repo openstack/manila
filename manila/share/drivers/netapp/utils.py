@@ -74,7 +74,7 @@ def setup_tracing(trace_flags_string):
         flags = trace_flags_string.split(',')
         flags = [flag.strip() for flag in flags]
         for invalid_flag in list(set(flags) - set(VALID_TRACE_FLAGS)):
-            LOG.warning('Invalid trace flag: %s' % invalid_flag)
+            LOG.warning('Invalid trace flag: %s', invalid_flag)
         TRACE_METHOD = 'method' in flags
         TRACE_API = 'api' in flags
 
@@ -164,7 +164,7 @@ class OpenStackInfo(object):
                                       "'%{version}\t%{release}\t%{vendor}'",
                                       self.PACKAGE_NAME)
             if not out:
-                LOG.info('No rpm info found for %(pkg)s package.' % {
+                LOG.info('No rpm info found for %(pkg)s package.', {
                     'pkg': self.PACKAGE_NAME})
                 return False
             parts = out.split()
@@ -173,7 +173,7 @@ class OpenStackInfo(object):
             self._vendor = ' '.join(parts[2::])
             return True
         except Exception as e:
-            LOG.info('Could not run rpm command: %(msg)s.' % {
+            LOG.info('Could not run rpm command: %(msg)s.', {
                 'msg': e})
             return False
 
@@ -186,7 +186,7 @@ class OpenStackInfo(object):
                                       self.PACKAGE_NAME)
             if not out:
                 LOG.info(
-                    'No dpkg-query info found for %(pkg)s package.' % {
+                    'No dpkg-query info found for %(pkg)s package.', {
                         'pkg': self.PACKAGE_NAME})
                 return False
             # Debian format: [epoch:]upstream_version[-debian_revision]
@@ -204,7 +204,7 @@ class OpenStackInfo(object):
                 self._vendor = _vendor
             return True
         except Exception as e:
-            LOG.info('Could not run dpkg-query command: %(msg)s.' % {
+            LOG.info('Could not run dpkg-query command: %(msg)s.', {
                 'msg': e})
             return False
 

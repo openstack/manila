@@ -45,7 +45,7 @@ class API(base.Base):
                resource_id=None, exception=None, detail=None,
                level=message_levels.ERROR):
         """Create a message with the specified information."""
-        LOG.info("Creating message record for request_id = %s" %
+        LOG.info("Creating message record for request_id = %s",
                  context.request_id)
 
         # Updates expiry time for message as per message_ttl config.
@@ -66,8 +66,8 @@ class API(base.Base):
         try:
             self.db.message_create(context, message_record)
         except Exception:
-            LOG.exception("Failed to create message record "
-                          "for request_id %s" % context.request_id)
+            LOG.exception(("Failed to create message record "
+                           "for request_id %s"), context.request_id)
 
     def get(self, context, id):
         """Return message with the specified message id."""

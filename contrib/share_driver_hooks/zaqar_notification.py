@@ -78,7 +78,7 @@ class ZaqarNotification(hook.HookBase):
 
     def _execute_pre_hook(self, context, func_name, *args, **kwargs):
         LOG.debug("\n PRE zaqar notification has been called for "
-                  "method '%s'.\n" % func_name)
+                  "method '%s'.\n", func_name)
         if func_name == "deny_access":
             LOG.debug("\nSending notification about denied access.\n")
             data = self._access_changed_trigger(
@@ -92,7 +92,7 @@ class ZaqarNotification(hook.HookBase):
     def _execute_post_hook(self, context, func_name, pre_hook_data,
                            driver_action_results, *args, **kwargs):
         LOG.debug("\n POST zaqar notification has been called for "
-                  "method '%s'.\n" % func_name)
+                  "method '%s'.\n", func_name)
         if func_name == "allow_access":
             LOG.debug("\nSending notification about allowed access.\n")
             data = self._access_changed_trigger(
@@ -115,7 +115,7 @@ class ZaqarNotification(hook.HookBase):
             }
             LOG.debug(
                 "\n Sending message %(m)s to '%(q)s' queue using '%(u)s' user "
-                "and '%(p)s' project." % {
+                "and '%(p)s' project.", {
                     'm': message,
                     'q': queue_name,
                     'u': CONF.zaqar.zaqar_username,

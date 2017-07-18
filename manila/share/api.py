@@ -1323,7 +1323,7 @@ class API(base.Base):
                 constants.TASK_STATE_DATA_COPYING_IN_PROGRESS):
             data_rpc = data_rpcapi.DataAPI()
             LOG.info("Sending request to get share migration information"
-                     " of share %s." % share['id'])
+                     " of share %s.", share['id'])
 
             services = self.db.service_get_all_by_topic(context, 'manila-data')
 
@@ -1423,7 +1423,7 @@ class API(base.Base):
 
             data_rpc = data_rpcapi.DataAPI()
             LOG.info("Sending request to cancel migration of "
-                     "share %s." % share['id'])
+                     "share %s.", share['id'])
 
             services = self.db.service_get_all_by_topic(context, 'manila-data')
 
@@ -1873,8 +1873,8 @@ class API(base.Base):
         self.update(context, share, {'status': constants.STATUS_SHRINKING})
         self.share_rpcapi.shrink_share(context, share, new_size)
         LOG.info("Shrink share (id=%(id)s) request issued successfully."
-                 " New size: %(size)s" % {'id': share['id'],
-                                          'size': new_size})
+                 " New size: %(size)s", {'id': share['id'],
+                                         'size': new_size})
 
     def snapshot_allow_access(self, context, snapshot, access_type, access_to):
         """Allow access to a share snapshot."""

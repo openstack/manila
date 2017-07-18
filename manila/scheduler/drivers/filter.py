@@ -306,7 +306,7 @@ class FilterScheduler(base.Scheduler):
     def schedule_create_share_group(self, context, share_group_id,
                                     request_spec, filter_properties):
 
-        LOG.info("Scheduling share group %s." % share_group_id)
+        LOG.info("Scheduling share group %s.", share_group_id)
         host = self._get_best_host_for_share_group(context, request_spec)
 
         if not host:
@@ -314,7 +314,7 @@ class FilterScheduler(base.Scheduler):
             raise exception.NoValidHost(reason=msg)
 
         msg = "Chose host %(host)s for create_share_group %(group)s."
-        LOG.info(msg % {'host': host, 'group': share_group_id})
+        LOG.info(msg, {'host': host, 'group': share_group_id})
 
         updated_share_group = base.share_group_update_db(
             context, share_group_id, host)
@@ -361,7 +361,7 @@ class FilterScheduler(base.Scheduler):
         if not hosts:
             return []
 
-        LOG.debug("Filtered %s" % hosts)
+        LOG.debug("Filtered %s", hosts)
 
         # weighted_host = WeightedHost() ... the best host for the job.
         weighed_hosts = self.host_manager.get_weighed_hosts(
@@ -396,7 +396,7 @@ class FilterScheduler(base.Scheduler):
         if not hosts:
             return []
 
-        LOG.debug("Filtered %s" % hosts)
+        LOG.debug("Filtered %s", hosts)
 
         weighed_hosts = self.host_manager.get_weighed_hosts(
             hosts,

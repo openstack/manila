@@ -97,7 +97,7 @@ class JsonRpc(object):
             return self._checked_for_application_error(response)
 
         # If things did not work out provide error info
-        LOG.debug("Backend request resulted in error: %s" % result.text)
+        LOG.debug("Backend request resulted in error: %s", result.text)
         result.raise_for_status()
 
     def _checked_for_application_error(self, result):

@@ -183,7 +183,7 @@ class SecurityServicesTest(base.BaseSharesTest,
             LOG.warning("Caught exception. It is expected in case backend "
                         "fails having security-service with improper data "
                         "that leads to share-server creation error. "
-                        "%s" % six.text_type(e))
+                        "%s", six.text_type(e))
 
         update_data = {
             "name": "name",

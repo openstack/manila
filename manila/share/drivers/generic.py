@@ -873,7 +873,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def _setup_server(self, network_info, metadata=None):
         msg = "Creating share server '%s'."
-        LOG.debug(msg % network_info['server_id'])
+        LOG.debug(msg, network_info['server_id'])
         server = self.service_instance_manager.set_up_service_instance(
             self.admin_context, network_info)
         for helper in self._helpers.values():
@@ -945,7 +945,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
             linked_volume_name = self._get_volume_name(share['id'])
             if share_volume['name'] != linked_volume_name:
-                LOG.debug('Manage: volume_id = %s' % share_volume['id'])
+                LOG.debug('Manage: volume_id = %s', share_volume['id'])
                 self.volume_api.update(self.admin_context, share_volume['id'],
                                        {'name': linked_volume_name})
 

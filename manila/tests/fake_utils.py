@@ -77,7 +77,7 @@ def fake_execute(*cmd_parts, **kwargs):
     for fake_replier in _fake_execute_repliers:
         if re.match(fake_replier[0], cmd_str):
             reply_handler = fake_replier[1]
-            LOG.debug('Faked command matched %s' % fake_replier[0])
+            LOG.debug('Faked command matched %s', fake_replier[0])
             break
 
     if isinstance(reply_handler, six.string_types):

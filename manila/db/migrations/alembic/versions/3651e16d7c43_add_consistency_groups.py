@@ -182,7 +182,7 @@ def downgrade():
                            'shares',
                            type_='foreignkey')
     except Exception:
-        LOG.exception("Error Dropping '%s' constraint." %
+        LOG.exception("Error Dropping '%s' constraint.",
                       SHARES_CG_FK_CONSTRAINT_NAME)
 
     try:

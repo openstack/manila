@@ -76,7 +76,7 @@ def downgrade():
     )
 
     LOG.info("Copying data from %(from_table)s to the migration "
-             "table %(migration_table)s" % {
+             "table %(migration_table)s", {
                  'from_table': TABLE_NAME,
                  'migration_table': migration_table_name
              })
@@ -94,13 +94,13 @@ def downgrade():
         })
     op.bulk_insert(migration_table, rows)
 
-    LOG.info("Dropping table %(from_table)s" % {
+    LOG.info("Dropping table %(from_table)s", {
         'from_table': TABLE_NAME
     })
     op.drop_table(TABLE_NAME)
 
     LOG.info("Rename the migration table %(migration_table)s to "
-             "the original table %(from_table)s" % {
+             "the original table %(from_table)s", {
                  'migration_table': migration_table_name,
                  'from_table': TABLE_NAME
              })

@@ -51,7 +51,7 @@ class IgnoreAttemptedHostsFilter(base_host.BaseHostFilter):
         pass_msg = "passes" if passes else "fails"
 
         LOG.debug("Host %(host)s %(pass_msg)s.  Previously tried hosts: "
-                  "%(hosts)s" % {'host': host,
-                                 'pass_msg': pass_msg,
-                                 'hosts': hosts})
+                  "%(hosts)s", {'host': host,
+                                'pass_msg': pass_msg,
+                                'hosts': hosts})
         return passes

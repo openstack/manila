@@ -77,7 +77,7 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
         msg_args = {'vserver': self._vserver, 'backend': self._backend_name}
         msg_args['creds'] = ('cluster' if self._have_cluster_creds
                              else 'Vserver')
-        LOG.info(msg % msg_args)
+        LOG.info(msg, msg_args)
 
         (super(NetAppCmodeSingleSVMFileStorageLibrary, self).
             check_for_setup_error())

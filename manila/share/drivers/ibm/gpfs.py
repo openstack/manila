@@ -226,7 +226,7 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
         # exit_status == -1 if no exit code was returned
         if exit_status != -1:
-            LOG.debug('Result was %s' % exit_status)
+            LOG.debug('Result was %s', exit_status)
             if ((check_exit_code and exit_status != 0)
                 and
                 (ignore_exit_code is None or
@@ -692,7 +692,7 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                 LOG.exception(msg)
                 raise exception.GPFSException(msg)
             LOG.info('Existing share %(shr)s has size %(size)s KB '
-                     'which is below 1GiB, so extended it to 1GiB.' %
+                     'which is below 1GiB, so extended it to 1GiB.',
                      {'shr': new_share_name, 'size': share_size})
             share_size = 1
         else:

@@ -91,7 +91,7 @@ class handle_cleanup_exceptions(object):
             return False  # Do not suppress error if any
         if exc_traceback:
             LOG.error("Suppressed cleanup error in Manila: "
-                      "\n%s" % traceback.format_exc())
+                      "\n%s", traceback.format_exc())
         return True  # Suppress error if any
 
 
@@ -925,7 +925,7 @@ class BaseSharesTest(test.BaseTestCase):
                         client.wait_for_resource_deletion(replica_id=res_id)
                     else:
                         LOG.warning("Provided unsupported resource type for "
-                                    "cleanup '%s'. Skipping." % res["type"])
+                                    "cleanup '%s'. Skipping.", res["type"])
                 res["deleted"] = True
 
     @classmethod

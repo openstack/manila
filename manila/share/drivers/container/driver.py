@@ -117,7 +117,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         super(ContainerShareDriver, self)._update_share_stats(data)
 
     def create_share(self, context, share, share_server=None):
-        LOG.debug("Create share on server '%s'." % share_server["id"])
+        LOG.debug("Create share on server '%s'.", share_server["id"])
         server_id = self._get_container_name(share_server["id"])
         share_name = share.share_id
         self.container.execute(
@@ -135,7 +135,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
 
     @utils.synchronized('container_driver_delete_share_lock', external=True)
     def delete_share(self, context, share, share_server=None):
-        LOG.debug("Deleting share %(share)s on server '%(server)s'." %
+        LOG.debug("Deleting share %(share)s on server '%(server)s'.",
                   {"server": share_server["id"],
                    "share": share.share_id})
         server_id = self._get_container_name(share_server["id"])
@@ -255,7 +255,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
                       self.configuration.container_ovs_bridge_name, host_veth,
                       *(e_mac + e_id + e_status + e_mcid), run_as_root=True)
         LOG.debug("Now container %(id)s should be accessible from network "
-                  "%(network)s and subnet %(subnet)s by address %(ip)s." %
+                  "%(network)s and subnet %(subnet)s by address %(ip)s.",
                   msg_helper)
 
     @utils.synchronized("container_driver_teardown_lock", external=True)
@@ -305,7 +305,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
     def _setup_server(self, network_info, metadata=None):
         msg = "Creating share server '%s'."
         server_id = self._get_container_name(network_info["server_id"])
-        LOG.debug(msg % server_id)
+        LOG.debug(msg, server_id)
 
         veths_before = self._get_veth_state()
         try:

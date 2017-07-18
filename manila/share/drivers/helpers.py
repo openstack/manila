@@ -266,9 +266,9 @@ class NFSHelper(NASHelperBase):
                     LOG.warning(
                         "Unsupported access level %(level)s or access type "
                         "%(type)s, skipping removal of access rule to "
-                        "%(to)s." % {'level': access['access_level'],
-                                     'type': access['access_type'],
-                                     'to': access['access_to']})
+                        "%(to)s.", {'level': access['access_level'],
+                                    'type': access['access_type'],
+                                    'to': access['access_to']})
                     continue
                 self._ssh_exec(server, ['sudo', 'exportfs', '-u',
                                ':'.join((access['access_to'], local_path))])
@@ -282,7 +282,7 @@ class NFSHelper(NASHelperBase):
                         access['access_to']), out)
                 if found_item is not None:
                     LOG.warning("Access rule %(type)s:%(to)s already "
-                                "exists for share %(name)s" % {
+                                "exists for share %(name)s", {
                                     'to': access['access_to'],
                                     'type': access['access_type'],
                                     'name': share_name

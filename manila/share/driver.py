@@ -1310,7 +1310,7 @@ class ShareDriver(object):
         except exception.ManilaException:
             msg = ('Could not delete share group snapshot member %(snap)s '
                    'for share %(share)s.')
-            LOG.error(msg % {
+            LOG.error(msg, {
                 'snap': share_snapshot['id'],
                 'share': share_snapshot['share_id'],
             })
@@ -1402,7 +1402,7 @@ class ShareDriver(object):
                     msg = ('Could not create share group snapshot. Failed '
                            'to create share snapshot %(snap)s for '
                            'share %(share)s.')
-                    LOG.exception(msg % {
+                    LOG.exception(msg, {
                         'snap': share_snapshot['id'],
                         'share': share_snapshot['share_id']
                     })
@@ -1466,7 +1466,7 @@ class ShareDriver(object):
             This value may be None.
         """
         snapshot_members = snap_dict.get('share_group_snapshot_members', [])
-        LOG.debug('Deleting share group snapshot %s.' % snap_dict['id'])
+        LOG.debug('Deleting share group snapshot %s.', snap_dict['id'])
         for member in snapshot_members:
             share_snapshot = {
                 'snapshot_id': member['share_group_snapshot_id'],
@@ -1482,7 +1482,7 @@ class ShareDriver(object):
             self.delete_snapshot(
                 context, share_snapshot, share_server=share_server)
 
-        LOG.debug('Deleted share group snapshot %s.' % snap_dict['id'])
+        LOG.debug('Deleted share group snapshot %s.', snap_dict['id'])
         return None, None
 
     def _collate_share_group_snapshot_info(self, share_group_dict,

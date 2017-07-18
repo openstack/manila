@@ -1550,5 +1550,5 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                 e)
 
         LOG.debug(
-            "Migration of share with ID '%s' has been canceled." %
+            "Migration of share with ID '%s' has been canceled.",
             source_share["id"])
