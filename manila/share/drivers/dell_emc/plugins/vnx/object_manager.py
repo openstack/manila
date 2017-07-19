@@ -166,7 +166,7 @@ class StorageObject(object):
         """Execute NAS command via SSH.
 
         :param retry_patterns: list of tuples,where each tuple contains a reg
-            expression and a exception.
+            expression and an exception.
         :param check_exit_code: Boolean. Raise
             processutils.ProcessExecutionError if the command failed to
             execute and this parameter is set to True.
@@ -1193,7 +1193,7 @@ class MoverInterface(StorageObject):
         elif self._response_validation(
                 response, constants.MSG_INTERFACE_INVALID_VLAN_ID):
             # When fail to create a mover interface with the specified
-            # vlan id, VNX will leave a interface with vlan id 0 in the
+            # vlan id, VNX will leave an interface with vlan id 0 in the
             # backend. So we should explicitly remove the interface.
             try:
                 self.delete(six.text_type(ip_addr), mover_name)
