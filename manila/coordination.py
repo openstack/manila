@@ -40,7 +40,7 @@ coordination_opts = [
                       'coordination manages its heartbeat internally.',
                  deprecated_for_removal=True,
                  deprecated_reason='This option is no longer used.',
-                 deprecated_since='16.0.0'),
+                 deprecated_since='5.0.0'),
     cfg.FloatOpt('initial_reconnect_backoff',
                  default=0.1,
                  help='Initial number of seconds to wait after failed '
@@ -48,7 +48,7 @@ coordination_opts = [
                       'coordination manages its heartbeat internally.',
                  deprecated_for_removal=True,
                  deprecated_reason='This option is no longer used.',
-                 deprecated_since='16.0.0'),
+                 deprecated_since='5.0.0'),
     cfg.FloatOpt('max_reconnect_backoff',
                  default=60.0,
                  help='Maximum number of seconds between sequential '
@@ -57,7 +57,7 @@ coordination_opts = [
                       'internally.',
                  deprecated_for_removal=True,
                  deprecated_reason='This option is no longer used.',
-                 deprecated_since='16.0.0'),
+                 deprecated_since='5.0.0'),
 ]
 
 CONF = cfg.CONF
