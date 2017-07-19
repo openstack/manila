@@ -1283,3 +1283,8 @@ def message_create(context, values):
 def message_destroy(context, message_id):
     """Deletes message with the specified ID."""
     return IMPL.message_destroy(context, message_id)
+
+
+def cleanup_expired_messages(context):
+    """Soft delete expired messages"""
+    return IMPL.cleanup_expired_messages(context)

@@ -27,6 +27,9 @@ from manila.message import message_levels
 messages_opts = [
     cfg.IntOpt('message_ttl', default=2592000,
                help='Message minimum life in seconds.'),
+    cfg.IntOpt('message_reap_interval', default=86400,
+               help='Interval between periodic task runs to clean expired '
+                    'messages in seconds.'),
 ]
 
 CONF = cfg.CONF
@@ -83,3 +86,8 @@ class API(base.Base):
     def delete(self, context, id):
         """Delete message with the specified message id."""
         return self.db.message_destroy(context, id)
+
+    def cleanup_expired_messages(self, context):
+        ctx = context.elevated()
+        count = self.db.cleanup_expired_messages(ctx)
+        LOG.info("Deleted %s expired messages.", count)

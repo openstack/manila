@@ -4632,3 +4632,12 @@ def message_destroy(context, message):
     with session.begin():
         (model_query(context, models.Message, session=session).
             filter_by(id=message.get('id')).soft_delete())
+
+
+@require_admin_context
+def cleanup_expired_messages(context):
+    session = get_session()
+    now = timeutils.utcnow()
+    with session.begin():
+        return session.query(models.Message).filter(
+            models.Message.expires_at < now).delete()

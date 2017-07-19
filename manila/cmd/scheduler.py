@@ -46,7 +46,8 @@ def main():
     log.setup(CONF, "manila")
     utils.monkey_patch()
     gmr.TextGuruMeditation.setup_autorun(version, conf=CONF)
-    server = service.Service.create(binary='manila-scheduler')
+    server = service.Service.create(binary='manila-scheduler',
+                                    coordination=True)
     service.serve(server)
     service.wait()
 

@@ -200,13 +200,22 @@ class SchedulerManagerTestCase(test.TestCase):
 
         mock_expire.assert_called_once_with(self.context)
 
+    @mock.patch('manila.message.api.API.cleanup_expired_messages')
+    def test__clean_expired_messages(self, mock_expire):
+        self.manager._clean_expired_messages(self.context)
+
+        mock_expire.assert_called_once_with(self.context)
+
     def test_periodic_tasks(self):
-        self.mock_periodic_task.assert_called_once_with(
-            spacing=600, run_immediately=True)
-        self.assertEqual(1, len(self.periodic_tasks))
+        self.assertEqual(2, self.mock_periodic_task.call_count)
+
+        self.assertEqual(2, len(self.periodic_tasks))
         self.assertEqual(
             self.periodic_tasks[0].__name__,
             self.manager._expire_reservations.__name__)
+        self.assertEqual(
+            self.periodic_tasks[1].__name__,
+            self.manager._clean_expired_messages.__name__)
 
     def test_get_pools(self):
         """Ensure get_pools exists and calls base_scheduler.get_pools."""

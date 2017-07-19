@@ -27,6 +27,7 @@ from oslo_utils import importutils
 
 from manila.common import constants
 from manila import context
+from manila import coordination
 from manila import db
 from manila import exception
 from manila import manager
@@ -285,3 +286,9 @@ class SchedulerManager(manager.Manager):
             with excutils.save_and_reraise_exception():
                 self._set_share_replica_error_state(
                     context, 'create_share_replica', exc, request_spec)
+
+    @periodic_task.periodic_task(spacing=CONF.message_reap_interval,
+                                 run_immediately=True)
+    @coordination.synchronized('locked-clean-expired-messages')
+    def _clean_expired_messages(self, context):
+        self.message_api.cleanup_expired_messages(context)

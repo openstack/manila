@@ -2824,3 +2824,23 @@ class MessagesDatabaseAPITestCase(test.TestCase):
         result = db_api.message_get_all(self.ctxt, sort_key='action_id')
         result_ids = [r.id for r in result]
         self.assertEqual(result_ids, ids)
+
+    def test_cleanup_expired_messages(self):
+        adm_context = self.ctxt.elevated()
+
+        now = timeutils.utcnow()
+        db_utils.create_message(project_id=self.project_id,
+                                action_id='001',
+                                expires_at=now)
+        db_utils.create_message(project_id=self.project_id,
+                                action_id='001',
+                                expires_at=now - datetime.timedelta(days=1))
+        db_utils.create_message(project_id=self.project_id,
+                                action_id='001',
+                                expires_at=now + datetime.timedelta(days=1))
+
+        with mock.patch.object(timeutils, 'utcnow') as mock_time_now:
+            mock_time_now.return_value = now
+            db_api.cleanup_expired_messages(adm_context)
+            messages = db_api.message_get_all(adm_context)
+            self.assertEqual(2, len(messages))

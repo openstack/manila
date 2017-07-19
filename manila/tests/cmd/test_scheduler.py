@@ -41,7 +41,7 @@ class ManilaCmdSchedulerTestCase(test.TestCase):
         manila_scheduler.log.register_options.assert_called_once_with(CONF)
         manila_scheduler.utils.monkey_patch.assert_called_once_with()
         manila_scheduler.service.Service.create.assert_called_once_with(
-            binary='manila-scheduler')
+            binary='manila-scheduler', coordination=True)
         manila_scheduler.service.wait.assert_called_once_with()
         manila_scheduler.service.serve.assert_called_once_with(
             manila_scheduler.service.Service.create.return_value)
