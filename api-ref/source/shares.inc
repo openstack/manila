@@ -115,6 +115,8 @@ Request
    - consistency_group_id: consistency_group_id_6
    - export_location_id: export_location_id_query
    - export_location_path: export_location_path_query
+   - name~: name_inexact_query
+   - description~: description_inexact_query
 
 Response parameters
 -------------------
@@ -168,6 +170,8 @@ Request
    - consistency_group_id: consistency_group_id_6
    - export_location_id: export_location_id_query
    - export_location_path: export_location_path_query
+   - name~: name_inexact_query
+   - description~: description_inexact_query
 
 Response parameters
 -------------------
