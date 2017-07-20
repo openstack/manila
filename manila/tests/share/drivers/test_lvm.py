@@ -87,7 +87,7 @@ class LVMShareDriverTestCase(test.TestCase):
         self._context = context.get_admin_context()
 
         CONF.set_default('lvm_share_volume_group', 'fakevg')
-        CONF.set_default('lvm_share_export_ip', '10.0.0.1')
+        CONF.set_default('lvm_share_export_ips', ['10.0.0.1', '10.0.0.2'])
         CONF.set_default('driver_handles_share_servers', False)
         CONF.set_default('reserved_share_percentage', 50)
 
@@ -108,7 +108,7 @@ class LVMShareDriverTestCase(test.TestCase):
         self.access = fake_access()
         self.snapshot = fake_snapshot()
         self.server = {
-            'public_address': self.fake_conf.lvm_share_export_ip,
+            'public_addresses': self.fake_conf.lvm_share_export_ips,
             'instance_id': 'LVM',
             'lock_name': 'manila_lvm',
         }
@@ -148,13 +148,33 @@ class LVMShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidParameterValue,
                           self._driver.check_for_setup_error)
 
-    def test_check_for_setup_error_no_export_ip(self):
+    def test_check_for_setup_error_deprecated_export_ip(self):
         def exec_runner(*ignore_args, **ignore_kwargs):
             return '\n   fake1\n   fakevg\n   fake2\n', ''
 
         fake_utils.fake_execute_set_repliers([('vgs --noheadings -o name',
                                                exec_runner)])
-        CONF.set_default('lvm_share_export_ip', None)
+        CONF.set_default('lvm_share_export_ip', CONF.lvm_share_export_ips[0])
+        CONF.set_default('lvm_share_export_ips', None)
+        self.assertIsNone(self._driver.check_for_setup_error())
+
+    def test_check_for_setup_error_no_export_ips(self):
+        def exec_runner(*ignore_args, **ignore_kwargs):
+            return '\n   fake1\n   fakevg\n   fake2\n', ''
+
+        fake_utils.fake_execute_set_repliers([('vgs --noheadings -o name',
+                                               exec_runner)])
+        CONF.set_default('lvm_share_export_ips', None)
+        self.assertRaises(exception.InvalidParameterValue,
+                          self._driver.check_for_setup_error)
+
+    def test_check_for_setup_error_both_export_ip_and_ips(self):
+        def exec_runner(*ignore_args, **ignore_kwargs):
+            return '\n   fake1\n   fakevg\n   fake2\n', ''
+
+        fake_utils.fake_execute_set_repliers([('vgs --noheadings -o name',
+                                               exec_runner)])
+        CONF.set_default('lvm_share_export_ip', CONF.lvm_share_export_ips[0])
         self.assertRaises(exception.InvalidParameterValue,
                           self._driver.check_for_setup_error)
 

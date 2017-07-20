@@ -1,0 +1,15 @@
+---
+features:
+  - Added new config option 'lvm_share_export_ips' which
+    allows a list of IP addresses to use for export
+    locations for the LVM driver. Every share created
+    will be exported on every IP address. This new option
+    supercedes 'lvm_share_export_ip'.
+upgrade:
+  - After upgrading, rename lvm_share_export_ip to
+    lvm_share_export_ips in the manila.conf file to avoid
+    a deprecation warning. As long as the list remains a
+    single element, functionality is unchanged.
+deprecations:
+  - The 'lvm_share_export_ip' option is deprecated and
+    will be removed. Use 'lvm_share_export_ips' instead.

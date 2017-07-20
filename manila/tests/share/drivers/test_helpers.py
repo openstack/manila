@@ -215,8 +215,8 @@ class NFSHelperTestCase(test.TestCase):
         self._helper._ssh_exec.assert_has_calls(
             [mock.call(self.server, mock.ANY) for i in range(1)])
 
-    @ddt.data('/foo/bar', '5.6.7.8:/bar/quuz', '5.6.7.88:/foo/quuz')
-    def test_get_exports_for_share(self, export_location):
+    @ddt.data('/foo/bar', '5.6.7.8:/bar/quuz', '5.6.7.9:/foo/quuz')
+    def test_get_exports_for_share_single_ip(self, export_location):
         server = dict(public_address='1.2.3.4')
 
         result = self._helper.get_exports_for_share(server, export_location)
@@ -227,6 +227,23 @@ class NFSHelperTestCase(test.TestCase):
              "path": "%s:%s" % (server["public_address"], path),
              "metadata": {"export_location_metadata_example": "example"}}
         ]
+        self.assertEqual(expected_export_locations, result)
+
+    @ddt.data('/foo/bar', '5.6.7.8:/bar/quuz', '5.6.7.9:/foo/quuz')
+    def test_get_exports_for_share_multi_ip(self, export_location):
+        server = dict(public_addresses=['1.2.3.4', '1.2.3.5'])
+
+        result = self._helper.get_exports_for_share(server, export_location)
+
+        path = export_location.split(':')[-1]
+        expected_export_locations = list(map(
+            lambda addr: {
+                "is_admin_only": False,
+                "path": "%s:%s" % (addr, path),
+                "metadata": {"export_location_metadata_example": "example"}
+            },
+            server['public_addresses'])
+        )
         self.assertEqual(expected_export_locations, result)
 
     @ddt.data(
