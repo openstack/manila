@@ -742,7 +742,7 @@ class NetAppCmodeFileStorageLibrary(object):
             if home_node:
                 preferred = interface.get('home-node') == home_node
             else:
-                preferred = None
+                preferred = False
 
             addresses[address] = {
                 'is_admin_only': is_admin_only,
