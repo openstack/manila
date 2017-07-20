@@ -3894,6 +3894,39 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_warning_log.assert_called_once()
         self.assertFalse(data_motion.get_backend_configuration.called)
 
+    @ddt.data((None, exception.NetAppException),
+              (exception.Invalid, None))
+    @ddt.unpack
+    def test_migration_check_compatibility_extra_specs_invalid(
+            self, side_effect_1, side_effect_2):
+        self.library._have_cluster_creds = True
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+        self.mock_object(self.library, '_check_extra_specs_validity',
+                         mock.Mock(side_effect=side_effect_1))
+        self.mock_object(self.library,
+                         '_check_aggregate_extra_specs_validity',
+                         mock.Mock(side_effect=side_effect_2))
+        self.mock_object(data_motion, 'get_backend_configuration')
+
+        migration_compatibility = self.library.migration_check_compatibility(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(), share_server=fake.SHARE_SERVER,
+            destination_share_server=None)
+
+        expected_compatibility = {
+            'compatible': False,
+            'writable': False,
+            'nondisruptive': False,
+            'preserve_metadata': False,
+            'preserve_snapshots': False,
+        }
+        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        mock_exception_log.assert_called_once()
+        self.assertFalse(data_motion.get_backend_configuration.called)
+
     def test_migration_check_compatibility_destination_not_configured(self):
         self.library._have_cluster_creds = True
         self.mock_object(self.library, '_get_backend_share_name',
@@ -3905,6 +3938,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
         self.mock_object(share_utils, 'extract_host', mock.Mock(
             return_value='destination_backend'))
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+        self.mock_object(self.library, '_check_extra_specs_validity')
+        self.mock_object(self.library, '_check_aggregate_extra_specs_validity')
         mock_vserver_compatibility_check = self.mock_object(
             self.library, '_check_destination_vserver_for_vol_move')
 
@@ -3936,6 +3972,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             (exception.InvalidParameterValue, ('dest_vserver', None))))
     def test_migration_check_compatibility_errors(self, side_effects):
         self.library._have_cluster_creds = True
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+        self.mock_object(self.library, '_check_extra_specs_validity')
+        self.mock_object(self.library, '_check_aggregate_extra_specs_validity')
         self.mock_object(self.library, '_get_backend_share_name',
                          mock.Mock(return_value=fake.SHARE_NAME))
         self.mock_object(data_motion, 'get_backend_configuration')
@@ -3967,6 +4006,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_migration_check_compatibility_incompatible_vservers(self):
         self.library._have_cluster_creds = True
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+        self.mock_object(self.library, '_check_extra_specs_validity')
+        self.mock_object(self.library, '_check_aggregate_extra_specs_validity')
         self.mock_object(self.library, '_get_backend_share_name',
                          mock.Mock(return_value=fake.SHARE_NAME))
         self.mock_object(data_motion, 'get_backend_configuration')
@@ -4004,6 +4046,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_migration_check_compatibility_client_error(self):
         self.library._have_cluster_creds = True
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+        self.mock_object(self.library, '_check_extra_specs_validity')
+        self.mock_object(self.library, '_check_aggregate_extra_specs_validity')
         self.mock_object(self.library, '_get_backend_share_name',
                          mock.Mock(return_value=fake.SHARE_NAME))
         mock_exception_log = self.mock_object(lib_base.LOG, 'exception')
@@ -4040,6 +4085,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_migration_check_compatibility(self):
         self.library._have_cluster_creds = True
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+        self.mock_object(self.library, '_check_extra_specs_validity')
+        self.mock_object(self.library, '_check_aggregate_extra_specs_validity')
         self.mock_object(self.library, '_get_backend_share_name',
                          mock.Mock(return_value=fake.SHARE_NAME))
         self.mock_object(data_motion, 'get_backend_configuration')
@@ -4303,8 +4351,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_move_status_check = self.mock_object(
             self.library, '_get_volume_move_status',
             mock.Mock(side_effect=vol_move_side_effects))
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value=fake.EXTRA_SPEC))
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value=fake.PROVISIONING_OPTIONS))
+        self.mock_object(vserver_client, 'manage_volume')
+
         src_share = fake_share.fake_share_instance(id='source-share-instance')
         dest_share = fake_share.fake_share_instance(id='dest-share-instance')
+        dest_aggr = share_utils.extract_host(dest_share['host'], level='pool')
 
         data_updates = self.library.migration_complete(
             self.context, src_share, dest_share, source_snapshots,
@@ -4323,6 +4378,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._create_export.assert_called_once_with(
             dest_share, fake.SHARE_SERVER, fake.VSERVER1, vserver_client,
             clear_current_export_policy=False)
+        vserver_client.manage_volume.assert_called_once_with(
+            dest_aggr, 'new_share_name', **fake.PROVISIONING_OPTIONS)
         mock_info_log.assert_called_once()
         if phase != 'completed':
             self.assertEqual(2, mock_warning_log.call_count)
