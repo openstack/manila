@@ -32,6 +32,7 @@ from oslo_serialization import jsonutils
 
 import manila.context
 import manila.exception
+from manila import utils
 
 CONF = cfg.CONF
 TRANSPORT = None
@@ -53,9 +54,13 @@ def init(conf):
         conf,
         allowed_remote_exmods=exmods)
 
-    serializer = RequestContextSerializer(JsonPayloadSerializer())
-    NOTIFIER = messaging.Notifier(NOTIFICATION_TRANSPORT,
-                                  serializer=serializer)
+    if utils.notifications_enabled(conf):
+        json_serializer = messaging.JsonPayloadSerializer()
+        serializer = RequestContextSerializer(json_serializer)
+        NOTIFIER = messaging.Notifier(NOTIFICATION_TRANSPORT,
+                                      serializer=serializer)
+    else:
+        NOTIFIER = utils.DO_NOTHING
 
 
 def initialized():
@@ -141,6 +146,7 @@ def get_server(target, endpoints, serializer=None):
                                     access_policy=access_policy)
 
 
+@utils.if_notifications_enabled
 def get_notifier(service=None, host=None, publisher_id=None):
     assert NOTIFIER is not None
     if not publisher_id:

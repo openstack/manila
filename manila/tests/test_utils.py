@@ -16,6 +16,7 @@
 
 import datetime
 import errno
+import json
 import socket
 import time
 
@@ -803,3 +804,38 @@ class ConvertStrTestCase(test.TestCase):
             self.assertEqual(0, utils.encodeutils.safe_encode.call_count)
             self.assertIsInstance(output_value, six.string_types)
             self.assertEqual(six.text_type("binary_input"), output_value)
+
+
+@ddt.ddt
+class TestDisableNotifications(test.TestCase):
+    def test_do_nothing_getter(self):
+        """Test any attribute will always return the same instance (self)."""
+        donothing = utils.DoNothing()
+        self.assertIs(donothing, donothing.anyname)
+
+    def test_do_nothing_caller(self):
+        """Test calling the object will always return the same instance."""
+        donothing = utils.DoNothing()
+        self.assertIs(donothing, donothing())
+
+    def test_do_nothing_json_serializable(self):
+        """Test calling the object will always return the same instance."""
+        donothing = utils.DoNothing()
+        self.assertEqual('""', json.dumps(donothing))
+
+    @utils.if_notifications_enabled
+    def _decorated_method(self):
+        return mock.sentinel.success
+
+    def test_if_notification_enabled_when_enabled(self):
+        """Test method is called when notifications are enabled."""
+        result = self._decorated_method()
+        self.assertEqual(mock.sentinel.success, result)
+
+    @ddt.data([], ['noop'], ['noop', 'noop'])
+    def test_if_notification_enabled_when_disabled(self, driver):
+        """Test method is not called when notifications are disabled."""
+        self.override_config('driver', driver,
+                             group='oslo_messaging_notifications')
+        result = self._decorated_method()
+        self.assertEqual(utils.DO_NOTHING, result)
