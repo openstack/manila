@@ -15,7 +15,7 @@
 #    under the License.
 
 """
-Tests for manila.api.v1.quota_sets.py
+Tests for manila.api.v2.quota_sets.py
 """
 
 import copy
@@ -37,7 +37,7 @@ from manila import utils
 
 CONF = cfg.CONF
 
-REQ = mock.MagicMock()
+REQ = mock.MagicMock(api_version_request=api_version.APIVersionRequest("2.39"))
 REQ.environ = {'manila.context': context.get_admin_context()}
 REQ.environ['manila.context'].is_admin = True
 REQ.environ['manila.context'].auth_token = 'foo_auth_token'
@@ -121,6 +121,160 @@ class QuotaSetsControllerTest(test.TestCase):
         result = getattr(controller(), method_name)(req, self.project_id)
 
         self.assertEqual(expected, result)
+
+    @staticmethod
+    def _get_share_type_request_object(microversion=None):
+        req = copy.deepcopy(REQ)
+        req.environ['QUERY_STRING'] = 'share_type=fake_share_type_name_or_id'
+        req.api_version_request = api_version.APIVersionRequest(
+            microversion or '2.39')
+        return req
+
+    def test_share_type_quota_detail(self):
+        self.mock_object(
+            quota_sets.db, 'share_type_get_by_name_or_id',
+            mock.Mock(return_value={'id': 'fake_st_id'}))
+        req = self._get_share_type_request_object('2.39')
+        quotas = {
+            "shares": 23,
+            "snapshots": 34,
+            "gigabytes": 45,
+            "snapshot_gigabytes": 56,
+        }
+        expected = {'quota_set': {
+            'id': self.project_id,
+            'shares': {
+                'in_use': 0,
+                'limit': quotas['shares'],
+                'reserved': 0,
+            },
+            'gigabytes': {
+                'in_use': 0,
+                'limit': quotas['gigabytes'],
+                'reserved': 0,
+            },
+            'snapshots': {
+                'in_use': 0,
+                'limit': quotas['snapshots'],
+                'reserved': 0,
+            },
+            'snapshot_gigabytes': {
+                'in_use': 0,
+                'limit': quotas['snapshot_gigabytes'],
+                'reserved': 0,
+            },
+        }}
+
+        for k, v in quotas.items():
+            CONF.set_default('quota_' + k, v)
+
+        result = self.controller.detail(req, self.project_id)
+
+        self.assertEqual(expected, result)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'show')
+        quota_sets.db.share_type_get_by_name_or_id.assert_called_once_with(
+            req.environ['manila.context'], 'fake_share_type_name_or_id')
+
+    def test_show_share_type_quota(self):
+        self.mock_object(
+            quota_sets.db, 'share_type_get_by_name_or_id',
+            mock.Mock(return_value={'id': 'fake_st_id'}))
+        req = self._get_share_type_request_object('2.39')
+        quotas = {
+            "shares": 23,
+            "snapshots": 34,
+            "gigabytes": 45,
+            "snapshot_gigabytes": 56,
+        }
+        expected = {
+            'quota_set': {
+                'id': self.project_id,
+                'shares': quotas.get('shares', 50),
+                'gigabytes': quotas.get('gigabytes', 1000),
+                'snapshots': quotas.get('snapshots', 50),
+                'snapshot_gigabytes': quotas.get('snapshot_gigabytes', 1000),
+            }
+        }
+        for k, v in quotas.items():
+            CONF.set_default('quota_' + k, v)
+
+        result = self.controller.show(req, self.project_id)
+
+        self.assertEqual(expected, result)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'show')
+        quota_sets.db.share_type_get_by_name_or_id.assert_called_once_with(
+            req.environ['manila.context'], 'fake_share_type_name_or_id')
+
+    @ddt.data('show', 'detail')
+    def test_get_share_type_quota_with_old_microversion(self, method):
+        req = self._get_share_type_request_object('2.38')
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            getattr(self.controller, method),
+            req, self.project_id)
+
+    @ddt.data((None, None), (None, 'foo'), ('bar', None))
+    @ddt.unpack
+    def test__validate_user_id_and_share_type_args(self, user_id, st_id):
+        result = self.controller._validate_user_id_and_share_type_args(
+            user_id, st_id)
+
+        self.assertIsNone(result)
+
+    def test__validate_user_id_and_share_type_args_exception(self):
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller._validate_user_id_and_share_type_args,
+            'foo', 'bar')
+
+    def test__get_share_type_id_found(self):
+        self.mock_object(
+            quota_sets.db, 'share_type_get_by_name_or_id',
+            mock.Mock(return_value={'id': 'fake_st_id'}))
+        ctxt = 'fake_context'
+        share_type = 'fake_share_type_name_or_id'
+
+        result = self.controller._get_share_type_id(ctxt, share_type)
+
+        self.assertEqual('fake_st_id', result)
+
+    def test__get_share_type_id_not_found(self):
+        self.mock_object(
+            quota_sets.db, 'share_type_get_by_name_or_id',
+            mock.Mock(return_value=None))
+        ctxt = 'fake_context'
+        share_type = 'fake_share_type_name_or_id'
+
+        self.assertRaises(
+            webob.exc.HTTPNotFound,
+            self.controller._get_share_type_id,
+            ctxt, share_type)
+
+    def test__get_share_type_id_is_not_provided(self):
+        self.mock_object(
+            quota_sets.db, 'share_type_get_by_name_or_id',
+            mock.Mock(return_value={'id': 'fake_st_id'}))
+        ctxt = 'fake_context'
+
+        result = self.controller._get_share_type_id(ctxt, None)
+
+        self.assertIsNone(result)
+
+    @ddt.data(REQ, REQ_WITH_USER)
+    def test__ensure_share_type_arg_is_absent(self, req):
+        result = self.controller._ensure_share_type_arg_is_absent(req)
+
+        self.assertIsNone(result)
+
+    def test__ensure_share_type_arg_is_absent_exception(self):
+        req = self._get_share_type_request_object('2.39')
+
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller._ensure_share_type_arg_is_absent,
+            req)
 
     @ddt.data(REQ, REQ_WITH_USER)
     def test_quota_detail(self, request):
@@ -207,6 +361,10 @@ class QuotaSetsControllerTest(test.TestCase):
 
     @ddt.data(REQ, REQ_WITH_USER)
     def test_update_quota(self, request):
+        self.mock_object(
+            quota_sets.db, 'share_type_get_by_name_or_id',
+            mock.Mock(
+                return_value={'id': 'fake_st_id', 'name': 'fake_st_name'}))
         CONF.set_default('quota_shares', 789)
         body = {'quota_set': {'tenant_id': self.project_id, 'shares': 788}}
         expected = {
@@ -234,6 +392,79 @@ class QuotaSetsControllerTest(test.TestCase):
         self.assertEqual(expected, show_result)
         self.mock_policy_check.assert_has_calls([
             mock_policy_update_check_call, mock_policy_show_check_call])
+        quota_sets.db.share_type_get_by_name_or_id.assert_not_called()
+
+    def test_update_share_type_quota(self):
+        self.mock_object(
+            quota_sets.db, 'share_type_get_by_name_or_id',
+            mock.Mock(
+                return_value={'id': 'fake_st_id', 'name': 'fake_st_name'}))
+        req = self._get_share_type_request_object('2.39')
+
+        CONF.set_default('quota_shares', 789)
+        body = {'quota_set': {'tenant_id': self.project_id, 'shares': 788}}
+        expected = {
+            'quota_set': {
+                'shares': body['quota_set']['shares'],
+                'gigabytes': 1000,
+                'snapshots': 50,
+                'snapshot_gigabytes': 1000,
+            }
+        }
+
+        update_result = self.controller.update(req, self.project_id, body=body)
+
+        self.assertEqual(expected, update_result)
+        quota_sets.db.share_type_get_by_name_or_id.assert_called_once_with(
+            req.environ['manila.context'],
+            req.environ['QUERY_STRING'].split('=')[-1])
+        quota_sets.db.share_type_get_by_name_or_id.reset_mock()
+
+        show_result = self.controller.show(req, self.project_id)
+
+        expected['quota_set']['id'] = self.project_id
+        self.assertEqual(expected, show_result)
+        self.mock_policy_check.assert_has_calls([
+            mock.call(req.environ['manila.context'], self.resource_name, key)
+            for key in ('update', 'show')
+        ])
+        quota_sets.db.share_type_get_by_name_or_id.assert_called_once_with(
+            req.environ['manila.context'],
+            req.environ['QUERY_STRING'].split('=')[-1])
+
+    def test_update_share_type_quota_using_too_old_microversion(self):
+        self.mock_object(
+            quota_sets.db, 'share_type_get_by_name_or_id',
+            mock.Mock(
+                return_value={'id': 'fake_st_id', 'name': 'fake_st_name'}))
+        req = self._get_share_type_request_object('2.38')
+        body = {'quota_set': {'tenant_id': self.project_id, 'shares': 788}}
+
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller.update,
+            req, self.project_id, body=body)
+
+        quota_sets.db.share_type_get_by_name_or_id.assert_not_called()
+
+    def test_update_share_type_quota_for_share_networks(self):
+        self.mock_object(
+            quota_sets.db, 'share_type_get_by_name_or_id',
+            mock.Mock(
+                return_value={'id': 'fake_st_id', 'name': 'fake_st_name'}))
+        req = self._get_share_type_request_object('2.39')
+        body = {'quota_set': {
+            'tenant_id': self.project_id, 'share_networks': 788,
+        }}
+
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller.update,
+            req, self.project_id, body=body)
+
+        quota_sets.db.share_type_get_by_name_or_id.assert_called_once_with(
+            req.environ['manila.context'],
+            req.environ['QUERY_STRING'].split('=')[-1])
 
     @ddt.data(-2, 'foo', {1: 2}, [1])
     def test_update_quota_with_invalid_value(self, value):
@@ -383,6 +614,46 @@ class QuotaSetsControllerTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             REQ_WITH_USER.environ['manila.context'], self.resource_name,
             'delete')
+
+    def test_delete_share_type_quota(self):
+        req = self._get_share_type_request_object('2.39')
+        self.mock_object(quota_sets.QUOTAS, 'destroy_all_by_project')
+        self.mock_object(quota_sets.QUOTAS, 'destroy_all_by_project_and_user')
+        mock_delete_st_quotas = self.mock_object(
+            quota_sets.QUOTAS, 'destroy_all_by_project_and_share_type')
+        self.mock_object(
+            quota_sets.db, 'share_type_get_by_name_or_id',
+            mock.Mock(
+                return_value={'id': 'fake_st_id', 'name': 'fake_st_name'}))
+
+        result = self.controller.delete(req, self.project_id)
+
+        self.assertEqual(utils.IsAMatcher(webob.response.Response), result)
+        self.assertTrue(hasattr(result, 'status_code'))
+        self.assertEqual(202, result.status_code)
+        mock_delete_st_quotas.assert_called_once_with(
+            req.environ['manila.context'], self.project_id, 'fake_st_id')
+        quota_sets.QUOTAS.destroy_all_by_project.assert_not_called()
+        quota_sets.QUOTAS.destroy_all_by_project_and_user.assert_not_called()
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'delete')
+        quota_sets.db.share_type_get_by_name_or_id.assert_called_once_with(
+            req.environ['manila.context'],
+            req.environ['QUERY_STRING'].split('=')[-1])
+
+    def test_delete_share_type_quota_using_too_old_microversion(self):
+        self.mock_object(
+            quota_sets.db, 'share_type_get_by_name_or_id',
+            mock.Mock(
+                return_value={'id': 'fake_st_id', 'name': 'fake_st_name'}))
+        req = self._get_share_type_request_object('2.38')
+
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller.delete,
+            req, self.project_id)
+
+        quota_sets.db.share_type_get_by_name_or_id.assert_not_called()
 
     def test_delete_not_authorized(self):
         self.assertRaises(

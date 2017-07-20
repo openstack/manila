@@ -23,21 +23,15 @@ revision = '7d142971c4ef'
 down_revision = 'd5db24264f5c'
 
 from alembic import op
-from sqlalchemy import Index, MetaData, Table
 
 
-def _reservation_index(method):
-    meta = MetaData()
-    meta.bind = op.get_bind().engine
-    reservations = Table('reservations', meta, autoload=True)
-    index = Index('reservations_deleted_expire_idx',
-                  reservations.c.deleted, reservations.c.expire)
-    getattr(index, method)(meta.bind)
+INDEX_NAME = 'reservations_deleted_expire_idx'
+TABLE_NAME = 'reservations'
 
 
 def upgrade():
-    _reservation_index('create')
+    op.create_index(INDEX_NAME, TABLE_NAME, ['deleted', 'expire'])
 
 
 def downgrade():
-    _reservation_index('drop')
+    op.drop_index(INDEX_NAME, TABLE_NAME)

@@ -218,3 +218,7 @@ user documentation.
 2.38
 ----
   Support IPv6 format validation in allow_access API to enable IPv6.
+
+2.39
+----
+  Added share-type quotas.

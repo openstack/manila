@@ -109,14 +109,14 @@ REST_API_VERSION_HISTORY = """
     * 2.37 - Added /messages APIs.
     * 2.38 - Support IPv6 validation in allow_access API to enable IPv6 in
              manila.
-
+    * 2.39 - Added share-type quotas.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.38"
+_MAX_API_VERSION = "2.39"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

@@ -136,20 +136,23 @@ def service_update(context, service_id, values):
 ####################
 
 
-def quota_create(context, project_id, resource, limit, user_id=None):
+def quota_create(context, project_id, resource, limit, user_id=None,
+                 share_type_id=None):
     """Create a quota for the given project and resource."""
     return IMPL.quota_create(context, project_id, resource, limit,
-                             user_id=user_id)
-
-
-def quota_get(context, project_id, resource, user_id=None):
-    """Retrieve a quota or raise if it does not exist."""
-    return IMPL.quota_get(context, project_id, resource, user_id=user_id)
+                             user_id=user_id, share_type_id=share_type_id)
 
 
 def quota_get_all_by_project_and_user(context, project_id, user_id):
     """Retrieve all quotas associated with a given project and user."""
     return IMPL.quota_get_all_by_project_and_user(context, project_id, user_id)
+
+
+def quota_get_all_by_project_and_share_type(context, project_id,
+                                            share_type_id):
+    """Retrieve all quotas associated with a given project and user."""
+    return IMPL.quota_get_all_by_project_and_share_type(
+        context, project_id, share_type_id)
 
 
 def quota_get_all_by_project(context, project_id):
@@ -162,10 +165,11 @@ def quota_get_all(context, project_id):
     return IMPL.quota_get_all(context, project_id)
 
 
-def quota_update(context, project_id, resource, limit, user_id=None):
+def quota_update(context, project_id, resource, limit, user_id=None,
+                 share_type_id=None):
     """Update a quota or raise if it does not exist."""
     return IMPL.quota_update(context, project_id, resource, limit,
-                             user_id=user_id)
+                             user_id=user_id, share_type_id=share_type_id)
 
 
 ###################
@@ -199,9 +203,12 @@ def quota_class_update(context, class_name, resource, limit):
 ###################
 
 
-def quota_usage_get(context, project_id, resource, user_id=None):
+def quota_usage_get(context, project_id, resource, user_id=None,
+                    share_type_id=None):
     """Retrieve a quota usage or raise if it does not exist."""
-    return IMPL.quota_usage_get(context, project_id, resource, user_id=user_id)
+    return IMPL.quota_usage_get(
+        context, project_id, resource, user_id=user_id,
+        share_type_id=share_type_id)
 
 
 def quota_usage_get_all_by_project_and_user(context, project_id, user_id):
@@ -210,53 +217,74 @@ def quota_usage_get_all_by_project_and_user(context, project_id, user_id):
                                                         project_id, user_id)
 
 
+def quota_usage_get_all_by_project_and_share_type(context, project_id,
+                                                  share_type_id):
+    """Retrieve all usage associated with a given resource."""
+    return IMPL.quota_usage_get_all_by_project_and_share_type(
+        context, project_id, share_type_id)
+
+
 def quota_usage_get_all_by_project(context, project_id):
     """Retrieve all usage associated with a given resource."""
     return IMPL.quota_usage_get_all_by_project(context, project_id)
 
 
 def quota_usage_create(context, project_id, user_id, resource, in_use,
-                       reserved=0, until_refresh=None):
+                       reserved=0, until_refresh=None, share_type_id=None):
     """Create a quota usage."""
-    return IMPL.quota_usage_create(context, project_id, user_id, resource,
-                                   in_use, reserved, until_refresh)
+    return IMPL.quota_usage_create(
+        context, project_id, user_id, resource, in_use, reserved,
+        until_refresh, share_type_id=share_type_id)
 
 
-def quota_usage_update(context, project_id, user_id, resource, **kwargs):
+def quota_usage_update(context, project_id, user_id, resource,
+                       share_type_id=None, **kwargs):
     """Update a quota usage or raise if it does not exist."""
-    return IMPL.quota_usage_update(context, project_id, user_id, resource,
-                                   **kwargs)
+    return IMPL.quota_usage_update(
+        context, project_id, user_id, resource, share_type_id=share_type_id,
+        **kwargs)
 
 
 ###################
 
 
-def quota_reserve(context, resources, quotas, user_quotas, deltas, expire,
-                  until_refresh, max_age, project_id=None, user_id=None):
+def quota_reserve(context, resources, quotas, user_quotas, share_type_quotas,
+                  deltas, expire, until_refresh, max_age,
+                  project_id=None, user_id=None, share_type_id=None):
     """Check quotas and create appropriate reservations."""
-    return IMPL.quota_reserve(context, resources, quotas, user_quotas, deltas,
-                              expire, until_refresh, max_age,
-                              project_id=project_id, user_id=user_id)
+    return IMPL.quota_reserve(
+        context, resources, quotas, user_quotas, share_type_quotas, deltas,
+        expire, until_refresh, max_age, project_id=project_id, user_id=user_id,
+        share_type_id=share_type_id)
 
 
-def reservation_commit(context, reservations, project_id=None, user_id=None):
+def reservation_commit(context, reservations, project_id=None, user_id=None,
+                       share_type_id=None):
     """Commit quota reservations."""
-    return IMPL.reservation_commit(context, reservations,
-                                   project_id=project_id,
-                                   user_id=user_id)
+    return IMPL.reservation_commit(
+        context, reservations, project_id=project_id, user_id=user_id,
+        share_type_id=share_type_id)
 
 
-def reservation_rollback(context, reservations, project_id=None, user_id=None):
+def reservation_rollback(context, reservations, project_id=None, user_id=None,
+                         share_type_id=None):
     """Roll back quota reservations."""
-    return IMPL.reservation_rollback(context, reservations,
-                                     project_id=project_id,
-                                     user_id=user_id)
+    return IMPL.reservation_rollback(
+        context, reservations, project_id=project_id, user_id=user_id,
+        share_type_id=share_type_id)
 
 
 def quota_destroy_all_by_project_and_user(context, project_id, user_id):
     """Destroy all quotas associated with a given project and user."""
     return IMPL.quota_destroy_all_by_project_and_user(context,
                                                       project_id, user_id)
+
+
+def quota_destroy_all_by_project_and_share_type(context, project_id,
+                                                share_type_id):
+    """Destroy all quotas associated with a given project and user."""
+    return IMPL.quota_destroy_all_by_project_and_share_type(
+        context, project_id, share_type_id)
 
 
 def quota_destroy_all_by_project(context, project_id):
@@ -769,6 +797,13 @@ def share_network_remove_security_service(context, id, security_service_id):
                                                       id,
                                                       security_service_id)
 
+
+def count_share_networks(context, project_id, user_id=None,
+                         share_type_id=None, session=None):
+    return IMPL.count_share_networks(
+        context, project_id, user_id=user_id, share_type_id=share_type_id,
+        session=session,
+    )
 
 ##################
 

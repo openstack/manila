@@ -1606,7 +1606,7 @@ class ShareManagerTestCase(test.TestCase):
     def test_delete_snapshot_with_quota_error(self, quota_error):
 
         share_id = 'FAKE_SHARE_ID'
-        share = fakes.fake_share(id=share_id, instance={'id': 'fake_id'})
+        share = fakes.fake_share(id=share_id)
         snapshot_instance = fakes.fake_snapshot_instance(
             share_id=share_id, share=share, name='fake_snapshot')
         snapshot = fakes.fake_snapshot(
@@ -1648,7 +1648,8 @@ class ShareManagerTestCase(test.TestCase):
         self.assertTrue(manager.QUOTAS.reserve.called)
         quota.QUOTAS.reserve.assert_called_once_with(
             mock.ANY, project_id=self.context.project_id, snapshots=-1,
-            snapshot_gigabytes=-snapshot['size'], user_id=snapshot['user_id'])
+            snapshot_gigabytes=-snapshot['size'], user_id=snapshot['user_id'],
+            share_type_id=share['instance']['share_type_id'])
         self.assertEqual(not quota_error, quota_commit_call.called)
         self.assertEqual(quota_error, mock_exception_log.called)
         self.assertEqual(expected_exc_count, mock_exception_log.call_count)
@@ -1660,7 +1661,7 @@ class ShareManagerTestCase(test.TestCase):
             raise exception.QuotaError(code='500')
 
         share_id = 'FAKE_SHARE_ID'
-        share = fakes.fake_share(id=share_id, instance={'id': 'fake_id'})
+        share = fakes.fake_share(id=share_id)
         snapshot_instance = fakes.fake_snapshot_instance(
             share_id=share_id, share=share, name='fake_snapshot')
         snapshot = fakes.fake_snapshot(
@@ -3038,7 +3039,8 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY,
             reservations,
             project_id=six.text_type(share['project_id']),
-            user_id=six.text_type(share['user_id'])
+            user_id=six.text_type(share['user_id']),
+            share_type_id=None,
         )
 
     @mock.patch('manila.tests.fake_notifier.FakeNotifier._notify')
@@ -3076,7 +3078,7 @@ class ShareManagerTestCase(test.TestCase):
         )
         quota.QUOTAS.commit.assert_called_once_with(
             mock.ANY, reservations, project_id=share['project_id'],
-            user_id=share['user_id'])
+            user_id=share['user_id'], share_type_id=None)
         manager.db.share_update.assert_called_once_with(
             mock.ANY, share_id, shr_update
         )
@@ -3103,6 +3105,7 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY,
             project_id=six.text_type(share['project_id']),
             user_id=six.text_type(share['user_id']),
+            share_type_id=None,
             gigabytes=new_size - size
         )
         self.assertTrue(self.share_manager.db.share_update.called)
@@ -3140,11 +3143,11 @@ class ShareManagerTestCase(test.TestCase):
         )
         quota.QUOTAS.reserve.assert_called_once_with(
             mock.ANY, gigabytes=-size_decrease, project_id=share['project_id'],
-            user_id=share['user_id']
+            share_type_id=None, user_id=share['user_id'],
         )
         quota.QUOTAS.rollback.assert_called_once_with(
             mock.ANY, mock.ANY, project_id=share['project_id'],
-            user_id=share['user_id']
+            share_type_id=None, user_id=share['user_id'],
         )
         self.assertTrue(self.share_manager.db.share_get.called)
 
@@ -3184,11 +3187,11 @@ class ShareManagerTestCase(test.TestCase):
 
         quota.QUOTAS.reserve.assert_called_once_with(
             mock.ANY, gigabytes=-size_decrease, project_id=share['project_id'],
-            user_id=share['user_id']
+            share_type_id=None, user_id=share['user_id'],
         )
         quota.QUOTAS.commit.assert_called_once_with(
             mock.ANY, mock.ANY, project_id=share['project_id'],
-            user_id=share['user_id']
+            share_type_id=None, user_id=share['user_id'],
         )
         manager.db.share_update.assert_called_once_with(
             mock.ANY, share_id, shr_update
@@ -5508,10 +5511,12 @@ class ShareManagerTestCase(test.TestCase):
 
         share_id = 'fake_share_id'
         share = fakes.fake_share(
-            id=share_id, instance={'id': 'fake_instance_id'},
+            id=share_id, instance={'id': 'fake_instance_id',
+                                   'share_type_id': 'fake_share_type_id'},
             project_id='fake_project', user_id='fake_user', size=2)
         snapshot_instance = fakes.fake_snapshot_instance(
-            share_id=share_id, share=share, name='fake_snapshot')
+            share_id=share_id, share=share, name='fake_snapshot',
+            share_instance=share['instance'])
         snapshot = fakes.fake_snapshot(
             id='fake_snapshot_id', share_id=share_id, share=share,
             instance=snapshot_instance, project_id='fake_project',
@@ -5543,7 +5548,9 @@ class ShareManagerTestCase(test.TestCase):
         if reservations:
             mock_quotas_commit.assert_called_once_with(
                 mock.ANY, reservations, project_id='fake_project',
-                user_id='fake_user')
+                user_id='fake_user',
+                share_type_id=(
+                    snapshot_instance['share_instance']['share_type_id']))
         else:
             self.assertFalse(mock_quotas_commit.called)
 
@@ -5567,10 +5574,12 @@ class ShareManagerTestCase(test.TestCase):
 
         share_id = 'fake_share_id'
         share = fakes.fake_share(
-            id=share_id, instance={'id': 'fake_instance_id'},
+            id=share_id, instance={'id': 'fake_instance_id',
+                                   'share_type_id': 'fake_share_type_id'},
             project_id='fake_project', user_id='fake_user', size=2)
         snapshot_instance = fakes.fake_snapshot_instance(
-            share_id=share_id, share=share, name='fake_snapshot')
+            share_id=share_id, share=share, name='fake_snapshot',
+            share_instance=share['instance'])
         snapshot = fakes.fake_snapshot(
             id='fake_snapshot_id', share_id=share_id, share=share,
             instance=snapshot_instance, project_id='fake_project',
@@ -5607,7 +5616,9 @@ class ShareManagerTestCase(test.TestCase):
         if reservations:
             mock_quotas_rollback.assert_called_once_with(
                 mock.ANY, reservations, project_id='fake_project',
-                user_id='fake_user')
+                user_id='fake_user',
+                share_type_id=(
+                    snapshot_instance['share_instance']['share_type_id']))
         else:
             self.assertFalse(mock_quotas_rollback.called)
 
@@ -5822,7 +5833,7 @@ class ShareManagerTestCase(test.TestCase):
         if reservations:
             mock_quotas_commit.assert_called_once_with(
                 mock.ANY, reservations, project_id='fake_project',
-                user_id='fake_user')
+                user_id='fake_user', share_type_id=None)
         else:
             self.assertFalse(mock_quotas_commit.called)
 
@@ -5851,10 +5862,12 @@ class ShareManagerTestCase(test.TestCase):
         snapshot_instances = [snapshot['instance'], snapshot_instance]
         active_replica = fake_replica(
             id='rid1', share_id=share_id, host=self.share_manager.host,
-            replica_state=constants.REPLICA_STATE_ACTIVE, as_primitive=False)
+            replica_state=constants.REPLICA_STATE_ACTIVE, as_primitive=False,
+            share_type_id='fake_share_type_id')
         replica = fake_replica(
             id='rid2', share_id=share_id, host='secondary',
-            replica_state=constants.REPLICA_STATE_IN_SYNC, as_primitive=False)
+            replica_state=constants.REPLICA_STATE_IN_SYNC, as_primitive=False,
+            share_type_id='fake_share_type_id')
         replicas = [active_replica, replica]
         access_rules = []
         self.mock_object(
@@ -5893,7 +5906,7 @@ class ShareManagerTestCase(test.TestCase):
         if reservations:
             mock_quotas_rollback.assert_called_once_with(
                 mock.ANY, reservations, project_id='fake_project',
-                user_id='fake_user')
+                user_id='fake_user', share_type_id=replica['share_type_id'])
         else:
             self.assertFalse(mock_quotas_rollback.called)
 

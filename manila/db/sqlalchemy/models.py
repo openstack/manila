@@ -108,6 +108,7 @@ class Quota(BASE, ManilaBase):
     project_id = Column(String(255), index=True)
 
     resource = Column(String(255))
+
     hard_limit = Column(Integer, nullable=True)
 
 
@@ -120,6 +121,19 @@ class ProjectUserQuota(BASE, ManilaBase):
     project_id = Column(String(255), nullable=False)
     user_id = Column(String(255), nullable=False)
 
+    resource = Column(String(255), nullable=False)
+
+    hard_limit = Column(Integer)
+
+
+class ProjectShareTypeQuota(BASE, ManilaBase):
+    """Represents a single quota override for a share type within a project."""
+
+    __tablename__ = 'project_share_type_quotas'
+    id = Column(Integer, primary_key=True, nullable=False)
+    project_id = Column(String(255), nullable=False)
+    share_type_id = Column(
+        String(36), ForeignKey('share_types.id'), nullable=False)
     resource = Column(String(255), nullable=False)
     hard_limit = Column(Integer)
 
@@ -149,6 +163,7 @@ class QuotaUsage(BASE, ManilaBase):
 
     project_id = Column(String(255), index=True)
     user_id = Column(String(255))
+    share_type_id = Column(String(36))
     resource = Column(String(255))
 
     in_use = Column(Integer)
@@ -172,6 +187,7 @@ class Reservation(BASE, ManilaBase):
 
     project_id = Column(String(255), index=True)
     user_id = Column(String(255))
+    share_type_id = Column(String(36))
     resource = Column(String(255))
 
     delta = Column(Integer)

@@ -15,6 +15,7 @@
 
 import ddt
 from tempest import config
+from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions as lib_exc
 from testtools import testcase as tc
 
@@ -117,6 +118,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           client.update_quotas,
                           client.tenant_id,
                           client.user_id,
+                          force=False,
                           shares=bigger_value)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
@@ -132,6 +134,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           client.update_quotas,
                           client.tenant_id,
                           client.user_id,
+                          force=False,
                           snapshots=bigger_value)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
@@ -147,6 +150,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           client.update_quotas,
                           client.tenant_id,
                           client.user_id,
+                          force=False,
                           gigabytes=bigger_value)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
@@ -162,6 +166,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           client.update_quotas,
                           client.tenant_id,
                           client.user_id,
+                          force=False,
                           snapshot_gigabytes=bigger_value)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
@@ -177,6 +182,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           client.update_quotas,
                           client.tenant_id,
                           client.user_id,
+                          force=False,
                           share_networks=bigger_value)
 
     @ddt.data(
@@ -215,3 +221,98 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
             self.shares_v2_client.tenant_id,
             version=version, url=url,
         )
+
+    @ddt.data('show', 'reset', 'update')
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
+    @base.skip_if_microversion_lt("2.39")
+    def test_share_type_quotas_using_nonexistent_share_type(self, op):
+        client = self.get_client_with_isolated_creds(client_version='2')
+
+        kwargs = {"share_type": "fake_nonexistent_share_type"}
+        if op == 'update':
+            tenant_quotas = client.show_quotas(client.tenant_id)
+            kwargs['shares'] = tenant_quotas['shares']
+
+        self.assertRaises(
+            lib_exc.NotFound,
+            getattr(client, op + '_quotas'),
+            client.tenant_id,
+            **kwargs)
+
+    def _create_share_type(self):
+        share_type = self.create_share_type(
+            data_utils.rand_name("tempest-manila"),
+            cleanup_in_class=False,
+            client=self.shares_v2_client,
+            extra_specs=self.add_extra_specs_to_dict(),
+        )
+        if 'share_type' in share_type:
+            share_type = share_type['share_type']
+        return share_type
+
+    @ddt.data('id', 'name')
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
+    @base.skip_if_microversion_lt("2.39")
+    def test_try_update_share_type_quota_for_share_networks(self, key):
+        client = self.get_client_with_isolated_creds(client_version='2')
+        share_type = self._create_share_type()
+        tenant_quotas = client.show_quotas(client.tenant_id)
+
+        # Try to set 'share_networks' quota for share type
+        self.assertRaises(
+            lib_exc.BadRequest,
+            client.update_quotas,
+            client.tenant_id,
+            share_type=share_type[key],
+            share_networks=int(tenant_quotas["share_networks"]),
+        )
+
+    @ddt.data('show', 'reset', 'update')
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
+    @base.skip_if_microversion_lt("2.38")
+    def test_share_type_quotas_using_too_old_microversion(self, op):
+        client = self.get_client_with_isolated_creds(client_version='2')
+        share_type = self._create_share_type()
+        kwargs = {"version": "2.38", "share_type": share_type["name"]}
+        if op == 'update':
+            tenant_quotas = client.show_quotas(client.tenant_id)
+            kwargs['shares'] = tenant_quotas['shares']
+
+        self.assertRaises(
+            lib_exc.BadRequest,
+            getattr(client, op + '_quotas'),
+            client.tenant_id,
+            **kwargs)
+
+    @ddt.data('show', 'reset', 'update')
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
+    @base.skip_if_microversion_lt("2.39")
+    def test_quotas_providing_share_type_and_user_id(self, op):
+        client = self.get_client_with_isolated_creds(client_version='2')
+        share_type = self._create_share_type()
+        kwargs = {"share_type": share_type["name"], "user_id": client.user_id}
+        if op == 'update':
+            tenant_quotas = client.show_quotas(client.tenant_id)
+            kwargs['shares'] = tenant_quotas['shares']
+
+        self.assertRaises(
+            lib_exc.BadRequest,
+            getattr(client, op + '_quotas'),
+            client.tenant_id,
+            **kwargs)
+
+    @ddt.data(11, -1)
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
+    @base.skip_if_microversion_lt("2.39")
+    def test_update_share_type_quotas_bigger_than_project_quota(self, st_q):
+        client = self.get_client_with_isolated_creds(client_version='2')
+        share_type = self._create_share_type()
+        client.update_quotas(client.tenant_id, shares=10)
+
+        self.assertRaises(
+            lib_exc.BadRequest,
+            client.update_quotas,
+            client.tenant_id,
+            share_type=share_type['name'],
+            force=False,
+            shares=st_q)

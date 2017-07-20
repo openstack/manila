@@ -330,6 +330,11 @@ class ProjectUserQuotaNotFound(QuotaNotFound):
                 "could not be found.")
 
 
+class ProjectShareTypeQuotaNotFound(QuotaNotFound):
+    message = _("Quota for share_type %(share_type)s in "
+                "project %(project_id)s could not be found.")
+
+
 class ProjectQuotaNotFound(QuotaNotFound):
     message = _("Quota for project %(project_id)s could not be found.")
 
@@ -395,19 +400,27 @@ class QuotaError(ManilaException):
 
 
 class ShareSizeExceedsAvailableQuota(QuotaError):
-    message = _("Requested share exceeds allowed gigabytes quota.")
+    message = _(
+        "Requested share exceeds allowed project/user or share type "
+        "gigabytes quota.")
 
 
 class SnapshotSizeExceedsAvailableQuota(QuotaError):
-    message = _("Requested snapshot exceeds allowed gigabytes quota.")
+    message = _(
+        "Requested snapshot exceeds allowed project/user or share type "
+        "gigabytes quota.")
 
 
 class ShareLimitExceeded(QuotaError):
-    message = _("Maximum number of shares allowed (%(allowed)d) exceeded.")
+    message = _(
+        "Maximum number of shares allowed (%(allowed)d) either per "
+        "project/user or share type quota is exceeded.")
 
 
 class SnapshotLimitExceeded(QuotaError):
-    message = _("Maximum number of snapshots allowed (%(allowed)d) exceeded.")
+    message = _(
+        "Maximum number of snapshots allowed (%(allowed)d) either per "
+        "project/user or share type quota is exceeded.")
 
 
 class ShareNetworksLimitExceeded(QuotaError):

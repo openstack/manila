@@ -20,16 +20,17 @@ class ViewBuilder(common.ViewBuilder):
 
     _collection_name = "quota_set"
 
-    def detail_list(self, quota_set, project_id=None):
+    def detail_list(self, quota_set, project_id=None, share_type=None):
         """Detailed view of quota set."""
         keys = (
             'shares',
             'gigabytes',
             'snapshots',
             'snapshot_gigabytes',
-            'share_networks',
         )
         view = {key: quota_set.get(key) for key in keys}
         if project_id:
             view['id'] = project_id
+        if not share_type:
+            view['share_networks'] = quota_set.get('share_networks')
         return {self._collection_name: view}
