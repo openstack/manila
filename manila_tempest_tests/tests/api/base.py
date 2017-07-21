@@ -23,8 +23,9 @@ from oslo_log import log
 import six
 from tempest import clients
 from tempest.common import credentials_factory as common_creds
-from tempest.common import dynamic_creds
+
 from tempest import config
+from tempest.lib.common import dynamic_creds
 from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions
 from tempest import test
@@ -151,8 +152,16 @@ class BaseSharesTest(test.BaseTestCase):
 
     @classmethod
     def _get_dynamic_creds(cls, name, network_resources=None):
+        identity_version = CONF.identity.auth_version
+        if identity_version == 'v3':
+            identity_uri = CONF.identity.uri_v3
+            identity_admin_endpoint_type = CONF.identity.v3_endpoint_type
+        elif identity_version == 'v2':
+            identity_uri = CONF.identity.uri
+            identity_admin_endpoint_type = CONF.identity.v2_admin_endpoint_type
+
         return dynamic_creds.DynamicCredentialProvider(
-            identity_version=CONF.identity.auth_version,
+            identity_version=identity_version,
             name=name,
             network_resources=network_resources,
             credentials_domain=CONF.auth.default_credentials_domain_name,
@@ -167,7 +176,9 @@ class BaseSharesTest(test.BaseTestCase):
             project_network_cidr=CONF.network.project_network_cidr,
             project_network_mask_bits=CONF.network.project_network_mask_bits,
             public_network_id=CONF.network.public_network_id,
-            resource_prefix=CONF.resources_prefix)
+            resource_prefix=CONF.resources_prefix,
+            identity_admin_endpoint_type=identity_admin_endpoint_type,
+            identity_uri=identity_uri)
 
     @classmethod
     def get_client_with_isolated_creds(cls,
