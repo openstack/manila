@@ -40,6 +40,8 @@ from manila.data import rpcapi as data_rpcapi
 from manila import exception
 from manila.i18n import _
 from manila import manager
+from manila.message import api as message_api
+from manila.message import message_field
 from manila import quota
 from manila.share import access
 from manila.share import api
@@ -227,6 +229,7 @@ class ShareManager(manager.SchedulerDependentManager):
         self.migration_wait_access_rules_timeout = (
             CONF.migration_wait_access_rules_timeout)
 
+        self.message_api = message_api.API()
         self.hooks = []
         self._init_hook_drivers()
 
@@ -423,7 +426,6 @@ class ShareManager(manager.SchedulerDependentManager):
 
         def error(msg, *args):
             LOG.error(msg, *args)
-
             self.db.share_instance_update(context, share_instance['id'],
                                           {'status': constants.STATUS_ERROR})
 
@@ -1566,6 +1568,13 @@ class ShareManager(manager.SchedulerDependentManager):
         if share_network_id and not self.driver.driver_handles_share_servers:
             self.db.share_instance_update(
                 context, share_instance_id, {'status': constants.STATUS_ERROR})
+            self.message_api.create(
+                context,
+                message_field.Action.CREATE,
+                share['project_id'],
+                resource_type=message_field.Resource.SHARE,
+                resource_id=share_id,
+                detail=message_field.Detail.UNEXPECTED_NETWORK)
             raise exception.ManilaException(_(
                 "Creation of share instance %s failed: driver does not expect "
                 "share-network to be provided with current "
@@ -1602,6 +1611,14 @@ class ShareManager(manager.SchedulerDependentManager):
                         context, share_instance_id,
                         {'status': constants.STATUS_ERROR}
                     )
+                    self.message_api.create(
+                        context,
+                        message_field.Action.CREATE,
+                        share['project_id'],
+                        resource_type=message_field.Resource.SHARE,
+                        resource_id=share_id,
+                        detail=message_field.Detail.NO_SHARE_SERVER)
+
         else:
             share_server = None
 
@@ -1643,6 +1660,13 @@ class ShareManager(manager.SchedulerDependentManager):
                     context, share_instance_id,
                     {'status': constants.STATUS_ERROR}
                 )
+                self.message_api.create(
+                    context,
+                    message_field.Action.CREATE,
+                    share['project_id'],
+                    resource_type=message_field.Resource.SHARE,
+                    resource_id=share_id,
+                    exception=e)
         else:
             LOG.info("Share instance %s created successfully.",
                      share_instance_id)
@@ -1726,6 +1750,13 @@ class ShareManager(manager.SchedulerDependentManager):
                 context, share_replica['id'],
                 {'status': constants.STATUS_ERROR,
                  'replica_state': constants.STATUS_ERROR})
+            self.message_api.create(
+                context,
+                message_field.Action.CREATE,
+                share_replica['project_id'],
+                resource_type=message_field.Resource.SHARE_REPLICA,
+                resource_id=share_replica['id'],
+                detail=message_field.Detail.NO_ACTIVE_REPLICA)
             msg = _("An 'active' replica must exist in 'available' "
                     "state to create a new replica for share %s.")
             raise exception.ReplicationException(
@@ -1741,6 +1772,13 @@ class ShareManager(manager.SchedulerDependentManager):
                 context, share_replica['id'],
                 {'status': constants.STATUS_ERROR,
                  'replica_state': constants.STATUS_ERROR})
+            self.message_api.create(
+                context,
+                message_field.Action.CREATE,
+                share_replica['project_id'],
+                resource_type=message_field.Resource.SHARE_REPLICA,
+                resource_id=share_replica['id'],
+                detail=message_field.Detail.UNEXPECTED_NETWORK)
             raise exception.InvalidDriverMode(
                 "Driver does not expect share-network to be provided "
                 "with current configuration.")
@@ -1759,6 +1797,13 @@ class ShareManager(manager.SchedulerDependentManager):
                         context, share_replica['id'],
                         {'status': constants.STATUS_ERROR,
                          'replica_state': constants.STATUS_ERROR})
+                    self.message_api.create(
+                        context,
+                        message_field.Action.CREATE,
+                        share_replica['project_id'],
+                        resource_type=message_field.Resource.SHARE_REPLICA,
+                        resource_id=share_replica['id'],
+                        detail=message_field.Detail.NO_SHARE_SERVER)
         else:
             share_server = None
 
@@ -1794,7 +1839,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 share_access_rules, available_share_snapshots,
                 share_server=share_server) or {}
 
-        except Exception:
+        except Exception as excep:
             with excutils.save_and_reraise_exception():
                 LOG.error("Share replica %s failed on creation.",
                           share_replica['id'])
@@ -1804,6 +1849,13 @@ class ShareManager(manager.SchedulerDependentManager):
                      'replica_state': constants.STATUS_ERROR})
                 self._update_share_replica_access_rules_state(
                     context, share_replica['id'], constants.STATUS_ERROR)
+                self.message_api.create(
+                    context,
+                    message_field.Action.CREATE,
+                    share_replica['project_id'],
+                    resource_type=message_field.Resource.SHARE_REPLICA,
+                    resource_id=share_replica['id'],
+                    exception=excep)
 
         if replica_ref.get('export_locations'):
                 if isinstance(replica_ref.get('export_locations'), list):
@@ -1871,13 +1923,20 @@ class ShareManager(manager.SchedulerDependentManager):
                 delete_all_rules=True,
                 share_server=share_server
             )
-        except Exception:
+        except Exception as excep:
             with excutils.save_and_reraise_exception() as exc_context:
                 # Set status to 'error' from 'deleting' since
                 # access_rules_status has been set to 'error'.
                 self.db.share_replica_update(
                     context, share_replica['id'],
                     {'status': constants.STATUS_ERROR})
+                self.message_api.create(
+                    context,
+                    message_field.Action.DELETE_ACCESS_RULES,
+                    share_replica['project_id'],
+                    resource_type=message_field.Resource.SHARE_REPLICA,
+                    resource_id=share_replica['id'],
+                    exception=excep)
                 if force:
                     msg = _("The driver was unable to delete access rules "
                             "for the replica: %s. Will attempt to delete "
@@ -1889,7 +1948,7 @@ class ShareManager(manager.SchedulerDependentManager):
             self.driver.delete_replica(
                 context, replica_list, replica_snapshots, share_replica,
                 share_server=share_server)
-        except Exception:
+        except Exception as excep:
             with excutils.save_and_reraise_exception() as exc_context:
                 if force:
                     msg = _("The driver was unable to delete the share "
@@ -1904,6 +1963,13 @@ class ShareManager(manager.SchedulerDependentManager):
                         context, share_replica['id'],
                         {'status': constants.STATUS_ERROR_DELETING,
                          'replica_state': constants.STATUS_ERROR})
+                self.message_api.create(
+                    context,
+                    message_field.Action.DELETE,
+                    share_replica['project_id'],
+                    resource_type=message_field.Resource.SHARE_REPLICA,
+                    resource_id=share_replica['id'],
+                    exception=excep)
 
         for replica_snapshot in replica_snapshots:
             self.db.share_snapshot_instance_delete(
@@ -1948,6 +2014,13 @@ class ShareManager(manager.SchedulerDependentManager):
             msg = _("Share %(share)s has no replica with 'replica_state' "
                     "set to %(state)s. Promoting %(replica)s is not "
                     "possible.")
+            self.message_api.create(
+                context,
+                message_field.Action.PROMOTE,
+                share_replica['project_id'],
+                resource_type=message_field.Resource.SHARE_REPLICA,
+                resource_id=share_replica['id'],
+                detail=message_field.Detail.NO_ACTIVE_REPLICA)
             raise exception.ReplicationException(
                 reason=msg % {'share': share_replica['share_id'],
                               'state': constants.REPLICA_STATE_ACTIVE,
@@ -1966,7 +2039,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     context, replica_list, share_replica, access_rules,
                     share_server=share_server)
             )
-        except Exception:
+        except Exception as excep:
             with excutils.save_and_reraise_exception():
                 # (NOTE) gouthamr: If the driver throws an exception at
                 # this stage, there is a good chance that the replicas are
@@ -1981,6 +2054,13 @@ class ShareManager(manager.SchedulerDependentManager):
                 for replica_ref in replica_list:
                     self.db.share_replica_update(
                         context, replica_ref['id'], updates)
+                    self.message_api.create(
+                        context,
+                        message_field.Action.PROMOTE,
+                        replica_ref['project_id'],
+                        resource_type=message_field.Resource.SHARE_REPLICA,
+                        resource_id=replica_ref['id'],
+                        exception=excep)
 
         # Set any 'creating' snapshots on the currently active replica to
         # 'error' since we cannot guarantee they will finish 'creating'.
@@ -2145,7 +2225,7 @@ class ShareManager(manager.SchedulerDependentManager):
             replica_state = self.driver.update_replica_state(
                 context, replica_list, share_replica, access_rules,
                 available_share_snapshots, share_server=share_server)
-        except Exception:
+        except Exception as excep:
             msg = ("Driver error when updating replica "
                    "state for replica %s.")
             LOG.exception(msg, share_replica['id'])
@@ -2153,6 +2233,13 @@ class ShareManager(manager.SchedulerDependentManager):
                 context, share_replica['id'],
                 {'replica_state': constants.STATUS_ERROR,
                  'status': constants.STATUS_ERROR})
+            self.message_api.create(
+                context,
+                message_field.Action.UPDATE,
+                share_replica['project_id'],
+                resource_type=message_field.Resource.SHARE_REPLICA,
+                resource_id=share_replica['id'],
+                exception=excep)
             return
 
         if replica_state in (constants.REPLICA_STATE_IN_SYNC,
@@ -2529,7 +2616,7 @@ class ShareManager(manager.SchedulerDependentManager):
                                            snapshot_instance_dict,
                                            access_rules,
                                            share_server=share_server)
-        except Exception:
+        except Exception as excep:
             with excutils.save_and_reraise_exception():
 
                 msg = ('Share %(share)s could not be reverted '
@@ -2549,6 +2636,13 @@ class ShareManager(manager.SchedulerDependentManager):
                 self.db.share_snapshot_update(
                     context, snapshot_id,
                     {'status': constants.STATUS_AVAILABLE})
+                self.message_api.create(
+                    context,
+                    message_field.Action.REVERT_TO_SNAPSHOT,
+                    share['project_id'],
+                    resource_type=message_field.Resource.SHARE,
+                    resource_id=share_id,
+                    exception=excep)
 
         if reservations:
             QUOTAS.commit(
@@ -2590,7 +2684,7 @@ class ShareManager(manager.SchedulerDependentManager):
         except exception.ShareResourceNotFound:
             LOG.warning("Share instance %s does not exist in the "
                         "backend.", share_instance_id)
-        except Exception:
+        except Exception as excep:
             with excutils.save_and_reraise_exception() as exc_context:
                 if force:
                     msg = ("The driver was unable to delete access rules "
@@ -2603,6 +2697,13 @@ class ShareManager(manager.SchedulerDependentManager):
                         context,
                         share_instance_id,
                         {'status': constants.STATUS_ERROR_DELETING})
+                self.message_api.create(
+                    context,
+                    message_field.Action.DELETE_ACCESS_RULES,
+                    share_instance['project_id'],
+                    resource_type=message_field.Resource.SHARE,
+                    resource_id=share_instance_id,
+                    exception=excep)
 
         try:
             self.driver.delete_share(context, share_instance,
@@ -2610,7 +2711,7 @@ class ShareManager(manager.SchedulerDependentManager):
         except exception.ShareResourceNotFound:
             LOG.warning("Share instance %s does not exist in the "
                         "backend.", share_instance_id)
-        except Exception:
+        except Exception as excep:
             with excutils.save_and_reraise_exception() as exc_context:
                 if force:
                     msg = ("The driver was unable to delete the share "
@@ -2625,6 +2726,13 @@ class ShareManager(manager.SchedulerDependentManager):
                         context,
                         share_instance_id,
                         {'status': constants.STATUS_ERROR_DELETING})
+                self.message_api.create(
+                    context,
+                    message_field.Action.DELETE,
+                    share_instance['project_id'],
+                    resource_type=message_field.Resource.SHARE,
+                    resource_id=share_instance_id,
+                    exception=excep)
 
         self.db.share_instance_delete(context, share_instance_id)
         LOG.info("Share instance %s: deleted successfully.",
@@ -2680,12 +2788,19 @@ class ShareManager(manager.SchedulerDependentManager):
             model_update = self.driver.create_snapshot(
                 context, snapshot_instance, share_server=share_server) or {}
 
-        except Exception:
+        except Exception as excep:
             with excutils.save_and_reraise_exception():
                 self.db.share_snapshot_instance_update(
                     context,
                     snapshot_instance_id,
                     {'status': constants.STATUS_ERROR})
+                self.message_api.create(
+                    context,
+                    message_field.Action.CREATE,
+                    snapshot_ref['project_id'],
+                    resource_type=message_field.Resource.SHARE_SNAPSHOT,
+                    resource_id=snapshot_instance_id,
+                    exception=excep)
 
         snapshot_export_locations = model_update.pop('export_locations', [])
 
@@ -2747,7 +2862,7 @@ class ShareManager(manager.SchedulerDependentManager):
         try:
             self.driver.delete_snapshot(context, snapshot_instance,
                                         share_server=share_server)
-        except Exception:
+        except Exception as excep:
             with excutils.save_and_reraise_exception() as exc:
                 if force:
                     msg = _("The driver was unable to delete the "
@@ -2762,6 +2877,13 @@ class ShareManager(manager.SchedulerDependentManager):
                         context,
                         snapshot_instance_id,
                         {'status': constants.STATUS_ERROR_DELETING})
+                self.message_api.create(
+                    context,
+                    message_field.Action.DELETE,
+                    snapshot_ref['project_id'],
+                    resource_type=message_field.Resource.SHARE_SNAPSHOT,
+                    resource_id=snapshot_instance_id,
+                    exception=excep)
 
         self.db.share_snapshot_instance_delete(context, snapshot_instance_id)
 
@@ -3559,6 +3681,13 @@ class ShareManager(manager.SchedulerDependentManager):
                     self.db.share_group_update(
                         context, share_group_id,
                         {'status': constants.STATUS_ERROR})
+                    self.message_api.create(
+                        context,
+                        message_field.Action.CREATE,
+                        share_group_ref['project_id'],
+                        resource_type=message_field.Resource.SHARE_GROUP,
+                        resource_id=share_group_id,
+                        detail=message_field.Detail.NO_SHARE_SERVER)
 
         try:
             # TODO(ameade): Add notification for create.start
