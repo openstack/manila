@@ -92,6 +92,12 @@ class DataMotionSession(object):
             'share_id': share_obj['id'].replace('-', '_')}
         return volume_name
 
+    def _get_backend_qos_policy_group_name(self, share):
+        """Get QoS policy name according to QoS policy group name template."""
+        __, config = self._get_backend_config_obj(share)
+        return config.netapp_qos_policy_group_name_template % {
+            'share_id': share['id'].replace('-', '_')}
+
     def get_vserver_from_share(self, share_obj):
         share_server = share_obj.get('share_server')
         if share_server:
@@ -99,11 +105,14 @@ class DataMotionSession(object):
             if backend_details:
                 return backend_details.get('vserver_name')
 
-    def get_backend_info_for_share(self, share_obj):
+    def _get_backend_config_obj(self, share_obj):
         backend_name = share_utils.extract_host(
             share_obj['host'], level='backend_name')
-
         config = get_backend_configuration(backend_name)
+        return backend_name, config
+
+    def get_backend_info_for_share(self, share_obj):
+        backend_name, config = self._get_backend_config_obj(share_obj)
         vserver = (self.get_vserver_from_share(share_obj) or
                    config.netapp_vserver)
         volume_name = self._get_backend_volume_name(
@@ -379,3 +388,23 @@ class DataMotionSession(object):
                                          new_src_volume_name,
                                          replica_vserver,
                                          replica_volume_name)
+
+    @na_utils.trace
+    def remove_qos_on_old_active_replica(self, orig_active_replica):
+        old_active_replica_qos_policy = (
+            self._get_backend_qos_policy_group_name(orig_active_replica)
+        )
+        replica_volume_name, replica_vserver, replica_backend = (
+            self.get_backend_info_for_share(orig_active_replica))
+        replica_client = get_client_for_backend(
+            replica_backend, vserver_name=replica_vserver)
+        try:
+            replica_client.set_qos_policy_group_for_volume(
+                replica_volume_name, 'none')
+            replica_client.mark_qos_policy_group_for_deletion(
+                old_active_replica_qos_policy)
+        except exception.StorageCommunicationException:
+            LOG.exception("Could not communicate with the backend "
+                          "for replica %s to unset QoS policy and mark "
+                          "the QoS policy group for deletion.",
+                          orig_active_replica['id'])

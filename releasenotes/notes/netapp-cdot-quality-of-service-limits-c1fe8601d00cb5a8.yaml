@@ -1,0 +1,12 @@
+---
+features:
+  - The NetApp driver now supports Quality of Service extra specs. To create
+    a share on ONTAP with qos support, set the 'qos' extra-spec in your
+    share type to True and use one of 'netapp:maxiops' and 'netapp:maxbps'
+    scoped extra-specs to set absolute limits. To set size based limits,
+    use scoped extra-specs 'netapp:maxiopspergib' or 'netapp:maxbpspergib'.
+    QoS policies on the back end are created exclusive to each manila share.
+upgrade:
+  - A new configuration option 'netapp_qos_policy_group_name_template' has
+    been added to allow overriding the naming of QoS policies created by the
+    NetApp driver.

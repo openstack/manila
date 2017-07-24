@@ -67,6 +67,8 @@ DELETED_EXPORT_POLICIES = {
         'deleted_manila_fake_policy_3',
     ],
 }
+QOS_POLICY_GROUP_NAME = 'fake_qos_policy_group_name'
+QOS_MAX_THROUGHPUT = '5000B/s'
 
 USER_NAME = 'fake_user'
 
@@ -142,6 +144,13 @@ EMS_MESSAGE = {
     'auto-support': 'false',
 }
 
+QOS_POLICY_GROUP = {
+    'policy-group': QOS_POLICY_GROUP_NAME,
+    'vserver': VSERVER_NAME,
+    'max-throughput': QOS_MAX_THROUGHPUT,
+    'num-workloads': 1,
+}
+
 NO_RECORDS_RESPONSE = etree.XML("""
   <results status="passed">
     <num-records>0</num-records>
@@ -150,6 +159,13 @@ NO_RECORDS_RESPONSE = etree.XML("""
 
 PASSED_RESPONSE = etree.XML("""
   <results status="passed" />
+""")
+
+PASSED_FAILED_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <num-failed>0</num-failed>
+    <num-succeeded>1</num-succeeded>
+  </results>
 """)
 
 INVALID_GET_ITER_RESPONSE_NO_ATTRIBUTES = etree.XML("""
@@ -1997,6 +2013,36 @@ VOLUME_GET_ITER_VOLUME_TO_MANAGE_RESPONSE = etree.XML("""
         <volume-space-attributes>
           <size>%(size)s</size>
         </volume-space-attributes>
+        <volume-qos-attributes>
+          <policy-group-name>%(qos-policy-group-name)s</policy-group-name>
+        </volume-qos-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'aggr': SHARE_AGGREGATE_NAME,
+    'vserver': VSERVER_NAME,
+    'volume': SHARE_NAME,
+    'size': SHARE_SIZE,
+    'qos-policy-group-name': QOS_POLICY_GROUP_NAME,
+})
+
+VOLUME_GET_ITER_NO_QOS_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-id-attributes>
+          <containing-aggregate-name>%(aggr)s</containing-aggregate-name>
+          <junction-path>/%(volume)s</junction-path>
+          <name>%(volume)s</name>
+          <owning-vserver-name>%(vserver)s</owning-vserver-name>
+          <style>flex</style>
+          <type>rw</type>
+        </volume-id-attributes>
+        <volume-space-attributes>
+          <size>%(size)s</size>
+        </volume-space-attributes>
       </volume-attributes>
     </attributes-list>
     <num-records>1</num-records>
@@ -2330,6 +2376,23 @@ NET_ROUTES_CREATE_RESPONSE = etree.XML("""
     'gateway': GATEWAY,
     'vserver': VSERVER_NAME,
     'subnet': SUBNET,
+})
+
+QOS_POLICY_GROUP_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <qos-policy-group-info>
+        <max-throughput>%(max_througput)s</max-throughput>
+        <num-workloads>1</num-workloads>
+        <policy-group>%(qos_policy_group_name)s</policy-group>
+        <vserver>%(vserver)s</vserver>
+      </qos-policy-group-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>""" % {
+    'qos_policy_group_name': QOS_POLICY_GROUP_NAME,
+    'vserver': VSERVER_NAME,
+    'max_througput': QOS_MAX_THROUGHPUT,
 })
 
 FAKE_VOL_XML = """<volume-info xmlns='http://www.netapp.com/filer/admin'>

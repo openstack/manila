@@ -72,6 +72,9 @@ netapp_provisioning_opts = [
     cfg.StrOpt('netapp_vserver_name_template',
                default='os_%s',
                help='Name template to use for new Vserver.'),
+    cfg.StrOpt('netapp_qos_policy_group_name_template',
+               help='NetApp QoS policy group name template.',
+               default='qos_share_%(share_id)s'),
     cfg.StrOpt('netapp_port_name_search_pattern',
                default='(.*)',
                help='Pattern for overriding the selection of network ports '

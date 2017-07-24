@@ -123,6 +123,7 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                           self.backend)
 
 
+@ddt.ddt
 class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
 
     def setUp(self):
@@ -511,3 +512,42 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
         self.mock_dest_client.resume_snapmirror.assert_called_once_with(
             self.source_vserver, self.fake_src_vol_name,
             self.dest_vserver, self.fake_dest_vol_name)
+
+    @ddt.data((None, exception.StorageCommunicationException),
+              (exception.StorageCommunicationException, None))
+    @ddt.unpack
+    def test_remove_qos_on_old_active_replica_unreachable_backend(self,
+                                                                  side_eff_1,
+                                                                  side_eff_2):
+        mock_source_client = mock.Mock()
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=mock_source_client))
+        self.mock_object(
+            mock_source_client, 'set_qos_policy_group_for_volume',
+            mock.Mock(side_effect=side_eff_1))
+        self.mock_object(
+            mock_source_client, 'mark_qos_policy_group_for_deletion',
+            mock.Mock(side_effect=side_eff_2))
+        self.mock_object(data_motion.LOG, 'exception')
+
+        retval = self.dm_session.remove_qos_on_old_active_replica(
+            self.fake_src_share)
+
+        self.assertIsNone(retval)
+        (mock_source_client.set_qos_policy_group_for_volume
+         .assert_called_once_with(self.fake_src_vol_name, 'none'))
+        data_motion.LOG.exception.assert_called_once()
+
+    def test_remove_qos_on_old_active_replica(self):
+        mock_source_client = mock.Mock()
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=mock_source_client))
+        self.mock_object(data_motion.LOG, 'exception')
+
+        retval = self.dm_session.remove_qos_on_old_active_replica(
+            self.fake_src_share)
+
+        self.assertIsNone(retval)
+        (mock_source_client.set_qos_policy_group_for_volume
+         .assert_called_once_with(self.fake_src_vol_name, 'none'))
+        data_motion.LOG.exception.assert_not_called()

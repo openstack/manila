@@ -71,6 +71,10 @@ MTU = 1234
 DEFAULT_MTU = 1500
 MANILA_HOST_NAME = '%(host)s@%(backend)s#%(pool)s' % {
     'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME}
+QOS_EXTRA_SPEC = 'netapp:maxiops'
+QOS_SIZE_DEPENDENT_EXTRA_SPEC = 'netapp:maxbpspergib'
+QOS_NORMALIZED_SPEC = 'maxiops'
+QOS_POLICY_GROUP_NAME = 'fake_qos_policy_group_name'
 
 CLIENT_KWARGS = {
     'username': 'admin',
@@ -97,6 +101,7 @@ SHARE = {
     },
     'replica_state': constants.REPLICA_STATE_ACTIVE,
     'status': constants.STATUS_AVAILABLE,
+    'share_server': None,
 }
 
 FLEXVOL_TO_MANAGE = {
@@ -105,7 +110,19 @@ FLEXVOL_TO_MANAGE = {
     'name': FLEXVOL_NAME,
     'type': 'rw',
     'style': 'flex',
-    'size': '1610612736',  # rounds down to 1 GB
+    'size': '1610612736',  # rounds up to 2 GB
+}
+
+FLEXVOL_WITHOUT_QOS = copy.deepcopy(FLEXVOL_TO_MANAGE)
+FLEXVOL_WITHOUT_QOS.update({'qos-policy-group-name': None})
+FLEXVOL_WITH_QOS = copy.deepcopy(FLEXVOL_TO_MANAGE)
+FLEXVOL_WITH_QOS.update({'qos-policy-group-name': QOS_POLICY_GROUP_NAME})
+
+QOS_POLICY_GROUP = {
+    'policy-group': QOS_POLICY_GROUP_NAME,
+    'vserver': VSERVER1,
+    'max-throughput': '3000iops',
+    'num-workloads': 1,
 }
 
 EXTRA_SPEC = {
@@ -120,6 +137,18 @@ EXTRA_SPEC = {
     'netapp_raid_type': 'raid4',
 }
 
+EXTRA_SPEC_WITH_QOS = copy.deepcopy(EXTRA_SPEC)
+EXTRA_SPEC_WITH_QOS.update({
+    'qos': True,
+    QOS_EXTRA_SPEC: '3000',
+})
+
+EXTRA_SPEC_WITH_SIZE_DEPENDENT_QOS = copy.deepcopy(EXTRA_SPEC)
+EXTRA_SPEC_WITH_SIZE_DEPENDENT_QOS.update({
+    'qos': True,
+    QOS_SIZE_DEPENDENT_EXTRA_SPEC: '1000',
+})
+
 PROVISIONING_OPTIONS = {
     'thin_provisioned': True,
     'snapshot_policy': 'default',
@@ -129,6 +158,10 @@ PROVISIONING_OPTIONS = {
     'max_files': 5000,
     'split': True,
 }
+
+PROVISIONING_OPTIONS_WITH_QOS = copy.deepcopy(PROVISIONING_OPTIONS)
+PROVISIONING_OPTIONS_WITH_QOS.update(
+    {'qos_policy_group': QOS_POLICY_GROUP_NAME})
 
 PROVISIONING_OPTIONS_BOOLEAN = {
     'thin_provisioned': True,
@@ -596,6 +629,7 @@ POOLS = [
         'snapshot_support': True,
         'create_share_from_snapshot_support': True,
         'revert_to_snapshot_support': True,
+        'qos': True,
     },
     {
         'pool_name': AGGREGATES[1],
@@ -617,6 +651,7 @@ POOLS = [
         'snapshot_support': True,
         'create_share_from_snapshot_support': True,
         'revert_to_snapshot_support': True,
+        'qos': True,
     },
 ]
 
@@ -638,6 +673,7 @@ POOLS_VSERVER_CREDS = [
         'snapshot_support': True,
         'create_share_from_snapshot_support': True,
         'revert_to_snapshot_support': True,
+        'qos': False,
     },
     {
         'pool_name': AGGREGATES[1],
@@ -656,6 +692,7 @@ POOLS_VSERVER_CREDS = [
         'snapshot_support': True,
         'create_share_from_snapshot_support': True,
         'revert_to_snapshot_support': True,
+        'qos': False,
     },
 ]
 
