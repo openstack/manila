@@ -150,9 +150,8 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
             'share_instance_properties': {'project_id': 1, 'size': 1},
         }
 
-        weighed_host = sched._schedule_share(fake_context, request_spec, {})
-
-        self.assertIsNone(weighed_host)
+        self.assertRaises(exception.NoValidHost, sched._schedule_share,
+                          fake_context, request_spec, {})
         self.assertTrue(_mock_service_get_all_by_topic.called)
 
     @ddt.data(
@@ -203,9 +202,8 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
             'share_properties': {'project_id': 1, 'size': 1},
             'share_instance_properties': {'project_id': 1, 'size': 1},
         }
-        weighed_host = sched._schedule_share(fake_context, request_spec, {})
-
-        self.assertIsNone(weighed_host)
+        self.assertRaises(exception.NoValidHost, sched._schedule_share,
+                          fake_context, request_spec, {})
         self.assertTrue(_mock_service_get_all_by_topic.called)
 
     def _setup_dedupe_fakes(self, extra_specs):
@@ -245,9 +243,8 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
             {'capabilities:dedupe': capability})
         fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
 
-        weighed_host = sched._schedule_share(fake_context, request_spec, {})
-
-        self.assertIsNone(weighed_host)
+        self.assertRaises(exception.NoValidHost, sched._schedule_share,
+                          fake_context, request_spec, {})
         self.assertTrue(_mock_service_get_all_by_topic.called)
 
     def test_schedule_share_type_is_none(self):
@@ -275,9 +272,8 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
             'share_instance_properties': {'availability_zone_id': "fake_az"},
         }
 
-        weighed_host = sched._schedule_share(fake_context, request_spec, {})
-
-        self.assertIsNone(weighed_host)
+        self.assertRaises(exception.NoValidHost, sched._schedule_share,
+                          fake_context, request_spec, {})
         self.assertTrue(_mock_service_get_all_by_topic.called)
 
     def test_max_attempts(self):
@@ -300,8 +296,9 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
             'share_instance_properties': {},
         }
         filter_properties = {}
-        sched._schedule_share(self.context, request_spec,
-                              filter_properties=filter_properties)
+        self.assertRaises(exception.NoValidHost, sched._schedule_share,
+                          self.context, request_spec,
+                          filter_properties=filter_properties)
         # Should not have retry info in the populated filter properties.
         self.assertNotIn("retry", filter_properties)
 
@@ -315,8 +312,9 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
             'share_instance_properties': {},
         }
         filter_properties = {}
-        sched._schedule_share(self.context, request_spec,
-                              filter_properties=filter_properties)
+        self.assertRaises(exception.NoValidHost, sched._schedule_share,
+                          self.context, request_spec,
+                          filter_properties=filter_properties)
         num_attempts = filter_properties['retry']['num_attempts']
         self.assertEqual(1, num_attempts)
 
@@ -331,8 +329,9 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         }
         retry = dict(num_attempts=1)
         filter_properties = dict(retry=retry)
-        sched._schedule_share(self.context, request_spec,
-                              filter_properties=filter_properties)
+        self.assertRaises(exception.NoValidHost, sched._schedule_share,
+                          self.context, request_spec,
+                          filter_properties=filter_properties)
         num_attempts = filter_properties['retry']['num_attempts']
         self.assertEqual(2, num_attempts)
 
@@ -500,10 +499,15 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
 
     def test_schedule_create_replica_no_host(self):
         sched = fakes.FakeFilterScheduler()
-        request_spec = fakes.fake_replica_request_spec()
-
-        self.mock_object(self.driver_cls, '_schedule_share',
-                         mock.Mock(return_value=None))
+        request_spec = {
+            'share_type': {'name': 'fake_type'},
+            'share_properties': {'project_id': 1, 'size': 1},
+            'share_instance_properties': {'project_id': 1, 'size': 1},
+        }
+        self.mock_object(sched.host_manager, 'get_all_host_states_share',
+                         mock.Mock(return_value=[]))
+        self.mock_object(sched.host_manager, 'get_filtered_hosts',
+                         mock.Mock(return_value=(None, 'filter')))
 
         self.assertRaises(exception.NoValidHost,
                           sched.schedule_create_replica,

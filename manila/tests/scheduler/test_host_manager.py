@@ -98,8 +98,8 @@ class HostManagerTestCase(test.TestCase):
                 return True
 
             self.mock_object(FakeFilterClass1, '_filter_one', fake_filter_one)
-            result = self.host_manager.get_filtered_hosts(self.fake_hosts,
-                                                          fake_properties)
+            result, last_filter = self.host_manager.get_filtered_hosts(
+                self.fake_hosts, fake_properties)
             self._verify_result(info, result)
             self.host_manager._choose_host_filters.assert_called_once_with(
                 mock.ANY)

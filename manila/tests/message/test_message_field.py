@@ -52,9 +52,16 @@ class MessageFieldTest(test.TestCase):
         self.assertEqual(content, result)
 
     @ddt.data({'exception': exception.NoValidHost(reason='fake reason'),
-               'detail': '',
-               'expected': '002'},
-              {'exception': '', 'detail': message_field.Detail.NO_VALID_HOST,
+               'detail': '', 'expected': '002'},
+              {'exception': exception.NoValidHost(
+                  detail_data={'last_filter': 'CapacityFilter'},
+                  reason='fake reason'),
+               'detail': '', 'expected': '009'},
+              {'exception': exception.NoValidHost(
+                  detail_data={'last_filter': 'FakeFilter'},
+                  reason='fake reason'),
+               'detail': '', 'expected': '002'},
+              {'exception': None, 'detail': message_field.Detail.NO_VALID_HOST,
                'expected': '002'})
     @ddt.unpack
     def test_translate_detail_id(self, exception, detail, expected):

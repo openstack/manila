@@ -83,9 +83,6 @@ class FilterScheduler(base.Scheduler):
                                             request_spec,
                                             filter_properties)
 
-        if not weighed_host:
-            raise exception.NoValidHost(reason="")
-
         host = weighed_host.obj.host
         share_id = request_spec['share_id']
         snapshot_id = request_spec['snapshot_id']
@@ -110,11 +107,6 @@ class FilterScheduler(base.Scheduler):
 
         weighed_host = self._schedule_share(
             context, request_spec, filter_properties)
-
-        if not weighed_host:
-            msg = _('Failed to find a weighted host for scheduling share '
-                    'replica %s.')
-            raise exception.NoValidHost(reason=msg % share_replica_id)
 
         host = weighed_host.obj.host
 
@@ -218,10 +210,15 @@ class FilterScheduler(base.Scheduler):
         hosts = self.host_manager.get_all_host_states_share(elevated)
 
         # Filter local hosts based on requirements ...
-        hosts = self.host_manager.get_filtered_hosts(hosts,
-                                                     filter_properties)
+        hosts, last_filter = self.host_manager.get_filtered_hosts(
+            hosts, filter_properties)
+
         if not hosts:
-            return None
+            msg = _('Failed to find a weighted host, the last executed filter'
+                    ' was %s.')
+            raise exception.NoValidHost(
+                reason=msg % last_filter,
+                detail_data={'last_filter': last_filter})
 
         LOG.debug("Filtered share %(hosts)s", {"hosts": hosts})
         # weighted_host = WeightedHost() ... the best
@@ -358,8 +355,8 @@ class FilterScheduler(base.Scheduler):
             'size': 0,
         }
         # Filter local hosts based on requirements ...
-        hosts = self.host_manager.get_filtered_hosts(all_hosts,
-                                                     filter_properties)
+        hosts, last_filter = self.host_manager.get_filtered_hosts(
+            all_hosts, filter_properties)
 
         if not hosts:
             return []
@@ -391,7 +388,7 @@ class FilterScheduler(base.Scheduler):
             'resource_type': share_group_type,
         }
 
-        hosts = self.host_manager.get_filtered_hosts(
+        hosts, last_filter = self.host_manager.get_filtered_hosts(
             all_hosts,
             filter_properties,
             CONF.scheduler_default_share_group_filters)
@@ -471,13 +468,16 @@ class FilterScheduler(base.Scheduler):
             context, filter_properties, request_spec)
 
         hosts = self.host_manager.get_all_host_states_share(elevated)
-        hosts = self.host_manager.get_filtered_hosts(hosts, filter_properties)
+        hosts, last_filter = self.host_manager.get_filtered_hosts(
+            hosts, filter_properties)
         hosts = self.host_manager.get_weighed_hosts(hosts, filter_properties)
 
         for tgt_host in hosts:
             if tgt_host.obj.host == host:
                 return tgt_host.obj
 
-        msg = (_('Cannot place share %(id)s on %(host)s')
-               % {'id': request_spec['share_id'], 'host': host})
+        msg = (_('Cannot place share %(id)s on %(host)s, the last executed'
+                 ' filter was %(last_filter)s.')
+               % {'id': request_spec['share_id'], 'host': host,
+                  'last_filter': last_filter})
         raise exception.NoValidHost(reason=msg)

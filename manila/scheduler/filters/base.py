@@ -87,7 +87,7 @@ class BaseFilterHandler(base_handler.BaseHandler):
                 if objs is None:
                     LOG.debug("Filter %(cls_name)s says to stop filtering",
                               {'cls_name': cls_name})
-                    return
+                    return (None, cls_name)
                 list_objs = list(objs)
                 msg = ("Filter %(cls_name)s returned %(obj_len)d host(s)"
                        % {'cls_name': cls_name, 'obj_len': len(list_objs)})
@@ -95,4 +95,4 @@ class BaseFilterHandler(base_handler.BaseHandler):
                     LOG.info(msg)
                     break
                 LOG.debug(msg)
-        return list_objs
+        return (list_objs, cls_name)
