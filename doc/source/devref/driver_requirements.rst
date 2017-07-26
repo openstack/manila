@@ -216,3 +216,10 @@ necessary methods.
 
 More details can be found at:
 https://docs.openstack.org/manila/latest/devref/share_replication.html
+
+Update "used_size" of shares
+----------------------------
+Drivers can update, for all the shares created on a particular backend, the
+consumed space in GiB. While the polling interval for drivers to update this
+information is configurable, drivers can choose to submit cached information
+as necessary, but specify a time at which this information was "gathered_at".
