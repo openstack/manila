@@ -106,6 +106,21 @@ share_manager_opts = [
                     'the share manager will poll the driver to perform the '
                     'next step of migration in the storage backend, for a '
                     'migrating share.'),
+    cfg.IntOpt('share_usage_size_update_interval',
+               default=300,
+               help='This value, specified in seconds, determines how often '
+                    'the share manager will poll the driver to update the '
+                    'share usage size in the storage backend, for shares in '
+                    'that backend.'),
+    cfg.BoolOpt('enable_gathering_share_usage_size',
+                default=False,
+                help='If set to True, share usage size will be polled for in '
+                     'the interval specified with '
+                     '"share_usage_size_update_interval". Usage data can be '
+                     'consumed by telemetry integration. If telemetry is not '
+                     'configured, this option must be set to False. '
+                     'If set to False - gathering share usage size will be'
+                     ' disabled.'),
 ]
 
 CONF = cfg.CONF
@@ -4023,3 +4038,28 @@ class ShareManager(manager.SchedulerDependentManager):
         share_utils.notify_about_share_usage(
             context, share, share_instance, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
+
+    @periodic_task.periodic_task(
+        spacing=CONF.share_usage_size_update_interval,
+        enabled=CONF.enable_gathering_share_usage_size)
+    @utils.require_driver_initialized
+    def update_share_usage_size(self, context):
+        """Invokes driver to gather usage size of shares."""
+        updated_share_instances = []
+        share_instances = self.db.share_instances_get_all_by_host(
+            context, host=self.host, with_share_data=True)
+
+        if share_instances:
+            try:
+                updated_share_instances = self.driver.update_share_usage_size(
+                    context, share_instances)
+            except Exception:
+                LOG.exception("Gather share usage size failure.")
+
+        for si in updated_share_instances:
+            share_instance = self._get_share_instance(context, si['id'])
+            share = self.db.share_get(context, share_instance['share_id'])
+            self._notify_about_share_usage(
+                context, share, share_instance, "consumed.size",
+                extra_usage_info={'used_size': si['used_size'],
+                                  'gathered_at': si['gathered_at']})

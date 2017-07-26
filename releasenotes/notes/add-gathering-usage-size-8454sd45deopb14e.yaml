@@ -1,0 +1,9 @@
+---
+features:
+  - Added periodic task to gather share usage size.
+upgrade:
+  - Added enable_gathering_share_usage_size and
+    share_usage_size_update_interval options in the
+    manila.conf file to allow configuration of gathering
+    share usage size support and to allow configuration
+    of interval time of gathering share usage size.
