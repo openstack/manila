@@ -312,11 +312,19 @@ class ShareAPITestCase(test.TestCase):
         )
         self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[1::2], shares)
 
-    def test_get_all_admin_filter_by_inexact_filter(self):
+    @ddt.data(({'name': 'fo'}, 0), ({'description': 'd'}, 0),
+              ({'name': 'foo', 'description': 'd'}, 0),
+              ({'name': 'foo'}, 1), ({'description': 'ds'}, 1),
+              ({'name~': 'foo', 'description~': 'ds'}, 2),
+              ({'name': 'foo', 'description~': 'ds'}, 1),
+              ({'name~': 'foo', 'description': 'ds'}, 1))
+    @ddt.unpack
+    def test_get_all_admin_filter_by_name_and_description(
+            self, search_opts, get_share_number):
         ctx = context.RequestContext('fake_uid', 'fake_pid_2', is_admin=True)
         self.mock_object(db_api, 'share_get_all_by_project',
                          mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES))
-        shares = self.api.get_all(ctx, {'name~': 'foo', 'description~': 'ds'})
+        shares = self.api.get_all(ctx, search_opts)
         share_api.policy.check_policy.assert_has_calls([
             mock.call(ctx, 'share', 'get_all'),
         ])
@@ -325,7 +333,11 @@ class ShareAPITestCase(test.TestCase):
             project_id='fake_pid_2',
             filters={}, is_public=False
         )
-        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[0::2], shares)
+        self.assertEqual(get_share_number, len(shares))
+        if get_share_number == 2:
+            self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[0::2], shares)
+        elif get_share_number == 1:
+            self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[:1], shares)
 
     @ddt.data('id', 'path')
     def test_get_all_admin_filter_by_export_location(self, type):
@@ -353,7 +365,7 @@ class ShareAPITestCase(test.TestCase):
         ])
         db_api.share_get_all.assert_called_once_with(
             ctx, sort_dir='desc', sort_key='created_at', filters={})
-        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[::2], shares)
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[:1], shares)
 
     def test_get_all_admin_filter_by_status(self):
         ctx = context.RequestContext('fake_uid', 'fake_pid_2', is_admin=True)
@@ -416,7 +428,7 @@ class ShareAPITestCase(test.TestCase):
 
         # one item expected, two filtered
         shares = self.api.get_all(
-            ctx, {'name': 'foo', 'status': constants.STATUS_AVAILABLE})
+            ctx, {'name': 'foo1', 'status': constants.STATUS_AVAILABLE})
         self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[2::4], shares)
         share_api.policy.check_policy.assert_has_calls([
             mock.call(ctx, 'share', 'get_all'),
@@ -1919,9 +1931,16 @@ class ShareAPITestCase(test.TestCase):
             ctx, 'fakepid', sort_dir='desc', sort_key='share_id',
             filters=search_opts)
 
-    def test_get_all_snapshots_not_admin_inexact_search_opts(self):
-        search_opts = {'name~': 'foo', 'description~': 'ds'}
-        fake_objs = [{'name': 'fo', 'description': 'd'},
+    @ddt.data(({'name': 'fo'}, 0), ({'description': 'd'}, 0),
+              ({'name': 'foo', 'description': 'd'}, 0),
+              ({'name': 'foo'}, 1), ({'description': 'ds'}, 1),
+              ({'name~': 'foo', 'description~': 'ds'}, 2),
+              ({'name': 'foo', 'description~': 'ds'}, 1),
+              ({'name~': 'foo', 'description': 'ds'}, 1))
+    @ddt.unpack
+    def test_get_all_snapshots_filter_by_name_and_description(
+            self, search_opts, get_snapshot_number):
+        fake_objs = [{'name': 'fo2', 'description': 'd2'},
                      {'name': 'foo', 'description': 'ds'},
                      {'name': 'foo1', 'description': 'ds1'}]
         ctx = context.RequestContext('fakeuid', 'fakepid', is_admin=False)
@@ -1930,7 +1949,12 @@ class ShareAPITestCase(test.TestCase):
 
         result = self.api.get_all_snapshots(ctx, search_opts)
 
-        self.assertEqual(fake_objs[1:], result)
+        self.assertEqual(get_snapshot_number, len(result))
+        if get_snapshot_number == 2:
+            self.assertEqual(fake_objs[1:], result)
+        elif get_snapshot_number == 1:
+            self.assertEqual(fake_objs[1:2], result)
+
         share_api.policy.check_policy.assert_called_once_with(
             ctx, 'share_snapshot', 'get_all_snapshots')
         db_api.share_snapshot_get_all_by_project.assert_called_once_with(

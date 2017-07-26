@@ -1566,7 +1566,7 @@ class API(base.Base):
             for s in shares:
                 # values in search_opts can be only strings
                 if (all(s.get(k, None) == v or (v in (s.get(k.rstrip('~'))
-                        if s.get(k.rstrip('~')) else ()))
+                        if k.endswith('~') and s.get(k.rstrip('~')) else ()))
                         for k, v in search_opts.items())):
                     results.append(s)
             shares = results
@@ -1610,8 +1610,9 @@ class API(base.Base):
             results = []
             not_found = object()
             for snapshot in snapshots:
-                if (all(snapshot.get(k, not_found) == v or (v in
-                        snapshot.get(k.rstrip('~')) if
+                if (all(snapshot.get(k, not_found) == v or
+                        (v in snapshot.get(k.rstrip('~'))
+                        if k.endswith('~') and
                         snapshot.get(k.rstrip('~')) else ())
                         for k, v in search_opts.items())):
                     results.append(snapshot)

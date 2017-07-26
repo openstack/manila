@@ -172,7 +172,8 @@ class ShareNetworkController(wsgi.Controller):
                     networks = [network for network in networks
                                 if network.get(key) == value or
                                 (value in network.get(key.rstrip('~'))
-                                 if network.get(key.rstrip('~')) else ())]
+                                 if key.endswith('~') and
+                                 network.get(key.rstrip('~')) else ())]
                 else:
                     networks = [network for network in networks
                                 if network.get(key) == value]

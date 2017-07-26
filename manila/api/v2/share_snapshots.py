@@ -294,6 +294,7 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
         if req.api_version_request < api_version.APIVersionRequest("2.36"):
             req.GET.pop('name~', None)
             req.GET.pop('description~', None)
+            req.GET.pop('description', None)
         return self._get_snapshots(req, is_detail=False)
 
     @wsgi.Controller.api_version("2.0")
@@ -302,6 +303,7 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
         if req.api_version_request < api_version.APIVersionRequest("2.36"):
             req.GET.pop('name~', None)
             req.GET.pop('description~', None)
+            req.GET.pop('description', None)
         return self._get_snapshots(req, is_detail=True)
 
 

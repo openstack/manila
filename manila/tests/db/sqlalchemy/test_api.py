@@ -813,18 +813,31 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
         self.assertDictMatch(dict(expected_group), dict(group))
         self.assertEqual(fake_project, group['project_id'])
 
-    def test_share_group_get_all_by_like_filter(self):
-        expected_group = db_utils.create_share_group(
-            name='test1', description='test1')
-        db_utils.create_share_group(name='fake', description='fake')
+    @ddt.data(({'name': 'fo'}, 0), ({'description': 'd'}, 0),
+              ({'name': 'foo', 'description': 'd'}, 0),
+              ({'name': 'foo'}, 1), ({'description': 'ds'}, 1),
+              ({'name~': 'foo', 'description~': 'ds'}, 2),
+              ({'name': 'foo', 'description~': 'ds'}, 1),
+              ({'name~': 'foo', 'description': 'ds'}, 1))
+    @ddt.unpack
+    def test_share_group_get_all_by_name_and_description(
+            self, search_opts, group_number):
+        db_utils.create_share_group(name='fo1', description='d1')
+        expected_group1 = db_utils.create_share_group(name='foo',
+                                                      description='ds')
+        expected_group2 = db_utils.create_share_group(name='foo1',
+                                                      description='ds2')
 
         groups = db_api.share_group_get_all(
             self.ctxt, detailed=True,
-            filters={'name~': 'test', 'description~': 'test'})
+            filters=search_opts)
 
-        self.assertEqual(1, len(groups))
-        group = groups[0]
-        self.assertDictMatch(dict(expected_group), dict(group))
+        self.assertEqual(group_number, len(groups))
+        if group_number == 1:
+            self.assertDictMatch(dict(expected_group1), dict(groups[0]))
+        elif group_number == 1:
+            self.assertDictMatch(dict(expected_group1), dict(groups[1]))
+            self.assertDictMatch(dict(expected_group2), dict(groups[0]))
 
     def test_share_group_update(self):
         fake_name = "my_fake_name"
