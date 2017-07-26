@@ -32,7 +32,13 @@ from manila.share.drivers.dell_emc.plugins.vnx import object_manager as manager
 from manila.share import utils as share_utils
 from manila import utils
 
-VERSION = "2.0.0"
+"""Version history:
+    1.0.0 - Initial version (Liberty)
+    2.0.0 - Bumped the version for Mitaka
+    3.0.0 - Bumped the version for Ocata
+    4.0.0 - Bumped the version for Pike
+"""
+VERSION = "4.0.0"
 
 LOG = log.getLogger(__name__)
 
