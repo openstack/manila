@@ -711,6 +711,6 @@ class QuotaEngineTestCase(test.TestCase):
 
     def test_current_common_resources(self):
         self.assertEqual(
-            ['gigabytes', 'share_networks', 'shares',
-             'snapshot_gigabytes', 'snapshots'],
+            ['gigabytes', 'share_group_snapshots', 'share_groups',
+             'share_networks', 'shares', 'snapshot_gigabytes', 'snapshots'],
             quota.QUOTAS.resources)

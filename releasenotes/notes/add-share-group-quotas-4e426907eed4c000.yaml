@@ -1,0 +1,7 @@
+---
+features:
+  - Added quotas for amount of share groups and share group snapshots.
+upgrade:
+  - Two new config options are available for setting default quotas for share
+    groups and share group snapshots - 'quota_share_groups' and
+    'quota_share_group_snapshots'.

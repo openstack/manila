@@ -17,11 +17,15 @@ import ddt
 from tempest import config
 from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions as lib_exc
+import testtools
 from testtools import testcase as tc
 
 from manila_tempest_tests.tests.api import base
+from manila_tempest_tests import utils
 
 CONF = config.CONF
+PRE_SHARE_GROUPS_MICROVERSION = "2.39"
+SHARE_GROUPS_MICROVERSION = "2.40"
 
 
 @ddt.ddt
@@ -49,50 +53,35 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
         self.assertRaises(lib_exc.NotFound,
                           client.reset_quotas, "")
 
+    @ddt.data(
+        {"shares": -2},
+        {"snapshots": -2},
+        {"gigabytes": -2},
+        {"snapshot_gigabytes": -2},
+        {"share_networks": -2},
+    )
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
-    def test_update_shares_quota_with_wrong_data(self):
+    def test_update_quota_with_wrong_data(self, kwargs):
         # -1 is acceptable value as unlimited
         client = self.get_client_with_isolated_creds()
-        self.assertRaises(lib_exc.BadRequest,
-                          client.update_quotas,
-                          client.tenant_id,
-                          shares=-2)
+        self.assertRaises(
+            lib_exc.BadRequest,
+            client.update_quotas, client.tenant_id, **kwargs)
 
+    @ddt.data(
+        {"share_groups": -2},
+        {"share_group_snapshots": -2},
+    )
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
-    def test_update_snapshots_quota_with_wrong_data(self):
+    @testtools.skipUnless(
+        CONF.share.run_share_group_tests, 'Share Group tests disabled.')
+    @utils.skip_if_microversion_not_supported(SHARE_GROUPS_MICROVERSION)
+    def test_update_sg_quota_with_wrong_data(self, kwargs):
         # -1 is acceptable value as unlimited
-        client = self.get_client_with_isolated_creds()
-        self.assertRaises(lib_exc.BadRequest,
-                          client.update_quotas,
-                          client.tenant_id,
-                          snapshots=-2)
-
-    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
-    def test_update_gigabytes_quota_with_wrong_data(self):
-        # -1 is acceptable value as unlimited
-        client = self.get_client_with_isolated_creds()
-        self.assertRaises(lib_exc.BadRequest,
-                          client.update_quotas,
-                          client.tenant_id,
-                          gigabytes=-2)
-
-    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
-    def test_update_snapshot_gigabytes_quota_with_wrong_data(self):
-        # -1 is acceptable value as unlimited
-        client = self.get_client_with_isolated_creds()
-        self.assertRaises(lib_exc.BadRequest,
-                          client.update_quotas,
-                          client.tenant_id,
-                          snapshot_gigabytes=-2)
-
-    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
-    def test_update_share_networks_quota_with_wrong_data(self):
-        # -1 is acceptable value as unlimited
-        client = self.get_client_with_isolated_creds()
-        self.assertRaises(lib_exc.BadRequest,
-                          client.update_quotas,
-                          client.tenant_id,
-                          share_networks=-2)
+        client = self.get_client_with_isolated_creds(client_version='2')
+        self.assertRaises(
+            lib_exc.BadRequest,
+            client.update_quotas, client.tenant_id, **kwargs)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_create_share_with_size_bigger_than_quota(self):
@@ -104,6 +93,21 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
         self.assertRaises(lib_exc.OverLimit,
                           self.create_share,
                           size=overquota)
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
+    @testtools.skipUnless(
+        CONF.share.run_share_group_tests, 'Share Group tests disabled.')
+    @utils.skip_if_microversion_not_supported(SHARE_GROUPS_MICROVERSION)
+    def test_create_share_group_with_exceeding_quota_limit(self):
+        client = self.get_client_with_isolated_creds(client_version='2')
+        client.update_quotas(client.tenant_id, share_groups=0)
+
+        # Try schedule share group creation
+        self.assertRaises(
+            lib_exc.OverLimit,
+            self.create_share_group,
+            client=client,
+            cleanup_in_class=False)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_set_user_quota_shares_bigger_than_tenant_quota(self):
@@ -266,6 +270,41 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
             share_type=share_type[key],
             share_networks=int(tenant_quotas["share_networks"]),
         )
+
+    @ddt.data('share_groups', 'share_group_snapshots')
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
+    @base.skip_if_microversion_lt(SHARE_GROUPS_MICROVERSION)
+    def test_try_update_share_type_quota_for_share_groups(self, quota_name):
+        client = self.get_client_with_isolated_creds(client_version='2')
+        share_type = self._create_share_type()
+        tenant_quotas = client.show_quotas(client.tenant_id)
+
+        self.assertRaises(
+            lib_exc.BadRequest,
+            client.update_quotas,
+            client.tenant_id,
+            share_type=share_type["name"],
+            **{quota_name: int(tenant_quotas[quota_name])}
+        )
+
+    @ddt.data('share_groups', 'share_group_snapshots')
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
+    @base.skip_if_microversion_not_supported(PRE_SHARE_GROUPS_MICROVERSION)
+    @base.skip_if_microversion_not_supported(SHARE_GROUPS_MICROVERSION)
+    def test_share_group_quotas_using_too_old_microversion(self, quota_key):
+        client = self.get_client_with_isolated_creds(client_version='2')
+        tenant_quotas = client.show_quotas(
+            client.tenant_id, version=SHARE_GROUPS_MICROVERSION)
+        kwargs = {
+            "version": PRE_SHARE_GROUPS_MICROVERSION,
+            quota_key: tenant_quotas[quota_key],
+        }
+
+        self.assertRaises(
+            lib_exc.BadRequest,
+            client.update_quotas,
+            client.tenant_id,
+            **kwargs)
 
     @ddt.data('show', 'reset', 'update')
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)

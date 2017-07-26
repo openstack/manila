@@ -909,7 +909,9 @@ class SharesV2Client(shares_client.SharesClient):
 
     def update_quotas(self, tenant_id, user_id=None, shares=None,
                       snapshots=None, gigabytes=None, snapshot_gigabytes=None,
-                      share_networks=None, force=True, share_type=None,
+                      share_networks=None,
+                      share_groups=None, share_group_snapshots=None,
+                      force=True, share_type=None,
                       url=None, version=LATEST_MICROVERSION):
         if url is None:
             url = self._get_quotas_url(version)
@@ -929,6 +931,10 @@ class SharesV2Client(shares_client.SharesClient):
             put_body["snapshot_gigabytes"] = snapshot_gigabytes
         if share_networks is not None:
             put_body["share_networks"] = share_networks
+        if share_groups is not None:
+            put_body["share_groups"] = share_groups
+        if share_group_snapshots is not None:
+            put_body["share_group_snapshots"] = share_group_snapshots
         put_body = json.dumps({"quota_set": put_body})
 
         resp, body = self.put(url, put_body, version=version)
