@@ -336,6 +336,8 @@ class CephFSDriverTestCase(test.TestCase):
         self._driver._update_share_stats()
         result = self._driver._stats
 
+        self.assertTrue(result['ipv4_support'])
+        self.assertFalse(result['ipv6_support'])
         self.assertEqual("CEPHFS", result['storage_protocol'])
 
     def test_module_missing(self):

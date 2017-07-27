@@ -779,8 +779,10 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             fake_server_details)
 
     @ddt.data(
-        *[{'s': s, 't': t, 'server': server}
-            for s, t in (
+        *[{'service_config': service_config,
+           'tenant_config': tenant_config,
+           'server': server}
+            for service_config, tenant_config in (
                 ('fake_net_s', 'fake_net_t'),
                 ('fake_net_s', '12.34.56.78'),
                 ('98.76.54.123', 'fake_net_t'),
@@ -800,18 +802,25 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                         {'addr': 'fake4'}],
                 }})])
     @ddt.unpack
-    def test_get_common_server_valid_cases(self, s, t, server):
-        self._get_common_server(s, t, server, True)
+    def test_get_common_server_valid_cases(self, service_config,
+                                           tenant_config, server):
+        self._get_common_server(service_config, tenant_config, server,
+                                '98.76.54.123', '12.34.56.78', True)
 
     @ddt.data(
-        *[{'s': s, 't': t, 'server': server}
-            for s, t in (
+        *[{'service_config': service_config,
+           'tenant_config': tenant_config,
+           'server': server}
+            for service_config, tenant_config in (
                 ('fake_net_s', 'fake'),
                 ('fake', 'fake_net_t'),
                 ('fake', 'fake'),
                 ('98.76.54.123', '12.12.12.1212'),
                 ('12.12.12.1212', '12.34.56.78'),
-                ('12.12.12.1212', '12.12.12.1212'))
+                ('12.12.12.1212', '12.12.12.1212'),
+                ('1001::1001', '1001::100G'),
+                ('1001::10G1', '1001::1001'),
+                )
             for server in (
                 {'networks': {
                     'fake_net_s': ['foo', '98.76.54.123', 'bar'],
@@ -827,15 +836,38 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                         {'addr': 'fake4'}],
                 }})])
     @ddt.unpack
-    def test_get_common_server_invalid_cases(self, s, t, server):
-        self._get_common_server(s, t, server, False)
+    def test_get_common_server_invalid_cases(self, service_config,
+                                             tenant_config, server):
+        self._get_common_server(service_config, tenant_config, server,
+                                '98.76.54.123', '12.34.56.78', False)
 
-    def _get_common_server(self, s, t, server, is_valid=True):
+    @ddt.data(
+        *[{'service_config': service_config,
+            'tenant_config': tenant_config,
+            'server': server}
+            for service_config, tenant_config in (
+            ('fake_net_s', '1001::1002'),
+            ('1001::1001', 'fake_net_t'),
+            ('1001::1001', '1001::1002'))
+            for server in (
+                {'networks': {
+                 'fake_net_s': ['foo', '1001::1001'],
+                 'fake_net_t': ['bar', '1001::1002']}},
+                {'addresses': {
+                 'fake_net_s': [{'addr': 'foo'}, {'addr': '1001::1001'}],
+                 'fake_net_t': [{'addr': 'bar'}, {'addr': '1001::1002'}]}})])
+    @ddt.unpack
+    def test_get_common_server_valid_ipv6_address(self, service_config,
+                                                  tenant_config, server):
+        self._get_common_server(service_config, tenant_config, server,
+                                '1001::1001', '1001::1002', True)
+
+    def _get_common_server(self, service_config, tenant_config,
+                           server, service_address, network_address,
+                           is_valid=True):
         fake_instance_id = 'fake_instance_id'
         fake_user = 'fake_user'
         fake_pass = 'fake_pass'
-        fake_addr_s = '98.76.54.123'
-        fake_addr_t = '12.34.56.78'
         fake_server = {'id': fake_instance_id}
         fake_server.update(server)
         expected = {
@@ -843,17 +875,17 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                 'username': fake_user,
                 'password': fake_pass,
                 'pk_path': self._manager.path_to_private_key,
-                'ip': fake_addr_s,
-                'public_address': fake_addr_t,
+                'ip': service_address,
+                'public_address': network_address,
                 'instance_id': fake_instance_id,
             }
         }
 
         def fake_get_config_option(attr):
             if attr == 'service_net_name_or_ip':
-                return s
+                return service_config
             elif attr == 'tenant_net_name_or_ip':
-                return t
+                return tenant_config
             elif attr == 'service_instance_name_or_id':
                 return fake_instance_id
             elif attr == 'service_instance_user':

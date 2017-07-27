@@ -143,6 +143,8 @@ class HostState(object):
         self.compression = False
         self.replication_type = None
         self.replication_domain = None
+        self.ipv4_support = None
+        self.ipv6_support = None
 
         # PoolState for all pools
         self.pools = {}
@@ -332,6 +334,12 @@ class HostState(object):
             pool_cap['sg_consistent_snapshot_support'] = (
                 self.sg_consistent_snapshot_support)
 
+        if self.ipv4_support is not None:
+            pool_cap['ipv4_support'] = self.ipv4_support
+
+        if self.ipv6_support is not None:
+            pool_cap['ipv6_support'] = self.ipv6_support
+
     def update_backend(self, capability):
         self.share_backend_name = capability.get('share_backend_name')
         self.vendor_name = capability.get('vendor_name')
@@ -351,6 +359,10 @@ class HostState(object):
         self.replication_domain = capability.get('replication_domain')
         self.sg_consistent_snapshot_support = capability.get(
             'share_group_stats', {}).get('consistent_snapshot_support')
+        if capability.get('ipv4_support') is not None:
+            self.ipv4_support = capability['ipv4_support']
+        if capability.get('ipv6_support') is not None:
+            self.ipv6_support = capability['ipv6_support']
 
     def consume_from_share(self, share):
         """Incrementally update host state from an share."""

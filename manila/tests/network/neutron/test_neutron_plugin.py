@@ -44,7 +44,7 @@ fake_neutron_port = {
     "binding:capabilities": {"port_filter": True},
     "mac_address": "test_mac",
     "fixed_ips": [
-        {"subnet_id": "test_subnet_id", "ip_address": "test_ip"},
+        {"subnet_id": "test_subnet_id", "ip_address": "203.0.113.100"},
     ],
     "id": "test_port_id",
     "security_groups": ["fake_sec_group_id"],
@@ -1505,6 +1505,7 @@ class NeutronBindNetworkPluginWithNormalTypeTest(test.TestCase):
             [fake_neutron_port], fake_share_server)
 
 
+@ddt.ddt
 class NeutronBindSingleNetworkPluginWithNormalTypeTest(test.TestCase):
     def setUp(self):
         super(NeutronBindSingleNetworkPluginWithNormalTypeTest, self).setUp()
@@ -1588,3 +1589,40 @@ class NeutronBindSingleNetworkPluginWithNormalTypeTest(test.TestCase):
 
         self.bind_plugin._wait_for_ports_bind.assert_called_once_with(
             [fake_neutron_port], fake_share_server)
+
+    @ddt.data({'fix_ips': [{'ip_address': 'test_ip'},
+                           {'ip_address': '10.78.223.129'}],
+               'ip_version': 4},
+              {'fix_ips': [{'ip_address': 'test_ip'},
+                           {'ip_address': 'ad80::abaa:0:c2:2'}],
+               'ip_version': 6},
+              {'fix_ips': [{'ip_address': '10.78.223.129'},
+                           {'ip_address': 'ad80::abaa:0:c2:2'}],
+               'ip_version': 6},
+              )
+    @ddt.unpack
+    def test__get_matched_ip_address(self, fix_ips, ip_version):
+        result = self.bind_plugin._get_matched_ip_address(fix_ips, ip_version)
+        self.assertEqual(fix_ips[1]['ip_address'], result)
+
+    @ddt.data({'fix_ips': [{'ip_address': 'test_ip_1'},
+                           {'ip_address': 'test_ip_2'}],
+               'ip_version': (4, 6)},
+              {'fix_ips': [{'ip_address': 'ad80::abaa:0:c2:1'},
+                           {'ip_address': 'ad80::abaa:0:c2:2'}],
+               'ip_version': (4, )},
+              {'fix_ips': [{'ip_address': '192.0.0.2'},
+                           {'ip_address': '192.0.0.3'}],
+               'ip_version': (6, )},
+              {'fix_ips': [{'ip_address': '192.0.0.2/12'},
+                           {'ip_address': '192.0.0.330'},
+                           {'ip_address': 'ad80::001::ad80'},
+                           {'ip_address': 'ad80::abaa:0:c2:2/64'}],
+               'ip_version': (4, 6)},
+              )
+    @ddt.unpack
+    def test__get_matched_ip_address_illegal(self, fix_ips, ip_version):
+        for version in ip_version:
+            self.assertRaises(exception.NetworkBadConfigurationException,
+                              self.bind_plugin._get_matched_ip_address,
+                              fix_ips, version)

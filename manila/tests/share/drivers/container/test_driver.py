@@ -105,6 +105,8 @@ class ContainerShareDriverTestCase(test.TestCase):
         self.assertEqual('ContainerShareDriver',
                          self._driver._stats['driver_name'])
         self.assertEqual('test-pool', self._driver._stats['pools'])
+        self.assertTrue(self._driver._stats['ipv4_support'])
+        self.assertFalse(self._driver._stats['ipv6_support'])
 
     def test_create_share(self):
         helper = mock.Mock()

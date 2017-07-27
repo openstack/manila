@@ -128,3 +128,30 @@ class NetworkBaseAPITestCase(test.TestCase):
         self.assertRaises(
             exception.NetworkBadConfigurationException,
             result._verify_share_network, 'foo_id', None)
+
+    @ddt.data((True, False, 6), (False, True, 4),
+              (True, True, 6), (None, None, False))
+    @ddt.unpack
+    def test_enabled_ip_version(self, network_plugin_ipv6_enabled,
+                                network_plugin_ipv4_enabled,
+                                enable_ip_version):
+        class FakeNetworkAPI(network.NetworkBaseAPI):
+            def allocate_network(self, *args, **kwargs):
+                pass
+
+            def deallocate_network(self, *args, **kwargs):
+                pass
+
+        network.CONF.set_default('network_plugin_ipv6_enabled',
+                                 network_plugin_ipv6_enabled)
+        network.CONF.set_default('network_plugin_ipv4_enabled',
+                                 network_plugin_ipv4_enabled)
+
+        result = FakeNetworkAPI()
+
+        if enable_ip_version:
+            self.assertTrue(hasattr(result, 'enabled_ip_version'))
+            self.assertEqual(enable_ip_version, result.enabled_ip_version)
+        else:
+            self.assertRaises(exception.NetworkBadConfigurationException,
+                              getattr, result, 'enabled_ip_version')

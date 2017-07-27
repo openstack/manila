@@ -18,6 +18,7 @@ LVM Driver for shares.
 
 """
 
+import ipaddress
 import math
 import os
 import re
@@ -154,6 +155,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         self.configuration.share_mount_path = (
             self.configuration.lvm_share_export_root)
         self._helpers = None
+        self.configured_ip_version = None
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or 'LVM'
         # Set of parameters used for compatibility with
@@ -168,6 +170,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         else:
             self.share_server['public_addresses'] = (
                 self.configuration.lvm_share_export_ips)
+        self.ipv6_implemented = True
 
     def _ssh_exec_as_root(self, server, command, check_exit_code=True):
         kwargs = {}
@@ -212,7 +215,8 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
             'revert_to_snapshot_support': True,
             'mount_snapshot_support': True,
             'driver_name': 'LVMShareDriver',
-            'pools': self.get_share_server_pools()
+            'pools': self.get_share_server_pools(),
+            'ipv6_support': True
         }
         super(LVMShareDriver, self)._update_share_stats(data)
 
@@ -430,6 +434,31 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
 
         super(LVMShareDriver, self).delete_snapshot(context, snapshot,
                                                     share_server)
+
+    def get_configured_ip_version(self):
+        """"Get Configured IP versions when DHSS is false."""
+        if self.configured_ip_version is None:
+            try:
+                self.configured_ip_version = []
+                if self.configuration.lvm_share_export_ip:
+                    self.configured_ip_version.append(ipaddress.ip_address(
+                        six.text_type(
+                            self.configuration.lvm_share_export_ip)).version)
+                else:
+                    for ip in self.configuration.lvm_share_export_ips:
+                        self.configured_ip_version.append(
+                            ipaddress.ip_address(six.text_type(ip)).version)
+            except Exception:
+                if self.configuration.lvm_share_export_ip:
+                    message = (_("Invalid 'lvm_share_export_ip' option "
+                                 "supplied %s.") %
+                               self.configuration.lvm_share_export_ip)
+                else:
+                    message = (_("Invalid 'lvm_share_export_ips' option "
+                                 "supplied %s.") %
+                               self.configuration.lvm_share_export_ips)
+                raise exception.InvalidInput(reason=message)
+        return self.configured_ip_version
 
     def snapshot_update_access(self, context, snapshot, access_rules,
                                add_rules, delete_rules, share_server=None):

@@ -81,26 +81,55 @@ class NFSHelperTestCase(test.TestCase):
             self.server, ['sudo', 'exportfs'])
 
     @ddt.data(
-        {"public_address": "1.2.3.4"},
-        {"public_address": "1.2.3.4", "admin_ip": "5.6.7.8"},
-        {"public_address": "1.2.3.4", "ip": "9.10.11.12"},
+        {"server": {"public_address": "1.2.3.4"}, "version": 4},
+        {"server": {"public_address": "1001::1002"}, "version": 6},
+        {"server": {"public_address": "1.2.3.4", "admin_ip": "5.6.7.8"},
+         "version": 4},
+        {"server": {"public_address": "1.2.3.4", "ip": "9.10.11.12"},
+         "version": 4},
+        {"server": {"public_address": "1001::1001", "ip": "1001::1002"},
+         "version": 6},
+        {"server": {"public_address": "1001::1002", "admin_ip": "1001::1002"},
+         "version": 6},
+        {"server": {"public_addresses": ["1001::1002"]}, "version": 6},
+        {"server": {"public_addresses": ["1.2.3.4", "1001::1002"]},
+         "version": {"1.2.3.4": 4, "1001::1002": 6}},
     )
-    def test_create_exports(self, server):
+    @ddt.unpack
+    def test_create_exports(self, server, version):
         result = self._helper.create_exports(server, self.share_name)
 
         expected_export_locations = []
         path = os.path.join(CONF.share_mount_path, self.share_name)
         service_address = server.get("admin_ip", server.get("ip"))
-        for ip, is_admin in ((server['public_address'], False),
-                             (service_address, True)):
-            if ip:
-                expected_export_locations.append({
-                    "path": "%s:%s" % (ip, path),
-                    "is_admin_only": is_admin,
-                    "metadata": {
-                        "export_location_metadata_example": "example",
-                    },
-                })
+        version_copy = version
+
+        def convert_address(address, version):
+            if version == 4:
+                return address
+            return "[%s]" % address
+
+        if 'public_addresses' in server:
+            pairs = list(map(lambda addr: (addr, False),
+                             server['public_addresses']))
+        else:
+            pairs = [(server['public_address'], False)]
+
+        service_address = server.get("admin_ip", server.get("ip"))
+        if service_address:
+            pairs.append((service_address, True))
+
+        for ip, is_admin in pairs:
+            if isinstance(version_copy, dict):
+                version = version_copy.get(ip)
+
+            expected_export_locations.append({
+                "path": "%s:%s" % (convert_address(ip, version), path),
+                "is_admin_only": is_admin,
+                "metadata": {
+                    "export_location_metadata_example": "example",
+                },
+            })
         self.assertEqual(expected_export_locations, result)
 
     @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
@@ -135,18 +164,35 @@ class NFSHelperTestCase(test.TestCase):
             mock.call(self.server, ['sudo', 'exportfs', '-u',
                                     ':'.join(['3.3.3.3', local_path])]),
             mock.call(self.server, ['sudo', 'exportfs', '-u',
-                                    ':'.join(['6.6.6.6/0.0.0.0',
+                                    ':'.join(['6.6.6.6/0',
                                               local_path])]),
             mock.call(self.server, ['sudo', 'exportfs', '-o',
                                     expected_mount_options % access_level,
                                     ':'.join(['2.2.2.2', local_path])]),
             mock.call(self.server, ['sudo', 'exportfs', '-o',
                                     expected_mount_options % access_level,
-                                    ':'.join(['5.5.5.5/255.255.255.0',
+                                    ':'.join(['5.5.5.5/24',
                                               local_path])]),
         ])
         self._helper._sync_nfs_temp_and_perm_files.assert_has_calls([
             mock.call(self.server), mock.call(self.server)])
+
+    @ddt.data({'access': '10.0.0.1', 'result': '10.0.0.1'},
+              {'access': '10.0.0.1/32', 'result': '10.0.0.1'},
+              {'access': '10.0.0.0/24', 'result': '10.0.0.0/24'},
+              {'access': '1001::1001', 'result': '[1001::1001]'},
+              {'access': '1001::1000/128', 'result': '[1001::1000]'},
+              {'access': '1001::1000/124', 'result': '[1001::1000]/124'})
+    @ddt.unpack
+    def test__get_parsed_address_or_cidr(self, access, result):
+        self.assertEqual(result,
+                         self._helper._get_parsed_address_or_cidr(access))
+
+    @ddt.data('10.0.0.265', '10.0.0.1/33', '1001::10069', '1001::1000/129')
+    def test__get_parsed_address_or_cidr_with_invalid_access(self, access):
+        self.assertRaises(exception.InvalidInput,
+                          self._helper._get_parsed_address_or_cidr,
+                          access)
 
     def test_update_access_invalid_type(self):
         access_rules = [test_generic.get_fake_access_rule(
@@ -215,7 +261,8 @@ class NFSHelperTestCase(test.TestCase):
         self._helper._ssh_exec.assert_has_calls(
             [mock.call(self.server, mock.ANY) for i in range(1)])
 
-    @ddt.data('/foo/bar', '5.6.7.8:/bar/quuz', '5.6.7.9:/foo/quuz')
+    @ddt.data('/foo/bar', '5.6.7.8:/bar/quuz', '5.6.7.9:/foo/quuz',
+              '[1001::1001]:/foo/bar', '[1001::1000]/:124:/foo/bar')
     def test_get_exports_for_share_single_ip(self, export_location):
         server = dict(public_address='1.2.3.4')
 
@@ -257,7 +304,8 @@ class NFSHelperTestCase(test.TestCase):
             exception.ManilaException,
             self._helper.get_exports_for_share, server, export_location)
 
-    @ddt.data('/foo/bar', '5.6.7.8:/foo/bar', '5.6.7.88:fake:/foo/bar')
+    @ddt.data('/foo/bar', '5.6.7.8:/foo/bar', '5.6.7.88:fake:/foo/bar',
+              '[1001::1002]:/foo/bar', '[1001::1000]/124:/foo/bar')
     def test_get_share_path_by_export_location(self, export_location):
         result = self._helper.get_share_path_by_export_location(
             dict(), export_location)

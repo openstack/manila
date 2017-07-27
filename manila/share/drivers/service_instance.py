@@ -121,13 +121,13 @@ no_share_servers_handling_mode_opts = [
         "service_net_name_or_ip",
         help="Can be either name of network that is used by service "
              "instance within Nova to get IP address or IP address itself "
-             "for managing shares there. "
+             "(either IPv4 or IPv6) for managing shares there. "
              "Used only when share servers handling is disabled."),
     cfg.HostAddressOpt(
         "tenant_net_name_or_ip",
         help="Can be either name of network that is used by service "
              "instance within Nova to get IP address or IP address itself "
-             "for exporting shares. "
+             "(either IPv4 or IPv6) for exporting shares. "
              "Used only when share servers handling is disabled."),
 ]
 
@@ -241,13 +241,13 @@ class ServiceInstanceManager(object):
             self.admin_context,
             self.get_config_option('service_instance_name_or_id'))
 
-        if netutils.is_valid_ipv4(data['service_net_name_or_ip']):
+        if netutils.is_valid_ip(data['service_net_name_or_ip']):
             data['private_address'] = [data['service_net_name_or_ip']]
         else:
             data['private_address'] = self._get_addresses_by_network_name(
                 data['service_net_name_or_ip'], data['instance'])
 
-        if netutils.is_valid_ipv4(data['tenant_net_name_or_ip']):
+        if netutils.is_valid_ip(data['tenant_net_name_or_ip']):
             data['public_address'] = [data['tenant_net_name_or_ip']]
         else:
             data['public_address'] = self._get_addresses_by_network_name(
@@ -267,13 +267,13 @@ class ServiceInstanceManager(object):
             'instance_id': data['instance']['id'],
         }
         for key in ('private_address', 'public_address'):
-            data[key + '_v4'] = None
+            data[key + '_first'] = None
             for address in data[key]:
-                if netutils.is_valid_ipv4(address):
-                    data[key + '_v4'] = address
+                if netutils.is_valid_ip(address):
+                    data[key + '_first'] = address
                     break
-        share_server['ip'] = data['private_address_v4']
-        share_server['public_address'] = data['public_address_v4']
+        share_server['ip'] = data['private_address_first']
+        share_server['public_address'] = data['public_address_first']
         return {'backend_details': share_server}
 
     def _get_addresses_by_network_name(self, net_name, server):

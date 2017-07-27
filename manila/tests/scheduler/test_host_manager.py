@@ -637,7 +637,9 @@ class HostStateTestCase(test.TestCase):
         share_capability = {'total_capacity_gb': 0,
                             'free_capacity_gb': 100,
                             'reserved_percentage': 0,
-                            'timestamp': None}
+                            'timestamp': None,
+                            'ipv4_support': True,
+                            'ipv6_support': False}
         fake_host = host_manager.HostState('host1', share_capability)
         self.assertIsNone(fake_host.free_capacity_gb)
 
@@ -646,9 +648,13 @@ class HostStateTestCase(test.TestCase):
         # Backend level stats remain uninitialized
         self.assertEqual(0, fake_host.total_capacity_gb)
         self.assertIsNone(fake_host.free_capacity_gb)
+        self.assertTrue(fake_host.ipv4_support)
+        self.assertFalse(fake_host.ipv6_support)
         # Pool stats has been updated
         self.assertEqual(0, fake_host.pools['_pool0'].total_capacity_gb)
         self.assertEqual(100, fake_host.pools['_pool0'].free_capacity_gb)
+        self.assertTrue(fake_host.pools['_pool0'].ipv4_support)
+        self.assertFalse(fake_host.pools['_pool0'].ipv6_support)
 
         # Test update for existing host state
         share_capability.update(dict(total_capacity_gb=1000))
@@ -674,6 +680,8 @@ class HostStateTestCase(test.TestCase):
             'vendor_name': 'OpenStack',
             'driver_version': '1.1',
             'storage_protocol': 'NFS_CIFS',
+            'ipv4_support': True,
+            'ipv6_support': False,
             'pools': [
                 {'pool_name': 'pool1',
                  'total_capacity_gb': 500,
@@ -707,6 +715,8 @@ class HostStateTestCase(test.TestCase):
         self.assertEqual('NFS_CIFS', fake_host.storage_protocol)
         self.assertEqual('OpenStack', fake_host.vendor_name)
         self.assertEqual('1.1', fake_host.driver_version)
+        self.assertTrue(fake_host.ipv4_support)
+        self.assertFalse(fake_host.ipv6_support)
 
         # Backend level stats remain uninitialized
         self.assertEqual(0, fake_host.total_capacity_gb)
@@ -716,8 +726,12 @@ class HostStateTestCase(test.TestCase):
 
         self.assertEqual(500, fake_host.pools['pool1'].total_capacity_gb)
         self.assertEqual(230, fake_host.pools['pool1'].free_capacity_gb)
+        self.assertTrue(fake_host.pools['pool1'].ipv4_support)
+        self.assertFalse(fake_host.pools['pool1'].ipv6_support)
         self.assertEqual(1024, fake_host.pools['pool2'].total_capacity_gb)
         self.assertEqual(1024, fake_host.pools['pool2'].free_capacity_gb)
+        self.assertTrue(fake_host.pools['pool2'].ipv4_support)
+        self.assertFalse(fake_host.pools['pool2'].ipv6_support)
 
         capability = {
             'share_backend_name': 'Backend1',
@@ -872,14 +886,17 @@ class PoolStateTestCase(test.TestCase):
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'reserved_percentage': 0, 'timestamp': None,
-                 'cap1': 'val1', 'cap2': 'val2'},
+                 'cap1': 'val1', 'cap2': 'val2', 'ipv4_support': True,
+                 'ipv6_support': False},
             'instances': []
         },
         {
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'allocated_capacity_gb': 256, 'reserved_percentage': 0,
-                 'timestamp': None, 'cap1': 'val1', 'cap2': 'val2'},
+                 'timestamp': None, 'cap1': 'val1', 'cap2': 'val2',
+                 'ipv4_support': False, 'ipv6_support': True
+                 },
             'instances':
                 [
                     {
@@ -894,14 +911,17 @@ class PoolStateTestCase(test.TestCase):
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'allocated_capacity_gb': 256, 'reserved_percentage': 0,
-                 'timestamp': None, 'cap1': 'val1', 'cap2': 'val2'},
+                 'timestamp': None, 'cap1': 'val1', 'cap2': 'val2',
+                 'ipv4_support': True, 'ipv6_support': True},
             'instances': []
         },
         {
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'provisioned_capacity_gb': 256, 'reserved_percentage': 0,
-                 'timestamp': None, 'cap1': 'val1', 'cap2': 'val2'},
+                 'timestamp': None, 'cap1': 'val1', 'cap2': 'val2',
+                 'ipv4_support': False, 'ipv6_support': False
+                 },
             'instances':
                 [
                     {
@@ -976,3 +996,9 @@ class PoolStateTestCase(test.TestCase):
                              fake_pool.allocated_capacity_gb)
             self.assertEqual(share_capability['provisioned_capacity_gb'],
                              fake_pool.provisioned_capacity_gb)
+        if 'ipv4_support' in share_capability:
+            self.assertEqual(share_capability['ipv4_support'],
+                             fake_pool.ipv4_support)
+        if 'ipv6_support' in share_capability:
+            self.assertEqual(share_capability['ipv6_support'],
+                             fake_pool.ipv6_support)

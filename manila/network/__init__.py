@@ -32,6 +32,19 @@ network_opts = [
         help='The full class name of the Networking API class to use.'),
 ]
 
+network_base_opts = [
+    cfg.BoolOpt(
+        'network_plugin_ipv4_enabled',
+        default=True,
+        help="Whether to support IPv4 network resource, Default=True."),
+    cfg.BoolOpt(
+        'network_plugin_ipv6_enabled',
+        default=False,
+        help="Whether to support IPv6 network resource, Default=False. "
+             "If this option is True, the value of "
+             "'network_plugin_ipv4_enabled' will be ignored."),
+]
+
 CONF = cfg.CONF
 
 
@@ -55,7 +68,14 @@ def API(config_group_name=None, label='user'):
 class NetworkBaseAPI(db_base.Base):
     """User network plugin for setting up main net interfaces."""
 
-    def __init__(self, db_driver=None):
+    def __init__(self, config_group_name=None, db_driver=None):
+        if config_group_name:
+            CONF.register_opts(network_base_opts,
+                               group=config_group_name)
+        else:
+            CONF.register_opts(network_base_opts)
+        self.configuration = getattr(CONF,
+                                     six.text_type(config_group_name), CONF)
         super(NetworkBaseAPI, self).__init__(db_driver=db_driver)
 
     def _verify_share_network(self, share_server_id, share_network):
@@ -84,3 +104,17 @@ class NetworkBaseAPI(db_base.Base):
     @abc.abstractmethod
     def deallocate_network(self, context, share_server_id):
         pass
+
+    @property
+    def enabled_ip_version(self):
+        if not hasattr(self, '_enabled_ip_version'):
+            if self.configuration.network_plugin_ipv6_enabled:
+                self._enabled_ip_version = 6
+            elif self.configuration.network_plugin_ipv4_enabled:
+                self._enabled_ip_version = 4
+            else:
+                msg = _("Either 'network_plugin_ipv4_enabled' or "
+                        "'network_plugin_ipv6_enabled' "
+                        "should be configured to 'True'.")
+                raise exception.NetworkBadConfigurationException(reason=msg)
+        return self._enabled_ip_version

@@ -416,6 +416,23 @@ class LVMShareDriverTestCase(test.TestCase):
                 self.server, self.share['name'],
                 access_rules, add_rules=add_rules, delete_rules=delete_rules))
 
+    @ddt.data(('1001::1001/129', None, False), ('1.1.1.256', None, False),
+              ('1001::1001', None, [6]), ('1.1.1.0', None, [4]),
+              (None, ['1001::1001', '1.1.1.0'], [6, 4]),
+              (None, ['1001::1001'], [6]), (None, ['1.1.1.0'], [4]),
+              (None, ['1001::1001/129', '1.1.1.0'], False))
+    @ddt.unpack
+    def test_get_configured_ip_version(
+            self, configured_ip, configured_ips, configured_ip_version):
+        CONF.set_default('lvm_share_export_ip', configured_ip)
+        CONF.set_default('lvm_share_export_ips', configured_ips)
+        if configured_ip_version:
+            self.assertEqual(configured_ip_version,
+                             self._driver.get_configured_ip_version())
+        else:
+            self.assertRaises(exception.InvalidInput,
+                              self._driver.get_configured_ip_version)
+
     def test_mount_device(self):
         mount_path = self._get_mount_path(self.share)
         ret = self._driver._mount_device(self.share, 'fakedevice')
@@ -541,7 +558,10 @@ class LVMShareDriverTestCase(test.TestCase):
                                               'count=1024', 'bs=1M',
                                               run_as_root=True)
 
-    def test_update_share_stats(self):
+    @ddt.data(('1.1.1.1', 4), ('1001::1001', 6))
+    @ddt.unpack
+    def test_update_share_stats(self, configured_ip, version):
+        CONF.set_default('lvm_share_export_ip', configured_ip)
         self.mock_object(self._driver, 'get_share_server_pools',
                          mock.Mock(return_value='test-pool'))
 
@@ -552,6 +572,8 @@ class LVMShareDriverTestCase(test.TestCase):
         self.assertTrue(self._driver._stats['snapshot_support'])
         self.assertEqual('LVMShareDriver', self._driver._stats['driver_name'])
         self.assertEqual('test-pool', self._driver._stats['pools'])
+        self.assertEqual(version == 4, self._driver._stats['ipv4_support'])
+        self.assertEqual(version == 6, self._driver._stats['ipv6_support'])
 
     def test_revert_to_snapshot(self):
         mock_update_access = self.mock_object(self._helper_nfs,
