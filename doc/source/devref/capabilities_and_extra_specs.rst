@@ -184,6 +184,16 @@ can be used verbatim as extra_specs in share types used to create shares.
   reverting shares to snapshots is supported, and those shares will not support
   reverting shares to snapshots.
 
+* `ipv4_support` - indicates whether a back end can create a share that can be
+  accessed via IPv4 protocol. If administrators do not set this capability
+  as an extra-spec in a share type, the scheduler can place new shares of that
+  type in pools without regard for whether IPv4 is supported.
+
+* `ipv6_support` - indicates whether a back end can create a share that can be
+  accessed via IPv6 protocol. If administrators do not set this capability
+  as an extra-spec in a share type, the scheduler can place new shares of that
+  type in pools without regard for whether IPv6 is supported.
+
 Reporting Capabilities
 ----------------------
 Drivers report capabilities as part of the updated stats (e.g. capacity)
@@ -241,6 +251,9 @@ example vendor prefix:
              'replication_domain': 'asgard',      # backends in
                                                   # replication_domain 'asgard'
                                                   #/
+             'ipv4_support': True,
+             'ipv6_support': True,
+
             },
             {'pool_name': 'thick pool',
              'total_capacity_gb': 1024,
@@ -260,6 +273,8 @@ example vendor prefix:
              'my_dying_disks': 200,
              'my_super_hero_1': 'Batman',
              'my_super_hero_2': 'Robin',
+             'ipv4_support': True,
+             'ipv6_support': True,
             },
          ]
     }
