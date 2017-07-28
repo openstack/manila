@@ -2597,20 +2597,24 @@ class ShareManager(manager.SchedulerDependentManager):
         share = snapshot['share']
         share_id = share['id']
         share_instance_id = snapshot.instance.share_instance_id
-        access_rules = self.access_helper.get_share_instance_access_rules(
-            context, filters={'state': constants.STATUS_ACTIVE},
-            share_instance_id=share_instance_id)
+        share_access_rules = (
+            self.access_helper.get_share_instance_access_rules(
+                context, filters={'state': constants.STATUS_ACTIVE},
+                share_instance_id=share_instance_id))
+        snapshot_access_rules = (
+            self.snapshot_access_helper.get_snapshot_instance_access_rules(
+                context, snapshot.instance['id']))
 
         if share.get('has_replicas'):
             self._revert_to_replicated_snapshot(
-                context, share, snapshot, reservations, access_rules,
-                share_id=share_id)
+                context, share, snapshot, reservations, share_access_rules,
+                snapshot_access_rules, share_id=share_id)
         else:
             self._revert_to_snapshot(context, share, snapshot, reservations,
-                                     access_rules)
+                                     share_access_rules, snapshot_access_rules)
 
     def _revert_to_snapshot(self, context, share, snapshot, reservations,
-                            access_rules):
+                            share_access_rules, snapshot_access_rules):
 
         share_server = self._get_share_server(context, share)
         share_id = share['id']
@@ -2629,7 +2633,8 @@ class ShareManager(manager.SchedulerDependentManager):
         try:
             self.driver.revert_to_snapshot(context,
                                            snapshot_instance_dict,
-                                           access_rules,
+                                           share_access_rules,
+                                           snapshot_access_rules,
                                            share_server=share_server)
         except Exception as excep:
             with excutils.save_and_reraise_exception():
@@ -2975,8 +2980,8 @@ class ShareManager(manager.SchedulerDependentManager):
 
     @locked_share_replica_operation
     def _revert_to_replicated_snapshot(self, context, share, snapshot,
-                                       reservations, access_rules,
-                                       share_id=None):
+                                       reservations, share_access_rules,
+                                       snapshot_access_rules, share_id=None):
 
         share_server = self._get_share_server(context, share)
         snapshot_id = snapshot['id']
@@ -3013,7 +3018,8 @@ class ShareManager(manager.SchedulerDependentManager):
         try:
             self.driver.revert_to_replicated_snapshot(
                 context, active_replica, replica_list, active_replica_snapshot,
-                replica_snapshots, access_rules, share_server=share_server)
+                replica_snapshots, share_access_rules,
+                snapshot_access_rules, share_server=share_server)
         except Exception:
             with excutils.save_and_reraise_exception():
 
