@@ -93,15 +93,17 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     @ddt.data(*itertools.chain(
-        itertools.product({'1.0', '2.9', '2.37', LATEST_MICROVERSION},
-                          {utils.rand_ip()}),
-        itertools.product({'2.37', LATEST_MICROVERSION},
-                          {utils.rand_ipv6_ip()})
+        itertools.product({'1.0', '2.9', '2.37', LATEST_MICROVERSION}, {4}),
+        itertools.product({'2.38', LATEST_MICROVERSION}, {6})
     ))
     @ddt.unpack
     def test_create_delete_access_rules_with_one_ip(self, version,
-                                                    access_to):
+                                                    ip_version):
 
+        if ip_version == 4:
+            access_to = utils.rand_ip()
+        else:
+            access_to = utils.rand_ipv6_ip()
         # create rule
         if utils.is_microversion_eq(version, '1.0'):
             rule = self.shares_client.create_access_rule(
@@ -145,14 +147,15 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     @ddt.data(*itertools.chain(
-        itertools.product({'1.0', '2.9', '2.37', LATEST_MICROVERSION},
-                          {utils.rand_ip(network=True)}),
-        itertools.product({'2.37', LATEST_MICROVERSION},
-                          {utils.rand_ipv6_ip(network=True)})
+        itertools.product({'1.0', '2.9', '2.37', LATEST_MICROVERSION}, {4}),
+        itertools.product({'2.38', LATEST_MICROVERSION}, {6})
     ))
     @ddt.unpack
-    def test_create_delete_access_rule_with_cidr(self, version, access_to):
-
+    def test_create_delete_access_rule_with_cidr(self, version, ip_version):
+        if ip_version == 4:
+            access_to = utils.rand_ip(network=True)
+        else:
+            access_to = utils.rand_ipv6_ip(network=True)
         # create rule
         if utils.is_microversion_eq(version, '1.0'):
             rule = self.shares_client.create_access_rule(

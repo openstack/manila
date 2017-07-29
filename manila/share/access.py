@@ -373,6 +373,13 @@ class ShareInstanceAccess(ShareInstanceAccessDatabaseMixin):
                                            rules_to_be_removed_from_db,
                                            share_server):
         driver_rule_updates = {}
+        share_protocol = share_instance['share_proto'].lower()
+        if (not self.driver.ipv6_implemented and
+                share_protocol == 'nfs'):
+            add_rules = self._filter_ipv6_rules(add_rules)
+            delete_rules = self._filter_ipv6_rules(delete_rules)
+            access_rules_to_be_on_share = self._filter_ipv6_rules(
+                access_rules_to_be_on_share)
         try:
             driver_rule_updates = self.driver.update_access(
                 context,
@@ -463,10 +470,10 @@ class ShareInstanceAccess(ShareInstanceAccessDatabaseMixin):
         return access_rules_to_be_on_share
 
     @staticmethod
-    def _filter_ipv6_rules(rules, share_instance_proto):
+    def _filter_ipv6_rules(rules):
         filtered = []
         for rule in rules:
-            if rule['access_type'] == 'ip' and share_instance_proto == 'nfs':
+            if rule['access_type'] == 'ip':
                 ip_version = ipaddress.ip_network(
                     six.text_type(rule['access_to'])).version
                 if 6 == ip_version:
@@ -496,13 +503,6 @@ class ShareInstanceAccess(ShareInstanceAccessDatabaseMixin):
         access_rules_to_be_on_share = [
             r for r in existing_rules_in_db if r['id'] not in delete_rule_ids
         ]
-        share = self.db.share_get(context, share_instance['share_id'])
-        si_proto = share['share_proto'].lower()
-        if not self.driver.ipv6_implemented:
-            add_rules = self._filter_ipv6_rules(add_rules, si_proto)
-            delete_rules = self._filter_ipv6_rules(delete_rules, si_proto)
-            access_rules_to_be_on_share = self._filter_ipv6_rules(
-                access_rules_to_be_on_share, si_proto)
         return access_rules_to_be_on_share, add_rules, delete_rules
 
     def _check_needs_refresh(self, context, share_instance_id):

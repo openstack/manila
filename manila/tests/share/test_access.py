@@ -13,10 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import itertools
-
 import ddt
 import mock
+import random
+
+import itertools
+import six
 
 from manila.common import constants
 from manila import context
@@ -721,55 +723,71 @@ class ShareInstanceAccessTestCase(test.TestCase):
             self.assertEqual(states[0], rule_1['state'])
             self.assertEqual(states[-1], rule_4['state'])
 
-    @ddt.data(('nfs', True), ('cifs', False), ('ceph', False))
+    @ddt.data(('nfs', True, False), ('nfs', False, True),
+              ('cifs', True, False), ('cifs', False, False),
+              ('cephx', True, False), ('cephx', False, False))
     @ddt.unpack
-    def test__filter_ipv6_rules(self, proto, filtered):
+    def test__update_rules_through_share_driver(self, proto,
+                                                enable_ipv6, filtered):
+        self.driver.ipv6_implemented = enable_ipv6
+        share_instance = {'share_proto': proto}
+        pass_rules, fail_rules = self._get_pass_rules_and_fail_rules()
+        pass_add_rules, fail_add_rules = self._get_pass_rules_and_fail_rules()
+        pass_delete_rules, fail_delete_rules = (
+            self._get_pass_rules_and_fail_rules())
+        test_rules = pass_rules + fail_rules
+        test_add_rules = pass_add_rules + fail_add_rules
+        test_delete_rules = pass_delete_rules + fail_delete_rules
+
+        fake_expect_driver_update_rules = pass_rules
+        update_access_call = self.mock_object(
+            self.access_helper.driver, 'update_access',
+            mock.Mock(return_value=pass_rules))
+        driver_update_rules = (
+            self.access_helper._update_rules_through_share_driver(
+                self.context, share_instance=share_instance,
+                access_rules_to_be_on_share=test_rules,
+                add_rules=test_add_rules,
+                delete_rules=test_delete_rules,
+                rules_to_be_removed_from_db=test_rules,
+                share_server=None))
+
+        if filtered:
+            update_access_call.assert_called_once_with(
+                self.context, share_instance,
+                pass_rules, add_rules=pass_add_rules,
+                delete_rules=pass_delete_rules, share_server=None)
+        else:
+            update_access_call.assert_called_once_with(
+                self.context, share_instance, test_rules,
+                add_rules=test_add_rules, delete_rules=test_delete_rules,
+                share_server=None)
+        self.assertEqual(fake_expect_driver_update_rules, driver_update_rules)
+
+    def _get_pass_rules_and_fail_rules(self):
+        random_value = six.text_type(random.randint(10, 32))
         pass_rules = [
             {
                 'access_type': 'ip',
-                'access_to': '1.1.1.1'
+                'access_to': '1.1.1.' + random_value,
             },
             {
                 'access_type': 'ip',
-                'access_to': '1.1.1.0/24'
+                'access_to': '1.1.%s.0/24' % random_value,
             },
             {
                 'access_type': 'user',
-                'access_to': 'fake_user'
+                'access_to': 'fake_user' + random_value,
             },
         ]
         fail_rules = [
             {
                 'access_type': 'ip',
-                'access_to': '1001::1001'
+                'access_to': '1001::' + random_value,
             },
             {
                 'access_type': 'ip',
-                'access_to': '1001::/64'
+                'access_to': '%s::/64' % random_value,
             },
         ]
-        test_rules = pass_rules + fail_rules
-        filtered_rules = self.access_helper._filter_ipv6_rules(
-            test_rules, proto)
-        if filtered:
-            self.assertEqual(pass_rules, filtered_rules)
-        else:
-            self.assertEqual(test_rules, filtered_rules)
-
-    def test__get_rules_to_send_to_driver(self):
-        self.driver.ipv6_implemented = False
-
-        share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
-        share_instance = share['instance']
-        db_utils.create_access(share_id=share['id'], access_to='1001::/64',
-                               state=constants.ACCESS_STATE_ACTIVE)
-        self.mock_object(
-            self.access_helper, 'get_and_update_share_instance_access_rules',
-            mock.Mock(side_effect=self.access_helper.
-                      get_and_update_share_instance_access_rules))
-
-        access_rules_to_be_on_share, add_rules, delete_rules = (
-            self.access_helper._get_rules_to_send_to_driver(
-                self.context, share_instance))
-        self.assertEqual([], add_rules)
-        self.assertEqual([], delete_rules)
+        return pass_rules, fail_rules
