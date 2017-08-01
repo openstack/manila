@@ -14,9 +14,10 @@
 # under the License.
 
 import copy
-import netaddr
+import ipaddress
 import os
 import re
+import six
 
 from oslo_log import log
 
@@ -190,15 +191,23 @@ class NFSHelper(NASHelperBase):
         if 'public_addresses' in server_copy:
             for address in server_copy['public_addresses']:
                 public_addresses.append(
-                    self._get_parsed_address_or_cidr(address))
+                    self._escaped_address(address))
             server_copy['public_addresses'] = public_addresses
 
         for t in ['public_address', 'admin_ip', 'ip']:
             address = server_copy.get(t)
             if address is not None:
-                server_copy[t] = self._get_parsed_address_or_cidr(address)
+                server_copy[t] = self._escaped_address(address)
 
         return self.get_exports_for_share(server_copy, path)
+
+    @staticmethod
+    def _escaped_address(address):
+        addr = ipaddress.ip_address(six.text_type(address))
+        if addr.version == 4:
+            return six.text_type(addr)
+        else:
+            return '[%s]' % six.text_type(addr)
 
     def init_helper(self, server):
         try:
@@ -239,13 +248,13 @@ class NFSHelper(NASHelperBase):
                 rules_options = '%s,no_subtree_check'
                 if access['access_level'] == const.ACCESS_LEVEL_RW:
                     rules_options = ','.join((rules_options, 'no_root_squash'))
+                access_to = self._get_parsed_address_or_cidr(
+                    access['access_to'])
                 self._ssh_exec(
                     server,
                     ['sudo', 'exportfs', '-o',
                      rules_options % access['access_level'],
-                     ':'.join((
-                         self._get_parsed_address_or_cidr(access['access_to']),
-                         local_path))])
+                     ':'.join((access_to, local_path))])
             self._sync_nfs_temp_and_perm_files(server)
         # Adding/Deleting specific rules
         else:
@@ -255,7 +264,7 @@ class NFSHelper(NASHelperBase):
                 (const.ACCESS_LEVEL_RO, const.ACCESS_LEVEL_RW))
 
             for access in delete_rules:
-                access['access_to'] = self._get_parsed_address_or_cidr(
+                access_to = self._get_parsed_address_or_cidr(
                     access['access_to'])
                 try:
                     self.validate_access_rules(
@@ -271,15 +280,15 @@ class NFSHelper(NASHelperBase):
                                      'to': access['access_to']})
                     continue
                 self._ssh_exec(server, ['sudo', 'exportfs', '-u',
-                               ':'.join((access['access_to'], local_path))])
+                               ':'.join((access_to, local_path))])
             if delete_rules:
                 self._sync_nfs_temp_and_perm_files(server)
             for access in add_rules:
-                access['access_to'] = self._get_parsed_address_or_cidr(
+                access_to = self._get_parsed_address_or_cidr(
                     access['access_to'])
                 found_item = re.search(
-                    re.escape(local_path) + '[\s\n]*' + re.escape(
-                        access['access_to']), out)
+                    re.escape(local_path) + '[\s\n]*' + re.escape(access_to),
+                    out)
                 if found_item is not None:
                     LOG.warning("Access rule %(type)s:%(to)s already "
                                 "exists for share %(name)s" % {
@@ -296,18 +305,18 @@ class NFSHelper(NASHelperBase):
                         server,
                         ['sudo', 'exportfs', '-o',
                          rules_options % access['access_level'],
-                         ':'.join((access['access_to'], local_path))])
+                         ':'.join((access_to, local_path))])
             if add_rules:
                 self._sync_nfs_temp_and_perm_files(server)
 
-    def _get_parsed_address_or_cidr(self, access_to):
-        try:
-            network = netaddr.IPNetwork(access_to)
-        except netaddr.AddrFormatError:
-            raise exception.InvalidInput(
-                reason=_("Invalid address or cidr supplied %s.") % access_to)
-        mask_length = network.netmask.netmask_bits()
-        address = access_to.split('/')[0]
+    @staticmethod
+    def _get_parsed_address_or_cidr(access_to):
+        network = ipaddress.ip_network(six.text_type(access_to))
+        mask_length = network.prefixlen
+        address = six.text_type(network.network_address)
+        if mask_length == 0:
+            # Special case because Linux exports don't support /0 netmasks
+            return '*'
         if network.version == 4:
             if mask_length == 32:
                 return address

@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixed application of access rules with type ``ip`` and netmask length 0 in
+    the ``NFSHelper`` plugin, affecting LVM and Generic drivers. Previously
+    these rules silently failed to apply.
