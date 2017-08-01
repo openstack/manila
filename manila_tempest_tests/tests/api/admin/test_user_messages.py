@@ -61,7 +61,7 @@ class UserMessageTest(base.BaseSharesAdminTest):
         # for number of keys in response's dict, if there is only single
         # key, it returns directly this key, otherwise it returns
         # parsed body. If limit param is used, then API returns
-        # multiple keys in reponse ('messages' and 'message_links')
+        # multiple keys in response ('messages' and 'message_links')
         messages = body['messages']
         self.assertIsInstance(messages, list)
         ids = [x['resource_id'] for x in messages]

@@ -298,7 +298,7 @@ class QnapShareDriver(driver.ShareDriver):
 
     def delete_share(self, context, share, share_server=None):
         """Delete the specified share."""
-        # Use private_storage to retreive volume ID created in the NAS.
+        # Use private_storage to retrieve volume ID created in the NAS.
         volID = self.private_storage.get(share['id'], 'volID')
         if not volID:
             LOG.warning('volID for Share %s does not exist', share['id'])
