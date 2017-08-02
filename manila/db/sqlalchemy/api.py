@@ -3761,6 +3761,10 @@ def _share_type_get(context, id, session=None, inactive=False,
               first())
 
     if not result:
+        # The only way that id could be None is if the default share type is
+        # not configured and no other share type was specified.
+        if id is None:
+            raise exception.DefaultShareTypeNotConfigured()
         raise exception.ShareTypeNotFound(share_type_id=id)
 
     share_type = _dict_with_specs(result)

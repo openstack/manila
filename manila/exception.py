@@ -649,6 +649,11 @@ class ShareTypeDoesNotExist(NotFound):
     message = _("Share Type %(share_type)s does not exist.")
 
 
+class DefaultShareTypeNotConfigured(NotFound):
+    message = _("No default share type is configured. Either configure a "
+                "default share type or explicitly specify a share type.")
+
+
 class ShareGroupTypeExists(ManilaException):
     message = _("Share group type %(type_id)s already exists.")
 

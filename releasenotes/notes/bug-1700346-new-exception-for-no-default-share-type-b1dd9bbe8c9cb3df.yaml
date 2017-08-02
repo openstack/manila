@@ -1,0 +1,5 @@
+---
+fixes:
+  - A new exception will be thrown when a default share type was not
+    configured and no other share type was specified on any sort of
+    share creation.
