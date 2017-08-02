@@ -30,9 +30,6 @@ from manila.tests.share.drivers.hpe import test_hpe_3par_constants as constants
 @ddt.ddt
 class HPE3ParDriverFPGTestCase(test.TestCase):
 
-    def setUp(self):
-        super(HPE3ParDriverFPGTestCase, self).setUp()
-
     @ddt.data((-1, 4),
               (0, 5),
               (0, -1))

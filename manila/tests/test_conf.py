@@ -28,9 +28,6 @@ CONF.register_opt(cfg.StrOpt('conf_unittest',
 
 class ConfigTestCase(test.TestCase):
 
-    def setUp(self):
-        super(ConfigTestCase, self).setUp()
-
     def test_declare(self):
         self.assertNotIn('answer', CONF)
         CONF.import_opt('answer', 'manila.tests.declare_conf')

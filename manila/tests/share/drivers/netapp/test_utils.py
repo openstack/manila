@@ -162,9 +162,6 @@ class OpenstackInfoTestCase(test.TestCase):
     DEB_RLS = 'upstream_version-debian_revision'
     DEB_VENDOR = 'debian_revision'
 
-    def setUp(self):
-        super(OpenstackInfoTestCase, self).setUp()
-
     def test_openstack_info_init(self):
         info = na_utils.OpenStackInfo()
 

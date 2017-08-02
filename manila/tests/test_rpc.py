@@ -21,9 +21,6 @@ from manila import test
 @ddt.ddt
 class RPCTestCase(test.TestCase):
 
-    def setUp(self):
-        super(RPCTestCase, self).setUp()
-
     @ddt.data([], ['noop'], ['noop', 'noop'])
     @mock.patch('oslo_messaging.JsonPayloadSerializer', wraps=True)
     def test_init_no_notifications(self, driver, serializer_mock):

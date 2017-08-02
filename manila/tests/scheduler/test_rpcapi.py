@@ -30,9 +30,6 @@ CONF = cfg.CONF
 
 class SchedulerRpcAPITestCase(test.TestCase):
 
-    def setUp(self):
-        super(SchedulerRpcAPITestCase, self).setUp()
-
     def tearDown(self):
         super(SchedulerRpcAPITestCase, self).tearDown()
 

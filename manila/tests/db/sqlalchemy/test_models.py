@@ -27,9 +27,6 @@ from manila.tests import db_utils
 class ShareTestCase(test.TestCase):
     """Testing of SQLAlchemy Share model class."""
 
-    def setUp(self):
-        super(ShareTestCase, self).setUp()
-
     @ddt.data(constants.STATUS_MANAGE_ERROR, constants.STATUS_CREATING,
               constants.STATUS_EXTENDING, constants.STATUS_DELETING,
               constants.STATUS_EXTENDING_ERROR,

@@ -25,9 +25,6 @@ from manila.tests.share.drivers.netapp import fakes as na_fakes
 
 class NetAppDriverFactoryTestCase(test.TestCase):
 
-    def setUp(self):
-        super(NetAppDriverFactoryTestCase, self).setUp()
-
     def test_new(self):
 
         self.mock_object(na_utils.OpenStackInfo, 'info',

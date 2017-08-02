@@ -27,9 +27,6 @@ from manila import test
 class UtilsTestCase(test.TestCase):
     """Test case for utils."""
 
-    def setUp(self):
-        super(UtilsTestCase, self).setUp()
-
     @ddt.data(
         ({'extra_specs': {'thin_provisioning': True}}, True),
         ({'extra_specs': {'thin_provisioning': False}}, False),
