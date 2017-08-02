@@ -486,6 +486,11 @@ class ManilaExceptionResponseCode404(test.TestCase):
         self.assertIn(share_type_id, e.msg)
         self.assertIn(extra_specs_key, e.msg)
 
+    def test_default_share_type_not_configured(self):
+        # Verify response code for exception.DefaultShareTypeNotConfigured
+        e = exception.DefaultShareTypeNotConfigured()
+        self.assertEqual(404, e.code)
+
     def test_instance_not_found(self):
         # verify response code for exception.InstanceNotFound
         instance_id = "fake_instance_id"

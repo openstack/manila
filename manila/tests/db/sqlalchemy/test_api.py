@@ -2752,6 +2752,10 @@ class ShareTypeAPITestCase(test.TestCase):
 
         self.assertIsNone(result)
 
+    def test_share_type_get_with_none_id(self):
+        self.assertRaises(exception.DefaultShareTypeNotConfigured,
+                          db_api.share_type_get, self.ctxt, None)
+
 
 class MessagesDatabaseAPITestCase(test.TestCase):
 
