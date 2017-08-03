@@ -1,0 +1,7 @@
+---
+fixes:
+  - The access-allow API accepts ipv6 rules and ignores them if the
+    configured backend does not support ipv6 access rules.
+    However, when the access-deny API is invoked to remove such
+    rules, they used to be stuck in "denying" state. This bug has been
+    fixed and ipv6 access rules can be denied successfully.
