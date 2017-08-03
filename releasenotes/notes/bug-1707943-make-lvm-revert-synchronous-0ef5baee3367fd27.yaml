@@ -1,0 +1,4 @@
+---
+fixes:
+  - Changed implementation of revert-to-snapshot in LVM driver to be
+    synchronous, preventing failure of subsequent operations.

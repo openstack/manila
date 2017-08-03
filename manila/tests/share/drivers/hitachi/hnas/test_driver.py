@@ -1135,7 +1135,7 @@ class HitachiHNASTestCase(test.TestCase):
         self.mock_object(ssh.HNASSSHBackend, 'tree_clone',
                          mock.Mock(side_effect=exc))
 
-        self._driver.revert_to_snapshot('context', snap, None)
+        self._driver.revert_to_snapshot('context', snap, None, None)
 
         driver.HitachiHNASDriver._check_fs_mounted.assert_called_once_with()
         ssh.HNASSSHBackend.tree_delete.assert_called_once_with(

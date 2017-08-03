@@ -807,14 +807,16 @@ class HitachiHNASDriver(driver.ShareDriver):
                  {'shr_id': share['id'],
                   'shr_size': six.text_type(new_size)})
 
-    def revert_to_snapshot(self, context, snapshot, access_rules,
-                           share_server=None):
+    def revert_to_snapshot(self, context, snapshot, share_access_rules,
+                           snapshot_access_rules, share_server=None):
         """Reverts a share to a given snapshot.
 
         :param context: The `context.RequestContext` object for the request
         :param snapshot: The snapshot to which the share is to be reverted to.
-        :param access_rules: List of all access rules for the affected share.
-            Not used by this driver.
+        :param share_access_rules: List of all access rules for the affected
+            share. Not used by this driver.
+        :param snapshot_access_rules: List of all access rules for the affected
+            snapshot. Not used by this driver.
         :param share_server: Data structure with share server information.
             Not used by this driver.
         """

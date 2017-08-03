@@ -166,3 +166,8 @@ class ShareSnapshotInstanceAccess(object):
         for rule in rules:
             self.db.share_snapshot_instance_access_delete(
                 context, rule['access_id'], snapshot_instance_id)
+
+    def get_snapshot_instance_access_rules(self, context,
+                                           snapshot_instance_id):
+        return self.db.share_snapshot_access_get_all_for_snapshot_instance(
+            context, snapshot_instance_id)

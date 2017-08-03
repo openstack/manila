@@ -260,27 +260,26 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         return location
 
     def delete_share(self, context, share, share_server=None):
-        self._remove_export(context, share)
+        self._unmount_device(share)
         self._delete_share(context, share)
         self._deallocate_container(share['name'])
 
-    def _remove_export(self, ctx, share):
-        """Removes an access rules for a share."""
-        mount_path = self._get_mount_path(share)
+    def _unmount_device(self, share_or_snapshot):
+        """Unmount the filesystem of a share or snapshot LV."""
+        mount_path = self._get_mount_path(share_or_snapshot)
         if os.path.exists(mount_path):
             # umount, may be busy
             try:
                 self._execute('umount', '-f', mount_path, run_as_root=True)
             except exception.ProcessExecutionError as exc:
                 if 'device is busy' in six.text_type(exc):
-                    raise exception.ShareBusyException(reason=share['name'])
+                    raise exception.ShareBusyException(
+                        reason=share_or_snapshot['name'])
                 else:
-                    LOG.info('Unable to umount: %s', exc)
+                    LOG.error('Unable to umount: %s', exc)
+                    raise
             # remove dir
-            try:
-                os.rmdir(mount_path)
-            except OSError:
-                LOG.warning('Unable to delete %s', mount_path)
+            self._execute('rmdir', mount_path, run_as_root=True)
 
     def ensure_share(self, ctx, share, share_server=None):
         """Ensure that storage are mounted and exported."""
@@ -336,9 +335,9 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         else:
             raise exception.InvalidShare(reason='Wrong share protocol')
 
-    def _mount_device(self, share, device_name):
-        """Mount LVM share and ignore if already mounted."""
-        mount_path = self._get_mount_path(share)
+    def _mount_device(self, share_or_snapshot, device_name):
+        """Mount LV for share or snapshot and ignore if already mounted."""
+        mount_path = self._get_mount_path(share_or_snapshot)
         self._execute('mkdir', '-p', mount_path)
         try:
             self._execute('mount', device_name, mount_path,
@@ -353,15 +352,10 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
                 raise
         return mount_path
 
-    def _unmount_device(self, share):
-        mount_path = self._get_mount_path(share)
-        self._execute('umount', mount_path, run_as_root=True)
-        self._execute('rmdir', mount_path, run_as_root=True)
-
-    def _get_mount_path(self, share):
-        """Returns path where share is mounted."""
+    def _get_mount_path(self, share_or_snapshot):
+        """Returns path where share or snapshot is mounted."""
         return os.path.join(self.configuration.share_mount_path,
-                            share['name'])
+                            share_or_snapshot['name'])
 
     def _copy_volume(self, srcstr, deststr, size_in_g):
         # Use O_DIRECT to avoid thrashing the system buffer cache
@@ -384,53 +378,56 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         self._extend_container(share, device_name, new_size)
         self._execute('resize2fs', device_name, run_as_root=True)
 
-    def revert_to_snapshot(self, context, snapshot, access_rules,
-                           share_server=None):
+    def revert_to_snapshot(self, context, snapshot, share_access_rules,
+                           snapshot_access_rules, share_server=None):
         share = snapshot['share']
         # Temporarily remove all access rules
         self._get_helper(share).update_access(self.share_server,
+                                              snapshot['name'], [], [], [])
+        self._get_helper(share).update_access(self.share_server,
                                               share['name'], [], [], [])
-        # Unmount the filesystem
-        self._remove_export(context, snapshot)
-        # First we merge the snapshot LV and the share LV
-        # This won't actually do anything until the LV is reactivated
+        # Unmount the snapshot filesystem
+        self._unmount_device(snapshot)
+        # Unmount the share filesystem
+        self._unmount_device(share)
+        # Merge the snapshot LV back into the share, reverting it
         snap_lv_name = "%s/%s" % (self.configuration.lvm_share_volume_group,
                                   snapshot['name'])
         self._execute('lvconvert', '--merge', snap_lv_name, run_as_root=True)
-        # Unmount the share so we can deactivate it
-        self._unmount_device(share)
-        # Deactivate the share LV
-        share_lv_name = "%s/%s" % (self.configuration.lvm_share_volume_group,
-                                   share['name'])
-        self._execute('lvchange', '-an', share_lv_name, run_as_root=True)
-        # Reactivate the share LV. This will trigger the merge and delete the
-        # snapshot.
-        self._execute('lvchange', '-ay', share_lv_name, run_as_root=True)
+
         # Now recreate the snapshot that was destroyed by the merge
         self._create_snapshot(context, snapshot)
         # At this point we can mount the share again
         device_name = self._get_local_path(share)
         self._mount_device(share, device_name)
+        # Also remount the snapshot
         device_name = self._get_local_path(snapshot)
         self._mount_device(snapshot, device_name)
         # Lastly we add all the access rules back
         self._get_helper(share).update_access(self.share_server,
-                                              share['name'], access_rules,
+                                              share['name'],
+                                              share_access_rules,
+                                              [], [])
+        snapshot_access_rules, __, __ = utils.change_rules_to_readonly(
+            snapshot_access_rules, [], [])
+        self._get_helper(share).update_access(self.share_server,
+                                              snapshot['name'],
+                                              snapshot_access_rules,
                                               [], [])
 
     def create_snapshot(self, context, snapshot, share_server=None):
         self._create_snapshot(context, snapshot)
 
-        helper = self._get_helper(snapshot['share'])
-        exports = helper.create_exports(self.share_server, snapshot['name'])
-
         device_name = self._get_local_path(snapshot)
         self._mount_device(snapshot, device_name)
+
+        helper = self._get_helper(snapshot['share'])
+        exports = helper.create_exports(self.share_server, snapshot['name'])
 
         return {'export_locations': exports}
 
     def delete_snapshot(self, context, snapshot, share_server=None):
-        self._remove_export(context, snapshot)
+        self._unmount_device(snapshot)
 
         super(LVMShareDriver, self).delete_snapshot(context, snapshot,
                                                     share_server)

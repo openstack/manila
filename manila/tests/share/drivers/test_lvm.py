@@ -18,6 +18,7 @@ import os
 
 import ddt
 import mock
+from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import timeutils
 
@@ -286,21 +287,7 @@ class LVMShareDriverTestCase(test.TestCase):
                              self._driver.get_share_stats(refresh=True))
         self._driver._update_share_stats.assert_called_once_with()
 
-    def test_remove_export(self):
-        mount_path = self._get_mount_path(self.share)
-        self._os.path.exists.return_value = True
-
-        self._driver._remove_export(self._context, self.share)
-
-        expected_exec = [
-            "umount -f %s" % (mount_path,),
-        ]
-
-        self._os.path.exists.assert_called_with(mount_path)
-        self._os.rmdir.assert_called_with(mount_path)
-        self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
-
-    def test_remove_export_is_busy_error(self):
+    def test__unmount_device_is_busy_error(self):
         def exec_runner(*ignore_args, **ignore_kwargs):
             raise exception.ProcessExecutionError(stderr='device is busy')
         self._os.path.exists.return_value = True
@@ -311,37 +298,33 @@ class LVMShareDriverTestCase(test.TestCase):
         fake_utils.fake_execute_set_repliers([(expected_exec[0], exec_runner)])
 
         self.assertRaises(exception.ShareBusyException,
-                          self._driver._remove_export, self._context,
+                          self._driver._unmount_device,
                           self.share)
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
 
-    def test_remove_export_error(self):
+    def test__unmount_device_error(self):
         def exec_runner(*ignore_args, **ignore_kwargs):
             raise exception.ProcessExecutionError(stderr='fake error')
-
-        mount_path = self._get_mount_path(self.share)
-        expected_exec = [
-            "umount -f %s" % (mount_path),
-        ]
-        fake_utils.fake_execute_set_repliers([(expected_exec[0], exec_runner)])
-        self._os.path.exists.return_value = True
-        self._driver._remove_export(self._context, self.share)
-        self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
-
-    def test_remove_export_rmdir_error(self):
         mount_path = self._get_mount_path(self.share)
         self._os.path.exists.return_value = True
-        self.mock_object(self._os, 'rmdir', mock.Mock(side_effect=OSError))
-
-        self._driver._remove_export(self._context, self.share)
-
-        expected_exec = [
-            "umount -f %s" % (mount_path,),
-        ]
-
+        cmd = "umount -f %s" % (mount_path)
+        fake_utils.fake_execute_set_repliers([(cmd, exec_runner)])
+        self.assertRaises(processutils.ProcessExecutionError,
+                          self._driver._unmount_device,
+                          self.share)
         self._os.path.exists.assert_called_with(mount_path)
-        self._os.rmdir.assert_called_with(mount_path)
-        self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
+
+    def test__unmount_device_rmdir_error(self):
+        def exec_runner(*ignore_args, **ignore_kwargs):
+            raise exception.ProcessExecutionError(stderr='fake error')
+        mount_path = self._get_mount_path(self.share)
+        self._os.path.exists.return_value = True
+        cmd = "rmdir %s" % (mount_path)
+        fake_utils.fake_execute_set_repliers([(cmd, exec_runner)])
+        self.assertRaises(processutils.ProcessExecutionError,
+                          self._driver._unmount_device,
+                          self.share)
+        self._os.path.exists.assert_called_with(mount_path)
 
     def test_create_snapshot(self):
         self._driver.create_snapshot(self._context, self.snapshot,
@@ -375,8 +358,10 @@ class LVMShareDriverTestCase(test.TestCase):
         self._driver._delete_share(self._context, self.share)
 
     def test_delete_snapshot(self):
+        mount_path = self._get_mount_path(self.snapshot)
         expected_exec = [
-            'umount -f ' + self._get_mount_path(self.snapshot),
+            'umount -f %s' % mount_path,
+            'rmdir %s' % mount_path,
             'lvremove -f fakevg/fakesnapshotname',
         ]
         self._driver.delete_snapshot(self._context, self.snapshot,
@@ -482,14 +467,16 @@ class LVMShareDriverTestCase(test.TestCase):
     def _get_mount_path(self, share):
         return os.path.join(CONF.lvm_share_export_root, share['name'])
 
-    def test_unmount_device(self):
+    def test__unmount_device(self):
         mount_path = self._get_mount_path(self.share)
+        self._os.path.exists.return_value = True
         self.mock_object(self._driver, '_execute')
         self._driver._unmount_device(self.share)
-        self._driver._execute.assert_any_call('umount', mount_path,
+        self._driver._execute.assert_any_call('umount', '-f', mount_path,
                                               run_as_root=True)
         self._driver._execute.assert_any_call('rmdir', mount_path,
                                               run_as_root=True)
+        self._os.path.exists.assert_called_with(mount_path)
 
     def test_extend_share(self):
         local_path = self._driver._get_local_path(self.share)
@@ -579,18 +566,17 @@ class LVMShareDriverTestCase(test.TestCase):
         mock_update_access = self.mock_object(self._helper_nfs,
                                               'update_access')
         self._driver.revert_to_snapshot(self._context, self.snapshot,
-                                        [], self.share_server)
+                                        [], [], self.share_server)
         snap_lv = "%s/fakesnapshotname" % (CONF.lvm_share_volume_group)
         share_lv = "%s/fakename" % (CONF.lvm_share_volume_group)
         share_mount_path = self._get_mount_path(self.snapshot['share'])
         snapshot_mount_path = self._get_mount_path(self.snapshot)
         expected_exec = [
             ('umount -f %s' % snapshot_mount_path),
-            ("lvconvert --merge %s" % snap_lv),
-            ("umount %s" % share_mount_path),
+            ("rmdir %s" % snapshot_mount_path),
+            ("umount -f %s" % share_mount_path),
             ("rmdir %s" % share_mount_path),
-            ("lvchange -an %s" % share_lv),
-            ("lvchange -ay %s" % share_lv),
+            ("lvconvert --merge %s" % snap_lv),
             ("lvcreate -L 1G --name fakesnapshotname --snapshot %s" %
                 share_lv),
             ('tune2fs -U random /dev/mapper/%s-fakesnapshotname' %
@@ -605,7 +591,7 @@ class LVMShareDriverTestCase(test.TestCase):
             ("chmod 777 %s" % snapshot_mount_path),
         ]
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
-        self.assertEqual(2, mock_update_access.call_count)
+        self.assertEqual(4, mock_update_access.call_count)
 
     def test_snapshot_update_access(self):
         access_rules = [{
