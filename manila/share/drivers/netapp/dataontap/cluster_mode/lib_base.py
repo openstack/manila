@@ -258,6 +258,9 @@ class NetAppCmodeFileStorageLibrary(object):
             'storage_protocol': 'NFS_CIFS',
             'pools': self._get_pools(filter_function=filter_function,
                                      goodness_function=goodness_function),
+            'share_group_stats': {
+                'consistent_snapshot_support': 'host',
+            },
         }
 
         if (self.configuration.replication_domain and
@@ -1097,22 +1100,13 @@ class NetAppCmodeFileStorageLibrary(object):
         """Removes the specified snapshot from Manila management."""
 
     @na_utils.trace
-    def create_consistency_group(self, context, cg_dict, share_server=None):
-        """Creates a consistency group.
-
-        cDOT has no persistent CG object, so apart from validating the
-        share_server info is passed correctly, this method has nothing to do.
-        """
-        vserver, vserver_client = self._get_vserver(share_server=share_server)
-
-    @na_utils.trace
     def create_consistency_group_from_cgsnapshot(
             self, context, cg_dict, cgsnapshot_dict, share_server=None):
         """Creates a consistency group from an existing CG snapshot."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
 
         # Ensure there is something to do
-        if not cgsnapshot_dict['cgsnapshot_members']:
+        if not cgsnapshot_dict['share_group_snapshot_members']:
             return None, None
 
         clone_list = self._collate_cg_snapshot_info(cg_dict, cgsnapshot_dict)
@@ -1153,12 +1147,13 @@ class NetAppCmodeFileStorageLibrary(object):
 
             clone_info = {'share': share}
 
-            for cgsnapshot_member in cgsnapshot_dict['cgsnapshot_members']:
-                if (share['source_cgsnapshot_member_id'] ==
+            for cgsnapshot_member in (
+                    cgsnapshot_dict['share_group_snapshot_members']):
+                if (share['source_share_group_snapshot_member_id'] ==
                         cgsnapshot_member['id']):
                     clone_info['snapshot'] = {
                         'share_id': cgsnapshot_member['share_id'],
-                        'id': cgsnapshot_member['cgsnapshot_id']
+                        'id': cgsnapshot_dict['id']
                     }
                     break
 
@@ -1172,30 +1167,13 @@ class NetAppCmodeFileStorageLibrary(object):
         return clone_list
 
     @na_utils.trace
-    def delete_consistency_group(self, context, cg_dict, share_server=None):
-        """Deletes a consistency group.
-
-        cDOT has no persistent CG object, so apart from validating the
-        share_server info is passed correctly, this method has nothing to do.
-        """
-        try:
-            vserver, vserver_client = self._get_vserver(
-                share_server=share_server)
-        except (exception.InvalidInput,
-                exception.VserverNotSpecified,
-                exception.VserverNotFound) as error:
-            LOG.warning("Could not determine share server for consistency "
-                        "group being deleted: %(cg)s. Deletion of CG "
-                        "record will proceed anyway. Error: %(error)s",
-                        {'cg': cg_dict['id'], 'error': error})
-
-    @na_utils.trace
     def create_cgsnapshot(self, context, snap_dict, share_server=None):
         """Creates a consistency group snapshot."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
 
         share_names = [self._get_backend_share_name(member['share_id'])
-                       for member in snap_dict.get('cgsnapshot_members', [])]
+                       for member in
+                       snap_dict.get('share_group_snapshot_members', [])]
         snapshot_name = self._get_backend_cg_snapshot_name(snap_dict['id'])
 
         if share_names:
@@ -1220,7 +1198,8 @@ class NetAppCmodeFileStorageLibrary(object):
             return None, None
 
         share_names = [self._get_backend_share_name(member['share_id'])
-                       for member in snap_dict.get('cgsnapshot_members', [])]
+                       for member in (
+                           snap_dict.get('share_group_snapshot_members', []))]
         snapshot_name = self._get_backend_cg_snapshot_name(snap_dict['id'])
 
         for share_name in share_names:
@@ -1235,6 +1214,45 @@ class NetAppCmodeFileStorageLibrary(object):
                 continue
 
         return None, None
+
+    @staticmethod
+    def _is_group_cg(context, share_group):
+        return 'host' == share_group.consistent_snapshot_support
+
+    @na_utils.trace
+    def create_group_snapshot(self, context, snap_dict, fallback_create,
+                              share_server=None):
+        share_group = snap_dict['share_group']
+        if self._is_group_cg(context, share_group):
+            return self.create_cgsnapshot(context, snap_dict,
+                                          share_server=share_server)
+        else:
+            return fallback_create(context, snap_dict,
+                                   share_server=share_server)
+
+    @na_utils.trace
+    def delete_group_snapshot(self, context, snap_dict, fallback_delete,
+                              share_server=None):
+        share_group = snap_dict['share_group']
+        if self._is_group_cg(context, share_group):
+            return self.delete_cgsnapshot(context, snap_dict,
+                                          share_server=share_server)
+        else:
+            return fallback_delete(context, snap_dict,
+                                   share_server=share_server)
+
+    @na_utils.trace
+    def create_group_from_snapshot(self, context, share_group,
+                                   snapshot_dict, fallback_create,
+                                   share_server=None):
+        share_group2 = snapshot_dict['share_group']
+        if self._is_group_cg(context, share_group2):
+            return self.create_consistency_group_from_cgsnapshot(
+                context, share_group, snapshot_dict,
+                share_server=share_server)
+        else:
+            return fallback_create(context, share_group, snapshot_dict,
+                                   share_server=share_server)
 
     @na_utils.trace
     def _adjust_qos_policy_with_volume_resize(self, share, new_size,

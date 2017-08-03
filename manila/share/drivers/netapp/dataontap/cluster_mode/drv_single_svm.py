@@ -71,25 +71,6 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
     def shrink_share(self, share, new_size, **kwargs):
         self.library.shrink_share(share, new_size, **kwargs)
 
-    def create_consistency_group(self, context, cg_dict, **kwargs):
-        return self.library.create_consistency_group(context, cg_dict,
-                                                     **kwargs)
-
-    def create_consistency_group_from_cgsnapshot(self, context, cg_dict,
-                                                 cgsnapshot_dict, **kwargs):
-        return self.library.create_consistency_group_from_cgsnapshot(
-            context, cg_dict, cgsnapshot_dict, **kwargs)
-
-    def delete_consistency_group(self, context, cg_dict, **kwargs):
-        return self.library.delete_consistency_group(context, cg_dict,
-                                                     **kwargs)
-
-    def create_cgsnapshot(self, context, snap_dict, **kwargs):
-        return self.library.create_cgsnapshot(context, snap_dict, **kwargs)
-
-    def delete_cgsnapshot(self, context, snap_dict, **kwargs):
-        return self.library.delete_cgsnapshot(context, snap_dict, **kwargs)
-
     def ensure_share(self, context, share, **kwargs):
         pass
 
@@ -241,3 +222,31 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
             context, source_share, destination_share,
             source_snapshots, snapshot_mappings, share_server=share_server,
             destination_share_server=destination_share_server)
+
+    def create_share_group_snapshot(self, context, snap_dict,
+                                    share_server=None):
+        fallback_create = super(NetAppCmodeSingleSvmShareDriver,
+                                self).create_share_group_snapshot
+        return self.library.create_group_snapshot(context, snap_dict,
+                                                  fallback_create,
+                                                  share_server)
+
+    def delete_share_group_snapshot(self, context, snap_dict,
+                                    share_server=None):
+        fallback_delete = super(NetAppCmodeSingleSvmShareDriver,
+                                self).delete_share_group_snapshot
+        return self.library.delete_group_snapshot(context, snap_dict,
+                                                  fallback_delete,
+                                                  share_server)
+
+    def create_share_group_from_share_group_snapshot(
+            self, context, share_group_dict, snapshot_dict,
+            share_server=None):
+        fallback_create = super(
+            NetAppCmodeSingleSvmShareDriver,
+            self).create_share_group_from_share_group_snapshot
+        return self.library.create_group_from_snapshot(context,
+                                                       share_group_dict,
+                                                       snapshot_dict,
+                                                       fallback_create,
+                                                       share_server)

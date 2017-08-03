@@ -1,0 +1,5 @@
+---
+fixes:
+  - Re-enabled the consistent snapshot code in the NetApp driver, now
+    compatible with the Manila Share Groups API instead of the deprecated
+    and removed Manila Consistency Groups API.

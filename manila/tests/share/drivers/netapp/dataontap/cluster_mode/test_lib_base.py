@@ -367,6 +367,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'netapp_storage_family': 'ontap_cluster',
             'storage_protocol': 'NFS_CIFS',
             'pools': fake.POOLS,
+            'share_group_stats': {'consistent_snapshot_support': 'host'},
         }
         self.assertDictEqual(expected, result)
         mock_get_pools.assert_called_once_with(filter_function='filter',
@@ -392,6 +393,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'replication_type': 'dr',
             'replication_domain': 'fake_domain',
             'pools': fake.POOLS,
+            'share_group_stats': {'consistent_snapshot_support': 'host'},
         }
         self.assertDictEqual(expected, result)
         mock_get_pools.assert_called_once_with(filter_function='filter',
@@ -1839,40 +1841,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           fake.FLEXVOL_TO_MANAGE,
                           vserver_client)
 
-    def test_create_consistency_group(self):
-
-        vserver_client = mock.Mock()
-        mock_get_vserver = self.mock_object(
-            self.library, '_get_vserver',
-            mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
-
-        result = self.library.create_consistency_group(
-            self.context, fake.EMPTY_CONSISTENCY_GROUP,
-            share_server=fake.SHARE_SERVER)
-
-        self.assertIsNone(result)
-        mock_get_vserver.assert_called_once_with(
-            share_server=fake.SHARE_SERVER)
-
-    @ddt.data(exception.InvalidInput(reason='fake_reason'),
-              exception.VserverNotSpecified(),
-              exception.VserverNotFound(vserver='fake_vserver'))
-    def test_create_consistency_group_no_share_server(self,
-                                                      get_vserver_exception):
-
-        mock_get_vserver = self.mock_object(
-            self.library, '_get_vserver',
-            mock.Mock(side_effect=get_vserver_exception))
-
-        self.assertRaises(type(get_vserver_exception),
-                          self.library.create_consistency_group,
-                          self.context,
-                          fake.EMPTY_CONSISTENCY_GROUP,
-                          share_server=fake.SHARE_SERVER)
-
-        mock_get_vserver.assert_called_once_with(
-            share_server=fake.SHARE_SERVER)
-
     def test_create_consistency_group_from_cgsnapshot(self):
 
         vserver_client = mock.Mock()
@@ -1936,7 +1904,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(side_effect=[['loc3'], ['loc4']]))
 
         fake_cg_snapshot = copy.deepcopy(fake.CG_SNAPSHOT)
-        fake_cg_snapshot['cgsnapshot_members'] = []
+        fake_cg_snapshot['share_group_snapshot_members'] = []
 
         result = self.library.create_consistency_group_from_cgsnapshot(
             self.context,
@@ -1961,47 +1929,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_collate_cg_snapshot_info_invalid(self):
 
         fake_cg_snapshot = copy.deepcopy(fake.CG_SNAPSHOT)
-        fake_cg_snapshot['cgsnapshot_members'] = []
+        fake_cg_snapshot['share_group_snapshot_members'] = []
 
         self.assertRaises(exception.InvalidShareGroup,
                           self.library._collate_cg_snapshot_info,
                           fake.CONSISTENCY_GROUP_DEST, fake_cg_snapshot)
-
-    def test_delete_consistency_group(self):
-
-        vserver_client = mock.Mock()
-        mock_get_vserver = self.mock_object(
-            self.library, '_get_vserver',
-            mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
-
-        result = self.library.delete_consistency_group(
-            self.context,
-            fake.EMPTY_CONSISTENCY_GROUP,
-            share_server=fake.SHARE_SERVER)
-
-        self.assertIsNone(result)
-        mock_get_vserver.assert_called_once_with(
-            share_server=fake.SHARE_SERVER)
-
-    @ddt.data(exception.InvalidInput(reason='fake_reason'),
-              exception.VserverNotSpecified(),
-              exception.VserverNotFound(vserver='fake_vserver'))
-    def test_delete_consistency_group_no_share_server(self,
-                                                      get_vserver_exception):
-
-        mock_get_vserver = self.mock_object(
-            self.library, '_get_vserver',
-            mock.Mock(side_effect=get_vserver_exception))
-
-        result = self.library.delete_consistency_group(
-            self.context,
-            fake.EMPTY_CONSISTENCY_GROUP,
-            share_server=fake.SHARE_SERVER)
-
-        self.assertIsNone(result)
-        self.assertEqual(1, lib_base.LOG.warning.call_count)
-        mock_get_vserver.assert_called_once_with(
-            share_server=fake.SHARE_SERVER)
 
     def test_create_cgsnapshot(self):
 
@@ -2037,7 +1969,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
 
         fake_cg_snapshot = copy.deepcopy(fake.CG_SNAPSHOT)
-        fake_cg_snapshot['cgsnapshot_members'] = []
+        fake_cg_snapshot['share_group_snapshot_members'] = []
 
         result = self.library.create_cgsnapshot(
             self.context,
@@ -2090,7 +2022,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                 '_delete_snapshot')
 
         fake_cg_snapshot = copy.deepcopy(fake.CG_SNAPSHOT)
-        fake_cg_snapshot['cgsnapshot_members'] = []
+        fake_cg_snapshot['share_group_snapshot_members'] = []
 
         result = self.library.delete_cgsnapshot(
             self.context,
@@ -4779,3 +4711,102 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 share_obj, fake.VSERVER1, {'maxiops': '3000'})
             self.library._client.qos_policy_group_modify.assert_not_called()
             self.library._client.qos_policy_group_rename.assert_not_called()
+
+    @ddt.data(('host', True), ('pool', False), (None, False), ('fake', False))
+    @ddt.unpack
+    def test__is_group_cg(self, css, is_cg):
+        share_group = mock.Mock()
+        share_group.consistent_snapshot_support = css
+        self.assertEqual(is_cg,
+                         self.library._is_group_cg(self.context, share_group))
+
+    def test_create_group_snapshot_cg(self):
+        share_group = mock.Mock()
+        share_group.consistent_snapshot_support = 'host'
+        snap_dict = {'share_group': share_group}
+        fallback_create = mock.Mock()
+        mock_create_cgsnapshot = self.mock_object(self.library,
+                                                  'create_cgsnapshot')
+        self.library.create_group_snapshot(self.context, snap_dict,
+                                           fallback_create,
+                                           share_server=fake.SHARE_SERVER)
+        mock_create_cgsnapshot.assert_called_once_with(
+            self.context, snap_dict, share_server=fake.SHARE_SERVER)
+        fallback_create.assert_not_called()
+
+    @ddt.data('pool', None, 'fake')
+    def test_create_group_snapshot_fallback(self, css):
+        share_group = mock.Mock()
+        share_group.consistent_snapshot_support = css
+        snap_dict = {'share_group': share_group}
+        fallback_create = mock.Mock()
+        mock_create_cgsnapshot = self.mock_object(self.library,
+                                                  'create_cgsnapshot')
+        self.library.create_group_snapshot(self.context, snap_dict,
+                                           fallback_create,
+                                           share_server=fake.SHARE_SERVER)
+        mock_create_cgsnapshot.assert_not_called()
+        fallback_create.assert_called_once_with(self.context,
+                                                snap_dict,
+                                                share_server=fake.SHARE_SERVER)
+
+    def test_delete_group_snapshot_cg(self):
+        share_group = mock.Mock()
+        share_group.consistent_snapshot_support = 'host'
+        snap_dict = {'share_group': share_group}
+        fallback_delete = mock.Mock()
+        mock_delete_cgsnapshot = self.mock_object(self.library,
+                                                  'delete_cgsnapshot')
+        self.library.delete_group_snapshot(self.context, snap_dict,
+                                           fallback_delete,
+                                           share_server=fake.SHARE_SERVER)
+        mock_delete_cgsnapshot.assert_called_once_with(
+            self.context, snap_dict, share_server=fake.SHARE_SERVER)
+        fallback_delete.assert_not_called()
+
+    @ddt.data('pool', None, 'fake')
+    def test_delete_group_snapshot_fallback(self, css):
+        share_group = mock.Mock()
+        share_group.consistent_snapshot_support = css
+        snap_dict = {'share_group': share_group}
+        fallback_delete = mock.Mock()
+        mock_delete_cgsnapshot = self.mock_object(self.library,
+                                                  'delete_cgsnapshot')
+        self.library.delete_group_snapshot(self.context, snap_dict,
+                                           fallback_delete,
+                                           share_server=fake.SHARE_SERVER)
+        mock_delete_cgsnapshot.assert_not_called()
+        fallback_delete.assert_called_once_with(self.context,
+                                                snap_dict,
+                                                share_server=fake.SHARE_SERVER)
+
+    def test_create_group_from_snapshot_cg(self):
+        share_group = mock.Mock()
+        share_group.consistent_snapshot_support = 'host'
+        snap_dict = {'share_group': share_group}
+        fallback_create = mock.Mock()
+        mock_create_cg_from_snapshot = self.mock_object(
+            self.library, 'create_consistency_group_from_cgsnapshot')
+        self.library.create_group_from_snapshot(self.context, share_group,
+                                                snap_dict, fallback_create,
+                                                share_server=fake.SHARE_SERVER)
+        mock_create_cg_from_snapshot.assert_called_once_with(
+            self.context, share_group, snap_dict,
+            share_server=fake.SHARE_SERVER)
+        fallback_create.assert_not_called()
+
+    @ddt.data('pool', None, 'fake')
+    def test_create_group_from_snapshot_fallback(self, css):
+        share_group = mock.Mock()
+        share_group.consistent_snapshot_support = css
+        snap_dict = {'share_group': share_group}
+        fallback_create = mock.Mock()
+        mock_create_cg_from_snapshot = self.mock_object(
+            self.library, 'create_consistency_group_from_cgsnapshot')
+        self.library.create_group_from_snapshot(self.context, share_group,
+                                                snap_dict, fallback_create,
+                                                share_server=fake.SHARE_SERVER)
+        mock_create_cg_from_snapshot.assert_not_called()
+        fallback_create.assert_called_once_with(self.context, share_group,
+                                                snap_dict,
+                                                share_server=fake.SHARE_SERVER)

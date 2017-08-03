@@ -385,7 +385,7 @@ SHARE_FOR_CG1 = {
         'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME},
     'name': 'share_1',
     'share_proto': 'NFS',
-    'source_cgsnapshot_member_id': None,
+    'source_share_group_snapshot_member_id': None,
 }
 
 SHARE_FOR_CG2 = {
@@ -394,7 +394,7 @@ SHARE_FOR_CG2 = {
         'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME},
     'name': 'share_2',
     'share_proto': 'NFS',
-    'source_cgsnapshot_member_id': None,
+    'source_share_group_snapshot_member_id': None,
 }
 
 # Clone dest of SHARE_FOR_CG1
@@ -404,7 +404,7 @@ SHARE_FOR_CG3 = {
         'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME},
     'name': 'share3',
     'share_proto': 'NFS',
-    'source_cgsnapshot_member_id': CG_SNAPSHOT_MEMBER_ID1,
+    'source_share_group_snapshot_member_id': CG_SNAPSHOT_MEMBER_ID1,
 }
 
 # Clone dest of SHARE_FOR_CG2
@@ -414,7 +414,7 @@ SHARE_FOR_CG4 = {
         'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME},
     'name': 'share4',
     'share_proto': 'NFS',
-    'source_cgsnapshot_member_id': CG_SNAPSHOT_MEMBER_ID2,
+    'source_share_group_snapshot_member_id': CG_SNAPSHOT_MEMBER_ID2,
 }
 
 EMPTY_CONSISTENCY_GROUP = {
@@ -462,9 +462,10 @@ CG_SNAPSHOT_MEMBER_2 = {
 }
 
 CG_SNAPSHOT = {
-    'cgsnapshot_members': [CG_SNAPSHOT_MEMBER_1, CG_SNAPSHOT_MEMBER_2],
+    'share_group_snapshot_members': [CG_SNAPSHOT_MEMBER_1,
+                                     CG_SNAPSHOT_MEMBER_2],
     'share_group': CONSISTENCY_GROUP,
-    'consistency_group_id': CONSISTENCY_GROUP_ID,
+    'share_group_id': CONSISTENCY_GROUP_ID,
     'id': CG_SNAPSHOT_ID,
     'project_id': TENANT_ID,
 }
