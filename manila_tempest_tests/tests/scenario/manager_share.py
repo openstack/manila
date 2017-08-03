@@ -21,9 +21,6 @@ from tempest.lib.common.utils import data_utils
 
 from manila_tempest_tests.common import constants
 from manila_tempest_tests.common import remote_client
-from manila_tempest_tests.services.share.json import shares_client
-from manila_tempest_tests.services.share.v2.json import (
-    shares_client as shares_v2_client)
 from manila_tempest_tests.tests.scenario import manager
 
 CONF = config.CONF
@@ -41,14 +38,10 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         super(ShareScenarioTest, cls).resource_setup()
 
         # Manila clients
-        cls.shares_client = shares_client.SharesClient(
-            cls.os_primary.auth_provider)
-        cls.shares_v2_client = shares_v2_client.SharesV2Client(
-            cls.os_primary.auth_provider)
-        cls.shares_admin_client = shares_client.SharesClient(
-            cls.os_admin.auth_provider)
-        cls.shares_admin_v2_client = shares_v2_client.SharesV2Client(
-            cls.os_admin.auth_provider)
+        cls.shares_client = cls.os_primary.share_v1.SharesClient()
+        cls.shares_v2_client = cls.os_primary.share_v2.SharesV2Client()
+        cls.shares_admin_client = cls.os_admin.share_v1.SharesClient()
+        cls.shares_admin_v2_client = cls.os_admin.share_v2.SharesV2Client()
 
     @classmethod
     def skip_checks(cls):

@@ -35,18 +35,12 @@ class SharesClient(rest_client.RestClient):
     It handles shares and access to it in OpenStack.
     """
 
-    def __init__(self, auth_provider):
-        super(SharesClient, self).__init__(
-            auth_provider,
-            CONF.share.catalog_type,
-            CONF.share.region or CONF.identity.region,
-            endpoint_type=CONF.share.endpoint_type)
+    def __init__(self, auth_provider, **kwargs):
+        super(SharesClient, self).__init__(auth_provider, **kwargs)
         self.share_protocol = None
         if CONF.share.enable_protocols:
             self.share_protocol = CONF.share.enable_protocols[0]
         self.share_network_id = CONF.share.share_network_id
-        self.build_interval = CONF.share.build_interval
-        self.build_timeout = CONF.share.build_timeout
         self.share_size = CONF.share.share_size
 
     def create_share(self, share_protocol=None, size=None,

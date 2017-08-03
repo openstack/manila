@@ -39,8 +39,8 @@ class SharesV2Client(shares_client.SharesClient):
     """
     api_version = 'v2'
 
-    def __init__(self, auth_provider):
-        super(SharesV2Client, self).__init__(auth_provider)
+    def __init__(self, auth_provider, **kwargs):
+        super(SharesV2Client, self).__init__(auth_provider, **kwargs)
         self.API_MICROVERSIONS_HEADER = 'x-openstack-manila-api-version'
 
     def inject_microversion_header(self, headers, version,
