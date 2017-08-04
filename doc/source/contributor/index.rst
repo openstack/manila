@@ -15,10 +15,10 @@
       License for the specific language governing permissions and limitations
       under the License.
 
-Developer Guide
-===============
+Contributor/Developer Guide
+===========================
 
-In this section you will find information on manila's lower level programming APIs.
+In this section you will find information helpful for contributing to manila.
 
 
 Programming HowTos and Tutorials

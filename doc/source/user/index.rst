@@ -12,12 +12,10 @@
       under the License.
 
 
-Admin Reference
----------------
-.. toctree::
-   :maxdepth: 3
+User
+----
 
-   intro
-   quick_start
-   multi_backends
-   network_plugins
+.. toctree::
+    :maxdepth: 1
+
+    API
