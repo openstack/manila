@@ -14,6 +14,12 @@ export_location_id_path:
   in: path
   required: false
   type: string
+group_snapshot_id_path:
+  description: |
+    The group snapshot ID.
+  in: path
+  required: true
+  type: string
 message_id:
   description: |
     The UUID of the message.
@@ -25,6 +31,12 @@ security_service_id_path:
     The UUID of the security service.
   in: path
   required: false
+  type: string
+share_group_type_id_path:
+  description: |
+    The UUID of the share group type.
+  in: path
+  required: true
   type: string
 share_id:
   description: |
@@ -114,9 +126,9 @@ action_id:
     The ID of the action during which the message was created.
 all_tenants:
   description: |
-    (Admin only). Defines whether to list shares for
-    all tenants. Set to ``1`` to list shares for all tenants. Set to
-    ``0`` to list shares only for the current tenant.
+    (Admin only). Defines whether to list shares or share groups for
+    all tenants. Set to ``1`` to list shares or sharegroups for all tenants.
+    Set to ``0`` to list shares or share groups only for the current tenant.
   in: query
   required: false
   type: boolean
@@ -159,6 +171,13 @@ description_inexact_query:
   required: false
   type: string
   min_version: 2.36
+description_query:
+  description: |
+    The share group description that can be used to filter
+    share groups.
+  in: query
+  required: false
+  type: string
 detail_id:
   in: query
   required: false
@@ -190,6 +209,28 @@ extra_specs_1:
   in: query
   required: false
   type: string
+group_snapshot_description_query:
+  description: |
+    The share group snapshot description that can be used to filter
+    share group snapshots.
+  in: query
+  required: false
+  type: string
+group_snapshot_name_query:
+  description: |
+    The share group snapshot name that can be used to filter
+    share group snapshots.
+  in: query
+  required: false
+  type: string
+group_snapshot_status_query:
+  description: |
+    Filters by a share group snapshot status. A valid value is
+    ``creating``, ``error``, ``available``, ``deleting``,
+    ``error_deleting``.
+  in: query
+  required: false
+  type: string
 host_11:
   description: |
     The host name for the back end.
@@ -211,6 +252,12 @@ host_7:
 limit:
   description: |
     The maximum number of shares to return.
+  in: query
+  required: false
+  type: integer
+limit_query:
+  description: |
+    The maximum number of share groups members to return.
   in: query
   required: false
   type: integer
@@ -247,9 +294,15 @@ name_inexact_query:
   required: false
   type: string
   min_version: 2.36
+name_query:
+  description: |
+    The share group name that can be used to filter share groups.
+  in: query
+  required: false
+  type: string
 offset:
   description: |
-    The offset to define start point of share
+    The offset to define start point of share or share group
     listing.
   in: query
   required: false
@@ -325,13 +378,33 @@ share_group_id_query:
   required: false
   type: string
   min_version: 2.31
+share_group_status_query:
+  description: |
+    Filters by a share group status. A valid value is
+    ``creating``, ``error``, ``available``, ``deleting``,
+    ``error_deleting``.
+  in: query
+  required: false
+  type: string
+share_group_type_id_query:
+  description: |
+    The share group type ID to filter share groups.
+  in: query
+  required: false
+  type: string
 share_network_id_5:
   description: |
     The UUID of the share network.
   in: query
   required: false
   type: string
-share_server_id_2:
+share_network_id_query:
+  description: |
+    The UUID of the share network.
+  in: query
+  required: false
+  type: string
+share_server_id_query:
   description: |
     The UUID of the share server.
   in: query
@@ -350,6 +423,12 @@ share_type_query:
   in: query
   required: false
   type: string
+share_types_query:
+  description: |
+    A list of one or more share type IDs. Allows filtering share groups.
+  in: query
+  required: false
+  type: array
 snapshot_id_query:
   description: |
     The UUID of the share's base snapshot to filter the request based on.
@@ -390,6 +469,14 @@ sort_key_messages:
   in: query
   required: false
   type: string
+source_share_group_snapshot_id_query:
+  description: |
+    The source share group snapshot ID to list the
+    share group.
+  in: query
+  required: false
+  type: string
+  min_version: 2.31
 state_2:
   description: |
     The current state of the service. A valid value
@@ -624,6 +711,13 @@ availability_zone_id:
   in: body
   required: true
   type: string
+availability_zone_id_2:
+  description: |
+    The availability zone ID for create share group.
+  in: body
+  required: false
+  type: string
+  min_version: 2.34
 availability_zone_name:
   description: |
     The name of the availability zone.
@@ -833,6 +927,13 @@ cidr_1:
   in: body
   required: true
   type: string
+consistent_snapshot_support:
+  description: |
+    The consistency snapshot support.
+  in: body
+  required: false
+  type: string
+  min_version: 2.34
 created_at_11:
   description: |
     The date and time stamp when the share server was created.
@@ -1285,6 +1386,92 @@ free_capacity_gb:
   in: body
   required: true
   type: string
+group_snapshot_created_at:
+  description: |
+    The date and time stamp when the share group snapshot was created.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+  in: body
+  required: true
+  type: string
+group_snapshot_description:
+  description: |
+    The share group snapshot description.
+  in: body
+  required: true
+  type: string
+group_snapshot_description_option:
+  description: |
+    The share group snapshot description.
+  in: body
+  required: false
+  type: string
+group_snapshot_id:
+  description: |
+    The share group snapshot ID.
+  in: body
+  required: true
+  type: object
+group_snapshot_links:
+  description: |
+    The share group snapshot links.
+  in: body
+  required: true
+  type: string
+group_snapshot_members:
+  description: |
+    The share group snapshot members.
+  in: body
+  required: true
+  type: string
+group_snapshot_name:
+  description: |
+    The share group snapshot name.
+  in: body
+  required: true
+  type: string
+group_snapshot_name_option:
+  description: |
+    The share group snapshot name.
+  in: body
+  required: false
+  type: string
+group_snapshot_status_required:
+  description: |
+    Filters by a share group snapshot status. A valid value is
+    ``creating``, ``error``, ``available``, ``deleting``,
+    ``error_deleting``.
+  in: body
+  required: true
+  type: string
+group_spec_key:
+  description: |
+    The extra specification key for the share group type.
+  in: body
+  required: true
+  type: string
+group_specs:
+  description: |
+    The extra specifications for the share group type.
+  in: body
+  required: false
+  type: object
+group_specs_required:
+  description: |
+    The extra specifications for the share group type.
+  in: body
+  required: true
+  type: object
 has_replicas:
   description: |
     (Since API v2.11) Indicates whether a share has
@@ -2393,9 +2580,40 @@ share_backend_name:
   type: string
 share_force_delete:
   description: |
-    To force-delete a share, set this value to
+    To force-delete a share or share group, set this value to
     ``null``. The force-delete action, unlike the delete action,
-    ignores the share status.
+    ignores the share or share group status.
+  in: body
+  required: true
+  type: string
+share_group_created_at:
+  description: |
+    The date and time stamp when the share group was
+    created.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2016-12-31T13:14:15-05:00``.
+  in: body
+  required: true
+  type: string
+share_group_description:
+  description: |
+    The share group description.
+  in: body
+  required: false
+  type: string
+share_group_description_response:
+  description: |
+    The share group description.
   in: body
   required: true
   type: string
@@ -2413,6 +2631,65 @@ share_group_id_request:
   required: False
   type: string
   min_version: 2.31
+share_group_links:
+  description: |
+    The share group links.
+  in: body
+  required: true
+  type: string
+share_group_name:
+  description: |
+    The share group name.
+  in: body
+  required: false
+  type: string
+share_group_name_response:
+  description: |
+    The share group name.
+  in: body
+  required: true
+  type: string
+share_group_status:
+  description: |
+    The share group status, which is ``available``,
+    ``error``, ``creating``, or ``deleting``.
+  in: body
+  required: true
+  type: string
+share_group_type_id:
+  description: |
+    The share group type ID to create a share group.
+  in: body
+  required: false
+  type: string
+share_group_type_id_required:
+  description: |
+    The share group type ID.
+  in: body
+  required: true
+  type: string
+share_group_type_is_public:
+  description: |
+    The level of visibility for the share group type. Set to
+    ``true`` to make share group type public. Set to ``false`` to
+    make it private. Default value is ``false``.
+  in: body
+  required: true
+  type: boolean
+share_group_type_is_public_request:
+  description: |
+    The level of visibility for the share group type. Set to
+    ``true`` to make share group type public. Set to ``false`` to
+    make it private. Default value is ``false``.
+  in: body
+  required: false
+  type: boolean
+share_group_type_name:
+  description: |
+    The share group type name.
+  in: body
+  required: true
+  type: string
 share_id_2:
   description: |
     The UUID of the share from which the share
@@ -2992,6 +3269,20 @@ snapshot_unmanage:
   in: body
   required: true
   type: string
+source_share_group_snapshot_id:
+  description: |
+    The source share group snapshot ID to create the
+    share group.
+  in: body
+  required: false
+  type: string
+source_share_group_snapshot_id_response:
+  description: |
+    The source share group snapshot ID to create the
+    share group.
+  in: body
+  required: true
+  type: string
 state:
   description: |
     Prior to versions 2.28, the state of all access rules of a given share
@@ -3008,6 +3299,30 @@ state_1:
   description: |
     The current state of the service. A valid value
     is ``up`` or ``down``.
+  in: body
+  required: true
+  type: string
+status:
+  description: |
+    The consistency group snapshot status, which is
+    ``available``, ``creating``, ``error``, ``deleting``, or
+    ``error_deleting``.
+  in: body
+  required: true
+  type: string
+status_1:
+  description: |
+    The consistency group status. A valid value is
+    ``creating``, ``available``, ``error``, ``deleting``, or
+    ``error_deleting``.
+  in: body
+  required: true
+  type: string
+status_10:
+  description: |
+    The consistency group status. A valid value is
+    ``creating``, ``error``, ``available``, ``deleting``, or
+    ``error_deleting``.
   in: body
   required: true
   type: string

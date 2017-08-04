@@ -1,0 +1,10 @@
+{
+    "share_group_type": {
+        "is_public": true,
+        "group_specs": {
+            "snapshot_support": true
+        },
+        "share_types": ["ecd11f4c-d811-4471-b656-c755c77e02ba"],
+        "name": "my_new_group_type"
+    }
+}

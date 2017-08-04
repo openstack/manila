@@ -1,0 +1,11 @@
+{
+    "share_group_types": [
+        {
+            "is_public": true,
+            "group_specs": {},
+            "share_types": ["ecd11f4c-d811-4471-b656-c755c77e02ba"],
+            "id": "89861c2a-10bf-4013-bdd4-3d020466aee4",
+            "name": "test_group_type"
+        }
+    ]
+}
