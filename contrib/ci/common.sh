@@ -1,6 +1,5 @@
 # Environment variables
 
-export MANILA_TEMPEST_COMMIT="30bbd2d" # 24 July, 2017
 # ----------------------------------------------
 
 # Functions

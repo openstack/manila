@@ -185,11 +185,8 @@ if [[ -d "$BASE/old/devstack" ]]; then
     cp $localconf $BASE/old/devstack/local.conf
 fi
 
-# Go to Tempest dir and checkout stable commit to avoid possible
-# incompatibilities for plugin stored in Manila repo.
 cd $BASE/new/tempest
 source $BASE/new/manila/contrib/ci/common.sh
-git checkout $MANILA_TEMPEST_COMMIT
 
 # Print current Tempest status
 git status
