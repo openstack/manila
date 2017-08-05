@@ -1442,7 +1442,7 @@ export_location_is_admin_only:
   type: boolean
 export_location_path:
   description: |
-    The export location path that should be used for mout operation.
+    The export location path that should be used for mount operation.
   in: body
   required: true
   type: string
@@ -2111,13 +2111,6 @@ os-share-type-access:is_public:
   in: body
   required: false
   type: boolean
-export_location_path:
-  description: |
-    The export location path that should be used for
-    mount operation.
-  in: body
-  required: true
-  type: string
 path:
   description: |
     The export location path that should be used for mout operation.
