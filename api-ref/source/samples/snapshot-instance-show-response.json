@@ -1,0 +1,14 @@
+{
+    "snapshot_instance":
+    {
+        "status": "available",
+        "share_id": "618599ab-09a1-432d-973a-c102564c7fec",
+        "share_instance_id": "8edff0cb-e5ce-4bab-aa99-afe02ed6a76a",
+        "snapshot_id": "d447de19-a6d3-40b3-ae9f-895c86798924",
+        "progress": "100%",
+        "created_at": "2017-08-04T00:44:52.000000",
+        "id": "275516e8-c998-4e78-a41e-7dd3a03e71cd",
+        "provider_location": "/path/to/fake/snapshot/snapshot_d447de19_a6d3_40b3_ae9f_895c86798924_275516e8_c998_4e78_a41e_7dd3a03e71cd",
+        "updated_at": "2017-08-04T00:44:54.000000"
+    }
+}
