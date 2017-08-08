@@ -49,7 +49,7 @@ Admin Docs
 .. toctree::
    :maxdepth: 1
 
-   admin/index
+   admin/shared-file-systems-intro.rst
 
 Contributor/Developer Docs
 ==========================
