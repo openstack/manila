@@ -2,8 +2,8 @@
 Team and repository tags
 ========================
 
-.. image:: https://governance.openstack.org/badges/manila.svg
-    :target: https://governance.openstack.org/reference/tags/index.html
+.. image:: https://governance.openstack.org/tc/badges/manila.svg
+    :target: https://governance.openstack.org/tc/reference/tags/index.html
 
 .. Change things from this point on
 
@@ -15,8 +15,8 @@ You have come across an OpenStack shared file system service.  It has
 identified itself as "Manila."  It was abstracted from the Cinder
 project.
 
-* Wiki: https://wiki.openstack.org/Manila
-* Developer docs: https://docs.openstack.org/developer/manila
+* Wiki: https://wiki.openstack.org/wiki/Manila
+* Developer docs: https://docs.openstack.org/manila/latest/
 
 Getting Started
 ---------------
