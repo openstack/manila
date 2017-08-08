@@ -92,6 +92,15 @@ share_server_id_1:
   in: path
   required: true
   type: string
+share_type_for_quota:
+  description: |
+    The name or UUID of the share type. If you specify this
+    parameter in the URI, you show, update, or delete quotas
+    for this share type.
+  in: path
+  required: false
+  type: string
+  min_version: 2.39
 share_type_id:
   description: |
     The UUID of the share type.
@@ -2302,18 +2311,24 @@ quota_share_groups_request:
   type: integer
 quota_share_networks:
   description: |
-    The number of share networks allowed for each
-    tenant.
+    The number of share networks allowed for user and project,
+    but not share type.
+  in: body
+  required: false
+  type: integer
+quota_share_networks_default:
+  description: |
+    The number of share networks allowed for each tenant.
   in: body
   required: true
   type: integer
 quota_share_networks_detail:
   description: |
     The limit, in_use, reserved number of share networks
-    allowed for each tenant.
+    allowed for user and project, but not share type.
   in: body
   min_version: 2.25
-  required: true
+  required: false
   type: object
 quota_share_networks_request:
   description: |
