@@ -13,6 +13,8 @@ server is an instance where NFS shares are served.
    The cinder volumes are attached to share servers according to the
    definition of a share network.
 
+Create a share type
+-------------------
 
 #. Source the admin credentials to gain access to admin-only CLI commands:
 
@@ -50,36 +52,30 @@ server is an instance where NFS shares are served.
       the Share types usage documentation `here
       <http://docs.openstack.org/admin-guide/shared-file-systems-share-types.html>_`.
 
-#. Create a manila share server image in the Image service. You may skip this
-   step and use any existing image. However, for mounting a share, the service
-   image must contain the NFS packages as appropriate for the operating system.
-   Whatever image you choose to be the service image, be sure to set the
-   configuration values ``service_image_name``, ``service_instance_flavor_id``,
-   ``service_instance_user`` and ``service_instance_password`` in
-   ``manila.conf``.
+Create a manila server image
+------------------------
 
-   .. note::
+   For evaluation of the Shared File Systems service, the image used by manila server must support
+   network file system protocols such as NFS/CIFS. This guide creates a regular instance using the
+   manila-share-service image because it supports NFS and using the
+   manila-service-flavor that limits resource consumption by the instance to 256 MB memory on the
+   compute node. You may skip this step if you already have a such kind of image in glance.
 
-      Any changes made to ``manila.conf`` while the ``manila-share`` service
-      is running will require a restart of the service to be effective.
-
-   .. note::
-
-      As an alternative to specifying a plain-text
-      ``service_instance_password`` in your configuration, a key-pair may be
-      specified with options ``path_to_public_key`` and
-      ``path_to_private_key`` to configure and allow password-less SSH access
-      between the `share node` and the share server/s created.
+#. Download the source image of the share server:
 
    .. code-block:: console
 
-      $ glance image-create \
-      --copy-from http://tarballs.openstack.org/manila-image-elements/images/manila-service-image-master.qcow2 \
-      --name "manila-service-image" \
+      $ wget http://tarballs.openstack.org/manila-image-elements/images/manila-service-image-master.qcow2
+
+#. Add the image to the Image service:
+
+   .. code-block:: console
+
+      $ openstack image create "manila-service-image" \
+      --file manila-service-image-master.qcow2 \
       --disk-format qcow2 \
       --container-format bare \
-      --visibility public --progress
-      [=============================>] 100%
+      --public
       +------------------+--------------------------------------+
       | Property         | Value                                |
       +------------------+--------------------------------------+
@@ -101,6 +97,50 @@ server is an instance where NFS shares are served.
       | visibility       | public                               |
       +------------------+--------------------------------------+
 
+#. Create a new flavor to support the service image:
+
+   .. code-block:: console
+
+      openstack flavor create manila-service-flavor --id 100 --ram 256 --disk 0 --vcpus 1
+      +----------------------------+-----------------------+
+      | Field                      | Value                 |
+      +----------------------------+-----------------------+
+      | OS-FLV-DISABLED:disabled   | False                 |
+      | OS-FLV-EXT-DATA:ephemeral  | 0                     |
+      | disk                       | 0                     |
+      | id                         | 100                   |
+      | name                       | manila-service-flavor |
+      | os-flavor-access:is_public | True                  |
+      | ram                        | 256                   |
+      | rxtx_factor                | 1.0                   |
+      | swap                       |                       |
+      | vcpus                      | 1                     |
+      +----------------------------+-----------------------+
+
+.. note::
+
+       Be sure to set the configuration values ``service_image_name``,
+       ``service_instance_flavor_id``, ``service_anstance_user`` and ``service_instance_password``
+       in``manila.conf`` according to the image you chose, and restart the manila-share process.
+
+.. note::
+
+      As an alternative to specifying a plain-text
+      ``service_instance_password`` in your configuration, a key-pair may be
+      specified with options ``path_to_public_key`` and
+      ``path_to_private_key`` to configure and allow password-less SSH access
+      between the `share node` and the share server/s created.
+
+Create a share network
+----------------------
+
+#. Source the ``demo`` credentials to perform
+   the following steps as a non-administrative project:
+
+   .. code-block:: console
+
+      $ . demo-openrc.sh
+
 #. List available networks in order to get id and subnets of the private
    network:
 
@@ -114,12 +154,7 @@ server is an instance where NFS shares are served.
       | 7c6f9b37-76b4-463e-98d8-27e5686ed083 | private | 3482f524-8bff-4871-80d4-5774c2730728 172.16.1.0/24 |
       +--------------------------------------+---------+----------------------------------------------------+
 
-#. Source the ``demo`` credentials to perform
-   the following steps as a non-administrative project:
-
-   .. code-block:: console
-
-      $ . demo-openrc.sh
+#. Create the share network using the private network and subnet IDs:
 
    .. code-block:: console
 
