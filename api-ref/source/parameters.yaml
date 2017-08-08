@@ -2277,6 +2277,50 @@ quota_set:
   in: body
   required: true
   type: object
+quota_share_group_snapshots:
+  description: |
+    The number of share group snapshots allowed for each tenant or user.
+  in: body
+  min_version: 2.40
+  required: true
+  type: integer
+quota_share_group_snapshots_detail:
+  description: |
+    The limit, in_use, reserved number of share group snapshots
+    for each tenant or user.
+  in: body
+  min_version: 2.40
+  required: true
+  type: object
+quota_share_group_snapshots_request:
+  description: |
+    The number of share group snapshots allowed for each tenant or user.
+  in: body
+  min_version: 2.40
+  required: false
+  type: integer
+quota_share_groups:
+  description: |
+    The number of share groups allowed for each tenant or user.
+  in: body
+  min_version: 2.40
+  required: true
+  type: integer
+quota_share_groups_detail:
+  description: |
+    The limit, in_use, reserved number of share groups
+    for each tenant or user.
+  in: body
+  min_version: 2.40
+  required: true
+  type: object
+quota_share_groups_request:
+  description: |
+    The number of share groups allowed for each tenant or user.
+  in: body
+  min_version: 2.40
+  required: false
+  type: integer
 quota_share_networks:
   description: |
     The number of share networks allowed for each

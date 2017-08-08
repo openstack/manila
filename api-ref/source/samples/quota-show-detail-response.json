@@ -15,6 +15,12 @@
                       "reserved": 0},
         "share_networks": {"in_use": 0,
                            "limit": 10,
-                           "reserved": 0}
+                           "reserved": 0},
+        "share_groups": {"in_use": 0,
+                         "limit": 10,
+                         "reserved": 0},
+        "share_group_snapshots": {"in_use": 0,
+                                  "limit": 10,
+                                  "reserved": 0}
     }
 }
