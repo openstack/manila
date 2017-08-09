@@ -111,6 +111,9 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
     @testtools.skipIf(not CONF.share.multitenancy_enabled,
                       'Can run only with drivers that do handle share servers '
                       'creation. Skipping.')
+    @testtools.skipIf(CONF.share.share_network_id != "",
+                      "This test is not suitable for pre-existing "
+                      "share_network.")
     def test_try_delete_share_network_with_existing_shares(self):
         # Get valid network data for successful share creation
         share_network = self.shares_client.get_share_network(
