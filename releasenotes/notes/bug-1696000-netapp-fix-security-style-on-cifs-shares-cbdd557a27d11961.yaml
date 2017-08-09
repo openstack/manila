@@ -1,0 +1,4 @@
+---
+fixes:
+  - The NetApp ONTAP driver has been fixed to ensure the "security style" on
+    CIFS shares is always "ntfs".
