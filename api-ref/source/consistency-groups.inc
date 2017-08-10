@@ -1,8 +1,8 @@
 .. -*- rst -*-
 
-===================================
-Consistency groups (since API v2.4)
-===================================
+=========================================
+Consistency groups (versions 2.4 to 2.30)
+=========================================
 
 Consistency groups enable you to create snapshots at the exact same
 point in time from multiple file system shares. For example, a
@@ -23,6 +23,8 @@ other roles.
     of the Shared File Systems API. All experimental APIs require the
     ``X-OpenStack-Manila-API-Experimental: True`` header to be sent in the
     requests.
+    Consistency group APIs were removed in 2.31 API version. They were
+    replaced with 'share groups' APIs.
 
 
 List consistency groups

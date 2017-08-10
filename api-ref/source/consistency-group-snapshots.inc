@@ -1,8 +1,8 @@
 .. -*- rst -*-
 
-============================================
-Consistency group snapshots (since API v2.4)
-============================================
+==================================================
+Consistency group snapshots (versions 2.4 to 2.30)
+==================================================
 
 You can create snapshots of consistency groups. To create a
 snapshot, you specify the ID of the consistency group that you want
@@ -28,6 +28,8 @@ actions to other roles.
     versions of the Shared File Systems API. All experimental APIs
     require the ``X-OpenStack-Manila-API-Experimental: True`` header to be
     sent in the requests.
+    Consistency group snapshot APIs were removed in 2.31 API version. They
+    were replaced with 'share groups' APIs.
 
 
 List consistency group snapshots
