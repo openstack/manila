@@ -23,6 +23,8 @@ To create a share, specify one of these supported protocols:
 
 - ``CEPHFS``. Ceph File System (CephFS).
 
+- ``MAPRFS``. MapR File System (MAPRFS).
+
 You can also create snapshots of shares. To create a snapshot, you
 specify the ID of the share that you want to snapshot.
 
