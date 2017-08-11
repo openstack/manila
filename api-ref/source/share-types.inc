@@ -73,9 +73,9 @@ share type for the following purposes:
 The scheduler uses the special ``capabilities`` prefix for
 filtering. The scheduler can only create a share on a back end that
 reports capabilities that match the un-scoped extra-spec keys for
-the share type. For details, see `Capabilities and Extra-Specs <htt
-p://docs.openstack.org/developer/manila/devref/capabilities_and_ext
-ra_specs.html>`_.
+the share type. For details, see `Capabilities and Extra-Specs
+<https://docs.openstack.org/manila/latest/devref/
+capabilities_and_extra_specs.html>`_.
 
 Each driver implementation determines which extra specification
 keys it uses. For details, see the documentation for the driver.
@@ -287,9 +287,9 @@ Set extra spec for share type
 Sets an extra specification for the share type.
 
 Each driver implementation determines which extra specification
-keys it uses. For details, see `Capabilities and Extra-Specs <http:
-//docs.openstack.org/developer/manila/devref/capabilities_and_extra
-_specs.html>`_ and documentation for your driver.
+keys it uses. For details, see `Capabilities and Extra-Specs
+<https://docs.openstack.org/manila/latest/devref/
+capabilities_and_extra_specs.html>`_ and documentation for your driver.
 
 Normal response codes: 200
 Error response codes: badRequest(400), unauthorized(401), forbidden(403),
