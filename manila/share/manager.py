@@ -2754,7 +2754,9 @@ class ShareManager(manager.SchedulerDependentManager):
                     resource_id=share_instance_id,
                     exception=excep)
 
-        self.db.share_instance_delete(context, share_instance_id)
+        self.db.share_instance_delete(
+            context, share_instance_id, need_to_update_usages=True)
+
         LOG.info("Share instance %s: deleted successfully.",
                  share_instance_id)
 

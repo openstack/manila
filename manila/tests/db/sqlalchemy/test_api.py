@@ -33,8 +33,11 @@ from manila import context
 from manila.db.sqlalchemy import api as db_api
 from manila.db.sqlalchemy import models
 from manila import exception
+from manila import quota
 from manila import test
 from manila.tests import db_utils
+
+QUOTAS = quota.QUOTAS
 
 security_service_dict = {
     'id': 'fake id',
@@ -288,6 +291,39 @@ class ShareDatabaseAPITestCase(test.TestCase):
                           self.ctxt, share['id'])
         self.assertRaises(exception.NotFound, db_api.share_metadata_get,
                           self.ctxt, share['id'])
+
+    def test_share_instance_delete_with_share_need_to_update_usages(self):
+        share = db_utils.create_share()
+
+        self.assertIsNotNone(db_api.share_get(self.ctxt, share['id']))
+        self.assertIsNotNone(db_api.share_metadata_get(self.ctxt, share['id']))
+
+        self.mock_object(quota.QUOTAS, 'reserve',
+                         mock.Mock(return_value='reservation'))
+        self.mock_object(quota.QUOTAS, 'commit')
+
+        db_api.share_instance_delete(
+            self.ctxt, share.instance['id'], need_to_update_usages=True)
+
+        self.assertRaises(exception.NotFound, db_api.share_get,
+                          self.ctxt, share['id'])
+        self.assertRaises(exception.NotFound, db_api.share_metadata_get,
+                          self.ctxt, share['id'])
+        quota.QUOTAS.reserve.assert_called_once_with(
+            self.ctxt,
+            project_id=share['project_id'],
+            shares=-1,
+            gigabytes=-share['size'],
+            share_type_id=None,
+            user_id=share['user_id']
+        )
+        quota.QUOTAS.commit.assert_called_once_with(
+            self.ctxt,
+            mock.ANY,
+            project_id=share['project_id'],
+            share_type_id=None,
+            user_id=share['user_id']
+        )
 
     def test_share_instance_get(self):
         share = db_utils.create_share()
