@@ -2224,27 +2224,6 @@ protocol:
   in: body
   required: true
   type: string
-provider_location:
-  description: |
-    (Since API v2.12) Provider location of the
-    snapshot on the back end.
-  in: body
-  required: true
-  type: string
-provider_location_1:
-  description: |
-    Provider location of the snapshot on the back end.
-  in: body
-  required: false
-  type: string
-  min_version: 2.12
-provider_location_request:
-  description: |
-    (Since API v2.12) Provider location of the
-    snapshot on the back end.
-  in: body
-  required: false
-  type: string
 qos:
   description: |
     The quality of service (QoS) support.
