@@ -5,6 +5,8 @@
         "snapshot_gigabytes": 1000,
         "snapshots": 50,
         "id": "16e1ab15c35a457e9c2b2aa189f544e1",
-        "share_networks": 10
+        "share_networks": 10,
+        "share_groups": 10,
+        "share_group_snapshots": 10
     }
 }

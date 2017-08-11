@@ -11,6 +11,8 @@ Provides quotas management support.
     For API versions 2.6 and prior, replace ``quota-sets`` in the URLs with
     ``os-quota-sets``.
 
+    Added share groups and share group snapshots in 2.40 API versions.
+
 
 Show default quota set
 ======================
@@ -42,6 +44,8 @@ Response parameters
    - shares: quota_shares
    - snapshot_gigabytes: quota_snapshot_gigabytes
    - share_networks: quota_share_networks
+   - share_groups: quota_share_groups
+   - share_group_snapshots: quota_share_group_snapshots
 
 Response example
 ----------------
@@ -85,6 +89,8 @@ Response parameters
    - shares: quota_shares
    - snapshot_gigabytes: quota_snapshot_gigabytes
    - share_networks: quota_share_networks
+   - share_groups: quota_share_groups
+   - share_group_snapshots: quota_share_group_snapshots
 
 Response example
 ----------------
@@ -128,6 +134,8 @@ Response parameters
    - shares: quota_shares_detail
    - snapshot_gigabytes: quota_snapshot_gigabytes_detail
    - share_networks: quota_share_networks_detail
+   - share_groups: quota_share_groups_detail
+   - share_group_snapshots: quota_share_group_snapshots_detail
 
 Response example
 ----------------
@@ -165,6 +173,8 @@ Request
    - snapshot_gigabytes: quota_snapshot_gigabytes_request
    - shares: quota_shares_request
    - share_networks: quota_share_networks_request
+   - share_groups: quota_share_groups_request
+   - share_group_snapshots: quota_share_group_snapshots_request
 
 Request example
 ---------------
@@ -184,6 +194,8 @@ Response parameters
    - shares: quota_shares
    - snapshot_gigabytes: quota_snapshot_gigabytes
    - share_networks: quota_share_networks
+   - share_groups: quota_share_groups
+   - share_group_snapshots: quota_share_group_snapshots
 
 Response example
 ----------------
