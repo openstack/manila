@@ -53,14 +53,14 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.coverage',
               'sphinx.ext.ifconfig',
               'sphinx.ext.graphviz',
-              'oslosphinx',
+              'openstackdocstheme',
               ]
 
-# autodoc generation is a bit aggressive and a nuisance
-# when doing heavy text edit cycles. Execute "export SPHINX_DEBUG=1"
-# in your terminal to disable
-if not os.getenv('SPHINX_DEBUG'):
-    extensions += ['ext.manila_autodoc']
+# openstackdocstheme options
+repository_name = 'openstack/manila'
+bug_project = 'manila'
+bug_tag = 'docs'
+html_last_updated_fmt = '%Y-%m-%d %H:%M'
 
 todo_include_todos = True
 
@@ -111,7 +111,6 @@ try:
 except Exception:
     warnings.warn('Cannot get gitsha.')
     gitsha = 'unknown'
-bug_tag = u'docs'
 # source tree
 pwd = os.getcwd()
 html_context = {
@@ -119,7 +118,7 @@ html_context = {
     "gitsha": gitsha,
     "bug_tag": bug_tag,
     "giturl": giturl,
-    "bug_project": "manila",
+    "bug_project": bug_project,
 }
 
 
