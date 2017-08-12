@@ -84,14 +84,17 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
         """Instruct Manila to manage an existing snapshot.
 
         Required HTTP Body:
-        {
-         "snapshot":
-          {
-           "share_id": <Manila share id>,
-           "provider_location": <A string parameter that identifies the
-                                 snapshot on the backend>
-          }
-        }
+
+        .. code-block:: json
+
+            {
+                "snapshot":
+                {
+                    "share_id": <Manila share id>,
+                    "provider_location": <A string parameter that identifies
+                                          the snapshot on the backend>
+                }
+            }
 
         Optional elements in 'snapshot' are:
             name              A name for the new snapshot.
