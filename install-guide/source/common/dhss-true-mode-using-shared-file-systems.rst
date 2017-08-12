@@ -53,7 +53,7 @@ Create a share type
       <http://docs.openstack.org/admin-guide/shared-file-systems-share-types.html>_`.
 
 Create a manila server image
-------------------------
+----------------------------
 
    For evaluation of the Shared File Systems service, the image used by manila server must support
    network file system protocols such as NFS/CIFS. This guide creates a regular instance using the
