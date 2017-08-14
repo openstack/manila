@@ -19,3 +19,4 @@ User
     :maxdepth: 1
 
     API
+    create-and-manage-shares
