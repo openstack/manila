@@ -74,7 +74,7 @@ Configuration Reference
 .. toctree::
    :maxdepth: 1
 
-   configuration/index
+   configuration/shared-file-systems
 
 Other Reference
 ===============

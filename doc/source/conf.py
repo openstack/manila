@@ -54,7 +54,12 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.ifconfig',
               'sphinx.ext.graphviz',
               'openstackdocstheme',
+              'oslo_config.sphinxconfiggen',
               ]
+
+config_generator_config_file = (
+    '../../etc/oslo-config-generator/manila.conf')
+sample_config_basename = '_static/manila'
 
 # openstackdocstheme options
 repository_name = 'openstack/manila'
