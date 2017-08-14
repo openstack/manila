@@ -51,7 +51,6 @@ oslo_namespace_imports = re.compile(r"from[\s]*oslo[.](.*)")
 dict_constructor_with_list_copy_re = re.compile(r".*\bdict\((\[)?(\(|\[)")
 assert_no_xrange_re = re.compile(r"\s*xrange\s*\(")
 assert_True = re.compile(r".*assertEqual\(True, .*\)")
-assert_None = re.compile(r".*assertEqual\(None, .*\)")
 no_log_warn = re.compile(r"\s*LOG.warn\(.*")
 
 
@@ -290,13 +289,6 @@ def validate_assertTrue(logical_line):
         yield(0, msg)
 
 
-def validate_assertIsNone(logical_line):
-    if re.match(assert_None, logical_line):
-        msg = ("M312: Unit tests should use assertIsNone(value) instead"
-               " of using assertEqual(None, value).")
-        yield(0, msg)
-
-
 def check_uuid4(logical_line):
     """Generating UUID
 
@@ -338,6 +330,5 @@ def factory(register):
     register(dict_constructor_with_list_copy)
     register(no_xrange)
     register(validate_assertTrue)
-    register(validate_assertIsNone)
     register(check_uuid4)
     register(no_log_warn_check)

@@ -10,7 +10,6 @@ Manila Specific Commandments
 ----------------------------
 
 - [M310] Check for improper use of logging format arguments.
-- [M312] Use assertIsNone(...) instead of assertEqual(None, ...).
 - [M313] Use assertTrue(...) rather than assertEqual(True, ...).
 - [M323] Ensure that the _() function is explicitly imported to ensure proper translations.
 - [M325] str() and unicode() cannot be used on an exception. Remove or use six.text_type().
