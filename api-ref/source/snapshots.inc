@@ -368,8 +368,6 @@ You can update these attributes:
 - ``display_description``, which also changes the ``description`` of
   the share snapshot.
 
-- ``is_public``. Changes the level of visibility.
-
 If you try to update other attributes, they retain their previous
 values.
 
