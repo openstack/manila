@@ -18,4 +18,5 @@ Command Line Interface
 .. toctree::
     :maxdepth: 1
 
+    manila
     manila-manage
