@@ -6,6 +6,16 @@ User messages (since API 2.37)
 
 Lists, shows and deletes user messages.
 
+User messages are automatically created when an asynchronous action fails on a
+resource. In such situations an error is logged in the appropriate log file but
+end users may not have access to the log files. User messages can be used by
+users to get error details for failed actions. This is handy for example when
+creating shares - if a share creation fails because a scheduling filter doesn't
+find suitable back-end host for the share, this share will end up in error
+state, but from user messages API users can get details about the last
+executed filter which helps them identify the issue and perhaps re-attempt the
+creation request with different parameters.
+
 
 List user messages
 ==================
