@@ -70,6 +70,7 @@ import manila.share.drivers.hitachi.hsp.driver
 import manila.share.drivers.hpe.hpe_3par_driver
 import manila.share.drivers.huawei.huawei_nas
 import manila.share.drivers.ibm.gpfs
+import manila.share.drivers.infinidat.infinibox
 import manila.share.drivers.lvm
 import manila.share.drivers.maprfs.maprfs_native
 import manila.share.drivers.netapp.options
@@ -151,6 +152,9 @@ _global_opt_lists = [
     manila.share.drivers.hpe.hpe_3par_driver.HPE3PAR_OPTS,
     manila.share.drivers.huawei.huawei_nas.huawei_opts,
     manila.share.drivers.ibm.gpfs.gpfs_share_opts,
+    manila.share.drivers.infinidat.infinibox.infinidat_auth_opts,
+    manila.share.drivers.infinidat.infinibox.infinidat_connection_opts,
+    manila.share.drivers.infinidat.infinibox.infinidat_general_opts,
     manila.share.drivers.maprfs.maprfs_native.maprfs_native_share_opts,
     manila.share.drivers.lvm.share_opts,
     manila.share.drivers.netapp.options.netapp_proxy_opts,
