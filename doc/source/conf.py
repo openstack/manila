@@ -169,7 +169,7 @@ modindex_common_prefix = ['manila.']
 # List of tuples 'sourcefile', 'target', u'title', u'Authors name', 'manual'
 
 man_pages = [
-    ('man/manila-manage', 'manila-manage', u'Cloud controller fabric',
+    ('cli/manila-manage', 'manila-manage', u'Cloud controller fabric',
      [u'OpenStack'], 1)
 ]
 
