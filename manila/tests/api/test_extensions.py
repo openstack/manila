@@ -27,7 +27,6 @@ from manila import policy
 from manila import test
 
 CONF = cfg.CONF
-NS = "{http://docs.openstack.org/common/api/v1.0}"
 
 
 class ExtensionTestCase(test.TestCase):

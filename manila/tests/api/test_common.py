@@ -27,10 +27,6 @@ from manila.tests.api import fakes
 from manila.tests.db import fakes as db_fakes
 
 
-NS = "{http://docs.openstack.org/compute/api/v1.1}"
-ATOMNS = "{http://www.w3.org/2005/Atom}"
-
-
 class LimiterTest(test.TestCase):
     """Unit tests for the `manila.api.common.limited` method.
 

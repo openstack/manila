@@ -36,10 +36,6 @@ TEST_LIMITS = [
     limits.Limit("PUT", "*", "", 10, limits.PER_MINUTE),
     limits.Limit("PUT", "/shares", "^/shares", 5, limits.PER_MINUTE),
 ]
-NS = {
-    'atom': 'http://www.w3.org/2005/Atom',
-    'ns': 'http://docs.openstack.org/common/api/v1.0'
-}
 
 
 class BaseLimitTestSuite(test.TestCase):
