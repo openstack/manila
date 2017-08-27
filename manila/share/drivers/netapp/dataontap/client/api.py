@@ -19,6 +19,7 @@ Contains classes required to issue API calls to Data ONTAP and OnCommand DFM.
 """
 
 import copy
+import re
 
 from lxml import etree
 from oslo_log import log
@@ -27,6 +28,7 @@ from six.moves import urllib
 
 from manila import exception
 from manila.i18n import _
+from manila.share.drivers.netapp import utils
 
 LOG = log.getLogger(__name__)
 
@@ -69,7 +71,8 @@ class NaServer(object):
     def __init__(self, host, server_type=SERVER_TYPE_FILER,
                  transport_type=TRANSPORT_TYPE_HTTP,
                  style=STYLE_LOGIN_PASSWORD, username=None,
-                 password=None, port=None, trace=False):
+                 password=None, port=None, trace=False,
+                 api_trace_pattern=utils.API_TRACE_PATTERN):
         self._host = host
         self.set_server_type(server_type)
         self.set_transport_type(transport_type)
@@ -79,8 +82,8 @@ class NaServer(object):
         self._username = username
         self._password = password
         self._trace = trace
+        self._api_trace_pattern = api_trace_pattern
         self._refresh_conn = True
-        self._trace = trace
 
         LOG.debug('Using NetApp controller: %s', self._host)
 
@@ -213,19 +216,18 @@ class NaServer(object):
         self._password = password
         self._refresh_conn = True
 
-    def set_trace(self, trace=True):
-        """Enable or disable the API tracing facility."""
-        self._trace = trace
-
     def invoke_elem(self, na_element, enable_tunneling=False):
         """Invoke the API on the server."""
         if na_element and not isinstance(na_element, NaElement):
             ValueError('NaElement must be supplied to invoke API')
-
         request, request_element = self._create_request(na_element,
                                                         enable_tunneling)
 
-        if self._trace:
+        api_name = na_element.get_name()
+        api_name_matches_regex = (re.match(self._api_trace_pattern, api_name)
+                                  is not None)
+
+        if self._trace and api_name_matches_regex:
             LOG.debug("Request: %s", request_element.to_string(pretty=True))
 
         if (not hasattr(self, '_opener') or not self._opener
@@ -246,7 +248,7 @@ class NaServer(object):
         response_xml = response.read()
         response_element = self._get_result(response_xml)
 
-        if self._trace:
+        if self._trace and api_name_matches_regex:
             LOG.debug("Response: %s", response_element.to_string(pretty=True))
 
         return response_element

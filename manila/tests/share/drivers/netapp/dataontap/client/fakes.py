@@ -24,7 +24,8 @@ CONNECTION_INFO = {
     'transport_type': 'https',
     'port': 443,
     'username': 'admin',
-    'password': 'passw0rd'
+    'password': 'passw0rd',
+    'api_trace_pattern': '(.*)',
 }
 
 CLUSTER_NAME = 'fake_cluster'
@@ -2395,7 +2396,7 @@ QOS_POLICY_GROUP_GET_ITER_RESPONSE = etree.XML("""
     'max_througput': QOS_MAX_THROUGHPUT,
 })
 
-FAKE_VOL_XML = """<volume-info xmlns='http://www.netapp.com/filer/admin'>
+FAKE_VOL_XML = """<volume-info>
     <name>open123</name>
     <state>online</state>
     <size-total>0</size-total>

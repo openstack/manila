@@ -83,7 +83,8 @@ CLIENT_KWARGS = {
     'vserver': None,
     'transport_type': 'https',
     'password': 'pass',
-    'port': '443'
+    'port': '443',
+    'api_trace_pattern': '(.*)',
 }
 
 SHARE = {

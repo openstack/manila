@@ -117,7 +117,8 @@ class NetAppCmodeFileStorageLibrary(object):
 
         self._app_version = kwargs.get('app_version', 'unknown')
 
-        na_utils.setup_tracing(self.configuration.netapp_trace_flags)
+        na_utils.setup_tracing(self.configuration.netapp_trace_flags,
+                               self.configuration.netapp_api_trace_pattern)
         self._backend_name = self.configuration.safe_get(
             'share_backend_name') or driver_name
 
@@ -150,7 +151,8 @@ class NetAppCmodeFileStorageLibrary(object):
                 hostname=self.configuration.netapp_server_hostname,
                 port=self.configuration.netapp_server_port,
                 vserver=vserver,
-                trace=na_utils.TRACE_API)
+                trace=na_utils.TRACE_API,
+                api_trace_pattern=na_utils.API_TRACE_PATTERN)
             self._clients[vserver] = client
 
         return client

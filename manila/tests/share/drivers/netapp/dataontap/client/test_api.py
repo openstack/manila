@@ -220,10 +220,20 @@ class NetAppApiServerTests(test.TestCase):
                                       na_element)
         self.assertEqual('unknown', exception.code)
 
-    def test_invoke_elem_valid(self):
+    @ddt.data({'trace_enabled': False,
+               'trace_pattern': '(.*)', 'log': False},
+              {'trace_enabled': True,
+               'trace_pattern': '(?!(volume)).*', 'log': False},
+              {'trace_enabled': True,
+               'trace_pattern': '(.*)', 'log': True},
+              {'trace_enabled': True,
+               'trace_pattern': '^volume-(info|get-iter)$', 'log': True})
+    @ddt.unpack
+    def test_invoke_elem_valid(self, trace_enabled, trace_pattern, log):
         """Tests the method invoke_elem with valid parameters"""
         na_element = fake.FAKE_NA_ELEMENT
-        self.root._trace = True
+        self.root._trace = trace_enabled
+        self.root._api_trace_pattern = trace_pattern
         self.mock_object(self.root, '_create_request', mock.Mock(
             return_value=('abc', fake.FAKE_NA_ELEMENT)))
         self.mock_object(api, 'LOG')
@@ -237,4 +247,5 @@ class NetAppApiServerTests(test.TestCase):
 
         self.root.invoke_elem(na_element)
 
-        self.assertEqual(2, api.LOG.debug.call_count)
+        expected_log_count = 2 if log else 0
+        self.assertEqual(expected_log_count, api.LOG.debug.call_count)

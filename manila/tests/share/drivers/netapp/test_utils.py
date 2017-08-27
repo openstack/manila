@@ -18,6 +18,7 @@ Mock unit tests for the NetApp driver utility module
 
 import platform
 
+import ddt
 import mock
 from oslo_concurrency import processutils as putils
 from oslo_log import log
@@ -28,6 +29,7 @@ from manila import test
 from manila import version
 
 
+@ddt.ddt
 class NetAppDriverUtilsTestCase(test.TestCase):
 
     def setUp(self):
@@ -56,19 +58,22 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         self.assertAlmostEqual(na_utils.round_down(-5.567, '0'), -5)
 
     def test_setup_tracing(self):
-        na_utils.setup_tracing(None)
+        na_utils.setup_tracing(None, api_trace_pattern='(.*)')
         self.assertFalse(na_utils.TRACE_API)
         self.assertFalse(na_utils.TRACE_METHOD)
+        self.assertEqual('(.*)', na_utils.API_TRACE_PATTERN)
         self.assertEqual(0, na_utils.LOG.warning.call_count)
 
         na_utils.setup_tracing('method')
         self.assertFalse(na_utils.TRACE_API)
         self.assertTrue(na_utils.TRACE_METHOD)
+        self.assertEqual('(.*)', na_utils.API_TRACE_PATTERN)
         self.assertEqual(0, na_utils.LOG.warning.call_count)
 
-        na_utils.setup_tracing('method,api')
+        na_utils.setup_tracing('method,api', api_trace_pattern='(^fancy-api$)')
         self.assertTrue(na_utils.TRACE_API)
         self.assertTrue(na_utils.TRACE_METHOD)
+        self.assertEqual('(^fancy-api$)', na_utils.API_TRACE_PATTERN)
         self.assertEqual(0, na_utils.LOG.warning.call_count)
 
     def test_setup_tracing_invalid_key(self):
@@ -77,6 +82,12 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         self.assertFalse(na_utils.TRACE_API)
         self.assertTrue(na_utils.TRACE_METHOD)
         self.assertEqual(1, na_utils.LOG.warning.call_count)
+
+    @ddt.data('?!(bad', '(reg]+', 'eX?!)')
+    def test_setup_tracing_invalid_regex(self, regex):
+        self.assertRaises(exception.BadConfigurationException,
+                          na_utils.setup_tracing, 'method,api',
+                          api_trace_pattern=regex)
 
     @na_utils.trace
     def _trace_test_method(*args, **kwargs):
