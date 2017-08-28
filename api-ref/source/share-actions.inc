@@ -47,9 +47,16 @@ To grant access, specify one of these supported share access levels:
 You must also specify one of these supported authentication
 methods:
 
-- ``ip``. Authenticates an instance through its IP address. A valid
-  format is ``XX.XX.XX.XX`` or ``XX.XX.XX.XX/XX``. For example
-  ``0.0.0.0/0``.
+- ``ip``. Authenticates an instance through its IP address.
+  The value specified should be a valid IPv4 or an IPv6 address,
+  or a subnet in CIDR notation.
+  A valid format is ``X:X:X:X:X:X:X:X``, ``X:X:X:X:X:X:X:X/XX``,
+  ``XX.XX.XX.XX``, or ``XX.XX.XX.XX/XX``, etc. For
+  example ``0.0.0.0/0`` or ``::/0``.
+
+.. important::
+
+  IPv6 based access is only supported with API version 2.38 and beyond.
 
 - ``cert``. Authenticates an instance through a TLS certificate.
   Specify the TLS identity as the IDENTKEY. A valid value is any
@@ -59,7 +66,7 @@ methods:
 
 - ``user``. Authenticates by a user or group name. A valid value is
   an alphanumeric string that can contain some special characters
-  and is from 4 to 32 characters long.
+  and is from 4 to 255 characters long.
 
 .. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
 
