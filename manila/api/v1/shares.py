@@ -179,9 +179,9 @@ class ShareMixin(object):
             'display_name', 'status', 'share_server_id', 'volume_type_id',
             'share_type_id', 'snapshot_id', 'host', 'share_network_id',
             'is_public', 'metadata', 'extra_specs', 'sort_key', 'sort_dir',
-            'share_group_id', 'share_group_snapshot_id',
-            'export_location_id', 'export_location_path', 'display_name~',
-            'display_description~', 'description', 'display_description'
+            'share_group_id', 'share_group_snapshot_id', 'export_location_id',
+            'export_location_path', 'display_name~', 'display_description~',
+            'display_description'
         )
 
     def update(self, req, id, body):
