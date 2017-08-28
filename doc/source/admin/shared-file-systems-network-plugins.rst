@@ -85,4 +85,5 @@ Shared File Systems service:
       share driver to support the network type for which the network plug-in is
       configured.
 
-More information about network plug-ins can be found in `Manila developer documentation <https://docs.openstack.org/developer/manila/adminref/network_plugins.html>`_
+More information about network plug-ins can be found in `Manila developer documentation
+<https://docs.openstack.org/manila/latest/admin/shared-file-systems-network-plugins.html>`_

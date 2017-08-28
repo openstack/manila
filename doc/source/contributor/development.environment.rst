@@ -33,7 +33,7 @@ complete OpenStack development environments).
 You can check out `Setting up a development environment with devstack`_ for instructions
 on how to enable manila on devstack.
 
-.. _Setting up a development environment with devstack: https://docs.openstack.org/manila/latest/devref/development-environment-devstack.html
+.. _Setting up a development environment with devstack: https://docs.openstack.org/manila/latest/contributor/development-environment-devstack.html
 
 Virtual environments
 --------------------
@@ -172,4 +172,4 @@ into trunk unless you are listed in the Authors file. Manila uses the Gerrit
 code review system. For information on how to submit your branch to Gerrit,
 see GerritWorkflow_.
 
-.. _GerritWorkflow: http://docs.openstack.org/infra/manual/developers.html#development-workflow
+.. _GerritWorkflow: https://docs.openstack.org/infra/manual/developers.html#development-workflow
