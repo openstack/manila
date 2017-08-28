@@ -678,10 +678,38 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
             self.server_details, self.share_name)
         self._helper._set_allow_hosts.assert_called_once_with(
             self.server_details, [], self.share_name)
+        kickoff_user_cmd = ['sudo', 'smbstatus', '-S']
+        self._helper._ssh_exec.assert_any_call(
+            self.server_details, kickoff_user_cmd)
         valid_cmd = ['echo', "'test test2'", '|', 'sudo', 'tee',
                      maintenance_path]
-        self._helper._ssh_exec.assert_called_once_with(
+        self._helper._ssh_exec.assert_any_call(
             self.server_details, valid_cmd)
+
+    def test__kick_out_users_success(self):
+        smbstatus_return = """Service      pid     machine       Connected at
+-------------------------------------------------------
+fake_share_name   1001   fake_machine1    Thu Sep 14 14:59:07 2017
+fake_share_name   1002   fake_machine2    Thu Sep 14 14:59:07 2017
+"""
+        self.mock_object(self._helper, '_ssh_exec', mock.Mock(
+            side_effect=[(smbstatus_return, "fake_stderr"), ("fake", "fake")]))
+        self._helper._kick_out_users(self.server_details, self.share_name)
+        self._helper._ssh_exec.assert_any_call(
+            self.server_details, ['sudo', 'smbstatus', '-S'])
+        self._helper._ssh_exec.assert_any_call(
+            self.server_details, ["sudo", "kill", "-15", "1001", "1002"])
+
+    def test__kick_out_users_failed(self):
+        smbstatus_return = """Service      pid     machine       Connected at
+-------------------------------------------------------
+fake line
+"""
+        self.mock_object(self._helper, '_ssh_exec', mock.Mock(
+            return_value=(smbstatus_return, "fake_stderr")))
+        self.assertRaises(exception.ShareBackendException,
+                          self._helper._kick_out_users, self.server_details,
+                          self.share_name)
 
     def test_restore_access_after_maintenance(self):
         fake_maintenance_path = "test.path"
