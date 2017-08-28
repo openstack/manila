@@ -169,7 +169,7 @@ Sample configuration
 Create GPFS share type and set extra spec
 -----------------------------------------
 
-.. code-block:: ini
+.. code-block:: console
 
    $ manila type-create --snapshot_support True \
      --create_share_from_snapshot_support True gpfs False
