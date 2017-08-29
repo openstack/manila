@@ -232,9 +232,9 @@ To create a file share in share servers mode, you need to:
      filtering the extra specifications of the share type.
 
    * The share driver will create a share server with the share network. For
-     details of creating the resources, see the `documentation <http://docs.
-     openstack.org/developer/manila/devref/index.html#share-backends>`_ of the
-     specific share driver.
+     details of creating the resources, see the `documentation <http://docs.openstack.
+     org/manila/latest/admin/shared-file-systems-multi-backend.html>`_ of the specific
+     share driver.
 
 #. After the share becomes available, use the :command:`manila show` command
    to get the share export location.
@@ -740,7 +740,7 @@ Allow access to the share with ``user`` access type:
    For the example, the Generic driver with the Block Storage service as a
    back-end doesn't support ``user`` and ``cert`` authentications methods. For
    details of supporting of features by different drivers, see `Manila share
-   features support mapping <https://docs.openstack.org/developer/manila/devref
+   features support mapping <https://docs.openstack.org/manila/latest/contributor
    /share_back_ends_feature_support_mapping.html>`_.
 
 To verify that the access rules (ACL) were configured correctly for a share,
