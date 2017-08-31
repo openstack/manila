@@ -11,7 +11,16 @@ Provides quotas management support.
     For API versions 2.6 and prior, replace ``quota-sets`` in the URLs with
     ``os-quota-sets``.
 
-    Added share groups and share group snapshots in 2.40 API versions.
+    Share type quotas were added in API version 2.39. It is possible to set
+    quotas per share type for the following quota resources:
+
+    - ``gigabytes``
+    - ``snapshots``
+    - ``shares``
+    - ``snapshot_gigabytes``
+
+    Share groups and share group snapshots were added to quota management
+    APIs in API version 2.40.
 
 
 Show default quota set
@@ -46,6 +55,7 @@ Response parameters
    - share_networks: quota_share_networks
    - share_groups: quota_share_groups
    - share_group_snapshots: quota_share_group_snapshots
+   - share_networks: quota_share_networks_default
 
 Response example
 ----------------
@@ -76,6 +86,7 @@ Request
    - tenant_id: tenant_id_path
    - tenant_id: tenant_id
    - user_id: user_id_query
+   - share_type: share_type_for_quota
 
 Response parameters
 -------------------
@@ -121,6 +132,7 @@ Request
    - tenant_id: tenant_id_path
    - tenant_id: tenant_id
    - user_id: user_id_query
+   - share_type: share_type_for_quota
 
 Response parameters
 -------------------
@@ -175,6 +187,7 @@ Request
    - share_networks: quota_share_networks_request
    - share_groups: quota_share_groups_request
    - share_group_snapshots: quota_share_group_snapshots_request
+   - share_type: share_type_for_quota
 
 Request example
 ---------------
@@ -226,3 +239,4 @@ Request
    - tenant_id: tenant_id_path
    - tenant_id: tenant_id
    - user_id: user_id_query
+   - share_type: share_type_for_quota
