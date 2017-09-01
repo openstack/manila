@@ -196,6 +196,21 @@ migration using an approach that works for any manufacturer, but driver vendors
 can implement a better optimized migration function for when migration involves
 backends or pools related to the same vendor.
 
+Share Groups (since Ocata)
+--------------------------
+
+The share groups provides the ability to manage a group of shares together.
+This feature is implemented at the manager level, every driver gets this feature
+by default. If a driver wants to override the default behavior to support
+additional functionalities such as consistent group snapshot, the driver
+vendors may report this capability as a group capability, such as: Ordered
+writes, Consistent snapshots, Group replication.
+
+.. note::
+
+  for more information please see
+  `group capabilities <https://docs.openstack.org/manila/latest/admin/group_capabilities_and_extra_specs.html>`_
+
 Share Replication
 -----------------
 
