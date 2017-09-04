@@ -1574,12 +1574,6 @@ extra_specs:
   in: body
   required: true
   type: object
-extra_specs_2:
-  description: |
-    Extra specifications for the share type.
-  in: body
-  required: true
-  type: object
 force:
   description: |
     Indicates whether to permit or deny the force-
