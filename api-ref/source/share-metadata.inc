@@ -24,7 +24,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - share_id: share_id
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Response parameters
 -------------------
@@ -58,7 +58,7 @@ Request
 
    - metadata: metadata_2
    - share_id: share_id
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Request example
 ---------------
@@ -99,7 +99,7 @@ Request
 
    - metadata: metadata_2
    - share_id: share_id
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Request example
 ---------------
@@ -141,5 +141,5 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - share_id: share_id
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - key: metadata_key_request

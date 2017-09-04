@@ -45,7 +45,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - share_id: share_id
    - os-migrate_share: os-migrate_share
    - migrate_share: migrate_share
@@ -70,7 +70,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - share_id: share_id
    - migrate-start: migrate-start
    - host: host_10
@@ -95,7 +95,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - share_id: share_id
    - migration_complete: migration_complete
    - host: host_10

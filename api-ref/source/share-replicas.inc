@@ -356,7 +356,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - share_replica_id: share_replica_id_path
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 
 Force-delete share replica

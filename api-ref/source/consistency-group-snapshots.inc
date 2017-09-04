@@ -49,7 +49,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - limit: limit_2
    - offset: offset_2
    - all_tenants: all_tenants_2
@@ -91,7 +91,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - limit: limit_2
    - offset: offset_2
    - all_tenants: all_tenants_2
@@ -138,7 +138,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - cgsnapshot_id: cgsnapshot_id
 
 Response parameters
@@ -179,7 +179,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - cgsnapshot_id: cgsnapshot_id_1
    - limit: limit_3
    - offset: offset_3
@@ -226,7 +226,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - consistency_group_id: consistency_group_id
    - name: name_1
    - description: description_1
@@ -279,7 +279,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - cgsnapshot_id: cgsnapshot_id
    - reset_status: reset_status
    - os-reset_status: os-reset_status
@@ -312,7 +312,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - cgsnapshot_id: cgsnapshot_id_1
    - force_delete: force_delete
 
@@ -346,7 +346,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - cgsnapshot_id: cgsnapshot_id_1
    - name: name_1
    - description: description_1
@@ -396,5 +396,5 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - cgsnapshot_id: cgsnapshot_id_1

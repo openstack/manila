@@ -128,12 +128,6 @@ tenant_id:
   in: path
   required: true
   type: string
-tenant_id_1:
-  description: |
-    The tenant ID in a multi-tenancy cloud.
-  in: path
-  required: true
-  type: string
 tenant_id_path:
   description: |
     The tenant ID in a multi-tenancy cloud.

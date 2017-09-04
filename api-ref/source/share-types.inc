@@ -99,7 +99,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Response parameters
 -------------------
@@ -137,7 +137,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Response parameters
 -------------------
@@ -175,7 +175,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - share_type_id: share_type_id
 
 Response parameters
@@ -210,7 +210,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - extra_specs: extra_specs
    - driver_handles_share_servers: driver_handles_share_servers
    - snapshot_support: snapshot_support_1
@@ -261,7 +261,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - share_type_id: share_type_id
 
 Response parameters
@@ -300,7 +300,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - share_type_id: share_type_id
    - extra_specs: extra_specs
 
@@ -340,7 +340,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - share_type_id: share_type_id
    - extra-spec-key: extra-spec-key
 
@@ -363,7 +363,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - share_type_id: share_type_id
    - project: project
 
@@ -392,7 +392,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - share_type_id: share_type_id
    - project: project
 
@@ -419,5 +419,5 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - share_type_id: share_type_id

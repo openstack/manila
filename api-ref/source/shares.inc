@@ -97,7 +97,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - all_tenants: all_tenants
    - name: name_5
    - status: status_6
@@ -152,7 +152,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - all_tenants: all_tenants
    - name: name_5
    - status: status_6
@@ -234,7 +234,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - share_id: share_id_4
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Response parameters
 -------------------
@@ -293,7 +293,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - share_proto: share_proto
    - size: size
    - name: name_5
@@ -374,7 +374,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - share: share
    - protocol: protocol
    - name: name_5
@@ -463,7 +463,7 @@ Request
    - display_name: display_name_3
    - display_description: display_description_3
    - share_id: share_id_4
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
 
 Request example
 ---------------
@@ -529,5 +529,5 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - share_id: share_id
-   - tenant_id: tenant_id_1
+   - tenant_id: tenant_id_path
    - consistency_group_id: consistency_group_id_3
