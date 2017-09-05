@@ -1,0 +1,5 @@
+---
+other:
+  - |
+    The configuration option "os_region_name" from the [DEFAULT] group got
+    removed. It was not used anywhere.
