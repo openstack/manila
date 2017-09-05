@@ -8,4 +8,4 @@ deprecations:
     'X-OpenStack-Manila-API-Version' and providing a value '2.x', where '2' is the
     major version and 'x' is the minor (or 'micro') version. To continue exploiting
     feature functionality that was part of the v1 API, you may use the v2 API with
-    the microverison '2.0', which is behaviourally identical to the v1 API.
+    the microversion '2.0', which is behaviourally identical to the v1 API.
