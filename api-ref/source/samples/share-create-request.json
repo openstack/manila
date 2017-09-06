@@ -5,7 +5,6 @@
         "share_proto": "nfs",
         "share_network_id": "713df749-aac0-4a54-af52-10f6c991e80c",
         "name": "share_London",
-        "consistency_group_id": "9397c191-8427-4661-a2e8-b23820dc01d4",
         "snapshot_id": null,
         "is_public": true,
         "size": 1,

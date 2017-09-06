@@ -206,8 +206,6 @@ protocol, size and the availability zone.
    | replication_type            | readable                             |
    | created_at                  | 2016-03-29T20:22:18.000000           |
    | share_proto                 | NFS                                  |
-   | consistency_group_id        | None                                 |
-   | source_cgsnapshot_member_id | None                                 |
    | project_id                  | 48a5ca76ac69405e99dc1c13c5195186     |
    | metadata                    | {}                                   |
    +-----------------------------+--------------------------------------+
@@ -254,8 +252,6 @@ Specify the share ID or name as a parameter.
    | replication_type            | readable                                                           |
    | created_at                  | 2016-03-29T20:22:18.000000                                         |
    | share_proto                 | NFS                                                                |
-   | consistency_group_id        | None                                                               |
-   | source_cgsnapshot_member_id | None                                                               |
    | project_id                  | 48a5ca76ac69405e99dc1c13c5195186                                   |
    | metadata                    | {}                                                                 |
    +-----------------------------+--------------------------------------------------------------------+

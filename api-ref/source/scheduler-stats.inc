@@ -83,7 +83,6 @@ Response parameters
    - host: backend_host
    - capabilities: capabilities
    - qos: capability_qos
-   - consistency_group_support: capability_consistency_group_support
    - timestamp: timestamp
    - share_backend_name: capability_share_backend_name
    - server_pools_mapping: capability_server_pools_mapping

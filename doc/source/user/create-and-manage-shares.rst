@@ -83,8 +83,6 @@ Create a share
       | replication_type            | None                                 |
       | created_at                  | 2016-03-24T14:15:34.000000           |
       | share_proto                 | NFS                                  |
-      | consistency_group_id        | None                                 |
-      | source_cgsnapshot_member_id | None                                 |
       | project_id                  | 907004508ef4447397ce6741a8f037c1     |
       | metadata                    | {}                                   |
       +-----------------------------+--------------------------------------+
@@ -128,8 +126,6 @@ Create a share
       | replication_type            | None                                                          |
       | created_at                  | 2016-03-24T14:15:34.000000                                    |
       | share_proto                 | NFS                                                           |
-      | consistency_group_id        | None                                                          |
-      | source_cgsnapshot_member_id | None                                                          |
       | project_id                  | 907004508ef4447397ce6741a8f037c1                              |
       | metadata                    | {}                                                            |
       +-----------------------------+---------------------------------------------------------------+
@@ -312,8 +308,6 @@ Create share from snapshot
       | replication_type            | None                                 |
       | created_at                  | 2016-03-24T14:41:36.000000           |
       | share_proto                 | NFS                                  |
-      | consistency_group_id        | None                                 |
-      | source_cgsnapshot_member_id | None                                 |
       | project_id                  | 907004508ef4447397ce6741a8f037c1     |
       | metadata                    | {}                                   |
       +-----------------------------+--------------------------------------+
@@ -369,8 +363,6 @@ Create share from snapshot
       | replication_type            | None                                                          |
       | created_at                  | 2016-03-24T14:41:36.000000                                    |
       | share_proto                 | NFS                                                           |
-      | consistency_group_id        | None                                                          |
-      | source_cgsnapshot_member_id | None                                                          |
       | project_id                  | 907004508ef4447397ce6741a8f037c1                              |
       | metadata                    | {}                                                            |
       +-----------------------------+---------------------------------------------------------------+
@@ -479,8 +471,6 @@ Extend share
       | replication_type            | None                                                          |
       | created_at                  | 2016-03-24T14:15:34.000000                                    |
       | share_proto                 | NFS                                                           |
-      | consistency_group_id        | None                                                          |
-      | source_cgsnapshot_member_id | None                                                          |
       | project_id                  | 907004508ef4447397ce6741a8f037c1                              |
       | metadata                    | {}                                                            |
       +-----------------------------+---------------------------------------------------------------+
@@ -524,8 +514,6 @@ Extend share
       | replication_type            | None                                                          |
       | created_at                  | 2016-03-24T14:15:34.000000                                    |
       | share_proto                 | NFS                                                           |
-      | consistency_group_id        | None                                                          |
-      | source_cgsnapshot_member_id | None                                                          |
       | project_id                  | 907004508ef4447397ce6741a8f037c1                              |
       | metadata                    | {}                                                            |
       +-----------------------------+---------------------------------------------------------------+
@@ -578,8 +566,6 @@ Shrink share
       | replication_type            | None                                                          |
       | created_at                  | 2016-03-24T14:15:34.000000                                    |
       | share_proto                 | NFS                                                           |
-      | consistency_group_id        | None                                                          |
-      | source_cgsnapshot_member_id | None                                                          |
       | project_id                  | 907004508ef4447397ce6741a8f037c1                              |
       | metadata                    | {}                                                            |
       +-----------------------------+---------------------------------------------------------------+
@@ -623,8 +609,6 @@ Shrink share
       | replication_type            | None                                                          |
       | created_at                  | 2016-03-24T14:15:34.000000                                    |
       | share_proto                 | NFS                                                           |
-      | consistency_group_id        | None                                                          |
-      | source_cgsnapshot_member_id | None                                                          |
       | project_id                  | 907004508ef4447397ce6741a8f037c1                              |
       | metadata                    | {}                                                            |
       +-----------------------------+---------------------------------------------------------------+

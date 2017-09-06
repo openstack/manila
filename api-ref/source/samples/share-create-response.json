@@ -28,8 +28,6 @@
         "replication_type": null,
         "task_state": null,
         "snapshot_support": true,
-        "consistency_group_id": "9397c191-8427-4661-a2e8-b23820dc01d4",
-        "source_cgsnapshot_member_id": null,
         "volume_type": "default",
         "snapshot_id": null,
         "is_public": true,

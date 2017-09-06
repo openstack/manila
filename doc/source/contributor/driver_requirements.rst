@@ -196,15 +196,6 @@ migration using an approach that works for any manufacturer, but driver vendors
 can implement a better optimized migration function for when migration involves
 backends or pools related to the same vendor.
 
-Consistency Groups
-------------------
-
-Shares can be created within Consistency Groups in order to guarantee snapshot
-consistency of multiple shares. In order to make use of this feature, driver
-vendors must report this capability and implement its functions to work
-according to the backend, so the feature can be properly invoked through
-manila API.
-
 Share Replication
 -----------------
 

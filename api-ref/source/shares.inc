@@ -114,7 +114,6 @@ Request
    - share_network_id: share_network_id
    - project_id: project_id_6
    - is_public: is_public
-   - consistency_group_id: consistency_group_id_6
    - export_location_id: export_location_id_query
    - export_location_path: export_location_path_query
    - name~: name_inexact_query
@@ -169,7 +168,6 @@ Request
    - share_network_id: share_network_id
    - project_id: project_id_6
    - is_public: is_public
-   - consistency_group_id: consistency_group_id_6
    - export_location_id: export_location_id_query
    - export_location_path: export_location_path_query
    - name~: name_inexact_query
@@ -191,10 +189,9 @@ Response parameters
    - size: size_2
    - share_type: share_type_1
    - export_location: export_location
-   - consistency_group_id: consistency_group_id_3
    - project_id: project_id_4
    - metadata: metadata
-   - status: status
+   - status: status_16
    - description: description_5
    - host: host_1
    - access_rules_status: access_rules_status
@@ -207,7 +204,6 @@ Response parameters
    - created_at: created_at_4
    - share_proto: share_proto
    - volume_type: volume_type
-   - source_cgsnapshot_member_id: source_cgsnapshot_member_id
 
 Response example
 ----------------
@@ -252,7 +248,6 @@ Response parameters
    - size: size_2
    - share_type: share_type_1
    - export_location: export_location
-   - consistency_group_id: consistency_group_id_6
    - project_id: project_id_4
    - metadata: metadata
    - status: status_16
@@ -268,7 +263,6 @@ Response parameters
    - created_at: created_at_4
    - share_proto: share_proto
    - volume_type: volume_type
-   - source_cgsnapshot_member_id: source_cgsnapshot_member_id
 
 Response example
 ----------------
@@ -306,7 +300,6 @@ Request
    - is_public: is_public
    - metadata: metadata
    - share_network_id: share_network_id_2
-   - consistency_group_id: consistency_group_id_1
    - availability_zone: availability_zone
 
 Request example
@@ -345,9 +338,7 @@ Response parameters
    - host: host_1
    - task_state: task_state
    - share_server_id: share_server_id
-   - consistency_group_id: consistency_group_id_6
    - snapshot_support: snapshot_support
-   - source_cgsnapshot_member_id: source_cgsnapshot_member_id
    - created_at: created_at_4
 
 Response example
@@ -410,7 +401,6 @@ Response parameters
    - has_replicas: has_replicas
    - replication_type: replication_type
    - export_location: export_location
-   - consistency_group_id: consistency_group_id_6
    - project_id: project_id_4
    - metadata: metadata
    - status: status_8
@@ -422,7 +412,6 @@ Response parameters
    - created_at: created_at_4
    - share_proto: share_proto
    - volume_type: volume_type
-   - source_cgsnapshot_member_id: source_cgsnapshot_member_id
 
 Response example
 ----------------
@@ -487,7 +476,6 @@ Response parameters
    - size: size_2
    - share_type: share_type_1
    - export_location: export_location
-   - consistency_group_id: consistency_group_id_6
    - project_id: project_id_4
    - metadata: metadata
    - status: status_16
@@ -503,7 +491,6 @@ Response parameters
    - created_at: created_at_4
    - share_proto: share_proto
    - volume_type: volume_type
-   - source_cgsnapshot_member_id: source_cgsnapshot_member_id
 
 Response example
 ----------------
@@ -530,4 +517,3 @@ Request
 
    - share_id: share_id
    - tenant_id: tenant_id_path
-   - consistency_group_id: consistency_group_id_3

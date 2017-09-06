@@ -111,8 +111,6 @@ To manage share, run:
    | replication_type            | None                                 |
    | created_at                  | 2016-03-25T15:22:43.000000           |
    | share_proto                 | NFS                                  |
-   | consistency_group_id        | None                                 |
-   | source_cgsnapshot_member_id | None                                 |
    | project_id                  | 907004508ef4447397ce6741a8f037c1     |
    | metadata                    | {}                                   |
    +-----------------------------+--------------------------------------+
@@ -156,7 +154,6 @@ Check that the share is available:
    | replication_type     | None                                                                     |
    | created_at           | 2016-03-25T15:22:43.000000                                               |
    | share_proto          | NFS                                                                      |
-   | consistency_group_id | None                                                                     |
    | project_id           | 907004508ef4447397ce6741a8f037c1                                         |
    | metadata             | {}                                                                       |
    +----------------------+--------------------------------------------------------------------------+
