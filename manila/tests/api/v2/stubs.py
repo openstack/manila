@@ -31,11 +31,11 @@ def stub_message(id, **kwargs):
         'resource_type': message_field.Resource.SHARE,
         'resource_id': 'fake_uuid',
         'updated_at': datetime.datetime(1900, 1, 1, 1, 1, 1,
-                                        tzinfo=iso8601.iso8601.Utc()),
+                                        tzinfo=iso8601.UTC),
         'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1,
-                                        tzinfo=iso8601.iso8601.Utc()),
+                                        tzinfo=iso8601.UTC),
         'expires_at': datetime.datetime(1900, 1, 1, 1, 1, 1,
-                                        tzinfo=iso8601.iso8601.Utc()),
+                                        tzinfo=iso8601.UTC),
         'detail_id': message_field.Detail.NO_VALID_HOST[0],
     }
 
