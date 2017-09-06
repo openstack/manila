@@ -528,8 +528,14 @@ class ShareAPITestCase(test.TestCase):
         ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
         search_opts = {key: {'foo1': 'bar1', 'foo2': 'bar2'}}
         shares = self.api.get_all(ctx, search_opts=search_opts.copy())
-        share_api.policy.check_policy.assert_called_once_with(
-            ctx, 'share', 'get_all')
+        if key == 'extra_specs':
+            share_api.policy.check_policy.assert_has_calls([
+                mock.call(ctx, 'share', 'get_all'),
+                mock.call(ctx, 'share_types_extra_spec', 'index'),
+            ])
+        else:
+            share_api.policy.check_policy.assert_called_once_with(
+                ctx, 'share', 'get_all')
         db_api.share_get_all_by_project.assert_called_once_with(
             ctx, sort_dir='desc', sort_key='created_at',
             project_id='fake_pid_1', filters=search_opts, is_public=False)
@@ -548,8 +554,14 @@ class ShareAPITestCase(test.TestCase):
         search_opts = {key: "{'foo': 'bar'}"}
         self.assertRaises(exception.InvalidInput, self.api.get_all, ctx,
                           search_opts=search_opts)
-        share_api.policy.check_policy.assert_called_once_with(
-            ctx, 'share', 'get_all')
+        if key == 'extra_specs':
+            share_api.policy.check_policy.assert_has_calls([
+                mock.call(ctx, 'share', 'get_all'),
+                mock.call(ctx, 'share_types_extra_spec', 'index'),
+            ])
+        else:
+            share_api.policy.check_policy.assert_called_once_with(
+                ctx, 'share', 'get_all')
 
     def test_get_all_filter_by_invalid_metadata(self):
         self._get_all_filter_metadata_or_extra_specs_invalid(key='metadata')
