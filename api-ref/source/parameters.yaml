@@ -86,6 +86,12 @@ share_network_id_path:
   in: path
   required: true
   type: string
+share_replica_id_path:
+  description: |
+    The UUID of the share replica.
+  in: path
+  required: true
+  type: string
 share_server_id_1:
   description: |
     The UUID of the share server.
@@ -2896,12 +2902,6 @@ share_network_id_6:
   in: body
   required: true
   type: string
-share_network_id_7:
-  description: |
-    The UUID of the share network.
-  in: body
-  required: false
-  type: string
 share_network_name:
   description: |
     The name of a share network.
@@ -2957,6 +2957,109 @@ share_protocol:
   description: |
     The file system protocol of the member, which is
     ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS`` or ``CEPHFS``.
+  in: body
+  required: true
+  type: string
+share_replica_az:
+  description: |
+    The availability zone.
+  in: body
+  required: false
+  type: string
+share_replica_cast_rules_to_readonly:
+  description: |
+    Since the share instance has its ``cast_rules_to_readonly`` attribute
+    set to True, existing rules will be cast to read/only.
+  in: body
+  required: true
+  type: string
+share_replica_created_at:
+  description: |
+    The date and time stamp when the share replica was created.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+  in: body
+  required: true
+  type: string
+share_replica_force_delete:
+  description: |
+    To force-delete a share replica, set this value to
+    ``null``. The force-delete action, unlike the delete action,
+    ignores the share replica status.
+  in: body
+  required: true
+  type: string
+share_replica_host:
+  description: |
+    The host name of the share replica.
+  in: body
+  required: true
+  type: string
+share_replica_id:
+  description: |
+    The UUID of the share replica.
+  in: body
+  required: true
+  type: string
+share_replica_replica_state:
+  description: |
+    The replica state of a share replica. List of possible values:
+    ``active``, ``in_sync``, ``out_of_sync``, and ``error``.
+  in: body
+  required: true
+  type: string
+share_replica_reset_replica_state:
+  description: |
+    The ``reset_replica_state`` object.
+  in: body
+  required: true
+  type: object
+share_replica_share_id:
+  description: |
+    The UUID of the share from which to create a
+    share replica.
+  in: body
+  required: true
+  type: string
+share_replica_share_network_id:
+  description: |
+    The UUID of the share network.
+  in: body
+  required: false
+  type: string
+share_replica_status:
+  description: |
+    The status of a share replica. List of possible values:
+    ``available``, ``error``, ``creating``, ``deleting``,
+    or ``error_deleting``.
+  in: body
+  required: true
+  type: string
+share_replica_updated_at:
+  description: |
+    The date and time stamp when the share replica was updated.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2015-08-27T09:49:58-05:00``.
   in: body
   required: true
   type: string

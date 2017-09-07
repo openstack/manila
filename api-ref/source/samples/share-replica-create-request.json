@@ -1,0 +1,7 @@
+{
+    "share_replica": {
+        "share_id": "50a6a566-6bac-475c-ad69-5035c86696c0",
+        "availability_zone": "nova",
+        "share_network_id": "f5a55875-e33a-4888-be52-7cd75b72294b"
+    }
+}

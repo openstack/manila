@@ -1,0 +1,15 @@
+{
+    "share_replica": {
+         "status": "available",
+         "share_id": "5043dffd-f033-4248-a315-319ca2bd70c8",
+         "availability_zone": "nova",
+         "cast_rules_to_readonly": false,
+         "updated_at": "2017-08-15T20:20:50.000000",
+         "share_network_id": null,
+         "share_server_id": null,
+         "host": "ubuntu@generic3#fake_pool_for_DummyDriver",
+         "id": "57f5c47a-0216-4ee0-a517-0460d63301a6",
+         "replica_state": "active",
+         "created_at": "2017-08-15T20:20:45.000000"
+    }
+}

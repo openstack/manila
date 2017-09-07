@@ -1,0 +1,5 @@
+{
+    "reset_replica_state": {
+        "replica_state": "out_of_sync"
+    }
+}

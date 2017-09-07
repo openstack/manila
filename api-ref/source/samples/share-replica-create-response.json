@@ -1,0 +1,15 @@
+{
+    "share_replica": {
+        "status": "creating",
+        "share_id": "5043dffd-f033-4248-a315-319ca2bd70c8",
+        "availability_zone": null,
+        "cast_rules_to_readonly": true,
+        "updated_at": null,
+        "share_network_id": null,
+        "share_server_id": null,
+        "host": "",
+        "id": "c9f52e33-d780-41d8-89ba-fc06869f465f",
+        "replica_state": null,
+        "created_at": "2017-08-15T20:21:43.493731"
+    }
+}
