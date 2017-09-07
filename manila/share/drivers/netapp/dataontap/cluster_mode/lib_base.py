@@ -20,6 +20,7 @@ single-SVM or multi-SVM functionality needed by the cDOT Manila drivers.
 """
 
 import copy
+import datetime
 import json
 import math
 import socket
@@ -1520,8 +1521,8 @@ class NetAppCmodeFileStorageLibrary(object):
         # one hour.
         if (last_update_timestamp and
             (timeutils.is_older_than(
-                timeutils.iso8601_from_timestamp(last_update_timestamp),
-                3600))):
+                datetime.datetime.utcfromtimestamp(last_update_timestamp)
+                .isoformat(), 3600))):
             return constants.REPLICA_STATE_OUT_OF_SYNC
 
         # Check all snapshots exist
