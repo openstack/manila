@@ -250,7 +250,7 @@ mount both shares and copy data from the source to the destination.
 
 In order for the Data Service to mount the shares, it will ask the storage
 driver to allow access to the node where the Data Service is running. It will
-then attempt to mount the shares via their respective adminstrator-only export
+then attempt to mount the shares via their respective administrator-only export
 locations that are served in the administrator network when available,
 otherwise the regular export locations will be used.
 
