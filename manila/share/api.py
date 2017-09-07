@@ -27,7 +27,6 @@ from oslo_utils import strutils
 from oslo_utils import timeutils
 import six
 
-from manila.api import extensions
 from manila.common import constants
 from manila.data import rpcapi as data_rpcapi
 from manila.db import base
@@ -1522,8 +1521,7 @@ class API(base.Base):
                 raise exception.InvalidInput(reason=msg)
         if 'extra_specs' in search_opts:
             # Verify policy for extra-specs access
-            extensions.extension_authorizer(
-                'share', 'types_extra_specs')(context)
+            policy.check_policy(context, 'share_types_extra_spec', 'index')
             filters['extra_specs'] = search_opts.pop('extra_specs')
             if not isinstance(filters['extra_specs'], dict):
                 msg = _("Wrong extra specs filter provided: "
