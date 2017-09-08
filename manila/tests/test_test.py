@@ -36,8 +36,13 @@ class IsolationTestCase(test.TestCase):
     def test_rpc_consumer_isolation(self):
         class NeverCalled(object):
 
-            def __getattribute__(*args):
-                assert False, "I should never get called."
+            def __getattribute__(self, name):
+                if name == 'target':
+                    # oslo.messaging 5.31.0 explicitly looks for 'target'
+                    # on the endpoint and checks its type, so we can't avoid
+                    # it here.  Just ignore it if that's the case.
+                    return
+                assert False, "I should never get called - name: %s" % name
 
         target = messaging.Target(topic='share', server=cfg.CONF.host)
         server = rpc.get_server(target=target, endpoints=[NeverCalled()])
