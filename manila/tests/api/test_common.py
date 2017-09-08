@@ -257,6 +257,7 @@ class MiscFunctionsTest(test.TestCase):
 
     @ddt.data(['ip', '1.1.1.1', False, False], ['user', 'alice', False, False],
               ['cert', 'alice', False, False], ['cephx', 'alice', True, False],
+              ['user', 'alice$', False, False],
               ['ip', '172.24.41.0/24', False, False],
               ['ip', '1001::1001', False, True],
               ['ip', '1001::1000/120', False, True])
