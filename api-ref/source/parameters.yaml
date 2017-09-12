@@ -119,6 +119,12 @@ snapshot_id_path:
   in: path
   required: true
   type: string
+snapshot_instance_id_path:
+  description: |
+    The UUID of the share snapshot instance.
+  in: path
+  required: true
+  type: string
 tenant_id:
   description: |
     The UUID for the tenant for which you want to
@@ -444,6 +450,12 @@ share_type_query:
   description: |
     The share type name or UUID. Allows filtering back end pools based
     on the extra-specs in the share type.
+  in: query
+  required: false
+  type: string
+snapshot_id_query:
+  description: |
+    The UUID of the share's base snapshot to filter the request based on.
   in: query
   required: false
   type: string
@@ -2150,6 +2162,12 @@ preferred:
   required: true
   type: boolean
   min_version: 2.14
+progress:
+  description: |
+    The progress of the snapshot creation.
+  in: body
+  required: true
+  type: string
 project:
   description: |
     The UUID of the project to which access to the
@@ -2825,8 +2843,7 @@ share_id_4:
   type: string
 share_instance_id_1:
   description: |
-    The UUID of the share instance that owns this
-    export location.
+    The UUID of the share instance.
   in: body
   required: true
   type: string
@@ -3152,7 +3169,8 @@ size_2:
   type: integer
 snapshot_created_at:
   description: |
-    The date and time stamp when the snapshot was created.
+    The date and time stamp when the snapshot or snapshot instance was
+    created.
 
     The date and time stamp format is `ISO 8601
     <https://en.wikipedia.org/wiki/ISO_8601>`_:
@@ -3211,17 +3229,51 @@ snapshot_id:
   in: body
   required: true
   type: string
-snapshot_id_query:
-  description: |
-    The UUID of the share's base snapshot to filter the request based on.
-  in: body
-  required: false
-  type: string
 snapshot_id_request:
   description: |
     The UUID of the share's base snapshot.
   in: body
   required: false
+  type: string
+snapshot_instance_id:
+  description: |
+    The UUID of the share snapshot instance.
+  in: body
+  required: false
+  type: string
+snapshot_instance_id_response:
+  description: |
+    The UUID of the share snapshot instance.
+  in: body
+  required: true
+  type: string
+snapshot_instance_status:
+  description: |
+    The snapshot instance status. A valid value is
+    ``available``, ``error``, ``creating``, ``deleting``, and
+    ``error_deleting``, ``restoring``, ``unmanage_starting``,
+    ``unmanage_error``, ``manage_starting``, ``manage_error``.
+  in: body
+  required: true
+  type: string
+snapshot_instance_updated_at:
+  description: |
+    The date and time stamp when the snapshot instance was
+    updated.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2016-12-31T13:14:15-05:00``.
+  in: body
+  required: true
   type: string
 snapshot_manage_share_id:
   description: |
