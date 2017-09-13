@@ -344,7 +344,6 @@ class ServiceInstanceManager(object):
                 name, description)['security_group']
             for protocol, ports in const.SERVICE_INSTANCE_SECGROUP_DATA:
                 self.network_helper.neutron_api.security_group_rule_create(
-                    context,
                     parent_group_id=sg['id'],
                     ip_protocol=protocol,
                     from_port=ports[0],
