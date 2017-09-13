@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed creation of security group and security group rule - neutronclient
+    mapping
