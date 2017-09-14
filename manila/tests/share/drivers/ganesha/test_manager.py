@@ -265,6 +265,45 @@ class GaneshaManagerTestCase(test.TestCase):
             mock.call('fakedata'),
             mock.call('fakefile.conf.RANDOM')])
 
+    def test_write_file_with_mv_error(self):
+        test_data = 'fakedata'
+        self.mock_object(manager.pipes, 'quote',
+                         mock.Mock(side_effect=['fakedata',
+                                                'fakefile.conf.RANDOM']))
+        test_args = [
+            ('mktemp', '-p', '/fakedir0/export.d', '-t',
+             'fakefile.conf.XXXXXX'),
+            ('sh', '-c', 'echo fakedata > fakefile.conf.RANDOM'),
+            ('mv', 'fakefile.conf.RANDOM', test_path),
+            ('rm', 'fakefile.conf.RANDOM')]
+        test_kwargs = {
+            'message': 'writing fakefile.conf.RANDOM'
+        }
+
+        def mock_return(*args, **kwargs):
+            if args == test_args[0]:
+                return ('fakefile.conf.RANDOM\n', '')
+            if args == test_args[2]:
+                raise exception.ProcessExecutionError()
+
+        self.mock_object(self._manager, 'execute',
+                         mock.Mock(side_effect=mock_return))
+        self.assertRaises(
+            exception.ProcessExecutionError,
+            self._manager._write_file,
+            test_path,
+            test_data
+        )
+        self._manager.execute.assert_has_calls([
+            mock.call(*test_args[0]),
+            mock.call(*test_args[1], **test_kwargs),
+            mock.call(*test_args[2])],
+            mock.call(*test_args[3])
+        )
+        manager.pipes.quote.assert_has_calls([
+            mock.call('fakedata'),
+            mock.call('fakefile.conf.RANDOM')])
+
     def test_write_conf_file(self):
         test_data = 'fakedata'
         self.mock_object(self._manager, '_getpath',

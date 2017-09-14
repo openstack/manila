@@ -259,7 +259,12 @@ class GaneshaManager(object):
             'sh', '-c',
             'echo %s > %s' % (pipes.quote(data), pipes.quote(tmpf)),
             message='writing ' + tmpf)
-        self.execute('mv', tmpf, path)
+        try:
+            self.execute('mv', tmpf, path)
+        except exception.ProcessExecutionError:
+            LOG.error('mv temp file ({0}) to {1} failed.'.format(tmpf, path))
+            self.execute('rm', tmpf)
+            raise
 
     def _write_conf_file(self, name, data):
         """Write data to config file for name atomically."""
