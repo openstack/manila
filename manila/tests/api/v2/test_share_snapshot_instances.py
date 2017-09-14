@@ -232,17 +232,10 @@ class ShareSnapshotInstancesApiTest(test.TestCase):
         # validate response code and model status
         self.assertEqual(valid_code, resp.status_int)
 
-        if valid_code == 404:
-            self.assertRaises(exception.ShareSnapshotInstanceNotFound,
-                              (share_snapshot_instances.db.
-                               share_snapshot_instance_get),
-                              context,
-                              instance['id'])
-        else:
-            actual_instance = (
-                share_snapshot_instances.db.share_snapshot_instance_get(
-                    context, instance['id']))
-            self.assertEqual(valid_status, actual_instance['status'])
+        actual_instance = (
+            share_snapshot_instances.db.share_snapshot_instance_get(
+                context, instance['id']))
+        self.assertEqual(valid_status, actual_instance['status'])
 
     @ddt.data(*fakes.fixture_reset_status_with_different_roles)
     @ddt.unpack

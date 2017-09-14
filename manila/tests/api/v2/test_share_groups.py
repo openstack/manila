@@ -937,13 +937,8 @@ class ShareGroupAPITest(test.TestCase):
         # validate response code and model status
         self.assertEqual(valid_code, resp.status_int)
 
-        if valid_code == 404:
-            self.assertRaises(
-                exception.NotFound,
-                db.share_group_get, ctxt, share_group['id'])
-        else:
-            actual_model = db.share_group_get(ctxt, share_group['id'])
-            self.assertEqual(valid_status, actual_model['status'])
+        actual_model = db.share_group_get(ctxt, share_group['id'])
+        self.assertEqual(valid_status, actual_model['status'])
 
     @ddt.data(*fakes.fixture_force_delete_with_different_roles)
     @ddt.unpack

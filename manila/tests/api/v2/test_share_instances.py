@@ -249,14 +249,8 @@ class ShareInstancesAPITest(test.TestCase):
         # validate response code and model status
         self.assertEqual(valid_code, resp.status_int)
 
-        if valid_code == 404:
-            self.assertRaises(exception.NotFound,
-                              db_access_method,
-                              ctxt,
-                              model['id'])
-        else:
-            actual_model = db_access_method(ctxt, model['id'])
-            self.assertEqual(valid_status, actual_model['status'])
+        actual_model = db_access_method(ctxt, model['id'])
+        self.assertEqual(valid_status, actual_model['status'])
 
     @ddt.data(*fakes.fixture_reset_status_with_different_roles)
     @ddt.unpack

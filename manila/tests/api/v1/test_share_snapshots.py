@@ -23,7 +23,6 @@ from manila.api.v1 import share_snapshots
 from manila.common import constants
 from manila import context
 from manila import db
-from manila import exception
 from manila.share import api as share_api
 from manila import test
 from manila.tests.api.contrib import stubs
@@ -386,14 +385,8 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
         # validate response code and model status
         self.assertEqual(valid_code, resp.status_int)
 
-        if valid_code == 404:
-            self.assertRaises(exception.NotFound,
-                              db_access_method,
-                              ctxt,
-                              model['id'])
-        else:
-            actual_model = db_access_method(ctxt, model['id'])
-            self.assertEqual(valid_status, actual_model['status'])
+        actual_model = db_access_method(ctxt, model['id'])
+        self.assertEqual(valid_status, actual_model['status'])
 
     @ddt.data(*fakes.fixture_reset_status_with_different_roles_v1)
     @ddt.unpack
