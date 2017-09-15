@@ -586,6 +586,9 @@ class AccessRulesStatusMigrationChecks(BaseMigrationChecks):
     def check_downgrade(self, engine):
         share_instances_rules_table = utils.load_table(
             'share_instance_access_map', engine)
+        share_instance_rules_to_check = engine.execute(
+            share_instances_rules_table.select().where(
+                share_instances_rules_table.c.id.in_(('1', '2', '3', '4'))))
 
         valid_statuses = {
             '1': 'active',
@@ -594,7 +597,7 @@ class AccessRulesStatusMigrationChecks(BaseMigrationChecks):
             '4': None,
         }
 
-        for rule in engine.execute(share_instances_rules_table.select()):
+        for rule in share_instance_rules_to_check:
             valid_state = valid_statuses[rule['share_instance_id']]
             self.test_case.assertEqual(valid_state, rule['state'])
 
@@ -2500,3 +2503,104 @@ class FixProjectShareTypesQuotasUniqueConstraintChecks(BaseMigrationChecks):
 
     def check_downgrade(self, engine):
         pass
+
+
+@map_to_migration('579c267fbb4d')
+class ShareInstanceAccessMapTableChecks(BaseMigrationChecks):
+    share_access_table = 'share_access_map'
+    share_instance_access_table = 'share_instance_access_map'
+
+    @staticmethod
+    def generate_share_instance(share_id, **kwargs):
+        share_instance_data = {
+            'id': uuidutils.generate_uuid(),
+            'deleted': 'False',
+            'host': 'fake',
+            'share_id': share_id,
+            'status': constants.STATUS_AVAILABLE,
+        }
+        share_instance_data.update(**kwargs)
+        return share_instance_data
+
+    @staticmethod
+    def generate_share_access_map(share_id, **kwargs):
+        share_access_data = {
+            'id': uuidutils.generate_uuid(),
+            'share_id': share_id,
+            'deleted': 'False',
+            'access_type': 'ip',
+            'access_to': '192.0.2.10',
+        }
+        share_access_data.update(**kwargs)
+        return share_access_data
+
+    def setup_upgrade_data(self, engine):
+        share = {
+            'id': uuidutils.generate_uuid(),
+            'share_proto': 'fake',
+            'size': 1,
+            'snapshot_id': None,
+            'user_id': 'fake',
+            'project_id': 'fake'
+        }
+        share_table = utils.load_table('shares', engine)
+        engine.execute(share_table.insert(share))
+
+        share_instances = [
+            self.generate_share_instance(share['id']),
+            self.generate_share_instance(share['id']),
+        ]
+
+        share_instance_table = utils.load_table('share_instances', engine)
+        for share_instance in share_instances:
+            engine.execute(share_instance_table.insert(share_instance))
+
+        share_accesses = [
+            self.generate_share_access_map(
+                share['id'], state=constants.ACCESS_STATE_ACTIVE),
+            self.generate_share_access_map(
+                share['id'], state=constants.ACCESS_STATE_ERROR),
+        ]
+        self.active_share_access = share_accesses[0]
+        self.error_share_access = share_accesses[1]
+        share_access_table = utils.load_table('share_access_map', engine)
+        engine.execute(share_access_table.insert(share_accesses))
+
+    def check_upgrade(self, engine, data):
+        share_access_table = utils.load_table(
+            self.share_access_table, engine)
+        share_instance_access_table = utils.load_table(
+            self.share_instance_access_table, engine)
+        share_accesses = engine.execute(share_access_table.select())
+        share_instance_accesses = engine.execute(
+            share_instance_access_table.select())
+
+        for share_access in share_accesses:
+            self.test_case.assertFalse(hasattr(share_access, 'state'))
+
+        for si_access in share_instance_accesses:
+            if si_access['access_id'] in (self.active_share_access['id'],
+                                          self.error_share_access['id']):
+                self.test_case.assertIn(si_access['state'],
+                                        (self.active_share_access['state'],
+                                         self.error_share_access['state']))
+
+    def check_downgrade(self, engine):
+        self.test_case.assertRaises(
+            sa_exc.NoSuchTableError, utils.load_table,
+            self.share_instance_access_table, engine)
+
+        share_access_table = utils.load_table(
+            self.share_access_table, engine)
+        share_accesses = engine.execute(share_access_table.select().where(
+            share_access_table.c.id.in_((self.active_share_access['id'],
+                                         self.error_share_access['id']))))
+
+        for share_access in share_accesses:
+            self.test_case.assertTrue(hasattr(share_access, 'state'))
+            if share_access['id'] == self.active_share_access['id']:
+                self.test_case.assertEqual(
+                    constants.ACCESS_STATE_ACTIVE, share_access['state'])
+            elif share_access['id'] == self.error_share_access['id']:
+                self.test_case.assertEqual(
+                    constants.ACCESS_STATE_ERROR, share_access['state'])
