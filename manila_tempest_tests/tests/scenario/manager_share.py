@@ -34,7 +34,6 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
 
     @classmethod
     def resource_setup(cls):
-        cls.set_network_resources()
         super(ShareScenarioTest, cls).resource_setup()
 
         # Manila clients
