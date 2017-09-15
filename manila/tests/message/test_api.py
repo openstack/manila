@@ -33,11 +33,12 @@ class MessageApiTest(test.TestCase):
         self.ctxt = context.RequestContext('admin', 'fakeproject', True)
         self.ctxt.request_id = 'fakerequestid'
 
-    def test_create(self):
+    @mock.patch.object(timeutils, 'utcnow')
+    def test_create(self, mock_utcnow):
         CONF.set_override('message_ttl', 300)
-        timeutils.set_time_override()
-        self.addCleanup(timeutils.clear_time_override)
-        expected_expires_at = timeutils.utcnow() + datetime.timedelta(
+        now = datetime.datetime.utcnow()
+        mock_utcnow.return_value = now
+        expected_expires_at = now + datetime.timedelta(
             seconds=300)
         expected_message_record = {
             'project_id': 'fakeproject',
