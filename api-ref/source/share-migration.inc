@@ -1,8 +1,8 @@
 .. -*- rst -*-
 
-===============
-Share Migration
-===============
+================================
+Share Migration (Since API v2.5)
+================================
 As an administrator, you can migrate a share with its data from one
 location to another in a manner that is transparent to users and workloads.
 
@@ -15,12 +15,9 @@ Possible use cases for data migration include:
 
 .. note::
 
-    Share Migration APIs are part an the ``experimental`` feature
-    introduced in version 2.5. The APIs may change or be removed in further
-    versions of the Shared File Systems API. The changes are
-    documented within each API below. All experimental APIs require the
-    ``X-OpenStack-Manila-API-Experimental: True`` header to be
-    sent in the requests.
+    Share Migration APIs are part of the `experimental APIs
+    <http://developer.openstack.org/api-ref/shared-file-systems/
+    #experimental-apis>`_ .
 
 
 Migrate share (versions 2.5 to 2.14)

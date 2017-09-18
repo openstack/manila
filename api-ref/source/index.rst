@@ -34,6 +34,7 @@ Shared File Systems API (EXPERIMENTAL)
 
 .. rest_expand_all::
 
+.. include:: experimental.inc
 .. include:: share-migration.inc
 .. include:: consistency-groups.inc
 .. include:: consistency-group-snapshots.inc

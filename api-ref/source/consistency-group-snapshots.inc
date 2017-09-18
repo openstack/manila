@@ -23,11 +23,9 @@ actions to other roles.
 
 .. note::
 
-    Consistency group snapshot APIs are part of an ``experimental`` feature
-    introduced in version 2.4. The APIs may change or be removed in further
-    versions of the Shared File Systems API. All experimental APIs
-    require the ``X-OpenStack-Manila-API-Experimental: True`` header to be
-    sent in the requests.
+    Consistency group snapshot APIs are part of the `experimental APIs
+    <http://developer.openstack.org/api-ref/shared-file-systems/
+    #experimental-apis>`_.
     Consistency group snapshot APIs were removed in 2.31 API version. They
     were replaced with 'share groups' APIs.
 
