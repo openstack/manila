@@ -1406,8 +1406,8 @@ driver_options_1:
     A set of one or more key and value pairs, as a
     dictionary of strings, that describe driver options. Details for
     driver options should be taken from `appropriate share driver
-    documentation <http://docs.openstack.org/ocata/config-reference
-    /shared-file- systems/drivers.html>`_.
+    documentation <https://docs.openstack.org/manila/latest
+    /configuration/shared-file-systems/drivers.html>`_.
   in: body
   required: false
   type: object
