@@ -1,0 +1,4 @@
+---
+fixes:
+  - Added operation of cleaning up the temp config files when moving the config
+    file from temp location to the correct ganesha config location goes wrong.
