@@ -57,7 +57,7 @@ on controllers, compute nodes, or storage nodes.
 
 For more information on various Shared File Systems storage back ends,
 see the `Shared File Systems Configuration Reference.
-<http://docs.openstack.org/ocata/config-reference/shared-file-systems.html>`_.
+<https://docs.openstack.org/manila/latest/configuration/shared-file-systems/overview.html>`_.
 
 To learn more about installation dependencies noted above, see the `OpenStack
 Installation Tutorial. <http://docs.openstack.org/#install-guides>`_

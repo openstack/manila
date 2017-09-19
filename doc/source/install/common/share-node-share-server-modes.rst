@@ -39,4 +39,4 @@ mode, or simply ``DHSS=True`` mode.
    in ``DHSS=False`` driver mode effectively, due to a bug in some
    distributions of Linux. For more information, see LVM Driver section in the
    `Configuration Reference Guide
-   <http://docs.openstack.org/ocata/config-reference/shared-file-systems.html>`_.
+   <https://docs.openstack.org/manila/latest/configuration/shared-file-systems/overview.html>`_.
