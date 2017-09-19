@@ -161,6 +161,7 @@ Create a share
       | description                 | None                                 |
       | availability_zone           | None                                 |
       | share_network_id            | 58b2f0e6-5509-4830-af9c-97f525a31b14 |
+      | share_group_id              | None                                 |
       | host                        | None                                 |
       | snapshot_id                 | None                                 |
       | is_public                   | False                                |
@@ -202,6 +203,7 @@ Create a share
       | description                 | None                                                                               |
       | availability_zone           | nova                                                                               |
       | share_network_id            | 58b2f0e6-5509-4830-af9c-97f525a31b14                                               |
+      | share_group_id              | None                                                                               |
       | export_locations            |                                                                                    |
       |                             | path = 10.254.0.6:/shares/share-0bfd69a1-27f0-4ef5-af17-7cd50bce6550               |
       |                             | id = e525cbca-b3cc-4adf-a1cb-b1bf48fa2422                                          |

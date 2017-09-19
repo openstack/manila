@@ -4,6 +4,7 @@
         "share_type": null,
         "share_proto": "nfs",
         "share_network_id": "713df749-aac0-4a54-af52-10f6c991e80c",
+        "share_group_id": null,
         "name": "share_London",
         "snapshot_id": null,
         "is_public": true,

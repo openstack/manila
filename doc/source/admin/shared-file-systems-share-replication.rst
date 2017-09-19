@@ -192,6 +192,7 @@ protocol, size and the availability zone.
    | availability_zone           | availability_zone_1                  |
    | share_network_id            | None                                 |
    | share_server_id             | None                                 |
+   | share_group_id              | None                                 |
    | host                        |                                      |
    | access_rules_status         | active                               |
    | snapshot_id                 | None                                 |
@@ -238,6 +239,7 @@ Specify the share ID or name as a parameter.
    |                             | id = 6f843ecd-a7ea-4939-86de-e1e01d9e8672                          |
    |                             | share_instance_id = 38efc042-50c2-4825-a6d8-cba2a8277b28           |
    | share_server_id             | None                                                               |
+   | share_group_id       | None                                                                     |
    | host                        | openstack4@zfsonlinux_1#alpha                                      |
    | access_rules_status         | active                                                             |
    | snapshot_id                 | None                                                               |

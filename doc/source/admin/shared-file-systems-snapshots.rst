@@ -80,6 +80,7 @@ it is available:
    | share_network_id            | None                                 |
    | export_locations            | []                                   |
    | share_server_id             | None                                 |
+   | share_group_id              | None                                 |
    | host                        | None                                 |
    | snapshot_id                 | 962e8126-35c3-47bb-8c00-f0ee37f42ddd |
    | is_public                   | False                                |
@@ -107,6 +108,7 @@ it is available:
    | share_network_id            | 5c3cbabb-f4da-465f-bc7f-fadbe047b85a      |
    | export_locations            | 10.254.0.3:/shares/share-1dc2a471-3d47-...|
    | share_server_id             | 41b7829d-7f6b-4c96-aea5-d106c2959961      |
+   | share_group_id              | None                                      |
    | host                        | manila@generic1#GENERIC1                  |
    | snapshot_id                 | 962e8126-35c3-47bb-8c00-f0ee37f42ddd      |
    | is_public                   | False                                     |

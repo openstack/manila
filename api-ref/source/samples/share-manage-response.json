@@ -14,6 +14,7 @@
         "share_network_id": null,
         "export_locations": [],
         "share_server_id": null,
+        "share_group_id": null,
         "snapshot_id": null,
         "id": "00137b40-ca06-4ae8-83a3-2c5989eebcce",
         "size": null,

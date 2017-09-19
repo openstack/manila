@@ -67,6 +67,7 @@ Create a share
       | description                 | None                                 |
       | availability_zone           | None                                 |
       | share_network_id            | None                                 |
+      | share_group_id              | None                                 |
       | host                        |                                      |
       | access_rules_status         | active                               |
       | snapshot_id                 | None                                 |
@@ -110,6 +111,7 @@ Create a share
       | description                 | None                                                                               |
       | availability_zone           | nova                                                                               |
       | share_network_id            | None                                                                               |
+      | share_group_id              | None                                                                               |
       | export_locations            |                                                                                    |
       |                             | path = 10.0.0.41:/var/lib/manila/mnt/share-8e13a98f-c310-41df-ac90-fc8bce4910b8    |
       |                             | id = 3c8d0ada-cadf-48dd-85b8-d4e8c3b1e204                                          |

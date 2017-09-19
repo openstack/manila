@@ -11,6 +11,9 @@
                 "total_capacity_gb": "unknown",
                 "driver_handles_share_servers": true,
                 "server_pools_mapping": {},
+                "share_group_stats": {
+                    "consistent_snapshot_support": null
+                },
                 "pools": null,
                 "vendor_name": "Open Source",
                 "reserved_percentage": 0,

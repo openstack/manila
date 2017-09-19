@@ -44,6 +44,7 @@ To extend the share and check the result, run:
    |                      | id = 1f0e263f-370d-47d3-95f6-1be64088b9da                                |
    |                      | share_instance_id = b8afc508-8487-442b-b170-ea65b07074a8                 |
    | share_server_id      | None                                                                     |
+   | share_group_id       | None                                                                     |
    | host                 | manila@paris#shares                                                      |
    | access_rules_status  | active                                                                   |
    | snapshot_id          | None                                                                     |
@@ -90,6 +91,7 @@ check the result, run:
    |                      | id = 1f0e263f-370d-47d3-95f6-1be64088b9da                                |
    |                      | share_instance_id = b8afc508-8487-442b-b170-ea65b07074a8                 |
    | share_server_id      | None                                                                     |
+   | share_group_id       | None                                                                     |
    | host                 | manila@paris#shares                                                      |
    | access_rules_status  | active                                                                   |
    | snapshot_id          | None                                                                     |

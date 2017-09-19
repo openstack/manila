@@ -69,6 +69,7 @@ Create a share
       | availability_zone           | None                                 |
       | share_network_id            | c895fe26-92be-4152-9e6c-f2ad230efb13 |
       | share_server_id             | None                                 |
+      | share_group_id              | None                                 |
       | host                        |                                      |
       | access_rules_status         | active                               |
       | snapshot_id                 | None                                 |
@@ -112,6 +113,7 @@ Create a share
       |                             | id = 6921e862-88bc-49a5-a2df-efeed9acd583                     |
       |                             | share_instance_id = e1c2d35e-fe67-4028-ad7a-45f668732b1d      |
       | share_server_id             | 2e9d2d02-883f-47b5-bb98-e053b8d1e683                          |
+      | share_group_id              | None                                                          |
       | host                        | nosb-devstack@london#LONDON                                   |
       | access_rules_status         | active                                                        |
       | snapshot_id                 | None                                                          |
@@ -294,6 +296,7 @@ Create share from snapshot
       | availability_zone           | nova                                 |
       | share_network_id            | c895fe26-92be-4152-9e6c-f2ad230efb13 |
       | share_server_id             | None                                 |
+      | share_group_id              | None                                 |
       | host                        | nosb-devstack@london#LONDON          |
       | access_rules_status         | active                               |
       | snapshot_id                 | e744ca47-0931-4e81-9d9f-2ead7d7c1640 |
@@ -349,6 +352,7 @@ Create share from snapshot
       |                             | id = 26f55e4c-6edc-4e55-8c55-c62b7db1aa9f                     |
       |                             | share_instance_id = 4c00cb49-51d9-478e-abc1-d1853efaf6d3      |
       | share_server_id             | 2e9d2d02-883f-47b5-bb98-e053b8d1e683                          |
+      | share_group_id              | None                                                          |
       | host                        | nosb-devstack@london#LONDON                                   |
       | access_rules_status         | active                                                        |
       | snapshot_id                 | e744ca47-0931-4e81-9d9f-2ead7d7c1640                          |
@@ -457,6 +461,7 @@ Extend share
       |                             | id = 6921e862-88bc-49a5-a2df-efeed9acd583                     |
       |                             | share_instance_id = e1c2d35e-fe67-4028-ad7a-45f668732b1d      |
       | share_server_id             | 2e9d2d02-883f-47b5-bb98-e053b8d1e683                          |
+      | share_group_id              | None                                                          |
       | host                        | nosb-devstack@london#LONDON                                   |
       | access_rules_status         | active                                                        |
       | snapshot_id                 | None                                                          |
@@ -500,6 +505,7 @@ Extend share
       |                             | id = 6921e862-88bc-49a5-a2df-efeed9acd583                     |
       |                             | share_instance_id = e1c2d35e-fe67-4028-ad7a-45f668732b1d      |
       | share_server_id             | 2e9d2d02-883f-47b5-bb98-e053b8d1e683                          |
+      | share_group_id              | None                                                          |
       | host                        | nosb-devstack@london#LONDON                                   |
       | access_rules_status         | active                                                        |
       | snapshot_id                 | None                                                          |
@@ -552,6 +558,7 @@ Shrink share
       |                             | id = 6921e862-88bc-49a5-a2df-efeed9acd583                     |
       |                             | share_instance_id = e1c2d35e-fe67-4028-ad7a-45f668732b1d      |
       | share_server_id             | 2e9d2d02-883f-47b5-bb98-e053b8d1e683                          |
+      | share_group_id              | None                                                          |
       | host                        | nosb-devstack@london#LONDON                                   |
       | access_rules_status         | active                                                        |
       | snapshot_id                 | None                                                          |
@@ -595,6 +602,7 @@ Shrink share
       |                             | id = 6921e862-88bc-49a5-a2df-efeed9acd583                     |
       |                             | share_instance_id = e1c2d35e-fe67-4028-ad7a-45f668732b1d      |
       | share_server_id             | 2e9d2d02-883f-47b5-bb98-e053b8d1e683                          |
+      | share_group_id              | None                                                          |
       | host                        | nosb-devstack@london#LONDON                                   |
       | access_rules_status         | active                                                        |
       | snapshot_id                 | None                                                          |
