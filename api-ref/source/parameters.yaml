@@ -8,42 +8,6 @@ api_version:
   type: string
   description: >
     The API version as returned in the links from the ``GET /`` call.
-cg_id_path:
-  description: |
-    The UUID of the consistency group.
-  in: path
-  required: true
-  type: string
-cg_share_network_id_path:
-  description: |
-    The UUID of the share network.
-  in: path
-  required: true
-  type: string
-cgsnapshot_id:
-  description: |
-    The UUID of the consistency group snapshot.
-  in: path
-  required: false
-  type: string
-cgsnapshot_id_1:
-  description: |
-    The UUID of the consistency group snapshot.
-  in: path
-  required: true
-  type: string
-consistency_group_id_2:
-  description: |
-    The UUID of the consistency group.
-  in: path
-  required: false
-  type: string
-consistency_group_id_7:
-  description: |
-    The UUID of the consistency group.
-  in: path
-  required: true
-  type: string
 export_location_id_path:
   description: |
     The UUID of the export location.
@@ -156,15 +120,6 @@ all_tenants:
   in: query
   required: false
   type: boolean
-all_tenants_2:
-  description: |
-    (Admin only). Defines whether to list consistency group snapshots
-    for all tenants. Set to ``1`` to list consistency groups for all
-    tenants. Set to ``0`` to list consistency groups only for the
-    current tenant.
-  in: query
-  required: false
-  type: boolean
 backend_capabilities_query:
   description: |
     The capabilities for the storage back end.
@@ -193,43 +148,6 @@ binary_3:
   description: |
     The service binary name. Default is the base name
     of the executable.
-  in: query
-  required: false
-  type: string
-cg_all_tenants_query:
-  description: |
-    (Admin only). Defines whether to list consistency groups for
-    all tenants. Set to ``1`` to list consistency groups for all
-    tenants. Set to ``0`` to list consistency groups only for the
-    current tenant.
-  in: query
-  required: false
-  type: boolean
-cg_limit_query:
-  description: |
-    The maximum number of consistency groups to return.
-  in: query
-  required: false
-  type: integer
-cg_offset_query:
-  description: |
-    The offset to define start point of consistency
-    group listing.
-  in: query
-  required: false
-  type: integer
-consistency_group_id_3:
-  description: |
-    (Since API v2.4) The UUID of the consistency
-    group where the share was created. You can omit this parameter if
-    the share was created without a consistency group.
-  in: query
-  required: false
-  type: string
-consistency_group_id_5:
-  description: |
-    (Since API v2.4) The UUID of the consistency
-    group where the share was created.
   in: query
   required: false
   type: string
@@ -296,20 +214,6 @@ limit:
   in: query
   required: false
   type: integer
-limit_2:
-  description: |
-    The maximum number of consistency groups snapshots
-    to return.
-  in: query
-  required: false
-  type: integer
-limit_3:
-  description: |
-    The maximum number of consistency groups snapshot
-    members to return.
-  in: query
-  required: false
-  type: integer
 media_types:
   description: |
       Media types supported by the API.
@@ -347,20 +251,6 @@ offset:
   description: |
     The offset to define start point of share
     listing.
-  in: query
-  required: false
-  type: integer
-offset_2:
-  description: |
-    The offset to define start point of consistency
-    group snapshot listing.
-  in: query
-  required: false
-  type: integer
-offset_3:
-  description: |
-    The offset to define start point of consistency
-    group snapshot member listing.
   in: query
   required: false
   type: integer
@@ -836,20 +726,6 @@ capabilities:
   in: body
   required: true
   type: object
-capability_consistency_group_support:
-  min_version: 2.4
-  description: |
-    Specifies the level of support for scheduling shares within consistency
-    groups if the pool supports this feature. Valid values are ``host``,
-    ``pool`` and ``false``. If ``host``, shares within a consistency group
-    can span multiple storage pools belonging to a host#backend combination.
-    If ``pool``, shares created within a given consistency group can only be
-    scheduled within that pool. If ``false``, the pool cannot accept
-    scheduling consistency groups, and hence any shares belonging to
-    consistency groups.
-  in: body
-  required: true
-  type: string
 capability_driver_handles_share_servers:
   description: |
     Share server is usually a storage virtual machine or a lightweight
@@ -935,143 +811,6 @@ capability_vendor_name:
   in: body
   required: true
   type: string
-cg_created_at:
-  description: |
-    The date and time stamp when the consistency group was created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
-cg_description_request:
-  description: |
-    The consistency group description.
-  in: body
-  required: false
-  type: string
-cg_description_response:
-  description: |
-    The consistency group description.
-  in: body
-  required: true
-  type: string
-cg_host:
-  description: |
-    The consistency group host name.
-  in: body
-  required: true
-  type: string
-cg_id_response:
-  description: |
-    The UUID of the consistency group.
-  in: body
-  required: true
-  type: string
-cg_links:
-  description: |
-    The consistency group links.
-  in: body
-  required: true
-  type: array
-cg_name_request:
-  description: |
-    The consistency group name.
-  in: body
-  required: false
-  type: string
-cg_name_response:
-  description: |
-    The consistency group name.
-  in: body
-  required: true
-  type: string
-cg_project_id:
-  description: |
-    The ID of the project in which the consistency
-    group snapshot was created.
-  in: body
-  required: true
-  type: string
-cg_share_network_id:
-  description: |
-    The UUID of the share network.
-  in: body
-  required: true
-  type: string
-cg_share_server_id:
-  description: |
-    The UUID of the share server.
-  in: body
-  required: true
-  type: string
-cg_share_types_request:
-  description: |
-    A list of share type IDs.
-  in: body
-  required: false
-  type: array
-cg_share_types_response:
-  description: |
-    A list of share type IDs.
-  in: body
-  required: true
-  type: array
-cg_snapshot_id:
-  description: |
-    The consistency group snapshot ID. A valid value
-    is ``null`` or the ID of the consistency group snapshot, if the
-    consistency group was created from a snapshot.
-  in: body
-  required: true
-  type: string
-cg_status:
-  description: |
-    The consistency group status. A valid value is
-    ``creating``, ``available``, ``error``, ``deleting``, or
-    ``error_deleting``.
-  in: body
-  required: true
-  type: string
-cgsnapshot:
-  description: |
-    The ``cgsnapshot`` object
-  in: body
-  required: true
-  type: object
-cgsnapshot_links:
-  description: |
-    The consistency share snapshot links.
-  in: body
-  required: false
-  type: array
-cgsnapshot_members:
-  description: |
-    The ``cgsnapshot_members`` object
-  in: body
-  required: true
-  type: array
-cgsnapshot_members_links:
-  description: |
-    The consistency share snapshot member links.
-  in: body
-  required: true
-  type: array
-cgsnapshots:
-  description: |
-    The ``cgsnapshots`` object
-  in: body
-  required: true
-  type: array
 cidr:
   description: |
     The CIDR.
@@ -1084,65 +823,6 @@ cidr_1:
     in CIDR notation. For example, ``172.16.0.0/24`` or
     ``2001:DB8::/64``. This parameter is automatically set to a value
     determined by the network provider.
-  in: body
-  required: true
-  type: string
-consistency_group:
-  description: |
-    The ``consistency_group`` object.
-  in: body
-  required: true
-  type: array
-consistency_group_id:
-  description: |
-    The ID of the consistency group from which to
-    create a snapshot.
-  in: body
-  required: true
-  type: string
-consistency_group_id_1:
-  description: |
-    (Since API v2.4) The UUID of the available
-    consistency group in which the share will be created.  The
-    consistency group must support the ``share_type`` and
-    ``share_network_id``. For details, see  `Consistency groups <api-
-    ref-share-v2.html#consistency-groups>`_.
-  in: body
-  required: false
-  type: string
-consistency_group_id_4:
-  description: |
-    The ID of the consistency group from which the
-    snapshot was created.
-  in: body
-  required: true
-  type: string
-consistency_group_id_6:
-  description: |
-    (Since API v2.4) The UUID of the consistency
-    group where the share was created.
-  in: body
-  required: true
-  type: string
-consistency_group_support:
-  description: |
-    (Since API v2.4) The consistency group support.
-    A valid value is:  - ``pool`` or ``host``. Consistency groups are
-    supported. Specifies   the level of consistency groups support.  -
-    ``false``. Consistency groups are not supported.
-  in: body
-  required: true
-  type: string
-consistency_groups:
-  description: |
-    The ``consistency_groups`` object.
-  in: body
-  required: true
-  type: array
-created_at_1:
-  description: |
-    The date and time stamp when the consistency
-    group snapshot was created.
   in: body
   required: true
   type: string
@@ -1161,13 +841,6 @@ created_at_11:
     offset from UTC.
 
     For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
-created_at_2:
-  description: |
-    The date and time stamp when the consistency
-    group was created.
   in: body
   required: true
   type: string
@@ -1239,12 +912,6 @@ deny_access:
   in: body
   required: true
   type: object
-description_1:
-  description: |
-    The consistency group snapshot description.
-  in: body
-  required: false
-  type: string
 description_10:
   description: |
     The snapshot description.
@@ -1256,12 +923,6 @@ description_11:
     The snapshot description.
   in: body
   required: true
-  type: string
-description_2:
-  description: |
-    The consistency group description.
-  in: body
-  required: false
   type: string
 description_3:
   description: |
@@ -1280,18 +941,6 @@ description_5:
     The share description.
   in: body
   required: false
-  type: string
-description_6:
-  description: |
-    The consistency group description.
-  in: body
-  required: true
-  type: string
-description_7:
-  description: |
-    The consistency group snapshot description.
-  in: body
-  required: true
   type: string
 description_8:
   description: |
@@ -1602,20 +1251,6 @@ force:
   in: body
   required: false
   type: boolean
-force_delete:
-  description: |
-    To force-delete a consistency group snapshot, set
-    this value to ``null``.
-  in: body
-  required: true
-  type: string
-force_delete_1:
-  description: |
-    To force-delete a consistency group, set this
-    value to ``null``.
-  in: body
-  required: true
-  type: string
 force_delete_2:
   description: |
     To force-delete a share instance, set this value
@@ -1656,12 +1291,6 @@ has_replicas:
   in: body
   required: true
   type: boolean
-host:
-  description: |
-    The consistency group host name.
-  in: body
-  required: true
-  type: string
 host_1:
   description: |
     The share host name.
@@ -1728,18 +1357,6 @@ host_9:
     The share host name.
   in: body
   required: false
-  type: string
-id_1:
-  description: |
-    The consistency group snapshot ID.
-  in: body
-  required: true
-  type: string
-id_10:
-  description: |
-    The consistency group snapshot member ID.
-  in: body
-  required: true
   type: string
 id_11:
   description: |
@@ -1963,12 +1580,6 @@ name:
   in: body
   required: true
   type: string
-name_1:
-  description: |
-    The consistency group snapshot name.
-  in: body
-  required: false
-  type: string
 name_10:
   description: |
     The name of the extension. For example, "Fox In
@@ -2004,12 +1615,6 @@ name_16:
   in: body
   required: false
   type: string
-name_2:
-  description: |
-    The consistency group name.
-  in: body
-  required: false
-  type: string
 name_3:
   description: |
     The security service name.
@@ -2027,12 +1632,6 @@ name_5:
     The share name.
   in: body
   required: false
-  type: string
-name_8:
-  description: |
-    The consistency group snapshot name.
-  in: body
-  required: true
   type: string
 name_9:
   description: |
@@ -2189,31 +1788,10 @@ project_id:
   in: body
   required: true
   type: string
-project_id_1:
-  description: |
-    The ID of the project in which the consistency
-    group snapshot was created.
-  in: body
-  required: true
-  type: string
-project_id_2:
-  description: |
-    The ID of the project in which the consistency
-    group was created.
-  in: body
-  required: true
-  type: string
 project_id_4:
   description: |
     The UUID of the project in which the share was
     created.
-  in: body
-  required: true
-  type: string
-project_id_5:
-  description: |
-    The ID of the project in which the consistency
-    group snapshot member was created.
   in: body
   required: true
   type: string
@@ -2820,13 +2398,6 @@ share_force_delete:
   in: body
   required: true
   type: string
-share_id_1:
-  description: |
-    The ID of the share that is a consistency group
-    snapshot member.
-  in: body
-  required: true
-  type: string
 share_id_2:
   description: |
     The UUID of the share from which the share
@@ -3406,34 +2977,6 @@ snapshot_unmanage:
   in: body
   required: true
   type: string
-source_cgsnapshot_id:
-  description: |
-    The ID of the consistency group snapshot from
-    which to create the consistency group.
-  in: body
-  required: false
-  type: string
-source_cgsnapshot_id_1:
-  description: |
-    The consistency group snapshot ID. A valid value
-    is ``null`` or the ID of the consistency group snapshot, if the
-    consistency group was created from a snapshot.
-  in: body
-  required: true
-  type: string
-source_cgsnapshot_member_id:
-  description: |
-    (Since API v2.4) If the share was created with
-    ``consistency_group_id`` attribute, the snapshot member ID.  The
-    corresponding consistency group must be created from a snapshot
-    with the current share as a member.  Consistency groups and
-    snapshots are the part of the Shared File Systems experimental
-    API. For details, see `Consistency groups <api-ref-share-v2.html
-    #consistency-groups>`_ and `Consistency group snapshots <api-ref-
-    share-v2.html#consistency-group-snapshots>`_.
-  in: body
-  required: true
-  type: string
 state:
   description: |
     Prior to versions 2.28, the state of all access rules of a given share
@@ -3450,30 +2993,6 @@ state_1:
   description: |
     The current state of the service. A valid value
     is ``up`` or ``down``.
-  in: body
-  required: true
-  type: string
-status:
-  description: |
-    The consistency group snapshot status, which is
-    ``available``, ``creating``, ``error``, ``deleting``, or
-    ``error_deleting``.
-  in: body
-  required: true
-  type: string
-status_1:
-  description: |
-    The consistency group status. A valid value is
-    ``creating``, ``available``, ``error``, ``deleting``, or
-    ``error_deleting``.
-  in: body
-  required: true
-  type: string
-status_10:
-  description: |
-    The consistency group status. A valid value is
-    ``creating``, ``error``, ``available``, ``deleting``, or
-    ``error_deleting``.
   in: body
   required: true
   type: string
@@ -3540,14 +3059,6 @@ status_8:
   description: |
     The share status, which is ``available``,
     ``manage_starting``, or ``manage_error``.
-  in: body
-  required: true
-  type: string
-status_9:
-  description: |
-    The consistency group snapshot status. A valid
-    value is ``creating``, ``error``, ``available``, ``deleting``, or
-    ``error_deleting``.
   in: body
   required: true
   type: string

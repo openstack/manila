@@ -58,7 +58,6 @@ To extend the share and check the result, run:
    | replication_type     | None                                                                     |
    | created_at           | 2016-03-25T15:33:18.000000                                               |
    | share_proto          | NFS                                                                      |
-   | consistency_group_id | None                                                                     |
    | project_id           | 907004508ef4447397ce6741a8f037c1                                         |
    | metadata             | {}                                                                       |
    +----------------------+--------------------------------------------------------------------------+
@@ -105,7 +104,6 @@ check the result, run:
    | replication_type     | None                                                                     |
    | created_at           | 2016-03-25T15:33:18.000000                                               |
    | share_proto          | NFS                                                                      |
-   | consistency_group_id | None                                                                     |
    | project_id           | 907004508ef4447397ce6741a8f037c1                                         |
    | metadata             | {}                                                                       |
    +----------------------+--------------------------------------------------------------------------+

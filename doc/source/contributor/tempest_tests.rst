@@ -47,7 +47,6 @@ Here is a configuration example:
     run_extend_tests = True
     run_shrink_tests = True
     run_snapshot_tests = True
-    run_consistency_group_tests = True
     run_replication_tests = True
     run_migration_tests = True
     run_manage_unmanage_tests = True

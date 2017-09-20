@@ -81,8 +81,6 @@ Create a share
       | replication_type            | None                                 |
       | created_at                  | 2016-03-30T19:10:33.000000           |
       | share_proto                 | NFS                                  |
-      | consistency_group_id        | None                                 |
-      | source_cgsnapshot_member_id | None                                 |
       | project_id                  | 3a46a53a377642a284e1d12efabb3b5a     |
       | metadata                    | {}                                   |
       +-----------------------------+--------------------------------------+
@@ -130,8 +128,6 @@ Create a share
       | replication_type            | None                                                                               |
       | created_at                  | 2016-03-30T19:10:33.000000                                                         |
       | share_proto                 | NFS                                                                                |
-      | consistency_group_id        | None                                                                               |
-      | source_cgsnapshot_member_id | None                                                                               |
       | project_id                  | 3a46a53a377642a284e1d12efabb3b5a                                                   |
       | metadata                    | {}                                                                                 |
       +-----------------------------+------------------------------------------------------------------------------------+

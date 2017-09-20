@@ -20,7 +20,6 @@
         "share_type": "25747776-08e5-494f-ab40-a64b9d20d8f7",
         "share_type_name": "default",
         "export_location": null,
-        "consistency_group_id": "9397c191-8427-4661-a2e8-b23820dc01d4",
         "project_id": "16e1ab15c35a457e9c2b2aa189f544e1",
         "metadata": {
             "project": "my_app",
@@ -36,6 +35,5 @@
         "created_at": "2015-09-18T10:25:24.000000",
         "share_proto": "NFS",
         "volume_type": "default",
-        "source_cgsnapshot_member_id": null
     }
 }

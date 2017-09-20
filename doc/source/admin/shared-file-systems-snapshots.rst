@@ -92,8 +92,6 @@ it is available:
    | created_at                  | 2015-09-25T06:25:50.240417           |
    | export_location             | None                                 |
    | share_proto                 | NFS                                  |
-   | consistency_group_id        | None                                 |
-   | source_cgsnapshot_member_id | None                                 |
    | project_id                  | 20787a7ba11946adad976463b57d8a2f     |
    | metadata                    | {u'source': u'snapshot'}             |
    +-----------------------------+--------------------------------------+
@@ -120,8 +118,6 @@ it is available:
    | share_type                  | c0086582-30a6-4060-b096-a42ec9d66b86      |
    | created_at                  | 2015-09-25T06:25:50.000000                |
    | share_proto                 | NFS                                       |
-   | consistency_group_id        | None                                      |
-   | source_cgsnapshot_member_id | None                                      |
    | project_id                  | 20787a7ba11946adad976463b57d8a2f          |
    | metadata                    | {u'source': u'snapshot'}                  |
    +-----------------------------+-------------------------------------------+

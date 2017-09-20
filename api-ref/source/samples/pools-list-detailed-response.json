@@ -10,7 +10,6 @@
                 "share_backend_name": "GENERIC1",
                 "total_capacity_gb": "unknown",
                 "driver_handles_share_servers": true,
-                "consistency_group_support": "pool",
                 "server_pools_mapping": {},
                 "pools": null,
                 "vendor_name": "Open Source",

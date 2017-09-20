@@ -71,7 +71,6 @@ Response parameters
    - has_replicas: has_replicas
    - replication_type: replication_type
    - export_location: export_location
-   - consistency_group_id: consistency_group_id_5
    - project_id: project_id_8
    - metadata: metadata
    - status: status_8
@@ -83,7 +82,6 @@ Response parameters
    - created_at: created_at_4
    - share_proto: share_proto
    - volume_type: volume_type
-   - source_cgsnapshot_member_id: source_cgsnapshot_member_id
 
 Response example
 ----------------

@@ -135,9 +135,6 @@ thin\_provisioning
 updated
     Last time this host's stats were updated
 
-consistency\_group\_support
-    Whether or not the back end supports creation of consistency groups
-
 dedupe
     Whether or not dedupe is supported by this host
 
@@ -223,12 +220,6 @@ size
 
 share\_proto
     The protocol of this share
-
-source\_cgsnapshot\_member\_id
-    The ID of the consistency group snapshot member
-
-consistency\_group\_id
-    This share consistency group ID
 
 metadata
     General share metadata

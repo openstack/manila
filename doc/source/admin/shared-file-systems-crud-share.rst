@@ -155,8 +155,6 @@ protocol, and size 1 GB:
    | replication_type            | None                                 |
    | created_at                  | 2016-03-25T12:02:46.000000           |
    | share_proto                 | NFS                                  |
-   | consistency_group_id        | None                                 |
-   | source_cgsnapshot_member_id | None                                 |
    | project_id                  | 907004508ef4447397ce6741a8f037c1     |
    | metadata                    | {}                                   |
    +-----------------------------+--------------------------------------+
@@ -200,8 +198,6 @@ New share ``Share2`` should have a status ``available``:
    | replication_type            | None                                                     |
    | created_at                  | 2016-03-25T12:02:46.000000                               |
    | share_proto                 | NFS                                                      |
-   | consistency_group_id        | None                                                     |
-   | source_cgsnapshot_member_id | None                                                     |
    | project_id                  | 907004508ef4447397ce6741a8f037c1                         |
    | metadata                    | {}                                                       |
    +-----------------------------+----------------------------------------------------------+
@@ -306,8 +302,6 @@ share type, NFS shared file system protocol, and size 1 GB:
    | replication_type            | None                                 |
    | created_at                  | 2016-03-25T12:13:40.000000           |
    | share_proto                 | NFS                                  |
-   | consistency_group_id        | None                                 |
-   | source_cgsnapshot_member_id | None                                 |
    | project_id                  | 907004508ef4447397ce6741a8f037c1     |
    | metadata                    | {u'aim': u'testing'}                 |
    +-----------------------------+--------------------------------------+
@@ -367,7 +361,6 @@ status share should have status ``available``:
    | replication_type     | None                                                                 |
    | created_at           | 2016-03-25T12:13:40.000000                                           |
    | share_proto          | NFS                                                                  |
-   | consistency_group_id | None                                                                 |
    | project_id           | 907004508ef4447397ce6741a8f037c1                                     |
    | metadata             | {u'aim': u'testing'}                                                 |
    +----------------------+----------------------------------------------------------------------+
@@ -420,7 +413,6 @@ the share if you need:
    | replication_type     | None                                                                 |
    | created_at           | 2016-03-25T12:13:40.000000                                           |
    | share_proto          | NFS                                                                  |
-   | consistency_group_id | None                                                                 |
    | project_id           | 907004508ef4447397ce6741a8f037c1                                     |
    | metadata             | {u'aim': u'testing'}                                                 |
    +----------------------+----------------------------------------------------------------------+
@@ -553,7 +545,6 @@ include ``available``, ``error``, ``creating``, ``deleting``,
    | replication_type     | None                                                                 |
    | created_at           | 2016-03-25T12:13:40.000000                                           |
    | share_proto          | NFS                                                                  |
-   | consistency_group_id | None                                                                 |
    | project_id           | 907004508ef4447397ce6741a8f037c1                                     |
    | metadata             | {u'deadline': u'01/30/16'}                                           |
    +----------------------+----------------------------------------------------------------------+
