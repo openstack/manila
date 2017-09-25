@@ -59,8 +59,6 @@
     "share_instance:show": "rule:admin_api",
     "share_instance:force_delete": "rule:admin_api",
     "share_instance:reset_status": "rule:admin_api",
-    "share_instance_export_location:index": "rule:admin_api",
-    "share_instance_export_location:show": "rule:admin_api",
 
     "share_snapshot:force_delete": "rule:admin_api",
     "share_snapshot:reset_status": "rule:admin_api",
