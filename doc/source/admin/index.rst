@@ -53,5 +53,37 @@ deployment.
    shared-file-systems-multi-backend.rst
    shared-file-systems-networking.rst
    shared-file-systems-troubleshoot.rst
+   share_back_ends_feature_support_mapping
+   capabilities_and_extra_specs
+   export_location_metadata
 
+Supported share back ends
+-------------------------
+
+The manila share service must be configured to use drivers for one or
+more storage back ends, as described in general terms below.  See the
+drivers section in the `Configuration Reference
+<https://docs.openstack.org/manila/latest/configuration/shared-file-systems/drivers.html>`_
+for detailed configuration options for
+each back end.
+
+.. toctree::
+   :maxdepth: 3
+
+   container_driver
+   zfs_on_linux_driver
+   netapp_cluster_mode_driver
+   emc_isilon_driver
+   emc_vnx_driver
+   emc_unity_driver
+   generic_driver
+   glusterfs_driver
+   glusterfs_native_driver
+   cephfs_driver
+   gpfs_driver
+   huawei_nas_driver
+   hdfs_native_driver
+   hitachi_hnas_driver
+   hpe_3par_driver
+   tegile_driver
 

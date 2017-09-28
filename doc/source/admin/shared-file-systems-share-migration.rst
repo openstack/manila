@@ -237,7 +237,7 @@ each one below:
   * export: The export path of the share. Automatically formatted by the Data
     Service with the share's ``admin_only`` export location.
   * path: The path to mount the share. Automatically formatted by the Data
-    Serivce according to the mount_tmp_location config option.
+    Service according to the mount_tmp_location config option.
 
   The default value for this config option is::
 

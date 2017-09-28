@@ -12,7 +12,7 @@ in the database and they are available to the API service, which may expose
 them through the REST API or use them for filtering.
 
 Metadata Keys
-=============
+-------------
 Only keys defined in this document are valid. Arbitrary driver-defined keys
 are not allowed. The following keys are defined:
 

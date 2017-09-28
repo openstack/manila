@@ -36,6 +36,7 @@ Programming HowTos and Tutorials
     commit_message_tags
     guru_meditation_report
     user_messages
+    ganesha
 
 
 Background Concepts for manila
@@ -83,47 +84,9 @@ Module Reference
    scheduler
    fakes
    manila
-   ganesha
    share_replication
    driver_filter_goodness_weigher
    share_migration
-
-Capabilities and Extra-Specs
-----------------------------
-.. toctree::
-   :maxdepth: 3
-
-   capabilities_and_extra_specs
-   export_location_metadata
-
-Share backends feature support mapping
---------------------------------------
-.. toctree::
-   :maxdepth: 3
-
-   share_back_ends_feature_support_mapping
-
-Share backends
---------------
-.. toctree::
-   :maxdepth: 3
-
-   container_driver
-   zfs_on_linux_driver
-   netapp_cluster_mode_driver
-   emc_isilon_driver
-   emc_vnx_driver
-   emc_unity_driver
-   generic_driver
-   glusterfs_driver
-   glusterfs_native_driver
-   cephfs_driver
-   gpfs_driver
-   huawei_nas_driver
-   hdfs_native_driver
-   hitachi_hnas_driver
-   hpe_3par_driver
-   tegile_driver
 
 Indices and tables
 ------------------
