@@ -18,6 +18,7 @@
 import collections
 import decimal
 import platform
+import re
 
 from oslo_concurrency import processutils as putils
 from oslo_log import log
@@ -33,6 +34,7 @@ LOG = log.getLogger(__name__)
 VALID_TRACE_FLAGS = ['method', 'api']
 TRACE_METHOD = False
 TRACE_API = False
+API_TRACE_PATTERN = '(.*)'
 
 
 def validate_driver_instantiation(**kwargs):
@@ -65,16 +67,24 @@ def round_down(value, precision='0.00'):
         decimal.Decimal(precision), rounding=decimal.ROUND_DOWN))
 
 
-def setup_tracing(trace_flags_string):
+def setup_tracing(trace_flags_string, api_trace_pattern=API_TRACE_PATTERN):
     global TRACE_METHOD
     global TRACE_API
+    global API_TRACE_PATTERN
     TRACE_METHOD = False
     TRACE_API = False
+    API_TRACE_PATTERN = api_trace_pattern
     if trace_flags_string:
         flags = trace_flags_string.split(',')
         flags = [flag.strip() for flag in flags]
         for invalid_flag in list(set(flags) - set(VALID_TRACE_FLAGS)):
             LOG.warning('Invalid trace flag: %s', invalid_flag)
+        try:
+            re.compile(api_trace_pattern)
+        except re.error:
+            msg = _('Cannot parse the API trace pattern. %s is not a '
+                    'valid python regular expression.') % api_trace_pattern
+            raise exception.BadConfigurationException(reason=msg)
         TRACE_METHOD = 'method' in flags
         TRACE_API = 'api' in flags
 

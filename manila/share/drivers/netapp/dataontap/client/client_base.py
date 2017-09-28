@@ -32,7 +32,9 @@ class NetAppBaseClient(object):
             port=kwargs['port'],
             username=kwargs['username'],
             password=kwargs['password'],
-            trace=kwargs.get('trace', False))
+            trace=kwargs.get('trace', False),
+            api_trace_pattern=kwargs.get('api_trace_pattern',
+                                         na_utils.API_TRACE_PATTERN))
 
     def get_ontapi_version(self, cached=True):
         """Gets the supported ontapi version."""

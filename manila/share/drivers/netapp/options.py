@@ -115,7 +115,16 @@ netapp_support_opts = [
     cfg.StrOpt('netapp_trace_flags',
                help=('Comma-separated list of options that control which '
                      'trace info is written to the debug logs.  Values '
-                     'include method and api.')), ]
+                     'include method and api. API logging can further be '
+                     'filtered with the '
+                     '``netapp_api_trace_pattern option``.')),
+    cfg.StrOpt('netapp_api_trace_pattern',
+               default='(.*)',
+               help=('A regular expression to limit the API tracing. This '
+                     'option is honored only if enabling ``api`` tracing '
+                     'with the ``netapp_trace_flags`` option. By default, '
+                     'all APIs will be traced.')),
+]
 
 netapp_data_motion_opts = [
     cfg.IntOpt('netapp_snapmirror_quiesce_timeout',
