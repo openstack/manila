@@ -382,23 +382,25 @@ class API(object):
     def security_group_create(self, name, description=""):
         try:
             return self.client.create_security_group(
-                {"name": name, "description": description})
+                {'security_group': {"name": name, "description": description}})
         except neutron_client_exc.NeutronClientException as e:
             raise exception.NetworkException(
                 code=e.status_code, message=e.message)
 
     def security_group_rule_create(self, parent_group_id,
                                    ip_protocol=None, from_port=None,
-                                   to_port=None, cidr=None, group_id=None):
+                                   to_port=None, cidr=None, group_id=None,
+                                   direction="ingress"):
+        request = {"security_group_id": parent_group_id,
+                   "protocol": ip_protocol, "remote_ip_prefix": cidr,
+                   "remote_group_id": group_id, "direction": direction}
+        if ip_protocol != "icmp":
+            request["port_range_min"] = from_port
+            request["port_range_max"] = to_port
+
         try:
-            return self.client.create_security_group_rule({
-                "parent_group_id": parent_group_id,
-                "ip_protocol": ip_protocol,
-                "from_port": from_port,
-                "to_port": to_port,
-                "cidr": cidr,
-                "group_id": group_id,
-            })
+            return self.client.create_security_group_rule(
+                {"security_group_rule": request})
         except neutron_client_exc.NeutronClientException as e:
             raise exception.NetworkException(
                 code=e.status_code, message=e.message)
