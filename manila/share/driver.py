@@ -171,6 +171,21 @@ ganesha_opts = [
                default='/etc/manila/ganesha-export-templ.d',
                help='Path to directory containing Ganesha export '
                     'block templates. (Ganesha module only.)'),
+    cfg.BoolOpt('ganesha_rados_store_enable',
+                default=False,
+                help='Persist Ganesha exports and export counter '
+                     'in Ceph RADOS objects, highly available storage.'),
+    cfg.StrOpt('ganesha_rados_store_pool_name',
+               help='Name of the Ceph RADOS pool to store Ganesha exports '
+                    'and export counter.'),
+    cfg.StrOpt('ganesha_rados_export_counter',
+               default='ganesha-export-counter',
+               help='Name of the Ceph RADOS object used as the Ganesha '
+                    'export counter.'),
+    cfg.StrOpt('ganesha_rados_export_index',
+               default='ganesha-export-index',
+               help='Name of the Ceph RADOS object used to store a list '
+                    'of the export RADOS object URLS.'),
 ]
 
 CONF = cfg.CONF

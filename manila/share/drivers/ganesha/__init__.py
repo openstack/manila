@@ -24,6 +24,7 @@ import six
 
 from manila.common import constants
 from manila import exception
+from manila.i18n import _
 from manila.share.drivers.ganesha import manager as ganesha_manager
 from manila.share.drivers.ganesha import utils as ganesha_utils
 
@@ -167,6 +168,45 @@ class GaneshaNASHelper(NASHelperBase):
 class GaneshaNASHelper2(GaneshaNASHelper):
     """Perform share access changes using Ganesha version >= 2.4."""
 
+    def __init__(self, execute, config, tag='<no name>', **kwargs):
+        super(GaneshaNASHelper2, self).__init__(execute, config, **kwargs)
+        if self.configuration.ganesha_rados_store_enable:
+            self.ceph_vol_client = kwargs.pop('ceph_vol_client')
+
+    def init_helper(self):
+        """Initializes protocol-specific NAS drivers."""
+        kwargs = {
+            'ganesha_config_path': self.configuration.ganesha_config_path,
+            'ganesha_export_dir': self.configuration.ganesha_export_dir,
+            'ganesha_service_name': self.configuration.ganesha_service_name
+        }
+        if self.configuration.ganesha_rados_store_enable:
+            kwargs['ganesha_rados_store_enable'] = (
+                self.configuration.ganesha_rados_store_enable)
+            if not self.configuration.ganesha_rados_store_pool_name:
+                raise exception.GaneshaException(
+                    _('"ganesha_rados_store_pool_name" config option is not '
+                      'set in the driver section.'))
+            kwargs['ganesha_rados_store_pool_name'] = (
+                self.configuration.ganesha_rados_store_pool_name)
+            kwargs['ganesha_rados_export_index'] = (
+                self.configuration.ganesha_rados_export_index)
+            kwargs['ganesha_rados_export_counter'] = (
+                self.configuration.ganesha_rados_export_counter)
+            kwargs['ceph_vol_client'] = (
+                self.ceph_vol_client)
+        else:
+            kwargs['ganesha_db_path'] = self.configuration.ganesha_db_path
+        self.ganesha = ganesha_manager.GaneshaManager(
+            self._execute, self.tag, **kwargs)
+        system_export_template = self._load_conf_dir(
+            self.configuration.ganesha_export_template_dir,
+            must_exist=False)
+        if system_export_template:
+            self.export_template = system_export_template
+        else:
+            self.export_template = self._default_config_hook()
+
     def _get_export_path(self, share):
         """Subclass this to return export path."""
         raise NotImplementedError()
@@ -186,8 +226,8 @@ class GaneshaNASHelper2(GaneshaNASHelper):
         confdict = {}
         existing_access_rules = []
 
-        if self.ganesha._check_export_file_exists(share['name']):
-            confdict = self.ganesha._read_export_file(share['name'])
+        if self.ganesha.check_export_exists(share['name']):
+            confdict = self.ganesha._read_export(share['name'])
             existing_access_rules = confdict["EXPORT"]["CLIENT"]
             if not isinstance(existing_access_rules, list):
                 existing_access_rules = [existing_access_rules]

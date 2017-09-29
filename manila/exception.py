@@ -954,3 +954,8 @@ class LockCreationFailed(ManilaException):
 
 class LockingFailed(ManilaException):
     message = _('Lock acquisition failed.')
+
+
+# Ganesha library
+class GaneshaException(ManilaException):
+    message = _("Unknown NFS-Ganesha library exception.")

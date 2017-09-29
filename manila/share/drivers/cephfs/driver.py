@@ -122,7 +122,7 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         self.protocol_helper = protocol_helper_class(
             self._execute,
             self.configuration,
-            volume_client=self.volume_client)
+            ceph_vol_client=self.volume_client)
 
         self.protocol_helper.init_helper()
 
@@ -321,7 +321,7 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
                                constants.ACCESS_LEVEL_RO)
 
     def __init__(self, execute, config, **kwargs):
-        self.volume_client = kwargs.pop('volume_client')
+        self.volume_client = kwargs.pop('ceph_vol_client')
         super(NativeProtocolHelper, self).__init__(execute, config,
                                                    **kwargs)
 
@@ -456,10 +456,11 @@ class NFSProtocolHelper(ganesha.GaneshaNASHelper2):
             LOG.info("NFS-Ganesha server's location defaulted to driver's "
                      "hostname: %s", self.ganesha_host)
 
-        self.volume_client = kwargs.pop('volume_client')
-
         super(NFSProtocolHelper, self).__init__(execute, config_object,
                                                 **kwargs)
+
+        if not hasattr(self, 'ceph_vol_client'):
+            self.ceph_vol_client = kwargs.pop('ceph_vol_client')
 
     def get_export_locations(self, share, cephfs_volume):
         export_location = "{server_address}:{path}".format(
@@ -485,7 +486,7 @@ class NFSProtocolHelper(ganesha.GaneshaNASHelper2):
     def _fsal_hook(self, base, share, access):
         """Callback to create FSAL subblock."""
         ceph_auth_id = ''.join(['ganesha-', share['id']])
-        auth_result = self.volume_client.authorize(
+        auth_result = self.ceph_vol_client.authorize(
             cephfs_share_path(share), ceph_auth_id, readonly=False,
             tenant_id=share['project_id'])
         # Restrict Ganesha server's access to only the CephFS subtree or path,
@@ -501,15 +502,15 @@ class NFSProtocolHelper(ganesha.GaneshaNASHelper2):
     def _cleanup_fsal_hook(self, base, share, access):
         """Callback for FSAL specific cleanup after removing an export."""
         ceph_auth_id = ''.join(['ganesha-', share['id']])
-        self.volume_client.deauthorize(cephfs_share_path(share),
-                                       ceph_auth_id)
+        self.ceph_vol_client.deauthorize(cephfs_share_path(share),
+                                         ceph_auth_id)
 
     def _get_export_path(self, share):
         """Callback to provide export path."""
         volume_path = cephfs_share_path(share)
-        return self.volume_client._get_path(volume_path)
+        return self.ceph_vol_client._get_path(volume_path)
 
     def _get_export_pseudo_path(self, share):
         """Callback to provide pseudo path."""
         volume_path = cephfs_share_path(share)
-        return self.volume_client._get_path(volume_path)
+        return self.ceph_vol_client._get_path(volume_path)
