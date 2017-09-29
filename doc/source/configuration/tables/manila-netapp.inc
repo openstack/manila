@@ -53,4 +53,4 @@
    * - ``netapp_volume_snapshot_reserve_percent`` = ``5``
      - (Integer) The percentage of share space set aside as reserve for snapshot usage; valid values range from 0 to 90.
    * - ``netapp_vserver_name_template`` = ``os_%s``
-     - (String) Name template to use for new Vserver.
+     - (String) Name template to use for new Vserver. When using CIFS protocol make sure to not configure characters illegal in DNS hostnames.
