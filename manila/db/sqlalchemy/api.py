@@ -3505,9 +3505,8 @@ def driver_private_data_update(context, entity_id, details,
 
     with session.begin():
         # Process existing data
-        # NOTE(u_glide): read_deleted=None means here 'read all'
-        original_data = _driver_private_data_query(
-            session, context, entity_id, read_deleted=None).all()
+        original_data = session.query(models.DriverPrivateData).filter_by(
+            entity_uuid=entity_id).all()
 
         for data_ref in original_data:
             in_new_details = data_ref['key'] in new_details
