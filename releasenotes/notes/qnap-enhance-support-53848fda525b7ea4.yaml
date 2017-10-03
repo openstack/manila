@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added enhanced support to the QNAP Manila driver, including
+    ``Thin Provisioning``, ``SSD Cache``, ``Deduplication``
+    and ``Compression``.

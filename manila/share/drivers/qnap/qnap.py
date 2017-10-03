@@ -31,6 +31,7 @@ from manila.i18n import _
 from manila import share
 from manila.share import driver
 from manila.share.drivers.qnap import api
+from manila.share import share_types
 from manila import utils
 
 LOG = logging.getLogger(__name__)
@@ -66,9 +67,11 @@ class QnapShareDriver(driver.ShareDriver):
         1.0.1 - Add support for QES fw 1.1.4.
         1.0.2 - Fix bug #1736370, QNAP Manila driver: Access rule setting is
                 override by the another access rule.
+        1.0.3 - Add supports for Thin Provisioning, SSD Cache, Deduplication
+                and Compression.
     """
 
-    DRIVER_VERSION = '1.0.2'
+    DRIVER_VERSION = '1.0.3'
 
     def __init__(self, *args, **kwargs):
         """Initialize QnapShareDriver."""
@@ -254,6 +257,10 @@ class QnapShareDriver(driver.ShareDriver):
             "allocated_capacity_gb": alloc_capacity_gb,
             "reserved_percentage": reserved_percentage,
             "qos": False,
+            "dedupe": [True, False],
+            "compression": [True, False],
+            "thin_provisioning": [True, False],
+            "qnap_ssd_cache": [True, False]
         }
 
         data = {
@@ -276,6 +283,28 @@ class QnapShareDriver(driver.ShareDriver):
     def create_share(self, context, share, share_server=None):
         """Create a new share."""
         LOG.debug('share: %s', share.__dict__)
+        extra_specs = share_types.get_extra_specs_from_share(share)
+        LOG.debug('extra_specs: %s', extra_specs)
+        qnap_thin_provision = share_types.parse_boolean_extra_spec(
+            'thin_provisioning', extra_specs.get("thin_provisioning") or
+            extra_specs.get('capabilities:thin_provisioning') or 'true')
+        qnap_compression = share_types.parse_boolean_extra_spec(
+            'compression', extra_specs.get("compression") or
+            extra_specs.get('capabilities:compression') or 'true')
+        qnap_deduplication = share_types.parse_boolean_extra_spec(
+            'dedupe', extra_specs.get("dedupe") or
+            extra_specs.get('capabilities:dedupe') or 'false')
+        qnap_ssd_cache = share_types.parse_boolean_extra_spec(
+            'qnap_ssd_cache', extra_specs.get("qnap_ssd_cache") or
+            extra_specs.get("capabilities:qnap_ssd_cache") or 'false')
+        LOG.debug('qnap_thin_provision: %(qnap_thin_provision)s '
+                  'qnap_compression: %(qnap_compression)s '
+                  'qnap_deduplication: %(qnap_deduplication)s '
+                  'qnap_ssd_cache: %(qnap_ssd_cache)s',
+                  {'qnap_thin_provision': qnap_thin_provision,
+                   'qnap_compression': qnap_compression,
+                   'qnap_deduplication': qnap_deduplication,
+                   'qnap_ssd_cache': qnap_ssd_cache})
 
         share_proto = share['share_proto']
 
@@ -293,11 +322,19 @@ class QnapShareDriver(driver.ShareDriver):
             LOG.error(msg)
             raise exception.ShareBackendException(msg=msg)
 
+        if (qnap_deduplication and not qnap_thin_provision):
+            msg = _("Dedupe cannot be enabled without thin_provisioning.")
+            LOG.debug('Dedupe cannot be enabled without thin_provisioning.')
+            raise exception.InvalidExtraSpec(reason=msg)
         self.api_executor.create_share(
             share,
             self.configuration.qnap_poolname,
             create_share_name,
-            share_proto)
+            share_proto,
+            qnap_thin_provision=qnap_thin_provision,
+            qnap_compression=qnap_compression,
+            qnap_deduplication=qnap_deduplication,
+            qnap_ssd_cache=qnap_ssd_cache)
         created_share = self._get_share_info(create_share_name)
         volID = created_share.find('vol_no').text
         # Use private_storage to record volume ID and Name created in the NAS.
@@ -306,7 +343,11 @@ class QnapShareDriver(driver.ShareDriver):
                   {'volID': volID,
                    'create_share_name': create_share_name})
         _metadata = {'volID': volID,
-                     'volName': create_share_name}
+                     'volName': create_share_name,
+                     'thin_provision': qnap_thin_provision,
+                     'compression': qnap_compression,
+                     'deduplication': qnap_deduplication,
+                     'ssd_cache': qnap_ssd_cache}
         self.private_storage.update(share['id'], _metadata)
 
         return self._get_location_path(create_share_name,
@@ -365,11 +406,27 @@ class QnapShareDriver(driver.ShareDriver):
             LOG.debug('Share %s does not exist', share['id'])
             raise exception.ShareResourceNotFound(share_id=share['id'])
         LOG.debug('volName: %s', volName)
-
+        thin_provision = self.private_storage.get(
+            share['id'], 'thin_provision')
+        compression = self.private_storage.get(share['id'], 'compression')
+        deduplication = self.private_storage.get(share['id'], 'deduplication')
+        ssd_cache = self.private_storage.get(share['id'], 'ssd_cache')
+        LOG.debug('thin_provision: %(thin_provision)s '
+                  'compression: %(compression)s '
+                  'deduplication: %(deduplication)s '
+                  'ssd_cache: %(ssd_cache)s',
+                  {'thin_provision': thin_provision,
+                   'compression': compression,
+                   'deduplication': deduplication,
+                   'ssd_cache': ssd_cache})
         share_dict = {
             'sharename': volName,
             'old_sharename': volName,
             'new_size': new_size,
+            'thin_provision': thin_provision == 'True',
+            'compression': compression == 'True',
+            'deduplication': deduplication == 'True',
+            'ssd_cache': ssd_cache == 'True',
             'share_proto': share['share_proto']
         }
         self.api_executor.edit_share(share_dict)
@@ -492,11 +549,32 @@ class QnapShareDriver(driver.ShareDriver):
             context, snapshot['share_instance']['share_id'])
         LOG.debug('snap_share[size]: %s', snap_share['size'])
 
+        thin_provision = self.private_storage.get(
+            snapshot['share_instance_id'], 'thin_provision')
+        compression = self.private_storage.get(
+            snapshot['share_instance_id'], 'compression')
+        deduplication = self.private_storage.get(
+            snapshot['share_instance_id'], 'deduplication')
+        ssd_cache = self.private_storage.get(
+            snapshot['share_instance_id'], 'ssd_cache')
+        LOG.debug('thin_provision: %(thin_provision)s '
+                  'compression: %(compression)s '
+                  'deduplication: %(deduplication)s '
+                  'ssd_cache: %(ssd_cache)s',
+                  {'thin_provision': thin_provision,
+                   'compression': compression,
+                   'deduplication': deduplication,
+                   'ssd_cache': ssd_cache})
+
         if (share['size'] > snap_share['size']):
             share_dict = {
                 'sharename': create_share_name,
                 'old_sharename': create_share_name,
                 'new_size': share['size'],
+                'thin_provision': thin_provision == 'True',
+                'compression': compression == 'True',
+                'deduplication': deduplication == 'True',
+                'ssd_cache': ssd_cache == 'True',
                 'share_proto': share['share_proto']
             }
             self.api_executor.edit_share(share_dict)
@@ -505,6 +583,10 @@ class QnapShareDriver(driver.ShareDriver):
         _metadata = {
             'volID': create_volID,
             'volName': create_share_name,
+            'thin_provision': thin_provision,
+            'compression': compression,
+            'deduplication': deduplication,
+            'ssd_cache': ssd_cache
         }
         self.private_storage.update(share['id'], _metadata)
 
@@ -726,25 +808,62 @@ class QnapShareDriver(driver.ShareDriver):
                     "backend.") % share['id']
             raise exception.ManageInvalidShare(reason=msg)
 
-        _metadata = {}
+        extra_specs = share_types.get_extra_specs_from_share(share)
+        qnap_thin_provision = share_types.parse_boolean_extra_spec(
+            'thin_provisioning', extra_specs.get("thin_provisioning") or
+            extra_specs.get('capabilities:thin_provisioning') or 'true')
+        qnap_compression = share_types.parse_boolean_extra_spec(
+            'compression', extra_specs.get("compression") or
+            extra_specs.get('capabilities:compression') or 'true')
+        qnap_deduplication = share_types.parse_boolean_extra_spec(
+            'dedupe', extra_specs.get("dedupe") or
+            extra_specs.get('capabilities:dedupe') or 'false')
+        qnap_ssd_cache = share_types.parse_boolean_extra_spec(
+            'qnap_ssd_cache', extra_specs.get("qnap_ssd_cache") or
+            extra_specs.get("capabilities:qnap_ssd_cache") or 'false')
+        LOG.debug('qnap_thin_provision: %(qnap_thin_provision)s '
+                  'qnap_compression: %(qnap_compression)s '
+                  'qnap_deduplication: %(qnap_deduplication)s '
+                  'qnap_ssd_cache: %(qnap_ssd_cache)s',
+                  {'qnap_thin_provision': qnap_thin_provision,
+                   'qnap_compression': qnap_compression,
+                   'qnap_deduplication': qnap_deduplication,
+                   'qnap_ssd_cache': qnap_ssd_cache})
+        if (qnap_deduplication and not qnap_thin_provision):
+            msg = _("Dedupe cannot be enabled without thin_provisioning.")
+            LOG.debug('Dedupe cannot be enabled without thin_provisioning.')
+            raise exception.InvalidExtraSpec(reason=msg)
+
         vol_no = existing_share.find('vol_no').text
+        vol = self.api_executor.get_specific_volinfo(vol_no)
+        vol_size_gb = int(vol.find('size').text) / units.Gi
+
+        share_dict = {
+            'sharename': share_name,
+            'old_sharename': share_name,
+            'new_size': vol_size_gb,
+            'thin_provision': qnap_thin_provision,
+            'compression': qnap_compression,
+            'deduplication': qnap_deduplication,
+            'ssd_cache': qnap_ssd_cache,
+            'share_proto': share['share_proto']
+        }
+        self.api_executor.edit_share(share_dict)
+
+        _metadata = {}
         _metadata['volID'] = vol_no
         _metadata['volName'] = share_name
+        _metadata['thin_provision'] = qnap_thin_provision
+        _metadata['compression'] = qnap_compression
+        _metadata['deduplication'] = qnap_deduplication
+        _metadata['ssd_cache'] = qnap_ssd_cache
         self.private_storage.update(share['id'], _metadata)
-
-        # Test to get value from private_storage.
-        volID = self.private_storage.get(share['id'], 'volID')
-        LOG.debug('volID: %s', volID)
-        volName = self.private_storage.get(share['id'], 'volName')
-        LOG.debug('volName: %s', volName)
 
         LOG.info("Share %(shr_path)s was successfully managed with ID "
                  "%(shr_id)s.",
                  {'shr_path': share['export_locations'][0]['path'],
                   'shr_id': share['id']})
 
-        vol = self.api_executor.get_specific_volinfo(vol_no)
-        vol_size_gb = int(vol.find('size').text) / units.Gi
         export_locations = self._get_location_path(
             share_name,
             share['share_proto'],
