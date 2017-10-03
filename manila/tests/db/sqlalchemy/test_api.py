@@ -1644,11 +1644,39 @@ class DriverPrivateDataDatabaseAPITestCase(test.TestCase):
         self.assertEqual({}, initial_data)
         self.assertEqual(valid, actual_data)
 
-    def test_update_with_duplicate(self):
+    @ddt.data({'with_deleted': True, 'append': False},
+              {'with_deleted': True, 'append': True},
+              {'with_deleted': False, 'append': False},
+              {'with_deleted': False, 'append': True})
+    @ddt.unpack
+    def test_update_with_more_values(self, with_deleted, append):
+        test_id = self._get_driver_test_data()
+        details = {"tee": "too"}
+        more_details = {"foo": "bar"}
+        result = {"tee": "too", "foo": "bar"}
+
+        db_api.driver_private_data_update(self.ctxt, test_id, details)
+        if with_deleted:
+            db_api.driver_private_data_delete(self.ctxt, test_id)
+        if append:
+            more_details.update(details)
+        if with_deleted and not append:
+            result.pop("tee")
+        db_api.driver_private_data_update(self.ctxt, test_id, more_details)
+
+        actual_result = db_api.driver_private_data_get(self.ctxt,
+                                                       test_id)
+
+        self.assertEqual(result, actual_result)
+
+    @ddt.data(True, False)
+    def test_update_with_duplicate(self, with_deleted):
         test_id = self._get_driver_test_data()
         details = {"tee": "too"}
 
         db_api.driver_private_data_update(self.ctxt, test_id, details)
+        if with_deleted:
+            db_api.driver_private_data_delete(self.ctxt, test_id)
         db_api.driver_private_data_update(self.ctxt, test_id, details)
 
         actual_result = db_api.driver_private_data_get(self.ctxt,
