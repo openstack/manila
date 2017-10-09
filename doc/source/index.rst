@@ -49,7 +49,7 @@ Admin Docs
 .. toctree::
    :maxdepth: 1
 
-   admin/shared-file-systems-intro.rst
+   admin/index
 
 Contributor/Developer Docs
 ==========================
@@ -74,7 +74,7 @@ Configuration Reference
 .. toctree::
    :maxdepth: 1
 
-   configuration/shared-file-systems
+   configuration/index
 
 Other Reference
 ===============
