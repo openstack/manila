@@ -720,6 +720,8 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver_client.create_volume_clone(share_name, parent_share_name,
                                            parent_snapshot_name,
                                            **provisioning_options)
+        if share['size'] > snapshot['size']:
+            vserver_client.set_volume_size(share_name, share['size'])
 
     @na_utils.trace
     def _share_exists(self, share_name, vserver_client):
@@ -1154,7 +1156,8 @@ class NetAppCmodeFileStorageLibrary(object):
                         cgsnapshot_member['id']):
                     clone_info['snapshot'] = {
                         'share_id': cgsnapshot_member['share_id'],
-                        'id': cgsnapshot_dict['id']
+                        'id': cgsnapshot_dict['id'],
+                        'size': cgsnapshot_member['size'],
                     }
                     break
 
