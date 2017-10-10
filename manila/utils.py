@@ -682,3 +682,29 @@ def if_notifications_enabled(function):
             return function(*args, **kwargs)
         return DO_NOTHING
     return wrapped
+
+
+def write_local_file(filename, contents, as_root=False):
+    tmp_filename = "%s.tmp" % filename
+    if as_root:
+        execute('tee', tmp_filename, run_as_root=True, process_input=contents)
+        execute('mv', '-f', tmp_filename, filename, run_as_root=True)
+    else:
+        with open(tmp_filename, 'w') as f:
+            f.write(contents)
+        os.rename(tmp_filename, filename)
+
+
+def write_remote_file(ssh, filename, contents, as_root=False):
+    tmp_filename = "%s.tmp" % filename
+    if as_root:
+        cmd = 'sudo tee "%s" > /dev/null' % tmp_filename
+        cmd2 = 'sudo mv -f "%s" "%s"' % (tmp_filename, filename)
+    else:
+        cmd = 'cat > "%s"' % tmp_filename
+        cmd2 = 'mv -f "%s" "%s"' % (tmp_filename, filename)
+    stdin, __, __ = ssh.exec_command(cmd)
+    stdin.write(contents)
+    stdin.close()
+    stdin.channel.shutdown_write()
+    ssh.exec_command(cmd2)
