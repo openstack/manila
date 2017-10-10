@@ -453,6 +453,7 @@ CG_SNAPSHOT_MEMBER_1 = {
     'id': CG_SNAPSHOT_MEMBER_ID1,
     'share_id': SHARE_ID,
     'share_proto': 'NFS',
+    'size': SHARE_SIZE,
 }
 
 CG_SNAPSHOT_MEMBER_2 = {
@@ -460,6 +461,7 @@ CG_SNAPSHOT_MEMBER_2 = {
     'id': CG_SNAPSHOT_MEMBER_ID2,
     'share_id': SHARE_ID2,
     'share_proto': 'NFS',
+    'size': SHARE_SIZE,
 }
 
 CG_SNAPSHOT = {
@@ -476,14 +478,16 @@ COLLATED_CGSNAPSHOT_INFO = [
         'share': SHARE_FOR_CG3,
         'snapshot': {
             'share_id': SHARE_ID,
-            'id': CG_SNAPSHOT_ID
+            'id': CG_SNAPSHOT_ID,
+            'size': SHARE_SIZE,
         }
     },
     {
         'share': SHARE_FOR_CG4,
         'snapshot': {
             'share_id': SHARE_ID2,
-            'id': CG_SNAPSHOT_ID
+            'id': CG_SNAPSHOT_ID,
+            'size': SHARE_SIZE,
         }
     },
 ]

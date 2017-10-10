@@ -1014,35 +1014,47 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           fake.AGGREGATES[1],
                           fake.EXTRA_SPEC)
 
-    @ddt.data(None, 'fake_location')
-    def test_allocate_container_from_snapshot(self, provider_location):
+    @ddt.data({'provider_location': None, 'size': 50},
+              {'provider_location': 'fake_location', 'size': 30},
+              {'provider_location': 'fake_location', 'size': 20})
+    @ddt.unpack
+    def test_allocate_container_from_snapshot(self, provider_location, size):
 
         mock_get_provisioning_opts = self.mock_object(
             self.library, '_get_provisioning_options_for_share',
             mock.Mock(return_value=copy.deepcopy(fake.PROVISIONING_OPTIONS)))
         vserver = fake.VSERVER1
         vserver_client = mock.Mock()
+        original_snapshot_size = 20
 
+        fake_share = copy.deepcopy(fake.SHARE)
+        fake_share['size'] = size
         fake_snapshot = copy.deepcopy(fake.SNAPSHOT)
         fake_snapshot['provider_location'] = provider_location
+        fake_snapshot['size'] = original_snapshot_size
 
-        self.library._allocate_container_from_snapshot(fake.SHARE,
+        self.library._allocate_container_from_snapshot(fake_share,
                                                        fake_snapshot,
                                                        vserver,
                                                        vserver_client)
 
-        share_name = self.library._get_backend_share_name(fake.SHARE['id'])
+        share_name = self.library._get_backend_share_name(fake_share['id'])
         parent_share_name = self.library._get_backend_share_name(
-            fake.SNAPSHOT['share_id'])
+            fake_snapshot['share_id'])
         parent_snapshot_name = self.library._get_backend_snapshot_name(
-            fake.SNAPSHOT['id']) if not provider_location else 'fake_location'
+            fake_snapshot['id']) if not provider_location else 'fake_location'
         mock_get_provisioning_opts.assert_called_once_with(
-            fake.SHARE, fake.VSERVER1)
+            fake_share, fake.VSERVER1)
         vserver_client.create_volume_clone.assert_called_once_with(
             share_name, parent_share_name, parent_snapshot_name,
             thin_provisioned=True, snapshot_policy='default',
             language='en-US', dedup_enabled=True, split=True,
             compression_enabled=False, max_files=5000)
+        if size > original_snapshot_size:
+            vserver_client.set_volume_size.assert_called_once_with(
+                share_name, size)
+        else:
+            vserver_client.set_volume_size.assert_not_called()
 
     def test_share_exists(self):
 
