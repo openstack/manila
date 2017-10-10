@@ -17,6 +17,7 @@ from oslo_policy import policy
 
 RULE_ADMIN_OR_OWNER = 'rule:admin_or_owner'
 RULE_ADMIN_API = 'rule:admin_api'
+RULE_DEFAULT = 'rule:default'
 
 rules = [
     policy.RuleDefault(name='context_is_admin', check_str='role:admin'),
