@@ -16,8 +16,8 @@
 # First argument ($1) expects 'multibackend' as value for setting appropriate
 # tempest conf opts, all other values will assume singlebackend installation.
 
-sudo chown -R jenkins:stack $BASE/new/tempest
-sudo chown -R jenkins:stack $BASE/data/tempest
+sudo chown -R $USER:stack $BASE/new/tempest
+sudo chown -R $USER:stack $BASE/data/tempest
 sudo chmod -R o+rx $BASE/new/devstack/files
 
 # Import devstack functions 'iniset', 'iniget' and 'trueorfalse'
@@ -329,7 +329,7 @@ for port in ${UDP_PORTS[*]}; do
 done
 
 echo "Running tempest manila test suites"
-sudo -H -u jenkins tox -eall-plugin $MANILA_TESTS -- --concurrency=$MANILA_TEMPEST_CONCURRENCY
+sudo -H -u $USER tox -eall-plugin $MANILA_TESTS -- --concurrency=$MANILA_TEMPEST_CONCURRENCY
 RETVAL=$?
 
 
@@ -351,7 +351,7 @@ if [[ "$DRIVER" == "dummy" ]]; then
     manila type-key default set driver_handles_share_servers=False
 
     echo "Running tempest manila test suites for DHSS=False mode"
-    sudo -H -u jenkins tox -eall-plugin $MANILA_TESTS -- --concurrency=$MANILA_TEMPEST_CONCURRENCY
+    sudo -H -u $USER tox -eall-plugin $MANILA_TESTS -- --concurrency=$MANILA_TEMPEST_CONCURRENCY
     RETVAL2=$?
     save_tempest_results 2
 

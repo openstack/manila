@@ -65,7 +65,7 @@ function archive_file {
     local filename=$1
 
     sudo gzip -9 $filename
-    sudo chown jenkins:jenkins $filename.gz
+    sudo chown $USER:stack $filename.gz
     sudo chmod a+r $filename.gz
 }
 
@@ -80,7 +80,7 @@ function save_tempest_results {
 
     # 1. Create destination directory
     sudo mkdir $dst_dirname
-    sudo chown jenkins:jenkins $dst_dirname
+    sudo chown $USER:stack $dst_dirname
     sudo chmod 755 $dst_dirname
 
     # 2. Save tempest configuration file
