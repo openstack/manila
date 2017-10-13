@@ -2466,3 +2466,37 @@ class ProjectShareTypesQuotasChecks(BaseMigrationChecks):
             self.test_case.assertGreater(db_result.rowcount, 0)
             for row in db_result:
                 self.test_case.assertFalse(hasattr(row, 'share_type_id'))
+
+
+@map_to_migration('829a09b0ddd4')
+class FixProjectShareTypesQuotasUniqueConstraintChecks(BaseMigrationChecks):
+    st_record_id = uuidutils.generate_uuid()
+
+    def setup_upgrade_data(self, engine):
+        # Create share type
+        self.st_data = {
+            'id': self.st_record_id,
+            'name': uuidutils.generate_uuid(),
+            'deleted': "False",
+        }
+        st_table = utils.load_table('share_types', engine)
+        engine.execute(st_table.insert(self.st_data))
+
+    def check_upgrade(self, engine, data):
+        for project_id in ('x' * 255, 'x'):
+            # Create share type quota
+            self.quota_data = {
+                'project_id': project_id,
+                'resource': 'y' * 255,
+                'hard_limit': 987654321,
+                'created_at': datetime.datetime(2017, 4, 11, 18, 5, 58),
+                'updated_at': None,
+                'deleted_at': None,
+                'deleted': 0,
+                'share_type_id': self.st_record_id,
+            }
+            new_table = utils.load_table('project_share_type_quotas', engine)
+            engine.execute(new_table.insert(self.quota_data))
+
+    def check_downgrade(self, engine):
+        pass
