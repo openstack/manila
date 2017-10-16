@@ -62,6 +62,7 @@
 
           # Keep localrc to be able to set some vars in pre_test_hook
           export KEEP_LOCALRC=1
+          export PROJECTS="openstack/manila-tempest-plugin $PROJECTS"
 
           function pre_test_hook {
               # 'dhss' - acronym for 'Driver Handles Share Servers',

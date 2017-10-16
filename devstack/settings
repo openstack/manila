@@ -192,6 +192,13 @@ MANILA_DATA_NODE_IP=${MANILA_DATA_NODE_IP:=$MANILA_ADMIN_NET_RANGE}
 # Data Service copy validation
 MANILA_DATA_COPY_CHECK_HASH=${MANILA_DATA_COPY_CHECK_HASH:=True}
 
+MANILA_TEMPEST_PLUGIN_PATH=$DEST/manila-tempest-plugin
+if [[ $TEMPEST_PLUGINS != 0 ]] ; then
+    TEMPEST_PLUGINS="$MANILA_TEMPEST_PLUGIN_PATH $TEMPEST_PLUGINS"
+else
+    TEMPEST_PLUGINS=$MANILA_TEMPEST_PLUGIN_PATH
+fi
+
 # Enable manila services
 # ----------------------
 # We have to add Manila to enabled services for screen_it to work
