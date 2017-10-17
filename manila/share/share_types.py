@@ -34,7 +34,8 @@ CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
 
-def create(context, name, extra_specs=None, is_public=True, projects=None):
+def create(context, name, extra_specs=None, is_public=True,
+           projects=None, description=None):
     """Creates share types."""
     extra_specs = extra_specs or {}
     projects = projects or []
@@ -44,10 +45,10 @@ def create(context, name, extra_specs=None, is_public=True, projects=None):
         get_valid_optional_extra_specs(extra_specs)
     except exception.InvalidExtraSpec as e:
         raise exception.InvalidShareType(reason=six.text_type(e))
-
     try:
         type_ref = db.share_type_create(context,
                                         dict(name=name,
+                                             description=description,
                                              extra_specs=extra_specs,
                                              is_public=is_public),
                                         projects=projects)

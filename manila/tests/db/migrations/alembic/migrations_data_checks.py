@@ -2500,3 +2500,40 @@ class FixProjectShareTypesQuotasUniqueConstraintChecks(BaseMigrationChecks):
 
     def check_downgrade(self, engine):
         pass
+
+
+@map_to_migration('27cb96d991fa')
+class NewDescriptionColumnChecks(BaseMigrationChecks):
+    st_table_name = 'share_types'
+    st_ids = ['share_type_id_fake_3_%d' % i for i in (1, 2)]
+
+    def setup_upgrade_data(self, engine):
+        # Create share type
+        share_type_data = {
+            'id': self.st_ids[0],
+            'name': 'name_1',
+        }
+        st_table = utils.load_table(self.st_table_name, engine)
+        engine.execute(st_table.insert(share_type_data))
+
+    def check_upgrade(self, engine, data):
+        st_table = utils.load_table(self.st_table_name, engine)
+        for na in engine.execute(st_table.select()):
+            self.test_case.assertTrue(hasattr(na, 'description'))
+
+        share_type_data_ds = {
+            'id': self.st_ids[1],
+            'name': 'name_1',
+            'description': 'description_1',
+        }
+        engine.execute(st_table.insert(share_type_data_ds))
+        st = engine.execute(st_table.select().where(
+            share_type_data_ds['id'] == st_table.c.id)).first()
+        self.test_case.assertEqual(
+            share_type_data_ds['description'], st['description'])
+
+    def check_downgrade(self, engine):
+        table = utils.load_table(self.st_table_name, engine)
+        db_result = engine.execute(table.select())
+        for record in db_result:
+            self.test_case.assertFalse(hasattr(record, 'description'))

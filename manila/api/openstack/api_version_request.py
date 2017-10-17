@@ -111,13 +111,14 @@ REST_API_VERSION_HISTORY = """
              manila.
     * 2.39 - Added share-type quotas.
     * 2.40 - Added share group and share group snapshot quotas.
+    * 2.41 - Added 'description' in share type create/list APIs.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.40"
+_MAX_API_VERSION = "2.41"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

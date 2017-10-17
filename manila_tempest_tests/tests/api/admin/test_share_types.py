@@ -58,18 +58,30 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
             self.assertIn(old_key_name, share_type)
             self.assertNotIn(new_key_name, share_type)
 
+    def _verify_description(self, expect_des, share_type, version):
+        if utils.is_microversion_ge(version, "2.41"):
+            self.assertEqual(expect_des, share_type['description'])
+        else:
+            self.assertNotIn('description', share_type)
+
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
-    @ddt.data('2.0', '2.6', '2.7')
+    @ddt.data('2.0', '2.6', '2.7',  '2.40',  '2.41')
     def test_share_type_create_get(self, version):
         self.skip_if_microversion_not_supported(version)
 
         name = data_utils.rand_name("tempest-manila")
+        description = None
+        if utils.is_microversion_ge(version, "2.41"):
+            description = "Description for share type"
         extra_specs = self.add_extra_specs_to_dict({"key": "value", })
 
         # Create share type
         st_create = self.create_share_type(
-            name, extra_specs=extra_specs, version=version)
+            name, extra_specs=extra_specs, version=version,
+            description=description)
         self.assertEqual(name, st_create['share_type']['name'])
+        self._verify_description(
+            description, st_create['share_type'], version)
         self._verify_is_public_key_name(st_create['share_type'], version)
         st_id = st_create["share_type"]["id"]
 
@@ -77,6 +89,7 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         get = self.shares_v2_client.get_share_type(st_id, version=version)
         self.assertEqual(name, get["share_type"]["name"])
         self.assertEqual(st_id, get["share_type"]["id"])
+        self._verify_description(description, get['share_type'], version)
         self.assertEqual(extra_specs, get["share_type"]["extra_specs"])
         self._verify_is_public_key_name(get['share_type'], version)
 
@@ -84,16 +97,20 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         self.assertDictMatch(get["volume_type"], get["share_type"])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
-    @ddt.data('2.0', '2.6', '2.7')
+    @ddt.data('2.0', '2.6', '2.7',  '2.40',  '2.41')
     def test_share_type_create_list(self, version):
         self.skip_if_microversion_not_supported(version)
 
         name = data_utils.rand_name("tempest-manila")
+        description = None
+        if utils.is_microversion_ge(version, "2.41"):
+            description = "Description for share type"
         extra_specs = self.add_extra_specs_to_dict()
 
         # Create share type
         st_create = self.create_share_type(
-            name, extra_specs=extra_specs, version=version)
+            name, extra_specs=extra_specs, version=version,
+            description=description)
         self._verify_is_public_key_name(st_create['share_type'], version)
         st_id = st_create["share_type"]["id"]
 
