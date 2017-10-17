@@ -13,13 +13,26 @@
         - openstack-tox-pylint:
             voting: false
         - manila-tox-genconfig
+        - manila-tempest-minimal-dsvm-dummy
+        - manila-tempest-minimal-dsvm-lvm
+        - manila-tempest-dsvm-mysql-generic:
+            voting: false
+        - manila-tempest-dsvm-postgres-container:
+            voting: false
+        - manila-tempest-dsvm-postgres-zfsonlinux:
+            voting: false
+        - manila-tempest-dsvm-postgres-generic-singlebackend:
+            voting: false
+        - manila-tempest-dsvm-generic-no-share-servers:
+            voting: false
+        - manila-tempest-dsvm-scenario:
+            voting: false
     gate:
       queue: manila
       jobs:
         - manila-tox-genconfig
-    post:
-      jobs:
-        - openstack-tox-cover
+        - manila-tempest-minimal-dsvm-dummy
+        - manila-tempest-minimal-dsvm-lvm
 
 - job:
     name: manila-tox-genconfig
@@ -27,6 +40,134 @@
     description: |
       Run tests for manila project.
 
+      Uses tox with the ``genconfig`` environment.
+    vars:
+      tox_envlist: genconfig
+
+- job:
+    name: legacy-manila-tempest-dsvm-base
+    parent: legacy-dsvm-base
+    irrelevant-files:
+      - ^(test-|)requirements.txt$
+      - ^.*\.rst$
+      - ^api-ref/.*$
+      - ^doc/.*$
+      - ^install-guide/.*$
+      - ^manila/hacking/.*$
+      - ^manila/tests/.*$
+      - ^releasenotes/.*$
+      - ^run_tests.sh$
+      - ^setup.cfg$
+      - ^tools/.*$
+      - ^tox.ini$
+
+- job:
+    name: manila-tempest-dsvm-generic-no-share-servers
+    parent: legacy-manila-tempest-dsvm-base
+    run: playbooks/legacy/manila-tempest-dsvm-generic-no-share-servers/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-generic-no-share-servers/post.yaml
+    timeout: 5400
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/manila
+      - openstack/manila-image-elements
+      - openstack/python-manilaclient
+      - openstack/tempest
+
+- job:
+    name: manila-tempest-dsvm-mysql-generic
+    parent: legacy-manila-tempest-dsvm-base
+    run: playbooks/legacy/manila-tempest-dsvm-mysql-generic/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-mysql-generic/post.yaml
+    timeout: 5400
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/manila
+      - openstack/manila-image-elements
+      - openstack/python-manilaclient
+      - openstack/tempest
+
+- job:
+    name: manila-tempest-dsvm-postgres-container
+    parent: legacy-manila-tempest-dsvm-base
+    run: playbooks/legacy/manila-tempest-dsvm-postgres-container/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-postgres-container/post.yaml
+    timeout: 5400
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/manila
+      - openstack/manila-image-elements
+      - openstack/python-manilaclient
+      - openstack/tempest
+
+- job:
+    name: manila-tempest-dsvm-postgres-generic-singlebackend
+    parent: legacy-manila-tempest-dsvm-base
+    run: playbooks/legacy/manila-tempest-dsvm-postgres-generic-singlebackend/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-postgres-generic-singlebackend/post.yaml
+    timeout: 5400
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/manila
+      - openstack/manila-image-elements
+      - openstack/python-manilaclient
+      - openstack/tempest
+
+- job:
+    name: manila-tempest-dsvm-postgres-zfsonlinux
+    parent: legacy-manila-tempest-dsvm-base
+    run: playbooks/legacy/manila-tempest-dsvm-postgres-zfsonlinux/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-postgres-zfsonlinux/post.yaml
+    timeout: 5400
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/manila
+      - openstack/manila-image-elements
+      - openstack/python-manilaclient
+      - openstack/tempest
+
+- job:
+    name: manila-tempest-dsvm-scenario
+    parent: legacy-manila-tempest-dsvm-base
+    run: playbooks/legacy/manila-tempest-dsvm-scenario/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-scenario/post.yaml
+    timeout: 5400
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/manila
+      - openstack/manila-image-elements
+      - openstack/python-manilaclient
+      - openstack/tempest
+
+- job:
+    name: manila-tempest-minimal-dsvm-dummy
+    parent: legacy-manila-tempest-dsvm-base
+    run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy/run.yaml
+    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy/post.yaml
+    timeout: 5400
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/manila
+      - openstack/python-manilaclient
+      - openstack/tempest
+
+- job:
+    name: manila-tempest-minimal-dsvm-lvm
+    parent: legacy-manila-tempest-dsvm-base
+    run: playbooks/legacy/manila-tempest-minimal-dsvm-lvm/run.yaml
+    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-lvm/post.yaml
+    timeout: 5400
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/manila
+      - openstack/python-manilaclient
+      - openstack/tempest
+
+- job:
+    name: manila-tox-genconfig
+    parent: openstack-tox
+    description: |
+      Run tests for manila project.
       Uses tox with the ``genconfig`` environment.
     vars:
       tox_envlist: genconfig
