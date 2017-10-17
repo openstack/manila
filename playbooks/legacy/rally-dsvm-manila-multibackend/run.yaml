@@ -1,0 +1,85 @@
+- hosts: all
+  name: Autoconverted job legacy-rally-dsvm-manila-multibackend from old job gate-rally-dsvm-manila-multibackend
+  tasks:
+
+    - name: Ensure legacy workspace directory
+      file:
+        path: '{{ ansible_user_dir }}/workspace'
+        state: directory
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          cat > clonemap.yaml << EOF
+          clonemap:
+            - name: openstack-infra/devstack-gate
+              dest: devstack-gate
+          EOF
+          /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
+              git://git.openstack.org \
+              openstack-infra/devstack-gate
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          cat << 'EOF' >>"/tmp/dg-local.conf"
+          [[local|localrc]]
+          enable_plugin manila git://git.openstack.org/openstack/manila
+          enable_plugin rally git://git.openstack.org/openstack/rally
+
+          EOF
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+
+          if [ $ZUUL_PROJECT == "openstack/rally" ] && [ $ZUUL_BRANCH != "master" ]; then
+              export DEVSTACK_GATE_FEATURE_MATRIX="/opt/stack/new/rally/devstack/features.yaml"
+          fi
+
+          export PROJECTS="openstack/rally $PROJECTS"
+          export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
+
+          # Run only manila services, because only main manila functionality
+          # will be tested with 'dummy' share driver that does not use real
+          # storage back ends. Also, it will speed up devstack installation.
+          export OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit
+
+          export IDENTITY_API_VERSION=3
+
+          export DEVSTACK_GATE_NEUTRON=1
+          export RALLY_SCENARIO=rally-manila
+
+          # Keep localrc to be able to set some vars in pre_test_hook
+          export KEEP_LOCALRC=1
+
+          function pre_test_hook {
+              # Install manila-devstack integration
+              # 'dhss' means 'drivers handle share servers'
+              # 'driver' is codename of shar driver in manila
+              # that is used for proper configuration of storage backend.
+              source $BASE/new/manila/contrib/ci/pre_test_hook.sh 1 dummy 'multibackend'
+          }
+          export -f pre_test_hook
+
+          function post_test_hook {
+              source $BASE/new/manila/contrib/ci/common.sh
+              manila_wait_for_drivers_init /etc/manila/manila.conf
+              $BASE/new/rally/tests/ci/rally-gate.sh
+          }
+          export -f post_test_hook
+
+          cp devstack-gate/devstack-vm-gate-wrap.sh ./safe-devstack-vm-gate-wrap.sh
+          ./safe-devstack-vm-gate-wrap.sh
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
