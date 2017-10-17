@@ -61,15 +61,15 @@ Prerequisites
 
      .. code-block:: console
 
-        # yum install lvm2 nfs-utils nfs4-acl-tools portmap
+        # yum install lvm2 nfs-utils nfs4-acl-tools portmap targetcli
 
    * Start the LVM metadata service and configure it to start when the
      system boots:
 
      .. code-block:: console
 
-        # systemctl enable lvm2-lvmetad.service
-        # systemctl start lvm2-lvmetad.service
+        # systemctl enable lvm2-lvmetad.service target.service
+        # systemctl start lvm2-lvmetad.service target.service
 
 .. include:: common/dhss-false-mode-configuration.rst
 
@@ -99,5 +99,5 @@ Finalize installation
 
    .. code-block:: console
 
-      # systemctl enable openstack-manila-share.service target.service
-      # systemctl start openstack-manila-share.service target.service
+      # systemctl enable openstack-manila-share.service
+      # systemctl start openstack-manila-share.service
