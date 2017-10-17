@@ -1,0 +1,65 @@
+- hosts: all
+  name: Autoconverted job legacy-grenade-dsvm-manila from old job gate-grenade-dsvm-manila-ubuntu-xenial-nv
+  tasks:
+
+    - name: Ensure legacy workspace directory
+      file:
+        path: '{{ ansible_user_dir }}/workspace'
+        state: directory
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          cat > clonemap.yaml << EOF
+          clonemap:
+            - name: openstack-infra/devstack-gate
+              dest: devstack-gate
+          EOF
+          /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
+              git://git.openstack.org \
+              openstack-infra/devstack-gate
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          export PROJECTS="openstack-dev/grenade $PROJECTS"
+          export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
+          export PYTHONUNBUFFERED=true
+          export DEVSTACK_GATE_NEUTRON=0
+          export DEVSTACK_GATE_TEMPEST_NOTESTS=1
+          export DEVSTACK_GATE_GRENADE=pullup
+
+          # Basic services needed for grenade manila job using dummy driver
+          export OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit
+
+          # Enable manila grenade plugin. Provided repo should be
+          # cloned by zuul before devstack run and below provided
+          # link should not be used.
+          export GRENADE_PLUGINRC="enable_grenade_plugin manila git://git.openstack.org/openstack/manila"
+
+          # Keep localrc to be able to set some vars in pre_test_hook
+          export KEEP_LOCALRC=1
+
+          function pre_test_hook {
+              source $BASE/new/manila/contrib/ci/pre_test_hook.sh \
+                  True \
+                  dummy \
+                  multibackend
+          }
+          export -f pre_test_hook
+
+          export BRANCH_OVERRIDE=default
+          if [ "$BRANCH_OVERRIDE" != "default" ] ; then
+              export OVERRIDE_ZUUL_BRANCH=$BRANCH_OVERRIDE
+          fi
+
+          cp devstack-gate/devstack-vm-gate-wrap.sh ./safe-devstack-vm-gate-wrap.sh
+          ./safe-devstack-vm-gate-wrap.sh
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
