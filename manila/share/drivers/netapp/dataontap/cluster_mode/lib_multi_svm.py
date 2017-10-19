@@ -384,3 +384,10 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 self._client.delete_vlan(node, port, vlan)
             except exception.NetAppException:
                 LOG.exception("Deleting Vserver VLAN failed.")
+
+    def get_configured_ip_version(self):
+        versions = [4]
+        options = self._client.get_net_options()
+        if options['ipv6-enabled']:
+            versions.append(6)
+        return versions

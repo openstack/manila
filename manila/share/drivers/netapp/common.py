@@ -126,4 +126,5 @@ class NetAppDriver(object):
         driver = importutils.import_object(driver_loc, *args, **kwargs)
         LOG.info('NetApp driver of family %(storage_family)s and mode '
                  '%(driver_mode)s loaded.', fmt)
+        driver.ipv6_implemented = True
         return driver

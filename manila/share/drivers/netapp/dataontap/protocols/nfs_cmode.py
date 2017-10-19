@@ -17,7 +17,6 @@ NetApp cDOT NFS protocol helper class.
 
 import uuid
 
-import netaddr
 from oslo_log import log
 import six
 
@@ -33,6 +32,13 @@ LOG = log.getLogger(__name__)
 class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
     """NetApp cDOT NFS protocol helper class."""
 
+    @staticmethod
+    def _escaped_address(address):
+        if ':' in address:
+            return '[%s]' % address
+        else:
+            return address
+
     @na_utils.trace
     def create_share(self, share, share_name,
                      clear_current_export_policy=True):
@@ -45,7 +51,8 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
         # Return a callback that may be used for generating export paths
         # for this share.
         return (lambda export_address, export_path=export_path:
-                ':'.join([export_address, export_path]))
+                ':'.join([self._escaped_address(export_address),
+                          export_path]))
 
     @na_utils.trace
     @base.access_rules_synchronized
@@ -67,7 +74,7 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
 
         # Sort rules by ascending network size
         new_rules = {rule['access_to']: rule['access_level'] for rule in rules}
-        addresses = self._get_sorted_access_rule_addresses(new_rules)
+        addresses = sorted(new_rules, reverse=True)
 
         # Ensure current export policy has the name we expect
         self._ensure_export_policy(share, share_name)
@@ -122,22 +129,6 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
 
         if rule['access_level'] not in constants.ACCESS_LEVELS:
             raise exception.InvalidShareAccessLevel(level=rule['access_level'])
-
-    @na_utils.trace
-    def _get_sorted_access_rule_addresses(self, rules):
-        """Given a dict of access rules, sort by increasing network size."""
-
-        networks = sorted([self._get_network_object_from_rule(rule)
-                           for rule in rules], reverse=True)
-
-        return [six.text_type(network) for network in networks]
-
-    def _get_network_object_from_rule(self, rule):
-        """Get most appropriate netaddr object for address or network rule."""
-        try:
-            return netaddr.IPAddress(rule)
-        except ValueError:
-            return netaddr.IPNetwork(rule)
 
     @na_utils.trace
     def get_target(self, share):

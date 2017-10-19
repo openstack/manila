@@ -1269,7 +1269,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         """Enables NFS on Vserver."""
         self.send_request('nfs-enable')
         self._enable_nfs_protocols(versions)
-        self._create_default_nfs_export_rule()
+        self._create_default_nfs_export_rules()
 
     @na_utils.trace
     def _enable_nfs_protocols(self, versions):
@@ -1286,7 +1286,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('nfs-service-modify', nfs_service_modify_args)
 
     @na_utils.trace
-    def _create_default_nfs_export_rule(self):
+    def _create_default_nfs_export_rules(self):
         """Create the default export rule for the NFS service."""
 
         export_rule_create_args = {
@@ -1299,6 +1299,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 'security-flavor': 'never',
             },
         }
+        self.send_request('export-rule-create', export_rule_create_args)
+        export_rule_create_args['client-match'] = '::/0'
         self.send_request('export-rule-create', export_rule_create_args)
 
     @na_utils.trace
@@ -3652,3 +3654,15 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             msg = 'Could not delete QoS policy groups. Details: %(ex)s'
             msg_args = {'ex': ex}
             LOG.debug(msg, msg_args)
+
+    @na_utils.trace
+    def get_net_options(self):
+        result = self.send_request('net-options-get', None, False)
+        options = result.get_child_by_name('net-options')
+        ipv6_enabled = False
+        ipv6_info = options.get_child_by_name('ipv6-options-info')
+        if ipv6_info:
+            ipv6_enabled = ipv6_info.get_child_content('enabled') == 'true'
+        return {
+            'ipv6-enabled': ipv6_enabled,
+        }
