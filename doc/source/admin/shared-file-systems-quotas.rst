@@ -101,15 +101,17 @@ you get the quotas for the specified project.
 .. code-block:: console
 
    $ manila quota-show --tenant %project_id% --user %user_id%
-   +--------------------+-------+
-   | Property           | Value |
-   +--------------------+-------+
-   | gigabytes          | 1000  |
-   | snapshot_gigabytes | 1000  |
-   | snapshots          | 50    |
-   | shares             | 50    |
-   | share_networks     | 10    |
-   +--------------------+-------+
+   +-----------------------+-------+
+   | Property              | Value |
+   +-----------------------+-------+
+   | gigabytes             | 1000  |
+   | snapshot_gigabytes    | 1000  |
+   | snapshots             | 50    |
+   | shares                | 50    |
+   | share_networks        | 10    |
+   | share_groups          | 50    |
+   | share_group_snapshots | 50    |
+   +-----------------------+-------+
 
 There are default quotas for a project that are set from the
 ``manila.conf`` file. To list the default quotas for a project, use
@@ -118,20 +120,23 @@ the :command:`manila quota-defaults` command:
 .. code-block:: console
 
    $ manila quota-defaults --tenant %project_id%
-   +--------------------+-------+
-   | Property           | Value |
-   +--------------------+-------+
-   | gigabytes          | 1000  |
-   | snapshot_gigabytes | 1000  |
-   | snapshots          | 50    |
-   | shares             | 50    |
-   | share_networks     | 10    |
-   +--------------------+-------+
+   +-----------------------+-------+
+   | Property              | Value |
+   +-----------------------+-------+
+   | gigabytes             | 1000  |
+   | snapshot_gigabytes    | 1000  |
+   | snapshots             | 50    |
+   | shares                | 50    |
+   | share_networks        | 10    |
+   | share_groups          | 50    |
+   | share_group_snapshots | 50    |
+   +-----------------------+-------+
 
 The administrator can update the quotas for a specific project, or for a
 specific user by providing both the ``--tenant`` and ``--user`` optional
 arguments. It is possible to update the ``shares``, ``snapshots``,
-``gigabytes``, ``snapshot-gigabytes``, and ``share-networks`` quotas.
+``gigabytes``, ``snapshot-gigabytes``, ``share-networks``, ``share_groups``
+and ``share_group_snapshots`` quotas.
 
 .. code-block:: console
 

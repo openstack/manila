@@ -66,6 +66,10 @@ The Shared File Systems service contains the following components:
 
    -  The number of share networks that can be created.
 
+   -  The number of share groups that can be created.
+
+   -  The number of share group snapshots that can be created.
+
    You can revise the default quota values with the Shared File Systems
    CLI, so the limits placed by quotas are editable by admin users.
 
