@@ -47,14 +47,16 @@ must create a database, service credentials, and `API endpoints`.
         $ openstack user create --domain default --password-prompt manila
         User Password:
         Repeat User Password:
-        +-----------+----------------------------------+
-        | Field     | Value                            |
-        +-----------+----------------------------------+
-        | domain_id | e0353a670a9e496da891347c589539e9 |
-        | enabled   | True                             |
-        | id        | 83a3990fc2144100ba0e2e23886d8acc |
-        | name      | manila                           |
-        +-----------+----------------------------------+
+        +---------------------+----------------------------------+
+        | Field               | Value                            |
+        +---------------------+----------------------------------+
+        | domain_id           | e0353a670a9e496da891347c589539e9 |
+        | enabled             | True                             |
+        | id                  | 83a3990fc2144100ba0e2e23886d8acc |
+        | name                | manila                           |
+        | options             | {}                               |
+        | password_expires_at | None                             |
+        +---------------------+----------------------------------+
 
    * Add the ``admin`` role to the ``manila`` user:
 
@@ -85,11 +87,11 @@ must create a database, service credentials, and `API endpoints`.
      .. code-block:: console
 
         $ openstack service create --name manilav2 \
-          --description "OpenStack Shared File Systems" sharev2
+          --description "OpenStack Shared File Systems V2" sharev2
           +-------------+----------------------------------+
           | Field       | Value                            |
           +-------------+----------------------------------+
-          | description | OpenStack Shared File Systems    |
+          | description | OpenStack Shared File Systems V2 |
           | enabled     | True                             |
           | id          | 30d92a97a81a4e5d8fd97a32bafd7b88 |
           | name        | manilav2                         |
