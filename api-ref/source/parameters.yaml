@@ -318,6 +318,13 @@ service_zone_query:
   in: query
   required: false
   type: string
+share_group_id_query:
+  description: |
+    The UUID of a share group to filter resource.
+  in: query
+  required: false
+  type: string
+  min_version: 2.31
 share_network_id_5:
   description: |
     The UUID of the share network.
@@ -2392,6 +2399,20 @@ share_force_delete:
   in: body
   required: true
   type: string
+share_group_id:
+  description: |
+    The UUID of the share group.
+  in: body
+  required: True
+  type: string
+  min_version: 2.31
+share_group_id_request:
+  description: |
+    The UUID of the share group.
+  in: body
+  required: False
+  type: string
+  min_version: 2.31
 share_id_2:
   description: |
     The UUID of the share from which the share

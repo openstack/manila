@@ -20,6 +20,7 @@
             }
         ],
         "share_network_id": null,
+        "share_group_id": null,
         "export_locations": [],
         "share_proto": "NFS",
         "host": null,

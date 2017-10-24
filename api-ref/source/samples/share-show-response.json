@@ -14,6 +14,7 @@
         "share_network_id": "713df749-aac0-4a54-af52-10f6c991e80c",
         "export_locations": [],
         "share_server_id": "e268f4aa-d571-43dd-9ab3-f49ad06ffaef",
+        "share_group_id": null,
         "snapshot_id": null,
         "id": "011d21e2-fbc3-4e4a-9993-9ea223f73264",
         "size": 1,

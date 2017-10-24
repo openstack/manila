@@ -114,6 +114,7 @@ Request
    - share_network_id: share_network_id
    - project_id: project_id_6
    - is_public: is_public
+   - share_group_id: share_group_id_query
    - export_location_id: export_location_id_query
    - export_location_path: export_location_path_query
    - name~: name_inexact_query
@@ -168,6 +169,7 @@ Request
    - share_network_id: share_network_id
    - project_id: project_id_6
    - is_public: is_public
+   - share_group_id: share_group_id_query
    - export_location_id: export_location_id_query
    - export_location_path: export_location_path_query
    - name~: name_inexact_query
@@ -196,6 +198,7 @@ Response parameters
    - host: host_1
    - access_rules_status: access_rules_status
    - is_public: is_public
+   - share_group_id: share_group_id
    - task_state: task_state
    - snapshot_support: snapshot_support
    - name: name_5
@@ -255,6 +258,7 @@ Response parameters
    - host: host_9
    - access_rules_status: access_rules_status
    - is_public: is_public
+   - share_group_id: share_group_id
    - task_state: task_state
    - snapshot_support: snapshot_support
    - name: name_5
@@ -298,6 +302,7 @@ Request
    - volume_type: volume_type
    - snapshot_id: snapshot_id_request
    - is_public: is_public
+   - share_group_id: share_group_id_request
    - metadata: metadata
    - share_network_id: share_network_id_2
    - availability_zone: availability_zone
@@ -330,6 +335,7 @@ Response parameters
    - volume_type: volume_type
    - snapshot_id: snapshot_id_share_response
    - is_public: is_public
+   - share_group_id: share_group_id
    - metadata: metadata
    - share_network_id: share_network_id
    - availability_zone: availability_zone_1
@@ -407,6 +413,7 @@ Response parameters
    - description: description_5
    - host: host_9
    - is_public: is_public
+   - share_group_id: share_group_id
    - snapshot_support: snapshot_support
    - name: name_5
    - created_at: created_at_4
@@ -483,6 +490,7 @@ Response parameters
    - host: host_9
    - access_rules_status: access_rules_status
    - is_public: is_public
+   - share_group_id: share_group_id
    - task_state: task_state
    - snapshot_support: snapshot_support
    - name: name_5

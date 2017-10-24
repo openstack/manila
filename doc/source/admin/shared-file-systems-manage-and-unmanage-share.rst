@@ -97,6 +97,7 @@ To manage share, run:
    | availability_zone           | None                                 |
    | share_network_id            | None                                 |
    | share_server_id             | None                                 |
+   | share_group_id              | None                                 |
    | host                        | manila@paris#shares                  |
    | access_rules_status         | active                               |
    | snapshot_id                 | None                                 |
@@ -140,6 +141,7 @@ Check that the share is available:
    |                      | id = 1dd4f0a3-778d-486a-a851-b522f6e7cf5f                                |
    |                      | share_instance_id = 4c8e3887-4f9a-4775-bab4-e5840a09c34e                 |
    | share_server_id      | None                                                                     |
+   | share_group_id       | None                                                                     |
    | host                 | manila@paris#shares                                                      |
    | access_rules_status  | active                                                                   |
    | snapshot_id          | None                                                                     |

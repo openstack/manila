@@ -141,6 +141,7 @@ protocol, and size 1 GB:
    | availability_zone           | None                                 |
    | share_network_id            | None                                 |
    | share_server_id             | None                                 |
+   | share_group_id              | None                                 |
    | host                        |                                      |
    | access_rules_status         | active                               |
    | snapshot_id                 | None                                 |
@@ -184,6 +185,7 @@ New share ``Share2`` should have a status ``available``:
    |                             | id = 44933f59-e0e3-4483-bb88-72ba7c486f41                |
    |                             | share_instance_id = a5fb1ab7-0bbd-465b-ac14-05706294b6e9 |
    | share_server_id             | None                                                     |
+   | share_group_id              | None                                                     |
    | host                        | manila@paris#epsilon                                     |
    | access_rules_status         | active                                                   |
    | snapshot_id                 | None                                                     |
@@ -288,6 +290,7 @@ share type, NFS shared file system protocol, and size 1 GB:
    | availability_zone           | None                                 |
    | share_network_id            | c895fe26-92be-4152-9e6c-f2ad230efb13 |
    | share_server_id             | None                                 |
+   | share_group_id              | None                                 |
    | host                        |                                      |
    | access_rules_status         | active                               |
    | snapshot_id                 | None                                 |
@@ -347,6 +350,7 @@ status share should have status ``available``:
    |                      | id = 602d0f5c-921b-4e45-bfdb-5eec8a89165a                            |
    |                      | share_instance_id = fe874928-39a2-441b-8d24-29e6f0fde965             |
    | share_server_id      | 2e9d2d02-883f-47b5-bb98-e053b8d1e683                                 |
+   | share_group_id       | None                                                                     |
    | host                 | manila@london#LONDON                                                 |
    | access_rules_status  | active                                                               |
    | snapshot_id          | None                                                                 |
@@ -399,6 +403,7 @@ the share if you need:
    |                      | id = 602d0f5c-921b-4e45-bfdb-5eec8a89165a                            |
    |                      | share_instance_id = fe874928-39a2-441b-8d24-29e6f0fde965             |
    | share_server_id      | 2e9d2d02-883f-47b5-bb98-e053b8d1e683                                 |
+   | share_group_id       | None                                                                     |
    | host                 | manila@london#LONDON                                                 |
    | access_rules_status  | active                                                               |
    | snapshot_id          | None                                                                 |
@@ -531,6 +536,7 @@ include ``available``, ``error``, ``creating``, ``deleting``,
    |                      | id = 602d0f5c-921b-4e45-bfdb-5eec8a89165a                            |
    |                      | share_instance_id = fe874928-39a2-441b-8d24-29e6f0fde965             |
    | share_server_id      | 2e9d2d02-883f-47b5-bb98-e053b8d1e683                                 |
+   | share_group_id       | None                                                                     |
    | host                 | manila@london#LONDON                                                 |
    | access_rules_status  | active                                                               |
    | snapshot_id          | None                                                                 |
