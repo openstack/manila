@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixed issue where locales other than POSIX and en_US.UTF-8 might
+    cause the translate_string_size_to_float method to fail on a
+    comma decimal separator instead of a period decimal separator.
