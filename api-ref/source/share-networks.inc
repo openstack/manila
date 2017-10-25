@@ -178,10 +178,10 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - tenant_id: tenant_id_path
-   - neutron_net_id: neutron_net_id_1
-   - neutron_subnet_id: neutron_subnet_id_1
+   - neutron_net_id: neutron_net_id_request
+   - neutron_subnet_id: neutron_subnet_id_request
    - name: share_network_name_request
-   - description: share_network_description
+   - description: share_network_description_request
 
 Request example
 ---------------
@@ -341,7 +341,9 @@ Request
    - tenant_id: tenant_id_path
    - share_network_id: share_network_id_path
    - name: share_network_name_request
-   - description: share_network_description
+   - description: share_network_description_request
+   - neutron_net_id: neutron_net_id_request
+   - neutron_subnet_id: neutron_subnet_id_request
 
 Request example
 ---------------

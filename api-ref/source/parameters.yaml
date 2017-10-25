@@ -1661,10 +1661,10 @@ neutron_net_id:
   in: body
   required: true
   type: string
-neutron_net_id_1:
+neutron_net_id_request:
   description: |
-    The UUID of a neutron network when setting up a share network
-    with neutron.  Specify both a neutron network and a neutron
+    The UUID of a neutron network when setting up or updating a share
+    network with neutron.  Specify both a neutron network and a neutron
     subnet that belongs to that neutron network.
   in: body
   required: false
@@ -1675,10 +1675,10 @@ neutron_subnet_id:
   in: body
   required: true
   type: string
-neutron_subnet_id_1:
+neutron_subnet_id_request:
   description: |
-    The UUID of the neutron subnet when setting up a share network
-    with neutron.  Specify both a neutron network and a neutron
+    The UUID of the neutron subnet when setting up or updating a share
+    network with neutron.  Specify both a neutron network and a neutron
     subnet that belongs to that neutron network.
   in: body
   required: false
@@ -2456,6 +2456,12 @@ share_network_description:
     The share network description.
   in: body
   required: true
+  type: string
+share_network_description_request:
+  description: |
+    The share network description.
+  in: body
+  required: false
   type: string
 share_network_id:
   description: |
