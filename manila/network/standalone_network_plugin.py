@@ -68,8 +68,7 @@ standalone_network_plugin_opts = [
         deprecated_for_removal=True,
         deprecated_reason="This option has been replaced by "
                           "'network_plugin_ipv4_enabled' and "
-                          "'network_plugin_ipv6_enabled' options.",
-        deprecated_group='DEFAULT'),
+                          "'network_plugin_ipv6_enabled' options."),
     cfg.IntOpt(
         'standalone_network_plugin_mtu',
         default=1500,
