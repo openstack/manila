@@ -159,10 +159,10 @@ Configure CephFS back end in ``manila.conf``
        cephfs_conf_path = /etc/ceph/ceph.conf
        cephfs_auth_id = manila
        cephfs_cluster_name = ceph
-       cephfs_enable_snapshots = True
+       cephfs_enable_snapshots = False
 
-   Set ``cephfs_enable_snapshots`` to ``True`` in the section to let the driver
-   perform snapshot-related operations. Also set the
+   To let the driver perform snapshot related operations, set
+   cephfs_enable_snapshots to True . Also set the
    ``driver-handles-share-servers`` to ``False`` as the driver does not manage
    the lifecycle of ``share-servers``.
 
