@@ -609,14 +609,15 @@ def translate_string_size_to_float(string, multiplier='G'):
             }
         )
     try:
-        value = float(string) / 1024.0
+        value = float(string.replace(",", ".")) / 1024.0
         value = value / mapping[multiplier]
         return value
     except (ValueError, TypeError):
         matched = re.match(
-            r"^(\d+\.*\d*)([%s])$" % ','.join(multipliers), string)
+            r"^(\d*[.,]*\d*)([%s])$" % ''.join(multipliers), string)
         if matched:
-            value = float(matched.groups()[0])
+            # The replace() is needed in case decimal separator is a comma
+            value = float(matched.groups()[0].replace(",", "."))
             multiplier = mapping[matched.groups()[1]] / mapping[multiplier]
             return value * multiplier
 
