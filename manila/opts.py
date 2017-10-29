@@ -106,10 +106,17 @@ _global_opt_lists = [
     manila.message.api.messages_opts,
     manila.network.linux.interface.OPTS,
     manila.network.network_opts,
+    manila.network.network_base_opts,
+    manila.network.neutron.neutron_network_plugin.
+    neutron_network_plugin_opts,
+    manila.network.neutron.neutron_network_plugin.
+    neutron_single_network_plugin_opts,
     manila.network.neutron.neutron_network_plugin.
     neutron_bind_network_plugin_opts,
     manila.network.neutron.neutron_network_plugin.
-    neutron_single_network_plugin_opts,
+    neutron_binding_profile,
+    manila.network.neutron.neutron_network_plugin.
+    neutron_binding_profile_opts,
     manila.network.standalone_network_plugin.standalone_network_plugin_opts,
     manila.quota.quota_opts,
     manila.scheduler.drivers.base.scheduler_driver_opts,
