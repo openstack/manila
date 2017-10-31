@@ -39,3 +39,4 @@ Shared File Systems API (EXPERIMENTAL)
 .. include:: share-replicas.inc
 .. include:: share-groups.inc
 .. include:: share-group-types.inc
+.. include:: share-group-snapshots.inc

@@ -1,0 +1,18 @@
+{
+    "share_group_snapshot": [
+        {
+            "links": [
+                {
+                    "href": "http://192.168.98.191:8786/v2/e23850eeb91d4fa3866af634223e454c/share_group_snapshot/46bf5875-58d6-4816-948f-8828423b0b9f",
+                    "rel": "self"
+                },
+                {
+                    "href": "http://192.168.98.191:8786/e23850eeb91d4fa3866af634223e454c/share_group_snapshot/46bf5875-58d6-4816-948f-8828423b0b9f",
+                    "rel": "bookmark"
+                }
+            ],
+            "name": null,
+            "id": "46bf5875-58d6-4816-948f-8828423b0b9f",
+        }
+    ]
+}

@@ -1,0 +1,44 @@
+{
+    "share_group_snapshots": [
+        {
+            "status": "available",
+            "share_group_id": "cd7a3d06-23b3-4d05-b4ca-7c9a20faa95f",
+            "links": [
+                {
+                    "href": "http://192.168.98.191:8786/v2/e23850eeb91d4fa3866af634223e454c/share_group_snapshot/46bf5875-58d6-4816-948f-8828423b0b9f",
+                    "rel": "self"
+                },
+                {
+                    "href": "http://192.168.98.191:8786/e23850eeb91d4fa3866af634223e454c/share_group_snapshot/46bf5875-58d6-4816-948f-8828423b0b9f",
+                    "rel": "bookmark"
+                }
+            ],
+            "name": null,
+            "members": [],
+            "created_at": "2017-08-10T03:01:39.000000",
+            "project_id": "e23850eeb91d4fa3866af634223e454c",
+            "id": "46bf5875-58d6-4816-948f-8828423b0b9f",
+            "description": null
+        },
+        {
+            "status": "available",
+            "share_group_id": "cd7a3d06-23b3-4d05-b4ca-7c9a20faa95f",
+            "links": [
+                {
+                    "href": "http://192.168.98.191:8786/v2/e23850eeb91d4fa3866af634223e454c/share_group_snapshot/9d8ed9be-4454-4df0-b0ae-8360b623d93d",
+                    "rel": "self"
+                },
+                {
+                    "href": "http://192.168.98.191:8786/e23850eeb91d4fa3866af634223e454c/share_group_snapshot/9d8ed9be-4454-4df0-b0ae-8360b623d93d",
+                    "rel": "bookmark"
+                }
+            ],
+            "name": null,
+            "members": [],
+            "created_at": "2017-08-10T03:01:28.000000",
+            "project_id": "e23850eeb91d4fa3866af634223e454c",
+            "id": "9d8ed9be-4454-4df0-b0ae-8360b623d93d",
+            "description": null
+        }
+    ]
+}
