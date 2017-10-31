@@ -30,7 +30,6 @@ Create a share network
       | network_type      | None                                 |
       | neutron_net_id    | dca0efc7-523d-43ef-9ded-af404a02b055 |
       | ip_version        | None                                 |
-      | nova_net_id       | None                                 |
       | cidr              | None                                 |
       | project_id        | 907004508ef4447397ce6741a8f037c1     |
       | id                | c895fe26-92be-4152-9e6c-f2ad230efb13 |

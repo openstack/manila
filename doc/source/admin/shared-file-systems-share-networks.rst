@@ -31,16 +31,6 @@ shares are hosted. You can associate a share with a single share network.
 When you create or update a share, you can optionally specify the ID of a share
 network through which instances can access the share.
 
-When you create a share network, you can specify only one type of network:
-
-- OpenStack Networking (neutron). Specify a network ID and subnet ID.
-  In this case ``manila.network.nova_network_plugin.NeutronNetworkPlugin``
-  will be used.
-
-- Legacy networking (nova-network). Specify a network ID.
-  In this case ``manila.network.nova_network_plugin.NoveNetworkPlugin``
-  will be used.
-
 For more information about supported plug-ins for share networks, see
 :ref:`shared_file_systems_network_plugins`.
 
@@ -73,7 +63,6 @@ To create a share network with private network and subnetwork, run:
    | network_type      | None                                 |
    | neutron_net_id    | 5ed5a854-21dc-4ed3-870a-117b7064eb21 |
    | ip_version        | None                                 |
-   | nova_net_id       | None                                 |
    | cidr              | None                                 |
    | project_id        | 20787a7ba11946adad976463b57d8a2f     |
    | id                | 5c3cbabb-f4da-465f-bc7f-fadbe047b85a |

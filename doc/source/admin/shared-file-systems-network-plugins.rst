@@ -84,6 +84,3 @@ Shared File Systems service:
       of network - flat and segmented. As above, it is completely up to the
       share driver to support the network type for which the network plug-in is
       configured.
-
-More information about network plug-ins can be found in `Manila developer documentation
-<https://docs.openstack.org/manila/latest/admin/shared-file-systems-network-plugins.html>`_
