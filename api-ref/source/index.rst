@@ -37,4 +37,5 @@ Shared File Systems API (EXPERIMENTAL)
 .. include:: experimental.inc
 .. include:: share-migration.inc
 .. include:: share-replicas.inc
+.. include:: share-groups.inc
 .. include:: share-group-types.inc

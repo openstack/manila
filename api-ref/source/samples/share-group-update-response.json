@@ -1,0 +1,28 @@
+{
+    "share_groups": {
+        "status": "creating",
+        "description": "Changing the share group description.",
+        "links": [
+            {
+                "href": "http://192.168.98.191:8786/v2/e23850eeb91d4fa3866af634223e454c/share_groups/f9c1f80c-2392-4e34-bd90-fc89cdc5bf93",
+                "rel": "self"
+            },
+            {
+                "href": "http://192.168.98.191:8786/e23850eeb91d4fa3866af634223e454c/share_groups/f9c1f80c-2392-4e34-bd90-fc89cdc5bf93",
+                "rel": "bookmark"
+            }
+        ],
+        "availability_zone": null,
+        "source_share_group_snapshot_id": null,
+        "share_network_id": null,
+        "share_server_id": null,
+        "host": null,
+        "share_group_type_id": "89861c2a-10bf-4013-bdd4-3d020466aee4",
+        "consistent_snapshot_support": null,
+        "id": "f9c1f80c-2392-4e34-bd90-fc89cdc5bf93",
+        "name": "new name",
+        "created_at": "2017-08-03T19:20:33.974421",
+        "project_id": "e23850eeb91d4fa3866af634223e454c",
+        "share_types": ["ecd11f4c-d811-4471-b656-c755c77e02ba"]
+    }
+}

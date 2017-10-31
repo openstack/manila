@@ -1,0 +1,27 @@
+{
+    "share_groups": {
+        "links": [
+            {
+                "href": "http://172.18.198.54:8786/v2/16e1ab15c35a457e9c2b2aa189f544e1/share_groups/011d21e2-fbc3-4e4a-9993-9ea223f73264",
+                "rel": "self"
+            },
+            {
+                "href": "http://172.18.198.54:8786/16e1ab15c35a457e9c2b2aa189f544e1/share_groups/011d21e2-fbc3-4e4a-9993-9ea223f73264",
+                "rel": "bookmark"
+            }
+        ],
+        "availability_zone": "nova",
+        "consistent_snapshot_support": true,
+        "share_group_type_id": "313df749-aac0-1a54-af52-10f6c991e80c"
+        "share_network_id": "713df749-aac0-4a54-af52-10f6c991e80c",
+        "id": "011d21e2-fbc3-4e4a-9993-9ea223f73264",
+        "share_types": ["25747776-08e5-494f-ab40-a64b9d20d8f7", ],
+        "project_id": "16e1ab15c35a457e9c2b2aa189f544e1",
+        "status": "available",
+        "description": "My custom share London",
+        "host": "manila2@generic1#GENERIC1",
+        "source_share_group_snapshot_id": null
+        "name": "share_London",
+        "created_at": "2015-09-18T10:25:24.000000",
+    }
+}

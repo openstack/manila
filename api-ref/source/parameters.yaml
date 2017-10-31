@@ -32,6 +32,12 @@ security_service_id_path:
   in: path
   required: false
   type: string
+share_group_id_path:
+  description: |
+    The UUID of the share group.
+  in: path
+  required: true
+  type: string
 share_group_type_id_path:
   description: |
     The UUID of the share group type.
@@ -715,7 +721,7 @@ availability_zone_id_2:
   description: |
     The availability zone ID for create share group.
   in: body
-  required: false
+  required: true
   type: string
   min_version: 2.34
 availability_zone_name:
@@ -931,7 +937,7 @@ consistent_snapshot_support:
   description: |
     The consistency snapshot support.
   in: body
-  required: false
+  required: true
   type: string
   min_version: 2.34
 created_at_11:
@@ -2616,6 +2622,12 @@ share_group_description_response:
     The share group description.
   in: body
   required: true
+  type: string
+share_group_host:
+  description: |
+    The share group host name.
+  in: body
+  required: false
   type: string
 share_group_id:
   description: |

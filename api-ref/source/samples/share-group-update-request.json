@@ -1,0 +1,6 @@
+{
+    "share_group": {
+        "name": "new name",
+        "description": "Changing the share group description."
+    }
+}

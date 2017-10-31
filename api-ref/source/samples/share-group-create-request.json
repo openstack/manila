@@ -1,0 +1,11 @@
+{
+    "share_group": {
+        "share_types": ["ecd11f4c-d811-4471-b656-c755c77e02ba"],
+        "name": "my_group",
+        "description": "for_test",
+        "share_group_type_id": "89861c2a-10bf-4013-bdd4-3d020466aee4",
+        "availability_zone": "nova",
+        "share_network_id": "82168c2a-10bf-4013-bcc4-3d984136aee3",,
+        "source_share_group_snapshot_id": "69861c2a-10bf-4013-bcc4-3d020466aee3",
+    }
+}
