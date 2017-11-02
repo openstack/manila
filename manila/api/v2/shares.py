@@ -429,6 +429,9 @@ class ShareController(shares.ShareMixin,
             req.GET.pop('description~', None)
             req.GET.pop('description', None)
 
+        if req.api_version_request < api_version.APIVersionRequest("2.42"):
+            req.GET.pop('with_count', None)
+
         return self._get_shares(req, is_detail=False)
 
     @wsgi.Controller.api_version("2.0")

@@ -1502,7 +1502,9 @@ class ShareAPITest(test.TestCase):
               {'use_admin_context': True, 'version': '2.35'},
               {'use_admin_context': False, 'version': '2.35'},
               {'use_admin_context': True, 'version': '2.36'},
-              {'use_admin_context': False, 'version': '2.36'})
+              {'use_admin_context': False, 'version': '2.36'},
+              {'use_admin_context': True, 'version': '2.42'},
+              {'use_admin_context': False, 'version': '2.42'})
     @ddt.unpack
     def test_share_list_summary_with_search_opts(self, use_admin_context,
                                                  version):
@@ -1528,6 +1530,9 @@ class ShareAPITest(test.TestCase):
             search_opts.update(
                 {'display_name~': 'fake',
                  'display_description~': 'fake'})
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.42')):
+            search_opts.update({'with_count': 'true'})
         if use_admin_context:
             search_opts['host'] = 'fake_host'
         # fake_key should be filtered for non-admin
@@ -1583,6 +1588,9 @@ class ShareAPITest(test.TestCase):
         self.assertEqual(shares[1]['id'], result['shares'][0]['id'])
         self.assertEqual(
             shares[1]['display_name'], result['shares'][0]['name'])
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.42')):
+            self.assertEqual(3, result['count'])
 
     def test_share_list_summary(self):
         self.mock_object(share_api.API, 'get_all',
@@ -1612,7 +1620,9 @@ class ShareAPITest(test.TestCase):
     @ddt.data({'use_admin_context': False, 'version': '2.4'},
               {'use_admin_context': True, 'version': '2.4'},
               {'use_admin_context': True, 'version': '2.35'},
-              {'use_admin_context': False, 'version': '2.35'})
+              {'use_admin_context': False, 'version': '2.35'},
+              {'use_admin_context': True, 'version': '2.42'},
+              {'use_admin_context': False, 'version': '2.42'})
     @ddt.unpack
     def test_share_list_detail_with_search_opts(self, use_admin_context,
                                                 version):
@@ -1633,6 +1643,9 @@ class ShareAPITest(test.TestCase):
             'export_location_id': 'fake_export_location_id',
             'export_location_path': 'fake_export_location_path',
         }
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.42')):
+            search_opts.update({'with_count': 'true'})
         if use_admin_context:
             search_opts['host'] = 'fake_host'
         # fake_key should be filtered for non-admin
@@ -1710,6 +1723,9 @@ class ShareAPITest(test.TestCase):
         self.assertEqual(
             shares[1]['instance']['share_network_id'],
             result['shares'][0]['share_network_id'])
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.42')):
+            self.assertEqual(3, result['count'])
 
     def _list_detail_common_expected(self, admin=False):
         share_dict = {

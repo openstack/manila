@@ -1,0 +1,3 @@
+---
+features:
+  - Added total count info in Manila's /shares and /shares/detail APIs.
