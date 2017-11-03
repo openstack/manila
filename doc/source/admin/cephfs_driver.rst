@@ -213,7 +213,7 @@ Create a section like this to define a CephFS native backend:
     cephfs_protocol_helper_type = CEPHFS
     cephfs_auth_id = manila
     cephfs_cluster_name = ceph
-    cephfs_enable_snapshots = false
+    cephfs_enable_snapshots = False
 
 Set ``driver-handles-share-servers`` to ``False`` as the driver does not
 manage the lifecycle of ``share-servers``. To let the driver perform snapshot
