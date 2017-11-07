@@ -1,0 +1,4 @@
+---
+features:
+    Added support for IPv6 export location and access rules to
+    the NetApp driver.

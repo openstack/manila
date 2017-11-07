@@ -20,7 +20,6 @@ import uuid
 
 import ddt
 import mock
-import netaddr
 
 from manila import exception
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode
@@ -39,6 +38,11 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
         self.mock_client = mock.Mock()
         self.helper = nfs_cmode.NetAppCmodeNFSHelper()
         self.helper.set_client(self.mock_client)
+
+    @ddt.data(('1.2.3.4', '1.2.3.4'), ('fc00::1', '[fc00::1]'))
+    @ddt.unpack
+    def test__escaped_address(self, raw, escaped):
+        self.assertEqual(escaped, self.helper._escaped_address(raw))
 
     def test_create_share(self):
 
@@ -120,35 +124,6 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
         self.assertRaises(exception.InvalidShareAccessLevel,
                           self.helper._validate_access_rule,
                           rule)
-
-    def test_get_sorted_access_rule_addresses(self):
-
-        result = self.helper._get_sorted_access_rule_addresses(
-            fake.NEW_NFS_RULES)
-
-        expected = [
-            '10.10.20.10',
-            '10.10.20.0/24',
-            '10.10.10.10',
-            '10.10.10.0/30',
-            '10.10.10.0/24',
-        ]
-        self.assertEqual(expected, result)
-
-    @ddt.data({'rule': '1.2.3.4', 'out': netaddr.IPAddress('1.2.3.4')},
-              {'rule': '1.2.3.4/32', 'out': netaddr.IPNetwork('1.2.3.4/32')})
-    @ddt.unpack
-    def test_get_network_object_from_rule(self, rule, out):
-
-        result = self.helper._get_network_object_from_rule(rule)
-
-        self.assertEqual(out, result)
-
-    def test_get_network_object_from_rule_invalid(self):
-
-        self.assertRaises(netaddr.AddrFormatError,
-                          self.helper._get_network_object_from_rule,
-                          'invalid')
 
     def test_get_target(self):
 

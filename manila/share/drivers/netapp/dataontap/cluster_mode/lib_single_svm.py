@@ -146,3 +146,22 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
     def get_admin_network_allocations_number(self):
         """Get number of network allocations for creating admin LIFs."""
         return 0
+
+    @na_utils.trace
+    def get_configured_ip_version(self):
+        ipv4 = False
+        ipv6 = False
+        vserver_client = self._get_api_client(vserver=self._vserver)
+        interfaces = vserver_client.get_network_interfaces()
+        for interface in interfaces:
+            address = interface['address']
+            if ':' in address:
+                ipv6 = True
+            else:
+                ipv4 = True
+        versions = []
+        if ipv4:
+            versions.append(4)
+        if ipv6:
+            versions.append(6)
+        return versions

@@ -2176,14 +2176,14 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.mock_object(self.client, 'send_request')
         self.mock_object(self.client, '_enable_nfs_protocols')
-        self.mock_object(self.client, '_create_default_nfs_export_rule')
+        self.mock_object(self.client, '_create_default_nfs_export_rules')
 
         self.client.enable_nfs(fake.NFS_VERSIONS)
 
         self.client.send_request.assert_called_once_with('nfs-enable')
         self.client._enable_nfs_protocols.assert_called_once_with(
             fake.NFS_VERSIONS)
-        self.client._create_default_nfs_export_rule.assert_called_once_with()
+        self.client._create_default_nfs_export_rules.assert_called_once_with()
 
     @ddt.data((True, True, True), (True, False, False), (False, True, True))
     @ddt.unpack
@@ -2209,11 +2209,17 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with(
             'nfs-service-modify', nfs_service_modify_args)
 
-    def test_create_default_nfs_export_rule(self):
+    def test_create_default_nfs_export_rules(self):
 
-        self.mock_object(self.client, 'send_request')
+        class CopyingMock(mock.Mock):
+            def __call__(self, *args, **kwargs):
+                args = copy.deepcopy(args)
+                kwargs = copy.deepcopy(kwargs)
+                return super(CopyingMock, self).__call__(*args, **kwargs)
 
-        self.client._create_default_nfs_export_rule()
+        self.mock_object(self.client, 'send_request', CopyingMock())
+
+        self.client._create_default_nfs_export_rules()
 
         export_rule_create_args = {
             'client-match': '0.0.0.0/0',
@@ -2225,8 +2231,11 @@ class NetAppClientCmodeTestCase(test.TestCase):
                 'security-flavor': 'never'
             }
         }
-        self.client.send_request.assert_called_once_with(
-            'export-rule-create', export_rule_create_args)
+        export_rule_create_args2 = export_rule_create_args.copy()
+        export_rule_create_args2['client-match'] = '::/0'
+        self.client.send_request.assert_has_calls([
+            mock.call('export-rule-create', export_rule_create_args),
+            mock.call('export-rule-create', export_rule_create_args2)])
 
     def test_configure_ldap(self):
 
