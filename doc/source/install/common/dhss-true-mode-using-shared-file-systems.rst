@@ -137,7 +137,6 @@ server is an instance where NFS shares are served.
       | network_type      | None                                 |
       | neutron_net_id    | 7c6f9b37-76b4-463e-98d8-27e5686ed083 |
       | ip_version        | None                                 |
-      | nova_net_id       | None                                 |
       | cidr              | None                                 |
       | project_id        | e2c965830ecc4162a002bf16ddc91ab7     |
       | id                | 58b2f0e6-5509-4830-af9c-97f525a31b14 |
