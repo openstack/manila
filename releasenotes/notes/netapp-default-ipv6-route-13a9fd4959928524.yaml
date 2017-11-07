@@ -1,0 +1,4 @@
+---
+features:
+    Added support for IPv6 default gateways to the
+    NetApp driver.

@@ -1045,18 +1045,24 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           fake.PORT,
                           fake.VLAN)
 
-    def test_create_route(self):
+    @ddt.data(('10.10.10.0/24', '10.10.10.1', False),
+              ('fc00::/7', 'fe80::1', False),
+              ('0.0.0.0/0', '10.10.10.1', True),
+              ('::/0', 'fe80::1', True))
+    @ddt.unpack
+    def test_create_route(self, subnet, gateway, omit_destination):
         api_response = netapp_api.NaElement(
             fake.NET_ROUTES_CREATE_RESPONSE)
         expected_api_args = {
-            'destination': fake.SUBNET,
-            'gateway': fake.GATEWAY,
+            'destination': subnet,
+            'gateway': gateway,
             'return-record': 'true',
         }
         self.mock_object(
             self.client, 'send_request', mock.Mock(return_value=api_response))
 
-        self.client.create_route(fake.GATEWAY, destination=fake.SUBNET)
+        destination = None if omit_destination else subnet
+        self.client.create_route(gateway, destination=destination)
 
         self.client.send_request.assert_called_once_with(
             'net-routes-create', expected_api_args)

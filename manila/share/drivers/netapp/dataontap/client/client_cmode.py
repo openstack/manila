@@ -609,7 +609,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 raise exception.NetAppException(msg % msg_args)
 
     @na_utils.trace
-    def create_route(self, gateway, destination='0.0.0.0/0'):
+    def create_route(self, gateway, destination=None):
+        if not destination:
+            if ':' in gateway:
+                destination = '::/0'
+            else:
+                destination = '0.0.0.0/0'
         try:
             api_args = {
                 'destination': destination,
