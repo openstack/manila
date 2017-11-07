@@ -1,0 +1,4 @@
+---
+fixes:
+    IPv6 addresses are handled corrected when specified
+    for the netapp_server_hostname driver option.

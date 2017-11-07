@@ -324,8 +324,10 @@ class NaServer(object):
         return processed_response.get_child_by_name('results')
 
     def _get_url(self):
-        return '%s://%s:%s/%s' % (self._protocol, self._host, self._port,
-                                  self._url)
+        host = self._host
+        if ':' in host:
+            host = '[%s]' % host
+        return '%s://%s:%s/%s' % (self._protocol, host, self._port, self._url)
 
     def _build_opener(self):
         if self._auth_style == NaServer.STYLE_LOGIN_PASSWORD:
