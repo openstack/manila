@@ -1228,6 +1228,8 @@ manila quota-class-update
                                     [--gigabytes <gigabytes>]
                                     [--snapshot-gigabytes <snapshot_gigabytes>]
                                     [--share-networks <share-networks>]
+                                    [--share-groups <share-groups>]
+                                    [--share-group-snapshots <share-group-snapshots>]
                                     <class-name>
 
 Update the quotas for a quota class (Admin only).
@@ -1253,6 +1255,12 @@ Update the quotas for a quota class (Admin only).
 
 ``--share-networks <share-networks>, --share_networks <share-networks>``
   New value for the "share_networks" quota.
+
+``--share-groups <share-groups>, --share_groups <share-groups>``
+  New value for the "share_groups" quota.
+
+``--share-group-snapshots <share-group-snapshots>, --share_group_snapshots <share-group-snapshots>``
+  New value for the "share_group_snapshots" quota.
 
 .. _manila_quota-defaults:
 
@@ -1324,7 +1332,10 @@ manila quota-update
    usage: manila quota-update [--user <user-id>] [--shares <shares>]
                               [--snapshots <snapshots>] [--gigabytes <gigabytes>]
                               [--snapshot-gigabytes <snapshot_gigabytes>]
-                              [--share-networks <share-networks>] [--force]
+                              [--share-networks <share-networks>]
+                              [--share-groups <share-groups>]
+                              [--share-group-snapshots <share-group-snapshots>]
+                              [--force]
                               <tenant_id>
 
 Update the quotas for a tenant/user (Admin only).
@@ -1353,6 +1364,12 @@ Update the quotas for a tenant/user (Admin only).
 
 ``--share-networks <share-networks>, --share_networks <share-networks>``
   New value for the "share_networks" quota.
+
+``--share-groups <share-groups>, --share_groups <share-groups>``
+  New value for the "share_groups" quota.
+
+``--share-group-snapshots <share-group-snapshots>, --share_group_snapshots <share-group-snapshots>``
+  New value for the "share_group_snapshots" quota.
 
 ``--force``
   Whether force update the quota even if the already
@@ -3594,4 +3611,3 @@ Rename a share.
 
 ``--is-public <is_public>, --is_public <is_public>``
   Public share is visible for all tenants.
-

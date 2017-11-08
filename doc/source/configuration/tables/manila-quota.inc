@@ -34,5 +34,9 @@
      - (Integer) Number of snapshot gigabytes allowed per project.
    * - ``quota_snapshots`` = ``50``
      - (Integer) Number of share snapshots allowed per project.
+   * - ``quota_share_groups`` = ``50``
+     - (Integer) Number of share groups allowed.
+   * - ``quota_share_group_snapshots`` = ``50``
+     - (Integer) Number of share group snapshots allowed.
    * - ``reservation_expire`` = ``86400``
      - (Integer) Number of seconds until a reservation expires.
