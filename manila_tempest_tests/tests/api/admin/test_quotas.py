@@ -248,6 +248,30 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
             self.assertEqual(int(quotas[q]) - 1, current_quotas[q])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    @base.skip_if_microversion_lt("2.39")
+    def test_update_share_type_quota_in_two_projects(self):
+        """Regression test for bug/1722707"""
+        share_type = self._create_share_type()
+        client1 = self.get_client_with_isolated_creds(client_version='2')
+        client2 = self.get_client_with_isolated_creds(client_version='2')
+
+        for client in (client1, client2):
+            # Update quotas
+            for q in ('shares', 'gigabytes', 'snapshots',
+                      'snapshot_gigabytes'):
+                # Set new quota
+                updated = client.update_quotas(
+                    client.tenant_id, share_type=share_type['id'], **{q: 0})
+                self.assertEqual(0, int(updated[q]))
+
+            current_quotas = client.show_quotas(
+                client.tenant_id, share_type=share_type['id'])
+
+            for q in ('shares', 'gigabytes', 'snapshots',
+                      'snapshot_gigabytes'):
+                self.assertEqual(0, int(current_quotas[q]))
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_update_tenant_quota_snapshots(self):
         # get current quotas
         quotas = self.client.show_quotas(self.tenant_id)
