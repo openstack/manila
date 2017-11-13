@@ -2,6 +2,7 @@
 branch = True
 source = manila
 omit = manila/test*
+concurrency = eventlet
 
 [report]
-precision = 2
+precision = 0
