@@ -60,6 +60,10 @@ service_opts = [
     cfg.IntOpt('osapi_share_workers',
                default=1,
                help='Number of workers for OpenStack Share API service.'),
+    cfg.BoolOpt('osapi_share_use_ssl',
+                default=False,
+                help='Wraps the socket in a SSL context if True is set. '
+                     'A certificate file and key file must be specified.'),
 ]
 
 CONF = cfg.CONF
@@ -290,6 +294,7 @@ class WSGIService(service.ServiceBase):
         self.host = getattr(CONF, '%s_listen' % name, "0.0.0.0")
         self.port = getattr(CONF, '%s_listen_port' % name, 0)
         self.workers = getattr(CONF, '%s_workers' % name, None)
+        self.use_ssl = getattr(CONF, '%s_use_ssl' % name, False)
         if self.workers is not None and self.workers < 1:
             LOG.warning(
                 "Value of config option %(name)s_workers must be integer "
@@ -302,6 +307,7 @@ class WSGIService(service.ServiceBase):
             self.app,
             host=self.host,
             port=self.port,
+            use_ssl=self.use_ssl
         )
 
     def _get_manager(self):
