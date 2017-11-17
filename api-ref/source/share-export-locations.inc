@@ -65,7 +65,7 @@ Request
 
    - share_id: share_id
    - tenant_id: tenant_id_path
-   - export_location_id: export_location_id
+   - export_location_id: export_location_id_path
 
 Response parameters
 -------------------

@@ -232,7 +232,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - share_id: share_id_4
+   - share_id: share_id
    - tenant_id: tenant_id_path
 
 Response parameters
@@ -458,7 +458,7 @@ Request
    - is_public: is_public
    - display_name: display_name_3
    - display_description: display_description_3
-   - share_id: share_id_4
+   - share_id: share_id
    - tenant_id: tenant_id_path
 
 Request example

@@ -65,8 +65,8 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - tenant_id: tenant_id_path
-   - share_instance_id: export_location_share_instance_id
-   - export_location_id: export_location_id
+   - share_instance_id: share_instance_id
+   - export_location_id: export_location_id_path
 
 Response parameters
 -------------------
