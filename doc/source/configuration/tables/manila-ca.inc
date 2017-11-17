@@ -18,9 +18,5 @@
      - Description
    * - **[DEFAULT]**
      -
-   * - ``ssl_ca_file`` = ``None``
-     - (String) CA certificate file to use to verify connecting clients.
-   * - ``ssl_cert_file`` = ``None``
-     - (String) Certificate file to use when starting the server securely.
-   * - ``ssl_key_file`` = ``None``
-     - (String) Private key file to use when starting the server securely.
+   * - ``osapi_share_use_ssl`` = ``False``
+     - (Boolean) Wraps the socket in a SSL context if True is set.
