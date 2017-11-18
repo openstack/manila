@@ -23,6 +23,7 @@ import oslo_concurrency.opts
 import oslo_log._options
 import oslo_middleware.opts
 import oslo_policy.opts
+import oslo_service.sslutils
 
 import manila.api.common
 import manila.api.middleware.auth
@@ -194,6 +195,7 @@ _opts.extend(oslo_policy.opts.list_opts())
 _opts.extend(manila.network.neutron.api.list_opts())
 _opts.extend(manila.compute.nova.list_opts())
 _opts.extend(manila.volume.cinder.list_opts())
+_opts.extend(oslo_service.sslutils.list_opts())
 
 
 def list_opts():
