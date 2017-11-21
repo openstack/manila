@@ -48,7 +48,7 @@ server is an instance where NFS shares are served.
       to use the shared file system service with a variety of share types,
       where each share creation request could specify a type, please refer to
       the Share types usage documentation `here
-      <http://docs.openstack.org/admin-guide/shared-file-systems-share-types.html>_`.
+      <https://docs.openstack.org/manila/latest/admin/shared-file-systems-share-types.html>`_.
 
 #. Create a manila share server image in the Image service. You may skip this
    step and use any existing image. However, for mounting a share, the service
