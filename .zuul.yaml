@@ -319,6 +319,7 @@
       - openstack-infra/devstack-gate
       - openstack/manila
       - openstack/manila-tempest-plugin
+      - openstack/neutron-dynamic-routing
       - openstack/python-manilaclient
       - openstack/tempest
 

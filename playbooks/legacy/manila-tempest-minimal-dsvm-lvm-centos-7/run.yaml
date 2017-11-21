@@ -39,6 +39,7 @@
           [[local|localrc]]
           SKIP_EPEL_INSTALL=True
           enable_plugin manila git://git.openstack.org/openstack/manila
+          enable_plugin neutron-dynamic-routing git://git.openstack.org/openstack/neutron-dynamic-routing
 
           EOF
         executable: /bin/bash
@@ -52,6 +53,7 @@
           export PYTHONUNBUFFERED=true
           export DEVSTACK_GATE_NEUTRON=1
           export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
+
           # Basic services needed for minimal job
           OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit,tempest
           if [ "lvm" == "lvm" ]; then
@@ -71,7 +73,7 @@
 
           # Keep localrc to be able to set some vars in pre_test_hook
           export KEEP_LOCALRC=1
-          export PROJECTS="openstack/manila-tempest-plugin $PROJECTS"
+          export PROJECTS="openstack/manila-tempest-plugin openstack/neutron-dynamic-routing $PROJECTS"
 
           function pre_test_hook {
               # 'dhss' - acronym for 'Driver Handles Share Servers',

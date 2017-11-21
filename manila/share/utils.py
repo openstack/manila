@@ -152,3 +152,16 @@ def _usage_from_share(share_ref, share_instance_ref, **extra_usage_info):
 
 def get_recent_db_migration_id():
     return migration.version()
+
+
+def is_proper_ipv4_export_location(export, protocol):
+    """Verifies if the export location is in proper IPv4 format."""
+    export = export.replace('[', '').replace(']', '')
+    if protocol == 'nfs' and ':/' in export:
+        ip = export.split(':/')[0]
+    elif protocol == 'cifs' and export.startswith(r'\\'):
+        ip = export.split('\\')[2]
+    else:
+        # TODO(ganso): proper handling of other protocols is pending
+        ip = export.split(':')[0] if ':' in export else export.split('/')[0]
+    return utils.is_valid_ip_address(ip, 4)

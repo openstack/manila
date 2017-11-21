@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Plugin file for enabling manila services
 # ----------------------------------------
 
@@ -938,6 +940,115 @@ function install_libraries {
     fi
 }
 
+function setup_ipv6 {
+
+    # save IPv6 default route to add back later after enabling forwarding
+    local default_route=$(ip -6 route | grep default | cut -d ' ' -f1,2,3,4,5)
+
+    # make sure those system values are set
+    sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=0
+    sudo sysctl -w net.ipv6.conf.all.accept_ra=2
+    sudo sysctl -w net.ipv6.conf.all.forwarding=1
+
+    # Disable in-band as our communication is only internal
+    sudo ovs-vsctl set Bridge $PUBLIC_BRIDGE other_config:disable-in-band=true
+
+    # Create address scopes and subnet pools
+    neutron address-scope-create --shared scope-v4 4
+    neutron address-scope-create --shared scope-v6 6
+    openstack subnet pool create $SUBNETPOOL_NAME_V4 --default-prefix-length $SUBNETPOOL_SIZE_V4 --pool-prefix $SUBNETPOOL_PREFIX_V4 --address-scope scope-v4 --default --share
+    openstack subnet pool create $SUBNETPOOL_NAME_V6 --default-prefix-length $SUBNETPOOL_SIZE_V6 --pool-prefix $SUBNETPOOL_PREFIX_V6 --address-scope scope-v6 --default --share
+
+    # Create example private network and router
+    openstack router create $Q_ROUTER_NAME
+    openstack network create $PRIVATE_NETWORK_NAME
+    openstack subnet create --ip-version 6 --use-default-subnet-pool --ipv6-address-mode $IPV6_ADDRESS_MODE --ipv6-ra-mode $IPV6_RA_MODE --network $PRIVATE_NETWORK_NAME $IPV6_PRIVATE_SUBNET_NAME
+    openstack subnet create --ip-version 4 --use-default-subnet-pool --network $PRIVATE_NETWORK_NAME $PRIVATE_SUBNET_NAME
+    openstack router add subnet $Q_ROUTER_NAME $IPV6_PRIVATE_SUBNET_NAME
+    openstack router add subnet $Q_ROUTER_NAME $PRIVATE_SUBNET_NAME
+
+    # Create public network
+    openstack network create $PUBLIC_NETWORK_NAME --external --default --provider-network-type flat --provider-physical-network $PUBLIC_PHYSICAL_NETWORK
+    local public_gateway_ipv6=$(openstack subnet create $IPV6_PUBLIC_SUBNET_NAME --ip-version 6 --network $PUBLIC_NETWORK_NAME --subnet-pool $SUBNETPOOL_NAME_V6 --no-dhcp -c gateway_ip -f value)
+    local public_gateway_ipv4=$(openstack subnet create $PUBLIC_SUBNET_NAME --ip-version 4 --network $PUBLIC_NETWORK_NAME --subnet-range $FLOATING_RANGE --no-dhcp -c gateway_ip -f value)
+
+    # Set router to use public network
+    openstack router set --external-gateway $PUBLIC_NETWORK_NAME $Q_ROUTER_NAME
+
+    # Configure interfaces due to NEUTRON_CREATE_INITIAL_NETWORKS=False
+    local ipv4_cidr_len=${FLOATING_RANGE#*/}
+    sudo ip -6 addr add "$public_gateway_ipv6"/$SUBNETPOOL_SIZE_V6 dev $PUBLIC_BRIDGE
+    sudo ip addr add $PUBLIC_NETWORK_GATEWAY/"$ipv4_cidr_len" dev $PUBLIC_BRIDGE
+
+    # Enabling interface is needed due to NEUTRON_CREATE_INITIAL_NETWORKS=False
+    sudo ip link set $PUBLIC_BRIDGE up
+
+    if [ "$SHARE_DRIVER" == "manila.share.drivers.lvm.LVMShareDriver" ]; then
+        for backend_name in ${MANILA_ENABLED_BACKENDS//,/ }; do
+            iniset $MANILA_CONF $backend_name lvm_share_export_ips $public_gateway_ipv4,$public_gateway_ipv6
+        done
+        iniset $MANILA_CONF DEFAULT data_node_access_ip $public_gateway_ipv4
+    fi
+
+    # install Quagga for setting up the host routes dynamically
+    install_package quagga
+
+    # set Quagga daemons
+    (
+    echo "zebra=yes"
+    echo "bgpd=yes"
+    echo "ospfd=no"
+    echo "ospf6d=no"
+    echo "ripd=no"
+    echo "ripngd=no"
+    echo "isisd=no"
+    echo "babeld=no"
+    ) | sudo tee /etc/quagga/daemons > /dev/null
+
+    # set Quagga zebra.conf
+    (
+    echo "hostname dsvm"
+    echo "password openstack"
+    echo "log file /var/log/quagga/zebra.log"
+    ) | sudo tee /etc/quagga/zebra.conf > /dev/null
+
+    # set Quagga bgpd.conf
+    (
+    echo "log file /var/log/quagga/bgpd.log"
+    echo "bgp multiple-instance"
+    echo "router bgp 200"
+    echo " bgp router-id 1.2.3.4"
+    echo " neighbor ::1 remote-as 100"
+    echo " neighbor ::1 passive"
+    echo " address-family ipv6"
+    echo "  neighbor ::1 activate"
+    echo "line vty"
+    echo "debug bgp events"
+    echo "debug bgp filters"
+    echo "debug bgp fsm"
+    echo "debug bgp keepalives"
+    echo "debug bgp updates"
+    ) | sudo tee /etc/quagga/bgpd.conf > /dev/null
+
+    if is_ubuntu; then
+        sudo systemctl enable quagga
+        sudo systemctl restart quagga
+    else
+        # Disable SELinux rule that conflicts with Zebra
+        sudo setsebool -P zebra_write_config 1
+        sudo systemctl enable zebra
+        sudo systemctl enable bgpd
+        sudo systemctl restart zebra
+        sudo systemctl restart bgpd
+    fi
+
+    # add default IPv6 route back
+    if ! [[ -z $default_route ]]; then
+        sudo ip -6 route add $default_route
+    fi
+
+}
+
 # Main dispatcher
 if [[ "$1" == "stack" && "$2" == "install" ]]; then
     echo_summary "Installing Manila Client"
@@ -990,6 +1101,11 @@ elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
 
     echo_summary "Configure Samba server"
     configure_samba
+
+    echo_summary "Configuring IPv6"
+    if [ $(trueorfalse False MANILA_SETUP_IPV6) == True ]; then
+        setup_ipv6
+    fi
 
     echo_summary "Starting Manila API"
     start_manila_api

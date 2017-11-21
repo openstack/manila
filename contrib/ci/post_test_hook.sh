@@ -78,6 +78,7 @@ RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=${RUN_MANILA_HOST_ASSISTED_MIGRATION_TE
 RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS=${RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS:-False}
 RUN_MANILA_MOUNT_SNAPSHOT_TESTS=${RUN_MANILA_MOUNT_SNAPSHOT_TESTS:-False}
 RUN_MANILA_MIGRATION_WITH_PRESERVE_SNAPSHOTS_TESTS=${RUN_MANILA_MIGRATION_WITH_PRESERVE_SNAPSHOTS_TESTS:-False}
+RUN_MANILA_IPV6_TESTS=${RUN_MANILA_IPV6_TESTS:-False}
 
 MANILA_CONF=${MANILA_CONF:-/etc/manila/manila.conf}
 
@@ -316,17 +317,42 @@ export OS_USER_DOMAIN_NAME=$ADMIN_DOMAIN_NAME
 source $BASE/new/manila/contrib/ci/common.sh
 manila_wait_for_drivers_init $MANILA_CONF
 
-# (aovchinnikov): extra rules are needed to allow instances talk to host.
-sudo iptables -N manila-nfs
-sudo iptables -I INPUT 1 -j manila-nfs
+
 TCP_PORTS=(2049 111 32803 892 875 662)
 UDP_PORTS=(111 32769 892 875 662)
-for port in ${TCP_PORTS[*]}; do
-    sudo iptables -A manila-nfs -m tcp -p tcp --dport $port -j ACCEPT
+for ipcmd in iptables ip6tables; do
+    # (aovchinnikov): extra rules are needed to allow instances talk to host.
+    sudo $ipcmd -N manila-nfs
+    sudo $ipcmd -I INPUT 1 -j manila-nfs
+    for port in ${TCP_PORTS[*]}; do
+        sudo $ipcmd -A manila-nfs -m tcp -p tcp --dport $port -j ACCEPT
+    done
+    for port in ${UDP_PORTS[*]}; do
+        sudo $ipcmd -A manila-nfs -m udp -p udp --dport $port -j ACCEPT
+    done
 done
-for port in ${UDP_PORTS[*]}; do
-    sudo iptables -A manila-nfs -m udp -p udp --dport $port -j ACCEPT
-done
+
+source $BASE/new/devstack/openrc admin admin
+public_net_id=$(openstack network list --name $PUBLIC_NETWORK_NAME -f value -c ID )
+iniset $TEMPEST_CONFIG network public_network_id $public_net_id
+
+# Now that all plugins are loaded, setup BGP here
+if [ $(trueorfalse False MANILA_SETUP_IPV6) == True ]; then
+    neutron bgp-speaker-create --ip-version 6 --local-as 100 bgpspeaker
+    neutron bgp-speaker-network-add bgpspeaker $PUBLIC_NETWORK_NAME
+    neutron bgp-peer-create --peer-ip ::1 --remote-as 200 bgppeer
+    neutron bgp-speaker-peer-add bgpspeaker bgppeer
+fi
+
+# Set config to run IPv6 tests according to env var
+iniset $TEMPEST_CONFIG share run_ipv6_tests $RUN_MANILA_IPV6_TESTS
+
+if ! [[ -z "$OVERRIDE_IP_FOR_NFS_ACCESS" ]]; then
+    # Set config to use specified IP as access rule on NFS scenario tests
+    # in order to workaround multiple NATs between the VMs and the storage
+    # controller
+    iniset $TEMPEST_CONFIG share override_ip_for_nfs_access $OVERRIDE_IP_FOR_NFS_ACCESS
+fi
 
 echo "Running tempest manila test suites"
 sudo -H -u $USER tox -eall -- $MANILA_TESTS --concurrency=$MANILA_TEMPEST_CONCURRENCY
