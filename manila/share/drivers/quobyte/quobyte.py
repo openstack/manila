@@ -76,9 +76,10 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         1.2.1   - Improved capacity calculation
         1.2.2   - Minor optimizations
         1.2.3   - Updated RPC layer for improved stability
+        1.2.4   - Fixed handling updated QB API error codes
     """
 
-    DRIVER_VERSION = '1.2.3'
+    DRIVER_VERSION = '1.2.4'
 
     def __init__(self, *args, **kwargs):
         super(QuobyteShareDriver, self).__init__(False, *args, **kwargs)
@@ -187,7 +188,8 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         """Resolve a volume name to the global volume uuid."""
         result = self.rpc.call('resolveVolumeName', dict(
             volume_name=volume_name,
-            tenant_domain=tenant_domain))
+            tenant_domain=tenant_domain), [jsonrpc.ERROR_ENOENT,
+                                           jsonrpc.ERROR_ENTITY_NOT_FOUND])
         if result:
             return result['volume_uuid']
         return None  # not found
@@ -220,6 +222,10 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
             self._get_project_name(context, share['project_id']))
 
         if not volume_uuid:
+            # create tenant, expect ERROR_GARBAGE_ARGS if it already exists
+            self.rpc.call('setTenant',
+                          dict(tenant=dict(tenant_id=share['project_id'])),
+                          expected_errors=[jsonrpc.ERROR_GARBAGE_ARGS])
             result = self.rpc.call('createVolume', dict(
                 name=share['name'],
                 tenant_domain=share['project_id'],

@@ -34,6 +34,8 @@ from manila import utils
 LOG = log.getLogger(__name__)
 
 ERROR_ENOENT = 2
+ERROR_ENTITY_NOT_FOUND = -24
+ERROR_GARBAGE_ARGS = -3
 
 
 class JsonRpc(object):
@@ -58,7 +60,7 @@ class JsonRpc(object):
         self._cert_file = cert_file
 
     @utils.synchronized('quobyte-request')
-    def call(self, method_name, user_parameters):
+    def call(self, method_name, user_parameters, expected_errors=[]):
         # prepare request
         self._id += 1
         parameters = {'retry': 'INFINITELY'}  # Backend specific setting
@@ -95,17 +97,19 @@ class JsonRpc(object):
         if result.status_code == codes['OK']:
             LOG.debug("Retrieved data from Quobyte backend: %s", result.text)
             response = result.json()
-            return self._checked_for_application_error(response)
+            return self._checked_for_application_error(response,
+                                                       expected_errors)
 
         # If things did not work out provide error info
         LOG.debug("Backend request resulted in error: %s" % result.text)
         result.raise_for_status()
 
-    def _checked_for_application_error(self, result):
+    def _checked_for_application_error(self, result, expected_errors=[]):
         if 'error' in result and result['error']:
             if 'message' in result['error'] and 'code' in result['error']:
-                if result["error"]["code"] == ERROR_ENOENT:
-                    return None  # No Entry
+                if result["error"]["code"] in expected_errors:
+                    # hit an expected error, return empty result
+                    return None
                 else:
                     raise exception.QBRpcException(
                         result=result["error"]["message"],

@@ -29,7 +29,7 @@ from manila.tests import fake_share
 CONF = cfg.CONF
 
 
-def fake_rpc_handler(name, *args):
+def fake_rpc_handler(name, *args, **kwargs):
     if name == 'resolveVolumeName':
         return None
     elif name == 'createVolume':
@@ -136,8 +136,23 @@ class QuobyteShareDriverTestCase(test.TestCase):
 
         self._driver.create_share(self._context, self.share)
 
-        self._driver.rpc.call.assert_called_with(
-            'exportVolume', dict(protocol='NFS', volume_uuid='voluuid'))
+        resolv_params = {'tenant_domain': 'fake_project_uuid',
+                         'volume_name': 'fakename'}
+        sett_params = {'tenant': {'tenant_id': 'fake_project_uuid'}}
+        create_params = dict(
+            name='fakename',
+            tenant_domain='fake_project_uuid',
+            root_user_id='root',
+            root_group_id='root',
+            configuration_name='BASE')
+        self._driver.rpc.call.assert_has_calls([
+            mock.call('resolveVolumeName', resolv_params,
+                      [jsonrpc.ERROR_ENOENT, jsonrpc.ERROR_ENTITY_NOT_FOUND]),
+            mock.call('setTenant', sett_params,
+                      expected_errors=[jsonrpc.ERROR_GARBAGE_ARGS]),
+            mock.call('createVolume', create_params),
+            mock.call('exportVolume', dict(protocol='NFS',
+                                           volume_uuid='voluuid'))])
 
     def test_create_share_wrong_protocol(self):
         share = {'share_proto': 'WRONG_PROTOCOL'}
@@ -162,7 +177,8 @@ class QuobyteShareDriverTestCase(test.TestCase):
         resolv_params = {'volume_name': 'fakename',
                          'tenant_domain': 'fake_project_uuid'}
         self._driver.rpc.call.assert_has_calls([
-            mock.call('resolveVolumeName', resolv_params),
+            mock.call('resolveVolumeName', resolv_params,
+                      [jsonrpc.ERROR_ENOENT, jsonrpc.ERROR_ENTITY_NOT_FOUND]),
             mock.call('deleteVolume', {'volume_uuid': 'voluuid'})])
 
     def test_delete_share_existing_volume_disabled(self):
@@ -178,8 +194,7 @@ class QuobyteShareDriverTestCase(test.TestCase):
         self._driver.delete_share(self._context, self.share)
 
         self._driver.rpc.call.assert_called_with(
-            'exportVolume', {'volume_uuid': 'voluuid',
-                             'remove_export': True})
+            'exportVolume', {'volume_uuid': 'voluuid', 'remove_export': True})
 
     @mock.patch.object(quobyte.LOG, 'warning')
     def test_delete_share_nonexisting_volume(self, mock_warning):
@@ -276,8 +291,9 @@ class QuobyteShareDriverTestCase(test.TestCase):
 
         exp_params = {'volume_name': 'fake_vol_name',
                       'tenant_domain': 'fake_domain_name'}
-        self._driver.rpc.call.assert_called_with('resolveVolumeName',
-                                                 exp_params)
+        self._driver.rpc.call.assert_called_with(
+            'resolveVolumeName', exp_params,
+            [jsonrpc.ERROR_ENOENT, jsonrpc.ERROR_ENTITY_NOT_FOUND])
 
     def test_resolve_volume_name_NOENT(self):
         self._driver.rpc.call = mock.Mock(
@@ -286,6 +302,12 @@ class QuobyteShareDriverTestCase(test.TestCase):
         self.assertIsNone(
             self._driver._resolve_volume_name('fake_vol_name',
                                               'fake_domain_name'))
+        self._driver.rpc.call.assert_called_once_with(
+            'resolveVolumeName',
+            dict(volume_name='fake_vol_name',
+                 tenant_domain='fake_domain_name'),
+            [jsonrpc.ERROR_ENOENT, jsonrpc.ERROR_ENTITY_NOT_FOUND]
+        )
 
     def test_resolve_volume_name_other_error(self):
         self._driver.rpc.call = mock.Mock(
