@@ -107,12 +107,16 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - id: id_11
+   - name: share_type_name
    - required_extra_specs: required_extra_specs
    - extra_specs: extra_specs
    - driver_handles_share_servers: driver_handles_share_servers
+   - replication_type: replication_type
    - snapshot_support: snapshot_support_1
-   - os-share-type-access:is_public: os-share-type-access:is_public
-   - name: name_9
+   - mount_snapshot_support: mount_snapshot_support
+   - revert_to_snapshot_support: revert_to_snapshot_support
+   - share_type_access:is_public: share_type_access:is_public
+   - create_share_from_snapshot_support: create_share_from_snapshot_support
 
 Response example
 ----------------
@@ -149,8 +153,8 @@ Response parameters
    - extra_specs: extra_specs
    - driver_handles_share_servers: driver_handles_share_servers
    - snapshot_support: snapshot_support_1
-   - os-share-type-access:is_public: os-share-type-access:is_public
-   - name: name_9
+   - share_type_access:is_public: share_type_access:is_public
+   - name: share_type_name
 
 Response example
 ----------------
@@ -186,6 +190,10 @@ Response parameters
    - extra_specs: extra_specs
    - driver_handles_share_servers: driver_handles_share_servers
    - snapshot_support: snapshot_support_1
+   - replication_type: replication_type
+   - mount_snapshot_support: mount_snapshot_support
+   - revert_to_snapshot_support: revert_to_snapshot_support
+   - create_share_from_snapshot_support: create_share_from_snapshot_support
 
 Response example
 ----------------
@@ -210,12 +218,17 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+
    - tenant_id: tenant_id_path
    - extra_specs: extra_specs
    - driver_handles_share_servers: driver_handles_share_servers
    - snapshot_support: snapshot_support_1
    - os-share-type-access:is_public: os-share-type-access:is_public
-   - name: name_9
+   - name: share_type_name
+   - replication_type: replication_type
+   - mount_snapshot_support: mount_snapshot_support
+   - revert_to_snapshot_support: revert_to_snapshot_support
+   - create_share_from_snapshot_support: create_share_from_snapshot_support
 
 Request example
 ---------------
@@ -234,7 +247,12 @@ Response parameters
    - driver_handles_share_servers: driver_handles_share_servers
    - snapshot_support: snapshot_support_1
    - os-share-type-access:is_public: os-share-type-access:is_public
-   - name: name_9
+   - share_type_access:is_public: share_type_access:is_public
+   - name: share_type_name
+   - replication_type: replication_type
+   - mount_snapshot_support: mount_snapshot_support
+   - revert_to_snapshot_support: revert_to_snapshot_support
+   - create_share_from_snapshot_support: create_share_from_snapshot_support
 
 Response example
 ----------------

@@ -1,54 +1,60 @@
 {
     "volume_types": [
         {
-            "os-share-type-access:is_public": true,
             "required_extra_specs": {
                 "driver_handles_share_servers": "True"
             },
+            "share_type_access:is_public": true,
             "extra_specs": {
-                "snapshot_support": "True",
                 "driver_handles_share_servers": "True"
             },
-            "name": "default",
-            "id": "be27425c-f807-4500-a056-d00721db45cf"
+            "id": "420e6a31-3f3d-4ed7-9d11-59450372182a",
+            "name": "default"
         },
         {
-            "os-share-type-access:is_public": true,
             "required_extra_specs": {
-                "driver_handles_share_servers": "false"
+                "driver_handles_share_servers": "True"
             },
+            "share_type_access:is_public": true,
             "extra_specs": {
-                "snapshot_support": "True",
-                "driver_handles_share_servers": "false"
+                "replication_type": "readable",
+                "driver_handles_share_servers": "True",
+                "mount_snapshot_support": "False",
+                "revert_to_snapshot_support": "False",
+                "create_share_from_snapshot_support": "True",
+                "snapshot_support": "True"
             },
-            "name": "d",
-            "id": "f015bebe-c38b-4c49-8832-00143b10253b"
+            "id": "7fa1342b-de9d-4d89-bdc8-af67795c0e52",
+            "name": "testing"
         }
     ],
     "share_types": [
         {
-            "os-share-type-access:is_public": true,
             "required_extra_specs": {
                 "driver_handles_share_servers": "True"
             },
+            "share_type_access:is_public": true,
             "extra_specs": {
-                "snapshot_support": "True",
                 "driver_handles_share_servers": "True"
             },
-            "name": "default",
-            "id": "be27425c-f807-4500-a056-d00721db45cf"
+            "id": "420e6a31-3f3d-4ed7-9d11-59450372182a",
+            "name": "default"
         },
         {
-            "os-share-type-access:is_public": true,
             "required_extra_specs": {
-                "driver_handles_share_servers": "false"
+                "driver_handles_share_servers": "True"
             },
+            "share_type_access:is_public": true,
             "extra_specs": {
-                "snapshot_support": "True",
-                "driver_handles_share_servers": "false"
+                "replication_type": "readable",
+                "driver_handles_share_servers": "True",
+                "mount_snapshot_support": "False",
+                "revert_to_snapshot_support": "False",
+                "create_share_from_snapshot_support": "True",
+                "snapshot_support": "True"
             },
-            "name": "d",
-            "id": "f015bebe-c38b-4c49-8832-00143b10253b"
+            "id": "7fa1342b-de9d-4d89-bdc8-af67795c0e52",
+            "name": "testing"
         }
     ]
 }

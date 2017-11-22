@@ -940,6 +940,14 @@ consistent_snapshot_support:
   required: true
   type: string
   min_version: 2.34
+create_share_from_snapshot_support:
+  description: |
+    Boolean extra spec used for filtering of back ends by
+    their capability to create shares from snapshots.
+  in: body
+  required: false
+  type: boolean
+  min_version: 2.24
 created_at_11:
   description: |
     The date and time stamp when the share server was created.
@@ -1768,6 +1776,14 @@ migration_complete:
   in: body
   required: true
   type: object
+mount_snapshot_support:
+  description: |
+    Boolean extra spec used for filtering of back ends
+    by their capability to mount share snapshots.
+  in: body
+  required: false
+  type: boolean
+  min_version: 2.32
 name:
   description: |
     The share network name.
@@ -1826,12 +1842,6 @@ name_5:
     The share name.
   in: body
   required: false
-  type: string
-name_9:
-  description: |
-    The share type name.
-  in: body
-  required: true
   type: string
 network_type:
   description: |
@@ -1925,6 +1935,7 @@ os-share-type-access:is_public:
   in: body
   required: false
   type: boolean
+  max_version: 2.6
 path:
   description: |
     The export location path that should be used for mout operation.
@@ -2218,10 +2229,11 @@ replica_state:
   type: string
 replication_type:
   description: |
-    (Since API v2.11) The share replication type.
+    The share replication type.
   in: body
   required: false
   type: string
+  min_version: 2.11
 request_id_body:
   description: |
     The UUID of the request during which the message was created.
@@ -2260,6 +2272,14 @@ resource_type_body:
   in: body
   required: true
   type: string
+revert_to_snapshot_support:
+  description: |
+    Boolean extra spec used for filtering of back ends by their
+    capability to revert shares to snapshots.
+  in: body
+  required: false
+  type: boolean
+  min_version: 2.27
 security_service_created_at:
   description: |
     The date and time stamp when the security service was created.
@@ -2983,6 +3003,14 @@ share_type_2:
   in: body
   required: false
   type: string
+share_type_access:is_public:
+  description: |
+    Indicates whether a share type is publicly
+    accessible. Default is ``true``, or publicly accessible.
+  in: body
+  required: false
+  type: boolean
+  min_version: 2.7
 share_type_id_1:
   description: |
     The share type ID of the member.
