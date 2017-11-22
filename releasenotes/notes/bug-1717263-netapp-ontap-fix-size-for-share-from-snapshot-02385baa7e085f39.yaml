@@ -1,0 +1,4 @@
+---
+fixes:
+  - The NetApp ONTAP driver has been fixed to honor the share size as
+    requested when creating shares from an existing snapshot.
