@@ -1,20 +1,24 @@
 {
-    "volume_type": {
-        "required_extra_specs": null,
-        "extra_specs": {
-            "snapshot_support": "True",
-            "driver_handles_share_servers": "True"
-        },
-        "name": "default",
-        "id": "be27425c-f807-4500-a056-d00721db45cf"
-    },
     "share_type": {
-        "required_extra_specs": null,
-        "extra_specs": {
-            "snapshot_support": "True",
+        "required_extra_specs": {
             "driver_handles_share_servers": "True"
         },
-        "name": "default",
-        "id": "be27425c-f807-4500-a056-d00721db45cf"
+        "share_type_access:is_public": true,
+        "extra_specs": {
+            "driver_handles_share_servers": "True"
+        },
+        "id": "420e6a31-3f3d-4ed7-9d11-59450372182a",
+        "name": "default"
+    },
+    "volume_type": {
+        "required_extra_specs": {
+            "driver_handles_share_servers": "True"
+        },
+        "share_type_access:is_public": true,
+        "extra_specs": {
+            "driver_handles_share_servers": "True"
+        },
+        "id": "420e6a31-3f3d-4ed7-9d11-59450372182a",
+        "name": "default"
     }
 }

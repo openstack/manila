@@ -1,6 +1,10 @@
 {
     "extra_specs": {
-        "snapshot_support": "True",
-        "driver_handles_share_servers": "True"
+        "replication_type": "readable",
+        "driver_handles_share_servers": "True",
+        "create_share_from_snapshot_support": "True",
+        "revert_to_snapshot_support": "False",
+        "mount_snapshot_support": "False",
+        "snapshot_support": "True"
     }
 }

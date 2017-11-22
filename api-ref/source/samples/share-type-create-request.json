@@ -1,10 +1,14 @@
 {
-    "volume_type": {
-        "os-share-type-access:is_public": true,
+    "share_type": {
         "extra_specs": {
+            "replication_type": "readable",
             "driver_handles_share_servers": true,
+            "mount_snapshot_support": false,
+            "revert_to_snapshot_support": false,
+            "create_share_from_snapshot_support": true,
             "snapshot_support": true
         },
-        "name": "my_new_volume_type"
+        "share_type_access:is_public": true,
+        "name": "testing"
     }
 }
