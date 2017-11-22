@@ -117,6 +117,7 @@ Response parameters
    - revert_to_snapshot_support: revert_to_snapshot_support
    - share_type_access:is_public: share_type_access:is_public
    - create_share_from_snapshot_support: create_share_from_snapshot_support
+   - description: share_type_description
 
 Response example
 ----------------
@@ -155,6 +156,7 @@ Response parameters
    - snapshot_support: snapshot_support_1
    - share_type_access:is_public: share_type_access:is_public
    - name: share_type_name
+   - description: share_type_description
 
 Response example
 ----------------
@@ -229,6 +231,7 @@ Request
    - mount_snapshot_support: mount_snapshot_support
    - revert_to_snapshot_support: revert_to_snapshot_support
    - create_share_from_snapshot_support: create_share_from_snapshot_support
+   - description: share_type_description_request
 
 Request example
 ---------------
@@ -253,6 +256,7 @@ Response parameters
    - mount_snapshot_support: mount_snapshot_support
    - revert_to_snapshot_support: revert_to_snapshot_support
    - create_share_from_snapshot_support: create_share_from_snapshot_support
+   - description: share_type_description
 
 Response example
 ----------------

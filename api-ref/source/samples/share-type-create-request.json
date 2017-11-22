@@ -9,6 +9,7 @@
             "snapshot_support": true
         },
         "share_type_access:is_public": true,
-        "name": "testing"
+        "name": "testing",
+        "description": "share type description"
     }
 }
