@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    The Quobyte driver now handles updated error codes from Quobyte API
+    versions 1.4+ .
