@@ -55,6 +55,7 @@ deployment.
    shared-file-systems-troubleshoot.rst
    share_back_ends_feature_support_mapping
    capabilities_and_extra_specs
+   group_capabilities_and_extra_specs
    export_location_metadata
 
 Supported share back ends
