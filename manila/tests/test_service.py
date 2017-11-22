@@ -226,3 +226,15 @@ class TestWSGIService(test.TestCase):
         self.test_service.start()
         self.assertGreater(self.test_service.server._pool.size, 0)
         wsgi.Loader.load_app.assert_called_once_with("test_service")
+
+    @mock.patch('oslo_service.wsgi.Server')
+    @mock.patch('oslo_service.wsgi.Loader')
+    def test_ssl_enabled(self, mock_loader, mock_server):
+        self.override_config('osapi_share_use_ssl', True)
+
+        service.WSGIService("osapi_share")
+        mock_server.assert_called_once_with(mock.ANY, mock.ANY, mock.ANY,
+                                            port=mock.ANY, host=mock.ANY,
+                                            use_ssl=True)
+
+        self.assertTrue(mock_loader.called)
