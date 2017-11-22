@@ -516,6 +516,13 @@ user_id_query:
   in: query
   required: false
   type: string
+with_count:
+  description: |
+    Whether to show ``count`` in API response or not, default is ``False``.
+  in: query
+  required: false
+  type: boolean
+  min_version: 2.42
 zone_1:
   description: |
     The availability zone.
@@ -940,6 +947,13 @@ consistent_snapshot_support:
   required: true
   type: string
   min_version: 2.34
+count:
+  description: |
+    The total count of requested resource before pagination is applied.
+  in: body
+  required: false
+  type: integer
+  min_version: 2.42
 create_share_from_snapshot_support:
   description: |
     Boolean extra spec used for filtering of back ends by

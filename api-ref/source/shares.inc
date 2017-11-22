@@ -119,6 +119,7 @@ Request
    - export_location_path: export_location_path_query
    - name~: name_inexact_query
    - description~: description_inexact_query
+   - with_count: with_count
 
 Response parameters
 -------------------
@@ -128,6 +129,7 @@ Response parameters
    - id: id_4
    - links: links
    - name: name
+   - count: count
 
 Response example
 ----------------
@@ -174,6 +176,7 @@ Request
    - export_location_path: export_location_path_query
    - name~: name_inexact_query
    - description~: description_inexact_query
+   - with_count: with_count
 
 Response parameters
 -------------------
@@ -207,6 +210,7 @@ Response parameters
    - created_at: created_at_4
    - share_proto: share_proto
    - volume_type: volume_type
+   - count: count
 
 Response example
 ----------------
