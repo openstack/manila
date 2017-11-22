@@ -15,8 +15,6 @@
 
 """Test of Policy Engine For Manila."""
 
-import os.path
-
 from oslo_config import cfg
 from oslo_policy import policy as common_policy
 
@@ -24,113 +22,80 @@ from manila import context
 from manila import exception
 from manila import policy
 from manila import test
-from manila import utils
 
 CONF = cfg.CONF
-
-
-class PolicyFileTestCase(test.TestCase):
-
-    def setUp(self):
-        super(PolicyFileTestCase, self).setUp()
-        # since is_admin is defined by policy, create context before reset
-        self.context = context.RequestContext('fake', 'fake')
-        policy.reset()
-        self.target = {}
-
-    def test_modified_policy_reloads(self):
-        with utils.tempdir() as tmpdir:
-            tmpfilename = os.path.join(tmpdir, 'policy')
-            CONF.set_override('policy_file', tmpfilename, group='oslo_policy')
-            action = "example:test"
-            with open(tmpfilename, "w") as policyfile:
-                policyfile.write("""{"example:test": []}""")
-            policy.init(tmpfilename)
-            policy.enforce(self.context, action, self.target)
-            with open(tmpfilename, "w") as policyfile:
-                policyfile.write("""{"example:test": ["false:false"]}""")
-            # NOTE(vish): reset stored policy cache so we don't have to
-            # sleep(1)
-            policy._ENFORCER.load_rules(True)
-            self.assertRaises(
-                exception.PolicyNotAuthorized,
-                policy.enforce,
-                self.context,
-                action,
-                self.target,
-            )
 
 
 class PolicyTestCase(test.TestCase):
     def setUp(self):
         super(PolicyTestCase, self).setUp()
+        rules = [
+            common_policy.RuleDefault("true", '@'),
+            common_policy.RuleDefault("test:allowed", '@'),
+            common_policy.RuleDefault("test:denied", "!"),
+            common_policy.RuleDefault("test:my_file",
+                                      "role:compute_admin or "
+                                      "project_id:%(project_id)s"),
+            common_policy.RuleDefault("test:early_and_fail", "! and @"),
+            common_policy.RuleDefault("test:early_or_success", "@ or !"),
+            common_policy.RuleDefault("test:lowercase_admin",
+                                      "role:admin"),
+            common_policy.RuleDefault("test:uppercase_admin",
+                                      "role:ADMIN"),
+        ]
         policy.reset()
         policy.init()
-        self.rules = {
-            "true": [],
-            "example:allowed": [],
-            "example:denied": [["false:false"]],
-            "example:get_http": [["http:http://www.example.com"]],
-            "example:my_file": [["role:compute_admin"],
-                                ["project_id:%(project_id)s"]],
-            "example:early_and_fail": [["false:false", "rule:true"]],
-            "example:early_or_success": [["rule:true"], ["false:false"]],
-            "example:lowercase_admin": [["role:admin"], ["role:sysadmin"]],
-            "example:uppercase_admin": [["role:ADMIN"], ["role:sysadmin"]],
-        }
-        self._set_rules()
+        # before a policy rule can be used, its default has to be registered.
+        policy._ENFORCER.register_defaults(rules)
         self.context = context.RequestContext('fake', 'fake', roles=['member'])
         self.target = {}
+        self.addCleanup(policy.reset)
 
-    def tearDown(self):
-        policy.reset()
-        super(PolicyTestCase, self).tearDown()
-
-    def _set_rules(self):
-        these_rules = common_policy.Rules.from_dict(self.rules)
-        policy._ENFORCER.set_rules(these_rules)
-
-    def test_enforce_nonexistent_action_throws(self):
-        action = "example:noexist"
-        self.assertRaises(exception.PolicyNotAuthorized, policy.enforce,
+    def test_authorize_nonexistent_action_throws(self):
+        action = "test:noexist"
+        self.assertRaises(common_policy.PolicyNotRegistered, policy.authorize,
                           self.context, action, self.target)
 
-    def test_enforce_bad_action_throws(self):
-        action = "example:denied"
-        self.assertRaises(exception.PolicyNotAuthorized, policy.enforce,
+    def test_authorize_bad_action_throws(self):
+        action = "test:denied"
+        self.assertRaises(exception.PolicyNotAuthorized, policy.authorize,
                           self.context, action, self.target)
 
-    def test_enforce_good_action(self):
-        action = "example:allowed"
-        policy.enforce(self.context, action, self.target)
+    def test_authorize_bad_action_noraise(self):
+        action = "test:denied"
+        result = policy.authorize(self.context, action, self.target, False)
+        self.assertFalse(result)
 
-    def test_templatized_enforcement(self):
+    def test_authorize_good_action(self):
+        action = "test:allowed"
+        result = policy.authorize(self.context, action, self.target)
+        self.assertTrue(result)
+
+    def test_templatized_authorization(self):
         target_mine = {'project_id': 'fake'}
         target_not_mine = {'project_id': 'another'}
-        action = "example:my_file"
-        policy.enforce(self.context, action, target_mine)
-        self.assertRaises(exception.PolicyNotAuthorized, policy.enforce,
+        action = "test:my_file"
+        policy.authorize(self.context, action, target_mine)
+        self.assertRaises(exception.PolicyNotAuthorized, policy.authorize,
                           self.context, action, target_not_mine)
 
-    def test_early_AND_enforcement(self):
-        action = "example:early_and_fail"
-        self.assertRaises(exception.PolicyNotAuthorized, policy.enforce,
+    def test_early_AND_authorization(self):
+        action = "test:early_and_fail"
+        self.assertRaises(exception.PolicyNotAuthorized, policy.authorize,
                           self.context, action, self.target)
 
-    def test_early_OR_enforcement(self):
-        action = "example:early_or_success"
-        policy.enforce(self.context, action, self.target)
+    def test_early_OR_authorization(self):
+        action = "test:early_or_success"
+        policy.authorize(self.context, action, self.target)
 
     def test_ignore_case_role_check(self):
-        lowercase_action = "example:lowercase_admin"
-        uppercase_action = "example:uppercase_admin"
-        # NOTE(dprince) we mix case in the Admin role here to ensure
-        # case is ignored
+        lowercase_action = "test:lowercase_admin"
+        uppercase_action = "test:uppercase_admin"
         admin_context = context.RequestContext('admin',
                                                'fake',
                                                roles=['AdMiN'])
-        policy.enforce(admin_context, lowercase_action, self.target)
-        policy.enforce(admin_context, uppercase_action, self.target)
+        policy.authorize(admin_context, lowercase_action, self.target)
+        policy.authorize(admin_context, uppercase_action, self.target)
 
 
 class DefaultPolicyTestCase(test.TestCase):
@@ -214,6 +179,6 @@ class ContextIsAdminPolicyTestCase(test.TestCase):
         }
         self._set_rules(rules, CONF.oslo_policy.policy_default_rule)
         ctx = context.RequestContext('fake', 'fake')
-        self.assertFalse(ctx.is_admin)
+        self.assertTrue(ctx.is_admin)
         ctx = context.RequestContext('fake', 'fake', roles=['admin'])
         self.assertTrue(ctx.is_admin)
