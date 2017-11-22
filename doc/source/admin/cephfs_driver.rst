@@ -257,7 +257,7 @@ Create a section to define a CephFS NFS share backend:
     share_driver = manila.share.drivers.cephfs.driver.CephFSDriver
     cephfs_protocol_helper_type = NFS
     cephfs_conf_path = /etc/ceph/ceph.conf
-    cephfs_auth_id = manila1
+    cephfs_auth_id = manila
     cephfs_cluster_name = ceph
     cephfs_enable_snapshots = False
     cephfs_ganesha_server_is_remote= False
