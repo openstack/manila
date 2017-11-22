@@ -49,8 +49,8 @@
         auth_uri = http://controller:5000
         auth_url = http://controller:35357
         auth_type = password
-        project_domain_id = default
-        user_domain_id = default
+        project_domain_name = Default
+        user_domain_name = Default
         project_name = service
         username = manila
         password = MANILA_PASS
