@@ -112,20 +112,13 @@ class ShareNetworkController(wsgi.Controller):
         search_opts = {}
         search_opts.update(req.GET)
 
-        if ('all_tenants' in search_opts or
-            ('project_id' in search_opts and
-             search_opts['project_id'] != context.project_id)):
-                policy.check_policy(context, RESOURCE_NAME,
-                                    'get_all_share_networks')
-
         if 'security_service_id' in search_opts:
             networks = db_api.share_network_get_all_by_security_service(
                 context, search_opts['security_service_id'])
-        elif ('project_id' in search_opts and
-              search_opts['project_id'] != context.project_id):
+        elif context.is_admin and 'project_id' in search_opts:
             networks = db_api.share_network_get_all_by_project(
                 context, search_opts['project_id'])
-        elif 'all_tenants' in search_opts:
+        elif context.is_admin and 'all_tenants' in search_opts:
             networks = db_api.share_network_get_all(context)
         else:
             networks = db_api.share_network_get_all_by_project(
@@ -160,6 +153,7 @@ class ShareNetworkController(wsgi.Controller):
             'limit',
             'offset',
             'security_service_id',
+            'project_id'
         ]
         for opt in opts_to_remove:
             search_opts.pop(opt, None)
