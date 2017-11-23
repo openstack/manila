@@ -20,7 +20,7 @@ Handles all requests relating to volumes + cinder.
 import copy
 
 from cinderclient import exceptions as cinder_exception
-from cinderclient.v2 import client as cinder_client
+from cinderclient.v3 import client as cinder_client
 from keystoneauth1 import loading as ks_loading
 from oslo_config import cfg
 import six
@@ -34,45 +34,6 @@ from manila.i18n import _
 
 CINDER_GROUP = 'cinder'
 AUTH_OBJ = None
-
-cinder_deprecated_opts = [
-    cfg.StrOpt('cinder_catalog_info',
-               default='volume:cinder:publicURL',
-               help='Info to match when looking for cinder in the service '
-                    'catalog. Format is separated values of the form: '
-                    '<service_type>:<service_name>:<endpoint_type>',
-               deprecated_group='DEFAULT',
-               deprecated_for_removal=True,
-               deprecated_reason="This option isn't used any longer."),
-    cfg.StrOpt('cinder_admin_username',
-               default='cinder',
-               help='Cinder admin username.',
-               deprecated_group='DEFAULT',
-               deprecated_for_removal=True,
-               deprecated_reason="This option isn't used any longer. Please "
-                                 "use [cinder] username instead."),
-
-    cfg.StrOpt('cinder_admin_password',
-               help='Cinder admin password.',
-               deprecated_group='DEFAULT',
-               deprecated_for_removal=True,
-               deprecated_reason="This option isn't used any longer. Please "
-                                 "use [cinder] password instead."),
-    cfg.StrOpt('cinder_admin_tenant_name',
-               default='service',
-               help='Cinder admin tenant name.',
-               deprecated_group='DEFAULT',
-               deprecated_for_removal=True,
-               deprecated_reason="This option isn't used any longer. Please "
-                                 "use [cinder] tenant_name instead."),
-    cfg.StrOpt('cinder_admin_auth_url',
-               default='http://localhost:5000/v2.0',
-               help='Identity service URL.',
-               deprecated_group='DEFAULT',
-               deprecated_for_removal=True,
-               deprecated_reason="This option isn't used any longer. Please "
-                                 "use [cinder] auth_url instead.")
-]
 
 cinder_opts = [
     cfg.BoolOpt('cross_az_attach',
@@ -104,7 +65,6 @@ cinder_opts = [
     ]
 
 CONF = cfg.CONF
-CONF.register_opts(cinder_deprecated_opts)
 CONF.register_opts(core_opts)
 CONF.register_opts(cinder_opts, CINDER_GROUP)
 ks_loading.register_session_conf_options(CONF, CINDER_GROUP)
@@ -118,17 +78,10 @@ def list_opts():
 def cinderclient(context):
     global AUTH_OBJ
     if not AUTH_OBJ:
-        deprecated_opts_for_v2 = {
-            'username': CONF.cinder_admin_username,
-            'password': CONF.cinder_admin_password,
-            'tenant_name': CONF.cinder_admin_tenant_name,
-            'auth_url': CONF.cinder_admin_auth_url,
-        }
         AUTH_OBJ = client_auth.AuthClientLoader(
             client_class=cinder_client.Client,
             exception_module=cinder_exception,
-            cfg_group=CINDER_GROUP,
-            deprecated_opts_for_v2=deprecated_opts_for_v2)
+            cfg_group=CINDER_GROUP)
     return AUTH_OBJ.get_client(context,
                                insecure=CONF[CINDER_GROUP].api_insecure,
                                cacert=CONF[CINDER_GROUP].ca_certificates_file,
