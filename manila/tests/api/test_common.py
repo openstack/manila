@@ -258,6 +258,8 @@ class MiscFunctionsTest(test.TestCase):
     @ddt.data(['ip', '1.1.1.1', False, False], ['user', 'alice', False, False],
               ['cert', 'alice', False, False], ['cephx', 'alice', True, False],
               ['user', 'alice$', False, False],
+              ['user', 'test group name', False, False],
+              ['user', 'group$.-_\'`{}', False, False],
               ['ip', '172.24.41.0/24', False, False],
               ['ip', '1001::1001', False, True],
               ['ip', '1001::1000/120', False, True])
@@ -270,7 +272,8 @@ class MiscFunctionsTest(test.TestCase):
               ['ip', '255.255.255.265', False], ['ip', '1.1.1.0/34', False],
               ['cert', '', False], ['cephx', 'client.alice', True],
               ['group', 'alice', True], ['cephx', 'alice', False],
-              ['cephx', '', True], ['user', 'bob', False],
+              ['cephx', '', True], ['user', 'bob/', False],
+              ['user', 'group<>', False], ['user', '+=*?group', False],
               ['ip', '1001::1001/256', False],
               ['ip', '1001:1001/256', False],)
     @ddt.unpack
