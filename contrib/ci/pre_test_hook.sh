@@ -124,7 +124,7 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_network_type=vlan" >> $localconf
     echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_segmentation_id=1010" >> $localconf
     echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_allowed_ip_ranges=10.0.0.10-10.0.0.209" >> $localconf
-    echo "MANILA_OPTGROUP_membernet_standalone_network_plugin_ip_version=4" >> $localconf
+    echo "MANILA_OPTGROUP_membernet_network_plugin_ipv4_enabled=True" >> $localconf
 
     echo "MANILA_OPTGROUP_adminnet_network_api_class=manila.network.standalone_network_plugin.StandaloneNetworkPlugin" >> $localconf
     echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_gateway=11.0.0.1" >> $localconf
@@ -132,7 +132,7 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_network_type=vlan" >> $localconf
     echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_segmentation_id=1011" >> $localconf
     echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_allowed_ip_ranges=11.0.0.10-11.0.0.19,11.0.0.30-11.0.0.39,11.0.0.50-11.0.0.199" >> $localconf
-    echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_ip_version=4" >> $localconf
+    echo "MANILA_OPTGROUP_adminnet_network_plugin_ipv4_enabled=True" >> $localconf
 
     export MANILA_TEMPEST_CONCURRENCY=24
 

@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    The deprecated configuration option 'standalone_network_plugin_ip_version'
+    has been removed. 'network_plugin_ipv4_enabled' and 'network_plugin_ipv6_enabled'
+    should be used instead.

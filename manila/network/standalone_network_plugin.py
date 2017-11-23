@@ -60,16 +60,6 @@ standalone_network_plugin_opts = [
              "10.0.0.10-10.0.0.20,10.0.0.30-10.0.0.40,10.0.0.50",
         deprecated_group='DEFAULT'),
     cfg.IntOpt(
-        'standalone_network_plugin_ip_version',
-        default=4,
-        help="IP version of network. Optional."
-             "Allowed values are '4' and '6'. Default value is '4'. "
-             "Note: This option is no longer used and has no effect",
-        deprecated_for_removal=True,
-        deprecated_reason="This option has been replaced by "
-                          "'network_plugin_ipv4_enabled' and "
-                          "'network_plugin_ipv6_enabled' options."),
-    cfg.IntOpt(
         'standalone_network_plugin_mtu',
         default=1500,
         help="Maximum Transmission Unit (MTU) value of the network. Default "
@@ -149,15 +139,6 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
                         "'network_plugin_ipv4_enabled' and "
                         "'network_plugin_ipv6_enabled' are "
                         "configured True.")
-
-        if not (ipv4_enabled or ipv6_enabled):
-            ip_version = int(
-                self.configuration.standalone_network_plugin_ip_version)
-            LOG.warning("You're using a deprecated option that may"
-                        " be removed and silently ignored in the future. "
-                        "Please use 'network_plugin_ipv4_enabled' or "
-                        "'network_plugin_ipv6_enabled' instead of "
-                        "'standalone_network_plugin_ip_version'.")
 
         self.network_type = (
             self.configuration.standalone_network_plugin_network_type)
