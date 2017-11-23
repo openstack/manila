@@ -36,6 +36,26 @@ class ShareNetworkListMixin(object):
         [self.assertIn(key, sn.keys()) for sn in listed for key in keys]
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    def test_try_list_share_networks_all_tenants(self):
+        listed = self.shares_client.list_share_networks_with_detail(
+            params={'all_tenants': 1})
+        any(self.sn_with_ldap_ss["id"] in sn["id"] for sn in listed)
+
+        # verify keys
+        keys = ["name", "id"]
+        [self.assertIn(key, sn.keys()) for sn in listed for key in keys]
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    def test_try_list_share_networks_project_id(self):
+        listed = self.shares_client.list_share_networks_with_detail(
+            params={'project_id': 'some_project'})
+        any(self.sn_with_ldap_ss["id"] in sn["id"] for sn in listed)
+
+        # verify keys
+        keys = ["name", "id"]
+        [self.assertIn(key, sn.keys()) for sn in listed for key in keys]
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_list_share_networks_with_detail(self):
         listed = self.shares_v2_client.list_share_networks_with_detail()
         any(self.sn_with_ldap_ss["id"] in sn["id"] for sn in listed)

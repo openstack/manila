@@ -105,7 +105,7 @@ class SecurityServiceController(wsgi.Controller):
             security_services = share_nw['security_services']
             del search_opts['share_network_id']
         else:
-            if 'all_tenants' in search_opts:
+            if 'all_tenants' in search_opts and context.is_admin:
                 policy.check_policy(context, RESOURCE_NAME,
                                     'get_all_security_services')
                 security_services = db.security_service_get_all(context)

@@ -384,13 +384,15 @@ class ShareNetworkAPITest(test.TestCase):
             result[share_networks.RESOURCES_NAME][0],
             fake_sn_with_ss_shortened)
 
-    @mock.patch.object(db_api, 'share_network_get_all', mock.Mock())
+    @mock.patch.object(db_api, 'share_network_get_all_by_project', mock.Mock())
     def test_index_all_tenants_non_admin_context(self):
         req = fakes.HTTPRequest.blank(
             '/share_networks?all_tenants=1')
-        self.assertRaises(exception.PolicyNotAuthorized, self.controller.index,
-                          req)
-        self.assertFalse(db_api.share_network_get_all.called)
+        fake_context = req.environ['manila.context']
+        db_api.share_network_get_all_by_project.return_value = []
+        self.controller.index(req)
+        db_api.share_network_get_all_by_project.assert_called_with(
+            fake_context, fake_context.project_id)
 
     @mock.patch.object(db_api, 'share_network_get_all', mock.Mock())
     def test_index_all_tenants_admin_context(self):
@@ -410,15 +412,16 @@ class ShareNetworkAPITest(test.TestCase):
     def test_index_filter_by_project_id_non_admin_context(self):
         req = fakes.HTTPRequest.blank(
             '/share_networks?project_id=fake project')
-        self.assertRaises(exception.PolicyNotAuthorized, self.controller.index,
-                          req)
-        self.assertFalse(db_api.share_network_get_all_by_project.called)
+        fake_context = req.environ['manila.context']
+        db_api.share_network_get_all_by_project.return_value = []
+        self.controller.index(req)
+        db_api.share_network_get_all_by_project.assert_called_with(
+            fake_context, fake_context.project_id)
 
     @mock.patch.object(db_api, 'share_network_get_all_by_project', mock.Mock())
     def test_index_filter_by_project_id_admin_context(self):
         db_api.share_network_get_all_by_project.return_value = [
-            fake_share_network,
-            fake_share_network_with_ss,
+            fake_share_network_with_ss
         ]
         req = fakes.HTTPRequest.blank(
             '/share_networks?project_id=fake',
@@ -435,8 +438,7 @@ class ShareNetworkAPITest(test.TestCase):
                        mock.Mock())
     def test_index_filter_by_ss_and_project_id_admin_context(self):
         db_api.share_network_get_all_by_security_service.return_value = [
-            fake_share_network,
-            fake_share_network_with_ss,
+            fake_share_network_with_ss
         ]
         req = fakes.HTTPRequest.blank(
             '/share_networks?security_service_id=fake-ss-id&project_id=fake',
