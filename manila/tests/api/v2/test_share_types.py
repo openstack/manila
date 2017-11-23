@@ -45,6 +45,7 @@ def stub_share_type(id):
     return dict(
         id=id,
         name='share_type_%s' % str(id),
+        description='description_%s' % str(id),
         extra_specs=specs,
         required_extra_specs={
             constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: "true",
@@ -88,12 +89,13 @@ def return_share_types_with_volumes_destroy(context, id):
     pass
 
 
-def return_share_types_create(context, name, specs, is_public):
+def return_share_types_create(context, name, specs, is_public, description):
     pass
 
 
 def make_create_body(name="test_share_1", extra_specs=None,
-                     spec_driver_handles_share_servers=True):
+                     spec_driver_handles_share_servers=True,
+                     description=None):
     if not extra_specs:
         extra_specs = {}
 
@@ -104,9 +106,11 @@ def make_create_body(name="test_share_1", extra_specs=None,
     body = {
         "share_type": {
             "name": name,
-            "extra_specs": extra_specs
+            "extra_specs": extra_specs,
         }
     }
+    if description:
+        body["share_type"].update({"description": description})
 
     return body
 
@@ -235,6 +239,8 @@ class ShareTypesAPITest(test.TestCase):
         ('2.24', 'share_type_access', False),
         ('2.27', 'share_type_access', True),
         ('2.27', 'share_type_access', False),
+        ('2.41', 'share_type_access', True),
+        ('2.41', 'share_type_access', False),
     )
     @ddt.unpack
     def test_view_builder_show(self, version, prefix, admin):
@@ -243,6 +249,7 @@ class ShareTypesAPITest(test.TestCase):
         now = timeutils.utcnow().isoformat()
         raw_share_type = dict(
             name='new_type',
+            description='description_test',
             deleted=False,
             created_at=now,
             updated_at=now,
@@ -270,8 +277,10 @@ class ShareTypesAPITest(test.TestCase):
             for extra_spec in constants.ExtraSpecs.INFERRED_OPTIONAL_MAP:
                 expected_share_type['extra_specs'][extra_spec] = (
                     constants.ExtraSpecs.INFERRED_OPTIONAL_MAP[extra_spec])
+        if self.is_microversion_ge(version, '2.41'):
+            expected_share_type['description'] = 'description_test'
 
-        self.assertDictMatch(output['share_type'], expected_share_type)
+        self.assertDictMatch(expected_share_type, output['share_type'])
 
     @ddt.data(
         ('1.0', 'os-share-type-access', True),
@@ -288,6 +297,8 @@ class ShareTypesAPITest(test.TestCase):
         ('2.24', 'share_type_access', False),
         ('2.27', 'share_type_access', True),
         ('2.27', 'share_type_access', False),
+        ('2.41', 'share_type_access', True),
+        ('2.41', 'share_type_access', False),
     )
     @ddt.unpack
     def test_view_builder_list(self, version, prefix, admin):
@@ -306,6 +317,7 @@ class ShareTypesAPITest(test.TestCase):
             raw_share_types.append(
                 dict(
                     name='new_type',
+                    description='description_test',
                     deleted=False,
                     created_at=now,
                     updated_at=now,
@@ -321,16 +333,18 @@ class ShareTypesAPITest(test.TestCase):
         output = view_builder.index(request, raw_share_types)
 
         self.assertIn('share_types', output)
+        expected_share_type = {
+            'name': 'new_type',
+            'extra_specs': extra_specs,
+            '%s:is_public' % prefix: True,
+            'required_extra_specs': {},
+        }
+        if self.is_microversion_ge(version, '2.41'):
+            expected_share_type['description'] = 'description_test'
         for i in range(0, 10):
-            expected_share_type = {
-                'name': 'new_type',
-                'extra_specs': extra_specs,
-                '%s:is_public' % prefix: True,
-                'required_extra_specs': {},
-                'id': 42 + i,
-            }
-            self.assertDictMatch(output['share_types'][i],
-                                 expected_share_type)
+            expected_share_type['id'] = 42 + i
+            self.assertDictMatch(expected_share_type,
+                                 output['share_types'][i])
 
     @ddt.data(None, True, 'true', 'false', 'all')
     def test_parse_is_public_valid(self, value):
@@ -373,12 +387,18 @@ class ShareTypesAPITest(test.TestCase):
         self.controller._delete(req, 1)
         self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
 
-    @ddt.data(make_create_body("share_type_1"),
-              make_create_body(spec_driver_handles_share_servers=True),
-              make_create_body(spec_driver_handles_share_servers=False))
-    def test_create_2_23(self, body):
+    @ddt.data(
+        (make_create_body("share_type_1"), "2.24"),
+        (make_create_body(spec_driver_handles_share_servers=True), "2.24"),
+        (make_create_body(spec_driver_handles_share_servers=False), "2.24"),
+        (make_create_body("share_type_1"), "2.23"),
+        (make_create_body(spec_driver_handles_share_servers=True), "2.23"),
+        (make_create_body(spec_driver_handles_share_servers=False), "2.23"),
+        (make_create_body(description="description_1"), "2.41"))
+    @ddt.unpack
+    def test_create(self, body, version):
 
-        req = fakes.HTTPRequest.blank('/v2/fake/types', version="2.23")
+        req = fakes.HTTPRequest.blank('/v2/fake/types', version=version)
         self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
 
         res_dict = self.controller.create(req, body)
@@ -387,40 +407,24 @@ class ShareTypesAPITest(test.TestCase):
         self.assertEqual(2, len(res_dict))
         self.assertEqual('share_type_1', res_dict['share_type']['name'])
         self.assertEqual('share_type_1', res_dict['volume_type']['name'])
-        for extra_spec in constants.ExtraSpecs.REQUIRED:
-            self.assertIn(extra_spec,
-                          res_dict['share_type']['required_extra_specs'])
-        expected_extra_specs = {
-            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: True,
-            constants.ExtraSpecs.SNAPSHOT_SUPPORT: True,
-        }
-        expected_extra_specs.update(body['share_type']['extra_specs'])
-        share_types.create.assert_called_once_with(
-            mock.ANY, body['share_type']['name'], expected_extra_specs, True)
-
-    @ddt.data(make_create_body("share_type_1"),
-              make_create_body(spec_driver_handles_share_servers=True),
-              make_create_body(spec_driver_handles_share_servers=False))
-    def test_create_2_24(self, body):
-
-        req = fakes.HTTPRequest.blank('/v2/fake/types', version="2.24")
-        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
-
-        res_dict = self.controller.create(req, body)
-
-        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
-        self.assertEqual(2, len(res_dict))
-        self.assertEqual('share_type_1', res_dict['share_type']['name'])
-        self.assertEqual('share_type_1', res_dict['volume_type']['name'])
+        if self.is_microversion_ge(version, '2.41'):
+            self.assertEqual(body['share_type']['description'],
+                             res_dict['share_type']['description'])
+            self.assertEqual(body['share_type']['description'],
+                             res_dict['volume_type']['description'])
         for extra_spec in constants.ExtraSpecs.REQUIRED:
             self.assertIn(extra_spec,
                           res_dict['share_type']['required_extra_specs'])
         expected_extra_specs = {
             constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: True,
         }
+        if self.is_microversion_lt(version, '2.24'):
+            expected_extra_specs[constants.ExtraSpecs.SNAPSHOT_SUPPORT] = True
         expected_extra_specs.update(body['share_type']['extra_specs'])
         share_types.create.assert_called_once_with(
-            mock.ANY, body['share_type']['name'], expected_extra_specs, True)
+            mock.ANY, body['share_type']['name'],
+            expected_extra_specs, True,
+            description=body['share_type'].get('description'))
 
     @ddt.data(None,
               make_create_body(""),
@@ -489,6 +493,7 @@ def generate_type(type_id, is_public):
     return {
         'id': type_id,
         'name': u'test',
+        'description': u'ds_test',
         'deleted': False,
         'created_at': datetime.datetime(2012, 1, 1, 1, 1, 1, 1),
         'updated_at': None,

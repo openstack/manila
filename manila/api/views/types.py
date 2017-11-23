@@ -26,6 +26,7 @@ class ViewBuilder(common.ViewBuilder):
         "add_is_public_attr_core_api_like",
         "add_is_public_attr_extension_like",
         "add_inferred_optional_extra_specs",
+        "add_description_attr",
     ]
 
     def show(self, request, share_type, brief=False):
@@ -90,3 +91,7 @@ class ViewBuilder(common.ViewBuilder):
     def _filter_extra_specs(self, extra_specs, valid_keys):
         return {key: value for key, value in extra_specs.items()
                 if key in valid_keys}
+
+    @common.ViewBuilder.versioned_method("2.41")
+    def add_description_attr(self, context, share_type_dict, share_type):
+        share_type_dict['description'] = share_type.get('description')

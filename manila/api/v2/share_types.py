@@ -21,6 +21,7 @@ import six
 import webob
 from webob import exc
 
+from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila.api.views import types as views_types
 from manila.common import constants
@@ -153,13 +154,21 @@ class ShareTypesController(wsgi.Controller):
             share_type = body['volume_type']
         name = share_type.get('name')
         specs = share_type.get('extra_specs', {})
+        description = share_type.get('description')
+        if (description and req.api_version_request
+                < api_version.APIVersionRequest("2.41")):
+            msg = _("'description' key is not supported by this "
+                    "microversion. Use 2.41 or greater microversion "
+                    "to be able to use 'description' in share type.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
         is_public = share_type.get(
             'os-share-type-access:is_public',
             share_type.get('share_type_access:is_public', True),
         )
 
-        if name is None or name == "" or len(name) > 255:
-            msg = _("Type name is not valid.")
+        if (name is None or name == "" or len(name) > 255
+                or (description and len(description) > 255)):
+            msg = _("Type name or description is not valid.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         # Note(cknight): Set the default extra spec value for snapshot_support
@@ -172,7 +181,8 @@ class ShareTypesController(wsgi.Controller):
             required_extra_specs = (
                 share_types.get_valid_required_extra_specs(specs)
             )
-            share_types.create(context, name, specs, is_public)
+            share_types.create(context, name, specs, is_public,
+                               description=description)
             share_type = share_types.get_share_type_by_name(context, name)
             share_type['required_extra_specs'] = required_extra_specs
             req.cache_db_share_type(share_type)

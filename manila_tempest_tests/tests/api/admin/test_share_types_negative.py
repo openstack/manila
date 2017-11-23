@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions as lib_exc
 from testtools import testcase as tc
@@ -20,6 +21,7 @@ from testtools import testcase as tc
 from manila_tempest_tests.tests.api import base
 
 
+@ddt.ddt
 class ShareTypesAdminNegativeTest(base.BaseSharesMixedTest):
 
     def _create_share_type(self):
@@ -46,6 +48,18 @@ class ShareTypesAdminNegativeTest(base.BaseSharesMixedTest):
         self.assertRaises(lib_exc.BadRequest,
                           self.create_share_type,
                           "x" * 256,
+                          client=self.admin_shares_v2_client)
+
+    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
+    @ddt.data('2.0', '2.6', '2.40')
+    def test_create_share_type_with_description_in_wrong_version(
+            self, version):
+        self.assertRaises(lib_exc.BadRequest,
+                          self.create_share_type,
+                          data_utils.rand_name("tempest_type_name"),
+                          extra_specs=self.add_extra_specs_to_dict(),
+                          description="tempest_type_description",
+                          version=version,
                           client=self.admin_shares_v2_client)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)

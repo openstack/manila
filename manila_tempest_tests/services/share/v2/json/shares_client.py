@@ -820,6 +820,8 @@ class SharesV2Client(shares_client.SharesClient):
             'extra_specs': kwargs.get('extra_specs'),
             is_public_keyname: is_public,
         }
+        if kwargs.get('description'):
+            post_body['description'] = kwargs.get('description')
         post_body = json.dumps({'share_type': post_body})
         resp, body = self.post('types', post_body, version=version)
         self.expected_success(200, resp.status)

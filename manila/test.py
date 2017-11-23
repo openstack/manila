@@ -370,6 +370,10 @@ class TestCase(base_test.BaseTestCase):
         return (api_version.APIVersionRequest(left) >=
                 api_version.APIVersionRequest(right))
 
+    def is_microversion_lt(self, left, right):
+        return (api_version.APIVersionRequest(left) <
+                api_version.APIVersionRequest(right))
+
     def assert_notify_called(self, mock_notify, calls):
         for i in range(0, len(calls)):
             mock_call = mock_notify.call_args_list[i]

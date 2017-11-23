@@ -485,6 +485,7 @@ class ShareTypes(BASE, ManilaBase):
     id = Column(String(36), primary_key=True)
     deleted = Column(String(36), default='False')
     name = Column(String(255))
+    description = Column(String(255))
     is_public = Column(Boolean, default=True)
 
 

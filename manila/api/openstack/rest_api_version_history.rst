@@ -226,3 +226,7 @@ user documentation.
 2.40
 ----
   Added share group and share group snapshot quotas.
+
+2.41
+----
+  Added 'description' in share type create/list APIs.
