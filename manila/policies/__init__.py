@@ -17,7 +17,11 @@
 import itertools
 
 from manila.policies import base
+from manila.policies import quota_class_set
+from manila.policies import quota_set
+from manila.policies import service
 from manila.policies import share_instance_export_location
+from manila.policies import share_server
 from manila.policies import share_snapshot
 from manila.policies import share_snapshot_export_location
 from manila.policies import share_snapshot_instance
@@ -36,4 +40,8 @@ def list_rules():
         share_snapshot_export_location.list_rules(),
         share_snapshot_instance.list_rules(),
         share_snapshot_instance_export_location.list_rules(),
+        share_server.list_rules(),
+        service.list_rules(),
+        quota_set.list_rules(),
+        quota_class_set.list_rules(),
     )
