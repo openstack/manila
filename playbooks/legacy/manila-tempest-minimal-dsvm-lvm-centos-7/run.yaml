@@ -24,6 +24,13 @@
         chdir: '{{ ansible_user_dir }}/workspace'
       environment: '{{ zuul | zuul_legacy_vars }}'
 
+    # Install centos-release-openstack-* needed for rabbitmq-server
+    - name: Add centos-release-openstack-pike support
+      become: yes
+      yum:
+        name: centos-release-openstack-pike
+        state: present
+
     - shell:
         cmd: |
           set -e
