@@ -208,7 +208,8 @@ def check_policy(context, resource, action, target_obj=None):
     _action = '%s:%s' % (resource, action)
     # The else branch will be deleted after all policy in code patches
     # be merged.
-    if resource in ('share_instance_export_location', 'share_type', ):
+    if resource in ('share_instance_export_location', 'share_type',
+                    'share', ):
         authorize(context, _action, target)
     else:
         enforce(context, _action, target)

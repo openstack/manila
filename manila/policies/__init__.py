@@ -19,11 +19,13 @@ import itertools
 from manila.policies import base
 from manila.policies import share_instance_export_location
 from manila.policies import share_type
+from manila.policies import shares
 
 
 def list_rules():
     return itertools.chain(
         base.list_rules(),
+        shares.list_rules(),
         share_instance_export_location.list_rules(),
         share_type.list_rules(),
     )
