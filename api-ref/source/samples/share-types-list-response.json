@@ -9,7 +9,8 @@
                 "driver_handles_share_servers": "True"
             },
             "id": "420e6a31-3f3d-4ed7-9d11-59450372182a",
-            "name": "default"
+            "name": "default",
+            "description": "share type description"
         },
         {
             "required_extra_specs": {
@@ -25,7 +26,8 @@
                 "snapshot_support": "True"
             },
             "id": "7fa1342b-de9d-4d89-bdc8-af67795c0e52",
-            "name": "testing"
+            "name": "testing",
+            "description": "share type description"
         }
     ],
     "share_types": [
@@ -38,7 +40,8 @@
                 "driver_handles_share_servers": "True"
             },
             "id": "420e6a31-3f3d-4ed7-9d11-59450372182a",
-            "name": "default"
+            "name": "default",
+            "description": "share type description"
         },
         {
             "required_extra_specs": {
@@ -54,7 +57,8 @@
                 "snapshot_support": "True"
             },
             "id": "7fa1342b-de9d-4d89-bdc8-af67795c0e52",
-            "name": "testing"
+            "name": "testing",
+            "description": "share type description"
         }
     ]
 }

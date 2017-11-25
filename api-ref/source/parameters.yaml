@@ -3011,6 +3011,20 @@ share_type_access:is_public:
   required: false
   type: boolean
   min_version: 2.7
+share_type_description:
+  description: |
+    The description of the share type.
+  in: body
+  required: true
+  type: string
+  min_version: 2.41
+share_type_description_request:
+  description: |
+    The description of the share type.
+  in: body
+  required: false
+  type: string
+  min_version: 2.41
 share_type_id_1:
   description: |
     The share type ID of the member.
