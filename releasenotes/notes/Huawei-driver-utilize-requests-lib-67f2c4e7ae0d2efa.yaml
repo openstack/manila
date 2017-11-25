@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    For the latest Python 2.7 release, urllib uses the SSL certification
+    while launching URL connection by default, which causes Huawei driver
+    failed to connect backend storage because it doesn't support SSL
+    certification.
+    Utilize the requests lib for Huawei driver instead, and set no SSL
+    certification for backend storage connection.

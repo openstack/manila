@@ -15,14 +15,13 @@
 
 import base64
 import copy
+import requests
 import time
 from xml.etree import ElementTree as ET
 
 from oslo_log import log
 from oslo_serialization import jsonutils
 import six
-from six.moves import http_cookiejar
-from six.moves.urllib import request as urlreq  # pylint: disable=E0611
 
 from manila import exception
 from manila.i18n import _
@@ -37,18 +36,23 @@ class RestHelper(object):
 
     def __init__(self, configuration):
         self.configuration = configuration
-        self.init_http_head()
+        self.url = None
+        self.session = None
+
+        requests.packages.urllib3.disable_warnings(
+            requests.packages.urllib3.exceptions.InsecureRequestWarning)
+        requests.packages.urllib3.disable_warnings(
+            requests.packages.urllib3.exceptions.InsecurePlatformWarning)
 
     def init_http_head(self):
-        self.cookie = http_cookiejar.CookieJar()
         self.url = None
-        self.headers = {
+        self.session = requests.Session()
+        self.session.headers.update({
             "Connection": "keep-alive",
-            "Content-Type": "application/json",
-        }
+            "Content-Type": "application/json"})
+        self.session.verify = False
 
-    def do_call(self, url, data=None, method=None,
-                calltimeout=constants.SOCKET_TIMEOUT):
+    def do_call(self, url, data, method, calltimeout=constants.SOCKET_TIMEOUT):
         """Send requests to server.
 
         Send HTTPS call, get response in JSON.
@@ -56,40 +60,41 @@ class RestHelper(object):
         """
         if self.url:
             url = self.url + url
-        if "xx/sessions" not in url:
-            LOG.debug('Request URL: %(url)s\n'
-                      'Call Method: %(method)s\n'
-                      'Request Data: %(data)s\n',
-                      {'url': url,
-                       'method': method,
-                       'data': data})
-        opener = urlreq.build_opener(urlreq.HTTPCookieProcessor(self.cookie))
-        urlreq.install_opener(opener)
-        result = None
+
+        LOG.debug('Request URL: %(url)s\n'
+                  'Call Method: %(method)s\n'
+                  'Request Data: %(data)s\n',
+                  {'url': url,
+                   'method': method,
+                   'data': data})
+
+        kwargs = {'timeout': calltimeout}
+        if data:
+            kwargs['data'] = data
+
+        if method in ('POST', 'PUT', 'GET', 'DELETE'):
+            func = getattr(self.session, method.lower())
+        else:
+            msg = _("Request method %s is invalid.") % method
+            LOG.error(msg)
+            raise exception.ShareBackendException(msg=msg)
 
         try:
-            req = urlreq.Request(url, data, self.headers)
-            if method:
-                req.get_method = lambda: method
-            res_temp = urlreq.urlopen(req, timeout=calltimeout)
-            res = res_temp.read().decode("utf-8")
-
-            LOG.debug('Response Data: %(res)s.', {'res': res})
-
+            res = func(url, **kwargs)
         except Exception as err:
             LOG.error('\nBad response from server: %(url)s.'
                       ' Error: %(err)s', {'url': url, 'err': err})
-            res = ('{"error":{"code":%s,'
-                   '"description":"Connect server error"}}'
-                   % constants.ERROR_CONNECT_TO_SERVER)
+            return {"error": {"code": constants.ERROR_CONNECT_TO_SERVER,
+                              "description": "Connect server error"}}
 
         try:
-            result = jsonutils.loads(res)
-        except Exception as err:
-            err_msg = (_('JSON transfer error: %s.') % err)
-            LOG.error(err_msg)
-            raise exception.InvalidInput(reason=err_msg)
+            res.raise_for_status()
+        except requests.HTTPError as exc:
+            return {"error": {"code": exc.response.status_code,
+                              "description": six.text_type(exc)}}
 
+        result = res.json()
+        LOG.debug('Response Data: %s', result)
         return result
 
     def login(self):
@@ -104,7 +109,7 @@ class RestHelper(object):
                                     "password": login_info['UserPassword'],
                                     "scope": "0"})
             self.init_http_head()
-            result = self.do_call(url, data,
+            result = self.do_call(url, data, 'POST',
                                   calltimeout=constants.LOGIN_SOCKET_TIMEOUT)
 
             if((result['error']['code'] != 0)
@@ -113,11 +118,10 @@ class RestHelper(object):
                 LOG.error("Login to %s failed, try another.", item_url)
                 continue
 
-            LOG.debug('Login success: %(url)s\n',
-                      {'url': item_url})
+            LOG.debug('Login success: %(url)s\n', {'url': item_url})
             deviceid = result['data']['deviceid']
             self.url = item_url + deviceid
-            self.headers['iBaseToken'] = result['data']['iBaseToken']
+            self.session.headers['iBaseToken'] = result['data']['iBaseToken']
             break
 
         if deviceid is None:
@@ -128,7 +132,7 @@ class RestHelper(object):
         return deviceid
 
     @utils.synchronized('huawei_manila')
-    def call(self, url, data=None, method=None):
+    def call(self, url, data, method):
         """Send requests to server.
 
         If fail, try another RestURL.
@@ -155,7 +159,7 @@ class RestHelper(object):
         """Create file system."""
         url = "/filesystem"
         data = jsonutils.dumps(fs_param)
-        result = self.call(url, data)
+        result = self.call(url, data, 'POST')
 
         msg = 'Create filesystem error.'
         self._assert_rest_result(result, msg)
@@ -353,7 +357,7 @@ class RestHelper(object):
 
     def _find_all_pool_info(self):
         url = "/storagepool"
-        result = self.call(url, None)
+        result = self.call(url, None, "GET")
 
         msg = "Query resource pool error."
         self._assert_rest_result(result, msg)
@@ -971,7 +975,7 @@ class RestHelper(object):
         data = jsonutils.dumps(mergedata)
         url = "/ioclass"
 
-        result = self.call(url, data)
+        result = self.call(url, data, 'POST')
         self._assert_rest_result(result, _('Create QoS policy error.'))
 
         return result['data']['ID']
