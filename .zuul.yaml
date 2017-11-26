@@ -5,65 +5,41 @@
         - manila-tox-genconfig
         - manila-tempest-dsvm-mysql-generic:
             voting: false
-            branches: ^(?!driverfixes/).*$
         - manila-tempest-dsvm-postgres-container:
             voting: false
-            branches: ^(?!driverfixes/).*$
         - manila-tempest-dsvm-postgres-zfsonlinux:
             voting: false
-            branches: ^(?!driverfixes/).*$
         - manila-tempest-dsvm-postgres-generic-singlebackend:
             voting: false
-            branches: ^(?!driverfixes/).*$
         - manila-tempest-dsvm-generic-no-share-servers:
             voting: false
-            branches: ^(?!driverfixes/).*$
         - manila-tempest-dsvm-scenario:
             voting: false
-            branches: ^(?!driverfixes/).*$
         - manila-tempest-minimal-dsvm-cephfs-native-centos-7:
             voting: false
-            branches: ^(?!driverfixes/).*$
         - manila-tempest-minimal-dsvm-cephfs-nfs-centos-7:
             voting: false
-            branches: ^(?!(driverfixes|stable/(?:newton|ocata))).*$
         - manila-tempest-dsvm-glusterfs-nfs:
             voting: false
-            branches: ^(?!driverfixes/).*$
-        - manila-tempest-minimal-dsvm-dummy:
-            branches: ^(?!driverfixes/).*$
-        - manila-tempest-minimal-dsvm-lvm-centos-7:
-            branches: ^(?!(driverfixes|stable/newton)).*$
+        - manila-tempest-minimal-dsvm-dummy
+        - manila-tempest-minimal-dsvm-lvm-centos-7
         - grenade-dsvm-manila:
             voting: false
-            branches: ^(?!driverfixes/).*$
         - rally-dsvm-manila-multibackend:
             voting: false
-            branches: ^(?!stable/newton|driverfixes/).*$
         - rally-dsvm-manila-multibackend-no-ss:
             voting: false
-            branches: ^(?!stable/newton|driverfixes/).*$
     gate:
       jobs:
         - manila-tox-genconfig
-        - manila-tempest-minimal-dsvm-dummy:
-            branches: ^(?!driverfixes/).*$
-        - manila-tempest-minimal-dsvm-lvm-centos-7:
-            branches: ^(?!(driverfixes|stable/newton)).*$
+        - manila-tempest-minimal-dsvm-dummy
+        - manila-tempest-minimal-dsvm-lvm-centos-7
     experimental:
       jobs:
-        - manila-tempest-dsvm-glusterfs-nfs:
-            voting: false
-            branches: ^(?!driverfixes/).*$
-        - manila-tempest-dsvm-glusterfs-native:
-            voting: false
-            branches: ^(?!driverfixes/).*$
-        - manila-tempest-dsvm-glusterfs-nfs-heketi:
-            voting: false
-            branches: ^(?!driverfixes/).*$
-        - manila-tempest-dsvm-glusterfs-native-heketi:
-            voting: false
-            branches: ^(?!driverfixes/).*$
+        - manila-tempest-dsvm-glusterfs-nfs
+        - manila-tempest-dsvm-glusterfs-native
+        - manila-tempest-dsvm-glusterfs-nfs-heketi
+        - manila-tempest-dsvm-glusterfs-native-heketi
 
 - job:
     name: grenade-dsvm-manila
