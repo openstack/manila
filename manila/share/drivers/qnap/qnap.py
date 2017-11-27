@@ -61,9 +61,10 @@ class QnapShareDriver(driver.ShareDriver):
 
     Version history:
         1.0.0 - Initial driver (Only NFS)
+        1.0.1 - Add support for QES fw 1.1.4.
     """
 
-    DRIVER_VERSION = '1.0.0'
+    DRIVER_VERSION = '1.0.1'
 
     def __init__(self, *args, **kwargs):
         """Initialize QnapShareDriver."""
@@ -152,17 +153,14 @@ class QnapShareDriver(driver.ShareDriver):
                         username=self.configuration.qnap_nas_login,
                         password=self.configuration.qnap_nas_password,
                         management_url=self.configuration.qnap_management_url)
-
-            if (fw_version.startswith("1.1.2") or
-                    fw_version.startswith("1.1.3")):
+            elif "1.1.2" <= fw_version <= "1.1.4":
                 LOG.debug('Create ES API Executor')
                 return api.QnapAPIExecutor(
                     username=self.configuration.qnap_nas_login,
                     password=self.configuration.qnap_nas_password,
                     management_url=self.configuration.qnap_management_url)
         elif model_type in es_model_types:
-            if (fw_version.startswith("1.1.2") or
-                    fw_version.startswith("1.1.3")):
+            if "1.1.2" <= fw_version <= "1.1.4":
                 LOG.debug('Create ES API Executor')
                 return api.QnapAPIExecutor(
                     username=self.configuration.qnap_nas_login,
@@ -195,13 +193,9 @@ class QnapShareDriver(driver.ShareDriver):
                 {'ifx': infix,
                  'time': timeutils.utcnow().strftime('%Y%m%d%H%M%S%f')})
 
-    def _get_location_path(self, share_name, share_proto, ip):
+    def _get_location_path(self, share_name, share_proto, ip, vol_id):
         if share_proto == 'NFS':
-            created_share = self.api_executor.get_share_info(
-                self.configuration.qnap_poolname,
-                vol_label=share_name)
-            vol_no = created_share.find('vol_no').text
-            vol = self.api_executor.get_specific_volinfo(vol_no)
+            vol = self.api_executor.get_specific_volinfo(vol_id)
             vol_mount_path = vol.find('vol_mount_path').text
 
             location = '%s:%s' % (ip, vol_mount_path)
@@ -263,7 +257,8 @@ class QnapShareDriver(driver.ShareDriver):
 
     @utils.retry(exception=exception.ShareBackendException,
                  interval=3,
-                 retries=200)
+                 retries=5)
+    @utils.synchronized('qnap-create_share')
     def create_share(self, context, share, share_server=None):
         """Create a new share."""
         LOG.debug('share: %s', share.__dict__)
@@ -277,25 +272,48 @@ class QnapShareDriver(driver.ShareDriver):
         created_share = self.api_executor.get_share_info(
             self.configuration.qnap_poolname,
             vol_label=create_share_name)
-
+        LOG.debug('created_share: %s', created_share)
         if created_share is not None:
-            msg = _("Failed to create an unused share name.")
+            msg = (_("The share name %s is used by other share on NAS.") %
+                   create_share_name)
+            LOG.error(msg)
             raise exception.ShareBackendException(msg=msg)
 
-        create_volID = self.api_executor.create_share(
+        self.api_executor.create_share(
             share,
             self.configuration.qnap_poolname,
             create_share_name,
             share_proto)
-
+        created_share = self._get_share_info(create_share_name)
+        volID = created_share.find('vol_no').text
         # Use private_storage to record volume ID and Name created in the NAS.
-        _metadata = {'volID': create_volID, 'volName': create_share_name}
+        LOG.debug('volID: %(volID)s '
+                  'volName: %(create_share_name)s',
+                  {'volID': volID,
+                   'create_share_name': create_share_name})
+        _metadata = {'volID': volID,
+                     'volName': create_share_name}
         self.private_storage.update(share['id'], _metadata)
 
         return self._get_location_path(create_share_name,
                                        share['share_proto'],
-                                       self.configuration.qnap_share_ip)
+                                       self.configuration.qnap_share_ip,
+                                       volID)
 
+    @utils.retry(exception=exception.ShareBackendException,
+                 interval=5, retries=5, backoff_rate=1)
+    def _get_share_info(self, share_name):
+        share = self.api_executor.get_share_info(
+            self.configuration.qnap_poolname,
+            vol_label=share_name)
+        if share is None:
+            msg = _("Fail to get share info of %s on NAS.") % share_name
+            LOG.error(msg)
+            raise exception.ShareBackendException(msg=msg)
+        else:
+            return share
+
+    @utils.synchronized('qnap-delete_share')
     def delete_share(self, context, share, share_server=None):
         """Delete the specified share."""
         # Use private_storage to retrieve volume ID created in the NAS.
@@ -317,11 +335,15 @@ class QnapShareDriver(driver.ShareDriver):
         self.api_executor.delete_share(vol_no)
         self.private_storage.delete(share['id'])
 
+    @utils.synchronized('qnap-extend_share')
     def extend_share(self, share, new_size, share_server=None):
         """Extend an existing share."""
-        LOG.debug('Entering extend_share share=%(share)s '
+        LOG.debug('Entering extend_share share_name=%(share_name)s '
+                  'share_id=%(share_id)s '
                   'new_size=%(size)s',
-                  {'share': share['display_name'], 'size': new_size})
+                  {'share_name': share['display_name'],
+                   'share_id': share['id'],
+                   'size': new_size})
 
         # Use private_storage to retrieve volume Name created in the NAS.
         volName = self.private_storage.get(share['id'], 'volName')
@@ -331,15 +353,17 @@ class QnapShareDriver(driver.ShareDriver):
         LOG.debug('volName: %s', volName)
 
         share_dict = {
-            "sharename": volName,
-            "old_sharename": volName,
-            "new_size": new_size,
+            'sharename': volName,
+            'old_sharename': volName,
+            'new_size': new_size,
+            'share_proto': share['share_proto']
         }
         self.api_executor.edit_share(share_dict)
 
     @utils.retry(exception=exception.ShareBackendException,
                  interval=3,
-                 retries=200)
+                 retries=5)
+    @utils.synchronized('qnap-create_snapshot')
     def create_snapshot(self, context, snapshot, share_server=None):
         """Create a snapshot."""
         LOG.debug('snapshot[share][share_id]: %s',
@@ -393,6 +417,7 @@ class QnapShareDriver(driver.ShareDriver):
 
         return {'provider_location': snapshot_id}
 
+    @utils.synchronized('qnap-delete_snapshot')
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Delete a snapshot."""
         LOG.debug('Entering delete_snapshot. The deleted snapshot=%(snap)s',
@@ -410,7 +435,8 @@ class QnapShareDriver(driver.ShareDriver):
 
     @utils.retry(exception=exception.ShareBackendException,
                  interval=3,
-                 retries=200)
+                 retries=5)
+    @utils.synchronized('qnap-create_share_from_snapshot')
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None):
         """Create a share from a snapshot."""
@@ -441,20 +467,24 @@ class QnapShareDriver(driver.ShareDriver):
         created_share = self.api_executor.get_share_info(
             self.configuration.qnap_poolname,
             vol_label=create_share_name)
-        if created_share.find('vol_no') is not None:
+        if created_share is not None:
             create_volID = created_share.find('vol_no').text
+            LOG.debug('create_volID: %s', create_volID)
         else:
             msg = _("Failed to clone a snapshot in time.")
             raise exception.ShareBackendException(msg=msg)
 
-        snap_share = self.share_api.get(context,
-                                        snapshot['share_instance']['share_id'])
+        snap_share = self.share_api.get(
+            context, snapshot['share_instance']['share_id'])
         LOG.debug('snap_share[size]: %s', snap_share['size'])
 
         if (share['size'] > snap_share['size']):
-            share_dict = {'sharename': create_share_name,
-                          'old_sharename': create_share_name,
-                          'new_size': share['size']}
+            share_dict = {
+                'sharename': create_share_name,
+                'old_sharename': create_share_name,
+                'new_size': share['size'],
+                'share_proto': share['share_proto']
+            }
             self.api_executor.edit_share(share_dict)
 
         # Use private_storage to record volume ID and Name created in the NAS.
@@ -470,7 +500,8 @@ class QnapShareDriver(driver.ShareDriver):
 
         return self._get_location_path(create_share_name,
                                        share['share_proto'],
-                                       self.configuration.qnap_share_ip)
+                                       self.configuration.qnap_share_ip,
+                                       create_volID)
 
     def _get_manila_hostIPv4s(self, hostlist):
         host_dict_IPs = []
@@ -656,7 +687,8 @@ class QnapShareDriver(driver.ShareDriver):
         export_locations = self._get_location_path(
             share_name,
             share['share_proto'],
-            self.configuration.qnap_share_ip)
+            self.configuration.qnap_share_ip,
+            vol_no)
 
         return {'size': vol_size_gb, 'export_locations': export_locations}
 

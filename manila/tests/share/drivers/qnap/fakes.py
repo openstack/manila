@@ -19,7 +19,18 @@ FAKE_RES_DETAIL_DATA_LOGIN = """
         <authSid><![CDATA[fakeSid]]></authSid>
     </QDocRoot>"""
 
-FAKE_RES_DETAIL_DATA_GETBASIC_INFO_ES = """
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_ES_1_1_1 = """
+    <QDocRoot version="1.0">
+        <model>
+            <displayModelName><![CDATA[ES1640dc]]></displayModelName>
+            <internalModelName><![CDATA[ES1640dc]]></internalModelName>
+        </model>
+        <firmware>
+            <version><![CDATA[1.1.1]]></version>
+        </firmware>
+    </QDocRoot>"""
+
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_ES_1_1_3 = """
     <QDocRoot version="1.0">
         <model>
             <displayModelName><![CDATA[ES1640dc]]></displayModelName>
@@ -30,7 +41,18 @@ FAKE_RES_DETAIL_DATA_GETBASIC_INFO_ES = """
         </firmware>
     </QDocRoot>"""
 
-FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TS = """
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TS_4_0_0 = """
+    <QDocRoot version="1.0">
+        <model>
+            <displayModelName><![CDATA[TS-870U]]></displayModelName>
+            <internalModelName><![CDATA[TS-870U]]></internalModelName>
+        </model>
+        <firmware>
+            <version><![CDATA[4.0.0]]></version>
+        </firmware>
+    </QDocRoot>"""
+
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TS_4_3_0 = """
     <QDocRoot version="1.0">
         <model>
             <displayModelName><![CDATA[TS-870U]]></displayModelName>
@@ -41,7 +63,18 @@ FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TS = """
         </firmware>
     </QDocRoot>"""
 
-FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_TS = """
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_TS_4_0_0 = """
+    <QDocRoot version="1.0">
+        <model>
+            <displayModelName><![CDATA[TES-1885U]]></displayModelName>
+            <internalModelName><![CDATA[TS-1885U]]></internalModelName>
+        </model>
+        <firmware>
+            <version><![CDATA[4.0.0]]></version>
+        </firmware>
+    </QDocRoot>"""
+
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_TS_4_3_0 = """
     <QDocRoot version="1.0">
         <model>
             <displayModelName><![CDATA[TES-1885U]]></displayModelName>
@@ -52,7 +85,18 @@ FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_TS = """
         </firmware>
     </QDocRoot>"""
 
-FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_ES = """
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_ES_1_1_1 = """
+    <QDocRoot version="1.0">
+        <model>
+            <displayModelName><![CDATA[TES-1885U]]></displayModelName>
+            <internalModelName><![CDATA[ES-1885U]]></internalModelName>
+        </model>
+        <firmware>
+            <version><![CDATA[1.1.1]]></version>
+        </firmware>
+    </QDocRoot>"""
+
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_ES_1_1_3 = """
     <QDocRoot version="1.0">
         <model>
             <displayModelName><![CDATA[TES-1885U]]></displayModelName>
@@ -208,6 +252,20 @@ FAKE_RES_DETAIL_DATA_DELETE_SNAPSHOT = """
         <result>0</result>
     </QDocRoot>"""
 
+FAKE_RES_DETAIL_DATA_DELETE_SNAPSHOT_SNAPSHOT_NOT_EXIST = """
+    <QDocRoot version="1.0">
+        <authPassed><![CDATA[1]]></authPassed>
+        <ES_RET_CODE><![CDATA[1]]></ES_RET_CODE>
+        <result>-206021</result>
+    </QDocRoot>"""
+
+FAKE_RES_DETAIL_DATA_DELETE_SNAPSHOT_SHARE_NOT_EXIST = """
+    <QDocRoot version="1.0">
+        <authPassed><![CDATA[1]]></authPassed>
+        <ES_RET_CODE><![CDATA[1]]></ES_RET_CODE>
+        <result>-200005</result>
+    </QDocRoot>"""
+
 FAKE_RES_DETAIL_DATA_GET_HOST_LIST_API = """
     <QDocRoot version="1.0">
         <authPassed><![CDATA[1]]></authPassed>
@@ -347,44 +405,84 @@ class AccessClass(object):
         }[arg]
 
 
-class FakeGetBasicInfoResponseEs(object):
+class FakeGetBasicInfoResponseEs_1_1_1(object):
     """Fake GetBasicInfo response from ES nas."""
 
     status = 'fackStatus'
 
     def read(self):
         """Mock response.read."""
-        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_ES
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_ES_1_1_1
 
 
-class FakeGetBasicInfoResponseTs(object):
+class FakeGetBasicInfoResponseEs_1_1_3(object):
+    """Fake GetBasicInfo response from ES nas."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_ES_1_1_3
+
+
+class FakeGetBasicInfoResponseTs_4_0_0(object):
     """Fake GetBasicInfoTS response from TS nas."""
 
     status = 'fackStatus'
 
     def read(self):
         """Mock response.read."""
-        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TS
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TS_4_0_0
 
 
-class FakeGetBasicInfoResponseTesTs(object):
+class FakeGetBasicInfoResponseTs_4_3_0(object):
     """Fake GetBasicInfoTS response from TS nas."""
 
     status = 'fackStatus'
 
     def read(self):
         """Mock response.read."""
-        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_TS
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TS_4_3_0
 
 
-class FakeGetBasicInfoResponseTesEs(object):
+class FakeGetBasicInfoResponseTesTs_4_0_0(object):
     """Fake GetBasicInfoTS response from TS nas."""
 
     status = 'fackStatus'
 
     def read(self):
         """Mock response.read."""
-        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_ES
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_TS_4_0_0
+
+
+class FakeGetBasicInfoResponseTesTs_4_3_0(object):
+    """Fake GetBasicInfoTS response from TS nas."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_TS_4_3_0
+
+
+class FakeGetBasicInfoResponseTesEs_1_1_1(object):
+    """Fake GetBasicInfoTS response from TS nas."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_ES_1_1_1
+
+
+class FakeGetBasicInfoResponseTesEs_1_1_3(object):
+    """Fake GetBasicInfoTS response from TS nas."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_ES_1_1_3
 
 
 class FakeGetBasicInfoResponseError(object):
@@ -418,13 +516,33 @@ class FakeDeleteShareResponse(object):
 
 
 class FakeDeleteSnapshotResponse(object):
-    """Fake pool info response."""
+    """Fake delete snapshot response."""
 
     status = 'fackStatus'
 
     def read(self):
         """Mock response.read."""
         return FAKE_RES_DETAIL_DATA_DELETE_SNAPSHOT
+
+
+class FakeDeleteSnapshotResponseSnapshotNotExist(object):
+    """Fake delete snapshot response."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_DELETE_SNAPSHOT_SNAPSHOT_NOT_EXIST
+
+
+class FakeDeleteSnapshotResponseShareNotExist(object):
+    """Fake delete snapshot response."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_DELETE_SNAPSHOT_SHARE_NOT_EXIST
 
 
 class FakeGetHostListResponse(object):
