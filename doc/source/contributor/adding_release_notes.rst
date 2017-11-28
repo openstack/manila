@@ -172,8 +172,8 @@ Dos and Don'ts
 * OpenStack prefers atomic changes. So remember that your change may need the
   fewest sections possible
 * General writing guidelines can be found
-  `here <http://docs.openstack
-  .org/contributor-guide/writing-style/general-writing-guidelines.html>`_
+  `here <https://docs.openstack
+  .org/doc-contrib-guide/writing-style/general-writing-guidelines.html>`_
 * Proofread your note. Pretend you are a user or a deployer who is reading
   the note after a milestone or a release has been cut
 

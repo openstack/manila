@@ -26,9 +26,8 @@ OpenStack User Guide
   is available on ``python-manilaclient`` and/or ``manila-ui``.
 - If you develop an end user facing feature, you need to provide an
   overview, use cases and example work-flows as part of this documentation.
-- **Link**: `User guide <http://docs.openstack.org/user-guide/>`_
-- **Repository**: The user guide is maintained within the
-  `OpenStack Manuals project <https://github.com/openstack/openstack-manuals>`_
+- The source files for the user guide live in manila's code tree.
+- **Link**: `User guide <https://docs.openstack.org/manila/latest/user/>`_
 
 
 OpenStack Administrator Guide
@@ -39,9 +38,8 @@ OpenStack Administrator Guide
   for utilizing a feature, along with managing and troubleshooting manila
   when the feature is used.
 - Relevant configuration options may be mentioned here briefly.
-- **Link**: `Administrator guide <http://docs.openstack.org/admin-guide/>`_
-- **Repository**: The administrator guide is maintained within the
-  `OpenStack Manuals project <https://github.com/openstack/openstack-manuals>`_
+- The source files for the administrator guide live in manila's code tree.
+- **Link**: `Administrator guide <https://docs.openstack.org/manila/latest/admin/>`_
 
 
 OpenStack Configuration Reference
@@ -54,10 +52,9 @@ OpenStack Configuration Reference
   configuration options.
 - If you are a driver maintainer, please ensure that your driver and all of
   its relevant configuration is documented here.
-- **Link**: `Mitaka release configuration reference
-  <http://docs.openstack.org/mitaka/config-reference/>`_
-- **Repository**: The configuration reference is maintained within the
-  `OpenStack Manuals project <https://github.com/openstack/openstack-manuals>`_
+- The source files for the configuration guide live in manila's code tree.
+- **Link**: `Manila release configuration reference
+  <https://docs.openstack.org/manila/latest/configuration/index.html>`_
 
 
 OpenStack Installation Tutorial
@@ -70,7 +67,7 @@ OpenStack Installation Tutorial
 - The instructions are written with reference to different distributions.
 - The source files for this tutorial live in manila's code tree.
 - **Link**: `Draft installation tutorial
-  <http://docs.openstack.org/project-install-guide/shared-file-systems/draft/>`_
+  <https://docs.openstack.org/project-install-guide/shared-file-systems/draft/>`_
 
 OpenStack API Reference
 -----------------------
@@ -84,7 +81,7 @@ OpenStack API Reference
 - Since the Newton release, manila's API reference is maintained
   in-tree in custom YAML/JSON format files.
 - **Link**: `REST API reference of the Shared File Systems Project v2.0
-  <http://developer.openstack.org/api-ref/shared-file-systems/>`_
+  <https://developer.openstack.org/api-ref/shared-file-system/>`_
 
 Manila Developer Reference
 --------------------------
@@ -123,10 +120,7 @@ OpenStack Command Line Reference
 - No manual corrections are allowed on this repository; make necessary
   corrections in the ``python-manilaclient`` repository."
 - **Link**: `Manila CLI reference
-  <http://docs.openstack.org/cli-reference/manila.html>`_
-- **Repository**: The CLI reference is maintained within the
-  `OpenStack Manuals project
-  <https://github.com/openstack/openstack-manuals>`_.
+  <https://docs.openstack.org/python-openstackclient/latest/>`_.
 
 
 Important things to note
@@ -147,11 +141,11 @@ Important things to note
   service`` and not the service type (``share``) or the project name
   (``manila``).
 - Follow documentation styles prescribed in the `OpenStack Documentation
-  Contributor Guide <http://docs.openstack.org/contributor-guide/>`_. Pay
+  Contributor Guide <https://docs.openstack.org/doc-contrib-guide/>`_. Pay
   heed to the `RST formatting conventions
-  <http://docs.openstack.org/contributor-guide/rst-conv.html>`_
+  <https://docs.openstack.org/doc-contrib-guide/rst-conv.html>`_
   and `Writing style
-  <http://docs.openstack.org/contributor-guide/writing-style.html>`_.
+  <https://docs.openstack.org/doc-contrib-guide/writing-style.html>`_.
 - Use CamelCase to spell out `OpenStack` and sentence casing to
   spell out service types, ex: `Shared File Systems service` and lower case
   to spell out project names, ex: `manila` (except when the project name is in
@@ -165,9 +159,7 @@ Important things to note
   built with every commit in the respective codebase. Therefore, documentation
   added here need not be backported to previous releases.
 - You may backport changes to some documentation such as the configuration
-  reference and the installation guide. Refer to the instructions `here
-  <http://docs.openstack.org/contributor-guide/additional-git-workflow/
-  backport.html>`_.
+  reference and the installation guide.
 - **Important "documentation" that isn't really documentation** - ``specs`` and
   ``release notes`` are *NOT* documentation. A specification document is
   written to initiate a dialogue and gather feedback regarding the
