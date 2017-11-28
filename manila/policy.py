@@ -214,7 +214,8 @@ def check_policy(context, resource, action, target_obj=None):
                     'share_snapshot_instance',
                     'share_snapshot_instance_export_location',
                     'quota_set', 'quota_class_set', 'service',
-                    'share_server', ):
+                    'share_server', 'share_group', 'share_group_snapshot',
+                    'share_group_type', 'share_group_types_spec', ):
         authorize(context, _action, target)
     else:
         enforce(context, _action, target)
