@@ -30,9 +30,6 @@
         - manila-tempest-dsvm-glusterfs-nfs:
             voting: false
             branches: ^(?!driverfixes/).*$
-        - manila-tempest-dsvm-glusterfs-native:
-            voting: false
-            branches: ^(?!driverfixes/).*$
         - manila-tempest-dsvm-hdfs:
             voting: false
             branches: ^(?!driverfixes/).*$
