@@ -1,20 +1,6 @@
 {
     "availability_zone:index": "rule:default",
 
-    "share_export_location:index": "rule:default",
-    "share_export_location:show": "rule:default",
-
-    "share_instance:index": "rule:admin_api",
-    "share_instance:show": "rule:admin_api",
-    "share_instance:force_delete": "rule:admin_api",
-    "share_instance:reset_status": "rule:admin_api",
-
-    "share_types_extra_spec:create": "rule:admin_api",
-    "share_types_extra_spec:update": "rule:admin_api",
-    "share_types_extra_spec:show": "rule:admin_api",
-    "share_types_extra_spec:index": "rule:admin_api",
-    "share_types_extra_spec:delete": "rule:admin_api",
-
     "scheduler_stats:pools:index": "rule:admin_api",
     "scheduler_stats:pools:detail": "rule:admin_api",
 

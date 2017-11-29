@@ -21,10 +21,12 @@ from manila.policies import quota_class_set
 from manila.policies import quota_set
 from manila.policies import security_service
 from manila.policies import service
+from manila.policies import share_export_location
 from manila.policies import share_group
 from manila.policies import share_group_snapshot
 from manila.policies import share_group_type
 from manila.policies import share_group_types_spec
+from manila.policies import share_instance
 from manila.policies import share_instance_export_location
 from manila.policies import share_network
 from manila.policies import share_replica
@@ -34,6 +36,7 @@ from manila.policies import share_snapshot_export_location
 from manila.policies import share_snapshot_instance
 from manila.policies import share_snapshot_instance_export_location
 from manila.policies import share_type
+from manila.policies import share_types_extra_spec
 from manila.policies import shares
 
 
@@ -43,6 +46,7 @@ def list_rules():
         shares.list_rules(),
         share_instance_export_location.list_rules(),
         share_type.list_rules(),
+        share_types_extra_spec.list_rules(),
         share_snapshot.list_rules(),
         share_snapshot_export_location.list_rules(),
         share_snapshot_instance.list_rules(),
@@ -58,4 +62,6 @@ def list_rules():
         share_replica.list_rules(),
         share_network.list_rules(),
         security_service.list_rules(),
+        share_export_location.list_rules(),
+        share_instance.list_rules(),
     )
