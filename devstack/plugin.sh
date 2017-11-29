@@ -145,7 +145,9 @@ function configure_manila {
     fi
     sudo chown $STACK_USER $MANILA_CONF_DIR
 
-    cp -p $MANILA_DIR/etc/manila/policy.json $MANILA_CONF_DIR
+    if [[ -f $MANILA_DIR/etc/manila/policy.json ]]; then
+        cp -p $MANILA_DIR/etc/manila/policy.json $MANILA_CONF_DIR
+    fi
 
     # Set the paths of certain binaries
     MANILA_ROOTWRAP=$(get_rootwrap_location manila)

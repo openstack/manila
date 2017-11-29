@@ -206,19 +206,4 @@ def check_policy(context, resource, action, target_obj=None):
     }
     target.update(target_obj or {})
     _action = '%s:%s' % (resource, action)
-    # The else branch will be deleted after all policy in code patches
-    # be merged.
-    if resource in ('share_instance_export_location', 'share_type',
-                    'share', 'share_snapshot',
-                    'share_snapshot_export_location',
-                    'share_snapshot_instance',
-                    'share_snapshot_instance_export_location',
-                    'quota_set', 'quota_class_set', 'service',
-                    'share_server', 'share_group', 'share_group_snapshot',
-                    'share_group_type', 'share_group_types_spec',
-                    'share_replica', 'share_network', 'security_service',
-                    'share_types_extra_spec', 'share_instance',
-                    'share_export_location', ):
-        authorize(context, _action, target)
-    else:
-        enforce(context, _action, target)
+    authorize(context, _action, target)

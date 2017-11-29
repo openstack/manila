@@ -8,5 +8,4 @@ All the files in this section can be found in ``/etc/manila``.
 
    manila.conf.rst
    api-paste.ini.rst
-   policy.json.rst
    rootwrap.conf.rst

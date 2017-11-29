@@ -16,9 +16,12 @@
 
 import itertools
 
+from manila.policies import availability_zone
 from manila.policies import base
+from manila.policies import message
 from manila.policies import quota_class_set
 from manila.policies import quota_set
+from manila.policies import scheduler_stats
 from manila.policies import security_service
 from manila.policies import service
 from manila.policies import share_export_location
@@ -43,6 +46,8 @@ from manila.policies import shares
 def list_rules():
     return itertools.chain(
         base.list_rules(),
+        availability_zone.list_rules(),
+        scheduler_stats.list_rules(),
         shares.list_rules(),
         share_instance_export_location.list_rules(),
         share_type.list_rules(),
@@ -64,4 +69,5 @@ def list_rules():
         security_service.list_rules(),
         share_export_location.list_rules(),
         share_instance.list_rules(),
+        message.list_rules(),
     )
