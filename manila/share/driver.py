@@ -242,7 +242,7 @@ class ShareDriver(object):
         self.configuration = kwargs.get('configuration', None)
         self.initialized = False
         self._stats = {}
-        self.ip_version = None
+        self.ip_versions = None
         self.ipv6_implemented = False
 
         self.pools = []
@@ -1111,7 +1111,6 @@ class ShareDriver(object):
             replication_domain=self.replication_domain,
             filter_function=self.get_filter_function(),
             goodness_function=self.get_goodness_function(),
-            ipv4_support=True,
         )
         if isinstance(data, dict):
             common.update(data)
@@ -2447,13 +2446,20 @@ class ShareDriver(object):
                   "shares created on it.")
         return []
 
-    def get_configured_ip_version(self):
-        """"Get Configured IP versions when DHSS is false.
+    def get_configured_ip_versions(self):
+        """"Get allowed IP versions.
 
         The supported versions are returned with list, possible
-        values are: [4], [6] or [4, 6]
-        Each driver could override the method to return the IP version
-        which represents its self configuration.
+        values are: [4], [6], or [4, 6]
+
+        Drivers that assert ipv6_implemented = True must override
+        this method. If the returned list includes 4, then shares
+        created by this driver must have an IPv4 export location.
+        If the list includes 6, then shares created by the driver
+        must have an IPv6 export location.
+
+        Drivers should check that their storage controller actually
+        has IPv4/IPv6 enabled and configured properly.
         """
 
         # For drivers that haven't implemented IPv6, assume legacy behavior
@@ -2467,40 +2473,29 @@ class ShareDriver(object):
 
         When DHSS is true, the capabilities are determined by driver
         and configured network plugin.
-        When DHSS is false, the capabilities are determined by driver and its
-        configuration.
+        When DHSS is false, the capabilities are determined by driver
+        only.
         :param data: the capability dictionary
         :returns: capability data
         """
-        ipv4_support = data.get('ipv4_support', False)
-        ipv6_support = data.get('ipv6_support', False)
-        if self.ip_version is None:
-            if self.driver_handles_share_servers:
-                user_network_version = self.network_api.enabled_ip_version
-                if self.admin_network_api:
-                    if (user_network_version ==
-                            self.admin_network_api.enabled_ip_version):
-                        self.ip_version = user_network_version
-                    else:
-                        LOG.warning("The enabled IP version for the admin "
-                                    "network plugin is different from "
-                                    "that of user network plugin, this "
-                                    "may lead to the backend never being "
-                                    "chosen by the scheduler when ip "
-                                    "version is specified in the share "
-                                    "type.")
-                else:
-                    self.ip_version = user_network_version
-            else:
-                self.ip_version = self.get_configured_ip_version()
+        self.ip_versions = self.get_configured_ip_versions()
+        if isinstance(self.ip_versions, list):
+            self.ip_versions = set(self.ip_versions)
+        else:
+            self.ip_versions = set(list(self.ip_versions))
 
-        if not isinstance(self.ip_version, list):
-            self.ip_version = [self.ip_version]
-
-        data['ipv4_support'] = (4 in self.ip_version) and ipv4_support
-        data['ipv6_support'] = (6 in self.ip_version) and ipv6_support
-        if not (data['ipv4_support'] or data['ipv6_support']):
-            LOG.error("Backend %s capabilities 'ipv4_support' "
-                      "and 'ipv6_support' are both False.",
+        if not self.ip_versions:
+            LOG.error("Backend %s supports neither IPv4 nor IPv6.",
                       data['share_backend_name'])
+
+        if self.driver_handles_share_servers:
+            network_versions = self.network_api.enabled_ip_versions
+            self.ip_versions = self.ip_versions & network_versions
+            if not self.ip_versions:
+                LOG.error("The enabled IP version of the network plugin is "
+                          "not compatible with the version supported by "
+                          "backend %s.", data['share_backend_name'])
+
+        data['ipv4_support'] = (4 in self.ip_versions)
+        data['ipv6_support'] = (6 in self.ip_versions)
         return data

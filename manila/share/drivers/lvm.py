@@ -216,7 +216,6 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
             'mount_snapshot_support': True,
             'driver_name': 'LVMShareDriver',
             'pools': self.get_share_server_pools(),
-            'ipv6_support': True
         }
         super(LVMShareDriver, self)._update_share_stats(data)
 
@@ -432,8 +431,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         super(LVMShareDriver, self).delete_snapshot(context, snapshot,
                                                     share_server)
 
-    def get_configured_ip_version(self):
-        """"Get Configured IP versions when DHSS is false."""
+    def get_configured_ip_versions(self):
         if self.configured_ip_version is None:
             try:
                 self.configured_ip_version = []

@@ -106,15 +106,16 @@ class NetworkBaseAPI(db_base.Base):
         pass
 
     @property
-    def enabled_ip_version(self):
-        if not hasattr(self, '_enabled_ip_version'):
+    def enabled_ip_versions(self):
+        if not hasattr(self, '_enabled_ip_versions'):
+            self._enabled_ip_versions = set()
             if self.configuration.network_plugin_ipv6_enabled:
-                self._enabled_ip_version = 6
-            elif self.configuration.network_plugin_ipv4_enabled:
-                self._enabled_ip_version = 4
-            else:
+                self._enabled_ip_versions.add(6)
+            if self.configuration.network_plugin_ipv4_enabled:
+                self._enabled_ip_versions.add(4)
+            if not self._enabled_ip_versions:
                 msg = _("Either 'network_plugin_ipv4_enabled' or "
                         "'network_plugin_ipv6_enabled' "
                         "should be configured to 'True'.")
                 raise exception.NetworkBadConfigurationException(reason=msg)
-        return self._enabled_ip_version
+        return self._enabled_ip_versions

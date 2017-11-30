@@ -235,5 +235,5 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
                                                        fallback_create,
                                                        share_server)
 
-    def get_configured_ip_version(self):
-        return self.library.get_configured_ip_version()
+    def get_configured_ip_versions(self):
+        return self.library.get_configured_ip_versions()

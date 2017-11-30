@@ -407,16 +407,16 @@ class LVMShareDriverTestCase(test.TestCase):
               (None, ['1001::1001'], [6]), (None, ['1.1.1.0'], [4]),
               (None, ['1001::1001/129', '1.1.1.0'], False))
     @ddt.unpack
-    def test_get_configured_ip_version(
+    def test_get_configured_ip_versions(
             self, configured_ip, configured_ips, configured_ip_version):
         CONF.set_default('lvm_share_export_ip', configured_ip)
         CONF.set_default('lvm_share_export_ips', configured_ips)
         if configured_ip_version:
             self.assertEqual(configured_ip_version,
-                             self._driver.get_configured_ip_version())
+                             self._driver.get_configured_ip_versions())
         else:
             self.assertRaises(exception.InvalidInput,
-                              self._driver.get_configured_ip_version)
+                              self._driver.get_configured_ip_versions)
 
     def test_mount_device(self):
         mount_path = self._get_mount_path(self.share)
