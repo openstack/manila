@@ -134,10 +134,7 @@ class NFSHelperTestCase(test.TestCase):
 
     @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
     def test_update_access(self, access_level):
-        expected_mount_options = '%s,no_subtree_check'
-        if access_level == const.ACCESS_LEVEL_RW:
-            expected_mount_options = ','.join((expected_mount_options,
-                                               'no_root_squash'))
+        expected_mount_options = '%s,no_subtree_check,no_root_squash'
         self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
         local_path = os.path.join(CONF.share_mount_path, self.share_name)
         exec_result = ' '.join([local_path, '2.2.2.3'])
@@ -231,10 +228,7 @@ class NFSHelperTestCase(test.TestCase):
 
     @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
     def test_update_access_recovery_mode(self, access_level):
-        expected_mount_options = '%s,no_subtree_check'
-        if access_level == const.ACCESS_LEVEL_RW:
-            expected_mount_options = ','.join((expected_mount_options,
-                                               'no_root_squash'))
+        expected_mount_options = '%s,no_subtree_check,no_root_squash'
         access_rules = [test_generic.get_fake_access_rule(
             '1.1.1.1', access_level), ]
         self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')

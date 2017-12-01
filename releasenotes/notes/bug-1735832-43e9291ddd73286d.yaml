@@ -1,0 +1,4 @@
+---
+fixes:
+  - Root uses can now correctly read files on read-only shares
+    when the LVM or generic drivers are used.
