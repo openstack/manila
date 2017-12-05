@@ -91,14 +91,17 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
             host='QnapShareDriver',
             size=10)
 
-    def _sanitize_params(self, params):
+    def _sanitize_params(self, params, doseq=False):
         sanitized_params = {}
         for key in params:
             value = params[key]
             if value is not None:
-                sanitized_params[key] = six.text_type(value)
+                if isinstance(value, list):
+                    sanitized_params[key] = [six.text_type(v) for v in value]
+                else:
+                    sanitized_params[key] = six.text_type(value)
 
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        sanitized_params = urllib.parse.urlencode(sanitized_params, doseq)
         return sanitized_params
 
     @ddt.data('fake_share_name', 'fakeLabel')
@@ -493,14 +496,16 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
             expected_call_list,
             mock_http_connection.return_value.request.call_args_list)
 
-    def test_get_host_list(self):
+    @ddt.data(fakes.FakeGetHostListResponse(),
+              fakes.FakeGetNoHostListResponse())
+    def test_get_host_list(self, fakeGetHostListResponse):
         """Test get host list api."""
         mock_http_connection = six.moves.http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseEs_1_1_3(),
             fakes.FakeLoginResponse(),
-            fakes.FakeGetHostListResponse()]
+            fakeGetHostListResponse]
 
         self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
                        'qnapadmin', 'Storage Pool 1')
@@ -560,14 +565,83 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
             expected_call_list,
             mock_http_connection.return_value.request.call_args_list)
 
-    def test_set_nfs_access(self):
-        """Test get host list api."""
+    def test_edit_host(self):
+        """Test edit host api."""
         mock_http_connection = six.moves.http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
             fakes.FakeGetBasicInfoResponseEs_1_1_3(),
             fakes.FakeLoginResponse(),
             fakes.FakeGetHostListResponse()]
+
+        self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
+                       'qnapadmin', 'Storage Pool 1')
+        self.driver.api_executor.edit_host(
+            'fakeHostName', ['fakeIpV4'])
+
+        fake_params = {
+            'module': 'hosts',
+            'func': 'apply_sethost',
+            'name': 'fakeHostName',
+            'ipaddr_v4': ['fakeIpV4'],
+            'sid': 'fakeSid',
+        }
+        sanitized_params = self._sanitize_params(fake_params, doseq=True)
+        fake_url = (
+            ('/cgi-bin/accessrights/accessrightsRequest.cgi?%s') %
+            sanitized_params)
+
+        expected_call_list = [
+            mock.call('GET', self.login_url),
+            mock.call('GET', self.get_basic_info_url),
+            mock.call('GET', self.login_url),
+            mock.call('GET', fake_url)]
+        self.assertEqual(
+            expected_call_list,
+            mock_http_connection.return_value.request.call_args_list)
+
+    def test_delete_host(self):
+        """Test delete host api."""
+        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection.return_value.getresponse.side_effect = [
+            fakes.FakeLoginResponse(),
+            fakes.FakeGetBasicInfoResponseEs_1_1_3(),
+            fakes.FakeLoginResponse(),
+            fakes.FakeGetHostListResponse()]
+
+        self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
+                       'qnapadmin', 'Storage Pool 1')
+        self.driver.api_executor.delete_host('fakeHostName')
+
+        fake_params = {
+            'module': 'hosts',
+            'func': 'apply_delhost',
+            'host_name': 'fakeHostName',
+            'sid': 'fakeSid',
+        }
+        sanitized_params = self._sanitize_params(fake_params)
+        fake_url = (
+            ('/cgi-bin/accessrights/accessrightsRequest.cgi?%s') %
+            sanitized_params)
+
+        expected_call_list = [
+            mock.call('GET', self.login_url),
+            mock.call('GET', self.get_basic_info_url),
+            mock.call('GET', self.login_url),
+            mock.call('GET', fake_url)]
+        self.assertEqual(
+            expected_call_list,
+            mock_http_connection.return_value.request.call_args_list)
+
+    @ddt.data(fakes.FakeGetHostListResponse())
+    def test_set_nfs_access(self, fakeGetHostListResponse):
+        """Test get host list api."""
+        mock_http_connection = six.moves.http_client.HTTPConnection
+        mock_http_connection.return_value.getresponse.side_effect = [
+            fakes.FakeLoginResponse(),
+            fakes.FakeGetBasicInfoResponseEs_1_1_3(),
+            fakes.FakeLoginResponse(),
+            fakeGetHostListResponse]
 
         self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
                        'qnapadmin', 'Storage Pool 1')
@@ -747,6 +821,24 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
               ['self.driver.api_executor.add_host',
               {'hostname': 'fakeHostName',
                'ipv4': 'fakeIpV4'},
+              fakes.FakeAuthPassFailResponse(),
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
+              ['self.driver.api_executor.edit_host',
+              {'hostname': 'fakeHostName',
+               'ipv4_list': 'fakeIpV4List'},
+              fakes.FakeResultNegativeResponse(),
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
+              ['self.driver.api_executor.edit_host',
+              {'hostname': 'fakeHostName',
+               'ipv4_list': 'fakeIpV4List'},
+              fakes.FakeAuthPassFailResponse(),
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
+              ['self.driver.api_executor.delete_host',
+              {'hostname': 'fakeHostName'},
+              fakes.FakeResultNegativeResponse(),
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
+              ['self.driver.api_executor.delete_host',
+              {'hostname': 'fakeHostName'},
               fakes.FakeAuthPassFailResponse(),
               fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.get_host_list',

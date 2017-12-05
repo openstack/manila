@@ -16,7 +16,9 @@
 Share driver for QNAP Storage.
 This driver supports QNAP Storage for NFS.
 """
+import datetime
 import re
+import time
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -62,9 +64,11 @@ class QnapShareDriver(driver.ShareDriver):
     Version history:
         1.0.0 - Initial driver (Only NFS)
         1.0.1 - Add support for QES fw 1.1.4.
+        1.0.2 - Fix bug #1736370, QNAP Manila driver: Access rule setting is
+                override by the another access rule.
     """
 
-    DRIVER_VERSION = '1.0.1'
+    DRIVER_VERSION = '1.0.2'
 
     def __init__(self, *args, **kwargs):
         """Initialize QnapShareDriver."""
@@ -192,6 +196,16 @@ class QnapShareDriver(driver.ShareDriver):
         return ("manila-%(ifx)s%(time)s" %
                 {'ifx': infix,
                  'time': timeutils.utcnow().strftime('%Y%m%d%H%M%S%f')})
+
+    def _gen_host_name(self, vol_name_timestamp, access_level):
+        # host_name will be manila-{vol_name_timestamp}-ro or
+        # manila-{vol_name_timestamp}-rw
+        return 'manila-{}-{}'.format(vol_name_timestamp, access_level)
+
+    def _get_timestamp_from_vol_name(self, vol_name):
+        vol_name_split = vol_name.split('-')
+        dt = datetime.datetime.strptime(vol_name_split[2], '%Y%m%d%H%M%S%f')
+        return int(time.mktime(dt.timetuple()))
 
     def _get_location_path(self, share_name, share_proto, ip, vol_id):
         if share_proto == 'NFS':
@@ -503,30 +517,31 @@ class QnapShareDriver(driver.ShareDriver):
                                        self.configuration.qnap_share_ip,
                                        create_volID)
 
-    def _get_manila_hostIPv4s(self, hostlist):
-        host_dict_IPs = []
-        if hostlist is None:
-            return host_dict_IPs
-        for host in hostlist:
-            # Check host alias name with prefix "manila-hst-" to verify this
-            # host is created/managed by Manila or not.
-            if (re.match("^manila-hst-[0-9]+$", host.find('name').text)
-               is not None):
-                LOG.debug('host netaddrs text: %s', host.find('netaddrs').text)
-                if host.find('netaddrs').text is not None:
-                    # Because Manila supports only IPv4 now, check "netaddrs"
-                    # have "ipv4" tag to verify this host is created/managed
-                    # by Manila or not.
-                    if host.find('netaddrs/ipv4').text is not None:
-                        host_dict = {
-                            'index': host.find('index').text,
-                            'hostid': host.find('hostid').text,
-                            'name': host.find('name').text,
-                            'netaddrs': host.find('netaddrs').find('ipv4').text
-                        }
-                        host_dict_IPs.append(host_dict)
-        return host_dict_IPs
+    def _get_vol_host(self, host_list, vol_name_timestamp):
+        vol_host_list = []
+        if host_list is None:
+            return vol_host_list
+        for host in host_list:
+            # Check host alias name with prefix "manila-{vol_name_timestamp}"
+            # to find the host of this manila share.
+            LOG.debug('_get_vol_host name:%s', host.find('name').text)
+            # Because driver supports only IPv4 now, check "netaddrs"
+            # have "ipv4" tag to get address.
+            if re.match("^manila-{}".format(vol_name_timestamp),
+                        host.find('name').text):
+                host_dict = {
+                    'index': host.find('index').text,
+                    'hostid': host.find('hostid').text,
+                    'name': host.find('name').text,
+                    'ipv4': [],
+                }
+                for ipv4 in host.findall('netaddrs/ipv4'):
+                    host_dict['ipv4'].append(ipv4.text)
+                vol_host_list.append(host_dict)
+        LOG.debug('_get_vol_host vol_host_list:%s', vol_host_list)
+        return vol_host_list
 
+    @utils.synchronized('qnap-update_access')
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
         if not (add_rules or delete_rules):
@@ -539,6 +554,15 @@ class QnapShareDriver(driver.ShareDriver):
 
             # Clear all current ACLs
             self.api_executor.set_nfs_access(volName, 2, "all")
+
+            vol_name_timestamp = self._get_timestamp_from_vol_name(volName)
+            host_list = self.api_executor.get_host_list()
+            LOG.debug('host_list:%s', host_list)
+            vol_host_list = self._get_vol_host(host_list, vol_name_timestamp)
+            # If host already exist, delete the host
+            if len(vol_host_list) > 0:
+                for vol_host in vol_host_list:
+                    self.api_executor.delete_host(vol_host['name'])
 
             # Add each one through all rules.
             for access in access_rules:
@@ -556,45 +580,71 @@ class QnapShareDriver(driver.ShareDriver):
         access_type = access['access_type']
         access_level = access['access_level']
         access_to = access['access_to']
+        LOG.debug('share_proto: %(share_proto)s '
+                  'access_type: %(access_type)s'
+                  'access_level: %(access_level)s'
+                  'access_to: %(access_to)s',
+                  {'share_proto': share_proto,
+                   'access_type': access_type,
+                   'access_level': access_level,
+                   'access_to': access_to})
 
         self._check_share_access(share_proto, access_type)
 
-        hostlist = self.api_executor.get_host_list()
-        host_dict_IPs = self._get_manila_hostIPv4s(hostlist)
-        LOG.debug('host_dict_IPs: %s', host_dict_IPs)
-        if len(host_dict_IPs) == 0:
-            host_name = self._gen_random_name("host")
+        vol_name = self.private_storage.get(share['id'], 'volName')
+        vol_name_timestamp = self._get_timestamp_from_vol_name(vol_name)
+        host_name = self._gen_host_name(vol_name_timestamp, access_level)
+
+        host_list = self.api_executor.get_host_list()
+        LOG.debug('vol_name: %(vol_name)s '
+                  'access_level: %(access_level)s '
+                  'host_name: %(host_name)s '
+                  'host_list: %(host_list)s ',
+                  {'vol_name': vol_name,
+                   'access_level': access_level,
+                   'host_name': host_name,
+                   'host_list': host_list})
+        filter_host_list = self._get_vol_host(host_list, vol_name_timestamp)
+        if len(filter_host_list) == 0:
+            # if host does not exist, create a host for the share
             self.api_executor.add_host(host_name, access_to)
+        elif (len(filter_host_list) == 1 and
+              filter_host_list[0]['name'] == host_name):
+            # if the host exist, and this host is for the same access right,
+            # add ip to the host.
+            ipv4_list = filter_host_list[0]['ipv4']
+            if access_to not in ipv4_list:
+                ipv4_list.append(access_to)
+            LOG.debug('vol_host["ipv4"]: %s', filter_host_list[0]['ipv4'])
+            LOG.debug('ipv4_list: %s', ipv4_list)
+            self.api_executor.edit_host(host_name, ipv4_list)
         else:
-            for host in host_dict_IPs:
-                LOG.debug('host[netaddrs]: %s', host['netaddrs'])
-                LOG.debug('access_to: %s', access_to)
-                if host['netaddrs'] == access_to:
-                    LOG.debug('in match ip')
-                    host_name = host['name']
-                    break
-                if host is host_dict_IPs[-1]:
-                    host_name = self._gen_random_name("host")
-                    self.api_executor.add_host(host_name, access_to)
-
-        volName = self.private_storage.get(share['id'], 'volName')
-        LOG.debug('volName: %(volName)s for share: %(share)s',
-                  {'volName': volName, 'share': share['id']})
-
-        LOG.debug('access_level: %(access)s for share: %(share)s',
-                  {'access': access_level, 'share': share['id']})
-        LOG.debug('host_name: %(host)s for share: %(share)s',
-                  {'host': host_name, 'share': share['id']})
-        if access_level == constants.ACCESS_LEVEL_RO:
-            self.api_executor.set_nfs_access(volName, 1, host_name)
-        elif access_level == constants.ACCESS_LEVEL_RW:
-            self.api_executor.set_nfs_access(volName, 0, host_name)
+            # Until now, share of QNAP NAS can only apply one access level for
+            # all ips. "rw" for some ips and "ro" for else is not allowed.
+            support_level = (constants.ACCESS_LEVEL_RW if
+                             access_level == constants.ACCESS_LEVEL_RO
+                             else constants.ACCESS_LEVEL_RO)
+            reason = _('Share only supports one access '
+                       'level: %s') % support_level
+            LOG.error(reason)
+            raise exception.InvalidShareAccess(reason=reason)
+        access = 1 if access_level == constants.ACCESS_LEVEL_RO else 0
+        self.api_executor.set_nfs_access(vol_name, access, host_name)
 
     def _deny_access(self, context, share, access, share_server=None):
         """Deny access to the share."""
         share_proto = share['share_proto']
         access_type = access['access_type']
+        access_level = access['access_level']
         access_to = access['access_to']
+        LOG.debug('share_proto: %(share_proto)s '
+                  'access_type: %(access_type)s'
+                  'access_level: %(access_level)s'
+                  'access_to: %(access_to)s',
+                  {'share_proto': share_proto,
+                   'access_type': access_type,
+                   'access_level': access_level,
+                   'access_to': access_to})
 
         try:
             self._check_share_access(share_proto, access_type)
@@ -602,23 +652,34 @@ class QnapShareDriver(driver.ShareDriver):
             LOG.warning('The denied rule is invalid and does not exist.')
             return
 
-        hostlist = self.api_executor.get_host_list()
-        host_dict_IPs = self._get_manila_hostIPv4s(hostlist)
-        LOG.debug('host_dict_IPs: %s', host_dict_IPs)
-        if len(host_dict_IPs) == 0:
-            return
-        else:
-            for host in host_dict_IPs:
-                if (host['netaddrs'] == access_to):
-                    host_name = host['name']
-                    break
-                if (host is host_dict_IPs[-1]):
-                    return
-
-        volName = self.private_storage.get(share['id'], 'volName')
-        LOG.debug('volName: %s', volName)
-
-        self.api_executor.set_nfs_access(volName, 2, host_name)
+        vol_name = self.private_storage.get(share['id'], 'volName')
+        vol_name_timestamp = self._get_timestamp_from_vol_name(vol_name)
+        host_name = self._gen_host_name(vol_name_timestamp, access_level)
+        host_list = self.api_executor.get_host_list()
+        LOG.debug('vol_name: %(vol_name)s '
+                  'access_level: %(access_level)s '
+                  'host_name: %(host_name)s '
+                  'host_list: %(host_list)s ',
+                  {'vol_name': vol_name,
+                   'access_level': access_level,
+                   'host_name': host_name,
+                   'host_list': host_list})
+        filter_host_list = self._get_vol_host(host_list, vol_name_timestamp)
+        # if share already have host, remove ip from host
+        for vol_host in filter_host_list:
+            if vol_host['name'] == host_name:
+                ipv4_list = vol_host['ipv4']
+                if access_to in ipv4_list:
+                    ipv4_list.remove(access_to)
+                LOG.debug('vol_host["ipv4"]: %s', vol_host['ipv4'])
+                LOG.debug('ipv4_list: %s', ipv4_list)
+                if len(ipv4_list) == 0:  # if list empty, remove the host
+                    self.api_executor.set_nfs_access(
+                        vol_name, 2, host_name)
+                    self.api_executor.delete_host(host_name)
+                else:
+                    self.api_executor.edit_host(host_name, ipv4_list)
+                break
 
     def _check_share_access(self, share_proto, access_type):
         if share_proto == 'NFS' and access_type != 'ip':

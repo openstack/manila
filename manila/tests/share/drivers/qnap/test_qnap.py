@@ -721,15 +721,22 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
             snapshot=fake_snapshot,
             share_server=None)
 
+    @mock.patch.object(qnap.QnapShareDriver, '_get_timestamp_from_vol_name')
     @mock.patch.object(qnap.QnapShareDriver, '_allow_access')
+    @ddt.data('fakeHostName', 'fakeHostNameNotMatch')
     def test_update_access_allow_access(
-            self, mock_allow_access):
+            self, fakeHostName, mock_allow_access,
+            mock_get_timestamp_from_vol_name):
         """Test update access with allow access rules."""
         mock_private_storage = mock.Mock()
         mock_private_storage.get.return_value = 'fakeVolName'
         mock_api_executor = qnap.QnapShareDriver._create_api_executor
+        mock_api_executor.return_value.get_host_list.return_value = (
+            self.get_host_list_return_value())
         mock_api_executor.return_value.set_nfs_access.return_value = None
+        mock_api_executor.return_value.delete_host.return_value = None
         mock_allow_access.return_value = None
+        mock_get_timestamp_from_vol_name.return_value = fakeHostName
 
         self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
                        'qnapadmin', 'Storage Pool 1',
@@ -1044,7 +1051,7 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
         mock_api_return.get_specific_poolinfo.assert_called_once_with(
             self.driver.configuration.qnap_poolname)
 
-    def test_get_manila_host_ipv4s(self):
+    def test_get_vol_host(self):
         """Test get manila host IPV4s."""
         mock_private_storage = mock.Mock()
 
@@ -1059,28 +1066,31 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
                 'index': host.find('index').text,
                 'hostid': host.find('hostid').text,
                 'name': host.find('name').text,
-                'netaddrs': host.find('netaddrs').find('ipv4').text
+                'ipv4': [host.find('netaddrs').find('ipv4').text]
             }
             expect_host_dict_ips.append(host_dict)
 
         self.assertEqual(
-            expect_host_dict_ips, self.driver._get_manila_hostIPv4s(
-                host_list))
+            expect_host_dict_ips, self.driver._get_vol_host(
+                host_list, 'fakeHostName'))
 
-    @mock.patch.object(qnap.QnapShareDriver, '_gen_random_name')
+    @mock.patch.object(qnap.QnapShareDriver, '_gen_host_name')
+    @mock.patch.object(qnap.QnapShareDriver, '_get_timestamp_from_vol_name')
     @mock.patch.object(qnap.QnapShareDriver, '_check_share_access')
     def test_allow_access_ro(
             self,
             mock_check_share_access,
-            mock_gen_random_name):
+            mock_get_timestamp_from_vol_name,
+            mock_gen_host_name):
         """Test allow_access with access type ro."""
         fake_access = fakes.AccessClass('fakeAccessType', 'ro', 'fakeIp')
 
         mock_private_storage = mock.Mock()
+        mock_private_storage.get.return_value = 'fakeVolName'
         mock_api_executor = qnap.QnapShareDriver._create_api_executor
-        mock_api_executor.return_value.get_host_list.return_value = (
-            self.get_host_list_return_value())
-        mock_gen_random_name.return_value = 'fakeHostName'
+        mock_api_executor.return_value.get_host_list.return_value = []
+        mock_get_timestamp_from_vol_name.return_value = 'fakeHostName'
+        mock_gen_host_name.return_value = 'manila-fakeHostName-ro'
         mock_api_executor.return_value.add_host.return_value = None
         mock_api_executor.return_value.set_nfs_access.return_value = None
 
@@ -1092,14 +1102,17 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
 
         mock_check_share_access.assert_called_once_with(
             'NFS', 'fakeAccessType')
-        mock_gen_random_name.assert_called_once_with('host')
         mock_api_executor.return_value.add_host.assert_called_once_with(
-            'fakeHostName', 'fakeIp')
+            'manila-fakeHostName-ro', 'fakeIp')
 
+    @mock.patch.object(qnap.QnapShareDriver, '_gen_host_name')
+    @mock.patch.object(qnap.QnapShareDriver, '_get_timestamp_from_vol_name')
     @mock.patch.object(qnap.QnapShareDriver, '_check_share_access')
     def test_allow_access_ro_with_hostlist(
             self,
-            mock_check_share_access):
+            mock_check_share_access,
+            mock_get_timestamp_from_vol_name,
+            mock_gen_host_name):
         """Test allow_access_ro_with_hostlist."""
         host_dict_ips = []
         for host in self.get_host_list_return_value():
@@ -1108,18 +1121,21 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
                     'index': host.find('index').text,
                     'hostid': host.find('hostid').text,
                     'name': host.find('name').text,
-                    'netaddrs': host.find('netaddrs').find('ipv4').text}
+                    'ipv4': [host.find('netaddrs').find('ipv4').text]}
                 host_dict_ips.append(host_dict)
 
         for host in host_dict_ips:
-            fake_access_to = host['netaddrs']
+            fake_access_to = host['ipv4']
         fake_access = fakes.AccessClass(
             'fakeAccessType', 'ro', fake_access_to)
 
         mock_private_storage = mock.Mock()
+        mock_private_storage.get.return_value = 'fakeVolName'
         mock_api_executor = qnap.QnapShareDriver._create_api_executor
         mock_api_executor.return_value.get_host_list.return_value = (
             self.get_host_list_return_value())
+        mock_get_timestamp_from_vol_name.return_value = 'fakeHostName'
+        mock_gen_host_name.return_value = 'manila-fakeHostName'
         mock_api_executor.return_value.set_nfs_access.return_value = None
 
         self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
@@ -1131,20 +1147,64 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
         mock_check_share_access.assert_called_once_with(
             'NFS', 'fakeAccessType')
 
-    @mock.patch.object(qnap.QnapShareDriver, '_gen_random_name')
+    @mock.patch.object(qnap.QnapShareDriver, '_gen_host_name')
+    @mock.patch.object(qnap.QnapShareDriver, '_get_timestamp_from_vol_name')
+    @mock.patch.object(qnap.QnapShareDriver, '_check_share_access')
+    def test_allow_access_rw_with_hostlist_invalid_access(
+            self,
+            mock_check_share_access,
+            mock_get_timestamp_from_vol_name,
+            mock_gen_host_name):
+        """Test allow_access_rw_invalid_access."""
+        host_dict_ips = []
+        for host in self.get_host_list_return_value():
+            if host.find('netaddrs/ipv4').text is not None:
+                host_dict = {
+                    'index': host.find('index').text,
+                    'hostid': host.find('hostid').text,
+                    'name': host.find('name').text,
+                    'ipv4': [host.find('netaddrs').find('ipv4').text]}
+                host_dict_ips.append(host_dict)
+
+        for host in host_dict_ips:
+            fake_access_to = host['ipv4']
+        fake_access = fakes.AccessClass(
+            'fakeAccessType', 'rw', fake_access_to)
+
+        mock_private_storage = mock.Mock()
+        mock_private_storage.get.return_value = 'fakeVolName'
+        mock_api_executor = qnap.QnapShareDriver._create_api_executor
+        mock_api_executor.return_value.get_host_list.return_value = (
+            self.get_host_list_return_value())
+        mock_get_timestamp_from_vol_name.return_value = 'fakeHostName'
+        mock_gen_host_name.return_value = 'manila-fakeHostName-rw'
+
+        self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
+                       'qnapadmin', 'Storage Pool 1',
+                       private_storage=mock_private_storage)
+
+        self.assertRaises(
+            exception.InvalidShareAccess,
+            self.driver._allow_access,
+            context='context',
+            share=self.share,
+            access=fake_access,
+            share_server=None)
+
+    @mock.patch.object(qnap.QnapShareDriver, '_get_timestamp_from_vol_name')
     @mock.patch.object(qnap.QnapShareDriver, '_check_share_access')
     def test_allow_access_rw(
             self,
             mock_check_share_access,
-            mock_gen_random_name):
+            mock_get_timestamp_from_vol_name):
         """Test allow_access with access type rw."""
         fake_access = fakes.AccessClass('fakeAccessType', 'rw', 'fakeIp')
 
         mock_private_storage = mock.Mock()
+        mock_private_storage.get.return_value = 'fakeVolName'
         mock_api_executor = qnap.QnapShareDriver._create_api_executor
-        mock_api_executor.return_value.get_host_list.return_value = (
-            self.get_host_list_return_value())
-        mock_gen_random_name.return_value = 'fakeHostName'
+        mock_api_executor.return_value.get_host_list.return_value = []
+        mock_get_timestamp_from_vol_name.return_value = 'fakeHostName'
         mock_api_executor.return_value.add_host.return_value = None
         mock_api_executor.return_value.set_nfs_access.return_value = None
 
@@ -1156,44 +1216,50 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
 
         mock_check_share_access.assert_called_once_with(
             'NFS', 'fakeAccessType')
-        mock_gen_random_name.assert_called_once_with('host')
         mock_api_executor.return_value.add_host.assert_called_once_with(
-            'fakeHostName', 'fakeIp')
+            'manila-fakeHostName-rw', 'fakeIp')
 
-    @mock.patch.object(qnap.QnapShareDriver, '_get_manila_hostIPv4s')
-    @mock.patch.object(qnap.QnapShareDriver, '_gen_random_name')
+    @mock.patch.object(qnap.QnapShareDriver, '_gen_host_name')
     @mock.patch.object(qnap.QnapShareDriver, '_check_share_access')
-    def test_allow_access_without_hostlist(
+    def test_allow_access_ro_without_hostlist(
             self,
             mock_check_share_access,
-            mock_gen_random_name,
-            mock_get_manila_hostipv4s):
+            mock_gen_host_name):
         """Test allow access without host list."""
         fake_access = fakes.AccessClass('fakeAccessType', 'ro', 'fakeIp')
 
         mock_private_storage = mock.Mock()
+
         mock_api_executor = qnap.QnapShareDriver._create_api_executor
         mock_api_executor.return_value.get_host_list.return_value = None
-        mock_gen_random_name.return_value = 'fakeHostName'
+        mock_gen_host_name.return_value = 'fakeHostName'
         mock_api_executor.return_value.add_host.return_value = None
         mock_api_executor.return_value.set_nfs_access.return_value = None
 
         self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
                        'qnapadmin', 'Storage Pool 1',
                        private_storage=mock_private_storage)
+        share_name = self.driver._gen_random_name('share')
+        mock_private_storage.get.return_value = share_name
         self.driver._allow_access(
             'context', self.share, fake_access, share_server=None)
 
         mock_check_share_access.assert_called_once_with(
             'NFS', 'fakeAccessType')
-        mock_gen_random_name.assert_called_once_with('host')
         mock_api_executor.return_value.add_host.assert_called_once_with(
             'fakeHostName', 'fakeIp')
 
+    @mock.patch.object(qnap.QnapShareDriver, '_get_vol_host')
+    @mock.patch.object(qnap.QnapShareDriver, '_gen_host_name')
+    @mock.patch.object(qnap.QnapShareDriver, '_get_timestamp_from_vol_name')
     @mock.patch.object(qnap.QnapShareDriver, '_check_share_access')
     def test_deny_access_with_hostlist(
             self,
-            mock_check_share_access):
+            mock_check_share_access,
+            mock_get_timestamp_from_vol_name,
+            mock_gen_host_name,
+            mock_get_vol_host):
+
         """Test deny access."""
         host_dict_ips = []
         for host in self.get_host_list_return_value():
@@ -1202,11 +1268,11 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
                     'index': host.find('index').text,
                     'hostid': host.find('hostid').text,
                     'name': host.find('name').text,
-                    'netaddrs': host.find('netaddrs').find('ipv4').text}
+                    'ipv4': [host.find('netaddrs').find('ipv4').text]}
                 host_dict_ips.append(host_dict)
 
         for host in host_dict_ips:
-            fake_access_to = host['netaddrs']
+            fake_access_to = host['ipv4'][0]
         fake_access = fakes.AccessClass('fakeAccessType', 'ro', fake_access_to)
 
         mock_private_storage = mock.Mock()
@@ -1216,6 +1282,9 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
             qnap.QnapShareDriver._create_api_executor.return_value)
         mock_api_return.get_host_list.return_value = (
             self.get_host_list_return_value())
+        mock_get_timestamp_from_vol_name.return_value = 'fakeTimeStamp'
+        mock_gen_host_name.return_value = 'manila-fakeHostName'
+        mock_get_vol_host.return_value = host_dict_ips
         mock_api_return.add_host.return_value = None
         mock_api_return.set_nfs_access.return_value = None
 
@@ -1227,13 +1296,13 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
 
         mock_check_share_access.assert_called_once_with(
             'NFS', 'fakeAccessType')
-        mock_api_return.set_nfs_access.assert_called_once_with(
-            'vol_name', 2, 'manila-hst-123')
 
+    @mock.patch.object(qnap.QnapShareDriver, '_get_timestamp_from_vol_name')
     @mock.patch.object(qnap.QnapShareDriver, '_check_share_access')
     def test_deny_access_with_hostlist_not_equel_access_to(
             self,
-            mock_check_share_access):
+            mock_check_share_access,
+            mock_get_timestamp_from_vol_name):
         """Test deny access."""
         fake_access = fakes.AccessClass('fakeAccessType', 'ro', 'fakeIp')
 
@@ -1254,18 +1323,20 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
         mock_check_share_access.assert_called_once_with(
             'NFS', 'fakeAccessType')
 
-    @mock.patch.object(qnap.QnapShareDriver, '_get_manila_hostIPv4s')
+    @mock.patch.object(qnap.QnapShareDriver, '_get_timestamp_from_vol_name')
     @mock.patch.object(qnap.QnapShareDriver, '_check_share_access')
     def test_deny_access_without_hostlist(
             self,
             mock_check_share_access,
-            mock_get_manila_hostipv4s):
+            mock_get_timestamp_from_vol_name):
         """Test deny access without hostlist."""
         fake_access = fakes.AccessClass('fakeAccessType', 'ro', 'fakeIp')
 
         mock_private_storage = mock.Mock()
+        mock_private_storage.get.return_value = 'fakeVolName'
         mock_api_executor = qnap.QnapShareDriver._create_api_executor
         mock_api_executor.return_value.get_host_list.return_value = None
+        mock_get_timestamp_from_vol_name.return_value = 'fakeHostName'
         mock_api_executor.return_value.add_host.return_value = None
         mock_api_executor.return_value.set_nfs_access.return_value = None
 
