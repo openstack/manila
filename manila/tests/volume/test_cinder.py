@@ -54,12 +54,6 @@ class CinderclientTestCase(test.TestCase):
             cinder.client_auth, 'AuthClientLoader')
         fake_context = 'fake_context'
         data = {
-            'DEFAULT': {
-                'cinder_admin_username': 'foo_username',
-                'cinder_admin_password': 'foo_password',
-                'cinder_admin_tenant_name': 'foo_tenant_name',
-                'cinder_admin_auth_url': 'foo_auth_url',
-            },
             'cinder': {
                 'api_insecure': True,
                 'ca_certificates_file': 'foo_ca_certificates_file',
@@ -75,13 +69,7 @@ class CinderclientTestCase(test.TestCase):
         mock_client_loader.assert_called_once_with(
             client_class=cinder.cinder_client.Client,
             exception_module=cinder.cinder_exception,
-            cfg_group=cinder.CINDER_GROUP,
-            deprecated_opts_for_v2={
-                'username': data['DEFAULT']['cinder_admin_username'],
-                'password': data['DEFAULT']['cinder_admin_password'],
-                'tenant_name': data['DEFAULT']['cinder_admin_tenant_name'],
-                'auth_url': data['DEFAULT']['cinder_admin_auth_url'],
-            },
+            cfg_group=cinder.CINDER_GROUP
         )
         mock_client_loader.return_value.get_client.assert_called_once_with(
             fake_context,
