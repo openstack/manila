@@ -74,7 +74,7 @@ The scheduler uses the special ``capabilities`` prefix for
 filtering. The scheduler can only create a share on a back end that
 reports capabilities that match the un-scoped extra-spec keys for
 the share type. For details, see `Capabilities and Extra-Specs
-<https://docs.openstack.org/manila/latest/contributor/
+<https://docs.openstack.org/manila/latest/admin/
 capabilities_and_extra_specs.html>`_.
 
 Each driver implementation determines which extra specification
@@ -310,7 +310,7 @@ Sets an extra specification for the share type.
 
 Each driver implementation determines which extra specification
 keys it uses. For details, see `Capabilities and Extra-Specs
-<https://docs.openstack.org/manila/latest/contributor/
+<https://docs.openstack.org/manila/latest/admin/
 capabilities_and_extra_specs.html>`_ and documentation for your driver.
 
 Normal response codes: 200
