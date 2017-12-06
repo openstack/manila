@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed logic in driver base class that determines whether
+    IPv6 is supported at runtime.

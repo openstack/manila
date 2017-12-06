@@ -1085,31 +1085,36 @@ class ShareDriverTestCase(test.TestCase):
                           'fake_context', 'fake_snapshot', ['r1', 'r2'],
                           [], [])
 
-    @ddt.data({'capability': (True, True),
-               'user_admin_networks': [[4], [4]],
+    @ddt.data({'user_networks': set([4]), 'conf': [4],
                'expected': {'ipv4': True, 'ipv6': False}},
-              {'capability': (True, True),
-               'user_admin_networks': [[6], [6]],
+              {'user_networks': set([6]), 'conf': [4],
+               'expected': {'ipv4': False, 'ipv6': False}},
+              {'user_networks': set([4, 6]), 'conf': [4],
+               'expected': {'ipv4': True, 'ipv6': False}},
+              {'user_networks': set([4]), 'conf': [6],
+               'expected': {'ipv4': False, 'ipv6': False}},
+              {'user_networks': set([6]), 'conf': [6],
                'expected': {'ipv4': False, 'ipv6': True}},
-              {'capability': (False, False),
-               'user_admin_networks': [[4], [4]],
-               'expected': {'ipv4': False, 'ipv6': False}},
-              {'capability': (True, True),
-               'user_admin_networks': [[4], [6]],
-               'expected': {'ipv4': False, 'ipv6': False}},
-              {'capability': (False, False),
-               'user_admin_networks': [[6], [4]],
-               'expected': {'ipv4': False, 'ipv6': False}},)
+              {'user_networks': set([4, 6]), 'conf': [6],
+               'expected': {'ipv4': False, 'ipv6': True}},
+              {'user_networks': set([4]), 'conf': [4, 6],
+               'expected': {'ipv4': True, 'ipv6': False}},
+              {'user_networks': set([6]), 'conf': [4, 6],
+               'expected': {'ipv4': False, 'ipv6': True}},
+              {'user_networks': set([4, 6]), 'conf': [4, 6],
+               'expected': {'ipv4': True, 'ipv6': True}},
+              )
     @ddt.unpack
-    def test_add_ip_version_capability_if_dhss_true(self, capability,
-                                                    user_admin_networks,
+    def test_add_ip_version_capability_if_dhss_true(self,
+                                                    user_networks,
+                                                    conf,
                                                     expected):
         share_driver = self._instantiate_share_driver(None, True)
-        version = PropertyMock(side_effect=user_admin_networks)
-        type(share_driver.network_api).enabled_ip_version = version
-        data = {'share_backend_name': 'fake_backend',
-                'ipv4_support': capability[0],
-                'ipv6_support': capability[1]}
+        self.mock_object(share_driver, 'get_configured_ip_versions',
+                         mock.Mock(return_value=conf))
+        versions = PropertyMock(return_value=user_networks)
+        type(share_driver.network_api).enabled_ip_versions = versions
+        data = {'share_backend_name': 'fake_backend'}
 
         result = share_driver.add_ip_version_capability(data)
 
@@ -1118,34 +1123,19 @@ class ShareDriverTestCase(test.TestCase):
         self.assertIsNotNone(result['ipv6_support'])
         self.assertEqual(expected['ipv6'], result['ipv6_support'])
 
-    @ddt.data({'capability': (True, False),
-               'conf': [4],
+    @ddt.data({'conf': [4],
                'expected': {'ipv4': True, 'ipv6': False}},
-              {'capability': (True, True),
-               'conf': [6],
+              {'conf': [6],
                'expected': {'ipv4': False, 'ipv6': True}},
-              {'capability': (False, False),
-               'conf': [4],
-               'expected': {'ipv4': False, 'ipv6': False}},
-              {'capability': (False, True),
-               'conf': [4],
-               'expected': {'ipv4': False, 'ipv6': False}},
-              {'capability': (False, True),
-               'conf': [6],
-               'expected': {'ipv4': False, 'ipv6': True}},
-              {'capability': (True, True),
-               'conf': [4, 6],
+              {'conf': [4, 6],
                'expected': {'ipv4': True, 'ipv6': True}},
               )
     @ddt.unpack
-    def test_add_ip_version_capability_if_dhss_false(self, capability,
-                                                     conf, expected):
+    def test_add_ip_version_capability_if_dhss_false(self, conf, expected):
         share_driver = self._instantiate_share_driver(None, False)
-        self.mock_object(share_driver, 'get_configured_ip_version',
+        self.mock_object(share_driver, 'get_configured_ip_versions',
                          mock.Mock(return_value=conf))
-        data = {'share_backend_name': 'fake_backend',
-                'ipv4_support': capability[0],
-                'ipv6_support': capability[1]}
+        data = {'share_backend_name': 'fake_backend'}
         result = share_driver.add_ip_version_capability(data)
 
         self.assertIsNotNone(result['ipv4_support'])

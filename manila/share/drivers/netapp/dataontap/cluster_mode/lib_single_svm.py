@@ -148,7 +148,7 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
         return 0
 
     @na_utils.trace
-    def get_configured_ip_version(self):
+    def get_configured_ip_versions(self):
         ipv4 = False
         ipv6 = False
         vserver_client = self._get_api_client(vserver=self._vserver)
