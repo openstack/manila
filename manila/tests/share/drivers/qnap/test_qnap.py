@@ -23,8 +23,11 @@ import ddt
 import mock
 from oslo_config import cfg
 import six
+import time
 
+from eventlet import greenthread
 from manila import exception
+from manila.share.drivers.qnap import api
 from manila.share.drivers.qnap import qnap
 from manila import test
 from manila.tests import fake_share
@@ -86,7 +89,8 @@ class QnapShareDriverLoginTestCase(QnapShareDriverBaseTestCase):
     def test_do_setup_positive(self, mng_url, port, ssl):
         """Test do_setup with http://1.2.3.4:8080."""
         fake_login_response = fakes.FakeLoginResponse()
-        fake_get_basic_info_response_es = fakes.FakeGetBasicInfoResponseEs()
+        fake_get_basic_info_response_es = (
+            fakes.FakeGetBasicInfoResponseEs_1_1_3())
         if ssl:
             mock_connection = six.moves.http_client.HTTPSConnection
         else:
@@ -117,13 +121,12 @@ class QnapShareDriverLoginTestCase(QnapShareDriverBaseTestCase):
         self.assertEqual(port, self.driver.api_executor.port)
         self.assertEqual(ssl, self.driver.api_executor.ssl)
 
-    @ddt.data(fakes.FakeGetBasicInfoResponseTs(),
-              fakes.FakeGetBasicInfoResponseTesTs(),
-              fakes.FakeGetBasicInfoResponseTesEs())
+    @ddt.data(fakes.FakeGetBasicInfoResponseTs_4_3_0(),
+              fakes.FakeGetBasicInfoResponseTesTs_4_3_0(),
+              fakes.FakeGetBasicInfoResponseTesEs_1_1_3())
     def test_do_setup_positive_with_diff_nas(self, fake_basic_info):
         """Test do_setup with different NAS model."""
         fake_login_response = fakes.FakeLoginResponse()
-        # fake_get_basic_info_response_ts = FakeGetBasicInfoResponseTs()
         mock_connection = six.moves.http_client.HTTPSConnection
         mock_connection.return_value.getresponse.side_effect = [
             fake_login_response,
@@ -139,6 +142,64 @@ class QnapShareDriverLoginTestCase(QnapShareDriverBaseTestCase):
         self.assertEqual('1.2.3.4', self.driver.api_executor.ip)
         self.assertEqual('443', self.driver.api_executor.port)
         self.assertTrue(self.driver.api_executor.ssl)
+
+    @ddt.data({
+        'fake_basic_info': fakes.FakeGetBasicInfoResponseTs_4_3_0(),
+        'expect_result': api.QnapAPIExecutorTS
+    }, {
+        'fake_basic_info': fakes.FakeGetBasicInfoResponseTesTs_4_3_0(),
+        'expect_result': api.QnapAPIExecutorTS
+    }, {
+        'fake_basic_info': fakes.FakeGetBasicInfoResponseTesEs_1_1_3(),
+        'expect_result': api.QnapAPIExecutor
+    }, {
+        'fake_basic_info': fakes.FakeGetBasicInfoResponseEs_1_1_3(),
+        'expect_result': api.QnapAPIExecutor
+    })
+    @ddt.unpack
+    def test_create_api_executor(self, fake_basic_info, expect_result):
+        """Test do_setup with different NAS model."""
+        fake_login_response = fakes.FakeLoginResponse()
+        mock_connection = six.moves.http_client.HTTPSConnection
+        mock_connection.return_value.getresponse.side_effect = [
+            fake_login_response,
+            fake_basic_info,
+            fake_login_response]
+        self._do_setup('https://1.2.3.4:443', '1.2.3.4', 'admin',
+                       'qnapadmin', 'Storage Pool 1')
+        self.assertIsInstance(self.driver.api_executor, expect_result)
+
+    @ddt.data({
+        'fake_basic_info': fakes.FakeGetBasicInfoResponseTs_4_0_0(),
+        'expect_result': exception.ShareBackendException
+    }, {
+        'fake_basic_info': fakes.FakeGetBasicInfoResponseTesTs_4_0_0(),
+        'expect_result': exception.ShareBackendException
+    }, {
+        'fake_basic_info': fakes.FakeGetBasicInfoResponseTesEs_1_1_1(),
+        'expect_result': exception.ShareBackendException
+    }, {
+        'fake_basic_info': fakes.FakeGetBasicInfoResponseEs_1_1_1(),
+        'expect_result': exception.ShareBackendException
+    })
+    @ddt.unpack
+    def test_create_api_executor_negative(self,
+                                          fake_basic_info, expect_result):
+        """Test do_setup with different NAS model."""
+        fake_login_response = fakes.FakeLoginResponse()
+        mock_connection = six.moves.http_client.HTTPSConnection
+        mock_connection.return_value.getresponse.side_effect = [
+            fake_login_response,
+            fake_basic_info,
+            fake_login_response]
+        self.assertRaises(
+            exception.ShareBackendException,
+            self._do_setup,
+            'https://1.2.3.4:443',
+            '1.2.3.4',
+            'admin',
+            'qnapadmin',
+            'Storage Pool 1')
 
     def test_do_setup_with_exception(self):
         """Test do_setup with exception."""
@@ -243,28 +304,81 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
             mock_get_location_path):
         """Test create share."""
         mock_api_executor = qnap.QnapShareDriver._create_api_executor
-        mock_api_executor.return_value.get_share_info.return_value = None
+        mock_api_executor.return_value.get_share_info.side_effect = [
+            None, self.get_share_info_return_value()]
         mock_gen_random_name.return_value = 'fakeShareName'
         mock_api_executor.return_value.create_share.return_value = (
             'fakeCreateShareId')
         mock_get_location_path.return_value = None
         mock_private_storage = mock.Mock()
-
+        self.mock_object(greenthread, 'sleep')
         self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
                        'qnapadmin', 'Storage Pool 1',
                        private_storage=mock_private_storage)
         self.driver.create_share('context', self.share)
 
-        mock_api_executor.return_value.get_share_info.assert_called_once_with(
-            'Storage Pool 1',
-            vol_label='fakeShareName')
+        mock_api_return = mock_api_executor.return_value
+        expected_call_list = [
+            mock.call('Storage Pool 1', vol_label='fakeShareName'),
+            mock.call('Storage Pool 1', vol_label='fakeShareName')]
+        self.assertEqual(
+            expected_call_list,
+            mock_api_return.get_share_info.call_args_list)
         mock_api_executor.return_value.create_share.assert_called_once_with(
             self.share,
             self.driver.configuration.qnap_poolname,
             'fakeShareName',
             'NFS')
         mock_get_location_path.assert_called_once_with(
-            'fakeShareName', 'NFS', '1.2.3.4')
+            'fakeShareName', 'NFS', '1.2.3.4', 'fakeNo')
+
+    @mock.patch.object(qnap.QnapShareDriver, '_get_location_path')
+    @mock.patch.object(qnap.QnapShareDriver, '_gen_random_name')
+    def test_create_share_negative_share_exist(
+            self,
+            mock_gen_random_name,
+            mock_get_location_path):
+        """Test create share."""
+        mock_api_executor = qnap.QnapShareDriver._create_api_executor
+        mock_api_executor.return_value.get_share_info.return_value = (
+            self.get_share_info_return_value())
+        mock_gen_random_name.return_value = 'fakeShareName'
+        mock_get_location_path.return_value = None
+        mock_private_storage = mock.Mock()
+        self.mock_object(time, 'sleep')
+        self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
+                       'qnapadmin', 'Storage Pool 1',
+                       private_storage=mock_private_storage)
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.driver.create_share,
+            context='context',
+            share=self.share)
+
+    @mock.patch.object(qnap.QnapShareDriver, '_get_location_path')
+    @mock.patch.object(qnap.QnapShareDriver, '_gen_random_name')
+    def test_create_share_negative_create_fail(
+            self,
+            mock_gen_random_name,
+            mock_get_location_path):
+        """Test create share."""
+        mock_api_executor = qnap.QnapShareDriver._create_api_executor
+        mock_api_executor.return_value.get_share_info.return_value = None
+        mock_gen_random_name.return_value = 'fakeShareName'
+        mock_get_location_path.return_value = None
+        mock_private_storage = mock.Mock()
+        self.mock_object(time, 'sleep')
+        self.mock_object(greenthread, 'sleep')
+        self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
+                       'qnapadmin', 'Storage Pool 1',
+                       private_storage=mock_private_storage)
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.driver.create_share,
+            context='context',
+            share=self.share)
 
     def test_delete_share_positive(self):
         """Test delete share with fake_share."""
@@ -323,7 +437,7 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
             self.get_share_info_return_value())
         mock_api_executor.return_value.edit_share.return_value = None
         mock_private_storage = mock.Mock()
-        mock_private_storage.get.return_value = 'fakeVolId'
+        mock_private_storage.get.return_value = 'fakeVolName'
 
         self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
                        'qnapadmin', 'Storage Pool 1',
@@ -331,9 +445,10 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
         self.driver.extend_share(self.share, 100, share_server=None)
 
         expect_share_dict = {
-            "sharename": 'fakeVolId',
-            "old_sharename": 'fakeVolId',
-            "new_size": 100,
+            'sharename': 'fakeVolName',
+            'old_sharename': 'fakeVolName',
+            'new_size': 100,
+            'share_proto': 'NFS'
         }
         mock_api_executor.return_value.edit_share.assert_called_once_with(
             expect_share_dict)
@@ -455,10 +570,8 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
 
         mock_api_executor = qnap.QnapShareDriver._create_api_executor
         mock_gen_random_name.return_value = 'fakeShareName'
-        mock_api_executor.return_value.get_share_info.side_effect = (
-            None, self.get_share_info_return_value())
-        mock_api_executor.return_value.clone_snapshot.return_value = (
-            None)
+        mock_api_executor.return_value.get_share_info.side_effect = [
+            None, self.get_share_info_return_value()]
         mock_private_storage = mock.Mock()
         mock_private_storage.get.return_value = 'fakeSnapshotId'
         mock_share_api.return_value.get.return_value = {'size': 10}
@@ -495,12 +608,10 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
 
         mock_gen_random_name.return_value = 'fakeShareName'
         mock_api_executor = qnap.QnapShareDriver._create_api_executor
-        mock_api_executor.return_value.get_share_info.side_effect = (
-            None, self.get_share_info_return_value())
-        mock_api_executor.return_value.clone_snapshot.return_value = (
-            None)
+        mock_api_executor.return_value.get_share_info.side_effect = [
+            None, self.get_share_info_return_value()]
         mock_private_storage = mock.Mock()
-        mock_private_storage.get.return_value = 'fakeSnapshotId'
+        mock_private_storage.get.return_value = 'fakeVolName'
         mock_share_api.return_value.get.return_value = {'size': 5}
         mock_api_executor.return_value.edit_share.return_value = (
             None)
@@ -525,7 +636,8 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
         expect_share_dict = {
             'sharename': 'fakeShareName',
             'old_sharename': 'fakeShareName',
-            'new_size': 10
+            'new_size': 10,
+            'share_proto': 'NFS'
         }
         mock_api_return.edit_share.assert_called_once_with(
             expect_share_dict)
@@ -542,6 +654,67 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
                        private_storage=mock_private_storage)
         self.assertRaises(
             exception.SnapshotResourceNotFound,
+            self.driver.create_share_from_snapshot,
+            context='context',
+            share=self.share,
+            snapshot=fake_snapshot,
+            share_server=None)
+
+    @mock.patch.object(qnap.QnapShareDriver, '_get_location_path')
+    @mock.patch('manila.share.API')
+    @mock.patch.object(qnap.QnapShareDriver, '_gen_random_name')
+    def test_create_share_from_snapshot_negative_name_exist(
+            self,
+            mock_gen_random_name,
+            mock_share_api,
+            mock_get_location_path):
+        """Test create share from snapshot."""
+        fake_snapshot = fakes.SnapshotClass(
+            10, 'fakeShareName@fakeSnapshotName')
+
+        mock_api_executor = qnap.QnapShareDriver._create_api_executor
+        mock_gen_random_name.return_value = 'fakeShareName'
+        mock_api_executor.return_value.get_share_info.return_value = (
+            self.get_share_info_return_value())
+        mock_private_storage = mock.Mock()
+        mock_private_storage.get.return_value = 'fakeSnapshotId'
+        mock_share_api.return_value.get.return_value = {'size': 10}
+        self.mock_object(time, 'sleep')
+        self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
+                       'qnapadmin', 'Storage Pool 1',
+                       private_storage=mock_private_storage)
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.driver.create_share_from_snapshot,
+            context='context',
+            share=self.share,
+            snapshot=fake_snapshot,
+            share_server=None)
+
+    @mock.patch.object(qnap.QnapShareDriver, '_get_location_path')
+    @mock.patch('manila.share.API')
+    @mock.patch.object(qnap.QnapShareDriver, '_gen_random_name')
+    def test_create_share_from_snapshot_negative_clone_fail(
+            self,
+            mock_gen_random_name,
+            mock_share_api,
+            mock_get_location_path):
+        """Test create share from snapshot."""
+        fake_snapshot = fakes.SnapshotClass(
+            10, 'fakeShareName@fakeSnapshotName')
+
+        mock_api_executor = qnap.QnapShareDriver._create_api_executor
+        mock_gen_random_name.return_value = 'fakeShareName'
+        mock_api_executor.return_value.get_share_info.return_value = None
+        mock_private_storage = mock.Mock()
+        mock_private_storage.get.return_value = 'fakeSnapshotId'
+        mock_share_api.return_value.get.return_value = {'size': 10}
+        self.mock_object(time, 'sleep')
+        self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
+                       'qnapadmin', 'Storage Pool 1',
+                       private_storage=mock_private_storage)
+        self.assertRaises(
+            exception.ShareBackendException,
             self.driver.create_share_from_snapshot,
             context='context',
             share=self.share,
@@ -644,7 +817,28 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
         mock_api_return.get_specific_volinfo.assert_called_once_with(
             'fakeNo')
         mock_get_location_path.assert_called_once_with(
-            'fakeShareName', 'NFS', '1.2.3.4')
+            'fakeShareName', 'NFS', '1.2.3.4', 'fakeNo')
+
+    def test_manage_invalid_protocol(self):
+        """Test manage existing."""
+        share = fake_share.fake_share(
+            share_proto='fakeProtocol',
+            id='fakeId',
+            display_name='fakeDisplayName',
+            export_locations=[{'path': ''}],
+            host='QnapShareDriver',
+            size=10)
+
+        mock_private_storage = mock.Mock()
+
+        self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
+                       'qnapadmin', 'Storage Pool 1',
+                       private_storage=mock_private_storage)
+        self.assertRaises(
+            exception.InvalidInput,
+            self.driver.manage_existing,
+            share=share,
+            driver_options='driver_options')
 
     def test_manage_existing_nfs_without_export_locations(self):
         share = fake_share.fake_share(
@@ -820,14 +1014,15 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
         }
         self.assertEqual(
             expect_result, self.driver._get_location_path(
-                'fakeShareName', 'NFS', 'fakeIp'))
+                'fakeShareName', 'NFS', 'fakeIp', 'fakeVolId'))
 
         self.assertRaises(
             exception.InvalidInput,
             self.driver._get_location_path,
             share_name='fakeShareName',
             share_proto='fakeProto',
-            ip='fakeIp')
+            ip='fakeIp',
+            vol_id='fakeVolId')
 
     def test_update_share_stats(self):
         """Test update share stats."""

@@ -19,6 +19,7 @@ import ddt
 import mock
 import six
 from six.moves import urllib
+import time
 
 from manila import exception
 from manila.share.drivers.qnap import qnap
@@ -106,7 +107,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
         mock_http_connection = six.moves.http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
-            fakes.FakeGetBasicInfoResponseEs(),
+            fakes.FakeGetBasicInfoResponseEs_1_1_3(),
             fakes.FakeLoginResponse(),
             fakes.FakeCreateShareResponse()]
 
@@ -164,7 +165,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
         mock_http_connection = six.moves.http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
-            fakes.FakeGetBasicInfoResponseEs(),
+            fakes.FakeGetBasicInfoResponseEs_1_1_3(),
             fakes.FakeLoginResponse(),
             fakes.FakeDeleteShareResponse()]
 
@@ -198,7 +199,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
         mock_http_connection = six.moves.http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
-            fakes.FakeGetBasicInfoResponseEs(),
+            fakes.FakeGetBasicInfoResponseEs_1_1_3(),
             fakes.FakeLoginResponse(),
             fakes.FakeSpecificPoolInfoResponse()]
 
@@ -235,7 +236,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
         mock_http_connection = six.moves.http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
-            fakes.FakeGetBasicInfoResponseEs(),
+            fakes.FakeGetBasicInfoResponseEs_1_1_3(),
             fakes.FakeLoginResponse(),
             fakes.FakeShareInfoResponse()]
 
@@ -268,7 +269,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
         mock_http_connection = six.moves.http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
-            fakes.FakeGetBasicInfoResponseEs(),
+            fakes.FakeGetBasicInfoResponseEs_1_1_3(),
             fakes.FakeLoginResponse(),
             fakes.FakeSpecificVolInfoResponse()]
 
@@ -302,7 +303,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
         mock_http_connection = six.moves.http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
-            fakes.FakeGetBasicInfoResponseEs(),
+            fakes.FakeGetBasicInfoResponseEs_1_1_3(),
             fakes.FakeLoginResponse(),
             fakes.FakeSnapshotInfoResponse()]
 
@@ -337,7 +338,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
         mock_http_connection = six.moves.http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
-            fakes.FakeGetBasicInfoResponseEs(),
+            fakes.FakeGetBasicInfoResponseEs_1_1_3(),
             fakes.FakeLoginResponse(),
             fakes.FakeCreateSnapshotResponse()]
 
@@ -368,14 +369,17 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
             expected_call_list,
             mock_http_connection.return_value.request.call_args_list)
 
-    def test_delete_snapshot_api(self):
+    @ddt.data(fakes.FakeDeleteSnapshotResponse(),
+              fakes.FakeDeleteSnapshotResponseSnapshotNotExist(),
+              fakes.FakeDeleteSnapshotResponseShareNotExist())
+    def test_delete_snapshot_api(self, fakeDeleteSnapshotResponse):
         """Test delete snapshot api."""
         mock_http_connection = six.moves.http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
-            fakes.FakeGetBasicInfoResponseEs(),
+            fakes.FakeGetBasicInfoResponseEs_1_1_3(),
             fakes.FakeLoginResponse(),
-            fakes.FakeDeleteSnapshotResponse()]
+            fakeDeleteSnapshotResponse]
 
         self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
                        'qnapadmin', 'Storage Pool 1')
@@ -405,7 +409,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
         mock_http_connection = six.moves.http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
-            fakes.FakeGetBasicInfoResponseEs(),
+            fakes.FakeGetBasicInfoResponseEs_1_1_3(),
             fakes.FakeLoginResponse(),
             fakes.FakeDeleteSnapshotResponse()]
 
@@ -440,7 +444,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
         mock_http_connection = six.moves.http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
-            fakes.FakeGetBasicInfoResponseTs(),
+            fakes.FakeGetBasicInfoResponseTs_4_3_0(),
             fakes.FakeLoginResponse(),
             fakes.FakeCreateSnapshotResponse()]
 
@@ -450,6 +454,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
             "sharename": 'fakeVolId',
             "old_sharename": 'fakeVolId',
             "new_size": 100,
+            "share_proto": "NFS"
         }
         self.driver.api_executor.edit_share(
             expect_share_dict)
@@ -464,8 +469,10 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
             'compression': '1',
             'thin_pro': '0',
             'cache': '0',
+            'cifs_enable': '0',
+            'nfs_enable': '1',
             'afp_enable': '0',
-            'ftp_enable': '1',
+            'ftp_enable': '0',
             'hidden': '0',
             'oplocks': '1',
             'sync': 'always',
@@ -491,7 +498,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
         mock_http_connection = six.moves.http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
-            fakes.FakeGetBasicInfoResponseEs(),
+            fakes.FakeGetBasicInfoResponseEs_1_1_3(),
             fakes.FakeLoginResponse(),
             fakes.FakeGetHostListResponse()]
 
@@ -523,7 +530,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
         mock_http_connection = six.moves.http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
-            fakes.FakeGetBasicInfoResponseEs(),
+            fakes.FakeGetBasicInfoResponseEs_1_1_3(),
             fakes.FakeLoginResponse(),
             fakes.FakeGetHostListResponse()]
 
@@ -558,7 +565,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
         mock_http_connection = six.moves.http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
-            fakes.FakeGetBasicInfoResponseEs(),
+            fakes.FakeGetBasicInfoResponseEs_1_1_3(),
             fakes.FakeLoginResponse(),
             fakes.FakeGetHostListResponse()]
 
@@ -594,7 +601,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
         mock_http_connection = six.moves.http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
-            fakes.FakeGetBasicInfoResponseTs(),
+            fakes.FakeGetBasicInfoResponseTs_4_3_0(),
             fakes.FakeLoginResponse(),
             fakes.FakeSnapshotInfoResponse()]
 
@@ -633,14 +640,20 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
         mock_http_connection = six.moves.http_client.HTTPConnection
         mock_http_connection.return_value.getresponse.side_effect = [
             fakes.FakeLoginResponse(),
-            fakes.FakeGetBasicInfoResponseEs(),
+            fakes.FakeGetBasicInfoResponseEs_1_1_3(),
             fakes.FakeLoginResponse(),
+            fake_fail_response,
+            fake_fail_response,
+            fake_fail_response,
+            fake_fail_response,
+            fake_fail_response,
             fake_fail_response,
             fake_fail_response,
             fake_fail_response,
             fake_fail_response,
             fake_fail_response]
 
+        self.mock_object(time, 'sleep')
         self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
                        'qnapadmin', 'Storage Pool 1')
         self.assertRaises(
@@ -655,115 +668,117 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
     @ddt.data(['self.driver.api_executor.get_share_info',
               {'pool_id': 'fakeId'},
               fakes.FakeAuthPassFailResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.get_specific_volinfo',
               {'vol_id': 'fakeId'},
               fakes.FakeAuthPassFailResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.create_snapshot_api',
               {'volumeID': 'fakeVolumeId',
                'snapshot_name': 'fakeSnapshotName'},
               fakes.FakeAuthPassFailResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.create_snapshot_api',
               {'volumeID': 'fakeVolumeId',
                'snapshot_name': 'fakeSnapshotName'},
               fakes.FakeEsResCodeNegativeResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.get_snapshot_info',
               {'volID': 'volId'},
               fakes.FakeAuthPassFailResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.get_snapshot_info',
               {'volID': 'volId'},
               fakes.FakeResultNegativeResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.get_specific_poolinfo',
               {'pool_id': 'Storage Pool 1'},
               fakes.FakeAuthPassFailResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.get_specific_poolinfo',
               {'pool_id': 'Storage Pool 1'},
               fakes.FakeResultNegativeResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.delete_share',
               {'vol_id': 'fakeId'},
               fakes.FakeAuthPassFailResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.delete_share',
               {'vol_id': 'fakeId'},
               fakes.FakeResultNegativeResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.delete_snapshot_api',
               {'snapshot_id': 'fakeSnapshotId'},
               fakes.FakeAuthPassFailResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.delete_snapshot_api',
               {'snapshot_id': 'fakeSnapshotId'},
               fakes.FakeResultNegativeResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.clone_snapshot',
               {'snapshot_id': 'fakeSnapshotId',
                'new_sharename': 'fakeNewShareName'},
               fakes.FakeResultNegativeResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.clone_snapshot',
               {'snapshot_id': 'fakeSnapshotId',
                'new_sharename': 'fakeNewShareName'},
               fakes.FakeAuthPassFailResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.edit_share',
               {'share_dict': {"sharename": 'fakeVolId',
                               "old_sharename": 'fakeVolId',
-                              "new_size": 100}},
+                              "new_size": 100,
+                              "share_proto": "NFS"}},
               fakes.FakeEsResCodeNegativeResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.edit_share',
               {'share_dict': {"sharename": 'fakeVolId',
                               "old_sharename": 'fakeVolId',
-                              "new_size": 100}},
+                              "new_size": 100,
+                              "share_proto": "NFS"}},
               fakes.FakeAuthPassFailResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.add_host',
               {'hostname': 'fakeHostName',
                'ipv4': 'fakeIpV4'},
               fakes.FakeResultNegativeResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.add_host',
               {'hostname': 'fakeHostName',
                'ipv4': 'fakeIpV4'},
               fakes.FakeAuthPassFailResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.get_host_list',
               {},
               fakes.FakeResultNegativeResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.get_host_list',
               {},
               fakes.FakeAuthPassFailResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.set_nfs_access',
               {'sharename': 'fakeShareName',
                'access': 'fakeAccess',
                'host_name': 'fakeHostName'},
               fakes.FakeAuthPassFailResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.set_nfs_access',
               {'sharename': 'fakeShareName',
                'access': 'fakeAccess',
                'host_name': 'fakeHostName'},
               fakes.FakeResultNegativeResponse(),
-              fakes.FakeGetBasicInfoResponseEs()],
+              fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.get_snapshot_info',
               {'snapshot_name': 'fakeSnapshoName',
                'lun_index': 'fakeLunIndex'},
               fakes.FakeAuthPassFailResponse(),
-              fakes.FakeGetBasicInfoResponseTs()],
+              fakes.FakeGetBasicInfoResponseTs_4_3_0()],
               ['self.driver.api_executor.get_snapshot_info',
               {'snapshot_name': 'fakeSnapshoName',
                'lun_index': 'fakeLunIndex'},
               fakes.FakeResultNegativeResponse(),
-              fakes.FakeGetBasicInfoResponseTs()])
+              fakes.FakeGetBasicInfoResponseTs_4_3_0()])
     def test_get_snapshot_info_ts_with_fail_response(
             self, api, dict_parm,
             fake_fail_response, fake_basic_info):
@@ -777,11 +792,16 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
             fake_fail_response,
             fake_fail_response,
             fake_fail_response,
+            fake_fail_response,
+            fake_fail_response,
+            fake_fail_response,
+            fake_fail_response,
+            fake_fail_response,
             fake_fail_response]
 
         self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
                        'qnapadmin', 'Storage Pool 1')
-
+        self.mock_object(time, 'sleep')
         self.assertRaises(
             exception.ShareBackendException,
             eval(api),

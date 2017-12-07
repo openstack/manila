@@ -39,10 +39,10 @@ MSG_SESSION_EXPIRED = _("Session ID expired")
 MSG_UNEXPECT_RESP = _("Unexpected response from QNAP API")
 
 
-@utils.retry(exception=exception.ShareBackendException,
-             retries=5)
 def _connection_checker(func):
     """Decorator to check session has expired or not."""
+    @utils.retry(exception=exception.ShareBackendException,
+                 retries=5)
     @functools.wraps(func)
     def inner_connection_checker(self, *args, **kwargs):
         LOG.debug('in _connection_checker')
@@ -225,7 +225,8 @@ class QnapAPIExecutor(object):
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
         if root.find('ES_RET_CODE').text < '0':
-            msg = _('Create share %s failed') % share['display_name']
+            msg = _("Fail to create share %s on NAS.") % create_share_name
+            LOG.error(msg)
             raise exception.ShareBackendException(msg=msg)
 
         vol_list = root.find('func').find('ownContent').find('volumeList')
@@ -319,26 +320,22 @@ class QnapAPIExecutor(object):
         if root.find('authPassed').text == '0':
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
 
-        if ('vol_no' in kwargs) or ('vol_label' in kwargs):
-            vol_list = root.find('Volume_Info')
-            vol_info_tree = vol_list.findall('row')
-            for vol in vol_info_tree:
-                LOG.debug('Iterating vol name: %(name)s, index: %(id)s',
-                          {'name': vol.find('vol_label').text,
-                           'id': vol.find('vol_no').text})
-                if 'vol_no' in kwargs:
-                    if kwargs['vol_no'] == vol.find('vol_no').text:
-                        LOG.debug('vol_no:%s',
-                                  vol.find('vol_no').text)
-                        return vol
-                elif 'vol_label' in kwargs:
-                    if kwargs['vol_label'] == vol.find('vol_label').text:
-                        LOG.debug('vol_label:%s', vol.find('vol_label').text)
-                        return vol
-                if vol is vol_info_tree[-1]:
-                    return None
-        else:
-            return res_details['data']
+        vol_list = root.find('Volume_Info')
+        vol_info_tree = vol_list.findall('row')
+        for vol in vol_info_tree:
+            LOG.debug('Iterating vol name: %(name)s, index: %(id)s',
+                      {'name': vol.find('vol_label').text,
+                       'id': vol.find('vol_no').text})
+            if 'vol_no' in kwargs:
+                if kwargs['vol_no'] == vol.find('vol_no').text:
+                    LOG.debug('vol_no:%s',
+                              vol.find('vol_no').text)
+                    return vol
+            elif 'vol_label' in kwargs:
+                if kwargs['vol_label'] == vol.find('vol_label').text:
+                    LOG.debug('vol_label:%s', vol.find('vol_label').text)
+                    return vol
+        return None
 
     @_connection_checker
     def get_specific_volinfo(self, vol_id, **kwargs):
@@ -453,9 +450,11 @@ class QnapAPIExecutor(object):
             raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
         # snapshot not exist
         if root.find('result').text == '-206021':
+            LOG.warning('Snapshot id %s does not exist', snapshot_id)
             return
-        # lun not exist
+        # share not exist
         if root.find('result').text == '-200005':
+            LOG.warning('Share of snapshot id %s does not exist', snapshot_id)
             return
         if root.find('result').text < '0':
             msg = _('Failed to delete snapshot.')
@@ -499,8 +498,10 @@ class QnapAPIExecutor(object):
             'compression': '1',
             'thin_pro': '0',
             'cache': '0',
+            'cifs_enable': '1' if share_dict['share_proto'] == 'CIFS' else '0',
+            'nfs_enable': '1' if share_dict['share_proto'] == 'NFS' else '0',
             'afp_enable': '0',
-            'ftp_enable': '1',
+            'ftp_enable': '0',
             'hidden': '0',
             'oplocks': '1',
             'sync': 'always',
