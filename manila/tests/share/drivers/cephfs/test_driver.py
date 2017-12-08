@@ -121,11 +121,11 @@ class CephFSDriverTestCase(test.TestCase):
         if protocol_helper == 'cephfs':
             driver.NativeProtocolHelper.assert_called_once_with(
                 self._execute, self._driver.configuration,
-                volume_client=self._driver._volume_client)
+                ceph_vol_client=self._driver._volume_client)
         else:
             driver.NFSProtocolHelper.assert_called_once_with(
                 self._execute, self._driver.configuration,
-                volume_client=self._driver._volume_client)
+                ceph_vol_client=self._driver._volume_client)
 
         self._driver.protocol_helper.init_helper.assert_called_once_with()
 
@@ -366,7 +366,7 @@ class NativeProtocolHelperTestCase(test.TestCase):
         self._native_protocol_helper = driver.NativeProtocolHelper(
             None,
             self.fake_conf,
-            volume_client=MockVolumeClientModule.CephFSVolumeClient()
+            ceph_vol_client=MockVolumeClientModule.CephFSVolumeClient()
         )
 
     def test_get_export_locations(self):
@@ -546,7 +546,7 @@ class NFSProtocolHelperTestCase(test.TestCase):
         self._nfs_helper = driver.NFSProtocolHelper(
             self._execute,
             self.fake_conf,
-            volume_client=self._volume_client)
+            ceph_vol_client=self._volume_client)
 
     @ddt.data(False, True)
     def test_init_executor_type(self, ganesha_server_is_remote):
@@ -563,7 +563,7 @@ class NFSProtocolHelperTestCase(test.TestCase):
         driver.NFSProtocolHelper(
             self._execute,
             fake_conf,
-            volume_client=MockVolumeClientModule.CephFSVolumeClient()
+            ceph_vol_client=MockVolumeClientModule.CephFSVolumeClient()
         )
 
         if ganesha_server_is_remote:
@@ -590,7 +590,7 @@ class NFSProtocolHelperTestCase(test.TestCase):
         driver.NFSProtocolHelper(
             self._execute,
             fake_conf,
-            volume_client=MockVolumeClientModule.CephFSVolumeClient()
+            ceph_vol_client=MockVolumeClientModule.CephFSVolumeClient()
         )
 
         driver.ganesha_utils.RootExecutor.assert_has_calls(

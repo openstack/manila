@@ -322,12 +322,19 @@ class GaneshaNASHelper2TestCase(test.TestCase):
         CONF.set_default('ganesha_export_template_dir',
                          '/fakedir2/faketempl.d')
         CONF.set_default('ganesha_service_name', 'ganesha.fakeservice')
+        CONF.set_default('ganesha_rados_store_enable', True)
+        CONF.set_default('ganesha_rados_store_pool_name', 'ceph_pool')
+        CONF.set_default('ganesha_rados_export_index', 'fake_index')
+        CONF.set_default('ganesha_rados_export_counter', 'fake_counter')
+
         self._context = context.get_admin_context()
         self._execute = mock.Mock(return_value=('', ''))
+        self.ceph_vol_client = mock.Mock()
         self.fake_conf = config.Configuration(None)
         self.fake_conf_dir_path = '/fakedir0/exports.d'
         self._helper = ganesha.GaneshaNASHelper2(
-            self._execute, self.fake_conf, tag='faketag')
+            self._execute, self.fake_conf, tag='faketag',
+            ceph_vol_client=self.ceph_vol_client)
         self._helper.ganesha = mock.Mock()
         self._helper.export_template = {}
         self.share = fake_share.fake_share()
@@ -335,9 +342,100 @@ class GaneshaNASHelper2TestCase(test.TestCase):
         self.rule2 = fake_share.fake_access(access_level='rw',
                                             access_to='10.0.0.2')
 
+    @ddt.data(False, True)
+    def test_init_helper_with_rados_store(self, rados_store_enable):
+        CONF.set_default('ganesha_rados_store_enable', rados_store_enable)
+        mock_template = mock.Mock()
+        mock_ganesha_manager = mock.Mock()
+        self.mock_object(ganesha.ganesha_manager, 'GaneshaManager',
+                         mock.Mock(return_value=mock_ganesha_manager))
+        self.mock_object(self._helper, '_load_conf_dir',
+                         mock.Mock(return_value={}))
+        self.mock_object(self._helper, '_default_config_hook',
+                         mock.Mock(return_value=mock_template))
+
+        ret = self._helper.init_helper()
+
+        if rados_store_enable:
+            kwargs = {
+                'ganesha_config_path': '/fakedir0/fakeconfig',
+                'ganesha_export_dir': '/fakedir0/export.d',
+                'ganesha_service_name': 'ganesha.fakeservice',
+                'ganesha_rados_store_enable': True,
+                'ganesha_rados_store_pool_name': 'ceph_pool',
+                'ganesha_rados_export_index': 'fake_index',
+                'ganesha_rados_export_counter': 'fake_counter',
+                'ceph_vol_client': self.ceph_vol_client
+            }
+        else:
+            kwargs = {
+                'ganesha_config_path': '/fakedir0/fakeconfig',
+                'ganesha_export_dir': '/fakedir0/export.d',
+                'ganesha_service_name': 'ganesha.fakeservice',
+                'ganesha_db_path': '/fakedir1/fake.db'
+            }
+        ganesha.ganesha_manager.GaneshaManager.assert_called_once_with(
+            self._execute, '<no name>', **kwargs)
+        self._helper._load_conf_dir.assert_called_once_with(
+            '/fakedir2/faketempl.d', must_exist=False)
+        self.assertEqual(mock_ganesha_manager, self._helper.ganesha)
+        self._helper._default_config_hook.assert_called_once_with()
+        self.assertEqual(mock_template, self._helper.export_template)
+        self.assertIsNone(ret)
+
+    @ddt.data(False, True)
+    def test_init_helper_conf_dir_empty(self, conf_dir_empty):
+        mock_template = mock.Mock()
+        mock_ganesha_manager = mock.Mock()
+        self.mock_object(ganesha.ganesha_manager, 'GaneshaManager',
+                         mock.Mock(return_value=mock_ganesha_manager))
+        if conf_dir_empty:
+            self.mock_object(self._helper, '_load_conf_dir',
+                             mock.Mock(return_value={}))
+        else:
+            self.mock_object(self._helper, '_load_conf_dir',
+                             mock.Mock(return_value=mock_template))
+        self.mock_object(self._helper, '_default_config_hook',
+                         mock.Mock(return_value=mock_template))
+
+        ret = self._helper.init_helper()
+
+        ganesha.ganesha_manager.GaneshaManager.assert_called_once_with(
+            self._execute, '<no name>',
+            ganesha_config_path='/fakedir0/fakeconfig',
+            ganesha_export_dir='/fakedir0/export.d',
+            ganesha_service_name='ganesha.fakeservice',
+            ganesha_rados_store_enable=True,
+            ganesha_rados_store_pool_name='ceph_pool',
+            ganesha_rados_export_index='fake_index',
+            ganesha_rados_export_counter='fake_counter',
+            ceph_vol_client=self.ceph_vol_client)
+        self._helper._load_conf_dir.assert_called_once_with(
+            '/fakedir2/faketempl.d', must_exist=False)
+        self.assertEqual(mock_ganesha_manager, self._helper.ganesha)
+        if conf_dir_empty:
+            self._helper._default_config_hook.assert_called_once_with()
+        else:
+            self.assertFalse(self._helper._default_config_hook.called)
+        self.assertEqual(mock_template, self._helper.export_template)
+        self.assertIsNone(ret)
+
+    def test_init_helper_with_rados_store_pool_name_not_set(self):
+        self.mock_object(ganesha.ganesha_manager, 'GaneshaManager')
+        self.mock_object(self._helper, '_load_conf_dir')
+        self.mock_object(self._helper, '_default_config_hook')
+        self._helper.configuration.ganesha_rados_store_pool_name = None
+
+        self.assertRaises(
+            exception.GaneshaException, self._helper.init_helper)
+
+        self.assertFalse(ganesha.ganesha_manager.GaneshaManager.called)
+        self.assertFalse(self._helper._load_conf_dir.called)
+        self.assertFalse(self._helper._default_config_hook.called)
+
     def test_update_access_add_export(self):
         mock_gh = self._helper.ganesha
-        self.mock_object(mock_gh, '_check_export_file_exists',
+        self.mock_object(mock_gh, 'check_export_exists',
                          mock.Mock(return_value=False))
         self.mock_object(mock_gh, 'get_export_id',
                          mock.Mock(return_value=100))
@@ -364,7 +462,7 @@ class GaneshaNASHelper2TestCase(test.TestCase):
             self._context, self.share, access_rules=[self.rule1],
             add_rules=[], delete_rules=[])
 
-        mock_gh._check_export_file_exists.assert_called_once_with('fakename')
+        mock_gh.check_export_exists.assert_called_once_with('fakename')
         mock_gh.get_export_id.assert_called_once_with()
         self._helper._get_export_path.assert_called_once_with(self.share)
         (self._helper._get_export_pseudo_path.assert_called_once_with(
@@ -380,10 +478,10 @@ class GaneshaNASHelper2TestCase(test.TestCase):
               [{'Access_Type': 'ro', 'Clients': '10.0.0.1'}])
     def test_update_access_update_export(self, client):
         mock_gh = self._helper.ganesha
-        self.mock_object(mock_gh, '_check_export_file_exists',
+        self.mock_object(mock_gh, 'check_export_exists',
                          mock.Mock(return_value=True))
         self.mock_object(
-            mock_gh, '_read_export_file',
+            mock_gh, '_read_export',
             mock.Mock(return_value={'EXPORT': {'CLIENT': client}})
         )
         result_confdict = {
@@ -398,7 +496,7 @@ class GaneshaNASHelper2TestCase(test.TestCase):
             self._context, self.share, access_rules=[self.rule1, self.rule2],
             add_rules=[self.rule2], delete_rules=[])
 
-        mock_gh._check_export_file_exists.assert_called_once_with('fakename')
+        mock_gh.check_export_exists.assert_called_once_with('fakename')
         mock_gh.update_export.assert_called_once_with('fakename',
                                                       result_confdict)
         self.assertFalse(mock_gh.add_export.called)
@@ -406,12 +504,12 @@ class GaneshaNASHelper2TestCase(test.TestCase):
 
     def test_update_access_remove_export(self):
         mock_gh = self._helper.ganesha
-        self.mock_object(mock_gh, '_check_export_file_exists',
+        self.mock_object(mock_gh, 'check_export_exists',
                          mock.Mock(return_value=True))
         self.mock_object(self._helper, '_cleanup_fsal_hook')
         client = {'Access_Type': 'ro', 'Clients': '10.0.0.1'}
         self.mock_object(
-            mock_gh, '_read_export_file',
+            mock_gh, '_read_export',
             mock.Mock(return_value={'EXPORT': {'CLIENT': client}})
         )
 
@@ -419,7 +517,7 @@ class GaneshaNASHelper2TestCase(test.TestCase):
             self._context, self.share, access_rules=[],
             add_rules=[], delete_rules=[self.rule1])
 
-        mock_gh._check_export_file_exists.assert_called_once_with('fakename')
+        mock_gh.check_export_exists.assert_called_once_with('fakename')
         mock_gh.remove_export.assert_called_once_with('fakename')
         self._helper._cleanup_fsal_hook.assert_called_once_with(
             None, self.share, None)
@@ -428,7 +526,7 @@ class GaneshaNASHelper2TestCase(test.TestCase):
 
     def test_update_access_export_file_already_removed(self):
         mock_gh = self._helper.ganesha
-        self.mock_object(mock_gh, '_check_export_file_exists',
+        self.mock_object(mock_gh, 'check_export_exists',
                          mock.Mock(return_value=False))
         self.mock_object(ganesha.LOG, 'warning')
         self.mock_object(self._helper, '_cleanup_fsal_hook')
@@ -437,7 +535,7 @@ class GaneshaNASHelper2TestCase(test.TestCase):
             self._context, self.share, access_rules=[],
             add_rules=[], delete_rules=[self.rule1])
 
-        mock_gh._check_export_file_exists.assert_called_once_with('fakename')
+        mock_gh.check_export_exists.assert_called_once_with('fakename')
         ganesha.LOG.warning.assert_called_once_with(mock.ANY, mock.ANY)
         self.assertFalse(mock_gh.add_export.called)
         self.assertFalse(mock_gh.update_export.called)

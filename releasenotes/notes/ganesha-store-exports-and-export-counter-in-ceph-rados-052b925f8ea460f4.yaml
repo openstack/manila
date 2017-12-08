@@ -1,0 +1,4 @@
+---
+features:
+  - Added ganesha driver feature to store NFS-Ganesha's exports and
+    export counter directly in a HA storage, Ceph's RADOS objects.

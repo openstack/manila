@@ -285,6 +285,42 @@ The following options are set in the driver backend section above:
   recommended to set this option even if the ganesha server is co-located
   with the :term:`manila-share` service.
 
+
+With NFS-Ganesha (v2.5.4 or later), Ceph (v12.2.2 or later), the driver (Queens
+or later) can store NFS-Ganesha exports and export counter in Ceph RADOS
+objects. This is useful for highly available NFS-Ganesha deployments to store
+its configuration efficiently in an already available distributed storage
+system. Set additional options in the NFS driver section to enable the driver
+to do this.
+
+.. code-block:: ini
+
+    [cephfsnfs1]
+    ganesha_rados_store_enable = True
+    ganesha_rados_store_pool_name = cephfs_data
+    driver_handles_share_servers = False
+    share_backend_name = CEPHFSNFS1
+    share_driver = manila.share.drivers.cephfs.driver.CephFSDriver
+    cephfs_protocol_helper_type = NFS
+    cephfs_conf_path = /etc/ceph/ceph.conf
+    cephfs_auth_id = manila
+    cephfs_cluster_name = ceph
+    cephfs_enable_snapshots = False
+    cephfs_ganesha_server_is_remote= False
+    cephfs_ganesha_server_ip = 172.24.4.3
+
+
+The following ganesha library (See manila's ganesha library documentation for
+more details) related options are set in the driver backend section above:
+
+* ``ganesha_rados_store_enable`` to True for persisting Ganesha exports and
+  export counter in Ceph RADOS objects.
+
+* ``ganesha_rados_store_pool_name`` to the Ceph RADOS pool that stores Ganesha
+  exports and export counter objects. If you want to use one of the backend
+  CephFS's RADOS pools, then using CephFS's data pool is preferred over using
+  its metadata pool.
+
 Edit ``enabled_share_backends`` to point to the driver's backend section
 using the section name, ``cephfnfs1``.
 
