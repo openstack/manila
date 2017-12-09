@@ -44,8 +44,8 @@
 - job:
     name: grenade-dsvm-manila
     parent: legacy-dsvm-base
-    run: playbooks/legacy/grenade-dsvm-manila/run
-    post-run: playbooks/legacy/grenade-dsvm-manila/post
+    run: playbooks/legacy/grenade-dsvm-manila/run.yaml
+    post-run: playbooks/legacy/grenade-dsvm-manila/post.yaml
     timeout: 10800
     irrelevant-files:
       - ^(test-|)requirements.txt$
@@ -86,8 +86,8 @@
 - job:
     name: manila-tempest-dsvm-container-scenario-custom-image
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-dsvm-container-scenario-custom-image/run
-    post-run: playbooks/legacy/manila-tempest-dsvm-container-scenario-custom-image/post
+    run: playbooks/legacy/manila-tempest-dsvm-container-scenario-custom-image/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-container-scenario-custom-image/post.yaml
     timeout: 5400
     required-projects:
       - openstack-infra/devstack-gate
@@ -99,8 +99,8 @@
 - job:
     name: manila-tempest-dsvm-generic-no-share-servers
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-dsvm-generic-no-share-servers/run
-    post-run: playbooks/legacy/manila-tempest-dsvm-generic-no-share-servers/post
+    run: playbooks/legacy/manila-tempest-dsvm-generic-no-share-servers/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-generic-no-share-servers/post.yaml
     timeout: 5400
     required-projects:
       - openstack-infra/devstack-gate
@@ -112,8 +112,8 @@
 - job:
     name: manila-tempest-dsvm-generic-scenario-custom-image
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-dsvm-generic-scenario-custom-image/run
-    post-run: playbooks/legacy/manila-tempest-dsvm-generic-scenario-custom-image/post
+    run: playbooks/legacy/manila-tempest-dsvm-generic-scenario-custom-image/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-generic-scenario-custom-image/post.yaml
     timeout: 5400
     required-projects:
       - openstack-infra/devstack-gate
@@ -125,8 +125,8 @@
 - job:
     name: manila-tempest-dsvm-glusterfs-native
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-dsvm-glusterfs-native/run
-    post-run: playbooks/legacy/manila-tempest-dsvm-glusterfs-native/post
+    run: playbooks/legacy/manila-tempest-dsvm-glusterfs-native/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-glusterfs-native/post.yaml
     timeout: 4800
     required-projects:
       - openstack-infra/devstack-gate
@@ -138,8 +138,8 @@
 - job:
     name: manila-tempest-dsvm-glusterfs-native-heketi
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-dsvm-glusterfs-native-heketi/run
-    post-run: playbooks/legacy/manila-tempest-dsvm-glusterfs-native-heketi/post
+    run: playbooks/legacy/manila-tempest-dsvm-glusterfs-native-heketi/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-glusterfs-native-heketi/post.yaml
     timeout: 4800
     required-projects:
       - openstack-infra/devstack-gate
@@ -151,8 +151,8 @@
 - job:
     name: manila-tempest-dsvm-glusterfs-nfs
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-dsvm-glusterfs-nfs/run
-    post-run: playbooks/legacy/manila-tempest-dsvm-glusterfs-nfs/post
+    run: playbooks/legacy/manila-tempest-dsvm-glusterfs-nfs/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-glusterfs-nfs/post.yaml
     timeout: 4800
     required-projects:
       - openstack-infra/devstack-gate
@@ -164,8 +164,8 @@
 - job:
     name: manila-tempest-dsvm-glusterfs-nfs-heketi
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-dsvm-glusterfs-nfs-heketi/run
-    post-run: playbooks/legacy/manila-tempest-dsvm-glusterfs-nfs-heketi/post
+    run: playbooks/legacy/manila-tempest-dsvm-glusterfs-nfs-heketi/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-glusterfs-nfs-heketi/post.yaml
     timeout: 4800
     required-projects:
       - openstack-infra/devstack-gate
@@ -177,8 +177,8 @@
 - job:
     name: manila-tempest-dsvm-hdfs
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-dsvm-hdfs/run
-    post-run: playbooks/legacy/manila-tempest-dsvm-hdfs/post
+    run: playbooks/legacy/manila-tempest-dsvm-hdfs/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-hdfs/post.yaml
     timeout: 4800
     required-projects:
       - openstack-infra/devstack-gate
@@ -190,8 +190,8 @@
 - job:
     name: manila-tempest-dsvm-mysql-generic
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-dsvm-mysql-generic/run
-    post-run: playbooks/legacy/manila-tempest-dsvm-mysql-generic/post
+    run: playbooks/legacy/manila-tempest-dsvm-mysql-generic/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-mysql-generic/post.yaml
     timeout: 5400
     required-projects:
       - openstack-infra/devstack-gate
@@ -203,8 +203,8 @@
 - job:
     name: manila-tempest-dsvm-postgres-container
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-dsvm-postgres-container/run
-    post-run: playbooks/legacy/manila-tempest-dsvm-postgres-container/post
+    run: playbooks/legacy/manila-tempest-dsvm-postgres-container/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-postgres-container/post.yaml
     timeout: 5400
     required-projects:
       - openstack-infra/devstack-gate
@@ -216,8 +216,8 @@
 - job:
     name: manila-tempest-dsvm-postgres-generic-singlebackend
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-dsvm-postgres-generic-singlebackend/run
-    post-run: playbooks/legacy/manila-tempest-dsvm-postgres-generic-singlebackend/post
+    run: playbooks/legacy/manila-tempest-dsvm-postgres-generic-singlebackend/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-postgres-generic-singlebackend/post.yaml
     timeout: 5400
     required-projects:
       - openstack-infra/devstack-gate
@@ -229,8 +229,8 @@
 - job:
     name: manila-tempest-dsvm-postgres-zfsonlinux
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-dsvm-postgres-zfsonlinux/run
-    post-run: playbooks/legacy/manila-tempest-dsvm-postgres-zfsonlinux/post
+    run: playbooks/legacy/manila-tempest-dsvm-postgres-zfsonlinux/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-postgres-zfsonlinux/post.yaml
     timeout: 5400
     required-projects:
       - openstack-infra/devstack-gate
@@ -242,8 +242,8 @@
 - job:
     name: manila-tempest-dsvm-scenario
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-dsvm-scenario/run
-    post-run: playbooks/legacy/manila-tempest-dsvm-scenario/post
+    run: playbooks/legacy/manila-tempest-dsvm-scenario/run.yaml
+    post-run: playbooks/legacy/manila-tempest-dsvm-scenario/post.yaml
     timeout: 5400
     required-projects:
       - openstack-infra/devstack-gate
@@ -255,8 +255,8 @@
 - job:
     name: manila-tempest-minimal-dsvm-cephfs-native-centos-7
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-native-centos-7/run
-    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-native-centos-7/post
+    run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-native-centos-7/run.yaml
+    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-native-centos-7/post.yaml
     timeout: 5400
     nodeset: legacy-centos-7
     required-projects:
@@ -269,8 +269,8 @@
 - job:
     name: manila-tempest-minimal-dsvm-cephfs-nfs-centos-7
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-nfs-centos-7/run
-    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-nfs-centos-7/post
+    run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-nfs-centos-7/run.yaml
+    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-nfs-centos-7/post.yaml
     timeout: 5400
     nodeset: legacy-centos-7
     required-projects:
@@ -283,8 +283,8 @@
 - job:
     name: manila-tempest-minimal-dsvm-dummy
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy/run
-    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy/post
+    run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy/run.yaml
+    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy/post.yaml
     timeout: 5400
     required-projects:
       - openstack-infra/devstack-gate
@@ -295,8 +295,8 @@
 - job:
     name: manila-tempest-minimal-dsvm-lvm-centos-7
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-minimal-dsvm-lvm-centos-7/run
-    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-lvm-centos-7/post
+    run: playbooks/legacy/manila-tempest-minimal-dsvm-lvm-centos-7/run.yaml
+    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-lvm-centos-7/post.yaml
     timeout: 5400
     nodeset: legacy-centos-7
     required-projects:
@@ -308,8 +308,8 @@
 - job:
     name: manila-tempest-minimal-py35-dsvm-cephfs-native-centos-7
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-minimal-py35-dsvm-cephfs-native-centos-7/run
-    post-run: playbooks/legacy/manila-tempest-minimal-py35-dsvm-cephfs-native-centos-7/post
+    run: playbooks/legacy/manila-tempest-minimal-py35-dsvm-cephfs-native-centos-7/run.yaml
+    post-run: playbooks/legacy/manila-tempest-minimal-py35-dsvm-cephfs-native-centos-7/post.yaml
     timeout: 5400
     nodeset: legacy-centos-7
     required-projects:
@@ -322,8 +322,8 @@
 - job:
     name: manila-tempest-minimal-py35-dsvm-cephfs-nfs-centos-7
     parent: legacy-manila-tempest-dsvm-base
-    run: playbooks/legacy/manila-tempest-minimal-py35-dsvm-cephfs-nfs-centos-7/run
-    post-run: playbooks/legacy/manila-tempest-minimal-py35-dsvm-cephfs-nfs-centos-7/post
+    run: playbooks/legacy/manila-tempest-minimal-py35-dsvm-cephfs-nfs-centos-7/run.yaml
+    post-run: playbooks/legacy/manila-tempest-minimal-py35-dsvm-cephfs-nfs-centos-7/post.yaml
     timeout: 5400
     nodeset: legacy-centos-7
     required-projects:
@@ -336,8 +336,8 @@
 - job:
     name: manila-tox-genconfig
     parent: legacy-base
-    run: playbooks/legacy/manila-tox-genconfig/run
-    post-run: playbooks/legacy/manila-tox-genconfig/post
+    run: playbooks/legacy/manila-tox-genconfig/run.yaml
+    post-run: playbooks/legacy/manila-tox-genconfig/post.yaml
     timeout: 2400
     required-projects:
       - openstack/requirements
@@ -345,8 +345,8 @@
 - job:
     name: rally-dsvm-manila-multibackend
     parent: legacy-dsvm-base
-    run: playbooks/legacy/rally-dsvm-manila-multibackend/run
-    post-run: playbooks/legacy/rally-dsvm-manila-multibackend/post
+    run: playbooks/legacy/rally-dsvm-manila-multibackend/run.yaml
+    post-run: playbooks/legacy/rally-dsvm-manila-multibackend/post.yaml
     timeout: 4200
     irrelevant-files:
       - ^.*\.rst$
@@ -368,8 +368,8 @@
 - job:
     name: rally-dsvm-manila-multibackend-no-ss
     parent: legacy-dsvm-base
-    run: playbooks/legacy/rally-dsvm-manila-multibackend-no-ss/run
-    post-run: playbooks/legacy/rally-dsvm-manila-multibackend-no-ss/post
+    run: playbooks/legacy/rally-dsvm-manila-multibackend-no-ss/run.yaml
+    post-run: playbooks/legacy/rally-dsvm-manila-multibackend-no-ss/post.yaml
     timeout: 4200
     irrelevant-files:
       - ^.*\.rst$
