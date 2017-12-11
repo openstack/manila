@@ -67,15 +67,6 @@
     "share_snapshot_instance_export_location:index": "rule:admin_api",
     "share_snapshot_instance_export_location:show": "rule:admin_api",
 
-    "share_type:index": "rule:default",
-    "share_type:show": "rule:default",
-    "share_type:default": "rule:default",
-    "share_type:create": "rule:admin_api",
-    "share_type:delete": "rule:admin_api",
-    "share_type:add_project_access": "rule:admin_api",
-    "share_type:list_project_access": "rule:admin_api",
-    "share_type:remove_project_access": "rule:admin_api",
-
     "share_types_extra_spec:create": "rule:admin_api",
     "share_types_extra_spec:update": "rule:admin_api",
     "share_types_extra_spec:show": "rule:admin_api",
