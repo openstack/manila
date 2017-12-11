@@ -4,7 +4,8 @@
 *.mo
 *.pyc
 *.sqlite
-*.swp
+# Linux swap files range from .saa to .swp
+*.s[a-w][a-p]
 .manila-venv
 .coverage
 .stestr/*
