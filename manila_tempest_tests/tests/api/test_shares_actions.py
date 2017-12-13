@@ -390,6 +390,14 @@ class SharesActionsTest(base.BaseSharesTest):
             self.assertEqual(project_id, share["project_id"])
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
+    @base.skip_if_microversion_lt("2.42")
+    def test_list_shares_with_detail_with_count(self):
+        # list shares by name, at least one share is expected
+        params = {"with_count": 'true'}
+        shares = self.shares_v2_client.list_shares_with_detail(params)
+        self.assertGreater(shares["count"], 0)
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_list_shares_public_with_detail(self):
         public_share = self.create_share(
             name='public_share',

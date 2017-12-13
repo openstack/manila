@@ -230,3 +230,7 @@ user documentation.
 2.41
 ----
   Added 'description' in share type create/list APIs.
+
+2.42
+----
+  Added ``with_count`` in share list API to get total count info.

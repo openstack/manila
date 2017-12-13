@@ -34,6 +34,7 @@ from manila import exception
 from manila.i18n import _
 from manila import share
 from manila.share import share_types
+from manila import utils
 
 LOG = log.getLogger(__name__)
 
@@ -105,6 +106,7 @@ class ShareMixin(object):
         req.GET.pop('name~', None)
         req.GET.pop('description~', None)
         req.GET.pop('description', None)
+        req.GET.pop('with_count', None)
         return self._get_shares(req, is_detail=False)
 
     def detail(self, req):
@@ -114,6 +116,7 @@ class ShareMixin(object):
         req.GET.pop('name~', None)
         req.GET.pop('description~', None)
         req.GET.pop('description', None)
+        req.GET.pop('with_count', None)
         return self._get_shares(req, is_detail=True)
 
     def _get_shares(self, req, is_detail):
@@ -128,6 +131,12 @@ class ShareMixin(object):
         search_opts.pop('offset', None)
         sort_key = search_opts.pop('sort_key', 'created_at')
         sort_dir = search_opts.pop('sort_dir', 'desc')
+
+        show_count = False
+        if 'with_count' in search_opts:
+            show_count = utils.get_bool_from_api_params(
+                'with_count', search_opts)
+            search_opts.pop('with_count')
 
         # Deserialize dicts
         if 'metadata' in search_opts:
@@ -160,13 +169,18 @@ class ShareMixin(object):
         shares = self.share_api.get_all(
             context, search_opts=search_opts, sort_key=sort_key,
             sort_dir=sort_dir)
+        total_count = None
+        if show_count:
+            total_count = len(shares)
 
         limited_list = common.limited(shares, req)
 
         if is_detail:
-            shares = self._view_builder.detail_list(req, limited_list)
+            shares = self._view_builder.detail_list(req, limited_list,
+                                                    total_count)
         else:
-            shares = self._view_builder.summary_list(req, limited_list)
+            shares = self._view_builder.summary_list(req, limited_list,
+                                                     total_count)
         return shares
 
     def _get_share_search_options(self):

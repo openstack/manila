@@ -36,13 +36,13 @@ class ViewBuilder(common.ViewBuilder):
         "add_mount_snapshot_support_field",
     ]
 
-    def summary_list(self, request, shares):
+    def summary_list(self, request, shares, count=None):
         """Show a list of shares without many details."""
-        return self._list_view(self.summary, request, shares)
+        return self._list_view(self.summary, request, shares, count)
 
-    def detail_list(self, request, shares):
+    def detail_list(self, request, shares, count=None):
         """Detailed view of a list of shares."""
-        return self._list_view(self.detail, request, shares)
+        return self._list_view(self.detail, request, shares, count)
 
     def summary(self, request, share):
         """Generic, non-detailed view of a share."""
@@ -170,7 +170,7 @@ class ViewBuilder(common.ViewBuilder):
         share_dict['mount_snapshot_support'] = share.get(
             'mount_snapshot_support')
 
-    def _list_view(self, func, request, shares):
+    def _list_view(self, func, request, shares, count=None):
         """Provide a view for a list of shares."""
         shares_list = [func(request, share)['share'] for share in shares]
         shares_links = self._get_collection_links(request,
@@ -178,6 +178,8 @@ class ViewBuilder(common.ViewBuilder):
                                                   self._collection_name)
         shares_dict = dict(shares=shares_list)
 
+        if count:
+            shares_dict['count'] = count
         if shares_links:
             shares_dict['shares_links'] = shares_links
 
