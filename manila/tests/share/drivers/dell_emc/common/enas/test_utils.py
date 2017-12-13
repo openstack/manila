@@ -71,3 +71,71 @@ class SslContextTestCase(test.TestCase):
                          mock.Mock(side_effect=AttributeError))
         context = utils.create_ssl_context(configuration)
         self.assertIsNone(context)
+
+
+@ddt.ddt
+class ParseIpaddrTestCase(test.TestCase):
+
+    @ddt.data({'lst_ipaddr': ['192.168.100.101',
+                              '192.168.100.102',
+                              '192.168.100.103']},
+              {'lst_ipaddr': ['[fdf8:f53b:82e4::57]',
+                              '[fdf8:f53b:82e4::54]',
+                              '[fdf8:f53b:82e4::55]']},
+              {'lst_ipaddr': ['[fdf8:f53b:82e4::57]',
+                              '[fdf8:f53b:82e4::54]',
+                              '192.168.100.103',
+                              '[fdf8:f53b:82e4::55]']},
+              {'lst_ipaddr': ['192.168.100.101',
+                              '[fdf8:f53b:82e4::57]',
+                              '[fdf8:f53b:82e4::54]',
+                              '192.168.100.101',
+                              '[fdf8:f53b:82e4::55]',
+                              '192.168.100.102']},)
+    @ddt.unpack
+    def test_parse_ipv4_addr(self, lst_ipaddr):
+        self.assertEqual(lst_ipaddr, utils.parse_ipaddr(':'.join(lst_ipaddr)))
+
+
+@ddt.ddt
+class ConvertIPv6FormatTestCase(test.TestCase):
+
+    @ddt.data({'ip_addr': 'fdf8:f53b:82e4::55'},
+              {'ip_addr': 'fdf8:f53b:82e4::55/64'},
+              {'ip_addr': 'fdf8:f53b:82e4::55/128'})
+    @ddt.unpack
+    def test_ipv6_addr(self, ip_addr):
+        expected_ip_addr = '[%s]' % ip_addr
+        self.assertEqual(expected_ip_addr,
+                         utils.convert_ipv6_format_if_needed(ip_addr))
+
+    @ddt.data({'ip_addr': '192.168.1.100'},
+              {'ip_addr': '192.168.1.100/24'},
+              {'ip_addr': '192.168.1.100/32'},
+              {'ip_addr': '[fdf8:f53b:82e4::55]'})
+    @ddt.unpack
+    def test_invalid_ipv6_addr(self, ip_addr):
+        self.assertEqual(ip_addr, utils.convert_ipv6_format_if_needed(ip_addr))
+
+
+@ddt.ddt
+class ExportUncPathTestCase(test.TestCase):
+
+    @ddt.data({'ip_addr': 'fdf8:f53b:82e4::55'},
+              {'ip_addr': 'fdf8:f53b:82e4::'},
+              {'ip_addr': '2018::'})
+    @ddt.unpack
+    def test_ipv6_addr(self, ip_addr):
+        expected_ip_addr = '%s.ipv6-literal.net' % ip_addr.replace(':', '-')
+        self.assertEqual(expected_ip_addr,
+                         utils.export_unc_path(ip_addr))
+
+    @ddt.data({'ip_addr': '192.168.1.100'},
+              {'ip_addr': '192.168.1.100/24'},
+              {'ip_addr': '192.168.1.100/32'},
+              {'ip_addr': 'fdf8:f53b:82e4::55/64'},
+              {'ip_addr': 'fdf8:f53b:82e4::55/128'},
+              {'ip_addr': '[fdf8:f53b:82e4::55]'})
+    @ddt.unpack
+    def test_invalid_ipv6_addr(self, ip_addr):
+        self.assertEqual(ip_addr, utils.export_unc_path(ip_addr))

@@ -345,54 +345,58 @@ class SSHPoolTestCase(test.TestCase):
             paramiko.SSHClient.assert_called_once_with()
 
 
+@ddt.ddt
 class CidrToNetmaskTestCase(test.TestCase):
     """Unit test for cidr to netmask."""
 
-    def test_cidr_to_netmask_01(self):
-        cidr = '10.0.0.0/0'
-        expected_netmask = '0.0.0.0'
+    @ddt.data(
+        ('10.0.0.0/0', '0.0.0.0'),
+        ('10.0.0.0/24', '255.255.255.0'),
+        ('10.0.0.0/5', '248.0.0.0'),
+        ('10.0.0.0/32', '255.255.255.255'),
+        ('10.0.0.1', '255.255.255.255'),
+    )
+    @ddt.unpack
+    def test_cidr_to_netmask(self, cidr, expected_netmask):
         result = utils.cidr_to_netmask(cidr)
         self.assertEqual(expected_netmask, result)
 
-    def test_cidr_to_netmask_02(self):
-        cidr = '10.0.0.0/24'
-        expected_netmask = '255.255.255.0'
-        result = utils.cidr_to_netmask(cidr)
-        self.assertEqual(expected_netmask, result)
-
-    def test_cidr_to_netmask_03(self):
-        cidr = '10.0.0.0/5'
-        expected_netmask = '248.0.0.0'
-        result = utils.cidr_to_netmask(cidr)
-        self.assertEqual(expected_netmask, result)
-
-    def test_cidr_to_netmask_04(self):
-        cidr = '10.0.0.0/32'
-        expected_netmask = '255.255.255.255'
-        result = utils.cidr_to_netmask(cidr)
-        self.assertEqual(expected_netmask, result)
-
-    def test_cidr_to_netmask_05(self):
-        cidr = '10.0.0.1'
-        expected_netmask = '255.255.255.255'
-        result = utils.cidr_to_netmask(cidr)
-        self.assertEqual(expected_netmask, result)
-
-    def test_cidr_to_netmask_invalid_01(self):
-        cidr = '10.0.0.0/33'
+    @ddt.data(
+        '10.0.0.0/33',
+        '',
+        '10.0.0.555/33'
+    )
+    def test_cidr_to_netmask_invalid(self, cidr):
         self.assertRaises(exception.InvalidInput, utils.cidr_to_netmask, cidr)
 
-    def test_cidr_to_netmask_invalid_02(self):
-        cidr = ''
-        self.assertRaises(exception.InvalidInput, utils.cidr_to_netmask, cidr)
 
-    def test_cidr_to_netmask_invalid_03(self):
-        cidr = '10.0.0.0/33'
-        self.assertRaises(exception.InvalidInput, utils.cidr_to_netmask, cidr)
+@ddt.ddt
+class CidrToPrefixLenTestCase(test.TestCase):
+    """Unit test for cidr to prefix length."""
 
-    def test_cidr_to_netmask_invalid_04(self):
-        cidr = '10.0.0.555/33'
-        self.assertRaises(exception.InvalidInput, utils.cidr_to_netmask, cidr)
+    @ddt.data(
+        ('10.0.0.0/0', 0),
+        ('10.0.0.0/24', 24),
+        ('10.0.0.1', 32),
+        ('fdf8:f53b:82e1::1/0', 0),
+        ('fdf8:f53b:82e1::1/64', 64),
+        ('fdf8:f53b:82e1::1', 128),
+    )
+    @ddt.unpack
+    def test_cidr_to_prefixlen(self, cidr, expected_prefixlen):
+        result = utils.cidr_to_prefixlen(cidr)
+        self.assertEqual(expected_prefixlen, result)
+
+    @ddt.data(
+        '10.0.0.0/33',
+        '',
+        '10.0.0.555/33',
+        'fdf8:f53b:82e1::1/129',
+        'fdf8:f53b:82e1::fffff'
+    )
+    def test_cidr_to_prefixlen_invalid(self, cidr):
+        self.assertRaises(exception.InvalidInput,
+                          utils.cidr_to_prefixlen, cidr)
 
 
 @ddt.ddt

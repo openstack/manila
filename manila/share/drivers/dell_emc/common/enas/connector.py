@@ -35,7 +35,8 @@ LOG = log.getLogger(__name__)
 class XMLAPIConnector(object):
     def __init__(self, configuration, debug=True):
         super(XMLAPIConnector, self).__init__()
-        self.storage_ip = configuration.emc_nas_server
+        self.storage_ip = enas_utils.convert_ipv6_format_if_needed(
+            configuration.emc_nas_server)
         self.username = configuration.emc_nas_login
         self.password = configuration.emc_nas_password
         self.debug = debug
