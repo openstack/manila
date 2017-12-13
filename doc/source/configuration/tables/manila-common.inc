@@ -114,12 +114,6 @@
      -
    * - ``backend_url`` = ``file://$state_path``
      - (String) The back end URL to use for distributed coordination.
-   * - ``heartbeat`` = ``1.0``
-     - (Floating point) Number of seconds between heartbeats for distributed coordination.
-   * - ``initial_reconnect_backoff`` = ``0.1``
-     - (Floating point) Initial number of seconds to wait after failed reconnection.
-   * - ``max_reconnect_backoff`` = ``60.0``
-     - (Floating point) Maximum number of seconds between sequential reconnection retries.
    * - **[healthcheck]**
      -
    * - ``backends`` =
