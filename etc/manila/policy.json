@@ -1,16 +1,6 @@
 {
     "availability_zone:index": "rule:default",
 
-    "quota_set:update": "rule:admin_api",
-    "quota_set:show": "rule:default",
-    "quota_set:delete": "rule:admin_api",
-
-    "quota_class_set:show": "rule:default",
-    "quota_class_set:update": "rule:admin_api",
-
-    "service:index": "rule:admin_api",
-    "service:update": "rule:admin_api",
-
     "share_export_location:index": "rule:default",
     "share_export_location:show": "rule:default",
 
@@ -32,11 +22,6 @@
     "security_service:index": "rule:default",
     "security_service:detail": "rule:default",
     "security_service:get_all_security_services": "rule:admin_api",
-
-    "share_server:index": "rule:admin_api",
-    "share_server:show": "rule:admin_api",
-    "share_server:details": "rule:admin_api",
-    "share_server:delete": "rule:admin_api",
 
     "share_network:create": "rule:default",
     "share_network:delete": "rule:default",
