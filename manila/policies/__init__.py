@@ -18,6 +18,10 @@ import itertools
 
 from manila.policies import base
 from manila.policies import share_instance_export_location
+from manila.policies import share_snapshot
+from manila.policies import share_snapshot_export_location
+from manila.policies import share_snapshot_instance
+from manila.policies import share_snapshot_instance_export_location
 from manila.policies import share_type
 from manila.policies import shares
 
@@ -28,4 +32,8 @@ def list_rules():
         shares.list_rules(),
         share_instance_export_location.list_rules(),
         share_type.list_rules(),
+        share_snapshot.list_rules(),
+        share_snapshot_export_location.list_rules(),
+        share_snapshot_instance.list_rules(),
+        share_snapshot_instance_export_location.list_rules(),
     )
