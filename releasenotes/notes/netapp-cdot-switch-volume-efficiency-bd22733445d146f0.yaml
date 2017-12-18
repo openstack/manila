@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    NetApp driver volume efficiency settings now behave consistently: like on
+    volume creation now also modification, which is currently consumed by
+    manage and migration, will make sure that deduplication and compression
+    settings are applied correctly.
