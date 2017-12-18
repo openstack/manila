@@ -1514,11 +1514,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         self.send_request('volume-create', api_args)
 
-        # cDOT compression requires that deduplication be enabled.
-        if dedup_enabled or compression_enabled:
-            self.enable_dedup(volume_name)
-        if compression_enabled:
-            self.enable_compression(volume_name)
+        self.update_volume_efficiency_attributes(volume_name,
+                                                 dedup_enabled,
+                                                 compression_enabled)
         if max_files is not None:
             self.set_volume_max_files(volume_name, max_files)
 
@@ -1767,17 +1765,20 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         """Update dedupe & compression attributes to match desired values."""
         efficiency_status = self.get_volume_efficiency_status(volume_name)
 
-        if efficiency_status['compression'] != compression_enabled:
-            if compression_enabled:
-                self.enable_compression(volume_name)
-            else:
-                self.disable_compression(volume_name)
+        # cDOT compression requires dedup to be enabled
+        dedup_enabled = dedup_enabled or compression_enabled
 
-        if efficiency_status['dedupe'] != dedup_enabled:
-            if dedup_enabled:
-                self.enable_dedup(volume_name)
-            else:
-                self.disable_dedup(volume_name)
+        # enable/disable dedup if needed
+        if dedup_enabled and not efficiency_status['dedupe']:
+            self.enable_dedup(volume_name)
+        elif not dedup_enabled and efficiency_status['dedupe']:
+            self.disable_dedup(volume_name)
+
+        # enable/disable compression if needed
+        if compression_enabled and not efficiency_status['compression']:
+            self.enable_compression(volume_name)
+        elif not compression_enabled and efficiency_status['compression']:
+            self.disable_compression(volume_name)
 
     @na_utils.trace
     def volume_exists(self, volume_name):
