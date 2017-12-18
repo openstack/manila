@@ -302,18 +302,16 @@ class ShareApiTest(test.TestCase):
         db.security_service_get_all.assert_called_once_with(
             req.environ['manila.context'])
 
-    @mock.patch.object(db, 'security_service_get_all', mock.Mock())
+    @mock.patch.object(db, 'security_service_get_all_by_project', mock.Mock())
     def test_security_services_list_all_tenants_non_admin_context(self):
-        self.check_policy_patcher.stop()
-        db.security_service_get_all.return_value = [
-            self.ss_active_directory,
-            self.ss_ldap,
-        ]
+        db.security_service_get_all_by_project.return_value = []
         req = fakes.HTTPRequest.blank(
             '/security-services?all_tenants=1')
-        self.assertRaises(exception.PolicyNotAuthorized, self.controller.index,
-                          req)
-        self.assertFalse(db.security_service_get_all.called)
+        fake_context = req.environ['manila.context']
+        self.controller.index(req)
+        db.security_service_get_all_by_project.assert_called_once_with(
+            fake_context, fake_context.project_id
+        )
 
     @mock.patch.object(db, 'security_service_get_all_by_project', mock.Mock())
     def test_security_services_list_admin_context_invalid_opts(self):
