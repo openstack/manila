@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Huawei driver implements the snapshot reverting feature,
+    by Huawei storage's snapshot-rollback capability.

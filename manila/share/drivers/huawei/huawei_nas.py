@@ -207,6 +207,7 @@ class HuaweiNasDriver(driver.ShareDriver):
             free_capacity_gb=0.0,
             snapshot_support=self.plugin.snapshot_support,
             create_share_from_snapshot_support=self.plugin.snapshot_support,
+            revert_to_snapshot_support=self.plugin.snapshot_support,
         )
 
         # huawei array doesn't support snapshot replication, so driver can't
@@ -266,3 +267,11 @@ class HuaweiNasDriver(driver.ShareDriver):
                                    replica_snapshots,
                                    replica,
                                    share_server)
+
+    def revert_to_snapshot(self, context, snapshot, share_access_rules,
+                           snapshot_access_rules, share_server=None):
+        self.plugin.revert_to_snapshot(context,
+                                       snapshot,
+                                       share_access_rules,
+                                       snapshot_access_rules,
+                                       share_server)

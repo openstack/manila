@@ -1847,3 +1847,16 @@ class V3StorageConnection(driver.HuaweiBase):
             LOG.exception('Failed to delete replica %s.',
                           replica['id'])
             raise
+
+    def revert_to_snapshot(self, context, snapshot, share_access_rules,
+                           snapshot_access_rules, share_server):
+        fs_id = self.helper.get_fsid_by_name(snapshot['share_name'])
+        if not fs_id:
+            msg = _("The source filesystem of snapshot %s "
+                    "not exist.") % snapshot['id']
+            LOG.error(msg)
+            raise exception.ShareResourceNotFound(
+                share_id=snapshot['share_id'])
+
+        snapshot_id = self.helper._get_snapshot_id(fs_id, snapshot['id'])
+        self.helper.rollback_snapshot(snapshot_id)
