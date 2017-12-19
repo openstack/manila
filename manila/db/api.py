@@ -311,9 +311,12 @@ def share_instance_create(context, share_id, values):
     return IMPL.share_instance_create(context, share_id, values)
 
 
-def share_instance_delete(context, instance_id):
+def share_instance_delete(context, instance_id, session=None,
+                          need_to_update_usages=False):
     """Delete share instance."""
-    return IMPL.share_instance_delete(context, instance_id)
+    return IMPL.share_instance_delete(
+        context, instance_id, session=session,
+        need_to_update_usages=need_to_update_usages)
 
 
 def share_instance_update(context, instance_id, values, with_share_data=False):

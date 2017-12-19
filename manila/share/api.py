@@ -886,13 +886,7 @@ class API(base.Base):
     def delete(self, context, share, force=False):
         """Delete share."""
         share = self.db.share_get(context, share['id'])
-        if context.is_admin and context.project_id != share['project_id']:
-            project_id = share['project_id']
-        else:
-            project_id = context.project_id
-
         share_id = share['id']
-
         statuses = (constants.STATUS_AVAILABLE, constants.STATUS_ERROR,
                     constants.STATUS_INACTIVE)
         if not (force or share['status'] in statuses):
@@ -922,36 +916,12 @@ class API(base.Base):
             raise exception.InvalidShare(reason=msg)
 
         self._check_is_share_busy(share)
-
-        try:
-            # we give the user_id of the share, to update the quota usage
-            # for the user, who created the share
-            reservations = QUOTAS.reserve(
-                context,
-                project_id=project_id,
-                shares=-1,
-                gigabytes=-share['size'],
-                user_id=share['user_id'],
-                share_type_id=share['instance']['share_type_id'])
-        except Exception as e:
-            reservations = None
-            LOG.exception(
-                ("Failed to update quota for deleting share: %s"), e)
-
         for share_instance in share.instances:
             if share_instance['host']:
                 self.delete_instance(context, share_instance, force=force)
             else:
-                self.db.share_instance_delete(context, share_instance['id'])
-
-        if reservations:
-            # we give the user_id of the share, to update the quota usage
-            # for the user, who created the share
-            QUOTAS.commit(
-                context, reservations, project_id=project_id,
-                user_id=share['user_id'],
-                share_type_id=share['instance']['share_type_id'],
-            )
+                self.db.share_instance_delete(
+                    context, share_instance['id'], need_to_update_usages=True)
 
     def delete_instance(self, context, share_instance, force=False):
         policy.check_policy(context, 'share', 'delete')

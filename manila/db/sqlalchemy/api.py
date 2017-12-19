@@ -49,10 +49,12 @@ from manila.common import constants
 from manila.db.sqlalchemy import models
 from manila import exception
 from manila.i18n import _
+from manila import quota
 
 CONF = cfg.CONF
 
 LOG = log.getLogger(__name__)
+QUOTAS = quota.QUOTAS
 
 _DEFAULT_QUOTA_NAME = 'default'
 PER_PROJECT_QUOTAS = []
@@ -493,8 +495,8 @@ def quota_get_all_by_project_and_user(context, project_id, user_id):
     ).all()
 
     result = {'project_id': project_id, 'user_id': user_id}
-    for quota in user_quotas:
-        result[quota.resource] = quota.hard_limit
+    for u_quota in user_quotas:
+        result[u_quota.resource] = u_quota.hard_limit
     return result
 
 
@@ -516,8 +518,8 @@ def quota_get_all_by_project_and_share_type(context, project_id,
         'project_id': project_id,
         'share_type_id': share_type_id,
     }
-    for quota in share_type_quotas:
-        result[quota.resource] = quota.hard_limit
+    for st_quota in share_type_quotas:
+        result[st_quota.resource] = st_quota.hard_limit
     return result
 
 
@@ -531,8 +533,8 @@ def quota_get_all_by_project(context, project_id):
     ).all()
 
     result = {'project_id': project_id}
-    for quota in project_quotas:
-        result[quota.resource] = quota.hard_limit
+    for p_quota in project_quotas:
+        result[p_quota.resource] = p_quota.hard_limit
     return result
 
 
@@ -1416,7 +1418,8 @@ def share_instances_get_all(context, filters=None):
 
 
 @require_context
-def share_instance_delete(context, instance_id, session=None):
+def share_instance_delete(context, instance_id, session=None,
+                          need_to_update_usages=False):
     if session is None:
         session = get_session()
 
@@ -1431,6 +1434,31 @@ def share_instance_delete(context, instance_id, session=None):
             session.query(models.ShareMetadata).filter_by(
                 share_id=share['id']).soft_delete()
             share.soft_delete(session=session)
+
+            if need_to_update_usages:
+                reservations = None
+                try:
+                    # we give the user_id of the share, to update
+                    # the quota usage for the user, who created the share
+                    reservations = QUOTAS.reserve(
+                        context,
+                        project_id=share['project_id'],
+                        shares=-1,
+                        gigabytes=-share['size'],
+                        user_id=share['user_id'],
+                        share_type_id=instance_ref['share_type_id'])
+                    QUOTAS.commit(
+                        context, reservations, project_id=share['project_id'],
+                        user_id=share['user_id'],
+                        share_type_id=instance_ref['share_type_id'])
+                except Exception:
+                    LOG.exception(
+                        "Failed to update usages deleting share '%s'.",
+                        share["id"])
+                    if reservations:
+                        QUOTAS.rollback(
+                            context, reservations,
+                            share_type_id=instance_ref['share_type_id'])
 
 
 def _set_instances_share_data(context, instances, session):

@@ -212,9 +212,6 @@ class ShareAPITestCase(test.TestCase):
         self.mock_object(db_api, 'share_snapshot_get_all_for_share',
                          mock.Mock(return_value=snapshots))
         self.mock_object(self.api, 'delete_instance')
-        self.mock_object(quota.QUOTAS, 'reserve',
-                         mock.Mock(return_value='reservation'))
-        self.mock_object(quota.QUOTAS, 'commit')
         return share
 
     def _setup_delete_share_instance_mocks(self, **kwargs):
@@ -1758,22 +1755,6 @@ class ShareAPITestCase(test.TestCase):
 
         self.api.delete(diff_user_context, share)
 
-        quota.QUOTAS.reserve.assert_called_once_with(
-            diff_user_context,
-            project_id=share['project_id'],
-            shares=-1,
-            gigabytes=-share['size'],
-            share_type_id=None,
-            user_id=share['user_id']
-        )
-        quota.QUOTAS.commit.assert_called_once_with(
-            diff_user_context,
-            mock.ANY,
-            project_id=share['project_id'],
-            share_type_id=None,
-            user_id=share['user_id']
-        )
-
     def test_delete_wrong_status(self):
         share = fakes.fake_share(status='wrongstatus')
         self.mock_object(db_api, 'share_get', mock.Mock(return_value=share))
@@ -1807,7 +1788,8 @@ class ShareAPITestCase(test.TestCase):
 
         self.api.delete(self.context, share)
         db_api.share_instance_delete.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), share.instance['id'])
+            utils.IsAMatcher(context.RequestContext), share.instance['id'],
+            need_to_update_usages=True)
 
     def test_delete_share_with_snapshots(self):
         share = self._setup_delete_mocks(constants.STATUS_AVAILABLE,
@@ -1835,16 +1817,6 @@ class ShareAPITestCase(test.TestCase):
                          mock.Mock(side_effect=exception.QuotaError('fake')))
 
         self.api.delete(self.context, share)
-
-        quota.QUOTAS.reserve.assert_called_once_with(
-            self.context,
-            project_id=share['project_id'],
-            shares=-1,
-            gigabytes=-share['size'],
-            share_type_id=None,
-            user_id=share['user_id']
-        )
-        self.assertFalse(quota.QUOTAS.commit.called)
 
     @ddt.data({'status': constants.STATUS_AVAILABLE, 'force': False},
               {'status': constants.STATUS_ERROR, 'force': True})
