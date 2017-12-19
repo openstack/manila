@@ -20,6 +20,10 @@ from manila.policies import base
 from manila.policies import quota_class_set
 from manila.policies import quota_set
 from manila.policies import service
+from manila.policies import share_group
+from manila.policies import share_group_snapshot
+from manila.policies import share_group_type
+from manila.policies import share_group_types_spec
 from manila.policies import share_instance_export_location
 from manila.policies import share_server
 from manila.policies import share_snapshot
@@ -44,4 +48,8 @@ def list_rules():
         service.list_rules(),
         quota_set.list_rules(),
         quota_class_set.list_rules(),
+        share_group_types_spec.list_rules(),
+        share_group_type.list_rules(),
+        share_group_snapshot.list_rules(),
+        share_group.list_rules(),
     )
