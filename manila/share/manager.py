@@ -22,6 +22,7 @@
 import copy
 import datetime
 import functools
+import hashlib
 
 from oslo_config import cfg
 from oslo_log import log
@@ -312,9 +313,49 @@ class ShareManager(manager.SchedulerDependentManager):
 
         _driver_setup()
 
-        share_instances = self.db.share_instances_get_all_by_host(ctxt,
-                                                                  self.host)
+        self.ensure_driver_resources(ctxt)
+
+        self.publish_service_capabilities(ctxt)
+        LOG.info("Finished initialization of driver: '%(driver)s"
+                 "@%(host)s'",
+                 {"driver": self.driver.__class__.__name__,
+                  "host": self.host})
+
+    def ensure_driver_resources(self, ctxt):
+        old_backend_info_hash = self.db.backend_info_get(ctxt, self.host)
+        new_backend_info = None
+        new_backend_info_hash = None
+        update_share_instances = []
+        try:
+            new_backend_info = self.driver.get_backend_info(ctxt)
+        except Exception as e:
+            if not isinstance(e, NotImplementedError):
+                LOG.exception(
+                    ("The backend %(host)s could not get backend info."),
+                    {'host': self.host})
+                raise
+            else:
+                LOG.debug(
+                    ("The backend %(host)s does not support get backend"
+                     " info method."),
+                    {'host': self.host})
+
+        if new_backend_info:
+            new_backend_info_hash = hashlib.sha1(six.text_type(
+                sorted(new_backend_info.items())).encode('utf-8')).hexdigest()
+
+        if (old_backend_info_hash and
+                old_backend_info_hash == new_backend_info_hash):
+            LOG.debug(
+                ("The ensure share be skipped because the The old backend "
+                 "%(host)s info as the same as new backend info"),
+                {'host': self.host})
+            return
+
+        share_instances = self.db.share_instances_get_all_by_host(
+            ctxt, self.host)
         LOG.debug("Re-exporting %s shares", len(share_instances))
+
         for share_instance in share_instances:
             share_ref = self.db.share_get(ctxt, share_instance['share_id'])
 
@@ -337,21 +378,44 @@ class ShareManager(manager.SchedulerDependentManager):
                 continue
 
             self._ensure_share_instance_has_pool(ctxt, share_instance)
-            share_server = self._get_share_server(ctxt, share_instance)
             share_instance = self.db.share_instance_get(
                 ctxt, share_instance['id'], with_share_data=True)
-            try:
-                export_locations = self.driver.ensure_share(
-                    ctxt, share_instance, share_server=share_server)
-            except Exception:
-                LOG.exception("Caught exception trying ensure "
-                              "share '%(s_id)s'.",
-                              {'s_id': share_instance['id']})
-                continue
+            update_share_instances.append(share_instance)
 
-            if export_locations:
+        try:
+            update_share_instances = self.driver.ensure_shares(
+                ctxt, update_share_instances)
+        except Exception as e:
+            if not isinstance(e, NotImplementedError):
+                LOG.exception("Caught exception trying ensure "
+                              "share instances.")
+            else:
+                self._ensure_share(ctxt, update_share_instances)
+
+        if new_backend_info:
+            self.db.backend_info_update(
+                ctxt, self.host, new_backend_info_hash)
+
+        for share_instance in share_instances:
+            if share_instance['id'] not in update_share_instances:
+                continue
+            if update_share_instances[share_instance['id']].get('status'):
+                self.db.share_instance_update(
+                    ctxt, share_instance['id'],
+                    {'status': (
+                        update_share_instances[share_instance['id']].
+                        get('status')),
+                     'host': share_instance['host']}
+                )
+
+            update_export_location = (
+                update_share_instances[share_instance['id']]
+                .get('export_locations'))
+            if update_export_location:
                 self.db.share_export_locations_update(
-                    ctxt, share_instance['id'], export_locations)
+                    ctxt, share_instance['id'], update_export_location)
+
+            share_server = self._get_share_server(ctxt, share_instance)
 
             if share_instance['access_rules_status'] != (
                     constants.STATUS_ACTIVE):
@@ -396,11 +460,21 @@ class ShareManager(manager.SchedulerDependentManager):
                             "access rules for snapshot instance %s.",
                             snap_instance['id'])
 
-        self.publish_service_capabilities(ctxt)
-        LOG.info("Finished initialization of driver: '%(driver)s"
-                 "@%(host)s'",
-                 {"driver": self.driver.__class__.__name__,
-                  "host": self.host})
+    def _ensure_share(self, ctxt, share_instances):
+        for share_instance in share_instances:
+            try:
+                share_server = self._get_share_server(
+                    ctxt, share_instance)
+                export_locations = self.driver.ensure_share(
+                    ctxt, share_instance, share_server=share_server)
+            except Exception:
+                LOG.exception("Caught exception trying ensure "
+                              "share '%(s_id)s'.",
+                              {'s_id': share_instance['id']})
+                continue
+            if export_locations:
+                self.db.share_export_locations_update(
+                    ctxt, share_instance['id'], export_locations)
 
     def _provide_share_server_for_share(self, context, share_network_id,
                                         share_instance, snapshot=None,

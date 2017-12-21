@@ -4911,3 +4911,56 @@ def cleanup_expired_messages(context):
     with session.begin():
         return session.query(models.Message).filter(
             models.Message.expires_at < now).delete()
+
+
+@require_context
+def backend_info_get(context, host):
+    """Get hash info for given host."""
+    session = get_session()
+
+    result = _backend_info_query(session, context, host)
+
+    return result
+
+
+@require_context
+def backend_info_create(context, host, value):
+    session = get_session()
+    with session.begin():
+        info_ref = models.BackendInfo()
+        info_ref.update({"host": host,
+                         "info_hash": value})
+        info_ref.save(session)
+        return info_ref
+
+
+@require_context
+def backend_info_update(context, host, value=None, delete_existing=False):
+    """Remove backend info for host name."""
+    session = get_session()
+
+    with session.begin():
+        info_ref = _backend_info_query(session, context, host)
+        if info_ref:
+            if value:
+                info_ref.update({"info_hash": value})
+            elif delete_existing and info_ref['deleted'] != 1:
+                info_ref.update({"deleted": 1,
+                                 "deleted_at": timeutils.utcnow()})
+        else:
+            info_ref = models.BackendInfo()
+            info_ref.update({"host": host,
+                             "info_hash": value})
+        info_ref.save(session)
+        return info_ref
+
+
+def _backend_info_query(session, context, host, read_deleted=False):
+    result = model_query(
+        context, models.BackendInfo, session=session,
+        read_deleted=read_deleted,
+    ).filter_by(
+        host=host,
+    ).first()
+
+    return result

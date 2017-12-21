@@ -2514,3 +2514,50 @@ class ShareDriver(object):
         data['ipv4_support'] = (4 in self.ip_versions)
         data['ipv6_support'] = (6 in self.ip_versions)
         return data
+
+    def get_backend_info(self, context):
+        """Get driver and array configuration parameters.
+
+        Driver can use this method to get the special configuration info and
+        return for assessment.
+
+        :returns: A dictionary containing driver-specific info.
+
+            Example::
+
+                 {
+                      'version': '2.23'
+                      'port': '80',
+                      'logicalportip': '1.1.1.1',
+                       ...
+                 }
+
+        """
+        raise NotImplementedError()
+
+    def ensure_shares(self, context, shares):
+        """Invoked to ensure that shares are exported.
+
+        Driver can use this method to update the list of export locations of
+        the shares if it changes. To do that, a dictionary of shares should
+        be returned.
+        :shares: None or a list of all shares for updates.
+        :returns: None or a dictionary of updates in the format.
+
+            Example::
+
+                {
+                    '09960614-8574-4e03-89cf-7cf267b0bd08': {
+                        'export_locations': [{...}, {...}],
+                        'status': 'error',
+                    },
+
+                    '28f6eabb-4342-486a-a7f4-45688f0c0295': {
+                        'export_locations': [{...}, {...}],
+                        'status': 'available',
+                    },
+
+                }
+
+        """
+        raise NotImplementedError()

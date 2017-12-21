@@ -1,0 +1,4 @@
+---
+fixes:
+  - Adds the ability to solve the potential problem of slow start
+    up, and deal with non-user-initiated state changes to shares.

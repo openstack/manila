@@ -681,3 +681,11 @@ class LVMShareDriverTestCase(test.TestCase):
                           self._driver.update_share_usage_size,
                           self._context,
                           [self.share])
+
+    def test_get_backend_info(self):
+        backend_info = self._driver.get_backend_info(self._context)
+
+        self.assertEqual(
+            {'export_ips': ','.join(self.server['public_addresses']),
+             'db_version': mock.ANY},
+            backend_info)

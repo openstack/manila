@@ -2925,3 +2925,61 @@ class MessagesDatabaseAPITestCase(test.TestCase):
             db_api.cleanup_expired_messages(adm_context)
             messages = db_api.message_get_all(adm_context)
             self.assertEqual(2, len(messages))
+
+
+class BackendInfoDatabaseAPITestCase(test.TestCase):
+
+    def setUp(self):
+        """Run before each test."""
+        super(BackendInfoDatabaseAPITestCase, self).setUp()
+        self.ctxt = context.get_admin_context()
+
+    def test_create(self):
+        host = "fake_host"
+        value = "fake_hash_value"
+
+        initial_data = db_api.backend_info_get(self.ctxt, host)
+        db_api.backend_info_update(self.ctxt, host, value)
+        actual_data = db_api.backend_info_get(self.ctxt, host)
+
+        self.assertIsNone(initial_data)
+        self.assertEqual(value, actual_data['info_hash'])
+        self.assertEqual(host, actual_data['host'])
+
+    def test_get(self):
+        host = "fake_host"
+        value = "fake_hash_value"
+
+        db_api.backend_info_update(self.ctxt, host, value, False)
+        actual_result = db_api.backend_info_get(self.ctxt, host)
+
+        self.assertEqual(value, actual_result['info_hash'])
+        self.assertEqual(host, actual_result['host'])
+
+    def test_delete(self):
+        host = "fake_host"
+        value = "fake_hash_value"
+
+        db_api.backend_info_update(self.ctxt, host, value)
+        initial_data = db_api.backend_info_get(self.ctxt, host)
+
+        db_api.backend_info_update(self.ctxt, host, delete_existing=True)
+        actual_data = db_api.backend_info_get(self.ctxt, host)
+
+        self.assertEqual(value, initial_data['info_hash'])
+        self.assertEqual(host, initial_data['host'])
+        self.assertIsNone(actual_data)
+
+    def test_double_update(self):
+        host = "fake_host"
+        value_1 = "fake_hash_value_1"
+        value_2 = "fake_hash_value_2"
+
+        initial_data = db_api.backend_info_get(self.ctxt, host)
+        db_api.backend_info_update(self.ctxt, host, value_1)
+        db_api.backend_info_update(self.ctxt, host, value_2)
+        actual_data = db_api.backend_info_get(self.ctxt, host)
+
+        self.assertIsNone(initial_data)
+        self.assertEqual(value_2, actual_data['info_hash'])
+        self.assertEqual(host, actual_data['host'])
