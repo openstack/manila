@@ -87,6 +87,12 @@ class ShareAPITest(test.TestCase):
         self.vt = {
             'id': 'fake_volume_type_id',
             'name': 'fake_volume_type_name',
+            'required_extra_specs': {
+                'driver_handles_share_servers': 'False'
+            },
+            'extra_specs': {
+                'driver_handles_share_servers': 'False'
+            }
         }
         self.snapshot = {
             'id': '2',
