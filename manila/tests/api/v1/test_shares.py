@@ -78,7 +78,14 @@ class ShareAPITest(test.TestCase):
         self.vt = {
             'id': 'fake_volume_type_id',
             'name': 'fake_volume_type_name',
+            'required_extra_specs': {
+                'driver_handles_share_servers': 'False'
+            },
+            'extra_specs': {
+                'driver_handles_share_servers': 'False'
+            }
         }
+
         CONF.set_default("default_share_type", None)
 
     def _get_expected_share_detailed_response(self, values=None, admin=False):

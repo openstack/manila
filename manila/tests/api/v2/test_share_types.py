@@ -188,6 +188,9 @@ class ShareTypesAPITest(test.TestCase):
         self.assertEqual(2, len(res_dict))
         self.assertEqual('1', res_dict['share_type']['id'])
         self.assertEqual('share_type_1', res_dict['share_type']['name'])
+        expect = {constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: "true"}
+        self.assertEqual(expect,
+                         res_dict['share_type']['required_extra_specs'])
         policy.check_policy.assert_called_once_with(
             req.environ['manila.context'], self.resource_name, 'show')
 
