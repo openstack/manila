@@ -93,6 +93,7 @@
       - openstack-infra/devstack-gate
       - openstack/manila
       - openstack/manila-image-elements
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -106,6 +107,7 @@
       - openstack-infra/devstack-gate
       - openstack/manila
       - openstack/manila-image-elements
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -119,6 +121,7 @@
       - openstack-infra/devstack-gate
       - openstack/manila
       - openstack/manila-image-elements
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -132,6 +135,7 @@
       - openstack-infra/devstack-gate
       - openstack/devstack-plugin-glusterfs
       - openstack/manila
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -145,6 +149,7 @@
       - openstack-infra/devstack-gate
       - openstack/devstack-plugin-glusterfs
       - openstack/manila
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -158,6 +163,7 @@
       - openstack-infra/devstack-gate
       - openstack/devstack-plugin-glusterfs
       - openstack/manila
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -171,6 +177,7 @@
       - openstack-infra/devstack-gate
       - openstack/devstack-plugin-glusterfs
       - openstack/manila
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -184,6 +191,7 @@
       - openstack-infra/devstack-gate
       - openstack/devstack-plugin-hdfs
       - openstack/manila
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -197,6 +205,7 @@
       - openstack-infra/devstack-gate
       - openstack/manila
       - openstack/manila-image-elements
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -210,6 +219,7 @@
       - openstack-infra/devstack-gate
       - openstack/manila
       - openstack/manila-image-elements
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -223,6 +233,7 @@
       - openstack-infra/devstack-gate
       - openstack/manila
       - openstack/manila-image-elements
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -236,6 +247,7 @@
       - openstack-infra/devstack-gate
       - openstack/manila
       - openstack/manila-image-elements
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -249,6 +261,7 @@
       - openstack-infra/devstack-gate
       - openstack/manila
       - openstack/manila-image-elements
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -263,6 +276,7 @@
       - openstack-infra/devstack-gate
       - openstack/devstack-plugin-ceph
       - openstack/manila
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -277,6 +291,7 @@
       - openstack-infra/devstack-gate
       - openstack/devstack-plugin-ceph
       - openstack/manila
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -289,6 +304,7 @@
     required-projects:
       - openstack-infra/devstack-gate
       - openstack/manila
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -302,6 +318,7 @@
     required-projects:
       - openstack-infra/devstack-gate
       - openstack/manila
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -316,6 +333,7 @@
       - openstack-infra/devstack-gate
       - openstack/devstack-plugin-ceph
       - openstack/manila
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
@@ -330,6 +348,7 @@
       - openstack-infra/devstack-gate
       - openstack/devstack-plugin-ceph
       - openstack/manila
+      - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 

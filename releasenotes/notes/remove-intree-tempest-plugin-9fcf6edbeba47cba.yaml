@@ -1,0 +1,8 @@
+---
+other:
+  - |
+    Remove in-tree manila tempest plugin because it
+    now lives in the new repo openstack/manila-tempest-plugin
+    From now on changes to manila tempest tests should be
+    made in this new repo.
+
