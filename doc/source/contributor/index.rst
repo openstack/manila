@@ -48,7 +48,6 @@ Programming HowTos and Tutorials
     user_messages
     ganesha
 
-
 Background Concepts for manila
 ------------------------------
 .. toctree::

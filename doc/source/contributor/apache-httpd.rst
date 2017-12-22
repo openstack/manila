@@ -76,4 +76,44 @@ And start the manila server using uwsgi::
 
    In the sample configs port 51999 is used, this is a randomly selected number.
 
+Installing the API via mod_wsgi
+-------------------------------
+
+The httpd/ directory contains sample files for configuring HTTPD to run manila
+API via mod_wsgi. To use sample configs, simply copy `httpd/mod_wsgi-manila.conf` to the
+appropiate location for your apache server.
+
+On RHEL/CentOS/Fedora it is::
+
+    /etc/httpd/conf.d/mod_wsgi-manila.conf
+
+On SLES/OpenSUSE it is::
+
+    /etc/apache2/vhosts.d/mod_wsgi-manila.conf
+
+On Debian/Ubuntu it is::
+
+    /etc/apache2/sites-available/mod_wsgi-manila.conf
+
+On Ubuntu/Debian systems enable the site using the a2ensite tool::
+
+    sudo a2ensite /etc/apache2/sites-available/mod_wsgi-manila.conf
+
+This is not required on RHEL/CentOS/Fedora systems.
+
+Start or restart HTTPD/Apache2 to pick up the new configuration.
+
+.. NOTE::
+
+   manila's primary configuration file (etc/manila.conf) and the PasteDeploy
+   configuration file (etc/manila-paste.ini) must be readable to httpd in one
+   of the default locations described in Configuring Manila.
+
+Access Control
+--------------
+
+If you are running with Linux kernel security module enabled (for example
+SELinux or AppArmor), make sure that the configuration file has the
+appropriate context to access the linked file.
+
 .. _community goals for Pike: https://governance.openstack.org/tc/goals/pike/deploy-api-in-wsgi.html#control-plane-api-endpoints-deployment-via-wsgi
