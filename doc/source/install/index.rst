@@ -51,8 +51,8 @@ on controllers, compute nodes, or storage nodes.
     This installation tutorial also assumes that installation and configuration
     of OpenStack packages, Network Time Protocol, database engine and
     message queue has been completed as per the instructions in the `OpenStack
-    Installation Tutorial. <http://docs.openstack.org/#install-guides>`_. The
-    `Identity Service` (`keystone`) has to be pre-configured with suggested
+    Installation Tutorial. <https://docs.openstack.org/manila/latest/install/index.html>`_.
+    The `Identity Service` (`keystone`) has to be pre-configured with suggested
     client environment scripts.
 
 For more information on various Shared File Systems storage back ends,
@@ -60,4 +60,4 @@ see the `Shared File Systems Configuration Reference.
 <https://docs.openstack.org/manila/latest/configuration/shared-file-systems/overview.html>`_.
 
 To learn more about installation dependencies noted above, see the `OpenStack
-Installation Tutorial. <http://docs.openstack.org/#install-guides>`_
+Installation Tutorial. <https://docs.openstack.org/manila/latest/install/index.html>`_
