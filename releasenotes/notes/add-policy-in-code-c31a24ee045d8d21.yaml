@@ -1,0 +1,13 @@
+---
+features:
+  - Default Role Based Access Control (RBAC) policies for all the Manila
+    APIs have moved into code from the auxiliary ``policy.json`` file.
+upgrade:
+  - Removed the default ``policy.json`` file.
+  - Operators need not maintain the ``policy.json`` file if they were not
+    overriding default manila policies.
+  - If Operators need to override certain RBAC policies, they can do so by
+    creating a JSON formatted file named ``policy.json`` and populate it
+    with the necessary overrides. This file must be placed in the config
+    directory. The default RBAC policies are documented in the configuration
+    reference alongside other sample configuration files.
