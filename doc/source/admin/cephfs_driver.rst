@@ -488,10 +488,11 @@ export location.
 Known restrictions
 ~~~~~~~~~~~~~~~~~~
 
-- To communicate with the Ceph backend, a CephFS driver instance
-  (represented as a backend driver section in manila.conf) requires its own
-  Ceph auth ID that is not used by other CephFS driver instances running in
-  the same controller node.
+- A CephFS driver instance, represented as a backend driver section in
+  manila.conf, requires a Ceph auth ID unique to the backend Ceph Filesystem.
+  Using a non-unique Ceph auth ID will result in the driver unintentionally
+  evicting other CephFS clients using the same Ceph auth ID to connect to the
+  backend.
 
 - The snapshot support of the driver is disabled by default. The
   ``cephfs_enable_snapshots`` configuration option needs to be set to ``True``
