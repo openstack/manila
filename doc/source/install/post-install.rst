@@ -19,4 +19,4 @@ driver modes. Follow what is appropriate for your installation.
 
 For more information about how to manage shares, see the
 `OpenStack End User Guide
-<http://docs.openstack.org/user-guide/cli_manage_shares.html>`_
+<https://docs.openstack.org/manila/latest/user/>`_
