@@ -325,7 +325,7 @@ Response parameters
    - id: id_4
    - status: status_3
    - links: links
-   - project_id: project_id_6
+   - project_id: project_id
    - share_proto: share_proto
    - size: size
    - name: name_5

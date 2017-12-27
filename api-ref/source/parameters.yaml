@@ -50,12 +50,6 @@ share_id:
   in: path
   required: true
   type: string
-share_id_3:
-  description: |
-    The ID of the share.
-  in: path
-  required: false
-  type: string
 share_instance_id:
   description: |
     The UUID of the share instance.
@@ -71,12 +65,6 @@ share_network_id_path:
 share_replica_id_path:
   description: |
     The UUID of the share replica.
-  in: path
-  required: true
-  type: string
-share_server_id_1:
-  description: |
-    The UUID of the share server.
   in: path
   required: true
   type: string
@@ -162,13 +150,6 @@ backend_query:
   in: query
   required: false
   type: string
-binary_3:
-  description: |
-    The service binary name. Default is the base name
-    of the executable.
-  in: query
-  required: false
-  type: string
 description_inexact_query:
   description: |
     The description pattern that can be used to filter shares,
@@ -237,18 +218,6 @@ group_snapshot_status_query:
   in: query
   required: false
   type: string
-host_11:
-  description: |
-    The host name for the back end.
-  in: query
-  required: false
-  type: string
-host_12:
-  description: |
-    The host name.
-  in: query
-  required: false
-  type: string
 host_7:
   description: |
     The share host name.
@@ -279,19 +248,6 @@ message_level:
   type: string
   description: >
     The message level.
-metadata_1:
-  description: |
-    One or more metadata key-value pairs, as a
-    dictionary of strings.
-  in: query
-  required: false
-  type: object
-name_13:
-  description: |
-    The share name.
-  in: query
-  required: false
-  type: string
 name_inexact_query:
   description: |
     The name pattern that can be used to filter shares,
@@ -438,13 +394,6 @@ share_types_query:
 snapshot_id_query:
   description: |
     The UUID of the share's base snapshot to filter the request based on.
-  in: query
-  required: false
-  type: string
-snapshot_id_share_response:
-  description: |
-    The UUID of the snapshot that was used to create
-    the share.
   in: query
   required: false
   type: string
@@ -3165,6 +3114,13 @@ snapshot_id_request:
   in: body
   required: false
   type: string
+snapshot_id_share_response:
+  description: |
+    The UUID of the snapshot that was used to create
+    the share.
+  in: body
+  required: true
+  type: string
 snapshot_instance_id:
   description: |
     The UUID of the share snapshot instance.
@@ -3293,7 +3249,7 @@ snapshot_status:
     ``manage_error``, ``unmanage_starting``, ``unmanage_error`` or
     ``error_deleting``.
   in: body
-  requitred: true
+  required: true
   type: string
 snapshot_status_request:
   description: |
