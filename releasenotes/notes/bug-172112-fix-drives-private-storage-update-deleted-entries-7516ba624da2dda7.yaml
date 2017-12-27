@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed the database update query for the
+    drivers' private data store that was failing
+    to update any rows marked as deleted.
+
