@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed the QNAP driver that the access rule setting is overridden by the later
+    access rule setting.

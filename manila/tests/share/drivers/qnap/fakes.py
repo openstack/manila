@@ -192,7 +192,7 @@ FAKE_RES_DETAIL_DATA_GET_HOST_LIST = """
             <host>
                 <index><![CDATA[fakeHostIndex]]></index>
                 <hostid><![CDATA[fakeHostId]]></hostid>
-                <name><![CDATA[manila-hst-123]]></name>
+                <name><![CDATA[manila-fakeHostName]]></name>
                 <netaddrs>
                     <ipv4>
                         <![CDATA[fakeIp]]>
@@ -283,6 +283,15 @@ FAKE_RES_DETAIL_DATA_GET_HOST_LIST_API = """
                     </netaddrs>
                 </host>
             </host_list>
+        </content>
+        <result><![CDATA[0]]></result>
+    </QDocRoot>"""
+
+FAKE_RES_DETAIL_DATA_GET_NO_HOST_LIST_API = """
+    <QDocRoot version="1.0">
+        <authPassed><![CDATA[1]]></authPassed>
+        <ES_RET_CODE><![CDATA[1]]></ES_RET_CODE>
+        <content>
         </content>
         <result><![CDATA[0]]></result>
     </QDocRoot>"""
@@ -546,13 +555,23 @@ class FakeDeleteSnapshotResponseShareNotExist(object):
 
 
 class FakeGetHostListResponse(object):
-    """Fake pool info response."""
+    """Fake host info response."""
 
     status = 'fackStatus'
 
     def read(self):
         """Mock response.read."""
         return FAKE_RES_DETAIL_DATA_GET_HOST_LIST_API
+
+
+class FakeGetNoHostListResponse(object):
+    """Fake host info response."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_GET_NO_HOST_LIST_API
 
 
 class FakeAuthPassFailResponse(object):

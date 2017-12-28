@@ -177,7 +177,10 @@ class QnapAPIExecutor(object):
         for key in params:
             value = params[key]
             if value is not None:
-                sanitized_params[key] = six.text_type(value)
+                if isinstance(value, list):
+                    sanitized_params[key] = [six.text_type(v) for v in value]
+                else:
+                    sanitized_params[key] = six.text_type(value)
         return sanitized_params
 
     @_connection_checker
@@ -565,6 +568,52 @@ class QnapAPIExecutor(object):
             'func': 'apply_addhost',
             'name': hostname,
             'ipaddr_v4': ipv4,
+            'sid': self.sid,
+        }
+        sanitized_params = self._sanitize_params(params)
+
+        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        url = ('/cgi-bin/accessrights/accessrightsRequest.cgi?%s' %
+               sanitized_params)
+
+        res_details = self._execute_and_get_response_details(self.ip, url)
+        root = ET.fromstring(res_details['data'])
+        if root.find('authPassed').text == '0':
+            raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
+        if root.find('result').text < '0':
+            raise exception.ShareBackendException(msg=MSG_UNEXPECT_RESP)
+
+    @_connection_checker
+    def edit_host(self, hostname, ipv4_list):
+        """Execute edit_host API."""
+        params = {
+            'module': 'hosts',
+            'func': 'apply_sethost',
+            'name': hostname,
+            'ipaddr_v4': ipv4_list,
+            'sid': self.sid,
+        }
+        sanitized_params = self._sanitize_params(params)
+
+        # urlencode with True parameter to parse ipv4_list
+        sanitized_params = urllib.parse.urlencode(sanitized_params, True)
+        url = ('/cgi-bin/accessrights/accessrightsRequest.cgi?%s' %
+               sanitized_params)
+
+        res_details = self._execute_and_get_response_details(self.ip, url)
+        root = ET.fromstring(res_details['data'])
+        if root.find('authPassed').text == '0':
+            raise exception.ShareBackendException(msg=MSG_SESSION_EXPIRED)
+        if root.find('result').text < '0':
+            raise exception.ShareBackendException(msg=MSG_UNEXPECT_RESP)
+
+    @_connection_checker
+    def delete_host(self, hostname):
+        """Execute delete_host API."""
+        params = {
+            'module': 'hosts',
+            'func': 'apply_delhost',
+            'host_name': hostname,
             'sid': self.sid,
         }
         sanitized_params = self._sanitize_params(params)
