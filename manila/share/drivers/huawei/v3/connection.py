@@ -601,7 +601,7 @@ class V3StorageConnection(driver.HuaweiBase):
                           share['mount_src'])
 
             elif share['share_proto'] == 'CIFS':
-                user = ('user=' + access['access_to'] + ',' +
+                user = ('username=' + access['access_to'] + ',' +
                         'password=' + access['access_password'])
                 utils.execute('mount', '-t', 'cifs',
                               share['mount_path'], share['mount_src'],
