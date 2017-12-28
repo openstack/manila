@@ -4577,6 +4577,30 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertEqual(expect_password, result['UserPassword'])
         ET.parse.assert_called_once_with(self.fake_conf_file)
 
+    @ddt.data({'name': 'fake_name',
+               'share_proto': 'NFS',
+               'mount_path': 'fake_nfs_mount_path',
+               'mount_src': '/mnt/test'},
+              {'name': 'fake_name',
+               'share_proto': 'CIFS',
+               'mount_path': 'fake_cifs_mount_path',
+               'mount_src': '/mnt/test'},
+              )
+    def test_mount_share_to_host(self, share):
+        access = {'access_to': 'cifs_user',
+                  'access_password': 'cifs_password'}
+        mocker = self.mock_object(utils, 'execute')
+        self.driver.plugin.mount_share_to_host(share, access)
+        if share['share_proto'] == 'NFS':
+            mocker.assert_called_once_with(
+                'mount', '-t', 'nfs', 'fake_nfs_mount_path', '/mnt/test',
+                run_as_root=True)
+        else:
+            mocker.assert_called_once_with(
+                'mount', '-t', 'cifs', 'fake_cifs_mount_path', '/mnt/test',
+                '-o', 'username=cifs_user,password=cifs_password',
+                run_as_root=True)
+
 
 @ddt.ddt
 class HuaweiDriverHelperTestCase(test.TestCase):
