@@ -77,6 +77,7 @@ class EMCShareDriver(driver.ShareDriver):
             configuration=self.configuration)
         super(EMCShareDriver, self).__init__(
             self.plugin.driver_handles_share_servers, *args, **kwargs)
+        self.ipv6_implemented = self.plugin.ipv6_implemented
 
         if hasattr(self.plugin, 'ipv6_implemented'):
             self.ipv6_implemented = self.plugin.ipv6_implemented

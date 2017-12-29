@@ -35,7 +35,7 @@ Requirements
 ------------
 
 - Unity OE 4.0.1 or higher.
-- StorOps 0.2.17 or higher is installed on Manila node.
+- StorOps 0.5.7 or higher is installed on Manila node.
 - Following licenses are activated on Unity:
 
   * CIFS/SMB Support
@@ -137,6 +137,31 @@ for the Unity driver.
 
 Restart of :term:`manila-share` service is needed for the configuration changes to take
 effect.
+
+IPv6 support
+------------
+
+IPv6 support for Unity driver is introduced in Queens release. The feature is divided
+into two parts:
+
+1. The driver is able to manage share or snapshot in the Neutron IPv6 network.
+2. The driver is able to connect Unity management interface using its IPv6 address.
+
+Pre-Configurations for IPv6 support
+===================================
+
+The following parameters need to be configured in `/etc/manila/manila.conf`
+for the Unity driver:
+
+    network_plugin_ipv6_enabled = True
+
+- `network_plugin_ipv6_enabled` indicates IPv6 is enabled.
+
+If you want to connect Unity using IPv6 address, you should configure IPv6 address
+by `/net/if/mgmt` uemcli command, `mgmtInterfaceSettings` RESTful api or the system 
+settings of Unity GUI for Unity and specify the address in `/etc/manila/manila.conf`:
+
+    emc_nas_server = <IPv6 address>
 
 
 Restrictions

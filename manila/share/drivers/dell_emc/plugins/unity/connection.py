@@ -19,6 +19,7 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
+from oslo_utils import netutils
 
 storops = importutils.try_import('storops')
 if storops:
@@ -35,7 +36,7 @@ from manila.share.drivers.dell_emc.plugins.unity import utils as unity_utils
 from manila.share import utils as share_utils
 from manila import utils
 
-VERSION = "3.0.0"
+VERSION = "4.0.0"
 
 LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
@@ -83,6 +84,7 @@ class UnityStorageConnection(driver.StorageConnection):
         self.reserved_percentage = None
         self.max_over_subscription_ratio = None
         self.port_ids_conf = None
+        self.ipv6_implemented = True
 
         # props from super class.
         self.driver_handles_share_servers = True
@@ -475,17 +477,20 @@ class UnityStorageConnection(driver.StorageConnection):
         return network
 
     def _create_network_interface(self, nas_server, network, port_id):
-        ip_addr = network['ip_address']
-        netmask = utils.cidr_to_netmask(network['cidr'])
-        gateway = network['gateway']
-        vlan_id = network['segmentation_id']
+        kargs = {'ip_addr': network['ip_address'],
+                 'gateway': network['gateway'],
+                 'vlan_id': network['segmentation_id'],
+                 'port_id': port_id}
+
+        if netutils.is_valid_ipv6_cidr(kargs['ip_addr']):
+            kargs['netmask'] = None
+            kargs['prefix_length'] = str(utils.cidr_to_prefixlen(
+                network['cidr']))
+        else:
+            kargs['netmask'] = utils.cidr_to_netmask(network['cidr'])
+
         # Create the interfaces on NAS server
-        self.client.create_interface(nas_server,
-                                     ip_addr,
-                                     netmask,
-                                     gateway,
-                                     port_id=port_id,
-                                     vlan_id=vlan_id)
+        self.client.create_interface(nas_server, **kargs)
 
     def _choose_sp(self, sp_ports_map):
         sp = None
@@ -508,7 +513,7 @@ class UnityStorageConnection(driver.StorageConnection):
     def _get_cifs_location(file_interfaces, share_name):
         return [
             {'path': r'\\%(interface)s\%(share_name)s' % {
-                'interface': interface.ip_address,
+                'interface': enas_utils.export_unc_path(interface.ip_address),
                 'share_name': share_name}
              }
             for interface in file_interfaces
@@ -551,7 +556,8 @@ class UnityStorageConnection(driver.StorageConnection):
     def _get_nfs_location(file_interfaces, share_name):
         return [
             {'path': '%(interface)s:/%(share_name)s' % {
-                'interface': interface.ip_address,
+                'interface': enas_utils.convert_ipv6_format_if_needed(
+                    interface.ip_address),
                 'share_name': share_name}
              }
             for interface in file_interfaces
