@@ -1,0 +1,26 @@
+{
+    "share_type": {
+        "required_extra_specs": {
+            "driver_handles_share_servers": "True"
+        },
+        "share_type_access:is_public": true,
+        "extra_specs": {
+            "driver_handles_share_servers": "True"
+        },
+        "id": "2780fc88-526b-464a-a72c-ecb83f0e3929",
+        "name": "default-share-type",
+        "description": "manila share type"
+    },
+    "volume_type": {
+        "required_extra_specs": {
+            "driver_handles_share_servers": "True"
+        },
+        "share_type_access:is_public": true,
+        "extra_specs": {
+            "driver_handles_share_servers": "True"
+        },
+        "id": "2780fc88-526b-464a-a72c-ecb83f0e3929",
+        "name": "default-share-type",
+        "description": "manila share type"
+    }
+}
