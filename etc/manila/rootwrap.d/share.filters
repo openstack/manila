@@ -179,3 +179,6 @@ lvconvert: CommandFilter, lvconvert, root
 
 # manila/data/utils.py: 'sha256sum', '%s'
 sha256sum: CommandFilter, sha256sum, root
+
+# manila/utils.py: 'tee', '%s'
+tee: CommandFilter, tee, root
