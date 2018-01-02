@@ -518,14 +518,14 @@ class GaneshaManager(object):
     def _get_rados_object(self, obj_name):
         """Get data stored in Ceph RADOS object as a text string."""
         return self.ceph_vol_client.get_object(
-            self.ganesha_rados_store_pool_name, obj_name).decode()
+            self.ganesha_rados_store_pool_name, obj_name).decode('utf-8')
 
     def _put_rados_object(self, obj_name, data):
         """Put data as a byte string in a Ceph RADOS object."""
         return self.ceph_vol_client.put_object(
             self.ganesha_rados_store_pool_name,
             obj_name,
-            data.encode())
+            data.encode('utf-8'))
 
     def _delete_rados_object(self, obj_name):
         return self.ceph_vol_client.delete_object(
