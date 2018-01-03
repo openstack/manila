@@ -145,8 +145,8 @@ def get_share_type_by_name_or_id(context, share_type=None):
     if not share_type:
         share_type_ref = get_default_share_type(context)
         if not share_type_ref:
-            msg = _("Default share type not found")
-            raise exception.ShareTypeNotFound(reason=msg)
+            msg = _("Default share type not found.")
+            raise exception.ShareTypeNotFound(message=msg)
         return share_type_ref
 
     if uuidutils.is_uuid_like(share_type):
