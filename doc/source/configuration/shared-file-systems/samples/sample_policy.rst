@@ -14,3 +14,4 @@ file (**/etc/manila/policy.json**).
 
 .. literalinclude:: ../../../_static/manila.policy.yaml.sample
    :language: ini
+
