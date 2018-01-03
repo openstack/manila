@@ -1021,24 +1021,26 @@ class GaneshaManagerTestCase(test.TestCase):
                 self._manager._remove_rados_object_url_from_index.called)
 
     def test_get_rados_object(self):
+        fakebin = six.unichr(246).encode('utf-8')
         self.mock_object(self._ceph_vol_client, 'get_object',
-                         mock.Mock(return_value=b'fakedata'))
+                         mock.Mock(return_value=fakebin))
 
         ret = self._manager_with_rados_store._get_rados_object('fakeobj')
 
         self._ceph_vol_client.get_object.assert_called_once_with(
             'fakepool', 'fakeobj')
-        self.assertEqual(b'fakedata'.decode(), ret)
+        self.assertEqual(fakebin.decode('utf-8'), ret)
 
     def test_put_rados_object(self):
+        faketext = six.unichr(246)
         self.mock_object(self._ceph_vol_client, 'put_object',
                          mock.Mock(return_value=None))
 
         ret = self._manager_with_rados_store._put_rados_object(
-            'fakeobj', 'fakedata')
+            'fakeobj', faketext)
 
         self._ceph_vol_client.put_object.assert_called_once_with(
-            'fakepool', 'fakeobj', 'fakedata'.encode())
+            'fakepool', 'fakeobj', faketext.encode('utf-8'))
         self.assertIsNone(ret)
 
     def test_delete_rados_object(self):
