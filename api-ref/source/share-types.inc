@@ -106,7 +106,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id_11
+   - id: share_type_id_body
    - name: share_type_name
    - required_extra_specs: required_extra_specs
    - extra_specs: extra_specs
@@ -149,7 +149,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id_11
+   - id: share_type_id_body
    - required_extra_specs: required_extra_specs
    - extra_specs: extra_specs
    - driver_handles_share_servers: driver_handles_share_servers
@@ -162,6 +162,50 @@ Response example
 ----------------
 
 .. literalinclude:: samples/share-types-default-list-response.json
+   :language: javascript
+
+
+Show share type detail
+======================
+
+.. rest_method::  GET /v2/{tenant_id}/types/{share_type_id}
+
+Shows details for a specified share type.
+
+Normal response codes: 200
+Error response codes: badRequest(400), unauthorized(401), forbidden(403),
+itemNotFound(404)
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - tenant_id: tenant_id
+   - share_type_id: share_type_id
+
+Response Parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - id: share_type_id_body
+   - required_extra_specs: required_extra_specs
+   - extra_specs: extra_specs
+   - driver_handles_share_servers: driver_handles_share_servers
+   - snapshot_support: snapshot_support_1
+   - replication_type: replication_type
+   - mount_snapshot_support: mount_snapshot_support
+   - revert_to_snapshot_support: revert_to_snapshot_support
+   - create_share_from_snapshot_support: create_share_from_snapshot_support
+   - share_type_access:is_public: share_type_access:is_public
+   - name: share_type_name
+   - description: share_type_description
+
+Response Example
+----------------
+
+.. literalinclude:: ./samples/share-type-show-response.json
    :language: javascript
 
 
@@ -244,7 +288,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id_11
+   - id: share_type_id_body
    - required_extra_specs: required_extra_specs
    - extra_specs: extra_specs
    - driver_handles_share_servers: driver_handles_share_servers
@@ -291,8 +335,8 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - share_type_id: share_type_id_1
    - project_id: project_id_9
+   - share_type_id: share_type_id_body
 
 Response example
 ----------------

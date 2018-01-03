@@ -1523,12 +1523,6 @@ host_9:
   in: body
   required: false
   type: string
-id_11:
-  description: |
-    The UUID of the share type.
-  in: body
-  required: true
-  type: string
 id_12:
   description: |
     The service ID.
@@ -2988,9 +2982,9 @@ share_type_description_request:
   required: false
   type: string
   min_version: 2.41
-share_type_id_1:
+share_type_id_body:
   description: |
-    The share type ID of the member.
+    The UUID of the share type.
   in: body
   required: true
   type: string
