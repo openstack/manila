@@ -411,7 +411,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 volume = self.volume_api.get(context, volume['id'])
                 if volume['status'] == 'in-use':
                     return volume
-                elif volume['status'] != 'attaching':
+                elif volume['status'] not in ('attaching', 'reserved'):
                     raise exception.ManilaException(
                         _('Failed to attach volume %s') % volume['id'])
                 time.sleep(1)
