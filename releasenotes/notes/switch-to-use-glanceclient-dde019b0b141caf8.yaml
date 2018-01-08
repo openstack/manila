@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Switch to use glance client to retrive image list, novaclient is rarely
+    maintained with glance API.
