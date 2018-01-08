@@ -120,7 +120,11 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
             self.share,
             'Storage Pool 1',
             fake_name,
-            'NFS')
+            'NFS',
+            qnap_deduplication=False,
+            qnap_compression=True,
+            qnap_thin_provision=True,
+            qnap_ssd_cache=False)
 
         fake_params = {
             'wiz_func': 'share_create',
@@ -130,7 +134,7 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
             'threshold': '80',
             'dedup': 'off',
             'compression': '1',
-            'thin_pro': '0',
+            'thin_pro': '1',
             'cache': '0',
             'cifs_enable': '0',
             'nfs_enable': '1',
@@ -457,6 +461,10 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
             "sharename": 'fakeVolId',
             "old_sharename": 'fakeVolId',
             "new_size": 100,
+            "deduplication": False,
+            "compression": True,
+            "thin_provision": True,
+            "ssd_cache": False,
             "share_proto": "NFS"
         }
         self.driver.api_executor.edit_share(
@@ -468,9 +476,9 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
             'sharename': 'fakeVolId',
             'old_sharename': 'fakeVolId',
             'vol_size': '100GB',
-            'dedup': '0',
+            'dedup': 'off',
             'compression': '1',
-            'thin_pro': '0',
+            'thin_pro': '1',
             'cache': '0',
             'cifs_enable': '0',
             'nfs_enable': '1',
@@ -736,7 +744,11 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
             share=self.share,
             pool_name='Storage Pool 1',
             create_share_name='fake_share_name',
-            share_proto='NFS')
+            share_proto='NFS',
+            qnap_deduplication=False,
+            qnap_compression=True,
+            qnap_thin_provision=True,
+            qnap_ssd_cache=False)
 
     @ddt.unpack
     @ddt.data(['self.driver.api_executor.get_share_info',
@@ -803,6 +815,10 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
               {'share_dict': {"sharename": 'fakeVolId',
                               "old_sharename": 'fakeVolId',
                               "new_size": 100,
+                              "deduplication": False,
+                              "compression": True,
+                              "thin_provision": False,
+                              "ssd_cache": False,
                               "share_proto": "NFS"}},
               fakes.FakeEsResCodeNegativeResponse(),
               fakes.FakeGetBasicInfoResponseEs_1_1_3()],
@@ -810,6 +826,10 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
               {'share_dict': {"sharename": 'fakeVolId',
                               "old_sharename": 'fakeVolId',
                               "new_size": 100,
+                              "deduplication": False,
+                              "compression": True,
+                              "thin_provision": False,
+                              "ssd_cache": False,
                               "share_proto": "NFS"}},
               fakes.FakeAuthPassFailResponse(),
               fakes.FakeGetBasicInfoResponseEs_1_1_3()],

@@ -138,6 +138,10 @@ FAKE_RES_DETAIL_DATA_VOLUME_INFO = """
                 <vol_no><![CDATA[fakeNo]]></vol_no>
                 <size><![CDATA[10]]></size>
                 <vol_mount_path>fakeMountPath</vol_mount_path>
+                <dedup><![CDATA[off]]></dedup>
+                <compression><![CDATA[1]]></compression>
+                <thin_pro><![CDATA[1]]></thin_pro>
+                <cache><![CDATA[0]]></cache>
             </row>
         </Volume_Info>
         <result><![CDATA[0]]></result>
@@ -325,7 +329,8 @@ class SnapshotClass(object):
             'id': 'fakeSnapshotId',
             'share': {'share_id': 'fakeShareId', 'id': 'fakeId'},
             'share_instance': {'share_id': 'fakeShareId', 'id': 'fakeId'},
-            'size': self.size
+            'size': self.size,
+            'share_instance_id': 'fakeShareId'
         }[arg]
 
     def __setitem__(self, key, value):

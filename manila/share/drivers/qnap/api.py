@@ -184,7 +184,8 @@ class QnapAPIExecutor(object):
         return sanitized_params
 
     @_connection_checker
-    def create_share(self, share, pool_name, create_share_name, share_proto):
+    def create_share(self, share, pool_name, create_share_name,
+                     share_proto, **kwargs):
         """Create share."""
         LOG.debug('create_share_name: %s', create_share_name)
 
@@ -194,10 +195,12 @@ class QnapAPIExecutor(object):
             'vol_name': create_share_name,
             'vol_size': six.text_type(share['size']) + 'GB',
             'threshold': '80',
-            'dedup': 'off',
-            'compression': '1',
-            'thin_pro': '0',
-            'cache': '0',
+            'dedup': ('sha512'
+                      if kwargs['qnap_deduplication'] is True
+                      else 'off'),
+            'compression': '1' if kwargs['qnap_compression'] is True else '0',
+            'thin_pro': '1' if kwargs['qnap_thin_provision'] is True else '0',
+            'cache': '1' if kwargs['qnap_ssd_cache'] is True else '0',
             'cifs_enable': '0' if share_proto == 'NFS' else '1',
             'nfs_enable': '0' if share_proto == 'CIFS' else '1',
             'afp_enable': '0',
@@ -497,10 +500,10 @@ class QnapAPIExecutor(object):
             'sharename': share_dict['sharename'],
             'old_sharename': share_dict['old_sharename'],
             'vol_size': six.text_type(share_dict['new_size']) + 'GB',
-            'dedup': '0',
-            'compression': '1',
-            'thin_pro': '0',
-            'cache': '0',
+            'dedup': 'sha512' if share_dict['deduplication'] else 'off',
+            'compression': '1' if share_dict['compression'] else '0',
+            'thin_pro': '1' if share_dict['thin_provision'] else '0',
+            'cache': '1' if share_dict['ssd_cache'] else '0',
             'cifs_enable': '1' if share_dict['share_proto'] == 'CIFS' else '0',
             'nfs_enable': '1' if share_dict['share_proto'] == 'NFS' else '0',
             'afp_enable': '0',
