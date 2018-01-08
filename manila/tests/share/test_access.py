@@ -454,8 +454,11 @@ class ShareInstanceAccessTestCase(test.TestCase):
         # Asserts
         self.assertIsNone(retval)
         self.assertEqual(share_instance_id, call_args[1]['id'])
-        self.assertEqual(sorted(expected_rules_to_be_on_share),
-                         sorted(access_rules_to_be_on_share))
+        self.assertTrue(isinstance(access_rules_to_be_on_share, list))
+        self.assertEqual(len(expected_rules_to_be_on_share),
+                         len(access_rules_to_be_on_share))
+        for pool in expected_rules_to_be_on_share:
+            self.assertIn(pool, access_rules_to_be_on_share)
         self.assertEqual(1, len(call_kwargs['add_rules']))
         self.assertEqual(rule_2['id'], call_kwargs['add_rules'][0]['id'])
         self.assertEqual(1, len(call_kwargs['delete_rules']))
@@ -659,8 +662,11 @@ class ShareInstanceAccessTestCase(test.TestCase):
 
         self.assertIsNone(retval)
         self.assertEqual(instance['id'], call_args[1]['id'])
-        self.assertEqual(sorted(expected_rules_to_be_on_share),
-                         sorted(access_rules_to_be_on_share))
+        self.assertTrue(isinstance(access_rules_to_be_on_share, list))
+        self.assertEqual(len(expected_rules_to_be_on_share),
+                         len(access_rules_to_be_on_share))
+        for pool in expected_rules_to_be_on_share:
+            self.assertIn(pool, access_rules_to_be_on_share)
         self.assertEqual(['ro'] * len(expected_rules_to_be_on_share),
                          access_levels)
         self.assertEqual(0, len(call_kwargs['add_rules']))
