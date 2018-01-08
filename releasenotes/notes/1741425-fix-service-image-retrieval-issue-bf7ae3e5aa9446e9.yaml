@@ -1,0 +1,21 @@
+---
+upgrade:
+  - |
+    When using a driver with the ``service-instance`` module, ``manila.conf``
+    now requires a ``[glance]`` section in addition the the previously required
+    sections for ``[neutron]``, ``[nova]``, and ``cinder`` since the glanceclient
+    is now required as well as the clients for these other services.  To generate
+    a sample manila.conf that includes sections for all of these services run
+    `` tox -egenconfig`` from the top of the manila source repository.
+fixes:
+  - |
+    Share creation sometimes failed with drivers that use the
+    ``service-instance`` module (currently, the ``generic`` and
+    ``windows smb`` because the service-instance image could not be
+    found.  The service instance module used the ``novaclient`` to
+    discover the images, it paginates lists of images, and if there
+    are more than 25 images the service-image may not be in the list.
+
+    This fix switches to use the ``glanceclient`` -- a more direct and
+    appropriate client for OpenStack images that is not subject to the
+    pagination limitation.

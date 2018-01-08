@@ -33,6 +33,7 @@ from manila import compute
 from manila import context
 from manila import exception
 from manila.i18n import _
+from manila import image
 from manila.network.linux import ip_lib
 from manila.network.neutron import api as neutron
 from manila import utils
@@ -222,6 +223,7 @@ class ServiceInstanceManager(object):
         self.admin_context = context.get_admin_context()
         self._execute = utils.execute
 
+        self.image_api = image.API()
         self.compute_api = compute.API()
 
         self.path_to_private_key = self.get_config_option(
@@ -529,12 +531,18 @@ class ServiceInstanceManager(object):
     def _get_service_image(self, context):
         """Returns ID of service image for service vm creating."""
         service_image_name = self.get_config_option("service_image_name")
-        image = self.compute_api.image_get(context, service_image_name)
-        if image.status != 'active':
+        images = [image.id for image in self.image_api.image_list(context)
+                  if image.name == service_image_name
+                  and image.status == 'active']
+        if not images:
             raise exception.ServiceInstanceException(
-                _("Image with name '%s' is not in 'active' state.") %
+                _("Image with name '%s' was not found or is not in "
+                  "'active' state.") % service_image_name)
+        if len(images) != 1:
+            raise exception.ServiceInstanceException(
+                _("Multiple 'active' state images found with name '%s'!") %
                 service_image_name)
-        return image
+        return images[0]
 
     def _create_service_instance(self, context, instance_name, network_info):
         """Creates service vm and sets up networking for it."""
