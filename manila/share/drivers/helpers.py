@@ -245,9 +245,7 @@ class NFSHelper(NASHelperBase):
                                         ':'.join((host, local_path))])
             self._sync_nfs_temp_and_perm_files(server)
             for access in access_rules:
-                rules_options = '%s,no_subtree_check'
-                if access['access_level'] == const.ACCESS_LEVEL_RW:
-                    rules_options = ','.join((rules_options, 'no_root_squash'))
+                rules_options = '%s,no_subtree_check,no_root_squash'
                 access_to = self._get_parsed_address_or_cidr(
                     access['access_to'])
                 self._ssh_exec(
@@ -297,10 +295,7 @@ class NFSHelper(NASHelperBase):
                                     'name': share_name
                                 })
                 else:
-                    rules_options = '%s,no_subtree_check'
-                    if access['access_level'] == const.ACCESS_LEVEL_RW:
-                        rules_options = ','.join((rules_options,
-                                                 'no_root_squash'))
+                    rules_options = '%s,no_subtree_check,no_root_squash'
                     self._ssh_exec(
                         server,
                         ['sudo', 'exportfs', '-o',
