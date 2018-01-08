@@ -82,18 +82,6 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
                           sn["id"])
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
-    def test_try_list_share_networks_all_tenants(self):
-        self.assertRaises(lib_exc.Forbidden,
-                          self.shares_client.list_share_networks_with_detail,
-                          params={'all_tenants': 1})
-
-    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
-    def test_try_list_share_networks_project_id(self):
-        self.assertRaises(lib_exc.Forbidden,
-                          self.shares_client.list_share_networks_with_detail,
-                          params={'project_id': 'some_project'})
-
-    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_list_share_networks_wrong_created_since_value(self):
         self.assertRaises(
             lib_exc.BadRequest,
