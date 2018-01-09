@@ -1286,6 +1286,7 @@ manila quota-delete
 .. code-block:: console
 
    usage: manila quota-delete [--tenant <tenant-id>] [--user <user-id>]
+                              [--share-type <share-type>]
 
 Delete quota for a tenant/user. The quota will revert back to default (Admin
 only).
@@ -1298,6 +1299,11 @@ only).
 ``--user <user-id>``
   ID of user to delete quota for.
 
+``--share-type <share-type>, --share_type <share-type>``
+  UUID or name of a share type to set the quotas for.
+  Optional. Mutually exclusive with '--user-id'.
+  Available only for microversion >= 2.39
+
 .. _manila_quota-show:
 
 manila quota-show
@@ -1305,7 +1311,8 @@ manila quota-show
 
 .. code-block:: console
 
-   usage: manila quota-show [--tenant <tenant-id>] [--user <user-id>] [--detail]
+   usage: manila quota-show [--tenant <tenant-id>] [--user <user-id>]
+                            [--share-type <share-type>] [--detail]
 
 List the quotas for a tenant/user.
 
@@ -1316,6 +1323,11 @@ List the quotas for a tenant/user.
 
 ``--user <user-id>``
   ID of user to list the quotas for.
+
+``--share-type <share-type>, --share_type <share-type>``
+  UUID or name of a share type to set the quotas for.
+  Optional. Mutually exclusive with '--user-id'.
+  Available only for microversion >= 2.39
 
 ``--detail``
   Optional flag to indicate whether to show quota in
@@ -1335,7 +1347,7 @@ manila quota-update
                               [--share-networks <share-networks>]
                               [--share-groups <share-groups>]
                               [--share-group-snapshots <share-group-snapshots>]
-                              [--force]
+                              [--share-type <share-type>] [--force]
                               <tenant_id>
 
 Update the quotas for a tenant/user (Admin only).
@@ -1370,6 +1382,11 @@ Update the quotas for a tenant/user (Admin only).
 
 ``--share-group-snapshots <share-group-snapshots>, --share_group_snapshots <share-group-snapshots>``
   New value for the "share_group_snapshots" quota.
+
+``--share-type <share-type>, --share_type <share-type>``
+  UUID or name of a share type to set the quotas for.
+  Optional. Mutually exclusive with '--user-id'.
+  Available only for microversion >= 2.39
 
 ``--force``
   Whether force update the quota even if the already

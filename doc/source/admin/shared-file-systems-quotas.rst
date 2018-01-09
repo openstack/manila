@@ -101,17 +101,18 @@ you get the quotas for the specified project.
 .. code-block:: console
 
    $ manila quota-show --tenant %project_id% --user %user_id%
-   +-----------------------+-------+
-   | Property              | Value |
-   +-----------------------+-------+
-   | gigabytes             | 1000  |
-   | snapshot_gigabytes    | 1000  |
-   | snapshots             | 50    |
-   | shares                | 50    |
-   | share_networks        | 10    |
-   | share_groups          | 50    |
-   | share_group_snapshots | 50    |
-   +-----------------------+-------+
+   +-----------------------+-----------------------------------+
+   | Property              | Value                             |
+   +-----------------------+-----------------------------------+
+   | id                    | d99c76b43b1743fd822d26ccc915989c  |
+   | gigabytes             | 1000                              |
+   | snapshot_gigabytes    | 1000                              |
+   | snapshots             | 50                                |
+   | shares                | 50                                |
+   | share_networks        | 10                                |
+   | share_groups          | 50                                |
+   | share_group_snapshots | 50                                |
+   +-----------------------+-----------------------------------+
 
 There are default quotas for a project that are set from the
 ``manila.conf`` file. To list the default quotas for a project, use
@@ -120,23 +121,24 @@ the :command:`manila quota-defaults` command:
 .. code-block:: console
 
    $ manila quota-defaults --tenant %project_id%
-   +-----------------------+-------+
-   | Property              | Value |
-   +-----------------------+-------+
-   | gigabytes             | 1000  |
-   | snapshot_gigabytes    | 1000  |
-   | snapshots             | 50    |
-   | shares                | 50    |
-   | share_networks        | 10    |
-   | share_groups          | 50    |
-   | share_group_snapshots | 50    |
-   +-----------------------+-------+
+   +-----------------------+------------------------------------+
+   | Property              | Value                              |
+   +-----------------------+------------------------------------+
+   | id                    | 1cc2154937bd40f4815d5f168d372263   |
+   | gigabytes             | 1000                               |
+   | snapshot_gigabytes    | 1000                               |
+   | snapshots             | 50                                 |
+   | shares                | 50                                 |
+   | share_networks        | 10                                 |
+   | share_groups          | 50                                 |
+   | share_group_snapshots | 50                                 |
+   +-----------------------+------------------------------------+
 
 The administrator can update the quotas for a specific project, or for a
 specific user by providing both the ``--tenant`` and ``--user`` optional
 arguments. It is possible to update the ``shares``, ``snapshots``,
-``gigabytes``, ``snapshot-gigabytes``, ``share-networks``, ``share_groups``
-and ``share_group_snapshots`` quotas.
+``gigabytes``, ``snapshot-gigabytes``, ``share-networks``, ``share_groups``,
+``share_group_snapshots`` and ``share-type`` quotas.
 
 .. code-block:: console
 
@@ -150,8 +152,24 @@ To force-update a quota, use ``force`` optional key.
 
    $ manila quota-update %project_id% --shares 51 --snapshots 51 --force
 
+The administrator can also update the quotas for a specific share type. Share
+Type quotas cannot be set for individual users within a project. They can only
+be applied across all users of a particular project.
+
+.. code-block:: console
+
+   $ manila quota-update %project_id% --share-type %share_type_id%
+
 To revert quotas to default for a project or for a user, delete quotas:
 
 .. code-block:: console
 
-   $ manila quota-delete --tenant %project_id% --user %user_id%
+   $ manila quota-delete --tenant %project_id% --user-id %user_id%
+
+To revert quotas to default, use the specific project or share type. Share
+Type quotas can not be reverted for individual users within a project. They
+can only be reverted across all users of a particular project.
+
+.. code-block:: console
+
+   $ manila quota-delete --tenant %project_id% --share-type %share_type_id%
