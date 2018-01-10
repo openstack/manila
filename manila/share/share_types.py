@@ -166,15 +166,22 @@ def get_default_share_type(ctxt=None):
     if ctxt is None:
         ctxt = context.get_admin_context()
 
+    share_type = {}
     try:
-        return get_share_type_by_name(ctxt, name)
+        share_type = get_share_type_by_name(ctxt, name)
+        required_extra_specs = get_valid_required_extra_specs(
+            share_type['extra_specs'])
+        share_type['required_extra_specs'] = required_extra_specs
+        return share_type
     except exception.ShareTypeNotFoundByName as e:
         # Couldn't find share type with the name in default_share_type
         # flag, record this issue and move on
         # TODO(zhiteng) consider add notification to warn admin
         LOG.exception('Default share type is not found, '
-                      'please check default_share_type config: %s',
-                      e)
+                      'please check default_share_type config: %s', e)
+    except exception.InvalidExtraSpec as ex:
+        LOG.exception('Default share type has invalid required extra'
+                      ' specs: %s', ex)
 
 
 def get_share_type_extra_specs(share_type_id, key=False):
