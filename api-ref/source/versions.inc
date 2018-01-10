@@ -68,7 +68,7 @@ v2.1 API is lower than listed below.
 Show Details of Specific API Version
 ====================================
 
-.. rest_method:: GET /{api_version}
+.. rest_method:: GET /{api_version}/
 
 This gets the details of a specific API at it's root. Nearly all this
 information exists at the API root, so this is mostly a redundant
@@ -105,7 +105,7 @@ Response
 Response Example
 ----------------
 
-This is an example of a ``GET /v2`` on a relatively current server.
+This is an example of a ``GET /v2/`` on a relatively current server.
 
 .. literalinclude:: samples/versions-get-version-response.json
    :language: javascript
