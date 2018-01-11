@@ -69,9 +69,10 @@ class QnapShareDriver(driver.ShareDriver):
                 override by the another access rule.
         1.0.3 - Add supports for Thin Provisioning, SSD Cache, Deduplication
                 and Compression.
+        1.0.4 - Add support for QES fw 2.0.0.
     """
 
-    DRIVER_VERSION = '1.0.3'
+    DRIVER_VERSION = '1.0.4'
 
     def __init__(self, *args, **kwargs):
         """Initialize QnapShareDriver."""
@@ -160,14 +161,14 @@ class QnapShareDriver(driver.ShareDriver):
                         username=self.configuration.qnap_nas_login,
                         password=self.configuration.qnap_nas_password,
                         management_url=self.configuration.qnap_management_url)
-            elif "1.1.2" <= fw_version <= "1.1.4":
+            elif "1.1.2" <= fw_version <= "2.0.9999":
                 LOG.debug('Create ES API Executor')
                 return api.QnapAPIExecutor(
                     username=self.configuration.qnap_nas_login,
                     password=self.configuration.qnap_nas_password,
                     management_url=self.configuration.qnap_management_url)
         elif model_type in es_model_types:
-            if "1.1.2" <= fw_version <= "1.1.4":
+            if "1.1.2" <= fw_version <= "2.0.9999":
                 LOG.debug('Create ES API Executor')
                 return api.QnapAPIExecutor(
                     username=self.configuration.qnap_nas_login,
