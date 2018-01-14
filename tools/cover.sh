@@ -29,7 +29,7 @@ uncommitted=$(git status --porcelain | grep -v "^??")
 git checkout HEAD^
 
 baseline_report=$(mktemp -t manila_coverageXXXXXXX)
-find . -type f -name "*.pyc" -delete && python setup.py testr --coverage --testr-args="$TESTR_ARGS"
+find . -type f -name "*.py[c|o]" -delete && stestr run "$TESTR_ARGS" && coverage combine && coverage html -d cover
 coverage report --ignore-errors > $baseline_report
 baseline_missing=$(awk 'END { print $3 }' $baseline_report)
 
@@ -39,7 +39,7 @@ git checkout -
 
 # Generate and save coverage report
 current_report=$(mktemp -t manila_coverageXXXXXXX)
-find . -type f -name "*.pyc" -delete && python setup.py testr --coverage --testr-args="$TESTR_ARGS"
+find . -type f -name "*.py[c|o]" -delete && stestr run "$TESTR_ARGS" && coverage combine && coverage html -d cover
 coverage report --ignore-errors > $current_report
 current_missing=$(awk 'END { print $3 }' $current_report)
 

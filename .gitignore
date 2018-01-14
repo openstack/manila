@@ -9,7 +9,6 @@
 .manila-venv
 .coverage
 .stestr/*
-.testrepository
 .tox
 .venv
 .idea
