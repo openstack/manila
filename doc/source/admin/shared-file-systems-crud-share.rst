@@ -12,8 +12,8 @@ are prerequisite knowledge:
 
 #. To create a share, use :command:`manila create` command and
    specify the required arguments: the size of the share and the shared file
-   system protocol. ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, or
-   ``CephFS`` share file system protocols are supported.
+   system protocol. ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, ``CephFS`` or
+   ``MAPRFS`` share file system protocols are supported.
 
 #. You can also optionally specify the share network and the share type.
 
@@ -88,8 +88,8 @@ To create a file share in no share servers mode, you need to:
 
 #. To create a share, use :command:`manila create` command and
    specify the required arguments: the size of the share and the shared file
-   system protocol. ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, or
-   ``CephFS`` share file system protocols are supported.
+   system protocol. ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, ``CephFS`` or
+   ``MAPRFS`` share file system protocols are supported.
 
 #. You should specify the :ref:`share type <shared_file_systems_share_types>`
    with ``driver_handles_share_servers = False`` extra specification.
@@ -213,8 +213,8 @@ To create a file share in share servers mode, you need to:
 
 #. To create a share, use :command:`manila create` command and
    specify the required arguments: the size of the share and the shared file
-   system protocol. ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, or
-   ``CephFS`` share file system protocols are supported.
+   system protocol. ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, ``CephFS`` or
+   ``MAPRFS`` share file system protocols are supported.
 
 #. You should specify the :ref:`share type <shared_file_systems_share_types>`
    with ``driver_handles_share_servers = True`` extra specification.

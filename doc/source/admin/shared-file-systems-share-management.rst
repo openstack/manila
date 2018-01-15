@@ -19,6 +19,7 @@ The shares are based on of the supported Shared File Systems protocols:
 * *GLUSTERFS*. Gluster file system (GlusterFS).
 * *HDFS*. Hadoop Distributed File System (HDFS).
 * *CEPHFS*. Ceph File System (CephFS).
+* *MAPRFS*. MapR File System (MAPRFS).
 
 The Shared File Systems service provides set of drivers that enable you to use
 various network file storage devices, instead of the base implementation. That

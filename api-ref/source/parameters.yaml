@@ -1986,8 +1986,8 @@ project_id_messages_body:
 protocol:
   description: |
     The Shared File Systems protocol of the share to
-    manage. A valid value is ``NFS``, ``CIFS``, ``GlusterFS``, or
-    ``HDFS``.
+    manage. A valid value is ``NFS``, ``CIFS``, ``GlusterFS``,
+    ``CEPHFS``, ``HDFS`` or ``MAPRFS``.
   in: body
   required: true
   type: string
@@ -2810,15 +2810,16 @@ share_new_size:
 share_proto:
   description: |
     The Shared File Systems protocol. A valid value
-    is ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, or ``CephFS``.
-    ``CephFS`` supported is starting with API v2.13.
+    is ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, ``CephFS``,
+    ``MAPRFS``, ``CephFS`` supported is starting with API v2.13.
   in: body
   required: true
   type: string
 share_protocol:
   description: |
     The file system protocol of the member, which is
-    ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS`` or ``CEPHFS``.
+    ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, ``CEPHFS`` or
+    ``MAPRFS``.
   in: body
   required: true
   type: string
@@ -3211,16 +3212,18 @@ snapshot_share_id_request:
 snapshot_share_protocol:
   description: |
     The file system protocol of a share snapshot. A
-    valid value is ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, or
-    ``CephFS``.  ``CephFS`` is supported starting with API v2.13.
+    valid value is ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``,
+    ``CephFS`` or ``MAPRFS``. ``CephFS`` is supported starting
+    with API v2.13.
   in: body
   required: true
   type: string
 snapshot_share_protocol_request:
   description: |
     The file system protocol of a share snapshot. A
-    valid value is ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, or
-    ``CephFS``.  ``CephFS`` is supported starting with API v2.13.
+    valid value is ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``,
+    ``CephFS`` or ``MAPRFS``, ``CephFS`` is supported starting
+    with API v2.13.
   in: body
   required: true
   type: string

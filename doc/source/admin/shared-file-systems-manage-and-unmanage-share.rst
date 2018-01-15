@@ -59,7 +59,7 @@ The positional arguments are:
   back end.
 
 - protocol. The Shared File Systems protocol of the share to manage. Valid
-  values are NFS, CIFS, GlusterFS, or HDFS.
+  values are NFS, CIFS, GlusterFS, HDFS or MAPRFS.
 
 - export_path. The share export path in the format appropriate for the
   protocol:
@@ -71,6 +71,8 @@ The positional arguments are:
   - HDFS protocol. hdfs://10.0.0.1:foo_port/foo_share_name.
 
   - GlusterFS. 10.0.0.1:/foo_volume.
+
+  - MAPRFS. maprfs:///share-0 -C  -Z  -N foo.
 
 The ``driver_options`` is an optional set of one or more key and value pairs
 that describe driver options. Note that the share type must have the
