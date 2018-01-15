@@ -103,25 +103,21 @@ version = version_info.version_string()
 
 
 # A few variables have to be set for the log-a-bug feature.
-# giturl: The location of conf.py on Git. Must be set manually.
 # gitsha: The SHA checksum of the bug description. Automatically extracted
 # from git log.
 # bug_tag: Tag for categorizing the bug. Must be set manually.
 # These variables are passed to the logabug code via html_context.
-giturl = u'https://git.openstack.org/cgit/openstack/manila/tree/doc/source'
 git_cmd = "/usr/bin/git log | head -n1 | cut -f2 -d' '"
 try:
     gitsha = os.popen(git_cmd).read().strip('\n')
 except Exception:
     warnings.warn('Cannot get gitsha.')
     gitsha = 'unknown'
-# source tree
 pwd = os.getcwd()
 html_context = {
     "pwd": pwd,
     "gitsha": gitsha,
     "bug_tag": bug_tag,
-    "giturl": giturl,
     "bug_project": bug_project,
 }
 
