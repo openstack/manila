@@ -992,7 +992,8 @@ class NeutronNetworkHelper(BaseNetworkhelper):
         elif not ports:
             port = self.neutron_api.create_port(
                 self.admin_project_id, network_id, subnet_id=subnet_id,
-                device_id=device_id, device_owner='manila:share', host_id=host)
+                device_id=device_id, device_owner='manila:share', host_id=host,
+                port_security_enabled=False)
         else:
             port = ports[0]
         return port
