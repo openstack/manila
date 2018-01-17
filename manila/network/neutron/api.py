@@ -172,14 +172,17 @@ class API(object):
 
     def create_port(self, tenant_id, network_id, host_id=None, subnet_id=None,
                     fixed_ip=None, device_owner=None, device_id=None,
-                    mac_address=None, security_group_ids=None, dhcp_opts=None,
-                    **kwargs):
+                    mac_address=None, port_security_enabled=True,
+                    security_group_ids=None, dhcp_opts=None, **kwargs):
         try:
             port_req_body = {'port': {}}
             port_req_body['port']['network_id'] = network_id
             port_req_body['port']['admin_state_up'] = True
             port_req_body['port']['tenant_id'] = tenant_id
-            if security_group_ids:
+            if not port_security_enabled:
+                port_req_body['port']['port_security_enabled'] = (
+                    port_security_enabled)
+            elif security_group_ids:
                 port_req_body['port']['security_groups'] = security_group_ids
             if mac_address:
                 port_req_body['port']['mac_address'] = mac_address
