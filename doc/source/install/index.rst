@@ -17,8 +17,8 @@ The OpenStack Shared File Systems service (manila) provides coordinated
 access to shared or distributed file systems. The method in which the share is
 provisioned and consumed is determined by the Shared File Systems driver, or
 drivers in the case of a multi-backend configuration. There are a variety of
-drivers that support NFS, CIFS, HDFS, GlusterFS, CEPHFS and other protocols
-as well.
+drivers that support NFS, CIFS, HDFS, GlusterFS, CEPHFS, MAPRFS and other
+protocols as well.
 
 The Shared File Systems API and scheduler services typically run on the
 controller nodes. Depending upon the drivers used, the share service can run
