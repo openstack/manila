@@ -91,7 +91,7 @@ In case it fails complaining on inaccessible socket try installing
 
 After docker is successfully installed a docker image containing necessary
 packages must be provided. Currently such image could be downloaded from
-https://github.com/a-ovchinnikov/manila-image-elements-lxd-images/releases/download/0.1.0/manila-docker-container.tar.gz.
+https://github.com/a-ovchinnikov/manila-image-elements-lxd-images/releases/download/0.1.0/manila-docker-container.tar.gz
 The image has to be unpacked but not untarred. This could be achieved by
 running 'gzip -d <imagename>' command. Resulting tar-archive of the
 image could be uploaded to docker via
