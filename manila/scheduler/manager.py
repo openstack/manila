@@ -91,8 +91,21 @@ class SchedulerManager(manager.Manager):
 
     def init_host_with_rpc(self, service_id=None):
         self.service_id = service_id
+
+        # mark service alive by creating a probe
+        try:
+            open('/etc/manila/probe', 'a')
+        except Exception as e:
+            LOG.error("Probe not created: %(e)s", {'e': str(e)})
+
         ctxt = context.get_admin_context()
         self.request_service_capabilities(ctxt)
+        # init done, mark service ready
+        try:
+            with open('/etc/manila/probe', 'w+') as f:
+                f.write('ready\n')
+        except Exception as e:
+            LOG.error("Probe not written: %(e)s", {'e': str(e)})
 
     def get_host_list(self, context):
         """Get a list of hosts from the HostManager."""
