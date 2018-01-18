@@ -25,6 +25,8 @@ import functools
 import hashlib
 from operator import xor
 
+import os
+
 from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
@@ -32,6 +34,7 @@ from oslo_service import periodic_task
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
+
 import six
 
 from manila.common import constants
@@ -301,6 +304,12 @@ class ShareManager(manager.SchedulerDependentManager):
     def init_host(self):
         """Initialization for a standalone service."""
 
+        # mark service alive by creating a probe
+        try:
+            open('/etc/manila/probe', 'a')
+        except Exception as e:
+            LOG.error("Probe not created: %(e)s", {'e': six.text_type(e)})
+
         ctxt = context.get_admin_context()
         driver_host_pair = "{}@{}".format(
             self.driver.__class__.__name__,
@@ -320,6 +329,13 @@ class ShareManager(manager.SchedulerDependentManager):
             except Exception:
                 LOG.exception("Error encountered during initialization of "
                               "driver %s", driver_host_pair)
+                # init failed, mark service dead by removing the probe
+                try:
+                    os.remove('/etc/manila/probe')
+                except Exception as e:
+                    LOG.error("Not removed: %(e)s", {'e': six.text_type(e)})
+                # we don't want to continue since we failed
+                # to initialize the driver correctly.
                 raise
             else:
                 self.driver.initialized = True
@@ -337,6 +353,12 @@ class ShareManager(manager.SchedulerDependentManager):
                  "@%(host)s'",
                  {"driver": self.driver.__class__.__name__,
                   "host": self.host})
+        # init done, mark service ready
+        try:
+            with open('/etc/manila/probe', 'w+') as f:
+                f.write('ready\n')
+        except Exception as e:
+            LOG.error("Probe not written: %(e)s", {'e': six.text_type(e)})
 
     def is_service_ready(self):
         """Return if Manager is ready to accept requests.
