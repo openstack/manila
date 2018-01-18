@@ -18,6 +18,7 @@ from oslo_utils import units
 
 from manila.common import constants as const
 from manila.share import configuration as conf
+from manila.share.drivers.dell_emc.common.enas import utils
 from manila.tests import fake_share
 
 
@@ -77,15 +78,26 @@ class FakeData(object):
     # Share network information
     share_network_id = 'c5b3a865-56d0-4d88-abe5-879965e099c9'
     cidr = '192.168.1.0/24'
+    cidr_v6 = 'fdf8:f53b:82e1::/64'
     segmentation_id = 100
     network_allocations_id1 = '132dbb10-9a36-46f2-8d89-3d909830c356'
     network_allocations_id2 = '7eabdeed-bad2-46ea-bd0f-a33884c869e0'
+    network_allocations_id3 = '98c9e490-a842-4e59-b59a-a6042069d35b'
+    network_allocations_id4 = '6319a917-ab95-4b65-a498-773ae33c5550'
     network_allocations_ip1 = '192.168.1.1'
     network_allocations_ip2 = '192.168.1.2'
+    network_allocations_ip3 = 'fdf8:f53b:82e1::1'
+    network_allocations_ip4 = 'fdf8:f53b:82e1::2'
+
+    network_allocations_ip_version1 = 4
+    network_allocations_ip_version2 = 4
+    network_allocations_ip_version3 = 6
+    network_allocations_ip_version4 = 6
     domain_name = 'fake_domain'
     domain_user = 'administrator'
     domain_password = 'password'
     dns_ip_address = '192.168.1.200'
+    dns_ipv6_address = 'fdf8:f53b:82e1::f'
 
     # Share server information
     share_server_id = '56aafd02-4d44-43d7-b784-57fc88167224'
@@ -104,8 +116,11 @@ class FakeData(object):
     mover_id = 'fake_mover_id'
     interface_name1 = network_allocations_id1[-12:]
     interface_name2 = network_allocations_id2[-12:]
+    interface_name3 = network_allocations_id3[-12:]
+    interface_name4 = network_allocations_id4[-12:]
     long_interface_name = network_allocations_id1
     net_mask = '255.255.255.0'
+    net_mask_v6 = 64
     device_name = 'cge-1-0'
     interconnect_id = '2001'
 
@@ -123,6 +138,9 @@ class FakeData(object):
     rw_hosts = ['192.168.1.1', '192.168.1.2']
     ro_hosts = ['192.168.1.3', '192.168.1.4']
     nfs_host_ip = '192.168.1.5'
+    rw_hosts_ipv6 = ['fdf8:f53b:82e1::1', 'fdf8:f53b:82e1::2']
+    ro_hosts_ipv6 = ['fdf8:f53b:82e1::3', 'fdf8:f53b:82e1::4']
+    nfs_host_ipv6 = 'fdf8:f53b:82e1::5'
 
     fake_output = ''
 
@@ -175,10 +193,15 @@ class StorageObjectTestData(object):
 
         self.interface_name1 = FakeData.interface_name1
         self.interface_name2 = FakeData.interface_name2
+        self.interface_name3 = FakeData.interface_name3
+        self.interface_name4 = FakeData.interface_name4
         self.long_interface_name = FakeData.long_interface_name
         self.ip_address1 = FakeData.network_allocations_ip1
         self.ip_address2 = FakeData.network_allocations_ip2
+        self.ip_address3 = FakeData.network_allocations_ip3
+        self.ip_address4 = FakeData.network_allocations_ip4
         self.net_mask = FakeData.net_mask
+        self.net_mask_v6 = FakeData.net_mask_v6
         self.vlan_id = FakeData.segmentation_id
 
         self.cifs_server_name = FakeData.vdm_name
@@ -195,6 +218,10 @@ class StorageObjectTestData(object):
         self.rw_hosts = FakeData.rw_hosts
         self.ro_hosts = FakeData.ro_hosts
         self.nfs_host_ip = FakeData.nfs_host_ip
+
+        self.rw_hosts_ipv6 = FakeData.rw_hosts_ipv6
+        self.ro_hosts_ipv6 = FakeData.ro_hosts_ipv6
+        self.nfs_host_ipv6 = FakeData.nfs_host_ipv6
 
         self.fake_output = FakeData.fake_output
 
@@ -710,9 +737,15 @@ class VDMTestData(StorageObjectTestData):
         return '<VdmQueryParams/>'
 
     @response
-    def resp_get_succeed(self, name=None):
-        if not name:
+    def resp_get_succeed(self, name=None, interface1=None, interface2=None):
+        if name is None:
             name = self.vdm_name
+
+        if interface1 is None:
+            interface1 = self.interface_name1
+
+        if interface2 is None:
+            interface2 = self.interface_name2
 
         return (
             '<QueryStatus maxSeverity="ok"/>'
@@ -724,8 +757,8 @@ class VDMTestData(StorageObjectTestData):
             {'vdm_name': name,
              'vdm_id': self.vdm_id,
              'mover_id': self.mover_id,
-             'interface1': self.interface_name1,
-             'interface2': self.interface_name2}
+             'interface1': interface1,
+             'interface2': interface2}
         )
 
     @response
@@ -738,11 +771,14 @@ class VDMTestData(StorageObjectTestData):
     def req_delete(self):
         return '<DeleteVdm vdm="%(vdmid)s"/>' % {'vdmid': self.vdm_id}
 
-    def cmd_attach_nfs_interface(self):
+    def cmd_attach_nfs_interface(self, interface=None):
+        if interface is None:
+            interface = self.interface_name2
+
         return [
             'env', 'NAS_DB=/nas', '/nas/bin/nas_server',
             '-vdm', self.vdm_name,
-            '-attach', self.interface_name2,
+            '-attach', interface,
         ]
 
     def cmd_detach_nfs_interface(self):
@@ -967,6 +1003,23 @@ class MoverTestData(StorageObjectTestData):
                'net_mask': self.net_mask}
         )
 
+    @start_task
+    def req_create_interface_with_ipv6(self,
+                                       if_name=FakeData.interface_name3,
+                                       ip=FakeData.network_allocations_ip3):
+        return (
+            '<NewMoverInterface name="%(if_name)s" vlanid="%(vlan)s" '
+            'ipVersion="IPv6" netMask="%(net_mask)s" '
+            'device="%(device_name)s" '
+            'mover="%(mover_id)s" ipAddress="%(ip)s"/>'
+            % {'if_name': if_name,
+               'vlan': self.vlan_id,
+               'ip': ip,
+               'mover_id': self.mover_id,
+               'device_name': self.device_name,
+               'net_mask': self.net_mask_v6}
+        )
+
     @response
     def resp_create_interface_but_name_already_exist(self):
         return (
@@ -1087,13 +1140,16 @@ class DNSDomainTestData(StorageObjectTestData):
         super(DNSDomainTestData, self).__init__()
 
     @start_task
-    def req_create(self):
+    def req_create(self, ip_addr=None):
+        if ip_addr is None:
+            ip_addr = self.dns_ip_address
+
         return (
             '<NewMoverDnsDomain mover="%(mover_id)s" protocol="udp" '
             'name="%(domain_name)s" servers="%(server_ips)s"/>' %
             {'mover_id': self.mover_id,
              'domain_name': self.domain_name,
-             'server_ips': self.dns_ip_address}
+             'server_ips': ip_addr}
         )
 
     @start_task
@@ -1111,7 +1167,10 @@ class CIFSServerTestData(StorageObjectTestData):
         super(CIFSServerTestData, self).__init__()
 
     @start_task
-    def req_create(self, mover_id, is_vdm=True):
+    def req_create(self, mover_id, is_vdm=True, ip_addr=None):
+        if ip_addr is None:
+            ip_addr = self.ip_address1
+
         return (
             '<NewW2KCifsServer interfaces="%(ip)s" compName="%(comp_name)s" '
             'name="%(name)s" domain="%(domain)s">'
@@ -1120,7 +1179,7 @@ class CIFSServerTestData(StorageObjectTestData):
             '<JoinDomain userName="%(domain_user)s" '
             'password="%(domain_password)s"/>'
             '</NewW2KCifsServer>'
-            % {'ip': self.ip_address1,
+            % {'ip': ip_addr,
                'comp_name': self.cifs_server_name,
                'name': self.cifs_server_name[-14:],
                'mover_id': mover_id,
@@ -1143,9 +1202,14 @@ class CIFSServerTestData(StorageObjectTestData):
 
     @response
     def resp_get_succeed(self, mover_id, is_vdm, join_domain,
-                         cifs_server_name=None):
+                         cifs_server_name=None,
+                         ip_addr=None):
         if cifs_server_name is None:
             cifs_server_name = self.cifs_server_name
+
+        if ip_addr is None:
+            ip_addr = self.ip_address1
+
         return (
             '<QueryStatus maxSeverity="ok"/>'
             '<CifsServer interfaces="%(ip)s" type="W2K" '
@@ -1156,7 +1220,7 @@ class CIFSServerTestData(StorageObjectTestData):
             'domainJoined="%(join_domain)s"/></CifsServer>'
             % {'mover_id': mover_id,
                'cifsserver': self.cifs_server_name[-14:],
-               'ip': self.ip_address1,
+               'ip': ip_addr,
                'is_vdm': 'true' if is_vdm else 'false',
                'alias': self.cifs_server_name[-12:],
                'domain': self.domain_name,
@@ -1405,6 +1469,11 @@ class NFSShareTestData(StorageObjectTestData):
         ]
 
     def output_get_succeed(self, rw_hosts, ro_hosts):
+        rw_hosts = [utils.convert_ipv6_format_if_needed(ip_addr) for ip_addr in
+                    rw_hosts]
+        ro_hosts = [utils.convert_ipv6_format_if_needed(ip_addr) for ip_addr in
+                    ro_hosts]
+
         if rw_hosts and ro_hosts:
             return (
                 '%(mover_name)s :\nexport "%(path)s" '
@@ -1466,6 +1535,11 @@ class NFSShareTestData(StorageObjectTestData):
                 % self.vdm_name)
 
     def cmd_set_access(self, rw_hosts, ro_hosts):
+        rw_hosts = [utils.convert_ipv6_format_if_needed(ip_addr) for ip_addr in
+                    rw_hosts]
+        ro_hosts = [utils.convert_ipv6_format_if_needed(ip_addr) for ip_addr in
+                    ro_hosts]
+
         access_str = ("access=-0.0.0.0/0.0.0.0:%(access_hosts)s,"
                       "root=%(root_hosts)s,rw=%(rw_hosts)s,ro=%(ro_hosts)s" %
                       {'rw_hosts': ":".join(rw_hosts),
@@ -1531,9 +1605,19 @@ NFS_RW_ACCESS = fake_share.fake_access(
     access_to=FakeData.nfs_host_ip,
     access_level='rw')
 
+NFS_RW_ACCESS_IPV6 = fake_share.fake_access(
+    access_type='ip',
+    access_to=FakeData.nfs_host_ipv6,
+    access_level='rw')
+
 NFS_RO_ACCESS = fake_share.fake_access(
     access_type='ip',
     access_to=FakeData.nfs_host_ip,
+    access_level='ro')
+
+NFS_RO_ACCESS_IPV6 = fake_share.fake_access(
+    access_type='ip',
+    access_to=FakeData.nfs_host_ipv6,
     access_level='ro')
 
 SHARE_SERVER = {
@@ -1550,10 +1634,30 @@ SHARE_SERVER = {
     }
 }
 
+SHARE_SERVER_IPV6 = {
+    'id': FakeData.share_server_id,
+    'share_network': {
+        'name': 'fake_share_network',
+        'id': FakeData.share_network_id
+    },
+    'share_network_id': FakeData.share_network_id,
+    'backend_details': {
+        'share_server_name': FakeData.vdm_name,
+        'cifs_if': FakeData.network_allocations_ip3,
+        'nfs_if': FakeData.network_allocations_ip4,
+    }
+}
+
 SERVER_DETAIL = {
     'share_server_name': FakeData.vdm_name,
     'cifs_if': FakeData.network_allocations_ip1,
     'nfs_if': FakeData.network_allocations_ip2,
+}
+
+SERVER_DETAIL_IPV6 = {
+    'share_server_name': FakeData.vdm_name,
+    'cifs_if': FakeData.network_allocations_ip3,
+    'nfs_if': FakeData.network_allocations_ip4,
 }
 
 SECURITY_SERVICE = [
@@ -1561,6 +1665,16 @@ SECURITY_SERVICE = [
         'type': 'active_directory',
         'domain': FakeData.domain_name,
         'dns_ip': FakeData.dns_ip_address,
+        'user': FakeData.domain_user,
+        'password': FakeData.domain_password
+    },
+]
+
+SECURITY_SERVICE_IPV6 = [
+    {
+        'type': 'active_directory',
+        'domain': FakeData.domain_name,
+        'dns_ip': FakeData.dns_ipv6_address,
         'user': FakeData.domain_user,
         'password': FakeData.domain_password
     },
@@ -1580,9 +1694,33 @@ NETWORK_INFO = {
     'network_type': 'vlan',
     'network_allocations': [
         {'id': FakeData.network_allocations_id1,
-         'ip_address': FakeData.network_allocations_ip1},
+         'ip_address': FakeData.network_allocations_ip1,
+         'ip_version': FakeData.network_allocations_ip_version1},
         {'id': FakeData.network_allocations_id2,
-         'ip_address': FakeData.network_allocations_ip2}
+         'ip_address': FakeData.network_allocations_ip2,
+         'ip_version': FakeData.network_allocations_ip_version2}
+    ]
+}
+
+NETWORK_INFO_IPV6 = {
+    'server_id': FakeData.share_server_id,
+    'cidr': FakeData.cidr_v6,
+    'security_services': [
+        {'type': 'active_directory',
+         'domain': FakeData.domain_name,
+         'dns_ip': FakeData.dns_ipv6_address,
+         'user': FakeData.domain_user,
+         'password': FakeData.domain_password},
+    ],
+    'segmentation_id': FakeData.segmentation_id,
+    'network_type': 'vlan',
+    'network_allocations': [
+        {'id': FakeData.network_allocations_id3,
+         'ip_address': FakeData.network_allocations_ip3,
+         'ip_version': FakeData.network_allocations_ip_version3},
+        {'id': FakeData.network_allocations_id4,
+         'ip_address': FakeData.network_allocations_ip4,
+         'ip_version': FakeData.network_allocations_ip_version4}
     ]
 }
 

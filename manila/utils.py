@@ -376,13 +376,23 @@ def walk_class_hierarchy(clazz, encountered=None):
             yield subclass
 
 
-def cidr_to_netmask(cidr):
-    """Convert cidr to netmask."""
+def cidr_to_network(cidr):
+    """Convert cidr to network."""
     try:
         network = netaddr.IPNetwork(cidr)
-        return str(network.netmask)
+        return network
     except netaddr.AddrFormatError:
         raise exception.InvalidInput(_("Invalid cidr supplied %s") % cidr)
+
+
+def cidr_to_netmask(cidr):
+    """Convert cidr to netmask."""
+    return six.text_type(cidr_to_network(cidr).netmask)
+
+
+def cidr_to_prefixlen(cidr):
+    """Convert cidr to prefix length."""
+    return cidr_to_network(cidr).prefixlen
 
 
 def is_valid_ip_address(ip_address, ip_version):

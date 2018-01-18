@@ -78,6 +78,9 @@ class EMCShareDriver(driver.ShareDriver):
         super(EMCShareDriver, self).__init__(
             self.plugin.driver_handles_share_servers, *args, **kwargs)
 
+        if hasattr(self.plugin, 'ipv6_implemented'):
+            self.ipv6_implemented = self.plugin.ipv6_implemented
+
     def create_share(self, context, share, share_server=None):
         """Is called to create share."""
         location = self.plugin.create_share(context, share, share_server)
@@ -159,3 +162,9 @@ class EMCShareDriver(driver.ShareDriver):
     def _teardown_server(self, server_details, security_services=None):
         """Teardown share server."""
         return self.plugin.teardown_server(server_details, security_services)
+
+    def get_configured_ip_versions(self):
+        if self.ipv6_implemented:
+            return [4, 6]
+        else:
+            return [4]

@@ -189,6 +189,7 @@ for the VNX driver:
     emc_nas_pool_name = <pool name>
     emc_interface_ports = <Comma separated ports list>
     share_driver = manila.share.drivers.dell_emc.driver.EMCShareDriver
+    driver_handles_share_servers = True
 
 - `emc_share_backend` is the plugin name. Set it to `vnx` for the VNX driver.
 - `emc_nas_server` is the control station IP address of the VNX system to be
@@ -204,9 +205,35 @@ for the VNX driver:
   Members of the list can be Unix-style glob expressions (supports Unix shell-style
   wildcards). This list is optional. In the absence of this option, any of the ports
   on the Data Mover can be used.
+- `driver_handles_share_servers` must be True, the driver will choose a port
+  from port list which configured in emc_interface_ports.
 
 Restart of :term:`manila-share` service is needed for the configuration changes to take
 effect.
+
+IPv6 support
+------------
+
+IPv6 support for VNX driver is introduced in Queens release. The feature is divided
+into two parts:
+
+1. The driver is able to manage share or snapshot in the Neutron IPv6 network.
+2. The driver is able to connect VNX management interface using its IPv6 address.
+
+Pre-Configurations for IPv6 support
+===================================
+
+The following parameters need to be configured in `/etc/manila/manila.conf`
+for the VNX driver:
+
+    network_plugin_ipv6_enabled = True
+
+- `network_plugin_ipv6_enabled` indicates IPv6 is enabled.
+
+If you want to connect VNX using IPv6 address, you should configure IPv6 address
+by `nas_cs` command for VNX and specify the address in `/etc/manila/manila.conf`:
+
+    emc_nas_server = <IPv6 address>
 
 Restrictions
 ------------

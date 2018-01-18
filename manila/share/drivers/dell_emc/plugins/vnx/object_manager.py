@@ -27,15 +27,15 @@ from manila import exception
 from manila.i18n import _
 from manila.share.drivers.dell_emc.common.enas import connector
 from manila.share.drivers.dell_emc.common.enas import constants
-from manila.share.drivers.dell_emc.common.enas import utils as vnx_utils
+from manila.share.drivers.dell_emc.common.enas import utils as enas_utils
 from manila.share.drivers.dell_emc.common.enas import xml_api_parser as parser
 from manila import utils
 
 LOG = log.getLogger(__name__)
 
 
-@vnx_utils.decorate_all_methods(vnx_utils.log_enter_exit,
-                                debug_only=True)
+@enas_utils.decorate_all_methods(enas_utils.log_enter_exit,
+                                 debug_only=True)
 class StorageObjectManager(object):
     def __init__(self, configuration):
         self.context = dict()
@@ -211,8 +211,8 @@ class StorageObject(object):
         return self.manager.getStorageContext(type)
 
 
-@vnx_utils.decorate_all_methods(vnx_utils.log_enter_exit,
-                                debug_only=True)
+@enas_utils.decorate_all_methods(enas_utils.log_enter_exit,
+                                 debug_only=True)
 class FileSystem(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(FileSystem, self).__init__(conn, elt_maker, xml_parser, manager)
@@ -479,8 +479,8 @@ class FileSystem(StorageObject):
         self._execute_cmd(rw_mount_cmd)
 
 
-@vnx_utils.decorate_all_methods(vnx_utils.log_enter_exit,
-                                debug_only=True)
+@enas_utils.decorate_all_methods(enas_utils.log_enter_exit,
+                                 debug_only=True)
 class StoragePool(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(StoragePool, self).__init__(conn, elt_maker, xml_parser, manager)
@@ -541,8 +541,8 @@ class StoragePool(StorageObject):
         return out['id']
 
 
-@vnx_utils.decorate_all_methods(vnx_utils.log_enter_exit,
-                                debug_only=True)
+@enas_utils.decorate_all_methods(enas_utils.log_enter_exit,
+                                 debug_only=True)
 class MountPoint(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(MountPoint, self).__init__(conn, elt_maker, xml_parser, manager)
@@ -682,8 +682,8 @@ class MountPoint(StorageObject):
         return False
 
 
-@vnx_utils.decorate_all_methods(vnx_utils.log_enter_exit,
-                                debug_only=True)
+@enas_utils.decorate_all_methods(enas_utils.log_enter_exit,
+                                 debug_only=True)
 class Mover(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(Mover, self).__init__(conn, elt_maker, xml_parser, manager)
@@ -847,8 +847,8 @@ class Mover(StorageObject):
         return physical_network_devices
 
 
-@vnx_utils.decorate_all_methods(vnx_utils.log_enter_exit,
-                                debug_only=True)
+@enas_utils.decorate_all_methods(enas_utils.log_enter_exit,
+                                 debug_only=True)
 class VDM(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(VDM, self).__init__(conn, elt_maker, xml_parser, manager)
@@ -1022,8 +1022,8 @@ class VDM(StorageObject):
         return interfaces
 
 
-@vnx_utils.decorate_all_methods(vnx_utils.log_enter_exit,
-                                debug_only=True)
+@enas_utils.decorate_all_methods(enas_utils.log_enter_exit,
+                                 debug_only=True)
 class Snapshot(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(Snapshot, self).__init__(conn, elt_maker, xml_parser, manager)
@@ -1137,8 +1137,8 @@ class Snapshot(StorageObject):
         return self.snap_map[name]['id']
 
 
-@vnx_utils.decorate_all_methods(vnx_utils.log_enter_exit,
-                                debug_only=True)
+@enas_utils.decorate_all_methods(enas_utils.log_enter_exit,
+                                 debug_only=True)
 class MoverInterface(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(MoverInterface, self).__init__(conn, elt_maker, xml_parser,
@@ -1159,18 +1159,21 @@ class MoverInterface(StorageObject):
 
         mover_id = self._get_mover_id(mover_name, False)
 
+        params = dict(device=device_name,
+                      ipAddress=six.text_type(ip_addr),
+                      mover=mover_id,
+                      name=name,
+                      netMask=net_mask,
+                      vlanid=six.text_type(vlan_id))
+
+        if interface.get('ip_version') == 6:
+            params['ipVersion'] = 'IPv6'
+
         if self.xml_retry:
             self.xml_retry = False
 
         request = self._build_task_package(
-            self.elt_maker.NewMoverInterface(
-                device=device_name,
-                ipAddress=six.text_type(ip_addr),
-                mover=mover_id,
-                name=name,
-                netMask=net_mask,
-                vlanid=six.text_type(vlan_id)
-            )
+            self.elt_maker.NewMoverInterface(**params)
         )
 
         response = self._send_request(request)
@@ -1261,8 +1264,8 @@ class MoverInterface(StorageObject):
             raise exception.EMCVnxXMLAPIError(err=message)
 
 
-@vnx_utils.decorate_all_methods(vnx_utils.log_enter_exit,
-                                debug_only=True)
+@enas_utils.decorate_all_methods(enas_utils.log_enter_exit,
+                                 debug_only=True)
 class DNSDomain(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(DNSDomain, self).__init__(conn, elt_maker, xml_parser, manager)
@@ -1323,8 +1326,8 @@ class DNSDomain(StorageObject):
                         {'name': name, 'err': response['problems']})
 
 
-@vnx_utils.decorate_all_methods(vnx_utils.log_enter_exit,
-                                debug_only=True)
+@enas_utils.decorate_all_methods(enas_utils.log_enter_exit,
+                                 debug_only=True)
 class CIFSServer(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(CIFSServer, self).__init__(conn, elt_maker, xml_parser, manager)
@@ -1544,8 +1547,8 @@ class CIFSServer(StorageObject):
         self.cifs_server_map[mover_name].pop(computer_name)
 
 
-@vnx_utils.decorate_all_methods(vnx_utils.log_enter_exit,
-                                debug_only=True)
+@enas_utils.decorate_all_methods(enas_utils.log_enter_exit,
+                                 debug_only=True)
 class CIFSShare(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(CIFSShare, self).__init__(conn, elt_maker, xml_parser, manager)
@@ -1771,8 +1774,8 @@ class CIFSShare(StorageObject):
         return users_to_remove
 
 
-@vnx_utils.decorate_all_methods(vnx_utils.log_enter_exit,
-                                debug_only=True)
+@enas_utils.decorate_all_methods(enas_utils.log_enter_exit,
+                                 debug_only=True)
 class NFSShare(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(NFSShare, self).__init__(conn, elt_maker, xml_parser, manager)
@@ -1872,13 +1875,14 @@ class NFSShare(StorageObject):
             for field in fields:
                 field = field.strip()
                 if field.startswith('rw='):
-                    nfs_share['RwHosts'] = field[3:].split(":")
+                    nfs_share['RwHosts'] = enas_utils.parse_ipaddr(field[3:])
                 elif field.startswith('access='):
-                    nfs_share['AccessHosts'] = field[7:].split(":")
+                    nfs_share['AccessHosts'] = enas_utils.parse_ipaddr(
+                        field[7:])
                 elif field.startswith('root='):
-                    nfs_share['RootHosts'] = field[5:].split(":")
+                    nfs_share['RootHosts'] = enas_utils.parse_ipaddr(field[5:])
                 elif field.startswith('ro='):
-                    nfs_share['RoHosts'] = field[3:].split(":")
+                    nfs_share['RoHosts'] = enas_utils.parse_ipaddr(field[3:])
 
             self.nfs_share_map[name] = nfs_share
         else:
@@ -1899,6 +1903,9 @@ class NFSShare(StorageObject):
             changed = False
             rwhosts = share['RwHosts']
             rohosts = share['RoHosts']
+
+            host_ip = enas_utils.convert_ipv6_format_if_needed(host_ip)
+
             if access_level == const.ACCESS_LEVEL_RW:
                 if host_ip not in rwhosts:
                     rwhosts.append(host_ip)
@@ -1942,7 +1949,6 @@ class NFSShare(StorageObject):
         do_allow_access(share_name, host_ip, mover_name, access_level)
 
     def deny_share_access(self, share_name, host_ip, mover_name):
-
         @utils.synchronized('emc-shareaccess-' + share_name)
         def do_deny_access(share_name, host_ip, mover_name):
             status, share = self.get(share_name, mover_name)
