@@ -2079,7 +2079,7 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         instance.neutron_api.create_port.assert_called_once_with(
             instance.admin_project_id, instance.service_network_id,
             device_id='manila-share', device_owner='manila:share',
-            host_id='fake_host', subnet_id=None)
+            host_id='fake_host', subnet_id=None, port_security_enabled=False)
         service_instance.socket.gethostname.assert_called_once_with()
         self.assertFalse(instance.neutron_api.update_port_fixed_ips.called)
         self.assertEqual(fake_service_port, result)
@@ -2133,7 +2133,7 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         instance.neutron_api.create_port.assert_called_once_with(
             instance.admin_project_id, instance.service_network_id,
             device_id='manila-share', device_owner='manila:share',
-            host_id='fake_host', subnet_id=None)
+            host_id='fake_host', subnet_id=None, port_security_enabled=False)
         service_instance.socket.gethostname.assert_called_once_with()
         self.assertFalse(instance.neutron_api.update_port_fixed_ips.called)
         self.assertEqual(fake_service_port, result)
