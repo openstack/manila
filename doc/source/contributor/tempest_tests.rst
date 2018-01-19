@@ -11,7 +11,31 @@ information can be found in its `docs`_.
 In simple words: if you have installed manila project on the same machine as
 tempest, then tempest will find it.
 
+In case the plugin is not installed (see the verification steps below),
+you can clone and install it yourself.
+
+.. code-block:: console
+
+   $ git clone https://git.openstack.org/openstack/manila-tempest-plugin
+   $ pip install -e manila-tempest-plugin
+
 .. _docs: https://docs.openstack.org/tempest/latest/plugin.html#using-plugins
+
+Verifying installation
+----------------------
+To verify that the plugin is installed on your system, run the following
+command and find "manila_tests" in its output.
+
+.. code-block:: console
+
+   $ tempest list-plugins
+
+Alternatively, or to double-check, list all the tests available on the system
+and find manila tests in it.
+
+.. code-block:: console
+
+   $ tempest run -l
 
 Configuration of manila-related tests in tempest.conf
 -----------------------------------------------------
