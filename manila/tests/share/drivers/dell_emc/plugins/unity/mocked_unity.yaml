@@ -27,12 +27,26 @@ interface_2: &interface_2
   _properties:
     ip_address: 'fake_ip_addr_2'
 
+interface_ipv6: &interface_ipv6
+  _properties:
+    ip_addr: '2001:db8:0:1:f816:3eff:fe76:35c4'
+    gateway: '2001:db8:0:1::1'
+    prefix_length: '64'
+    vlan_id: '201'
+
 nas_server: &nas_server
     _properties: &nas_server_prop
       name: '78fd845f-8e7d-487f-bfde-051d83e78103'
       file_interface: [*interface_1, *interface_2]
       current_sp: *sp_a
       home_sp: *sp_a
+
+nas_server_ipv6: &nas_server_ipv6
+  _properties: &nas_server_ipv6_prop
+    name: 'af1eef2f-be66-4df1-8f25-9720f087da05'
+    file_interface: [*interface_ipv6]
+    current_sp: *sp_a
+    home_sp: *sp_a
 
 filesystem_base: &filesystem_base
   _properties: &filesystem_base_prop
@@ -1082,3 +1096,9 @@ test_get_file_ports:
   unity:
     _methods:
       get_file_port: [*port_1, *port_internal_port, *down_port, *la_port]
+
+test_create_file_interface_ipv6:
+  file_interface: *interface_ipv6
+  nas_server:
+    _methods:
+      create_file_interface:

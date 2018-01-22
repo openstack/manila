@@ -14,6 +14,7 @@
 #    under the License.
 
 import ddt
+import mock
 from oslo_utils import units
 
 from manila import exception
@@ -207,3 +208,26 @@ class TestClient(test.TestCase):
     def test_get_tenant_for_vlan_already_has_interfaces(self, client):
         tenant = client.get_tenant('tenant', 3)
         self.assertEqual('tenant_1', tenant.id)
+
+    @res_mock.mock_client_input
+    @res_mock.patch_client
+    def test_create_file_interface_ipv6(self, client, mocked_input):
+        mock_nas_server = mock.Mock()
+        mock_nas_server.create_file_interface = mock.Mock(return_value=None)
+        mock_file_interface = mocked_input['file_interface']
+        mock_port_id = mock.Mock()
+        client.create_interface(mock_nas_server,
+                                mock_file_interface.ip_addr,
+                                netmask=None,
+                                gateway=mock_file_interface.gateway,
+                                port_id=mock_port_id,
+                                vlan_id=mock_file_interface.vlan_id,
+                                prefix_length=mock_file_interface.prefix_length
+                                )
+        mock_nas_server.create_file_interface.assert_called_once_with(
+            mock_port_id,
+            mock_file_interface.ip_addr,
+            netmask=None,
+            v6_prefix_length=mock_file_interface.prefix_length,
+            gateway=mock_file_interface.gateway,
+            vlan_id=mock_file_interface.vlan_id)

@@ -26,6 +26,7 @@ if storops:
 from manila.common import constants as const
 from manila import exception
 from manila.i18n import _
+from manila.share.drivers.dell_emc.common.enas import utils as enas_utils
 from manila.share.drivers.dell_emc.plugins.unity import utils
 
 LOG = log.getLogger(__name__)
@@ -171,11 +172,12 @@ class UnityClient(object):
 
     @staticmethod
     def create_interface(nas_server, ip_addr, netmask, gateway, port_id,
-                         vlan_id=None):
+                         vlan_id=None, prefix_length=None):
         try:
             nas_server.create_file_interface(port_id,
                                              ip_addr,
                                              netmask=netmask,
+                                             v6_prefix_length=prefix_length,
                                              gateway=gateway,
                                              vlan_id=vlan_id)
         except storops_ex.UnityIpAddressUsedError:
@@ -262,6 +264,7 @@ class UnityClient(object):
 
     def nfs_allow_access(self, share_name, host_ip, access_level):
         share = self.system.get_nfs_share(name=share_name)
+        host_ip = enas_utils.convert_ipv6_format_if_needed(host_ip)
         if access_level == const.ACCESS_LEVEL_RW:
             share.allow_read_write_access(host_ip, force_create_host=True)
             share.allow_root_access(host_ip, force_create_host=True)

@@ -45,6 +45,17 @@ network_allocations_vxlan:
       network_type: vxlan
       mtu: 1500
 
+network_allocations_ipv6:
+  _type: 'network_allocations'
+  _properties: &network_allocations_ipv6_prop
+    - id: '04ac4c27-9cf7-4406-809c-13edc93e9844'
+      ip_address: '2001:db8:0:1:f816:3eff:fe76:35c4'
+      cidr: '2001:db8:0:1:f816:3eff:fe76:35c4/64'
+      segmentation_id: 170
+      gateway: '2001:db8:0:1::1'
+      network_type: vlan
+      mtu: 1500
+
 active_directory:
   _type: 'security_service'
   _properties: &active_directory_prop
@@ -96,6 +107,13 @@ network_info__vxlan:
     <<: *network_info_flat_prop
     network_type: 'vxlan'
     network_allocations: *network_allocations_vxlan_prop
+
+network_info__ipv6:
+  _type: 'network_info'
+  _properties: &network_info__ipv6_prop
+    <<: *network_info_flat_prop
+    network_allocations: *network_allocations_ipv6_prop
+    segmentation_id: 170
 
 network_info__active_directory:
   _type: 'network_info'

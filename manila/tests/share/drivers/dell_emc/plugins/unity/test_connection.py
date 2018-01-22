@@ -15,6 +15,7 @@
 
 import copy
 import ddt
+import mock
 from oslo_utils import units
 import six
 
@@ -613,3 +614,42 @@ class TestConnection(test.TestCase):
         self.assertRaises(exception.InvalidShareAccessLevel,
                           connection.allow_access,
                           None, share, rw_access)
+
+    @res_mock.patch_connection
+    def test__create_network_interface_ipv6(self, connection):
+        connection.client.create_interface = mock.Mock(return_value=None)
+        nas_server = mock.Mock()
+        network = {'ip_address': '2001:db8:0:1:f816:3eff:fe76:35c4',
+                   'cidr': '2001:db8:0:1:f816:3eff:fe76:35c4/64',
+                   'gateway': '2001:db8:0:1::1',
+                   'segmentation_id': '201'}
+        port_id = mock.Mock()
+        connection._create_network_interface(nas_server, network, port_id)
+
+        expected = {'ip_addr': '2001:db8:0:1:f816:3eff:fe76:35c4',
+                    'netmask': None,
+                    'gateway': '2001:db8:0:1::1',
+                    'port_id': port_id,
+                    'vlan_id': '201',
+                    'prefix_length': '64'}
+        connection.client.create_interface.assert_called_once_with(nas_server,
+                                                                   **expected)
+
+    @res_mock.patch_connection
+    def test__create_network_interface_ipv4(self, connection):
+        connection.client.create_interface = mock.Mock(return_value=None)
+        nas_server = mock.Mock()
+        network = {'ip_address': '192.168.1.10',
+                   'cidr': '192.168.1.10/24',
+                   'gateway': '192.168.1.1',
+                   'segmentation_id': '201'}
+        port_id = mock.Mock()
+        connection._create_network_interface(nas_server, network, port_id)
+
+        expected = {'ip_addr': '192.168.1.10',
+                    'netmask': '255.255.255.0',
+                    'gateway': '192.168.1.1',
+                    'port_id': port_id,
+                    'vlan_id': '201'}
+        connection.client.create_interface.assert_called_once_with(nas_server,
+                                                                   **expected)
