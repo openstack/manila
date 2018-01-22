@@ -88,7 +88,7 @@ To enable the Unicode for Data Mover:
     mover_name = <name of the Data Mover>
 
 Refer to the document `Using International Character Sets on VNX for File`
-on [EMC support site](http://support.emc.com) for more information.
+on [EMC support site](https://support.emc.com) for more information.
 
 2. Enable CIFS service on Data Mover
 
@@ -165,7 +165,7 @@ usermapper:
     <movername> = <name of the Data Mover>
 
 For multiple protocol environment, refer to `Configuring VNX User Mapping` on
-[EMC support site](http://support.emc.com) for additional information.
+[EMC support site](https://support.emc.com) for additional information.
 
 5. Network Connection
 
@@ -274,7 +274,7 @@ The VNX driver has the following restrictions:
   percentage value can be changed manually by storage administrator based on
   the storage needs. Administrator is recommended to configure the notification
   on the SavVol usage. Refer to `Using VNX SnapSure` document on [EMC support
-  site](http://support.emc.com) for more information.
+  site](https://support.emc.com) for more information.
 
 - VNX has limitations on the overall numbers of Virtual Data Movers,
   filesystems, shares, checkpoints, and etc. Virtual Data Mover(VDM) is created
@@ -282,7 +282,7 @@ The VNX driver has the following restrictions:
   filesystem is created, mounted, and exported from the VDM over CIFS or NFS
   protocol to serve as the manila share. The VNX checkpoint serves as the
   manila share snapshot. Refer to the `NAS Support Matrix` document on [EMC
-  support site](http://support.emc.com) for the limitations and configure the
+  support site](https://support.emc.com) for the limitations and configure the
   quotas accordingly.
 
 The :mod:`manila.share.drivers.dell_emc.driver` Module
