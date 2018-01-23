@@ -177,7 +177,7 @@ class BaseSharesTest(test.BaseTestCase):
             project_network_cidr=CONF.network.project_network_cidr,
             project_network_mask_bits=CONF.network.project_network_mask_bits,
             public_network_id=CONF.network.public_network_id,
-            resource_prefix=CONF.resources_prefix,
+            resource_prefix='tempest',
             identity_admin_endpoint_type=identity_admin_endpoint_type,
             identity_uri=identity_uri)
 
