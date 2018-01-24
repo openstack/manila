@@ -220,7 +220,7 @@ report the ``replication_type`` they support as a capability and implement
 necessary methods.
 
 More details can be found at:
-https://docs.openstack.org/manila/latest/admin/share_replication.html
+https://docs.openstack.org/manila/latest/admin/shared-file-systems-share-replication.html
 
 Update "used_size" of shares
 ----------------------------
