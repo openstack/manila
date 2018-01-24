@@ -111,13 +111,27 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(
             performance, 'PerformanceLibrary',
             mock.Mock(return_value='fake_perf_library'))
-
+        self.mock_object(
+            self.library._client, 'check_for_cluster_credentials',
+            mock.Mock(return_value=True))
         self.library.do_setup(self.context)
 
         mock_get_api_client.assert_called_once_with()
         (self.library._client.check_for_cluster_credentials.
             assert_called_once_with())
         self.assertEqual('fake_perf_library', self.library._perf_library)
+        self.mock_object(self.library._client,
+                         'check_for_cluster_credentials',
+                         mock.Mock(return_value=True))
+        mock_set_cluster_info = self.mock_object(
+            self.library, '_set_cluster_info')
+        self.library.do_setup(self.context)
+        mock_set_cluster_info.assert_called_once()
+
+    def test_set_cluster_info(self):
+        self.library._set_cluster_info()
+        self.assertTrue(self.library._cluster_info['nve_support'],
+                        fake.CLUSTER_NODES)
 
     def test_check_for_setup_error(self):
 
@@ -415,6 +429,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library, '_get_aggregate_space',
             mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
         self.library._have_cluster_creds = True
+        self.library._cluster_info = fake.CLUSTER_INFO
         self.library._ssc_stats = fake.SSC_INFO
         self.library._perf_library.get_node_utilization_for_pool = (
             mock.Mock(side_effect=[30.0, 42.0]))
@@ -430,6 +445,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library, '_get_aggregate_space',
             mock.Mock(return_value=fake.AGGREGATE_CAPACITIES_VSERVER_CREDS))
         self.library._have_cluster_creds = False
+        self.library._cluster_info = fake.CLUSTER_INFO
         self.library._ssc_stats = fake.SSC_INFO_VSERVER_CREDS
         self.library._perf_library.get_node_utilization_for_pool = (
             mock.Mock(side_effect=[50.0, 50.0]))
@@ -672,7 +688,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client.create_volume.assert_called_once_with(
             fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
             thin_provisioned=True, snapshot_policy='default',
-            language='en-US', dedup_enabled=True, split=True,
+            language='en-US', dedup_enabled=True, split=True, encrypt=False,
             compression_enabled=False, max_files=5000, snapshot_reserve=8)
 
     def test_remap_standard_boolean_extra_specs(self):
@@ -703,7 +719,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
             thin_provisioned=True, snapshot_policy='default',
             language='en-US', dedup_enabled=True, split=True,
-            compression_enabled=False, max_files=5000,
+            compression_enabled=False, max_files=5000, encrypt=False,
             snapshot_reserve=8, volume_type='dp')
 
     def test_allocate_container_no_pool_name(self):
@@ -834,18 +850,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_provisioning_options.assert_called_once_with(extra_specs)
         mock_get_normalized_qos_specs.assert_called_once_with(extra_specs)
 
-    def test_get_provisioning_options(self):
-        result = self.library._get_provisioning_options(fake.EXTRA_SPEC)
-
-        self.assertEqual(fake.PROVISIONING_OPTIONS, result)
-
-    def test_get_provisioning_options_missing_spec(self):
-        result = self.library._get_provisioning_options(
-            fake.SHORT_BOOLEAN_EXTRA_SPEC)
-
-        self.assertEqual(
-            fake.PROVISIONING_OPTIONS_BOOLEAN_THIN_PROVISIONED_TRUE, result)
-
     def test_get_provisioning_options_implicit_false(self):
         result = self.library._get_provisioning_options(
             fake.EMPTY_EXTRA_SPEC)
@@ -858,6 +862,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'compression_enabled': False,
             'dedup_enabled': False,
             'split': False,
+            'encrypt': False,
         }
 
         self.assertEqual(expected, result)
@@ -1048,7 +1053,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client.create_volume_clone.assert_called_once_with(
             share_name, parent_share_name, parent_snapshot_name,
             thin_provisioned=True, snapshot_policy='default',
-            language='en-US', dedup_enabled=True, split=True,
+            language='en-US', dedup_enabled=True, split=True, encrypt=False,
             compression_enabled=False, max_files=5000)
         if size > original_snapshot_size:
             vserver_client.set_volume_size.assert_called_once_with(
@@ -1587,8 +1592,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         mock_get_volume_to_manage.assert_called_once_with(
             fake.POOL_NAME, fake.FLEXVOL_NAME)
-        mock_validate_volume_for_manage.assert_called_once_with(
-            fake.FLEXVOL_TO_MANAGE, vserver_client)
         mock_check_extra_specs_validity.assert_called_once_with(
             share_to_manage, extra_specs)
         mock_check_aggregate_extra_specs_validity.assert_called_once_with(
@@ -1603,6 +1606,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.POOL_NAME, fake.SHARE_NAME, **provisioning_opts)
         mock_modify_or_create_qos_policy.assert_called_once_with(
             share_to_manage, extra_specs, fake.VSERVER1, vserver_client)
+        mock_validate_volume_for_manage.assert_called()
 
         original_data = {
             'original_name': fake.FLEXVOL_TO_MANAGE['name'],
@@ -4209,6 +4213,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_check_aggregate_extra_specs_validity')
         mock_vserver_compatibility_check = self.mock_object(
             self.library, '_check_destination_vserver_for_vol_move')
+        self.mock_object(self.library, '_get_dest_flexvol_encryption_value',
+                         mock.Mock(return_value=False))
 
         migration_compatibility = self.library.migration_check_compatibility(
             self.context, fake_share.fake_share_instance(),
@@ -4326,6 +4332,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_move_check = self.mock_object(
             self.client, 'check_volume_move',
             mock.Mock(side_effect=netapp_api.NaApiError))
+        self.mock_object(self.library, '_get_dest_flexvol_encryption_value',
+                         mock.Mock(return_value=False))
 
         migration_compatibility = self.library.migration_check_compatibility(
             self.context, fake_share.fake_share_instance(),
@@ -4344,7 +4352,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         data_motion.get_backend_configuration.assert_called_once_with(
             'destination_backend')
         mock_move_check.assert_called_once_with(
-            fake.SHARE_NAME, fake.VSERVER1, 'destination_pool')
+            fake.SHARE_NAME, fake.VSERVER1, 'destination_pool',
+            encrypt_destination=False)
         self.library._get_vserver.assert_has_calls(
             [mock.call(share_server=fake.SHARE_SERVER),
              mock.call(share_server='dst_srv')])
@@ -4362,6 +4371,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(share_utils, 'extract_host', mock.Mock(
             side_effect=['destination_backend', 'destination_pool']))
         mock_move_check = self.mock_object(self.client, 'check_volume_move')
+        self.mock_object(self.library, '_get_dest_flexvol_encryption_value',
+                         mock.Mock(return_value=False))
 
         migration_compatibility = self.library.migration_check_compatibility(
             self.context, fake_share.fake_share_instance(),
@@ -4379,7 +4390,51 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         data_motion.get_backend_configuration.assert_called_once_with(
             'destination_backend')
         mock_move_check.assert_called_once_with(
-            fake.SHARE_NAME, fake.VSERVER1, 'destination_pool')
+            fake.SHARE_NAME, fake.VSERVER1, 'destination_pool',
+            encrypt_destination=False)
+        self.library._get_vserver.assert_has_calls(
+            [mock.call(share_server=fake.SHARE_SERVER),
+             mock.call(share_server='dst_srv')])
+
+    def test_migration_check_compatibility_destination_type_is_encrypted(self):
+        self.library._have_cluster_creds = True
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(data_motion, 'get_backend_configuration')
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1, mock.Mock())))
+        self.mock_object(share_utils, 'extract_host', mock.Mock(
+            side_effect=['destination_backend', 'destination_pool']))
+        mock_move_check = self.mock_object(self.client, 'check_volume_move')
+        self.mock_object(self.library, '_get_dest_flexvol_encryption_value',
+                         mock.Mock(return_value=True))
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value={'spec1': 'spec-data'}))
+        self.mock_object(self.library,
+                         '_check_extra_specs_validity')
+        self.mock_object(self.library,
+                         '_check_aggregate_extra_specs_validity')
+
+        migration_compatibility = self.library.migration_check_compatibility(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(), share_server=fake.SHARE_SERVER,
+            destination_share_server='dst_srv')
+
+        expected_compatibility = {
+            'compatible': True,
+            'writable': True,
+            'nondisruptive': True,
+            'preserve_metadata': True,
+            'preserve_snapshots': True,
+        }
+        self.assertDictMatch(expected_compatibility, migration_compatibility)
+        data_motion.get_backend_configuration.assert_called_once_with(
+            'destination_backend')
+
+        mock_move_check.assert_called_once_with(
+            fake.SHARE_NAME, fake.VSERVER1, 'destination_pool',
+            encrypt_destination=True)
+
         self.library._get_vserver.assert_has_calls(
             [mock.call(share_server=fake.SHARE_SERVER),
              mock.call(share_server='dst_srv')])
@@ -4395,6 +4450,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(share_utils, 'extract_host',
                          mock.Mock(return_value='destination_pool'))
         mock_move = self.mock_object(self.client, 'start_volume_move')
+        self.mock_object(self.library, '_get_dest_flexvol_encryption_value',
+                         mock.Mock(return_value=False))
 
         retval = self.library.migration_start(
             self.context, fake_share.fake_share_instance(),
@@ -4405,7 +4462,34 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertIsNone(retval)
         self.assertTrue(mock_info_log.called)
         mock_move.assert_called_once_with(
-            fake.SHARE_NAME, fake.VSERVER1, 'destination_pool')
+            fake.SHARE_NAME, fake.VSERVER1, 'destination_pool',
+            encrypt_destination=False)
+
+    def test_migration_start_encrypted_destination(self):
+        mock_info_log = self.mock_object(lib_base.LOG, 'info')
+        source_snapshots = mock.Mock()
+        snapshot_mappings = mock.Mock()
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1, mock.Mock())))
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(share_utils, 'extract_host',
+                         mock.Mock(return_value='destination_pool'))
+        mock_move = self.mock_object(self.client, 'start_volume_move')
+        self.mock_object(self.library, '_get_dest_flexvol_encryption_value',
+                         mock.Mock(return_value=True))
+
+        retval = self.library.migration_start(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(),
+            source_snapshots, snapshot_mappings,
+            share_server=fake.SHARE_SERVER, destination_share_server='dst_srv')
+
+        self.assertIsNone(retval)
+        self.assertTrue(mock_info_log.called)
+        mock_move.assert_called_once_with(
+            fake.SHARE_NAME, fake.VSERVER1, 'destination_pool',
+            encrypt_destination=True)
 
     def test_migration_continue_volume_move_failed(self):
         source_snapshots = mock.Mock()

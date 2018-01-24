@@ -103,6 +103,7 @@ SHARE = {
     'replica_state': constants.REPLICA_STATE_ACTIVE,
     'status': constants.STATUS_AVAILABLE,
     'share_server': None,
+    'encrypt': False,
 }
 
 FLEXVOL_TO_MANAGE = {
@@ -126,6 +127,16 @@ QOS_POLICY_GROUP = {
     'num-workloads': 1,
 }
 
+FLEXVOL = {
+    'aggregate': POOL_NAME,
+    'junction-path': '/%s' % FLEXVOL_NAME,
+    'name': FLEXVOL_NAME,
+    'type': 'rw',
+    'style': 'flex',
+    'size': '1610612736',  # rounds down to 1 GB,
+    'owning-vserver-name': VSERVER1,
+}
+
 EXTRA_SPEC = {
     'netapp:thin_provisioned': 'true',
     'netapp:snapshot_policy': 'default',
@@ -136,6 +147,7 @@ EXTRA_SPEC = {
     'netapp:split_clone_on_create': 'true',
     'netapp_disk_type': 'FCAL',
     'netapp_raid_type': 'raid4',
+    'netapp_flexvol_encryption': 'true',
 }
 
 EXTRA_SPEC_WITH_QOS = copy.deepcopy(EXTRA_SPEC)
@@ -158,6 +170,7 @@ PROVISIONING_OPTIONS = {
     'compression_enabled': False,
     'max_files': 5000,
     'split': True,
+    'encrypt': False,
 }
 
 PROVISIONING_OPTIONS_WITH_QOS = copy.deepcopy(PROVISIONING_OPTIONS)
@@ -179,6 +192,7 @@ PROVISIONING_OPTIONS_BOOLEAN_THIN_PROVISIONED_TRUE = {
     'compression_enabled': False,
     'max_files': None,
     'split': False,
+    'encrypt': False,
 }
 
 PROVISIONING_OPTIONS_STRING = {
@@ -626,6 +640,7 @@ POOLS = [
         'dedupe': [True, False],
         'compression': [True, False],
         'thin_provisioning': [True, False],
+        'netapp_flexvol_encryption': True,
         'netapp_raid_type': 'raid4',
         'netapp_disk_type': 'FCAL',
         'netapp_hybrid_aggregate': 'false',
@@ -648,6 +663,7 @@ POOLS = [
         'dedupe': [True, False],
         'compression': [True, False],
         'thin_provisioning': [True, False],
+        'netapp_flexvol_encryption': True,
         'netapp_raid_type': 'raid_dp',
         'netapp_disk_type': ['SATA', 'SSD'],
         'netapp_hybrid_aggregate': 'true',
@@ -673,6 +689,7 @@ POOLS_VSERVER_CREDS = [
         'dedupe': [True, False],
         'compression': [True, False],
         'thin_provisioning': [True, False],
+        'netapp_flexvol_encryption': True,
         'utilization': 50.0,
         'filter_function': None,
         'goodness_function': None,
@@ -692,6 +709,7 @@ POOLS_VSERVER_CREDS = [
         'dedupe': [True, False],
         'compression': [True, False],
         'thin_provisioning': [True, False],
+        'netapp_flexvol_encryption': True,
         'utilization': 50.0,
         'filter_function': None,
         'goodness_function': None,
@@ -714,6 +732,11 @@ SSC_AGGREGATES = [
         'is-hybrid': True,
     },
 ]
+
+CLUSTER_INFO = {
+    'nodes': CLUSTER_NODES,
+    'nve_support': True,
+}
 
 SSC_DISK_TYPES = ['FCAL', ['SATA', 'SSD']]
 

@@ -66,10 +66,22 @@ class NetAppBaseClientTestCase(test.TestCase):
             fake.SYSTEM_GET_VERSION_RESPONSE)
         self.connection.invoke_successfully.return_value = version_response
 
+        result = self.client.get_system_version(cached=False)
+
+        self.assertEqual(fake.VERSION, result['version'])
+        self.assertEqual((8, 2, 1), result['version-tuple'])
+
+    def test_get_system_version_cached(self):
+
+        self.connection.get_system_version.return_value = {
+            'version': fake.VERSION,
+            'version-tuple': (8, 2, 1)
+        }
+
         result = self.client.get_system_version()
 
         self.assertEqual(fake.VERSION, result['version'])
-        self.assertEqual(('8', '2', '1'), result['version-tuple'])
+        self.assertEqual((8, 2, 1), result['version-tuple'])
 
     def test_init_features(self):
 

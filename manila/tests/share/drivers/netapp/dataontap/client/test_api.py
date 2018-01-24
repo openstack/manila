@@ -31,6 +31,16 @@ from manila.tests.share.drivers.netapp.dataontap.client import fakes as fake
 class NetAppApiElementTransTests(test.TestCase):
     """Test case for NetApp API element translations."""
 
+    def test_get_set_system_version(self):
+        napi = api.NaServer('localhost')
+
+        # Testing calls before version is set
+        version = napi.get_system_version()
+        self.assertIsNone(version)
+        napi.set_system_version(fake.VERSION_TUPLE)
+        version = napi.get_system_version()
+        self.assertEqual(fake.VERSION_TUPLE, version)
+
     def test_translate_struct_dict_unique_key(self):
         """Tests if dict gets properly converted to NaElements."""
         root = api.NaElement('root')

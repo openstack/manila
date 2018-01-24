@@ -49,8 +49,11 @@ class NetAppBaseClient(object):
         return major, minor
 
     @na_utils.trace
-    def get_system_version(self):
+    def get_system_version(self, cached=True):
         """Gets the current Data ONTAP version."""
+
+        if cached:
+            return self.connection.get_system_version()
 
         result = self.send_request('system-get-version')
 
@@ -62,9 +65,9 @@ class NetAppBaseClient(object):
         version = {}
         version['version'] = result.get_child_content('version')
         version['version-tuple'] = (
-            system_version_tuple.get_child_content('generation'),
-            system_version_tuple.get_child_content('major'),
-            system_version_tuple.get_child_content('minor'))
+            int(system_version_tuple.get_child_content('generation')),
+            int(system_version_tuple.get_child_content('major')),
+            int(system_version_tuple.get_child_content('minor')))
 
         return version
 

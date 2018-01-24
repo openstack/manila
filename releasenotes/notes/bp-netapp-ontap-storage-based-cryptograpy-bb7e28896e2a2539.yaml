@@ -1,0 +1,5 @@
+---
+features:
+  - Now Manila NetApp ONTAP driver supports NetApp Volume Encryption
+    (NVE) which allows the creation of volumes that will be encrypted
+    at rest.

@@ -158,10 +158,21 @@ class NaServer(object):
             raise ValueError('Major and minor versions must be integers')
         self._refresh_conn = True
 
+    def set_system_version(self, system_version):
+        """Set the ONTAP system version."""
+        self._system_version = system_version
+        self._refresh_conn = True
+
     def get_api_version(self):
         """Gets the API version tuple."""
         if hasattr(self, '_api_version'):
             return (self._api_major_version, self._api_minor_version)
+        return None
+
+    def get_system_version(self):
+        """Gets the ONTAP system version."""
+        if hasattr(self, '_system_version'):
+            return self._system_version
         return None
 
     def set_port(self, port):

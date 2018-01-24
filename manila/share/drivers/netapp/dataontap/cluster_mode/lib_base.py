@@ -71,11 +71,13 @@ class NetAppCmodeFileStorageLibrary(object):
         'netapp:compression': 'compression_enabled',
         'netapp:split_clone_on_create': 'split',
     }
+
     STRING_QUALIFIED_EXTRA_SPECS_MAP = {
         'netapp:snapshot_policy': 'snapshot_policy',
         'netapp:language': 'language',
         'netapp:max_files': 'max_files',
     }
+
     # Maps standard extra spec keys to legacy NetApp keys
     STANDARD_BOOLEAN_EXTRA_SPECS_MAP = {
         'thin_provisioning': 'netapp:thin_provisioned',
@@ -114,6 +116,7 @@ class NetAppCmodeFileStorageLibrary(object):
         self._clients = {}
         self._ssc_stats = {}
         self._have_cluster_creds = None
+        self._cluster_info = {}
 
         self._app_version = kwargs.get('app_version', 'unknown')
 
@@ -126,9 +129,17 @@ class NetAppCmodeFileStorageLibrary(object):
     def do_setup(self, context):
         self._client = self._get_api_client()
         self._have_cluster_creds = self._client.check_for_cluster_credentials()
+        if self._have_cluster_creds is True:
+            self._set_cluster_info()
 
         # Performance monitoring library
         self._perf_library = performance.PerformanceLibrary(self._client)
+
+    @na_utils.trace
+    def _set_cluster_info(self):
+        self._cluster_info['nve_support'] = (
+            self._client.is_nve_supported()
+            and self._client.features.FLEXVOL_ENCRYPTION)
 
     @na_utils.trace
     def check_for_setup_error(self):
@@ -140,6 +151,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
     @na_utils.trace
     def _get_api_client(self, vserver=None):
+
         # Use cached value to prevent calls to system-get-ontapi-version.
         client = self._clients.get(vserver)
 
@@ -300,6 +312,9 @@ class NetAppCmodeFileStorageLibrary(object):
         else:
             qos_support = False
 
+        netapp_flexvol_encryption = self._cluster_info.get(
+            'nve_support', False)
+
         for aggr_name in sorted(aggregates):
 
             reserved_percentage = self.configuration.reserved_share_percentage
@@ -325,6 +340,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 'reserved_percentage': reserved_percentage,
                 'dedupe': [True, False],
                 'compression': [True, False],
+                'netapp_flexvol_encryption': netapp_flexvol_encryption,
                 'thin_provisioning': [True, False],
                 'snapshot_support': True,
                 'create_share_from_snapshot_support': True,
@@ -685,7 +701,18 @@ class NetAppCmodeFileStorageLibrary(object):
             specs, self.STRING_QUALIFIED_EXTRA_SPECS_MAP)
         result = boolean_args.copy()
         result.update(string_args)
+
+        result['encrypt'] = self._get_nve_option(specs)
+
         return result
+
+    def _get_nve_option(self, specs):
+        if 'netapp_flexvol_encryption' in specs:
+            nve = specs['netapp_flexvol_encryption'].lower() == 'true'
+        else:
+            nve = False
+
+        return nve
 
     @na_utils.trace
     def _check_aggregate_extra_specs_validity(self, aggregate_name, specs):
@@ -981,9 +1008,6 @@ class NetAppCmodeFileStorageLibrary(object):
         # When calculating the size, round up to the next GB.
         volume_size = int(math.ceil(float(volume['size']) / units.Gi))
 
-        # Ensure volume is manageable
-        self._validate_volume_for_manage(volume, vserver_client)
-
         # Validate extra specs
         extra_specs = share_types.get_extra_specs_from_share(share)
         try:
@@ -993,6 +1017,10 @@ class NetAppCmodeFileStorageLibrary(object):
         except exception.ManilaException as ex:
             raise exception.ManageExistingShareTypeMismatch(
                 reason=six.text_type(ex))
+
+        # Ensure volume is manageable
+        self._validate_volume_for_manage(volume, vserver_client)
+
         provisioning_options = self._get_provisioning_options(extra_specs)
 
         debug_args = {
@@ -1923,8 +1951,11 @@ class NetAppCmodeFileStorageLibrary(object):
                 self._check_destination_vserver_for_vol_move(
                     source_share, source_vserver, destination_share_server)
 
+                encrypt_dest = self._get_dest_flexvol_encryption_value(
+                    destination_share)
                 self._client.check_volume_move(
-                    share_volume, source_vserver, destination_aggregate)
+                    share_volume, source_vserver, destination_aggregate,
+                    encrypt_destination=encrypt_dest)
 
             except Exception:
                 msg = ("Cannot migrate share %(shr)s efficiently between "
@@ -1963,8 +1994,18 @@ class NetAppCmodeFileStorageLibrary(object):
         destination_aggregate = share_utils.extract_host(
             destination_share['host'], level='pool')
 
+        # If the destination's share type extra-spec for Flexvol encryption
+        # is different than the source's, then specify the volume-move
+        # operation to set the correct 'encrypt' attribute on the destination
+        # volume.
+        encrypt_dest = self._get_dest_flexvol_encryption_value(
+            destination_share)
+
         self._client.start_volume_move(
-            share_volume, vserver, destination_aggregate)
+            share_volume,
+            vserver,
+            destination_aggregate,
+            encrypt_destination=encrypt_dest)
 
         msg = ("Began volume move operation of share %(shr)s from %(src)s "
                "to %(dest)s.")
@@ -1980,6 +2021,15 @@ class NetAppCmodeFileStorageLibrary(object):
         share_volume = self._get_backend_share_name(source_share['id'])
         status = self._client.get_volume_move_status(share_volume, vserver)
         return status
+
+    def _get_dest_flexvol_encryption_value(self, destination_share):
+        dest_share_type_encrypted_val = share_types.get_share_type_extra_specs(
+            destination_share['share_type_id'],
+            'netapp_flexvol_encryption')
+        encrypt_destination = share_types.parse_boolean_extra_spec(
+            'netapp_flexvol_encryption', dest_share_type_encrypted_val)
+
+        return encrypt_destination
 
     def migration_continue(self, context, source_share, destination_share,
                            source_snapshots, snapshot_mappings,
