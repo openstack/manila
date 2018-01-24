@@ -377,7 +377,7 @@ Additional Notes
   real used space in HNAS. Also, a snapshot does not initially take any space in
   HNAS, it only stores the difference between the share and the snapshot, so it
   grows when share data is changed.
-- Admins should manage the tenant’s quota (*manila quota-update*) to control
+- Admins should manage the tenant's quota (*manila quota-update*) to control
   the backend usage.
 - By default, CIFS snapshots are disabled when the share is mounted, since it
   uses tree-clone to create snapshots and does not guarantee point-in-time

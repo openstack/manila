@@ -208,5 +208,5 @@ Additional notes
 
 - Shares are thin provisioned. It is reported to manila only the
   real used space in HSP.
-- Administrators should manage the tenant’s quota (``manila quota-update``)
+- Administrators should manage the tenant's quota (``manila quota-update``)
   to control the backend usage.

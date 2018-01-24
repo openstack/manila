@@ -297,7 +297,7 @@ without share networks. The configuration option
 ``driver_handles_share_servers``( ``True`` or ``False`` ) indicated whether
 share networks could be used. When set to ``False``, the HPE 3PAR driver
 behaved as described earlier for Kilo. When set to ``True``, the share
-network’s subnet, segmentation ID and IP address range were used to allocate
+network's subnet, segmentation ID and IP address range were used to allocate
 an FSIP on the HPE 3PAR. There is a limit of four FSIPs per VFS. For clients
 to communicate with shares via this FSIP, the client must have access to the
 external network using the subnet and segmentation ID of the share network.
@@ -584,8 +584,8 @@ Implementation characteristics
    driver uses one File Store for multiple shares. In this case, the size of
    the File Store limit is set to the cumulative limit of its Manila share
    sizes. This can allow one tenant share to exceed the limit and affect the
-   space available for the same tenant’s other shares. One tenant cannot use
-   another tenant’s File Store.
+   space available for the same tenant's other shares. One tenant cannot use
+   another tenant's File Store.
 
 
 -  File removal
@@ -594,7 +594,7 @@ Implementation characteristics
    setting is used (the default), files may be left behind in the File Store.
    Prior to Mitaka, removal of obsolete share directories and files that have
    been stranded would require tools outside of OpenStack/Manila. In Mitaka
-   and later, the driver mounts the File Store to remove the deleted share’s
+   and later, the driver mounts the File Store to remove the deleted share's
    subdirectory and files. For SMB/CIFS share, it requires the
    ``hpe3par_cifs_admin_access_username`` and
    ``hpe3par_cifs_admin_access_password`` configuration. If the mount and

@@ -6,7 +6,7 @@ Network plug-ins
 
 The Shared File Systems service architecture defines an abstraction layer for
 network resource provisioning and allowing administrators to choose from a
-different options for how network resources are assigned to their projects’
+different options for how network resources are assigned to their projects'
 networked storage. There are a set of network plug-ins that provide a variety
 of integration approaches with the network services that are available with
 OpenStack.
