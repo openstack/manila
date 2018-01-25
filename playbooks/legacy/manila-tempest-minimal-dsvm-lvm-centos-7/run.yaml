@@ -54,6 +54,9 @@
           export DEVSTACK_GATE_NEUTRON=1
           export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
 
+          export MANILA_SETUP_IPV6=True
+          export RUN_MANILA_IPV6_TESTS=True
+
           # Basic services needed for minimal job
           OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit,tempest
           if [ "lvm" == "lvm" ]; then

@@ -143,6 +143,7 @@ elif [[ "$DRIVER" == "lvm" ]]; then
 
     echo "SHARE_DRIVER=manila.share.drivers.lvm.LVMShareDriver" >> $localconf
     echo "SHARE_BACKING_FILE_SIZE=32000M" >> $localconf
+    export MANILA_SETUP_IPV6=True
 elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     MANILA_SERVICE_IMAGE_ENABLED=True
     echo "SHARE_DRIVER=manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver" >> $localconf

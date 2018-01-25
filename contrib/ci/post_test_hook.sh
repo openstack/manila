@@ -179,6 +179,7 @@ if [[ "$DRIVER" == "lvm" ]]; then
     RUN_MANILA_SHRINK_TESTS=False
     RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS=True
     RUN_MANILA_MOUNT_SNAPSHOT_TESTS=True
+    RUN_MANILA_IPV6_TESTS=True
     iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
     iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
     iniset $TEMPEST_CONFIG share image_with_share_tools 'manila-service-image-master'
