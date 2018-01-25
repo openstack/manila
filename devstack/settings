@@ -199,6 +199,9 @@ else
     TEMPEST_PLUGINS=$MANILA_TEMPEST_PLUGIN_PATH
 fi
 
+# Manila IPv6 Setup flag
+MANILA_SETUP_IPV6=${MANILA_SETUP_IPV6:=False}
+
 # Enable manila services
 # ----------------------
 # We have to add Manila to enabled services for screen_it to work

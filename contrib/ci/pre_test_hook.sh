@@ -174,6 +174,16 @@ echo "TEMPEST_USE_TEST_ACCOUNTS=True" >> $localconf
 echo "TEMPEST_ALLOW_TENANT_ISOLATION=False" >> $localconf
 echo "TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-8}" >> $localconf
 
+MANILA_SETUP_IPV6=${MANILA_SETUP_IPV6:-False}
+echo "MANILA_SETUP_IPV6=${MANILA_SETUP_IPV6}" >> $localconf
+if [[ "$MANILA_SETUP_IPV6" == True ]]; then
+    # When setting up proper IPv6 networks, we should do it ourselves so we can
+    # use Neutron Dynamic Routing plugin with address scopes instead of the
+    # regular Neutron DevStack configuration.
+    echo "NEUTRON_CREATE_INITIAL_NETWORKS=False" >> $localconf
+    echo "IP_VERSION=4+6" >> $localconf
+fi
+
 if [[ "$DRIVER" == "generic"* ]]; then
     echo -e '[[post-config|${NOVA_CONF:-/etc/nova/nova.conf}]]\n[DEFAULT]\nquota_instances=30\n' >> $localconf
     echo -e '[[post-config|${NEUTRON_CONF:-/etc/neutron/neutron.conf}]]\n[DEFAULT]\nmax_fixed_ips_per_port=100\n' >> $localconf
