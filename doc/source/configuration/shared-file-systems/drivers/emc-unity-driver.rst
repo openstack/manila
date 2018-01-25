@@ -171,7 +171,7 @@ for the Unity driver.
 - ``emc_nas_login``
     The user with administrator privilege.
 
-- ``emc_nas_passowrd``
+- ``emc_nas_password``
     Password for the user.
 
 - ``unity_server_meta_pool``
