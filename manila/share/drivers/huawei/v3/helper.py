@@ -1447,3 +1447,11 @@ class RestHelper(object):
         self._assert_rest_result(result, msg)
         self._assert_data_in_result(result, msg)
         return result.get('data')
+
+    def rollback_snapshot(self, snap_id):
+        url = "/FSSNAPSHOT/ROLLBACK_FSSNAPSHOT"
+        data = jsonutils.dumps({"ID": snap_id})
+        result = self.call(url, data, "PUT")
+
+        msg = _('Failed to rollback snapshot %s.') % snap_id
+        self._assert_rest_result(result, msg)

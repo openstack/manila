@@ -120,3 +120,8 @@ class HuaweiBase(object):
     def delete_replica(self, context, replica_list, replica_snapshots,
                        replica, share_server=None):
         """Delete a replica."""
+
+    @abc.abstractmethod
+    def revert_to_snapshot(self, context, snapshot, share_access_rules,
+                           snapshot_access_rules, share_server=None):
+        """Revert a snapshot."""

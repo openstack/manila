@@ -2425,7 +2425,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             "qos": True,
             "snapshot_support": snapshot_support,
             "create_share_from_snapshot_support": snapshot_support,
-            "revert_to_snapshot_support": False,
+            "revert_to_snapshot_support": snapshot_support,
             "mount_snapshot_support": False,
             "replication_domain": None,
             "filter_function": None,
@@ -4576,6 +4576,29 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertEqual(expect_username, result['UserName'])
         self.assertEqual(expect_password, result['UserPassword'])
         ET.parse.assert_called_once_with(self.fake_conf_file)
+
+    def test_revert_to_snapshot_success(self):
+        snapshot = {'id': 'fake-fs-id',
+                    'share_name': 'share_fake_uuid'}
+        with mock.patch.object(
+                self.driver.plugin.helper, 'call') as mock_call:
+            mock_call.return_value = {
+                "error": {"code": 0},
+                "data": [{"ID": "4", "NAME": "share_fake_uuid"}]
+            }
+            self.driver.revert_to_snapshot(None, snapshot, None, None)
+            expect_snapshot_id = "4@share_snapshot_fake_fs_id"
+            mock_call.assert_called_with(
+                "/FSSNAPSHOT/ROLLBACK_FSSNAPSHOT",
+                jsonutils.dumps({"ID": expect_snapshot_id}), 'PUT')
+
+    def test_revert_to_snapshot_exception(self):
+        snapshot = {'id': 'fake-snap-id',
+                    'share_name': 'not_exist_share_name',
+                    'share_id': 'fake_share_id'}
+        self.assertRaises(exception.ShareResourceNotFound,
+                          self.driver.revert_to_snapshot,
+                          None, snapshot, None, None)
 
 
 @ddt.ddt
