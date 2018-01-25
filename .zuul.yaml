@@ -12,8 +12,21 @@
             voting: false
         - openstack-tox-pylint:
             voting: false
+        - manila-tox-genconfig
     gate:
       queue: manila
+      jobs:
+        - manila-tox-genconfig
     post:
       jobs:
         - openstack-tox-cover
+
+- job:
+    name: manila-tox-genconfig
+    parent: openstack-tox
+    description: |
+      Run tests for manila project.
+
+      Uses tox with the ``genconfig`` environment.
+    vars:
+      tox_envlist: genconfig
