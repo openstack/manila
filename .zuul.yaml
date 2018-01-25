@@ -1,5 +1,4 @@
 - project:
-    name: openstack/manila
     check:
       jobs:
         - manila-tox-genconfig
@@ -335,12 +334,13 @@
 
 - job:
     name: manila-tox-genconfig
-    parent: legacy-base
-    run: playbooks/legacy/manila-tox-genconfig/run.yaml
-    post-run: playbooks/legacy/manila-tox-genconfig/post.yaml
-    timeout: 2400
-    required-projects:
-      - openstack/requirements
+    parent: openstack-tox
+    description: |
+      Run tests for manila project.
+
+      Uses tox with the ``genconfig`` environment.
+    vars:
+      tox_envlist: genconfig
 
 - job:
     name: rally-dsvm-manila-multibackend
