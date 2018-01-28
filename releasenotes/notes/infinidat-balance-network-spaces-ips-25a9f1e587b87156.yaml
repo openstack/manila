@@ -1,0 +1,4 @@
+---
+features:
+  - The INFINIDAT share driver now load balances shares between the IPs
+    of the chosen network space.

@@ -220,23 +220,31 @@ class InfiniboxShareDriver(driver.ShareDriver):
         network_space = self._system.network_spaces.safe_get(
             name=self._network_space_name)
         if network_space is None:
-            msg = _('Network space "%s" not found') % self._network_space_name
+            msg = _('INFINIDAT InfiniBox NAS network space "%s" '
+                    'not found') % self._network_space_name
             LOG.error(msg)
             raise exception.ShareBackendException(msg=msg)
         network_space_ips = network_space.get_ips()
         if not network_space_ips:
-            msg = _('INFINIDAT InfiniBox NAS Network Space "%s" has no IPs '
-                    'defined') % self._network_space_name
+            msg = _('INFINIDAT InfiniBox NAS network space "%s" has no IP '
+                    'addresses defined') % self._network_space_name
             LOG.error(msg)
             raise exception.ShareBackendException(msg=msg)
-        return [ip_munch.ip_address for ip_munch in network_space_ips]
+        ip_addresses = (
+            [ip_munch.ip_address for ip_munch in network_space_ips if
+             ip_munch.enabled])
+        if not ip_addresses:
+            msg = _('INFINIDAT InfiniBox NAS network space "%s" has no '
+                    'enabled IP addresses') % self._network_space_name
+            LOG.error(msg)
+            raise exception.ShareBackendException(msg=msg)
+        return ip_addresses
 
-    @infinisdk_to_manila_exceptions
-    def _get_full_nfs_export_path(self, export_path):
+    def _get_full_nfs_export_paths(self, export_path):
         network_space_ips = self._get_infinidat_nas_network_space_ips()
-        return '{network_space_ip}:{export_path}'.format(
-            network_space_ip=network_space_ips[0],
-            export_path=export_path)
+        return ['{network_space_ip}:{export_path}'.format(
+            network_space_ip=network_space_ip,
+            export_path=export_path) for network_space_ip in network_space_ips]
 
     @infinisdk_to_manila_exceptions
     def _get_infinidat_filesystem_by_name(self, name):
@@ -310,12 +318,14 @@ class InfiniboxShareDriver(driver.ShareDriver):
     @infinisdk_to_manila_exceptions
     def _create_filesystem_export(self, infinidat_filesystem):
         infinidat_export = infinidat_filesystem.add_export(permissions=[])
-        return {
-            'path': self._get_full_nfs_export_path(
-                infinidat_export.get_export_path()),
+        export_paths = self._get_full_nfs_export_paths(
+            infinidat_export.get_export_path())
+        export_locations = [{
+            'path': export_path,
             'is_admin_only': False,
             'metadata': {},
-        }
+        } for export_path in export_paths]
+        return export_locations
 
     @infinisdk_to_manila_exceptions
     def _delete_share(self, share, is_snapshot):
@@ -399,7 +409,7 @@ class InfiniboxShareDriver(driver.ShareDriver):
         # extending is needed
         self._set_manila_object_metadata(infinidat_snapshot, snapshot)
         return {'export_locations':
-                [self._create_filesystem_export(infinidat_snapshot)]}
+                self._create_filesystem_export(infinidat_snapshot)}
 
     def delete_share(self, context, share, share_server=None):
         try:
@@ -421,16 +431,14 @@ class InfiniboxShareDriver(driver.ShareDriver):
         infinidat_filesystem = self._get_infinidat_filesystem(share)
         try:
             infinidat_export = self._get_export(infinidat_filesystem)
+            return self._get_full_nfs_export_paths(
+                infinidat_export.get_export_path())
         except exception.ShareBackendException:
             # export not found, need to re-export
             message = ("missing export for share %(share)s, trying to "
                        "re-export")
             LOG.info(message, {"share": share})
-            infinidat_export = (
-                self._create_filesystem_export(infinidat_filesystem))
-            return [self._get_full_nfs_export_path(infinidat_export['path'])]
-        return [self._get_full_nfs_export_path(
-            infinidat_export.get_export_path())]
+            return self._create_filesystem_export(infinidat_filesystem)
 
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
