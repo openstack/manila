@@ -331,20 +331,12 @@ class InfiniboxShareDriver(driver.ShareDriver):
                        "delete")
             LOG.warning(message, {"share": share})
             return      # filesystem not found
-        if infinidat_filesystem.has_children():
-            # can't delete a filesystem that has a live snapshot
-            if is_snapshot:
-                raise exception.ShareSnapshotIsBusy(snapshot_name=dataset_name)
-            else:
-                reason = _("share has snapshots and cannot be deleted")
-                raise exception.ShareBusyException(reason=reason)
         try:
             infinidat_export = self._get_export(infinidat_filesystem)
-        except exception.ShareBackendException:
-            # it's possible that the export has been deleted
-            pass
-        else:
             infinidat_export.safe_delete()
+        except exception.ShareBackendException:
+            # it is possible that the export has been deleted
+            pass
         infinidat_filesystem.safe_delete()
 
     @infinisdk_to_manila_exceptions

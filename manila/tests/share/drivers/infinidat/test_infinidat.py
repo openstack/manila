@@ -378,10 +378,12 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         # should not raise an exception
         self.driver.delete_share(None, test_share)
 
-    def test_delete_share_with_children(self):
+    def test_delete_share_with_snapshots(self):
+        # deleting a share with snapshots should succeed:
         self._mock_filesystem.has_children.return_value = True
-        self.assertRaises(exception.ShareBusyException,
-                          self.driver.delete_share, None, test_share)
+        self.driver.delete_share(None, test_share)
+        self._mock_filesystem.safe_delete.assert_called_once()
+        self._mock_export.safe_delete.assert_called_once()
 
     def test_delete_share_wrong_share_protocol(self):
         # set test_share protocol for non-NFS (CIFS, for that matter) and see
@@ -468,10 +470,12 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self._mock_filesystem.safe_delete.assert_called_once()
         self._mock_export.safe_delete.assert_called_once()
 
-    def test_delete_snapshot_with_children(self):
+    def test_delete_snapshot_with_snapshots(self):
+        # deleting a snapshot with snapshots should succeed:
         self._mock_filesystem.has_children.return_value = True
-        self.assertRaises(exception.ShareSnapshotIsBusy,
-                          self.driver.delete_snapshot, None, test_snapshot)
+        self.driver.delete_snapshot(None, test_snapshot)
+        self._mock_filesystem.safe_delete.assert_called_once()
+        self._mock_export.safe_delete.assert_called_once()
 
     def test_delete_snapshot_doesnt_exist(self):
         self._system.filesystems.safe_get.return_value = None
