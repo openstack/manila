@@ -363,12 +363,13 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
                              ceph_auth_id)
             raise exception.InvalidInput(message=error_message)
 
-        # TODO(rraja): Log the Ceph point release version, once available, in
-        # which the volume client can enable read-only access.
         if not getattr(self.volume_client, 'version', None):
             if access['access_level'] == constants.ACCESS_LEVEL_RO:
+                LOG.error("Need python-cephfs package version 10.2.3 or "
+                          "greater to enable read-only access.")
                 raise exception.InvalidShareAccessLevel(
                     level=constants.ACCESS_LEVEL_RO)
+
             auth_result = self.volume_client.authorize(
                 cephfs_share_path(share), ceph_auth_id)
         else:
