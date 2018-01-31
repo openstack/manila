@@ -130,13 +130,13 @@ def fake_share(**kwargs):
         'display_description': 'my fake share',
         'snapshot_id': uuidutils.generate_uuid(),
         'share_proto': 'nfs',
-        'is_public': '1',
-        'size': '1',
+        'is_public': True,
+        'size': 1,
         'deleted': 'False',
         'share_proto': 'fake_proto',
         'user_id': uuidutils.generate_uuid(),
         'project_id': uuidutils.generate_uuid(),
-        'snapshot_support': '1',
+        'snapshot_support': True,
         'task_state': None,
     }
     share.update(kwargs)
@@ -375,7 +375,7 @@ class AvailabilityZoneMigrationChecks(BaseMigrationChecks):
         base_dict = {
             'binary': 'manila-share',
             'topic': 'share',
-            'disabled': '0',
+            'disabled': False,
             'report_count': '100',
         }
         base_dict.update(options)
@@ -1322,7 +1322,7 @@ class CreateFromSnapshotExtraSpecAndShareColumn(BaseMigrationChecks):
                 'is_public': True,
             },
         ]
-        snapshot_support = ('0', '1')
+        snapshot_support = (False, True)
         dhss = ('True', 'False')
         for idx, share_type in enumerate(share_types):
             extra_specs.append({
@@ -1476,7 +1476,7 @@ class RevertToSnapshotShareColumn(BaseMigrationChecks):
 
             },
         ]
-        snapshot_support = ('0', '1')
+        snapshot_support = (False, True)
         dhss = ('True', 'False')
         for idx, share_type in enumerate(share_types):
             extra_specs.append({
