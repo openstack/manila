@@ -1,0 +1,11 @@
+---
+fixes:
+  - Improved responsiveness of Host-assisted share migration by
+    changing the waiting function of resource waiters.
+upgrade:
+  - Added config option 'data_node_access_ips' that accepts a list
+    of IP addresses. Those IPs can be either IPv4 or IPv6.
+deprecations:
+  - Config option 'data_node_access_ip' has been deprecated
+    in favor of 'data_node_access_ips', and marked for removal.
+

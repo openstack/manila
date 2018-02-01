@@ -27,7 +27,6 @@ from oslo_log import log
 from manila import exception
 from manila.i18n import _
 from manila import network
-from manila.share import utils as share_utils
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -628,13 +627,8 @@ class ShareDriver(object):
         # NOTE(ganso): If drivers want to override the export_location IP,
         # they can do so using this configuration. This method can also be
         # overridden if necessary.
-        # NOTE(ganso): The data service needs to be improved to
-        # support IPv4 + IPv6. Until then we will support only IPv4.
         path = next((x['path'] for x in share_instance['export_locations']
-                    if (x['is_admin_only']) and
-                    share_utils.is_proper_ipv4_export_location(
-                        x['path'],
-                        share_instance['share_proto'].lower())), None)
+                    if x['is_admin_only']), None)
         if not path:
             path = share_instance['export_locations'][0]['path']
         return path

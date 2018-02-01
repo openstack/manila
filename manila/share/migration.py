@@ -83,7 +83,8 @@ class ShareMigrationHelper(object):
             except exception.NotFound:
                 instance = None
             else:
-                time.sleep(tries ** 2)
+                # 1.414 = square-root of 2
+                time.sleep(1.414 ** tries)
 
     def create_instance_and_wait(self, share, dest_host, new_share_network_id,
                                  new_az_id, new_share_type_id):
@@ -116,7 +117,8 @@ class ShareMigrationHelper(object):
                 self.cleanup_new_instance(new_share_instance)
                 raise exception.ShareMigrationFailed(reason=msg)
             else:
-                time.sleep(tries ** 2)
+                # 1.414 = square-root of 2
+                time.sleep(1.414 ** tries)
             new_share_instance = self.db.share_instance_get(
                 self.context, new_share_instance['id'], with_share_data=True)
 

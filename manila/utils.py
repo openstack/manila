@@ -660,7 +660,8 @@ def wait_for_access_update(context, db, share_instance,
                 'timeout': migration_wait_access_rules_timeout}
             raise exception.ShareMigrationFailed(reason=msg)
         else:
-            time.sleep(tries ** 2)
+            # 1.414 = square-root of 2
+            time.sleep(1.414 ** tries)
 
 
 class DoNothing(str):

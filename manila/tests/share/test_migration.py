@@ -65,7 +65,7 @@ class ShareMigrationHelperTestCase(test.TestCase):
             mock.call(self.context, self.share_instance['id']),
             mock.call(self.context, self.share_instance['id'])])
 
-        time.sleep.assert_called_once_with(1)
+        time.sleep.assert_called_once_with(1.414)
 
     def test_delete_instance_and_wait_timeout(self):
 
@@ -147,7 +147,7 @@ class ShareMigrationHelperTestCase(test.TestCase):
             mock.call(self.context, share_instance_creating['id'],
                       with_share_data=True)])
 
-        time.sleep.assert_called_once_with(1)
+        time.sleep.assert_called_once_with(1.414)
 
     def test_create_instance_and_wait_status_error(self):
 

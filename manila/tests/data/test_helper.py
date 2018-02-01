@@ -111,10 +111,11 @@ class DataServiceHelperTestCase(test.TestCase):
             access_create_calls)
         change_access_calls = [
             mock.call(self.share_instance, [access], deny=True),
+            mock.call(self.share_instance),
         ]
         if allow_dest_instance:
             change_access_calls.append(
-                mock.call(self.share_instance, access))
+                mock.call(self.share_instance))
         self.assertEqual(len(change_access_calls),
                          change_data_access_call.call_count)
         change_data_access_call.assert_has_calls(change_access_calls)
@@ -122,7 +123,7 @@ class DataServiceHelperTestCase(test.TestCase):
     @ddt.data({'ip': []}, {'cert': []}, {'user': []}, {'cephx': []}, {'x': []})
     def test__get_access_entries_according_to_mapping(self, mapping):
 
-        data_copy_helper.CONF.data_node_access_cert = None
+        data_copy_helper.CONF.data_node_access_cert = 'fake'
         data_copy_helper.CONF.data_node_access_ip = 'fake'
         data_copy_helper.CONF.data_node_access_admin_user = 'fake'
         expected = [{
@@ -131,18 +132,40 @@ class DataServiceHelperTestCase(test.TestCase):
             'access_to': 'fake',
         }]
 
-        exists = [x for x in mapping if x in ('ip', 'user')]
+        exists = [x for x in mapping if x in ('ip', 'user', 'cert')]
 
         if exists:
             result = self.helper._get_access_entries_according_to_mapping(
                 mapping)
+            self.assertEqual(expected, result)
         else:
             self.assertRaises(
                 exception.ShareDataCopyFailed,
                 self.helper._get_access_entries_according_to_mapping, mapping)
 
-        if exists:
-            self.assertEqual(expected, result)
+    def test__get_access_entries_according_to_mapping_exception_not_set(self):
+
+        data_copy_helper.CONF.data_node_access_ip = None
+
+        self.assertRaises(
+            exception.ShareDataCopyFailed,
+            self.helper._get_access_entries_according_to_mapping, {'ip': []})
+
+    def test__get_access_entries_according_to_mapping_ip_list(self):
+
+        ips = ['fake1', 'fake2']
+        data_copy_helper.CONF.data_node_access_ips = ips
+        data_copy_helper.CONF.data_node_access_ip = None
+
+        expected = [{
+            'access_type': 'ip',
+            'access_level': constants.ACCESS_LEVEL_RW,
+            'access_to': x,
+        } for x in ips]
+
+        result = self.helper._get_access_entries_according_to_mapping(
+            {'ip': []})
+        self.assertEqual(expected, result)
 
     def test_deny_access_to_data_service(self):
 
