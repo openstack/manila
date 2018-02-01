@@ -30,7 +30,12 @@ class ExportLocationsNegativeTest(base.BaseSharesMixedTest):
         super(ExportLocationsNegativeTest, cls).resource_setup()
         cls.admin_client = cls.admin_shares_v2_client
         cls.member_client = cls.shares_v2_client
-        cls.share = cls.create_share(client=cls.admin_client)
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+        # create share
+        cls.share = cls.create_share(client=cls.admin_client,
+                                     share_type_id=cls.share_type_id)
         cls.share = cls.admin_client.get_share(cls.share['id'])
         cls.share_instances = cls.admin_client.get_instances_of_share(
             cls.share['id'])

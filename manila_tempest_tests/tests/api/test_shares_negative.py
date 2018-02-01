@@ -24,13 +24,20 @@ from manila_tempest_tests.tests.api import base
 CONF = config.CONF
 
 
-class SharesNegativeTest(base.BaseSharesTest):
+class SharesNegativeTest(base.BaseSharesMixedTest):
+
     @classmethod
     def resource_setup(cls):
         super(SharesNegativeTest, cls).resource_setup()
+        # create share_type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+
+        # create share
         cls.share = cls.create_share(
             name='public_share',
             description='public_share_desc',
+            share_type_id=cls.share_type_id,
             is_public=True,
             metadata={'key': 'value'}
         )
@@ -48,7 +55,7 @@ class SharesNegativeTest(base.BaseSharesTest):
         # share can not be deleted while snapshot exists
 
         # create share
-        share = self.create_share()
+        share = self.create_share(share_type_id=self.share_type_id)
 
         # create snapshot
         self.create_snapshot_wait_for_active(share["id"])
@@ -70,7 +77,9 @@ class SharesNegativeTest(base.BaseSharesTest):
 
         try:  # create share
             size = CONF.share.share_size + 1
-            share = self.create_share(size=size, cleanup_in_class=False)
+            share = self.create_share(size=size,
+                                      share_type_id=self.share_type_id,
+                                      cleanup_in_class=False)
         except share_exceptions.ShareBuildErrorException:
             self.skip(skip_msg)
 
@@ -83,6 +92,7 @@ class SharesNegativeTest(base.BaseSharesTest):
         # try create share from snapshot with less size
         self.assertRaises(lib_exc.BadRequest,
                           self.create_share,
+                          share_type_id=self.share_type_id,
                           snapshot_id=snap["id"],
                           cleanup_in_class=False)
 
@@ -92,6 +102,7 @@ class SharesNegativeTest(base.BaseSharesTest):
     def test_create_share_with_nonexistant_share_network(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.create_share,
+                          share_type_id=self.share_type_id,
                           share_network_id="wrong_sn_id")
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
@@ -107,7 +118,8 @@ class SharesNegativeTest(base.BaseSharesTest):
         # have 'create_share_from_snapshot_support'.
 
         # create share
-        share = self.create_share(cleanup_in_class=False)
+        share = self.create_share(share_type_id=self.share_type_id,
+                                  cleanup_in_class=False)
 
         # get parent's share network
         parent_share = self.shares_client.get_share(share["id"])
@@ -130,6 +142,7 @@ class SharesNegativeTest(base.BaseSharesTest):
         self.assertRaises(
             lib_exc.BadRequest,
             self.create_share,
+            share_type_id=self.share_type_id,
             cleanup_in_class=False,
             share_network_id=new_duplicated_sn["id"],
             snapshot_id=snap["id"],
@@ -178,7 +191,14 @@ class SharesNegativeTest(base.BaseSharesTest):
                           'key')
 
 
-class SharesAPIOnlyNegativeTest(base.BaseSharesTest):
+class SharesAPIOnlyNegativeTest(base.BaseSharesMixedTest):
+
+    @classmethod
+    def resource_setup(cls):
+        super(SharesAPIOnlyNegativeTest, cls).resource_setup()
+        # create share_type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_unmanage_share_by_user(self):
@@ -209,22 +229,29 @@ class SharesAPIOnlyNegativeTest(base.BaseSharesTest):
     def test_create_share_non_existent_az(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_v2_client.create_share,
+                          share_type_id=self.share_type_id,
                           availability_zone='fake_az')
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_create_share_with_zero_size(self):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_share, size=0)
+                          self.shares_client.create_share,
+                          share_type_id=self.share_type_id,
+                          size=0)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_create_share_with_invalid_size(self):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_share, size="#$%")
+                          self.shares_client.create_share,
+                          share_type_id=self.share_type_id,
+                          size="#$%")
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_create_share_with_out_passing_size(self):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_share, size="")
+                          self.shares_client.create_share,
+                          share_type_id=self.share_type_id,
+                          size="")
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
@@ -246,12 +273,15 @@ class SharesAPIOnlyNegativeTest(base.BaseSharesTest):
     def test_create_share_with_invalid_protocol(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_share,
+                          share_type_id=self.share_type_id,
                           share_protocol="nonexistent_protocol")
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_create_share_with_wrong_public_value(self):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_share, is_public='truebar')
+                          self.shares_client.create_share,
+                          share_type_id=self.share_type_id,
+                          is_public='truebar')
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_get_share_with_wrong_id(self):

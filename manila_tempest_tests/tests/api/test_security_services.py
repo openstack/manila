@@ -98,8 +98,16 @@ class SecurityServiceListMixin(object):
                                 in search_opts.items()))
 
 
-class SecurityServicesTest(base.BaseSharesTest,
+class SecurityServicesTest(base.BaseSharesMixedTest,
                            SecurityServiceListMixin):
+
+    @classmethod
+    def resource_setup(cls):
+        super(SecurityServicesTest, cls).resource_setup()
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+
     def setUp(self):
         super(SecurityServicesTest, self).setUp()
         ss_ldap_data = {
@@ -175,8 +183,9 @@ class SecurityServicesTest(base.BaseSharesTest,
         # that fails on wrong data, we expect error here.
         # We require any share that uses our share-network.
         try:
-            self.create_share(
-                share_network_id=fresh_sn["id"], cleanup_in_class=False)
+            self.create_share(share_type_id=self.share_type_id,
+                              share_network_id=fresh_sn["id"],
+                              cleanup_in_class=False)
         except Exception as e:
             # we do wait for either 'error' or 'available' status because
             # it is the only available statuses for proper deletion.

@@ -11,7 +11,6 @@
 #    under the License.
 
 from tempest import config
-from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions as lib_exc
 import testtools
 from testtools import testcase as tc
@@ -35,8 +34,6 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
     @classmethod
     def resource_setup(cls):
         super(ReplicationAdminTest, cls).resource_setup()
-        # Create share_type
-        name = data_utils.rand_name(constants.TEMPEST_MANILA_PREFIX)
         cls.admin_client = cls.admin_shares_v2_client
         cls.member_client = cls.shares_v2_client
         cls.replication_type = CONF.share.backend_replication_type
@@ -48,18 +45,13 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
         cls.zones = cls.get_availability_zones(client=cls.admin_client)
         cls.share_zone = cls.zones[0]
         cls.replica_zone = cls.zones[-1]
-
-        cls.extra_specs = cls.add_extra_specs_to_dict(
-            {"replication_type": cls.replication_type})
-        share_type = cls.create_share_type(
-            name,
-            cleanup_in_class=True,
-            extra_specs=cls.extra_specs,
-            client=cls.admin_client)
-        cls.share_type = share_type["share_type"]
-        # Create share with above share_type
-        cls.share = cls.create_share(size=CONF.share.share_size+1,
-                                     share_type_id=cls.share_type["id"],
+        # create share type
+        extra_specs = {"replication_type": cls.replication_type}
+        cls.share_type = cls._create_share_type(extra_specs)
+        cls.share_type_id = cls.share_type['id']
+        # create share
+        cls.share = cls.create_share(size=CONF.share.share_size + 1,
+                                     share_type_id=cls.share_type_id,
                                      availability_zone=cls.share_zone,
                                      client=cls.admin_client)
         cls.replica = cls.admin_client.list_share_replicas(
@@ -95,7 +87,7 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
         """Manage a share with replication share type."""
         # Create a share and unmanage it
         share = self.create_share(size=2,
-                                  share_type_id=self.share_type["id"],
+                                  share_type_id=self.share_type_id,
                                   availability_zone=self.share_zone,
                                   cleanup_in_class=True,
                                   client=self.admin_client)
@@ -110,7 +102,7 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
         # Manage the previously unmanaged share
         managed_share = self.admin_client.manage_share(
             share['host'], share['share_proto'],
-            export_path, self.share_type['id'])
+            export_path, self.share_type_id)
         self.admin_client.wait_for_share_status(
             managed_share['id'], 'available')
 
@@ -142,7 +134,7 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
     def test_unmanage_replicated_share_with_no_replica(self):
         """Unmanage a replication type share that does not have replica."""
         share = self.create_share(size=2,
-                                  share_type_id=self.share_type["id"],
+                                  share_type_id=self.share_type_id,
                                   availability_zone=self.share_zone,
                                   client=self.admin_client)
         self.admin_client.unmanage_share(share['id'])

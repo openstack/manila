@@ -24,7 +24,7 @@ from manila_tempest_tests import utils
 CONF = config.CONF
 
 
-class SharesNFSTest(base.BaseSharesTest):
+class SharesNFSTest(base.BaseSharesMixedTest):
     """Covers share functionality, that is related to NFS share type."""
     protocol = "nfs"
 
@@ -34,12 +34,18 @@ class SharesNFSTest(base.BaseSharesTest):
         if cls.protocol not in CONF.share.enable_protocols:
             message = "%s tests are disabled" % cls.protocol
             raise cls.skipException(message)
-        cls.share = cls.create_share(cls.protocol)
+        # create share_type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+        # create share
+        cls.share = cls.create_share(cls.protocol,
+                                     share_type_id=cls.share_type_id)
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_BACKEND)
     def test_create_get_delete_share(self):
 
-        share = self.create_share(self.protocol)
+        share = self.create_share(self.protocol,
+                                  share_type_id=self.share_type_id)
         detailed_elements = {'name', 'id', 'availability_zone',
                              'description', 'project_id',
                              'created_at', 'share_proto', 'metadata',
@@ -153,8 +159,10 @@ class SharesNFSTest(base.BaseSharesTest):
             self.share["id"], cleanup_in_class=False)
 
         # create share from snapshot
-        s2 = self.create_share(
-            self.protocol, snapshot_id=snap["id"], cleanup_in_class=False)
+        s2 = self.create_share(self.protocol,
+                               share_type_id=self.share_type_id,
+                               snapshot_id=snap["id"],
+                               cleanup_in_class=False)
 
         # The 'status' of the share returned by the create API must be
         # set and have value either 'creating' or
@@ -189,8 +197,10 @@ class SharesNFSTest(base.BaseSharesTest):
             self.share["id"], cleanup_in_class=False)
 
         # create share from snapshot
-        child = self.create_share(
-            self.protocol, snapshot_id=snap["id"], cleanup_in_class=False)
+        child = self.create_share(self.protocol,
+                                  share_type_id=self.share_type_id,
+                                  snapshot_id=snap["id"],
+                                  cleanup_in_class=False)
 
         # The 'status' of the share returned by the create API must be
         # set and have value either 'creating' or

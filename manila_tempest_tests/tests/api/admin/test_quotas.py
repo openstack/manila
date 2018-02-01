@@ -39,6 +39,9 @@ class SharesAdminQuotasTest(base.BaseSharesAdminTest):
         super(SharesAdminQuotasTest, cls).resource_setup()
         cls.user_id = cls.shares_v2_client.user_id
         cls.tenant_id = cls.shares_v2_client.tenant_id
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_default_quotas(self):
@@ -142,6 +145,12 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
             msg = "Quota tests are disabled."
             raise cls.skipException(msg)
         super(SharesAdminQuotasUpdateTest, cls).resource_setup()
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+        # create share group type
+        cls.share_group_type = cls._create_share_group_type()
+        cls.share_group_type_id = cls.share_group_type['id']
 
     def setUp(self):
         super(self.__class__, self).setUp()
@@ -205,17 +214,6 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         updated = self.client.update_quotas(
             self.tenant_id, self.user_id, **{quota_key: new_quota})
         self.assertEqual(new_quota, int(updated[quota_key]))
-
-    def _create_share_type(self):
-        share_type = self.create_share_type(
-            data_utils.rand_name("tempest-manila"),
-            cleanup_in_class=False,
-            client=self.shares_v2_client,
-            extra_specs=self.add_extra_specs_to_dict(),
-        )
-        if 'share_type' in share_type:
-            share_type = share_type['share_type']
-        return share_type
 
     @ddt.data(
         ('id', True),
@@ -624,7 +622,8 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
     @base.skip_if_microversion_lt("2.39")
     def test_quotas_usages(self):
         # Create share types
-        st_1, st_2 = (self._create_share_type() for i in (1, 2))
+        st_1, st_2 = (self._create_share_type()
+                      for i in (1, 2))
 
         # Set quotas for project, user and both share types
         self.client.update_quotas(self.tenant_id, shares=3, gigabytes=10)
@@ -719,7 +718,10 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
 
         # Create SG1 and check usages
         share_group1 = self.create_share_group(
-            cleanup_in_class=False, client=self.client)
+            share_group_type_id=self.share_group_type_id,
+            share_type_ids=[self.share_type_id],
+            cleanup_in_class=False,
+            client=self.client)
         self._check_usages(1, 0)
 
         # Create SGS1 and check usages
@@ -729,7 +731,9 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
 
         # Create SG2 from SGS1 and check usages
         share_group2 = self.create_share_group(
-            cleanup_in_class=False, client=self.client,
+            share_group_type_id=self.share_group_type_id,
+            cleanup_in_class=False,
+            client=self.client,
             source_share_group_snapshot_id=sg_snapshot['id'])
         self._check_usages(2, 1)
 
@@ -737,6 +741,8 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         self.assertRaises(
             lib_exc.OverLimit,
             self.create_share_group,
+            share_group_type_id=self.share_group_type_id,
+            share_type_ids=[self.share_type_id],
             client=self.client, cleanup_in_class=False)
         self._check_usages(2, 1)
 

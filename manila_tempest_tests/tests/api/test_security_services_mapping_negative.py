@@ -26,7 +26,7 @@ CONF = config.CONF
 LOG = log.getLogger(__name__)
 
 
-class SecServicesMappingNegativeTest(base.BaseSharesTest):
+class SecServicesMappingNegativeTest(base.BaseSharesMixedTest):
 
     @classmethod
     def resource_setup(cls):
@@ -34,6 +34,9 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
         cls.sn = cls.create_share_network(cleanup_in_class=True)
         cls.ss = cls.create_security_service(cleanup_in_class=True)
         cls.cl = cls.shares_client
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_add_sec_service_twice_to_share_network(self):
@@ -107,8 +110,9 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
         # that fails on wrong data, we expect error here.
         # We require any share that uses our share-network.
         try:
-            self.create_share(
-                share_network_id=fresh_sn["id"], cleanup_in_class=False)
+            self.create_share(share_type_id=self.share_type_id,
+                              share_network_id=fresh_sn["id"],
+                              cleanup_in_class=False)
         except Exception as e:
             # we do wait for either 'error' or 'available' status because
             # it is the only available statuses for proper deletion.
