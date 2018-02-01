@@ -77,7 +77,7 @@ def _create_delete_ro_access_rule(self, version):
 
 
 @ddt.ddt
-class ShareIpRulesForNFSTest(base.BaseSharesTest):
+class ShareIpRulesForNFSTest(base.BaseSharesMixedTest):
     protocol = "nfs"
 
     @classmethod
@@ -87,7 +87,13 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
                 cls.protocol not in CONF.share.enable_ip_rules_for_protocols):
             msg = "IP rule tests for %s protocol are disabled" % cls.protocol
             raise cls.skipException(msg)
-        cls.share = cls.create_share(cls.protocol)
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+
+        # create share
+        cls.share = cls.create_share(cls.protocol,
+                                     share_type_id=cls.share_type_id)
         cls.access_type = "ip"
         cls.access_to = "2.2.2.2"
 
@@ -210,7 +216,7 @@ class ShareIpRulesForCIFSTest(ShareIpRulesForNFSTest):
 
 
 @ddt.ddt
-class ShareUserRulesForNFSTest(base.BaseSharesTest):
+class ShareUserRulesForNFSTest(base.BaseSharesMixedTest):
     protocol = "nfs"
 
     @classmethod
@@ -221,7 +227,14 @@ class ShareUserRulesForNFSTest(base.BaseSharesTest):
                 CONF.share.enable_user_rules_for_protocols):
             msg = "USER rule tests for %s protocol are disabled" % cls.protocol
             raise cls.skipException(msg)
-        cls.share = cls.create_share(cls.protocol)
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+
+        # create share
+        cls.share = cls.create_share(cls.protocol,
+                                     share_type_id=cls.share_type_id)
+
         cls.access_type = "user"
         cls.access_to = CONF.share.username_for_user_rules
 
@@ -293,7 +306,7 @@ class ShareUserRulesForCIFSTest(ShareUserRulesForNFSTest):
 
 
 @ddt.ddt
-class ShareCertRulesForGLUSTERFSTest(base.BaseSharesTest):
+class ShareCertRulesForGLUSTERFSTest(base.BaseSharesMixedTest):
     protocol = "glusterfs"
 
     @classmethod
@@ -304,7 +317,14 @@ class ShareCertRulesForGLUSTERFSTest(base.BaseSharesTest):
                 CONF.share.enable_cert_rules_for_protocols):
             msg = "Cert rule tests for %s protocol are disabled" % cls.protocol
             raise cls.skipException(msg)
-        cls.share = cls.create_share(cls.protocol)
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+
+        # create share
+        cls.share = cls.create_share(cls.protocol,
+                                     share_type_id=cls.share_type_id)
+
         cls.access_type = "cert"
         # Provide access to a client identified by a common name (CN) of the
         # certificate that it possesses.
@@ -402,7 +422,7 @@ class ShareCertRulesForGLUSTERFSTest(base.BaseSharesTest):
 
 
 @ddt.ddt
-class ShareCephxRulesForCephFSTest(base.BaseSharesTest):
+class ShareCephxRulesForCephFSTest(base.BaseSharesMixedTest):
     protocol = "cephfs"
 
     @classmethod
@@ -414,7 +434,14 @@ class ShareCephxRulesForCephFSTest(base.BaseSharesTest):
             msg = ("Cephx rule tests for %s protocol are disabled." %
                    cls.protocol)
             raise cls.skipException(msg)
-        cls.share = cls.create_share(cls.protocol)
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+
+        # create share
+        cls.share = cls.create_share(cls.protocol,
+                                     share_type_id=cls.share_type_id)
+
         cls.access_type = "cephx"
         # Provide access to a client identified by a cephx auth id.
         cls.access_to = "bob"
@@ -441,7 +468,7 @@ class ShareCephxRulesForCephFSTest(base.BaseSharesTest):
 
 
 @ddt.ddt
-class ShareRulesTest(base.BaseSharesTest):
+class ShareRulesTest(base.BaseSharesMixedTest):
 
     @classmethod
     def resource_setup(cls):
@@ -473,7 +500,9 @@ class ShareRulesTest(base.BaseSharesTest):
             cls.access_type = "cephx"
             cls.access_to = "eve"
         cls.shares_v2_client.share_protocol = cls.protocol
-        cls.share = cls.create_share()
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+        cls.share = cls.create_share(share_type_id=cls.share_type_id)
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     @ddt.data(*set(['1.0', '2.9', '2.27', '2.28', LATEST_MICROVERSION]))
@@ -560,7 +589,7 @@ class ShareRulesTest(base.BaseSharesTest):
             raise self.skipException(msg)
 
         # create share
-        share = self.create_share()
+        share = self.create_share(share_type_id=self.share_type_id)
 
         # create rule
         if utils.is_microversion_eq(version, '1.0'):

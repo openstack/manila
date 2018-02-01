@@ -36,7 +36,11 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
     @classmethod
     def resource_setup(cls):
         super(ShareServersAdminTest, cls).resource_setup()
-        cls.share = cls.create_share()
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+        # create share
+        cls.share = cls.create_share(share_type_id=cls.share_type_id)
         cls.share_network = cls.shares_v2_client.get_share_network(
             cls.shares_v2_client.share_network_id)
         if not cls.share_network["name"]:
@@ -208,7 +212,8 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             neutron_subnet_id=self.share_network['neutron_subnet_id'])
 
         # Create server with share
-        self.create_share(share_network_id=new_sn['id'])
+        self.create_share(share_type_id=self.share_type_id,
+                          share_network_id=new_sn['id'])
 
         # List share servers, filtered by share_network_id
         servers = self.shares_v2_client.list_share_servers(

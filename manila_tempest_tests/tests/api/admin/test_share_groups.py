@@ -33,27 +33,27 @@ class ShareGroupsTest(base.BaseSharesAdminTest):
     def resource_setup(cls):
         super(ShareGroupsTest, cls).resource_setup()
         # Create 2 share_types
-        name = data_utils.rand_name("tempest-manila")
-        extra_specs = cls.add_extra_specs_to_dict()
-        share_type = cls.create_share_type(name, extra_specs=extra_specs)
-        cls.share_type = share_type['share_type']
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
 
-        name = data_utils.rand_name("tempest-manila")
-        share_type = cls.create_share_type(name, extra_specs=extra_specs)
-        cls.share_type2 = share_type['share_type']
+        cls.share_type2 = cls._create_share_type()
+        cls.share_type_id2 = cls.share_type2['id']
 
+        # Create a share group type
+        name = data_utils.rand_name("unique_sgt_name")
         cls.sg_type = cls.create_share_group_type(
             name=name,
-            share_types=[cls.share_type['id'], cls.share_type2['id']],
+            share_types=[cls.share_type_id, cls.share_type_id2],
             cleanup_in_class=True,
             version=constants.MIN_SHARE_GROUP_MICROVERSION)
+        cls.sg_type_id = cls.sg_type['id']
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_create_share_group_with_single_share_type_min(self):
         share_group = self.create_share_group(
-            share_group_type_id=self.sg_type['id'],
+            share_group_type_id=self.sg_type_id,
             cleanup_in_class=False,
-            share_type_ids=[self.share_type['id']],
+            share_type_ids=[self.share_type_id],
             version=constants.MIN_SHARE_GROUP_MICROVERSION)
 
         keys = set(share_group.keys())
@@ -65,7 +65,7 @@ class ShareGroupsTest(base.BaseSharesAdminTest):
                 "actual": keys})
 
         actual_sg_type = share_group['share_group_type_id']
-        expected_sg_type = self.sg_type['id']
+        expected_sg_type = self.sg_type_id
         self.assertEqual(
             expected_sg_type, actual_sg_type,
             'Incorrect share group type applied to share group '
@@ -73,7 +73,7 @@ class ShareGroupsTest(base.BaseSharesAdminTest):
                 share_group['id'], expected_sg_type, actual_sg_type))
 
         actual_share_types = share_group['share_types']
-        expected_share_types = [self.share_type['id']]
+        expected_share_types = [self.share_type_id]
         self.assertEqual(
             sorted(expected_share_types),
             sorted(actual_share_types),
@@ -84,9 +84,9 @@ class ShareGroupsTest(base.BaseSharesAdminTest):
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_create_share_group_with_multiple_share_types_min(self):
         share_group = self.create_share_group(
-            share_group_type_id=self.sg_type['id'],
+            share_group_type_id=self.sg_type_id,
             cleanup_in_class=False,
-            share_type_ids=[self.share_type['id'], self.share_type2['id']],
+            share_type_ids=[self.share_type_id, self.share_type_id2],
             version=constants.MIN_SHARE_GROUP_MICROVERSION)
 
         keys = set(share_group.keys())
@@ -98,7 +98,7 @@ class ShareGroupsTest(base.BaseSharesAdminTest):
                 "actual": keys})
 
         actual_sg_type = share_group['share_group_type_id']
-        expected_sg_type = self.sg_type['id']
+        expected_sg_type = self.sg_type_id
         self.assertEqual(
             expected_sg_type, actual_sg_type,
             'Incorrect share group type applied to share group %s. '
@@ -106,7 +106,7 @@ class ShareGroupsTest(base.BaseSharesAdminTest):
                 share_group['id'], expected_sg_type, actual_sg_type))
 
         actual_share_types = share_group['share_types']
-        expected_share_types = [self.share_type['id'], self.share_type2['id']]
+        expected_share_types = [self.share_type_id, self.share_type_id2]
         self.assertEqual(
             sorted(expected_share_types),
             sorted(actual_share_types),
@@ -146,9 +146,9 @@ class ShareGroupsTest(base.BaseSharesAdminTest):
     def test_create_sg_from_snapshot_verify_share_server_information_min(self):
         # Create a share group
         orig_sg = self.create_share_group(
-            share_group_type_id=self.sg_type['id'],
+            share_group_type_id=self.sg_type_id,
             cleanup_in_class=False,
-            share_type_ids=[self.share_type['id']],
+            share_type_ids=[self.share_type_id],
             version=constants.MIN_SHARE_GROUP_MICROVERSION)
 
         # Get latest share group information
@@ -163,7 +163,7 @@ class ShareGroupsTest(base.BaseSharesAdminTest):
             orig_sg['id'], cleanup_in_class=False,
             version=constants.MIN_SHARE_GROUP_MICROVERSION)
         new_sg = self.create_share_group(
-            share_group_type_id=self.sg_type['id'],
+            share_group_type_id=self.sg_type_id,
             cleanup_in_class=False,
             version=constants.MIN_SHARE_GROUP_MICROVERSION,
             source_share_group_snapshot_id=sg_snapshot['id'])

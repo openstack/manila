@@ -41,9 +41,13 @@ class SnapshotIpRulesForNFSNegativeTest(
             msg = "IP rule tests for %s protocol are disabled." % cls.protocol
             raise cls.skipException(msg)
         super(SnapshotIpRulesForNFSNegativeTest, cls).resource_setup()
-
+        # create share type
+        extra_specs = {'mount_snapshot_support': 'True'}
+        cls.share_type = cls._create_share_type(extra_specs)
+        cls.share_type_id = cls.share_type['id']
         # create share
-        cls.share = cls.create_share(cls.protocol)
+        cls.share = cls.create_share(cls.protocol,
+                                     share_type_id=cls.share_type_id)
         cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)

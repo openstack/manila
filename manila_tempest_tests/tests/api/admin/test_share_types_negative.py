@@ -26,7 +26,9 @@ class ShareTypesAdminNegativeTest(base.BaseSharesMixedTest):
         name = data_utils.rand_name("unique_st_name")
         extra_specs = self.add_extra_specs_to_dict({"key": "value"})
         return self.create_share_type(
-            name, extra_specs=extra_specs, client=self.admin_shares_v2_client)
+            name,
+            extra_specs=extra_specs,
+            client=self.admin_shares_v2_client)["share_type"]
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_create_share_with_nonexistent_share_type(self):
@@ -65,7 +67,7 @@ class ShareTypesAdminNegativeTest(base.BaseSharesMixedTest):
         st = self._create_share_type()
         self.assertRaises(lib_exc.Conflict,
                           self.create_share_type,
-                          st["share_type"]["name"],
+                          st["name"],
                           extra_specs=self.add_extra_specs_to_dict(),
                           client=self.admin_shares_v2_client)
 
@@ -74,7 +76,7 @@ class ShareTypesAdminNegativeTest(base.BaseSharesMixedTest):
         st = self._create_share_type()
         self.assertRaises(lib_exc.Conflict,
                           self.admin_shares_v2_client.add_access_to_share_type,
-                          st["share_type"]["id"],
+                          st["id"],
                           self.admin_shares_v2_client.tenant_id)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
@@ -83,7 +85,7 @@ class ShareTypesAdminNegativeTest(base.BaseSharesMixedTest):
         self.assertRaises(
             lib_exc.Conflict,
             self.admin_shares_v2_client.remove_access_from_share_type,
-            st["share_type"]["id"],
+            st["id"],
             self.admin_shares_v2_client.tenant_id)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)

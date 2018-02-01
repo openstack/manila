@@ -117,11 +117,16 @@ class ShareNetworkListMixin(object):
             self.assertGreaterEqual(sn['created_at'], created_since)
 
 
-class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
+class ShareNetworksTest(base.BaseSharesMixedTest, ShareNetworkListMixin):
 
     @classmethod
     def resource_setup(cls):
         super(ShareNetworksTest, cls).resource_setup()
+
+        # create share_type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+
         ss_data = cls.generate_security_service_data()
         cls.ss_ldap = cls.create_security_service(**ss_data)
 
@@ -202,7 +207,8 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
     @testtools.skipIf(
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_update_valid_keys_sh_server_exists(self):
-        self.create_share(cleanup_in_class=False)
+        self.create_share(share_type_id=self.share_type_id,
+                          cleanup_in_class=False)
         update_dict = {
             "name": "new_name",
             "description": "new_description",
@@ -254,7 +260,8 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
         os = getattr(self, 'os_%s' % self.credentials[0])
         subnet_client = os.subnets_client
 
-        self.create_share(cleanup_in_class=False)
+        self.create_share(share_type_id=self.share_type_id,
+                          cleanup_in_class=False)
         share_net_details = self.shares_v2_client.get_share_network(
             self.shares_v2_client.share_network_id)
         subnet_details = subnet_client.show_subnet(
@@ -274,7 +281,8 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
         os = getattr(self, 'os_%s' % self.credentials[0])
         network_client = os.networks_client
 
-        self.create_share(cleanup_in_class=False)
+        self.create_share(share_type_id=self.share_type_id,
+                          cleanup_in_class=False)
         share_net_details = self.shares_v2_client.get_share_network(
             self.shares_v2_client.share_network_id)
         network_details = network_client.show_network(

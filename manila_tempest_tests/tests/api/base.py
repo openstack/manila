@@ -1008,6 +1008,27 @@ class BaseSharesAdminTest(BaseSharesTest):
     """Base test case class for all Shares Admin API tests."""
     credentials = ('admin', )
 
+    @classmethod
+    def setup_clients(cls):
+        super(BaseSharesAdminTest, cls).setup_clients()
+        # Initialise share clients
+        cls.admin_shares_v2_client = cls.os_admin.share_v2.SharesV2Client()
+
+    @classmethod
+    def _create_share_type(cls, specs=None):
+        name = data_utils.rand_name("unique_st_name")
+        extra_specs = cls.add_extra_specs_to_dict(specs)
+        return cls.create_share_type(
+            name, extra_specs=extra_specs,
+            client=cls.admin_shares_v2_client)['share_type']
+
+    @classmethod
+    def _create_share_group_type(cls):
+        share_group_type_name = data_utils.rand_name("unique_sgtype_name")
+        return cls.create_share_group_type(
+            name=share_group_type_name, share_types=[cls.share_type_id],
+            client=cls.admin_shares_v2_client)
+
 
 class BaseSharesMixedTest(BaseSharesTest):
     """Base test case class for all Shares API tests with all user roles."""
@@ -1036,3 +1057,18 @@ class BaseSharesMixedTest(BaseSharesTest):
                 cls.alt_shares_v2_client, cls.os_alt.networks_client)
             cls.alt_shares_client.share_network_id = alt_share_network_id
             cls.alt_shares_v2_client.share_network_id = alt_share_network_id
+
+    @classmethod
+    def _create_share_type(cls, specs=None):
+        name = data_utils.rand_name("unique_st_name")
+        extra_specs = cls.add_extra_specs_to_dict(specs)
+        return cls.create_share_type(
+            name, extra_specs=extra_specs,
+            client=cls.admin_shares_v2_client)['share_type']
+
+    @classmethod
+    def _create_share_group_type(cls):
+        share_group_type_name = data_utils.rand_name("unique_sgtype_name")
+        return cls.create_share_group_type(
+            name=share_group_type_name, share_types=[cls.share_type_id],
+            client=cls.admin_shares_v2_client)

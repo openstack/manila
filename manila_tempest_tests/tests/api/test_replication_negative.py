@@ -35,8 +35,6 @@ class ReplicationNegativeTest(base.BaseSharesMixedTest):
     @classmethod
     def resource_setup(cls):
         super(ReplicationNegativeTest, cls).resource_setup()
-        # Create share_type
-        name = data_utils.rand_name(constants.TEMPEST_MANILA_PREFIX)
         cls.admin_client = cls.admin_shares_v2_client
         cls.replication_type = CONF.share.backend_replication_type
 
@@ -48,20 +46,18 @@ class ReplicationNegativeTest(base.BaseSharesMixedTest):
         cls.share_zone = cls.zones[0]
         cls.replica_zone = cls.zones[-1]
 
-        cls.extra_specs = cls.add_extra_specs_to_dict(
-            {"replication_type": cls.replication_type})
-        share_type = cls.create_share_type(
-            name,
-            extra_specs=cls.extra_specs,
-            client=cls.admin_client)
-        cls.share_type = share_type["share_type"]
-        # Create share with above share_type
+        # create share type
+        extra_specs = {"replication_type": cls.replication_type}
+        cls.share_type = cls._create_share_type(extra_specs)
+        cls.share_type_id = cls.share_type['id']
+
+        # create share with above share_type
         cls.share1, cls.instance_id1 = cls._create_share_get_instance()
 
     @classmethod
     def _create_share_get_instance(cls):
-        share = cls.create_share(share_type_id=cls.share_type["id"],
-                                 availability_zone=cls.share_zone,)
+        share = cls.create_share(share_type_id=cls.share_type_id,
+                                 availability_zone=cls.share_zone)
         share_instances = cls.admin_client.get_instances_of_share(
             share["id"], version=_MIN_SUPPORTED_MICROVERSION
         )

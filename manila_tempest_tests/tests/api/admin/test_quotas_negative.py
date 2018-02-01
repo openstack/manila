@@ -36,6 +36,12 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
         super(SharesAdminQuotasNegativeTest, cls).resource_setup()
         cls.user_id = cls.shares_client.user_id
         cls.tenant_id = cls.shares_client.tenant_id
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+        # create share group type
+        cls.share_group_type = cls._create_share_group_type()
+        cls.share_group_type_id = cls.share_group_type['id']
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_get_quotas_with_empty_tenant_id(self):

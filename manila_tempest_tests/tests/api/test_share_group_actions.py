@@ -28,23 +28,38 @@ CONF = config.CONF
 @testtools.skipUnless(
     CONF.share.run_share_group_tests, 'Share Group tests disabled.')
 @base.skip_if_microversion_lt(constants.MIN_SHARE_GROUP_MICROVERSION)
-class ShareGroupActionsTest(base.BaseSharesTest):
+class ShareGroupActionsTest(base.BaseSharesMixedTest):
     """Covers share group functionality."""
 
     @classmethod
     def resource_setup(cls):
         super(ShareGroupActionsTest, cls).resource_setup()
 
+        # Create a share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+
+        cls.share_group_type = cls._create_share_group_type()
+        cls.share_group_type_id = cls.share_group_type['id']
+
         # Create first share group
         cls.share_group_name = data_utils.rand_name("tempest-sg-name")
         cls.share_group_desc = data_utils.rand_name("tempest-sg-description")
         cls.share_group = cls.create_share_group(
-            name=cls.share_group_name, description=cls.share_group_desc)
+            name=cls.share_group_name,
+            description=cls.share_group_desc,
+            share_group_type_id=cls.share_group_type_id,
+            share_type_ids=[cls.share_type_id],
+        )
 
         # Create second share group for purposes of sorting and snapshot
         # filtering
         cls.share_group2 = cls.create_share_group(
-            name=cls.share_group_name, description=cls.share_group_desc)
+            name=cls.share_group_name,
+            description=cls.share_group_desc,
+            share_group_type_id=cls.share_group_type_id,
+            share_type_ids=[cls.share_type_id],
+        )
 
         # Create 2 shares - inside first and second share groups
         cls.share_name = data_utils.rand_name("tempest-share-name")
@@ -56,6 +71,7 @@ class ShareGroupActionsTest(base.BaseSharesTest):
                 'name': cls.share_name,
                 'description': cls.share_desc,
                 'size': size,
+                'share_type_id': cls.share_type_id,
                 'share_group_id': sg_id,
                 'experimental': True,
             }} for size, sg_id in ((cls.share_size, cls.share_group['id']),
@@ -271,6 +287,7 @@ class ShareGroupActionsTest(base.BaseSharesTest):
             cleanup_in_class=False,
             source_share_group_snapshot_id=self.sg_snapshot['id'],
             version=constants.MIN_SHARE_GROUP_MICROVERSION,
+            share_group_type_id=self.share_group_type_id,
         )
 
         new_share_group = self.shares_v2_client.get_share_group(
@@ -318,11 +335,19 @@ class ShareGroupActionsTest(base.BaseSharesTest):
 @testtools.skipUnless(
     CONF.share.run_share_group_tests, 'Share Group tests disabled.')
 @base.skip_if_microversion_lt(constants.MIN_SHARE_GROUP_MICROVERSION)
-class ShareGroupRenameTest(base.BaseSharesTest):
+class ShareGroupRenameTest(base.BaseSharesMixedTest):
 
     @classmethod
     def resource_setup(cls):
         super(ShareGroupRenameTest, cls).resource_setup()
+
+        # Create a share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+
+        # Create a share group type
+        cls.share_group_type = cls._create_share_group_type()
+        cls.share_group_type_id = cls.share_group_type['id']
 
         # Create share group
         cls.share_group_name = data_utils.rand_name("tempest-sg-name")
@@ -330,6 +355,8 @@ class ShareGroupRenameTest(base.BaseSharesTest):
         cls.share_group = cls.create_share_group(
             name=cls.share_group_name,
             description=cls.share_group_desc,
+            share_group_type_id=cls.share_group_type_id,
+            share_type_ids=[cls.share_type_id]
         )
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
@@ -374,6 +401,8 @@ class ShareGroupRenameTest(base.BaseSharesTest):
             name=value1,
             description=value1,
             version=constants.MIN_SHARE_GROUP_MICROVERSION,
+            share_group_type_id=self.share_group_type_id,
+            share_type_ids=[self.share_type_id]
         )
         self.assertEqual(value1, share_group["name"])
         self.assertEqual(value1, share_group["description"])

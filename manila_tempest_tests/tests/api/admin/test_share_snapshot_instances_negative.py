@@ -33,7 +33,12 @@ class SnapshotInstancesNegativeTest(base.BaseSharesMixedTest):
         super(SnapshotInstancesNegativeTest, cls).resource_setup()
         cls.admin_client = cls.admin_shares_v2_client
         cls.member_client = cls.shares_v2_client
-        cls.share = cls.create_share(client=cls.admin_client)
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+        # create share
+        cls.share = cls.create_share(share_type_id=cls.share_type_id,
+                                     client=cls.admin_client)
         cls.snapshot = cls.create_snapshot_wait_for_active(
             cls.share["id"], client=cls.admin_client)
 

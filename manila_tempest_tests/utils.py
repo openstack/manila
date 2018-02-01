@@ -146,5 +146,7 @@ def get_configured_extra_specs(variation=None):
             CONF.share.multitenancy_enabled)
         extra_specs['snapshot_support'] = (
             CONF.share.capability_snapshot_support)
+        extra_specs['create_share_from_snapshot_support'] = (
+            CONF.share.capability_create_share_from_snapshot_support)
 
     return extra_specs

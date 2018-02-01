@@ -32,7 +32,11 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         cls.task_states = ["migration_starting", "data_copying_in_progress",
                            "migration_success", None]
         cls.bad_status = "error_deleting"
-        cls.sh = cls.create_share()
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+        # create share
+        cls.sh = cls.create_share(share_type_id=cls.share_type_id)
         cls.sh_instance = (
             cls.shares_v2_client.get_instances_of_share(cls.sh["id"])[0]
         )
@@ -65,7 +69,7 @@ class AdminActionsTest(base.BaseSharesAdminTest):
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_force_delete_share(self):
-        share = self.create_share()
+        share = self.create_share(share_type_id=self.share_type_id)
 
         # Change status from 'available' to 'error_deleting'
         self.shares_v2_client.reset_state(share["id"], status=self.bad_status)
@@ -80,7 +84,8 @@ class AdminActionsTest(base.BaseSharesAdminTest):
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_force_delete_share_instance(self):
-        share = self.create_share(cleanup_in_class=False)
+        share = self.create_share(share_type_id=self.share_type_id,
+                                  cleanup_in_class=False)
         instances = self.shares_v2_client.get_instances_of_share(share["id"])
         # Check that instance was created
         self.assertEqual(1, len(instances))
