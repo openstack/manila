@@ -1249,6 +1249,11 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with(
             'net-routes-create', expected_api_args)
 
+    def test_create_route_without_gateway(self):
+        self.mock_object(self.client, 'send_request')
+        self.client.create_route(None, destination=fake.SUBNET)
+        self.assertFalse(self.client.send_request.called)
+
     def test_ensure_broadcast_domain_for_port_domain_match(self):
 
         port_info = {
