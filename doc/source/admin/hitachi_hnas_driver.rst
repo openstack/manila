@@ -227,9 +227,9 @@ if it exists is located in: */etc/neutron/plugins/openvswitch/ovs_neutron_plugin
 
 Create a route in HNAS to the tenant network. Please make sure
 multi-tenancy is enabled and routes are configured per EVS. Use the command
-“route-net-add” in HNAS console, where the network parameter should be the
+"route-net-add" in HNAS console, where the network parameter should be the
 tenant's private network, while the gateway parameter should be the flat
-network gateway and the “console-context --evs” parameter should be the ID of
+network gateway and the "console-context --evs" parameter should be the ID of
 EVS in use, such as in the following example:
 
 .. code-block:: console
