@@ -351,7 +351,7 @@ class ShareManager(manager.SchedulerDependentManager):
         if (old_backend_info_hash and
                 old_backend_info_hash == new_backend_info_hash):
             LOG.debug(
-                ("The ensure share be skipped because the The old backend "
+                ("The ensure share be skipped because the old backend "
                  "%(host)s info as the same as new backend info"),
                 {'host': self.host})
             return
