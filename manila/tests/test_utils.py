@@ -750,7 +750,7 @@ class ShareMigrationHelperTestCase(test.TestCase):
         db.share_instance_get.assert_has_calls(
             [mock.call(mock.ANY, sid), mock.call(mock.ANY, sid)]
         )
-        time.sleep.assert_called_once_with(1)
+        time.sleep.assert_called_once_with(1.414)
 
     @ddt.data(
         (

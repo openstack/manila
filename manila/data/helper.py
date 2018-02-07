@@ -34,10 +34,19 @@ data_helper_opts = [
         default=180,
         help="Time to wait for access rules to be allowed/denied on backends "
              "when migrating a share (seconds)."),
+    cfg.ListOpt('data_node_access_ips',
+                default=[],
+                help="A list of the IPs of the node interface connected to "
+                     "the admin network. Used for allowing access to the "
+                     "mounting shares. Default is []."),
     cfg.StrOpt(
         'data_node_access_ip',
         help="The IP of the node interface connected to the admin network. "
-             "Used for allowing access to the mounting shares."),
+             "Used for allowing access to the mounting shares.",
+        deprecated_for_removal=True,
+        deprecated_reason="New config option 'data_node_access_ips' added "
+                          "to support multiple IPs, including IPv6 addresses "
+                          "alongside IPv4."),
     cfg.StrOpt(
         'data_node_access_cert',
         help="The certificate installed in the data node in order to "
@@ -114,15 +123,20 @@ class DataServiceHelper(object):
                             'instance_id': share_instance_id,
                             'share_id': self.share['id']})
 
-    def _change_data_access_to_instance(self, instance, accesses, deny=False):
-        if not isinstance(accesses, list):
-            accesses = [accesses]
+    def _change_data_access_to_instance(
+            self, instance, accesses=None, deny=False):
 
         self.access_helper.get_and_update_share_instance_access_rules_status(
             self.context, status=constants.SHARE_INSTANCE_RULES_SYNCING,
             share_instance_id=instance['id'])
 
         if deny:
+            if accesses is None:
+                accesses = []
+            else:
+                if not isinstance(accesses, list):
+                    accesses = [accesses]
+
             access_filters = {'access_id': [a['id'] for a in accesses]}
             updates = {'state': constants.ACCESS_STATE_QUEUED_TO_DENY}
             self.access_helper.get_and_update_share_instance_access_rules(
@@ -168,24 +182,26 @@ class DataServiceHelper(object):
                 'access_to': access['access_to'],
             }
 
+            # Check if the rule being added already exists. If so, we will
+            # remove it to prevent conflicts
             old_access_list = self.db.share_access_get_all_by_type_and_access(
                 self.context, self.share['id'], access['access_type'],
                 access['access_to'])
+            if old_access_list:
+                self._change_data_access_to_instance(
+                    share_instance, old_access_list, deny=True)
 
-            # Create new access rule and deny all old ones corresponding to
-            # the mapping. Since this is a bulk update, all access changes
-            # are made in one go.
             access_ref = self.db.share_instance_access_create(
                 self.context, values, share_instance['id'])
-            self._change_data_access_to_instance(
-                share_instance, old_access_list, deny=True)
+            self._change_data_access_to_instance(share_instance)
 
             if allow_access_to_destination_instance:
                 access_ref = self.db.share_instance_access_create(
                     self.context, values, dest_share_instance['id'])
-                self._change_data_access_to_instance(
-                    dest_share_instance, access_ref)
+                self._change_data_access_to_instance(dest_share_instance)
 
+            # The access rule ref used here is a regular Share Access Map,
+            # instead of a Share Instance Access Map.
             access_ref_list.append(access_ref)
 
         return access_ref_list
@@ -194,27 +210,36 @@ class DataServiceHelper(object):
 
         access_list = []
 
+        # NOTE(ganso): protocol is not relevant here because we previously
+        # used it to filter the access types we are interested in
         for access_type, protocols in access_mapping.items():
-            if access_type.lower() == 'cert':
-                access_to = CONF.data_node_access_cert
+            access_to_list = []
+            if access_type.lower() == 'cert' and CONF.data_node_access_cert:
+                access_to_list.append(CONF.data_node_access_cert)
             elif access_type.lower() == 'ip':
-                access_to = CONF.data_node_access_ip
-            elif access_type.lower() == 'user':
-                access_to = CONF.data_node_access_admin_user
+                ips = CONF.data_node_access_ips or CONF.data_node_access_ip
+                if ips:
+                    if not isinstance(ips, list):
+                        ips = [ips]
+                    access_to_list.extend(ips)
+            elif (access_type.lower() == 'user' and
+                    CONF.data_node_access_admin_user):
+                access_to_list.append(CONF.data_node_access_admin_user)
             else:
                 msg = _("Unsupported access type provided: %s.") % access_type
                 raise exception.ShareDataCopyFailed(reason=msg)
-            if not access_to:
+            if not access_to_list:
                 msg = _("Configuration for Data node mounting access type %s "
                         "has not been set.") % access_type
                 raise exception.ShareDataCopyFailed(reason=msg)
 
-            access = {
-                'access_type': access_type,
-                'access_level': constants.ACCESS_LEVEL_RW,
-                'access_to': access_to,
-            }
-            access_list.append(access)
+            for access_to in access_to_list:
+                access = {
+                    'access_type': access_type,
+                    'access_level': constants.ACCESS_LEVEL_RW,
+                    'access_to': access_to,
+                }
+                access_list.append(access)
 
         return access_list
 
