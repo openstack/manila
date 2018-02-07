@@ -184,3 +184,12 @@ class ExceptionTest(test.TestCase):
         api = self._wsgi_app(fail)
         resp = webob.Request.blank('/').get_response(api)
         self.assertEqual(500, resp.status_int)
+
+    def test_validate_request_unicode_decode_fault(self):
+        @webob.dec.wsgify
+        def unicode_error(req):
+            raise UnicodeDecodeError("ascii", "test".encode(), 0, 1, "bad")
+
+        api = self._wsgi_app(unicode_error)
+        resp = webob.Request.blank('/test?foo=%88').get_response(api)
+        self.assertEqual(400, resp.status_int)

@@ -20,6 +20,7 @@ import webob.dec
 import webob.exc
 
 from manila.api.openstack import wsgi
+from manila.i18n import _
 from manila import utils
 from manila.wsgi import common as base_wsgi
 
@@ -40,6 +41,11 @@ class FaultWrapper(base_wsgi.Middleware):
             status, webob.exc.HTTPInternalServerError)()
 
     def _error(self, inner, req):
+        if isinstance(inner, UnicodeDecodeError):
+            msg = _("Error decoding your request. Either the URL or the "
+                    "request body contained characters that could not be "
+                    "decoded by Manila.")
+            return wsgi.Fault(webob.exc.HTTPBadRequest(explanation=msg))
         LOG.exception("Caught error: %s", inner)
 
         safe = getattr(inner, 'safe', False)

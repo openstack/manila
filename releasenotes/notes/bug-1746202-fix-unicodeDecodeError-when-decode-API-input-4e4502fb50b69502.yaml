@@ -1,0 +1,5 @@
+---
+fixes:
+  - This patch converts UnicodeDecodeError exception into BadRequest, plus
+    an explicit error message. Fix invalid query parameter could lead to
+    HTTP 500.
