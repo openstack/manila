@@ -1,0 +1,5 @@
+---
+fixes:
+  - LVM driver now correctly parses IPv6 addresses during a Host-assisted
+    share migration.
+
