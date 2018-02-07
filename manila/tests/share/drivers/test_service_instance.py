@@ -678,7 +678,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         fake_image3 = fake_compute.FakeImage(
             name='another-image',
             status='active')
-        self.mock_object(self._manager.image_api, 'image_list',
+        self.mock_object(self._manager.compute_api, 'image_list',
                          mock.Mock(return_value=[fake_image1,
                                                  fake_image2,
                                                  fake_image3]))
@@ -687,7 +687,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.assertEqual(fake_image1.id, result)
 
     def test_get_service_image_not_found(self):
-        self.mock_object(self._manager.image_api, 'image_list',
+        self.mock_object(self._manager.compute_api, 'image_list',
                          mock.Mock(return_value=[]))
         self.assertRaises(
             exception.ServiceInstanceException,
@@ -696,7 +696,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         fake_error_image = fake_compute.FakeImage(
             name='service_image_name',
             status='error')
-        self.mock_object(self._manager.image_api, 'image_list',
+        self.mock_object(self._manager.compute_api, 'image_list',
                          mock.Mock(return_value=[fake_error_image]))
         self.assertRaises(
             exception.ServiceInstanceException,
@@ -707,7 +707,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             name=fake_get_config_option('service_image_name'),
             status='active')
         fake_images = [fake_image, fake_image]
-        self.mock_object(self._manager.image_api, 'image_list',
+        self.mock_object(self._manager.compute_api, 'image_list',
                          mock.Mock(return_value=fake_images))
         self.assertRaises(
             exception.ServiceInstanceException,
