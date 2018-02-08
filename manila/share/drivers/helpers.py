@@ -241,8 +241,9 @@ class NFSHelper(NASHelperBase):
 
             hosts = self.get_host_list(out, local_path)
             for host in hosts:
+                parsed_host = self._get_parsed_address_or_cidr(host)
                 self._ssh_exec(server, ['sudo', 'exportfs', '-u',
-                                        ':'.join((host, local_path))])
+                                        ':'.join((parsed_host, local_path))])
             self._sync_nfs_temp_and_perm_files(server)
             for access in access_rules:
                 rules_options = '%s,no_subtree_check,no_root_squash'

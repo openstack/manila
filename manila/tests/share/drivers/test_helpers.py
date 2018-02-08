@@ -226,14 +226,22 @@ class NFSHelperTestCase(test.TestCase):
         result = self._helper.get_host_list(fake_exportfs, '/shares/share-1')
         self.assertEqual(expected, result)
 
-    @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
-    def test_update_access_recovery_mode(self, access_level):
+    @ddt.data({"level": const.ACCESS_LEVEL_RW, "ip": "1.1.1.1",
+               "expected": "1.1.1.1"},
+              {"level": const.ACCESS_LEVEL_RO, "ip": "1.1.1.1",
+               "expected": "1.1.1.1"},
+              {"level": const.ACCESS_LEVEL_RW, "ip": "fd12:abcd::10",
+               "expected": "[fd12:abcd::10]"},
+              {"level": const.ACCESS_LEVEL_RO, "ip": "fd12:abcd::10",
+               "expected": "[fd12:abcd::10]"})
+    @ddt.unpack
+    def test_update_access_recovery_mode(self, level, ip, expected):
         expected_mount_options = '%s,no_subtree_check,no_root_squash'
         access_rules = [test_generic.get_fake_access_rule(
-            '1.1.1.1', access_level), ]
+            ip, level), ]
         self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
         self.mock_object(self._helper, 'get_host_list',
-                         mock.Mock(return_value=['1.1.1.1']))
+                         mock.Mock(return_value=[ip]))
         self._helper.update_access(self.server, self.share_name, access_rules,
                                    [], [])
         local_path = os.path.join(CONF.share_mount_path, self.share_name)
@@ -241,11 +249,11 @@ class NFSHelperTestCase(test.TestCase):
             mock.call(self.server, ['sudo', 'exportfs']),
             mock.call(
                 self.server, ['sudo', 'exportfs', '-u',
-                              ':'.join([access_rules[0]['access_to'],
+                              ':'.join([expected,
                                         local_path])]),
             mock.call(self.server, ['sudo', 'exportfs', '-o',
-                                    expected_mount_options % access_level,
-                                    ':'.join(['1.1.1.1', local_path])]),
+                                    expected_mount_options % level,
+                                    ':'.join([expected, local_path])]),
         ])
         self._helper._sync_nfs_temp_and_perm_files.assert_called_with(
             self.server)
