@@ -218,7 +218,7 @@ Create a section like this to define a CephFS native backend:
 Set ``driver-handles-share-servers`` to ``False`` as the driver does not
 manage the lifecycle of ``share-servers``. To let the driver perform snapshot
 related operations, set ``cephfs_enable_snapshots`` to True. For the driver
-backend to expose shares via the the native Ceph protocol, set
+backend to expose shares via the native Ceph protocol, set
 ``cephfs_protocol_helper_type`` to ``CEPHFS``.
 
 Then edit ``enabled_share_backends`` to point to the driver's backend section
