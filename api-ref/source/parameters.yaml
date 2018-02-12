@@ -126,9 +126,11 @@ action_id:
     The ID of the action during which the message was created.
 all_tenants:
   description: |
-    (Admin only). Defines whether to list shares or share groups for
-    all tenants. Set to ``1`` to list shares or sharegroups for all tenants.
-    Set to ``0`` to list shares or share groups only for the current tenant.
+    (Admin only). Defines whether to list the requested resources for
+    all projects. Set to ``1`` to list resources for all projects.
+    Set to ``0`` to list resources only for the current tenant. Examples
+    of resources include shares, snapshots, share networks, security services
+    and share groups.
   in: query
   required: false
   type: boolean
