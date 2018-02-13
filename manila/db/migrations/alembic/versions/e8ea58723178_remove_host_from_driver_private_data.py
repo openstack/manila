@@ -38,10 +38,17 @@ COLUMN_HOST = 'host'
 DEFAULT_HOST = 'unknown'
 COLUMN_ENTITY = 'entity_uuid'
 COLUMN_KEY = 'key'
+MYSQL_ENGINE = 'mysql'
 
 
 def upgrade():
+    bind = op.get_bind()
+    engine = bind.engine
     try:
+        if (engine.name == MYSQL_ENGINE):
+            op.drop_constraint('PRIMARY', TABLE_NAME, type_='primary')
+            op.create_primary_key('DRIVERS_PRIVATE_PK', TABLE_NAME,
+                                  ['entity_uuid', 'key'])
         op.drop_column(TABLE_NAME, COLUMN_HOST)
     except Exception:
         LOG.error("Column '%s' could not be dropped", COLUMN_HOST)
