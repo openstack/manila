@@ -57,7 +57,7 @@ How do I add a release note?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We use `Reno <https://docs.openstack.org/reno/latest/>`_ to create and manage
-release notes. The new subcommand combines a random suffix with a “slug” value
+release notes. The new subcommand combines a random suffix with a "slug" value
 to make the new file with a unique name that is easy to identify again later.
 To create a release note for your change, use:
 
