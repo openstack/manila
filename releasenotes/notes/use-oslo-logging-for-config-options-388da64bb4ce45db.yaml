@@ -1,0 +1,5 @@
+---
+fixes:
+  - Use Oslo's logging features to securely output the configuration options
+    for Manila.
+
