@@ -25,7 +25,6 @@ localconf=$BASE/new/devstack/local.conf
 echo "[[local|localrc]]" >> $localconf
 echo "DEVSTACK_GATE_TEMPEST_ALLOW_TENANT_ISOLATION=1" >> $localconf
 echo "API_RATE_LIMIT=False" >> $localconf
-echo "TEMPEST_SERVICES+=,manila" >> $localconf
 echo "VOLUME_BACKING_FILE_SIZE=22G" >> $localconf
 echo "CINDER_LVM_TYPE=thin" >> $localconf
 
