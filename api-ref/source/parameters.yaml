@@ -26,6 +26,12 @@ message_id:
   in: path
   required: false
   type: string
+quota_class_name:
+  description:
+    The name of the quota class for which to set quotas.
+  in: path
+  required: true
+  type: string
 security_service_id_path:
   description: |
     The UUID of the security service.
@@ -1636,12 +1642,41 @@ maxTotalShareGigabytes:
   in: body
   required: true
   type: integer
+maxTotalShareGigabytesOptional:
+  description: |
+    The total maximum number of share gigabytes that
+    are allowed in a project. You cannot request a share that exceeds
+    the allowed gigabytes quota.
+  in: body
+  required: false
+  type: integer
+maxTotalShareGroups:
+  description: |
+    The maximum number of share groups.
+  in: body
+  required: true
+  type: integer
+  min_version: 2.40
+maxTotalShareGroupSnapshots:
+  description: |
+    The maximum number of share group snapshots.
+  in: body
+  required: true
+  type: integer
+  min_version: 2.40
 maxTotalShareNetworks:
   description: |
     The total maximum number of share-networks that
     are allowed in a project.
   in: body
   required: true
+  type: integer
+maxTotalShareNetworksOptional:
+  description: |
+    The total maximum number of share-networks that
+    are allowed in a project.
+  in: body
+  required: false
   type: integer
 maxTotalShares:
   description: |
@@ -1657,12 +1692,33 @@ maxTotalShareSnapshots:
   in: body
   required: true
   type: integer
+maxTotalShareSnapshotsOptional:
+  description: |
+    The total maximum number of share snapshots that
+    are allowed in a project.
+  in: body
+  required: false
+  type: integer
+maxTotalSharesOptional:
+  description: |
+    The total maximum number of shares that are
+    allowed in a project.
+  in: body
+  required: false
+  type: integer
 maxTotalSnapshotGigabytes:
   description: |
     The total maximum number of snapshot gigabytes
     that are allowed in a project.
   in: body
   required: true
+  type: integer
+maxTotalSnapshotGigabytesOptional:
+  description: |
+    The total maximum number of snapshot gigabytes
+    that are allowed in a project.
+  in: body
+  required: false
   type: integer
 message_level_body:
   in: body
@@ -1997,6 +2053,18 @@ qos:
   in: body
   required: true
   type: boolean
+quota_class_id:
+  description: |
+    A ``quota_class_set`` id.
+  in: body
+  required: true
+  type: string
+quota_class_set:
+  description: |
+    A ``quota_class_set`` object.
+  in: body
+  required: true
+  type: object
 quota_gigabytes:
   description: |
     The number of gigabytes allowed for each tenant.
