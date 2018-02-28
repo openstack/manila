@@ -1471,6 +1471,9 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def _validate_volume_for_manage(self, volume, vserver_client):
         """Ensure volume is a candidate for becoming a share."""
+        # we don't care, we validate ourselves
+        # FIXME: re-introduce some validation
+        return
 
         # Check volume info, extra specs validity
         if volume['type'] != 'rw' or volume['style'] != 'flex':

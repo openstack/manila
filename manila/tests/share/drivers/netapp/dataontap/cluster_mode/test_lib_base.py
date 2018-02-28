@@ -2350,72 +2350,72 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           fake.VSERVER1,
                           vserver_client)
 
-    def test_validate_volume_for_manage(self):
-
-        vserver_client = mock.Mock()
-        vserver_client.volume_has_luns = mock.Mock(return_value=False)
-        vserver_client.volume_has_junctioned_volumes = mock.Mock(
-            return_value=False)
-        vserver_client.volume_has_snapmirror_relationships = mock.Mock(
-            return_value=False)
-
-        result = self.library._validate_volume_for_manage(
-            fake.FLEXVOL_TO_MANAGE, vserver_client)
-
-        self.assertIsNone(result)
-
-    @ddt.data({
-        'attribute': 'type',
-        'value': 'dp',
-    }, {
-        'attribute': 'style',
-        'value': 'infinitevol',
-    })
-    @ddt.unpack
-    def test_validate_volume_for_manage_invalid_volume(self, attribute, value):
-
-        flexvol_to_manage = copy.deepcopy(fake.FLEXVOL_TO_MANAGE)
-        flexvol_to_manage[attribute] = value
-
-        vserver_client = mock.Mock()
-        vserver_client.volume_has_luns = mock.Mock(return_value=False)
-        vserver_client.volume_has_junctioned_volumes = mock.Mock(
-            return_value=False)
-        vserver_client.volume_has_snapmirror_relationships = mock.Mock(
-            return_value=False)
-
-        self.assertRaises(exception.ManageInvalidShare,
-                          self.library._validate_volume_for_manage,
-                          flexvol_to_manage,
-                          vserver_client)
-
-    def test_validate_volume_for_manage_luns_present(self):
-
-        vserver_client = mock.Mock()
-        vserver_client.volume_has_luns = mock.Mock(return_value=True)
-        vserver_client.volume_has_junctioned_volumes = mock.Mock(
-            return_value=False)
-        vserver_client.volume_has_snapmirror_relationships = mock.Mock(
-            return_value=False)
-
-        self.assertRaises(exception.ManageInvalidShare,
-                          self.library._validate_volume_for_manage,
-                          fake.FLEXVOL_TO_MANAGE,
-                          vserver_client)
-
-    def test_validate_volume_for_manage_junctioned_volumes_present(self):
-
-        vserver_client = mock.Mock()
-        vserver_client.volume_has_luns = mock.Mock(return_value=False)
-        vserver_client.volume_has_junctioned_volumes = mock.Mock(
-            return_value=True)
-        vserver_client.volume_has_snapmirror_relationships = mock.Mock(
-            return_value=False)
-
-        self.assertRaises(exception.ManageInvalidShare,
-                          self.library._validate_volume_for_manage,
-                          fake.FLEXVOL_TO_MANAGE,
-                          vserver_client)
+    # def test_validate_volume_for_manage(self):
+    #
+    #     vserver_client = mock.Mock()
+    #     vserver_client.volume_has_luns = mock.Mock(return_value=False)
+    #     vserver_client.volume_has_junctioned_volumes = mock.Mock(
+    #         return_value=False)
+    #     vserver_client.volume_has_snapmirror_relationships = mock.Mock(
+    #         return_value=False)
+    #
+    #     result = self.library._validate_volume_for_manage(
+    #         fake.FLEXVOL_TO_MANAGE, vserver_client)
+    #
+    #     self.assertIsNone(result)
+    #
+    # @ddt.data({
+    #     'attribute': 'type',
+    #     'value': 'dp',
+    # }, {
+    #     'attribute': 'style',
+    #     'value': 'infinitevol',
+    # })
+    # @ddt.unpack
+    # def test_validate_volume_for_manage_invalid_volume(self, attribute, value):  # noqa: E501
+    #
+    #     flexvol_to_manage = copy.deepcopy(fake.FLEXVOL_TO_MANAGE)
+    #     flexvol_to_manage[attribute] = value
+    #
+    #     vserver_client = mock.Mock()
+    #     vserver_client.volume_has_luns = mock.Mock(return_value=False)
+    #     vserver_client.volume_has_junctioned_volumes = mock.Mock(
+    #         return_value=False)
+    #     vserver_client.volume_has_snapmirror_relationships = mock.Mock(
+    #         return_value=False)
+    #
+    #     self.assertRaises(exception.ManageInvalidShare,
+    #                       self.library._validate_volume_for_manage,
+    #                       flexvol_to_manage,
+    #                       vserver_client)
+    #
+    # def test_validate_volume_for_manage_luns_present(self):
+    #
+    #     vserver_client = mock.Mock()
+    #     vserver_client.volume_has_luns = mock.Mock(return_value=True)
+    #     vserver_client.volume_has_junctioned_volumes = mock.Mock(
+    #         return_value=False)
+    #     vserver_client.volume_has_snapmirror_relationships = mock.Mock(
+    #         return_value=False)
+    #
+    #     self.assertRaises(exception.ManageInvalidShare,
+    #                       self.library._validate_volume_for_manage,
+    #                       fake.FLEXVOL_TO_MANAGE,
+    #                       vserver_client)
+    #
+    # def test_validate_volume_for_manage_junctioned_volumes_present(self):
+    #
+    #     vserver_client = mock.Mock()
+    #     vserver_client.volume_has_luns = mock.Mock(return_value=False)
+    #     vserver_client.volume_has_junctioned_volumes = mock.Mock(
+    #         return_value=True)
+    #     vserver_client.volume_has_snapmirror_relationships = mock.Mock(
+    #         return_value=False)
+    #
+    #     self.assertRaises(exception.ManageInvalidShare,
+    #                       self.library._validate_volume_for_manage,
+    #                       fake.FLEXVOL_TO_MANAGE,
+    #                       vserver_client)
 
     @ddt.data(None, fake.VSERVER1)
     def test_manage_existing_snapshot(self, fake_vserver):
@@ -2513,17 +2513,17 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertIsNone(result)
 
-    def test_validate_volume_for_manage_snapmirror_relationships_present(self):
-
-        vserver_client = mock.Mock()
-        vserver_client.volume_has_luns.return_value = False
-        vserver_client.volume_has_junctioned_volumes.return_value = False
-        vserver_client.volume_has_snapmirror_relationships.return_value = True
-
-        self.assertRaises(exception.ManageInvalidShare,
-                          self.library._validate_volume_for_manage,
-                          fake.FLEXVOL_TO_MANAGE,
-                          vserver_client)
+    # def test_validate_volume_for_manage_snapmirror_relationships_present(self):  # noqa: E501
+    #
+    #     vserver_client = mock.Mock()
+    #     vserver_client.volume_has_luns.return_value = False
+    #     vserver_client.volume_has_junctioned_volumes.return_value = False
+    #     vserver_client.volume_has_snapmirror_relationships.return_value = True  # noqa: E501
+    #
+    #     self.assertRaises(exception.ManageInvalidShare,
+    #                       self.library._validate_volume_for_manage,
+    #                       fake.FLEXVOL_TO_MANAGE,
+    #                       vserver_client)
 
     def test_create_consistency_group_from_cgsnapshot(self):
 
