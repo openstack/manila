@@ -31,6 +31,9 @@ _MOCK_CLONE_ID = 3
 
 _MOCK_SHARE_SIZE = 4
 
+_MOCK_NETWORK_SPACE_IP_1 = '1.2.3.4'
+_MOCK_NETWORK_SPACE_IP_2 = '1.2.3.5'
+
 
 def _create_mock__getitem__(mock):
     def mock__getitem__(self, key, default=None):
@@ -137,7 +140,8 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
 
         self._mock_network_space = mock.Mock()
         self._mock_network_space.get_ips.return_value = (
-            [mock.Mock(ip_address='1.2.3.4'), mock.Mock(ip_address='1.2.3.5')])
+            [mock.Mock(ip_address=_MOCK_NETWORK_SPACE_IP_1, enabled=True),
+             mock.Mock(ip_address=_MOCK_NETWORK_SPACE_IP_2, enabled=True)])
 
         result.network_spaces.safe_get.return_value = self._mock_network_space
         result.pools.safe_get.return_value = self._mock_pool
@@ -259,9 +263,20 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                           self.driver._get_infinidat_pool)
 
     def test__get_infinidat_nas_network_space_ips(self):
-        self.driver._get_infinidat_nas_network_space_ips()
+        network_space_ips = self.driver._get_infinidat_nas_network_space_ips()
         self._system.network_spaces.safe_get.assert_called_once()
         self._mock_network_space.get_ips.assert_called_once()
+
+        for network_space_ip in \
+                (_MOCK_NETWORK_SPACE_IP_1, _MOCK_NETWORK_SPACE_IP_2):
+            self.assertIn(network_space_ip, network_space_ips)
+
+    def test__get_infinidat_nas_network_space_ips_only_one_ip_enabled(self):
+        self._mock_network_space.get_ips.return_value = (
+            [mock.Mock(ip_address=_MOCK_NETWORK_SPACE_IP_1, enabled=True),
+             mock.Mock(ip_address=_MOCK_NETWORK_SPACE_IP_2, enabled=False)])
+        self.assertEqual([_MOCK_NETWORK_SPACE_IP_1],
+                         self.driver._get_infinidat_nas_network_space_ips())
 
     def test__get_infinidat_nas_network_space_ips_no_network_space(self):
         self._system.network_spaces.safe_get.return_value = None
@@ -273,11 +288,29 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.assertRaises(exception.ShareBackendException,
                           self.driver._get_infinidat_nas_network_space_ips)
 
+    def test__get_infinidat_nas_network_space_ips_no_ips_enabled(self):
+        self._mock_network_space.get_ips.return_value = (
+            [mock.Mock(ip_address=_MOCK_NETWORK_SPACE_IP_1, enabled=False),
+             mock.Mock(ip_address=_MOCK_NETWORK_SPACE_IP_2, enabled=False)])
+        self.assertRaises(exception.ShareBackendException,
+                          self.driver._get_infinidat_nas_network_space_ips)
+
     def test__get_infinidat_nas_network_space_api_error(self):
         self._system.network_spaces.safe_get.side_effect = (
             self._raise_infinisdk)
         self.assertRaises(exception.ShareBackendException,
                           self.driver._get_infinidat_nas_network_space_ips)
+
+    def test__get_full_nfs_export_paths(self):
+        export_paths = self.driver._get_full_nfs_export_paths(
+            self._mock_export.get_export_path())
+        for network_space_ip in \
+                (_MOCK_NETWORK_SPACE_IP_1, _MOCK_NETWORK_SPACE_IP_2):
+                self.assertIn(
+                    "{network_space_ip}:{export_path}".format(
+                        network_space_ip=network_space_ip,
+                        export_path=self._mock_export.get_export_path()),
+                    export_paths)
 
     def test__get_export(self):
         # The default return value of get_exports is [mock_export, ]:
