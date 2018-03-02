@@ -215,6 +215,15 @@ class NFSHelperTestCase(test.TestCase):
             [],
             [])
 
+    def test_update_access_delete_invalid_rule(self):
+        delete_rules = [test_generic.get_fake_access_rule(
+            'lala', 'fake_level', access_type='user'), ]
+        self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
+        self._helper.update_access(self.server, self.share_name, [],
+                                   [], delete_rules)
+        self._helper._sync_nfs_temp_and_perm_files.assert_called_with(
+            self.server)
+
     def test_get_host_list(self):
         fake_exportfs = ('/shares/share-1\n\t\t20.0.0.3\n'
                          '/shares/share-1\n\t\t20.0.0.6\n'
