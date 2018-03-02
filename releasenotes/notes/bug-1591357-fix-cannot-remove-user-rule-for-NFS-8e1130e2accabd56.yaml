@@ -1,0 +1,4 @@
+---
+fixes:
+  - The generic driver has been fixed to allow removing
+    inappropriate CIFS rules on NFS shares.

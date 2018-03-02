@@ -263,8 +263,6 @@ class NFSHelper(NASHelperBase):
                 (const.ACCESS_LEVEL_RO, const.ACCESS_LEVEL_RW))
 
             for access in delete_rules:
-                access_to = self._get_parsed_address_or_cidr(
-                    access['access_to'])
                 try:
                     self.validate_access_rules(
                         [access], ('ip',),
@@ -278,6 +276,8 @@ class NFSHelper(NASHelperBase):
                                     'type': access['access_type'],
                                     'to': access['access_to']})
                     continue
+                access_to = self._get_parsed_address_or_cidr(
+                    access['access_to'])
                 self._ssh_exec(server, ['sudo', 'exportfs', '-u',
                                ':'.join((access_to, local_path))])
             if delete_rules:
