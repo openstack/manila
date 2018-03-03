@@ -84,3 +84,13 @@ Shared File Systems service:
       of network - flat and segmented. As above, it is completely up to the
       share driver to support the network type for which the network plug-in is
       configured.
+
+.. note::
+
+    The ip version of the share network is defined by the flags of
+    ``network_plugin_ipv4_enabled`` and ``network_plugin_ipv6_enabled`` in the
+    ``manila.conf`` configuration since Pike. The ``network_plugin_ipv4_enabled``
+    default value is set to True. The ``network_plugin_ipv6_enabled`` default value is
+    set to False. If ``network_plugin_ipv6_enabled`` option is True, the value of
+    ``network_plugin_ipv4_enabled`` will be ignored, it means to support both IPv4 and
+    IPv6 share network.
