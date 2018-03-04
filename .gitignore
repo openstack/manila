@@ -41,9 +41,6 @@ api-ref/build
 # Files created by releasenotes build
 releasenotes/build
 
-# Files created by install-guide builds
-install-guide/build
-
 # Development environment files
 .project
 .pydevproject
