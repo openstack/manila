@@ -60,7 +60,6 @@ class ServiceMixin(object):
             'status',
         ]
         for search_opt in search_opts:
-            value = ''
             if search_opt in req.GET:
                 value = req.GET[search_opt]
                 services = [s for s in services if s[search_opt] == value]
