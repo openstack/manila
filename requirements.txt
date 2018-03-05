@@ -9,7 +9,7 @@ alembic>=0.8.10 # MIT
 Babel!=2.4.0,>=2.3.4 # BSD
 eventlet!=0.18.3,!=0.20.1,<0.21.0,>=0.18.2 # MIT
 greenlet>=0.4.10 # MIT
-ipaddress>=1.0.16;python_version<'3.3' # PSF
+ipaddress>=1.0.17;python_version<'3.3' # PSF
 lxml!=3.7.0,>=3.4.1 # BSD
 netaddr>=0.7.18 # BSD
 oslo.config>=5.1.0 # Apache-2.0
