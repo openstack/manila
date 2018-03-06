@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Change the CIFS mounting parameter of Huawei driver from form "user=" to
+    "username=", which is compatible in various OS.
