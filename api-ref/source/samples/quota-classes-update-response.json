@@ -1,0 +1,11 @@
+{
+    "quota_class_set": {
+        "share_groups": 50,
+        "gigabytes": 20,
+        "share_group_snapshots": 50,
+        "snapshots": 50,
+        "snapshot_gigabytes": 1000,
+        "shares": 50,
+        "share_networks": 10
+    }
+}

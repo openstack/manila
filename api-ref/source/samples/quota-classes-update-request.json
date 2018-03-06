@@ -1,0 +1,6 @@
+{
+    "quota_class_set": {
+        "class_name": "test-qupta-class-update",
+        "gigabytes": 20
+    }
+}
