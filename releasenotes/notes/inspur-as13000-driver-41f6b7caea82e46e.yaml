@@ -1,0 +1,6 @@
+---
+prelude: >
+    Add Inspur AS13000 driver.
+features:
+  - Added new Inspur AS13000 driver, which supports snapshots operation along with
+    all the minimum driver features.
