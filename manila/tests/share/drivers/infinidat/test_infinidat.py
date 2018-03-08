@@ -15,6 +15,7 @@
 """Unit tests for INFINIDAT InfiniBox share driver."""
 
 import copy
+import functools
 import mock
 from oslo_utils import units
 
@@ -53,6 +54,14 @@ original_test_clone = mock.Mock(id=_MOCK_CLONE_ID, size=test_share.size,
 original_test_clone.__getitem__ = _create_mock__getitem__(original_test_clone)
 
 
+def skip_driver_setup(func):
+    @functools.wraps(func)
+    def f(*args, **kwargs):
+        return func(*args, **kwargs)
+    f.__skip_driver_setup = True
+    return f
+
+
 class FakeInfinisdkException(Exception):
     def __init__(self, message=None, error_code=None, *args):
         self.message = message
@@ -73,6 +82,11 @@ class FakeInfinisdkPermission(object):
 
 
 class InfiniboxDriverTestCaseBase(test.TestCase):
+    def _test_skips_driver_setup(self):
+        test_method_name = self.id().split('.')[-1]
+        test_method = getattr(self, test_method_name)
+        return getattr(test_method, '__skip_driver_setup', False)
+
     def setUp(self):
         super(InfiniboxDriverTestCaseBase, self).setUp()
 
@@ -111,7 +125,8 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
         infinisdk.core.exceptions.InfiniSDKException = FakeInfinisdkException
         infinisdk.InfiniBox.return_value = self._system
 
-        self.driver.do_setup(None)
+        if not self._test_skips_driver_setup():
+            self.driver.do_setup(None)
 
     def _infinibox_mock(self):
         result = mock.Mock()
@@ -188,6 +203,21 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.configuration.infinibox_password = ""
         self.assertRaises(exception.BadConfigurationException,
                           self.driver.do_setup, None)
+
+    @skip_driver_setup
+    def test__setup_and_get_system_object(self):
+        # This test should skip the driver setup, as it generates more calls to
+        # the add_auto_retry, set_source_identifier and login methods:
+        auth = (self.configuration.infinibox_login,
+                self.configuration.infinibox_password)
+
+        self.driver._setup_and_get_system_object(
+            self.configuration.infinibox_hostname, auth)
+
+        self._system.api.add_auto_retry.assert_called_once()
+        self._system.api.set_source_identifier.assert_called_once_with(
+            infinibox._INFINIDAT_MANILA_IDENTIFIER)
+        self._system.login.assert_called_once()
 
     def test_get_share_stats_refreshes(self):
         self.driver._update_share_stats()

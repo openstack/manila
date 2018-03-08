@@ -74,6 +74,12 @@ _MANILA_TO_INFINIDAT_ACCESS_LEVEL = {
     constants.ACCESS_LEVEL_RO: 'RO',
 }
 
+# Max retries for the REST API client in case of a failure:
+_API_MAX_RETRIES = 5
+# Identifier used as the REST API User-Agent string:
+_INFINIDAT_MANILA_IDENTIFIER = (
+    "manila/%s" % version.version_info.release_string())
+
 
 def infinisdk_to_manila_exceptions(func):
     @functools.wraps(func)
@@ -98,6 +104,16 @@ class InfiniboxShareDriver(driver.ShareDriver):
         self.configuration.append_config_values(infinidat_auth_opts)
         self.configuration.append_config_values(infinidat_general_opts)
 
+    def _setup_and_get_system_object(self, management_address, auth):
+        system = infinisdk.InfiniBox(management_address, auth=auth)
+        system.api.add_auto_retry(
+            lambda e: isinstance(
+                e, infinisdk.core.exceptions.APITransportFailure) and
+            "Interrupted system call" in e.error_desc, _API_MAX_RETRIES)
+        system.api.set_source_identifier(_INFINIDAT_MANILA_IDENTIFIER)
+        system.login()
+        return system
+
     def do_setup(self, context):
         """Driver initialization"""
         if infinisdk is None:
@@ -110,7 +126,7 @@ class InfiniboxShareDriver(driver.ShareDriver):
             self._safe_get_from_config_or_fail('infinibox_password'))
         auth = (infinibox_login, infinibox_password)
 
-        self.management_address = (
+        management_address = (
             self._safe_get_from_config_or_fail('infinibox_hostname'))
 
         self._pool_name = (
@@ -120,8 +136,8 @@ class InfiniboxShareDriver(driver.ShareDriver):
             self._safe_get_from_config_or_fail(
                 'infinidat_nas_network_space_name'))
 
-        self._system = infinisdk.InfiniBox(self.management_address, auth=auth)
-        self._system.login()
+        self._system = (
+            self._setup_and_get_system_object(management_address, auth))
 
         backend_name = self.configuration.safe_get('share_backend_name')
         self._backend_name = backend_name or self.__class__.__name__
