@@ -11,6 +11,8 @@ Share drivers
    drivers/generic-driver.rst
    drivers/cephfs-native-driver.rst
    drivers/dell-emc-vmax-driver.rst
+   drivers/dell-emc-unity-driver.rst
+   drivers/dell-emc-vnx-driver.rst
    drivers/glusterfs-driver.rst
    drivers/glusterfs-native-driver.rst
    drivers/hdfs-native-driver.rst
@@ -18,8 +20,6 @@ Share drivers
    drivers/zfs-on-linux-driver.rst
    drivers/zfssa-manila-driver.rst
    drivers/emc-isilon-driver.rst
-   drivers/emc-vnx-driver.rst
-   drivers/emc-unity-driver.rst
    drivers/hitachi-hnas-driver.rst
    drivers/hitachi-hsp-driver.rst
    drivers/hpe-3par-share-driver.rst
