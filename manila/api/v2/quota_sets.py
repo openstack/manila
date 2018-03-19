@@ -16,6 +16,7 @@
 
 from oslo_log import log
 from oslo_utils import strutils
+from six.moves import http_client
 from six.moves.urllib import parse
 import webob
 
@@ -257,7 +258,7 @@ class QuotaSetsMixin(object):
                     context, id, share_type_id)
             else:
                 QUOTAS.destroy_all_by_project(context, id)
-            return webob.Response(status_int=202)
+            return webob.Response(status_int=http_client.ACCEPTED)
         except exception.NotAuthorized:
             raise webob.exc.HTTPForbidden()
 

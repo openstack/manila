@@ -21,6 +21,7 @@ from oslo_log import log
 from oslo_utils import strutils
 from oslo_utils import uuidutils
 import six
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -97,7 +98,7 @@ class ShareMixin(object):
         except exception.Conflict as e:
             raise exc.HTTPConflict(explanation=six.text_type(e))
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def index(self, req):
         """Returns a summary list of shares."""
@@ -440,7 +441,7 @@ class ShareMixin(object):
         except exception.NotFound as error:
             raise webob.exc.HTTPNotFound(explanation=six.text_type(error))
         self.share_api.deny_access(context, share, access)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def _access_list(self, req, id, body):
         """List share access rules."""
@@ -464,7 +465,7 @@ class ShareMixin(object):
         except exception.ShareSizeExceedsAvailableQuota as e:
             raise webob.exc.HTTPForbidden(explanation=six.text_type(e))
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def _shrink(self, req, id, body):
         """Shrink size of a share."""
@@ -477,7 +478,7 @@ class ShareMixin(object):
         except (exception.InvalidInput, exception.InvalidShare) as e:
             raise webob.exc.HTTPBadRequest(explanation=six.text_type(e))
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def _get_valid_resize_parameters(self, context, id, body, action):
         try:

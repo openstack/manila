@@ -16,6 +16,7 @@
 from oslo_log import log
 from oslo_utils import uuidutils
 import six
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -71,7 +72,7 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
             self.share_group_api.delete(context, share_group)
         except exception.InvalidShareGroup as e:
             raise exc.HTTPConflict(explanation=six.text_type(e))
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.Controller.authorize('get_all')

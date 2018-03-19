@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -144,7 +145,7 @@ class ShareMetadataController(object):
         except exception.NotFound:
             msg = _('share does not exist')
             raise exc.HTTPNotFound(explanation=msg)
-        return webob.Response(status_int=200)
+        return webob.Response(status_int=http_client.OK)
 
 
 def create_resource():

@@ -14,6 +14,7 @@
 #    under the License.
 
 import six
+from six.moves import http_client
 import webob
 
 from manila.api import common
@@ -173,7 +174,7 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
         notifier_info = dict(type_id=type_id, id=id)
         notifier = rpc.get_notifier('shareTypeExtraSpecs')
         notifier.info(context, 'share_type_extra_specs.delete', notifier_info)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def _check_key_names(self, keys):
         if not common.validate_key_names(keys):

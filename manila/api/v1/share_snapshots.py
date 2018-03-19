@@ -16,6 +16,7 @@
 """The share snapshots api."""
 
 from oslo_log import log
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -68,7 +69,7 @@ class ShareSnapshotMixin(object):
             self.share_api.delete_snapshot(context, snapshot)
         except exception.NotFound:
             raise exc.HTTPNotFound()
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def index(self, req):
         """Returns a summary list of snapshots."""

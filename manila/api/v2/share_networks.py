@@ -19,6 +19,7 @@ from oslo_db import exception as db_exception
 from oslo_log import log
 from oslo_utils import timeutils
 import six
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -104,7 +105,7 @@ class ShareNetworkController(wsgi.Controller):
             QUOTAS.commit(context, reservations,
                           project_id=share_network['project_id'],
                           user_id=share_network['user_id'])
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def _get_share_networks(self, req, is_detail=True):
         """Returns a list of share networks."""

@@ -16,6 +16,7 @@
 """The Share Replication API."""
 
 import six
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -157,7 +158,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
         except exception.ReplicationException as e:
             raise exc.HTTPBadRequest(explanation=six.text_type(e))
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
     @wsgi.action('promote')
@@ -176,7 +177,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
         replica_state = replica.get('replica_state')
 
         if replica_state == constants.REPLICA_STATE_ACTIVE:
-            return webob.Response(status_int=200)
+            return webob.Response(status_int=http_client.OK)
 
         try:
             replica = self.share_api.promote_share_replica(context, replica)
@@ -222,7 +223,7 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
         replica_state = replica.get('replica_state')
 
         if replica_state == constants.REPLICA_STATE_ACTIVE:
-            return webob.Response(status_int=200)
+            return webob.Response(status_int=http_client.OK)
 
         try:
             self.share_api.update_share_replica(context, replica)
