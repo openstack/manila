@@ -803,8 +803,10 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         # Port already in desired ipspace and broadcast domain.
         if (port_info['ipspace'] == ipspace
-                and port_info['broadcast-domain'] == domain):
-            self._modify_broadcast_domain(domain, ipspace, mtu)
+            and (port_info['broadcast-domain'] == domain
+                 or port_info['broadcast-domain'] == 'OpenStack')):
+            self._modify_broadcast_domain(
+                port_info['broadcast-domain'], ipspace, mtu)
             return
 
         # If in another broadcast domain, remove port from it.
