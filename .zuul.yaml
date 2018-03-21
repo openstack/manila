@@ -381,6 +381,7 @@
       - openstack/manila
       - openstack/python-manilaclient
       - openstack/rally
+      - openstack/manila-tempest-plugin
 
 - job:
     name: manila-rally-multibackend-no-ss
@@ -403,3 +404,4 @@
       - openstack/manila
       - openstack/python-manilaclient
       - openstack/rally
+      - openstack/manila-tempest-plugin
