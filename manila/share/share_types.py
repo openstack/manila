@@ -91,8 +91,15 @@ def get_all_types(context, inactive=0, search_opts=None):
 
         type_args['required_extra_specs'] = required_extra_specs
 
+    search_vars = {}
+    if 'extra_specs' in search_opts:
+        search_vars['extra_specs'] = search_opts.pop('extra_specs')
+    search_vars = search_opts.get('extra_specs')
+
     if search_opts:
-        LOG.debug("Searching by: %s", search_opts)
+        return {}
+    elif search_vars:
+        LOG.debug("Searching by: %s", search_vars)
 
         def _check_extra_specs_match(share_type, searchdict):
             for k, v in searchdict.items():
@@ -107,7 +114,7 @@ def get_all_types(context, inactive=0, search_opts=None):
         result = {}
         for type_name, type_args in share_types.items():
             # go over all filters in the list
-            for opt, values in search_opts.items():
+            for opt, values in search_vars.items():
                 try:
                     filter_func = filter_mapping[opt]
                 except KeyError:

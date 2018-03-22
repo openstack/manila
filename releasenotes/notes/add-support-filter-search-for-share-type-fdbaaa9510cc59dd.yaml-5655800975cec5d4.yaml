@@ -1,0 +1,3 @@
+---
+features:
+  - Share types can now be filtered with its extra_specs.

@@ -71,6 +71,28 @@ class ShareTypesTestCase(test.TestCase):
         }
     }
 
+    fake_r_extra_specs = {
+        u'gold': u'True',
+        u'driver_handles_share_servers': u'True'
+    }
+
+    fake_r_required_extra_specs = {
+        u'driver_handles_share_servers': u'True'
+    }
+
+    fake_r_type_extra = {
+        'test_with_extra': {
+            'created_at': datetime.datetime(2015, 1, 22, 11, 45, 31),
+            'deleted': '0',
+            'deleted_at': None,
+            'extra_specs': fake_r_extra_specs,
+            'required_extra_specs': fake_r_required_extra_specs,
+            'id': fake_share_type_id,
+            'name': u'test_with_extra',
+            'updated_at': None
+        }
+    }
+
     fake_required_extra_specs = {
         constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true',
     }
@@ -114,7 +136,7 @@ class ShareTypesTestCase(test.TestCase):
 
     def test_get_all_types_search(self):
         share_type = self.fake_type_w_extra
-        search_filter = {"extra_specs": {"gold": "True"}, 'is_public': True}
+        search_filter = {'extra_specs': {'gold': 'True'}, 'is_public': True}
         self.mock_object(db,
                          'share_type_get_all',
                          mock.Mock(return_value=share_type))
@@ -122,11 +144,18 @@ class ShareTypesTestCase(test.TestCase):
                                                   search_opts=search_filter)
         db.share_type_get_all.assert_called_once_with(
             mock.ANY, 0, filters={'is_public': True})
+
         self.assertItemsEqual(share_type, returned_type)
-        search_filter = {"extra_specs": {"gold": "False"}}
+        search_filter = {'extra_specs': {'gold': 'False'}}
         returned_type = share_types.get_all_types(self.context,
                                                   search_opts=search_filter)
-        self.assertEqual({}, returned_type)
+        self.assertEqual(share_type, returned_type)
+
+        share_type = self.fake_r_type_extra
+        search_filter = {'extra_specs': {'gold': 'True'}}
+        returned_type = share_types.get_all_types(self.context,
+                                                  search_opts=search_filter)
+        self.assertItemsEqual(share_type, returned_type)
 
     def test_get_share_type_extra_specs(self):
         share_type = self.fake_type_w_extra['test_with_extra']
