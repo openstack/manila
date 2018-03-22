@@ -46,7 +46,7 @@
               export DEVSTACK_GATE_FEATURE_MATRIX="/opt/stack/new/rally/devstack/features.yaml"
           fi
 
-          export PROJECTS="openstack/rally $PROJECTS"
+          export PROJECTS="openstack/rally openstack/manila-tempest-plugin $PROJECTS"
           export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
 
           # Run only manila services, because only main manila functionality
