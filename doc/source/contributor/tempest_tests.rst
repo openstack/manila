@@ -89,13 +89,13 @@ from tempest root directory:
 
 .. code-block:: console
 
-    $ tox -e all-plugin -- manila_tempest_tests.tests.api
+    $ tempest run -r manila_tempest_tests.tests.api
 
 or to run only scenario tests:
 
 .. code-block:: console
 
-    $ tox -e all-plugin -- manila_tempest_tests.tests.scenario
+    $ tempest run -r manila_tempest_tests.tests.scenario
 
 .. _pip: https://pypi.python.org/pypi/pip
 .. _tox: https://pypi.python.org/pypi/tox
@@ -111,28 +111,28 @@ To run the tests in the ``manila_tempest_tests/tests/api/admin`` directory:
 
 .. code-block:: console
 
-    $ tox -e all-plugin -- manila_tempest_tests.tests.api.admin
+    $ tempest run -r manila_tempest_tests.tests.api.admin
 
 To run the tests in the
 ``manila_tempest_tests/tests/api/admin/test_admin_actions.py`` module:
 
 .. code-block:: console
 
-    $ tox -e all-plugin -- manila_tempest_tests.tests.api.admin.test_admin_actions
+    $ tempest run -r manila_tempest_tests.tests.api.admin.test_admin_actions
 
 To run the tests in the `AdminActionsTest` class in
 ``manila_tempest_tests/tests/api/admin/test_admin_actions.py`` module:
 
 .. code-block:: console
 
-    $ tox -e all-plugin -- manila_tempest_tests.tests.api.admin.test_admin_actions.AdminActionsTest
+    $ tempest run -r manila_tempest_tests.tests.api.admin.test_admin_actions.AdminActionsTest
 
 To run the `AdminActionsTest.test_reset_share_state` test method in
 ``manila_tempest_tests/tests/api/admin/test_admin_actions.py`` module:
 
 .. code-block:: console
 
-    $ tox -e all-plugin -- manila_tempest_tests.tests.api.admin.test_admin_actions.AdminActionsTest.test_reset_share_state
+    $ tempest run -r manila_tempest_tests.tests.api.admin.test_admin_actions.AdminActionsTest.test_reset_share_state
 
 Running a subset of tests based on service involvement
 ------------------------------------------------------
@@ -140,7 +140,7 @@ To run the tests that require only `manila-api` service running:
 
 .. code-block:: console
 
-    $ tox -e all-plugin -- \
+    $ tempest run -r \
       \(\?\=\.\*\\\[\.\*\\bapi\\b\.\*\\\]\) \
       \(\^manila_tempest_tests.tests.api\)
 
@@ -149,7 +149,7 @@ but intended to test API behaviour:
 
 .. code-block:: console
 
-    $ tox -e all-plugin -- \
+    $ tempest run -r \
       \(\?\=\.\*\\\[\.\*\\b\(api\|api_with_backend\)\\b\.\*\\\]\) \
       \(\^manila_tempest_tests.tests.api\)
 
@@ -158,7 +158,7 @@ but intended to test back-end (manila-share) behaviour:
 
 .. code-block:: console
 
-    $ tox -e all-plugin -- \
+    $ tempest run -r \
       \(\?\=\.\*\\\[\.\*\\bbackend\\b\.\*\\\]\) \
       \(\^manila_tempest_tests.tests.api\)
 
@@ -168,7 +168,7 @@ To run only positive tests, use following command:
 
 .. code-block:: console
 
-    $ tox -e all-plugin -- \
+    $ tempest run -r \
       \(\?\=\.\*\\\[\.\*\\bpositive\\b\.\*\\\]\) \
       \(\^manila_tempest_tests.tests.api\)
 
@@ -176,7 +176,7 @@ To run only negative tests, use following command:
 
 .. code-block:: console
 
-    $ tox -e all-plugin -- \
+    $ tempest run -r \
       \(\?\=\.\*\\\[\.\*\\bnegative\\b\.\*\\\]\) \
       \(\^manila_tempest_tests.tests.api\)
 
@@ -184,7 +184,7 @@ To run only positive API tests, use following command:
 
 .. code-block:: console
 
-    $ tox -e all-plugin -- \
+    $ tempest run -r \
       \(\?\=\.\*\\\[\.\*\\bpositive\\b\.\*\\\]\) \
       \(\?\=\.\*\\\[\.\*\\bapi\\b\.\*\\\]\) \
       \(\^manila_tempest_tests.tests.api\)
