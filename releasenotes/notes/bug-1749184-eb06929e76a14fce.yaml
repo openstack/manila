@@ -1,0 +1,5 @@
+---
+fixes:
+  - The database migration has been adjusted to work with mariadb >= 10.2.8
+    by ensuring that a primary key constraint is first dropped and re-added
+    when a column is removed that is part of it
