@@ -28,11 +28,13 @@
             voting: false
         - manila-rally-multibackend-no-ss:
             voting: false
+        - openstack-tox-lower-constraints
     gate:
       jobs:
         - manila-tox-genconfig
         - manila-tempest-minimal-dsvm-dummy
         - manila-tempest-minimal-dsvm-lvm-centos-7
+        - openstack-tox-lower-constraints
     experimental:
       jobs:
         - manila-tempest-dsvm-glusterfs-nfs
