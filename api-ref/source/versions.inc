@@ -32,7 +32,12 @@ the deployment. Links to more specific information will be provided
 for each API version, as well as information about supported min and
 max microversions.
 
-Normal Response Codes: 300
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 300
 
 Response
 --------
@@ -74,7 +79,12 @@ This gets the details of a specific API at it's root. Nearly all this
 information exists at the API root, so this is mostly a redundant
 operation.
 
-Normal Response Codes: 200
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
 
 Request
 -------

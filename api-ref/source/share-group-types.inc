@@ -41,7 +41,12 @@ List share group types
 
 Lists all share group types.
 
-Normal response codes: 200
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
 
 Request
 -------
@@ -75,9 +80,19 @@ List default share group types
 
 Lists default share group types.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -111,9 +126,19 @@ List share group types extra specs
 
 Lists the extra specifications for a share group type.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -144,9 +169,20 @@ Create share group type
 
 Creates a share group type.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), conflict(409)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
 
 Request
 -------
@@ -192,9 +228,19 @@ Shows access details for a share group type.
 
 You can view access details for private share group types only.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -226,9 +272,20 @@ Set extra spec for share group type
 
 Sets an extra specification for the share group type.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), conflict(409)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
 
 Request
 -------
@@ -266,9 +323,19 @@ Unset an group spec
 
 Unsets an extra specification for the share type.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -289,9 +356,20 @@ Adds share group type access for a project.
 
 You can add access to private share group types only.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), conflict(409)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
 
 Request
 -------
@@ -318,9 +396,19 @@ Removes share group type access from a project.
 
 You can remove access from private share group types only.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -345,9 +433,19 @@ Delete share group type
 
 Deletes a share group type.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------

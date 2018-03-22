@@ -37,8 +37,18 @@ List share limits
 
 Lists share limits.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
 
 Request
 -------

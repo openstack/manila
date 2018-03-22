@@ -19,9 +19,19 @@ List export locations
 
 .. rest_method::  GET /v2/{tenant_id}/share_instances/{share_instance_id}/export_locations
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -55,9 +65,19 @@ Show single export location
 .. rest_method::  GET /v2/{tenant_id}/share_instances/{share_instance_id}/export_locations/{export_location_id}
 
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------

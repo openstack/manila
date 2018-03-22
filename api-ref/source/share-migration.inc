@@ -33,9 +33,20 @@ ends must set the ``driver_handles_share_servers`` parameter to
 action is not supported. You can configure a back end in the
 ``manila.conf`` file.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), conflict(409)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
 
 Request
 -------
@@ -58,9 +69,20 @@ Start Migration (Since version 2.15)
 Initiates share migration. This API will initiate the share data copy to the
 new host. The copy operation is non-disruptive.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), conflict(409)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
 
 Request
 -------
@@ -83,9 +105,20 @@ Complete Migration (Since version 2.15)
 Completes share migration. This API will initiate the switch-over from the
 source to destination share. This operation is disruptive.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), conflict(409)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
 
 Request
 -------

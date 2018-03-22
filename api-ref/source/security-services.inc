@@ -39,8 +39,18 @@ List security services
 
 Lists all security services.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
 
 Request
 -------
@@ -73,8 +83,18 @@ List security services with details
 
 Lists all security services with details.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
 
 Request
 -------
@@ -116,9 +136,19 @@ Show security service details
 
 Shows details for a security service.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -161,9 +191,19 @@ Create security service
 
 Creates a security service.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-unprocessableEntity(422)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 422
 
 Request
 -------
@@ -224,9 +264,20 @@ the ``name`` and ``description`` attributes. A security service in
 ``active`` state is attached to a share network with an associated
 share server.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), unprocessableEntity(422)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 422
 
 Request
 -------
@@ -283,9 +334,19 @@ Delete security service
 
 Deletes a security service.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------

@@ -47,8 +47,18 @@ List share servers
 
 Lists all share servers.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
 
 Request
 -------
@@ -84,9 +94,19 @@ Show share server details
 
 Shows details for a share server.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -128,9 +148,20 @@ Deletes a share server.
 An administrator can delete an active share server only if it
 contains no dependent shares.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), conflict(409)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
 
 Request
 -------

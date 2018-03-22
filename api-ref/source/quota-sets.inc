@@ -30,8 +30,18 @@ Show default quota set
 
 Shows default quotas for a tenant.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
 
 Request
 -------
@@ -75,8 +85,18 @@ If you specify the optional ``user_id`` query parameter, you get
 the quotas for this user in the tenant. If you omit this parameter,
 you get the quotas for the project.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
 
 Request
 -------
@@ -121,8 +141,18 @@ If you specify the optional ``user_id`` query parameter, you get
 the quotas for this user in the tenant. If you omit this parameter,
 you get the quotas for the project.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
 
 Request
 -------
@@ -167,8 +197,18 @@ If you specify the optional ``user_id`` query parameter, you update
 the quotas for this user in the tenant. If you omit this parameter,
 you update the quotas for the project.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
 
 Request
 -------
@@ -228,8 +268,18 @@ If you specify the optional ``user_id`` query parameter, you delete
 the quotas for this user in the tenant. If you omit this parameter,
 you delete the quotas for the project.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
 
 Request
 -------

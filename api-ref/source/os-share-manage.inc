@@ -24,9 +24,20 @@ action to other roles.
 This API was removed in API version 2.7; please see share actions for the
 new version of the API to utilize this feature.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), conflict(409)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
 
 Request
 -------
@@ -111,9 +122,20 @@ snapshots and share replicas before attempting to unmanage a share.
 This API was removed in API version 2.7; please see share actions for the
 new version of the API to utilize this feature.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), conflict(409)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
 
 Request
 -------

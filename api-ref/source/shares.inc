@@ -89,8 +89,18 @@ List shares
 
 Lists all shares.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
 
 Request
 -------
@@ -145,9 +155,20 @@ List shares with details
 
 Lists all shares, with details.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), conflict(409)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
 
 Request
 -------
@@ -227,9 +248,19 @@ Show share details
 Shows details for a share.
 
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -286,9 +317,21 @@ Create share
 
 Creates a share.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), conflict(409), unprocessableEntity(422)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
+   - 422
 
 Request
 -------
@@ -366,9 +409,21 @@ Manage share
 Configures Shared File Systems to manage a share.
 This API is available for API versions later than or equal to 2.7
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), conflict(409), unprocessableEntity(422)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
+   - 422
 
 Request
 -------
@@ -450,9 +505,20 @@ You can update these attributes:
 If you try to update other attributes, they retain their previous
 values.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), unprocessableEntity(422)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 422
 
 Request
 -------
@@ -518,9 +584,20 @@ Delete share
 
 Deletes a share.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), conflict(409)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
 
 Request
 -------

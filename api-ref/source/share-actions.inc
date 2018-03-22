@@ -72,10 +72,19 @@ methods:
 
 Grants access to a share.
 
-Normal response codes: 202
+Response codes
+--------------
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -126,10 +135,19 @@ The shared file systems service stores each access rule in its database and
 assigns it a unique ID. This ID can be used to revoke access after access
 has been requested.
 
-Normal response codes: 202
+Response codes
+--------------
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -156,10 +174,19 @@ List access rules
 Lists access rules for a share. The Access ID returned is necessary to deny
 access.
 
-Normal response codes: 200
+Response codes
+--------------
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -209,9 +236,19 @@ Administrator only. Explicitly updates the state of a share.
 Use the ``policy.json`` file to grant permissions for this action
 to other roles.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -240,9 +277,19 @@ Administrator only. Force-deletes a share in any state.
 Use the ``policy.json`` file to grant permissions for this action
 to other roles.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -267,9 +314,19 @@ Extend share
 
 Increases the size of a share.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -295,9 +352,19 @@ Shrink share
 
 Shrinks the size of a share.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -323,9 +390,20 @@ Unmanage share
 
 This API is available in versions later than or equal to 2.7
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), conflict(409)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
 
 Request
 -------
@@ -351,9 +429,20 @@ Revert share to snapshot
 Reverts a share to the specified snapshot, which must be the most recent one
 known to manila. This API is available in versions later than or equal to 2.27.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), conflict(409)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
 
 Request
 -------
