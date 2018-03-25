@@ -447,17 +447,9 @@ def main():
         CONF(sys.argv[1:], project='manila',
              version=version.version_string())
         log.setup(CONF, "manila")
-    except cfg.ConfigFilesNotFoundError:
-        cfgfile = CONF.config_file[-1] if CONF.config_file else None
-        if cfgfile and not os.access(cfgfile, os.R_OK):
-            st = os.stat(cfgfile)
-            print(_("Could not read %s. Re-running with sudo") % cfgfile)
-            try:
-                os.execvp('sudo', ['sudo', '-u', '#%s' % st.st_uid] + sys.argv)
-            except Exception:
-                print(_('sudo failed, continuing as if nothing happened'))
-
-        print(_('Please re-run manila-manage as root.'))
+    except cfg.ConfigFilesNotFoundError as e:
+        cfg_files = e.config_files
+        print(_("Failed to read configuration file(s): %s") % cfg_files)
         sys.exit(2)
 
     fn = CONF.category.action_fn
