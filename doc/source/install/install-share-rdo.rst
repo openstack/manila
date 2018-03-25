@@ -31,7 +31,7 @@ Install and configure components
 
         [database]
         ...
-        connection = mysql://manila:MANILA_DBPASS@controller/manila
+        connection = mysql+pymysql://manila:MANILA_DBPASS@controller/manila
 
 
      Replace ``MANILA_DBPASS`` with the password you chose for
