@@ -29,8 +29,17 @@ List share group snapshots
 
 Lists all share group snapshots.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
 
 Request
 -------
@@ -72,8 +81,17 @@ List share group snapshots with details
 
 Lists all share group snapshots with details.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
 
 Request
 -------
@@ -121,8 +139,17 @@ List share group snapshots members
 
 Lists all share group snapshots members.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
 
 Request
 -------
@@ -161,8 +188,18 @@ Show share group snapshot details
 
 Shows details for a share group snapshot.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 404
 
 Request
 -------
@@ -201,10 +238,20 @@ Create share group snapshot
 
 Creates a snapshot from a share.
 
+Response codes
+--------------
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), unprocessableEntity(422)
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 422
 
 Request
 -------
@@ -254,9 +301,19 @@ Administrator only. Explicitly updates the state of a share group snapshot.
 Use the ``policy.json`` file to grant permissions for this action
 to other roles.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -281,9 +338,20 @@ Update share group snapshot
 
 Updates a share group snapshot.
 
-Normal response codes: 200
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), unprocessableEntity(422)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 422
 
 Request
 -------
@@ -330,9 +398,19 @@ Delete share group snapshot
 
 Deletes a share group snapshot.
 
-Normal response codes: 202
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------

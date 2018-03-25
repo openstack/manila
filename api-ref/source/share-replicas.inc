@@ -59,10 +59,19 @@ Create share replica
 
 Create a share replica for the share.
 
-Normal response codes: 202
+Response codes
+--------------
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -111,10 +120,19 @@ Promote share replica
 
 Promotes a replica to ``active`` replica state.
 
-Normal response codes: 202
+Response codes
+--------------
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -132,10 +150,19 @@ Resync share replica
 
 Resync a replica with its ``active`` mirror.
 
-Normal response codes: 202
+Response codes
+--------------
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -153,10 +180,19 @@ List share replicas
 
 Lists share replicas.
 
-Normal response codes: 200
+Response codes
+--------------
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -190,10 +226,19 @@ List share replicas with details
 
 Lists share replicas with details.
 
-Normal response codes: 200
+Response codes
+--------------
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -233,10 +278,19 @@ Show share replica
 
 Show a share replica.
 
-Normal response codes: 200
+Response codes
+--------------
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -280,10 +334,19 @@ Administrator only. Explicitly updates the ``status`` of a share replica.
 Use the ``policy.json`` file to grant permissions for this action
 to other roles.
 
-Normal response codes: 202
+Response codes
+--------------
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -312,10 +375,19 @@ Administrator only. Explicitly updates the ``replica state`` of a share replica.
 Use the ``policy.json`` file to grant permissions for this action
 to other roles.
 
-Normal response codes: 202
+Response codes
+--------------
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 Request
 -------
@@ -341,10 +413,20 @@ Delete share replica
 
 Deletes a share replica.
 
-Normal response codes: 202
+Response codes
+--------------
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404), conflict(409)
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
 
 .. note::
 
@@ -369,10 +451,19 @@ Administrator only. Force-deletes a share replica in any state.
 Use the ``policy.json`` file to grant permissions for this action
 to other roles.
 
-Normal response codes: 202
+Response codes
+--------------
 
-Error response codes: badRequest(400), unauthorized(401), forbidden(403),
-itemNotFound(404)
+.. rest_status_code:: success status.yaml
+
+   - 202
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
 
 .. note::
 
