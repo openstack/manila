@@ -58,6 +58,8 @@
           export IDENTITY_API_VERSION=3
 
           export DEVSTACK_GATE_NEUTRON=1
+          export DEVSTACK_GATE_TEMPEST=0
+
           export RALLY_SCENARIO=rally-manila-no-ss
 
           # Keep localrc to be able to set some vars in pre_test_hook
