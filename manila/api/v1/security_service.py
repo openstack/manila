@@ -16,6 +16,7 @@
 """The security service api."""
 
 from oslo_log import log
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -72,7 +73,7 @@ class SecurityServiceController(wsgi.Controller):
                             'delete', security_service)
         db.security_service_delete(context, id)
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def index(self, req):
         """Returns a summary list of security services."""

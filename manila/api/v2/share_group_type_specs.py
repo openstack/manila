@@ -12,6 +12,7 @@
 
 import copy
 import six
+from six.moves import http_client
 import webob
 
 from manila.api import common
@@ -119,7 +120,7 @@ class ShareGroupTypeSpecsController(wsgi.Controller):
             db.share_group_type_specs_delete(context, id, key)
         except exception.ShareGroupTypeSpecsNotFound as error:
             raise webob.exc.HTTPNotFound(explanation=error.msg)
-        return webob.Response(status_int=204)
+        return webob.Response(status_int=http_client.NO_CONTENT)
 
     def _check_key_names(self, keys):
         if not common.validate_key_names(keys):

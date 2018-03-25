@@ -18,6 +18,7 @@
 
 from oslo_log import log
 import six
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -77,7 +78,7 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
         except (exception.ShareSnapshotNotFound, exception.ShareNotFound) as e:
             raise exc.HTTPNotFound(explanation=six.text_type(e))
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.authorize('manage_snapshot')
     def _manage(self, req, body):
@@ -220,7 +221,7 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         self.share_api.snapshot_deny_access(context, snapshot, access)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def _check_mount_snapshot_support(self, context, snapshot):
         share = self.share_api.get(context, snapshot['share_id'])

@@ -15,6 +15,7 @@
 from oslo_utils import strutils
 from oslo_utils import uuidutils
 import six
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -166,7 +167,7 @@ class ShareGroupTypesController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg % id)
         except exception.NotFound:
             raise webob.exc.HTTPNotFound()
-        return webob.Response(status_int=204)
+        return webob.Response(status_int=http_client.NO_CONTENT)
 
     @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.Controller.authorize('list_project_access')
@@ -204,7 +205,7 @@ class ShareGroupTypesController(wsgi.Controller):
                 context, id, project)
         except exception.ShareGroupTypeAccessExists as err:
             raise webob.exc.HTTPConflict(explanation=six.text_type(err))
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version('2.31', experimental=True)
     @wsgi.action('removeProjectAccess')
@@ -219,7 +220,7 @@ class ShareGroupTypesController(wsgi.Controller):
                 context, id, project)
         except exception.ShareGroupTypeAccessNotFound as err:
             raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def _assert_non_public_share_group_type(self, context, type_id):
         try:

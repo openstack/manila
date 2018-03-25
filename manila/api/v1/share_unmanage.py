@@ -14,6 +14,7 @@
 
 from oslo_log import log
 import six
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -64,7 +65,7 @@ class ShareUnmanageMixin(object):
         except (exception.InvalidShare, exception.PolicyNotAuthorized) as e:
             raise exc.HTTPForbidden(explanation=six.text_type(e))
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 class ShareUnmanageController(ShareUnmanageMixin, wsgi.Controller):

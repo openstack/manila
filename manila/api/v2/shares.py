@@ -15,6 +15,7 @@
 
 from oslo_log import log
 import six
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -157,7 +158,7 @@ class ShareController(shares.ShareMixin,
         except exception.ReplicationException as e:
             raise exc.HTTPBadRequest(explanation=six.text_type(e))
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def _validate_revert_parameters(self, context, body):
         if not (body and self.is_valid_body(body, 'revert')):
@@ -287,7 +288,7 @@ class ShareController(shares.ShareMixin,
             msg = _("Share %s not found.") % id
             raise exc.HTTPNotFound(explanation=msg)
         self.share_api.migration_complete(context, share)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version('2.22', experimental=True)
     @wsgi.action("migration_cancel")
@@ -301,7 +302,7 @@ class ShareController(shares.ShareMixin,
             msg = _("Share %s not found.") % id
             raise exc.HTTPNotFound(explanation=msg)
         self.share_api.migration_cancel(context, share)
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.api_version('2.22', experimental=True)
     @wsgi.action("migration_get_progress")

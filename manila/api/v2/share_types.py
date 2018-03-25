@@ -19,6 +19,7 @@ from oslo_log import log
 from oslo_utils import strutils
 from oslo_utils import uuidutils
 import six
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -250,7 +251,7 @@ class ShareTypesController(wsgi.Controller):
 
             raise webob.exc.HTTPNotFound()
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.Controller.authorize('list_project_access')
     def share_type_access(self, req, id):
@@ -289,7 +290,7 @@ class ShareTypesController(wsgi.Controller):
         except exception.ShareTypeAccessExists as err:
             raise webob.exc.HTTPConflict(explanation=six.text_type(err))
 
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('removeProjectAccess')
     @wsgi.Controller.authorize('remove_project_access')
@@ -304,7 +305,7 @@ class ShareTypesController(wsgi.Controller):
             share_types.remove_share_type_access(context, id, project)
         except exception.ShareTypeAccessNotFound as err:
             raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
     def _verify_if_non_public_share_type(self, context, share_type_id):
         try:

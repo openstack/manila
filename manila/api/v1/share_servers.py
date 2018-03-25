@@ -15,6 +15,7 @@
 
 from oslo_log import log
 import six
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -112,7 +113,7 @@ class ShareServerController(wsgi.Controller):
             self.share_api.delete_share_server(context, share_server)
         except exception.ShareServerInUse as e:
             raise exc.HTTPConflict(explanation=six.text_type(e))
-        return webob.Response(status_int=202)
+        return webob.Response(status_int=http_client.ACCEPTED)
 
 
 def create_resource():

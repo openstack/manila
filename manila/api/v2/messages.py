@@ -18,6 +18,7 @@ GET /messages/<message_id>
 DELETE /messages/<message_id>
 """
 
+from six.moves import http_client
 import webob
 from webob import exc
 
@@ -66,7 +67,7 @@ class MessagesController(wsgi.Controller):
         except exception.MessageNotFound as error:
             raise exc.HTTPNotFound(explanation=error.msg)
 
-        return webob.Response(status_int=204)
+        return webob.Response(status_int=http_client.NO_CONTENT)
 
     @wsgi.Controller.api_version(MESSAGES_BASE_MICRO_VERSION)
     @wsgi.Controller.authorize('get_all')
