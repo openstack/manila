@@ -15,6 +15,7 @@
 
 """The share type API controller module.."""
 
+from oslo_log import log
 from oslo_utils import strutils
 from oslo_utils import uuidutils
 import six
@@ -28,6 +29,9 @@ from manila import exception
 from manila.i18n import _
 from manila import rpc
 from manila.share import share_types
+
+
+LOG = log.getLogger(__name__)
 
 
 class ShareTypesController(wsgi.Controller):
@@ -67,7 +71,7 @@ class ShareTypesController(wsgi.Controller):
         """Return a single share type item."""
         context = req.environ['manila.context']
         try:
-            share_type = share_types.get_share_type(context, id)
+            share_type = self._show_share_type_details(context, id)
         except exception.NotFound:
             msg = _("Share type not found.")
             raise exc.HTTPNotFound(explanation=msg)
@@ -75,6 +79,19 @@ class ShareTypesController(wsgi.Controller):
         share_type['id'] = six.text_type(share_type['id'])
         req.cache_db_share_type(share_type)
         return self._view_builder.show(req, share_type)
+
+    def _show_share_type_details(self, context, id):
+        share_type = share_types.get_share_type(context, id)
+        required_extra_specs = {}
+        try:
+            required_extra_specs = share_types.get_valid_required_extra_specs(
+                share_type['extra_specs'])
+        except exception.InvalidExtraSpec:
+            LOG.exception('Share type %(share_type_id)s has invalid required'
+                          ' extra specs.', {'share_type_id': id})
+
+        share_type['required_extra_specs'] = required_extra_specs
+        return share_type
 
     @wsgi.Controller.authorize
     def default(self, req):
