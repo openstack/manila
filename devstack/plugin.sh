@@ -332,7 +332,13 @@ function create_service_share_servers {
                 fi
 
                 floating_ip=$(openstack floating ip create $PUBLIC_NETWORK_NAME --subnet $PUBLIC_SUBNET_NAME | grep 'floating_ip_address' | get_field 2)
-                openstack server add floating ip $vm_id $floating_ip
+                # TODO(rishabh-d-dave): For time being circumvent the bug -
+                # https://bugs.launchpad.net/python-openstackclient/+bug/1747721
+                # Once fixed, replace the following 3 lines by -
+                # openstack server add floating ip $vm_id $floating_ip
+                vm_port_id=$(openstack port list --server $vm_id -c ID -f \
+                    value)
+                openstack floating ip set --port $vm_port_id $floating_ip
 
                 iniset $MANILA_CONF $BE service_instance_name_or_id $vm_id
                 iniset $MANILA_CONF $BE service_net_name_or_ip $floating_ip
