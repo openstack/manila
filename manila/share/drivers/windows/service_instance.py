@@ -34,7 +34,7 @@ windows_share_server_opts = [
     cfg.StrOpt(
         "winrm_cert_pem_path",
         default="~/.ssl/cert.pem",
-        help="Path to the x509 certificate used for accessing the service"
+        help="Path to the x509 certificate used for accessing the service "
              "instance."),
     cfg.StrOpt(
         "winrm_cert_key_pem_path",
@@ -43,7 +43,7 @@ windows_share_server_opts = [
     cfg.BoolOpt(
         "winrm_use_cert_based_auth",
         default=False,
-        help="Use x509 certificates in order to authenticate to the"
+        help="Use x509 certificates in order to authenticate to the "
              "service instance.")
 ]
 

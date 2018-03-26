@@ -36,7 +36,7 @@ ZFSSA_OPTS = [
     cfg.StrOpt('zfssa_auth_user',
                help='ZFSSA management authorized username.'),
     cfg.StrOpt('zfssa_auth_password',
-               help='ZFSSA management authorized userpassword.'),
+               help='ZFSSA management authorized user\'s password.'),
     cfg.StrOpt('zfssa_pool',
                help='ZFSSA storage pool name.'),
     cfg.StrOpt('zfssa_project',
