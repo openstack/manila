@@ -21,7 +21,8 @@ types:
 
 You can configure a security service with these options:
 
-- A DNS IP address.
+- A DNS IP address. Some drivers may allow a comma separated list of multiple
+  addresses, e.g. NetApp ONTAP.
 
 - An IP address or host name.
 

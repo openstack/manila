@@ -2585,10 +2585,28 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         net_dns_create_args = {
             'domains': {'string': fake.CIFS_SECURITY_SERVICE['domain']},
-            'name-servers': {
+            'name-servers': [{
                 'ip-address': fake.CIFS_SECURITY_SERVICE['dns_ip']
-            },
+            }],
             'dns-state': 'enabled'
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('net-dns-create', net_dns_create_args)])
+
+    def test_configure_dns_multiple_dns_ip(self):
+
+        self.mock_object(self.client, 'send_request')
+        mock_dns_ips = ['10.0.0.1', '10.0.0.2', '10.0.0.3']
+        security_service = fake.CIFS_SECURITY_SERVICE
+        security_service['dns_ip'] = ', '.join(mock_dns_ips)
+
+        self.client.configure_dns(security_service)
+
+        net_dns_create_args = {
+            'domains': {'string': security_service['domain']},
+            'dns-state': 'enabled',
+            'name-servers': [{'ip-address': dns_ip} for dns_ip in mock_dns_ips]
         }
 
         self.client.send_request.assert_has_calls([
@@ -2602,9 +2620,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         net_dns_create_args = {
             'domains': {'string': fake.KERBEROS_SECURITY_SERVICE['domain']},
-            'name-servers': {
+            'name-servers': [{
                 'ip-address': fake.KERBEROS_SECURITY_SERVICE['dns_ip']
-            },
+            }],
             'dns-state': 'enabled'
         }
 
@@ -2621,9 +2639,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         net_dns_create_args = {
             'domains': {'string': fake.KERBEROS_SECURITY_SERVICE['domain']},
-            'name-servers': {
+            'name-servers': [{
                 'ip-address': fake.KERBEROS_SECURITY_SERVICE['dns_ip']
-            },
+            }],
             'dns-state': 'enabled'
         }
 
