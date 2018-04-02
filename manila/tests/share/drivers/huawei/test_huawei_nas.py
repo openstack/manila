@@ -17,6 +17,7 @@
 
 
 import os
+import requests
 import shutil
 import six
 import tempfile
@@ -335,7 +336,7 @@ class FakeHuaweiNasHelper(helper.RestHelper):
     def _change_file_mode(self, filepath):
         pass
 
-    def do_call(self, url, data=None, method=None, calltimeout=4):
+    def do_call(self, url, data, method, calltimeout=4):
         url = url.replace('http://100.115.10.69:8082/deviceManager/rest', '')
         url = url.replace('/210235G7J20000000000/', '')
 
@@ -4575,3 +4576,63 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertEqual(expect_username, result['UserName'])
         self.assertEqual(expect_password, result['UserPassword'])
         ET.parse.assert_called_once_with(self.fake_conf_file)
+
+
+@ddt.ddt
+class HuaweiDriverHelperTestCase(test.TestCase):
+    def setUp(self):
+        super(HuaweiDriverHelperTestCase, self).setUp()
+        self.helper = helper.RestHelper(None)
+
+    def test_init_http_head(self):
+        self.helper.init_http_head()
+        self.assertIsNone(self.helper.url)
+        self.assertFalse(self.helper.session.verify)
+        self.assertEqual("keep-alive",
+                         self.helper.session.headers["Connection"])
+        self.assertEqual("application/json",
+                         self.helper.session.headers["Content-Type"])
+
+    @ddt.data(('fake_data', 'POST'),
+              (None, 'POST'),
+              (None, 'PUT'),
+              (None, 'GET'),
+              ('fake_data', 'PUT'),
+              (None, 'DELETE'),
+              )
+    @ddt.unpack
+    def test_do_call_with_valid_method(self, data, method):
+        self.helper.init_http_head()
+
+        mocker = self.mock_object(self.helper.session, method.lower())
+        self.helper.do_call("fake-rest-url", data, method)
+
+        kwargs = {'timeout': constants.SOCKET_TIMEOUT}
+        if data:
+            kwargs['data'] = data
+        mocker.assert_called_once_with("fake-rest-url", **kwargs)
+
+    def test_do_call_with_invalid_method(self):
+        self.assertRaises(exception.ShareBackendException,
+                          self.helper.do_call,
+                          "fake-rest-url", None, 'fake-method')
+
+    def test_do_call_with_http_error(self):
+        self.helper.init_http_head()
+
+        fake_res = requests.Response()
+        fake_res.reason = 'something wrong'
+        fake_res.status_code = 500
+        fake_res.url = "fake-rest-url"
+
+        self.mock_object(self.helper.session, 'post',
+                         mock.Mock(return_value=fake_res))
+        res = self.helper.do_call("fake-rest-url", None, 'POST')
+
+        expected = {
+            "error": {
+                "code": 500,
+                "description": '500 Server Error: something wrong for '
+                               'url: fake-rest-url'}
+        }
+        self.assertDictEqual(expected, res)
