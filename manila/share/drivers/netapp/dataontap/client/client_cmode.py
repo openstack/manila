@@ -3551,8 +3551,19 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_request('qos-policy-group-get-iter', api_args,
-                                   False)
+
+        try:
+            result = self.send_request('qos-policy-group-get-iter',
+                                       api_args,
+                                       False)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EAPINOTFOUND:
+                msg = _("Configured ONTAP login user cannot retrieve "
+                        "QoS policies.")
+                LOG.error(msg)
+                raise exception.NetAppException(msg)
+            else:
+                raise
         if not self._has_records(result):
             msg = _("No QoS policy group found with name %s.")
             raise exception.NetAppException(msg % qos_policy_group_name)

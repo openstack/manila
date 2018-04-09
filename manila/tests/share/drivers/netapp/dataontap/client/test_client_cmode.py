@@ -5922,6 +5922,24 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.assertIs(True, policy_exists)
 
+    def test_qos_policy_group_get_no_permissions_to_execute_zapi(self):
+        naapi_error = self._mock_api_error(code=netapp_api.EAPINOTFOUND,
+                                           message='13005:Unable to find API')
+        self.mock_object(self.client, 'send_request', naapi_error)
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.qos_policy_group_get,
+                          'possibly-valid-qos-policy')
+
+    def test_qos_policy_group_get_other_zapi_errors(self):
+        naapi_error = self._mock_api_error(code=netapp_api.EINTERNALERROR,
+                                           message='13114:Internal error')
+        self.mock_object(self.client, 'send_request', naapi_error)
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.qos_policy_group_get,
+                          'possibly-valid-qos-policy')
+
     def test_qos_policy_group_get_none_found(self):
         no_records_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client, 'send_request',
