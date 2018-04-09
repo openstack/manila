@@ -1,0 +1,4 @@
+---
+fixes:
+  - The `Launchpad bug 1765420 <https://bugs.launchpad.net/manila/+bug/1765420>`_
+    that affected the NetApp ONTAP driver during share deletion has been fixed.
