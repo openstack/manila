@@ -644,6 +644,16 @@ class NetAppCmodeFileStorageLibrary(object):
                                            parent_snapshot_name,
                                            **provisioning_options)
 
+        volume = vserver_client.get_volume(share_name)
+        volume_size = int(math.ceil(float(volume['size']) / units.Gi))
+        if share['size'] > volume_size:
+            LOG.debug("Size of the share requested is larger than the "
+                      "snapshot, extending from %(old)sG to %(new)sG" % {
+                          'old': volume_size,
+                          'new': share['size'],
+                      })
+            vserver_client.set_volume_size(share_name, share['size'])
+
     @na_utils.trace
     def _share_exists(self, share_name, vserver_client):
         return vserver_client.volume_exists(share_name)
