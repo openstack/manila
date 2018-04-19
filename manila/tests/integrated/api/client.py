@@ -71,12 +71,12 @@ class TestOpenStackClient(object):
 
     """
 
-    def __init__(self, auth_user, auth_key, auth_uri):
+    def __init__(self, auth_user, auth_key, www_authenticate_uri):
         super(TestOpenStackClient, self).__init__()
         self.auth_result = None
         self.auth_user = auth_user
         self.auth_key = auth_key
-        self.auth_uri = auth_uri
+        self.www_authenticate_uri = www_authenticate_uri
         # default project_id
         self.project_id = 'openstack'
 
@@ -114,16 +114,17 @@ class TestOpenStackClient(object):
         if self.auth_result:
             return self.auth_result
 
-        auth_uri = self.auth_uri
+        www_authenticate_uri = self.www_authenticate_uri
         headers = {'X-Auth-User': self.auth_user,
                    'X-Auth-Key': self.auth_key,
                    'X-Auth-Project-Id': self.project_id}
-        response = self.request(auth_uri,
+        response = self.request(www_authenticate_uri,
                                 headers=headers)
 
         http_status = response.status
-        LOG.debug("%(auth_uri)s => code %(http_status)s.",
-                  {"auth_uri": auth_uri, "http_status": http_status})
+        LOG.debug("%(www_authenticate_uri)s => code %(http_status)s.",
+                  {"www_authenticate_uri": www_authenticate_uri,
+                   "http_status": http_status})
 
         if http_status == 401:
             raise OpenStackApiAuthenticationException(response=response)

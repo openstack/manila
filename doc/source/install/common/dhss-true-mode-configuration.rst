@@ -27,7 +27,7 @@ Configure components
         [neutron]
         ...
         url = http://controller:9696
-        auth_uri = http://controller:5000
+        www_authenticate_uri = http://controller:5000
         auth_url = http://controller:35357
         memcached_servers = controller:11211
         auth_type = password
@@ -40,7 +40,7 @@ Configure components
 
         [nova]
         ...
-        auth_uri = http://controller:5000
+        www_authenticate_uri = http://controller:5000
         auth_url = http://controller:35357
         memcached_servers = controller:11211
         auth_type = password
@@ -53,7 +53,7 @@ Configure components
 
         [cinder]
         ...
-        auth_uri = http://controller:5000
+        www_authenticate_uri = http://controller:5000
         auth_url = http://controller:35357
         memcached_servers = controller:11211
         auth_type = password
