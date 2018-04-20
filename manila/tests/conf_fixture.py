@@ -61,6 +61,8 @@ def set_defaults(conf):
     _safe_set_of_opts(conf, 'qnap_nas_password', 'qnapadmin')
     _safe_set_of_opts(conf, 'qnap_poolname', 'Storage Pool 1')
 
+    _safe_set_of_opts(conf, 'unity_server_meta_pool', 'nas_server_pool')
+
 
 def _safe_set_of_opts(conf, *args, **kwargs):
     try:
