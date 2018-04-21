@@ -193,15 +193,16 @@ export_location_path_query:
   required: false
   type: string
   min_version: 2.35
-extra_specs_1:
+extra_specs_query:
   description: |
     The extra specifications as a set of one or more
     key-value pairs. In each pair, the key is the name of the extra
     specification and the value is the share type that was used to
-    create the share.
+    filter search share type list.
   in: query
   required: false
   type: string
+  min_version: 2.43
 group_snapshot_description_query:
   description: |
     The share group snapshot description that can be used to filter

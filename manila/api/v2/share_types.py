@@ -15,6 +15,8 @@
 
 """The share type API controller module.."""
 
+import ast
+
 from oslo_log import log
 from oslo_utils import strutils
 from oslo_utils import uuidutils
@@ -123,6 +125,19 @@ class ShareTypesController(wsgi.Controller):
                 req.params.get('is_public'))
         else:
             filters['is_public'] = True
+
+        if (req.api_version_request < api_version.APIVersionRequest("2.43")):
+            extra_specs = req.params.get('extra_specs')
+            if extra_specs:
+                msg = _("Filter by 'extra_specs' is not supported by this "
+                        "microversion. Use 2.43 or greater microversion to "
+                        "be able to use filter search by 'extra_specs.")
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+        else:
+            extra_specs = req.params.get('extra_specs')
+            if extra_specs:
+                filters['extra_specs'] = ast.literal_eval(extra_specs)
+
         limited_types = share_types.get_all_types(
             context, search_opts=filters).values()
         return list(limited_types)

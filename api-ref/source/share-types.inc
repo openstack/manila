@@ -105,6 +105,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - tenant_id: tenant_id_path
+   - extra_specs: extra_specs_query
 
 Response parameters
 -------------------
