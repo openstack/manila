@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    For NetApp CIFS share provisioning users can now specify the optional
+    "server" API parameter to provide an active directory domain controller IP
+    address for when creating a security service. Multiple IP addresses can be
+    given separated by comma. This represents the "Preferred DC" at the vserver
+    cifs domain.
