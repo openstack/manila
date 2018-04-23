@@ -31,8 +31,8 @@ Configure components
         auth_url = http://controller:35357
         memcached_servers = controller:11211
         auth_type = password
-        project_domain_name = default
-        user_domain_name = default
+        project_domain_name = Default
+        user_domain_name = Default
         region_name = RegionOne
         project_name = service
         username = neutron
@@ -44,8 +44,8 @@ Configure components
         auth_url = http://controller:35357
         memcached_servers = controller:11211
         auth_type = password
-        project_domain_name = default
-        user_domain_name = default
+        project_domain_name = Default
+        user_domain_name = Default
         region_name = RegionOne
         project_name = service
         username = nova
@@ -57,8 +57,8 @@ Configure components
         auth_url = http://controller:35357
         memcached_servers = controller:11211
         auth_type = password
-        project_domain_name = default
-        user_domain_name = default
+        project_domain_name = Default
+        user_domain_name = Default
         region_name = RegionOne
         project_name = service
         username = cinder
