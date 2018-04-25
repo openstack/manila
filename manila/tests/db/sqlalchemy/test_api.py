@@ -161,8 +161,11 @@ class ShareAccessDatabaseAPITestCase(test.TestCase):
 
         share_access_keys_present = True if with_share_access_data else False
         actual_access_ids = [r['access_id'] for r in rules]
-        self.assertEqual(sorted([access_1['id'], access_2['id']]),
-                         sorted(actual_access_ids))
+        self.assertTrue(isinstance(actual_access_ids, list))
+        expected = [access_1['id'], access_2['id']]
+        self.assertEqual(len(expected), len(actual_access_ids))
+        for pool in expected:
+            self.assertIn(pool, actual_access_ids)
         for rule in rules:
             for key in share_access_keys:
                 self.assertEqual(share_access_keys_present, key in rule)
