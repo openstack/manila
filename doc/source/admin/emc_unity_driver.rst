@@ -158,7 +158,7 @@ for the Unity driver:
 - `network_plugin_ipv6_enabled` indicates IPv6 is enabled.
 
 If you want to connect Unity using IPv6 address, you should configure IPv6 address
-by `/net/if/mgmt` uemcli command, `mgmtInterfaceSettings` RESTful api or the system 
+by `/net/if/mgmt` uemcli command, `mgmtInterfaceSettings` RESTful api or the system
 settings of Unity GUI for Unity and specify the address in `/etc/manila/manila.conf`:
 
     emc_nas_server = <IPv6 address>
