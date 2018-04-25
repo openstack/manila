@@ -38,7 +38,7 @@ on how to enable manila on devstack.
 Virtual environments
 --------------------
 
-Manila development uses `virtualenv <http://pypi.python.org/pypi/virtualenv>`__ to track and manage Python
+Manila development uses `virtualenv <https://pypi.org/project/virtualenv/>`__ to track and manage Python
 dependencies while in development and testing. This allows you to
 install all of the Python package dependencies in a virtual
 environment or "virtualenv" (a special subdirectory of your manila
