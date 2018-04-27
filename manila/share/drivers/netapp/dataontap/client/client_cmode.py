@@ -1623,12 +1623,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
         }
-        result = self.send_iter_request('sis-get-iter', api_args)
-
-        attributes_list = result.get_child_by_name(
-            'attributes-list') or netapp_api.NaElement('none')
-        sis_status_info = attributes_list.get_child_by_name(
-            'sis-status-info') or netapp_api.NaElement('none')
+        try:
+            result = self.send_iter_request('sis-get-iter', api_args)
+            attributes_list = result.get_child_by_name(
+                'attributes-list') or netapp_api.NaElement('none')
+            sis_status_info = attributes_list.get_child_by_name(
+                'sis-status-info') or netapp_api.NaElement('none')
+        except exception.NetAppException:
+            msg = _('Failed to get volume efficiency status for %s.')
+            LOG.error(msg, volume_name)
+            sis_status_info = netapp_api.NaElement('none')
 
         return {
             'dedupe': True if 'enabled' == sis_status_info.get_child_content(
