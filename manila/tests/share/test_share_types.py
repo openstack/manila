@@ -147,9 +147,10 @@ class ShareTypesTestCase(test.TestCase):
 
         self.assertItemsEqual(share_type, returned_type)
         search_filter = {'extra_specs': {'gold': 'False'}}
-        returned_type = share_types.get_all_types(self.context,
-                                                  search_opts=search_filter)
-        self.assertEqual(share_type, returned_type)
+        expected_types = {}
+        returned_types = share_types.get_all_types(self.context,
+                                                   search_opts=search_filter)
+        self.assertEqual(expected_types, returned_types)
 
         share_type = self.fake_r_type_extra
         search_filter = {'extra_specs': {'gold': 'True'}}
