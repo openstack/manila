@@ -32,49 +32,6 @@ from manila.i18n import _
 NOVA_GROUP = 'nova'
 AUTH_OBJ = None
 
-nova_deprecated_opts = [
-    cfg.StrOpt('nova_admin_username',
-               default='nova',
-               help='Nova admin username.',
-               deprecated_group='DEFAULT',
-               deprecated_for_removal=True,
-               deprecated_reason="This option isn't used any longer. Please "
-                                 "use [nova] username instead."),
-    cfg.StrOpt('nova_admin_password',
-               help='Nova admin password.',
-               deprecated_group='DEFAULT',
-               deprecated_for_removal=True,
-               deprecated_reason="This option isn't used any longer. Please "
-                                 "use [nova] password instead."),
-    cfg.StrOpt('nova_admin_tenant_name',
-               default='service',
-               help='Nova admin tenant name.',
-               deprecated_group='DEFAULT',
-               deprecated_for_removal=True,
-               deprecated_reason="This option isn't used any longer. Please "
-                                 "use [nova] tenant instead."),
-    cfg.StrOpt('nova_admin_auth_url',
-               default='http://localhost:5000/v2.0',
-               help='Identity service URL.',
-               deprecated_group='DEFAULT',
-               deprecated_for_removal=True,
-               deprecated_reason="This option isn't used any longer. Please "
-                                 "use [nova] url instead."),
-    cfg.StrOpt('nova_catalog_info',
-               default='compute:nova:publicURL',
-               help='Info to match when looking for nova in the service '
-                    'catalog. Format is separated values of the form: '
-                    '<service_type>:<service_name>:<endpoint_type>',
-               deprecated_group='DEFAULT',
-               deprecated_for_removal=True,
-               deprecated_reason="This option isn't used any longer."),
-    cfg.StrOpt('nova_catalog_admin_info',
-               default='compute:nova:adminURL',
-               help='Same as nova_catalog_info, but for admin endpoint.',
-               deprecated_group='DEFAULT',
-               deprecated_for_removal=True,
-               deprecated_reason="This option isn't used any longer."),
-]
 
 nova_opts = [
     cfg.StrOpt('api_microversion',
@@ -100,7 +57,6 @@ nova_opts = [
     ]
 
 CONF = cfg.CONF
-CONF.register_opts(nova_deprecated_opts)
 CONF.register_opts(core_opts)
 CONF.register_opts(nova_opts, NOVA_GROUP)
 ks_loading.register_session_conf_options(CONF, NOVA_GROUP)
@@ -114,17 +70,10 @@ def list_opts():
 def novaclient(context):
     global AUTH_OBJ
     if not AUTH_OBJ:
-        deprecated_opts_for_v2 = {
-            'username': CONF.nova_admin_username,
-            'password': CONF.nova_admin_password,
-            'tenant_name': CONF.nova_admin_tenant_name,
-            'auth_url': CONF.nova_admin_auth_url,
-        }
         AUTH_OBJ = client_auth.AuthClientLoader(
             client_class=nova_client.Client,
             exception_module=nova_exception,
-            cfg_group=NOVA_GROUP,
-            deprecated_opts_for_v2=deprecated_opts_for_v2)
+            cfg_group=NOVA_GROUP)
     return AUTH_OBJ.get_client(context,
                                version=CONF[NOVA_GROUP].api_microversion,
                                insecure=CONF[NOVA_GROUP].api_insecure,

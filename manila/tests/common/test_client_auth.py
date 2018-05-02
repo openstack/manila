@@ -14,7 +14,6 @@
 #    under the License.
 
 from keystoneauth1 import loading as auth
-from keystoneauth1.loading._plugins.identity import v2
 from oslo_config import cfg
 
 import mock
@@ -63,20 +62,6 @@ class ClientAuthTestCase(test.TestCase):
 
         self.assertRaises(fake_client_exception_class.Unauthorized,
                           self.auth._load_auth_plugin)
-
-    def test_load_auth_plugin_no_auth_deprecated_opts(self):
-        auth.load_auth_from_conf_options.return_value = None
-        self.auth.deprecated_opts_for_v2 = {"username": "foo"}
-        pwd_mock = self.mock_object(v2, 'Password')
-        auth_result = mock.Mock()
-        auth_result.load_from_options = mock.Mock(return_value='foo_auth')
-        pwd_mock.return_value = auth_result
-
-        result = self.auth._load_auth_plugin()
-
-        pwd_mock.assert_called_once_with()
-        auth_result.load_from_options.assert_called_once_with(username='foo')
-        self.assertEqual(result, 'foo_auth')
 
     @mock.patch.object(auth, 'register_session_conf_options')
     @mock.patch.object(auth, 'get_auth_common_conf_options')

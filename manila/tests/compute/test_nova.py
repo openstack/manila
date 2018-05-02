@@ -133,12 +133,6 @@ class NovaclientTestCase(test.TestCase):
             nova.client_auth, 'AuthClientLoader')
         fake_context = 'fake_context'
         data = {
-            'DEFAULT': {
-                'nova_admin_username': 'foo_username',
-                'nova_admin_password': 'foo_password',
-                'nova_admin_tenant_name': 'foo_tenant_name',
-                'nova_admin_auth_url': 'foo_auth_url',
-            },
             'nova': {
                 'api_microversion': 'foo_api_microversion',
                 'api_insecure': True,
@@ -154,13 +148,7 @@ class NovaclientTestCase(test.TestCase):
         mock_client_loader.assert_called_once_with(
             client_class=nova.nova_client.Client,
             exception_module=nova.nova_exception,
-            cfg_group=nova.NOVA_GROUP,
-            deprecated_opts_for_v2={
-                'username': data['DEFAULT']['nova_admin_username'],
-                'password': data['DEFAULT']['nova_admin_password'],
-                'tenant_name': data['DEFAULT']['nova_admin_tenant_name'],
-                'auth_url': data['DEFAULT']['nova_admin_auth_url'],
-            },
+            cfg_group=nova.NOVA_GROUP
         )
         mock_client_loader.return_value.get_client.assert_called_once_with(
             fake_context,

@@ -88,12 +88,6 @@ class NeutronclientTestCase(test.TestCase):
             neutron_api.client_auth, 'AuthClientLoader')
         fake_context = 'fake_context'
         data = {
-            'DEFAULT': {
-                'neutron_admin_username': 'foo_username',
-                'neutron_admin_password': 'foo_password',
-                'neutron_admin_tenant_name': 'foo_tenant_name',
-                'neutron_admin_auth_url': 'foo_auth_url',
-            },
             'neutron': {
                 'endpoint_type': 'foo_endpoint_type',
                 'region_name': 'foo_region_name',
@@ -108,13 +102,7 @@ class NeutronclientTestCase(test.TestCase):
         mock_client_loader.assert_called_once_with(
             client_class=neutron_api.clientv20.Client,
             exception_module=neutron_api.neutron_client_exc,
-            cfg_group=neutron_api.NEUTRON_GROUP,
-            deprecated_opts_for_v2={
-                'username': data['DEFAULT']['neutron_admin_username'],
-                'password': data['DEFAULT']['neutron_admin_password'],
-                'tenant_name': data['DEFAULT']['neutron_admin_tenant_name'],
-                'auth_url': data['DEFAULT']['neutron_admin_auth_url'],
-            },
+            cfg_group=neutron_api.NEUTRON_GROUP
         )
         mock_client_loader.return_value.get_client.assert_called_once_with(
             self.client,
@@ -164,21 +152,6 @@ class NeutronApiTest(test.TestCase):
         self.assertTrue(hasattr(neutron_api_instance, 'client'))
         self.assertTrue(hasattr(neutron_api_instance, 'configuration'))
         self.assertEqual('DEFAULT', neutron_api_instance.config_group_name)
-
-    def test_create_api_object_custom_config_group(self):
-        # Set up test data
-        fake_config_group_name = 'fake_config_group_name'
-
-        # instantiate Neutron API object
-        obj = neutron_api.API(fake_config_group_name)
-        obj.get_client(mock.Mock())
-
-        # Verify results
-        self.assertTrue(clientv20.Client.called)
-        self.assertTrue(hasattr(obj, 'client'))
-        self.assertTrue(hasattr(obj, 'configuration'))
-        self.assertEqual(
-            fake_config_group_name, obj.configuration._group.name)
 
     def test_create_port_with_all_args(self):
         # Set up test data

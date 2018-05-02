@@ -18,18 +18,6 @@
      - Description
    * - **[DEFAULT]**
      -
-   * - ``cinder_admin_auth_url`` = ``http://localhost:5000/v2.0``
-     - (String) DEPRECATED: Identity service URL. This option isn't used any longer. Please use [cinder] auth_url instead.
-   * - ``cinder_admin_password`` = ``None``
-     - (String) DEPRECATED: Cinder admin password. This option isn't used any longer. Please use [cinder] password instead.
-   * - ``cinder_admin_tenant_name`` = ``service``
-     - (String) DEPRECATED: Cinder admin tenant name. This option isn't used any longer. Please use [cinder] tenant_name instead.
-   * - ``cinder_admin_username`` = ``cinder``
-     - (String) DEPRECATED: Cinder admin username. This option isn't used any longer. Please use [cinder] username instead.
-   * - ``cinder_catalog_info`` = ``volume:cinder:publicURL``
-     - (String) DEPRECATED: Info to match when looking for cinder in the service catalog. Format is separated values of the form: <service_type>:<service_name>:<endpoint_type> This option isn't used any longer.
-   * - ``cinder_volume_type`` = ``None``
-     - (String) Name or id of cinder volume type which will be used for all volumes created by driver.
    * - ``connect_share_server_to_tenant_network`` = ``False``
      - (Boolean) Attach share server directly to share network. Used only with Neutron and if driver_handles_share_servers=True.
    * - ``container_volume_group`` = ``manila_docker_volumes``

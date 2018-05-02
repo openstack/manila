@@ -27,41 +27,6 @@ from manila.network.neutron import constants as neutron_constants
 
 NEUTRON_GROUP = 'neutron'
 
-neutron_deprecated_opts = [
-    cfg.StrOpt(
-        'neutron_admin_username',
-        default='neutron',
-        deprecated_group='DEFAULT',
-        deprecated_for_removal=True,
-        deprecated_reason="This option isn't used any longer. Please use "
-                          "[neutron] username instead.",
-        help='Username for connecting to neutron in admin context.'),
-    cfg.StrOpt(
-        'neutron_admin_password',
-        help='Password for connecting to neutron in admin context.',
-        deprecated_group='DEFAULT',
-        deprecated_for_removal=True,
-        deprecated_reason="This option isn't used any longer. Please use "
-                          "[neutron] password instead.",
-        secret=True),
-    cfg.StrOpt(
-        'neutron_admin_project_name',
-        default='service',
-        deprecated_group='DEFAULT',
-        deprecated_name='neutron_admin_tenant_name',
-        deprecated_for_removal=True,
-        deprecated_reason="This option isn't used any longer. Please use "
-                          "[neutron] project instead.",
-        help='Project name for connecting to Neutron in admin context.'),
-    cfg.StrOpt(
-        'neutron_admin_auth_url',
-        default='http://localhost:5000/v2.0',
-        deprecated_group='DEFAULT',
-        deprecated_for_removal=True,
-        deprecated_reason="This option isn't used any longer. Please use "
-                          "[neutron] auth_url instead.",
-        help='Auth URL for connecting to neutron in admin context.'),
-]
 
 neutron_opts = [
     cfg.StrOpt(
@@ -121,8 +86,6 @@ class API(object):
         ks_loading.register_session_conf_options(CONF, NEUTRON_GROUP)
         ks_loading.register_auth_conf_options(CONF, NEUTRON_GROUP)
         CONF.register_opts(neutron_opts, NEUTRON_GROUP)
-        CONF.register_opts(neutron_deprecated_opts,
-                           group=self.config_group_name)
 
         self.configuration = getattr(CONF, self.config_group_name, CONF)
         self.last_neutron_extension_sync = None
@@ -135,18 +98,10 @@ class API(object):
 
     def get_client(self, context):
         if not self.auth_obj:
-            config = CONF[self.config_group_name]
-            v2_deprecated_opts = {
-                'username': config.neutron_admin_username,
-                'password': config.neutron_admin_password,
-                'tenant_name': config.neutron_admin_project_name,
-                'auth_url': config.neutron_admin_auth_url,
-            }
             self.auth_obj = client_auth.AuthClientLoader(
                 client_class=clientv20.Client,
                 exception_module=neutron_client_exc,
-                cfg_group=NEUTRON_GROUP,
-                deprecated_opts_for_v2=v2_deprecated_opts)
+                cfg_group=NEUTRON_GROUP)
 
         return self.auth_obj.get_client(
             self,

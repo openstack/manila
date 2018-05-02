@@ -16,15 +16,12 @@
 import copy
 
 from keystoneauth1 import loading as ks_loading
-from keystoneauth1.loading._plugins.identity import v2
 from oslo_config import cfg
-from oslo_log import log
 
 from manila import exception
 from manila.i18n import _
 
 CONF = cfg.CONF
-LOG = log.getLogger(__name__)
 
 """Helper class to support keystone v2 and v3 for clients
 
@@ -37,8 +34,7 @@ needed to load all needed parameters dynamically.
 
 
 class AuthClientLoader(object):
-    def __init__(self, client_class, exception_module, cfg_group,
-                 deprecated_opts_for_v2=None):
+    def __init__(self, client_class, exception_module, cfg_group):
         self.client_class = client_class
         self.exception_module = exception_module
         self.group = cfg_group
@@ -46,7 +42,6 @@ class AuthClientLoader(object):
         self.conf = CONF
         self.session = None
         self.auth_plugin = None
-        self.deprecated_opts_for_v2 = deprecated_opts_for_v2
 
     @staticmethod
     def list_opts(group):
@@ -76,11 +71,6 @@ class AuthClientLoader(object):
             return self.admin_auth
         self.auth_plugin = ks_loading.load_auth_from_conf_options(
             CONF, self.group)
-
-        if self.deprecated_opts_for_v2 and not self.auth_plugin:
-            LOG.warning("Not specifying auth options is deprecated")
-            self.auth_plugin = v2.Password().load_from_options(
-                **self.deprecated_opts_for_v2)
 
         if self.auth_plugin:
             return self.auth_plugin
