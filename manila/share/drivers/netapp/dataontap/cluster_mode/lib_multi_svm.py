@@ -23,6 +23,7 @@ as needed to provision shares.
 import re
 
 from oslo_log import log
+from oslo_serialization import jsonutils
 from oslo_utils import excutils
 
 from manila import exception
@@ -119,6 +120,9 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         """Creates and configures new Vserver."""
 
         vlan = network_info['segmentation_id']
+        ports = {}
+        for network_allocation in network_info['network_allocations']:
+            ports[network_allocation['id']] = network_allocation['ip_address']
 
         @utils.synchronized('netapp-VLAN-%s' % vlan, external=True)
         def setup_server_with_lock():
@@ -126,7 +130,10 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             self._validate_network_type(network_info)
 
             vserver_name = self._get_vserver_name(network_info['server_id'])
-            server_details = {'vserver_name': vserver_name}
+            server_details = {
+                'vserver_name': vserver_name,
+                'ports': jsonutils.dumps(ports)
+            }
 
             try:
                 self._create_vserver(vserver_name, network_info)

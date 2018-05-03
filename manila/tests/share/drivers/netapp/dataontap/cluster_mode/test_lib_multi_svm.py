@@ -20,6 +20,7 @@ import copy
 import ddt
 import mock
 from oslo_log import log
+from oslo_serialization import jsonutils
 
 from manila import context
 from manila import exception
@@ -227,10 +228,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         result = self.library.setup_server(fake.NETWORK_INFO)
 
+        ports = {}
+        for network_allocation in fake.NETWORK_INFO['network_allocations']:
+            ports[network_allocation['id']] = network_allocation['ip_address']
+
         self.assertTrue(mock_validate_network_type.called)
         self.assertTrue(mock_get_vserver_name.called)
         self.assertTrue(mock_create_vserver.called)
-        self.assertDictEqual({'vserver_name': fake.VSERVER1}, result)
+        self.assertDictEqual({'vserver_name': fake.VSERVER1,
+                              'ports': jsonutils.dumps(ports)}, result)
 
     def test_setup_server_with_error(self):
 
@@ -254,11 +260,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library.setup_server,
             fake.NETWORK_INFO)
 
+        ports = {}
+        for network_allocation in fake.NETWORK_INFO['network_allocations']:
+            ports[network_allocation['id']] = network_allocation['ip_address']
+
         self.assertTrue(mock_validate_network_type.called)
         self.assertTrue(mock_get_vserver_name.called)
         self.assertTrue(mock_create_vserver.called)
         self.assertDictEqual(
-            {'server_details': {'vserver_name': fake.VSERVER1}},
+            {'server_details': {'vserver_name': fake.VSERVER1,
+                                'ports': jsonutils.dumps(ports)}},
             fake_exception.detail_data)
 
     @ddt.data(
