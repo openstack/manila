@@ -94,7 +94,6 @@ def get_all_types(context, inactive=0, search_opts=None):
     search_vars = {}
     if 'extra_specs' in search_opts:
         search_vars['extra_specs'] = search_opts.pop('extra_specs')
-    search_vars = search_opts.get('extra_specs')
 
     if search_opts:
         return {}
