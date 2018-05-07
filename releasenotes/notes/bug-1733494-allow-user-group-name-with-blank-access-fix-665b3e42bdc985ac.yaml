@@ -1,0 +1,4 @@
+---
+fixes:
+  - Allows the use of blank in user group name, since
+    the AD allow user group name to include blank.

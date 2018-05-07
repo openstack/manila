@@ -309,14 +309,28 @@ def validate_common_name(access):
         exc_str = _('Invalid CN (common name). Must be 1-64 chars long.')
         raise webob.exc.HTTPBadRequest(explanation=exc_str)
 
+'''
+for the reference specification for AD usernames, reference below links:
+
+  1:https://msdn.microsoft.com/en-us/library/bb726984.aspx
+  2:https://technet.microsoft.com/en-us/library/cc733146.aspx
+'''
+
 
 def validate_username(access):
-    valid_username_re = '[\w\$\.\-_\`;\'\{\}\[\]\\\\]{4,255}$'
+    sole_periods_spaces_re = '[\s|\.]+$'
+    valid_username_re = '.[^\"\/\\\[\]\:\;\|\=\,\+\*\?\<\>]{3,254}$'
     username = access
+
+    if re.match(sole_periods_spaces_re, username):
+        exc_str = ('Invalid user or group name,cannot consist solely '
+                   'of periods or spaces.')
+        raise webob.exc.HTTPBadRequest(explanation=exc_str)
+
     if not re.match(valid_username_re, username):
         exc_str = ('Invalid user or group name. Must be 4-255 characters '
                    'and consist of alphanumeric characters and '
-                   'special characters $]{.-_\'`;}[\\')
+                   'exclude special characters "/\[]:;|=,+*?<>')
         raise webob.exc.HTTPBadRequest(explanation=exc_str)
 
 
