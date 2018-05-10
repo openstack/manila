@@ -47,7 +47,7 @@
         ...
         memcached_servers = controller:11211
         auth_uri = http://controller:5000
-        auth_url = http://controller:35357
+        auth_url = http://controller:5000
         auth_type = password
         project_domain_name = Default
         user_domain_name = Default
