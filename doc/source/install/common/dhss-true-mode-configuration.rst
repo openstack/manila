@@ -28,7 +28,7 @@ Configure components
         ...
         url = http://controller:9696
         auth_uri = http://controller:5000
-        auth_url = http://controller:35357
+        auth_url = http://controller:5000
         memcached_servers = controller:11211
         auth_type = password
         project_domain_name = default
@@ -41,7 +41,7 @@ Configure components
         [nova]
         ...
         auth_uri = http://controller:5000
-        auth_url = http://controller:35357
+        auth_url = http://controller:5000
         memcached_servers = controller:11211
         auth_type = password
         project_domain_name = default
@@ -54,7 +54,7 @@ Configure components
         [cinder]
         ...
         auth_uri = http://controller:5000
-        auth_url = http://controller:35357
+        auth_url = http://controller:5000
         memcached_servers = controller:11211
         auth_type = password
         project_domain_name = default
