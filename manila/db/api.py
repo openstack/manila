@@ -449,6 +449,13 @@ def share_access_get_all_by_type_and_access(context, share_id, access_type,
         context, share_id, access_type, access)
 
 
+def share_access_check_for_existing_access(context, share_id, access_type,
+                                           access_to):
+    """Returns True if rule corresponding to the type and client exists."""
+    return IMPL.share_access_check_for_existing_access(
+        context, share_id, access_type, access_to)
+
+
 def share_instance_access_create(context, values, share_instance_id):
     """Allow access to share instance."""
     return IMPL.share_instance_access_create(
@@ -593,6 +600,15 @@ def share_snapshot_access_get_all_for_share_snapshot(context,
     """Get all access rules for a given share snapshot according to filters."""
     return IMPL.share_snapshot_access_get_all_for_share_snapshot(
         context, share_snapshot_id, filters)
+
+
+def share_snapshot_check_for_existing_access(context, share_snapshot_id,
+                                             access_type, access_to):
+    """Returns True if rule corresponding to the type and client exists."""
+    return IMPL.share_snapshot_check_for_existing_access(context,
+                                                         share_snapshot_id,
+                                                         access_type,
+                                                         access_to)
 
 
 def share_snapshot_export_locations_get(context, snapshot_id):

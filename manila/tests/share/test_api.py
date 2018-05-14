@@ -2321,15 +2321,13 @@ class ShareAPITestCase(test.TestCase):
                                             status=constants.STATUS_AVAILABLE)
         access = db_utils.create_snapshot_access(
             share_snapshot_id=snapshot['id'])
-        filters = {'access_to': access_to,
-                   'access_type': access_type}
         values = {'share_snapshot_id': snapshot['id'],
                   'access_type': access_type,
                   'access_to': access_to}
 
-        access_get_all = self.mock_object(
-            db_api, 'share_snapshot_access_get_all_for_share_snapshot',
-            mock.Mock(return_value=[]))
+        existing_access_check = self.mock_object(
+            db_api, 'share_snapshot_check_for_existing_access',
+            mock.Mock(return_value=False))
         access_create = self.mock_object(
             db_api, 'share_snapshot_access_create',
             mock.Mock(return_value=access))
@@ -2339,8 +2337,9 @@ class ShareAPITestCase(test.TestCase):
                                              access_type, access_to)
 
         self.assertEqual(access, out)
-        access_get_all.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), snapshot['id'], filters)
+        existing_access_check.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), snapshot['id'],
+            access_type, access_to)
         access_create.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), values)
 
@@ -2349,40 +2348,38 @@ class ShareAPITestCase(test.TestCase):
         access_type = 'ip'
         share = db_utils.create_share()
         snapshot = db_utils.create_snapshot(share_id=share['id'])
-        filters = {'access_to': access_to,
-                   'access_type': access_type}
-
-        access_get_all = self.mock_object(
-            db_api, 'share_snapshot_access_get_all_for_share_snapshot',
-            mock.Mock(return_value=[]))
+        existing_access_check = self.mock_object(
+            db_api, 'share_snapshot_check_for_existing_access',
+            mock.Mock(return_value=False))
 
         self.assertRaises(exception.InvalidShareSnapshotInstance,
                           self.api.snapshot_allow_access, self.context,
                           snapshot, access_type, access_to)
 
-        access_get_all.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), snapshot['id'], filters)
+        existing_access_check.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), snapshot['id'],
+            access_type, access_to)
 
     def test_snapshot_allow_access_access_exists_exception(self):
         access_to = '1.1.1.1'
         access_type = 'ip'
         share = db_utils.create_share()
         snapshot = db_utils.create_snapshot(share_id=share['id'])
-        access = db_utils.create_snapshot_access(
-            share_snapshot_id=snapshot['id'])
-        filters = {'access_to': access_to,
-                   'access_type': access_type}
+        db_utils.create_snapshot_access(
+            share_snapshot_id=snapshot['id'], access_to=access_to,
+            access_type=access_type)
 
-        access_get_all = self.mock_object(
-            db_api, 'share_snapshot_access_get_all_for_share_snapshot',
-            mock.Mock(return_value=[access]))
+        existing_access_check = self.mock_object(
+            db_api, 'share_snapshot_check_for_existing_access',
+            mock.Mock(return_value=True))
 
         self.assertRaises(exception.ShareSnapshotAccessExists,
                           self.api.snapshot_allow_access, self.context,
                           snapshot, access_type, access_to)
 
-        access_get_all.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), snapshot['id'], filters)
+        existing_access_check.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), snapshot['id'],
+            access_type, access_to)
 
     def test_snapshot_deny_access(self):
         share = db_utils.create_share()
