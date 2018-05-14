@@ -1605,10 +1605,11 @@ class API(base.Base):
         if access_level not in constants.ACCESS_LEVELS + (None, ):
             msg = _("Invalid share access level: %s.") % access_level
             raise exception.InvalidShareAccess(reason=msg)
-        share_access_list = self.db.share_access_get_all_by_type_and_access(
+
+        access_exists = self.db.share_access_check_for_existing_access(
             ctx, share['id'], access_type, access_to)
 
-        if len(share_access_list) > 0:
+        if access_exists:
             raise exception.ShareAccessExists(access_type=access_type,
                                               access=access_to)
 
@@ -1846,14 +1847,10 @@ class API(base.Base):
 
     def snapshot_allow_access(self, context, snapshot, access_type, access_to):
         """Allow access to a share snapshot."""
+        access_exists = self.db.share_snapshot_check_for_existing_access(
+            context, snapshot['id'], access_type, access_to)
 
-        filters = {'access_to': access_to,
-                   'access_type': access_type}
-
-        access_list = self.db.share_snapshot_access_get_all_for_share_snapshot(
-            context, snapshot['id'], filters)
-
-        if len(access_list) > 0:
+        if access_exists:
             raise exception.ShareSnapshotAccessExists(access_type=access_type,
                                                       access=access_to)
 

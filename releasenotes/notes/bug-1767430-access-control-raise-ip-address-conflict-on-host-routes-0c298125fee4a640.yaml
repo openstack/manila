@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    The access-allow API has now been fixed to validate duplicate IP
+    addresses by different notation styles. For example, if a host with IP
+    172.16.21.24 already has access to an NFS share, access cannot be
+    requested for 172.16.21.24/32.

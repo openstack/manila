@@ -221,6 +221,44 @@ class ShareAccessDatabaseAPITestCase(test.TestCase):
                     'access_key'):
             self.assertEqual(with_share_access_data, key in instance_access)
 
+    @ddt.data({'existing': {'access_type': 'cephx', 'access_to': 'alice'},
+               'new': {'access_type': 'user', 'access_to': 'alice'},
+               'result': False},
+              {'existing': {'access_type': 'user', 'access_to': 'bob'},
+               'new': {'access_type': 'user', 'access_to': 'bob'},
+               'result': True},
+              {'existing': {'access_type': 'ip', 'access_to': '10.0.0.10/32'},
+               'new': {'access_type': 'ip', 'access_to': '10.0.0.10'},
+               'result': True},
+              {'existing': {'access_type': 'ip', 'access_to': '10.10.0.11'},
+               'new': {'access_type': 'ip', 'access_to': '10.10.0.11'},
+               'result': True},
+              {'existing': {'access_type': 'ip', 'access_to': 'fd21::11'},
+               'new': {'access_type': 'ip', 'access_to': 'fd21::11'},
+               'result': True},
+              {'existing': {'access_type': 'ip', 'access_to': 'fd21::10'},
+               'new': {'access_type': 'ip', 'access_to': 'fd21::10/128'},
+               'result': True},
+              {'existing': {'access_type': 'ip', 'access_to': '10.10.0.0/22'},
+               'new': {'access_type': 'ip', 'access_to': '10.10.0.0/24'},
+               'result': False},
+              {'existing': {'access_type': 'ip', 'access_to': '2620:52::/48'},
+               'new': {'access_type': 'ip',
+                       'access_to': '2620:52:0:13b8::/64'},
+               'result': False})
+    @ddt.unpack
+    def test_share_access_check_for_existing_access(self, existing, new,
+                                                    result):
+        share = db_utils.create_share()
+        db_utils.create_access(share_id=share['id'],
+                               access_type=existing['access_type'],
+                               access_to=existing['access_to'])
+
+        rule_exists = db_api.share_access_check_for_existing_access(
+            self.ctxt, share['id'], new['access_type'], new['access_to'])
+
+        self.assertEqual(result, rule_exists)
+
 
 @ddt.ddt
 class ShareDatabaseAPITestCase(test.TestCase):
@@ -1342,6 +1380,45 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
             self.ctxt, self.snapshot_1['id'], {})
 
         self.assertSubDictMatch(values, actual_value[0].to_dict())
+
+    @ddt.data({'existing': {'access_type': 'cephx', 'access_to': 'alice'},
+               'new': {'access_type': 'user', 'access_to': 'alice'},
+               'result': False},
+              {'existing': {'access_type': 'user', 'access_to': 'bob'},
+               'new': {'access_type': 'user', 'access_to': 'bob'},
+               'result': True},
+              {'existing': {'access_type': 'ip', 'access_to': '10.0.0.10/32'},
+               'new': {'access_type': 'ip', 'access_to': '10.0.0.10'},
+               'result': True},
+              {'existing': {'access_type': 'ip', 'access_to': '10.10.0.11'},
+               'new': {'access_type': 'ip', 'access_to': '10.10.0.11'},
+               'result': True},
+              {'existing': {'access_type': 'ip', 'access_to': 'fd21::11'},
+               'new': {'access_type': 'ip', 'access_to': 'fd21::11'},
+               'result': True},
+              {'existing': {'access_type': 'ip', 'access_to': 'fd21::10'},
+               'new': {'access_type': 'ip', 'access_to': 'fd21::10/128'},
+               'result': True},
+              {'existing': {'access_type': 'ip', 'access_to': '10.10.0.0/22'},
+               'new': {'access_type': 'ip', 'access_to': '10.10.0.0/24'},
+               'result': False},
+              {'existing': {'access_type': 'ip', 'access_to': '2620:52::/48'},
+               'new': {'access_type': 'ip',
+                       'access_to': '2620:52:0:13b8::/64'},
+               'result': False})
+    @ddt.unpack
+    def test_share_snapshot_check_for_existing_access(self, existing, new,
+                                                      result):
+        db_utils.create_snapshot_access(
+            share_snapshot_id=self.snapshot_1['id'],
+            access_type=existing['access_type'],
+            access_to=existing['access_to'])
+
+        rule_exists = db_api.share_snapshot_check_for_existing_access(
+            self.ctxt, self.snapshot_1['id'], new['access_type'],
+            new['access_to'])
+
+        self.assertEqual(result, rule_exists)
 
     def test_share_snapshot_access_get_all_for_snapshot_instance(self):
         access = db_utils.create_snapshot_access(
