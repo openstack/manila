@@ -3009,7 +3009,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
                                   dedup_enabled=True,
                                   compression_enabled=False,
                                   max_files=fake.MAX_FILES,
-                                  qos_policy_group=fake.QOS_POLICY_GROUP_NAME)
+                                  qos_policy_group=fake.QOS_POLICY_GROUP_NAME,
+                                  hide_snapdir=True)
 
         volume_modify_iter_api_args = {
             'query': {
@@ -3030,6 +3031,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                     },
                     'volume-snapshot-attributes': {
                         'snapshot-policy': fake.SNAPSHOT_POLICY_NAME,
+                        'snapdir-access-enabled': 'false'
                     },
                     'volume-space-attributes': {
                         'space-guarantee': 'none',
@@ -3037,6 +3039,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                     'volume-qos-attributes': {
                         'policy-group-name': fake.QOS_POLICY_GROUP_NAME,
                     },
+
                 },
             },
         }
@@ -3127,6 +3130,49 @@ class NetAppClientCmodeTestCase(test.TestCase):
         }
         self.client.send_request.assert_has_calls([
             mock.call('volume-modify-iter', volume_modify_iter_args)])
+
+    @ddt.data(True, False)
+    def test_set_volume_snapdir_access(self, hide_snapdir):
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_MODIFY_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.client.set_volume_snapdir_access(fake.SHARE_NAME, hide_snapdir)
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': fake.SHARE_NAME
+                    }
+                }
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-snapshot-attributes': {
+                        'snapdir-access-enabled': six.text_type(
+                            not hide_snapdir).lower(),
+                    },
+                },
+            },
+        }
+        self.client.send_request.assert_called_once_with(
+            'volume-modify-iter', api_args)
+
+    def test_set_volume_snapdir_access_api_error(self):
+
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_MODIFY_ITER_ERROR_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.set_volume_size,
+                          fake.SHARE_NAME,
+                          10)
 
     def test_set_volume_size_api_error(self):
 

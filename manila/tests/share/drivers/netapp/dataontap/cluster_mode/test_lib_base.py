@@ -668,14 +668,18 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                    vserver_client)
         self.assertEqual('fake_export_location', result)
 
-    def test_allocate_container(self):
+    @ddt.data(False, True)
+    def test_allocate_container(self, hide_snapdir):
+
+        provisioning_options = copy.deepcopy(fake.PROVISIONING_OPTIONS)
+        provisioning_options['hide_snapdir'] = hide_snapdir
         self.mock_object(self.library, '_get_backend_share_name', mock.Mock(
             return_value=fake.SHARE_NAME))
         self.mock_object(share_utils, 'extract_host', mock.Mock(
             return_value=fake.POOL_NAME))
         mock_get_provisioning_opts = self.mock_object(
             self.library, '_get_provisioning_options_for_share',
-            mock.Mock(return_value=copy.deepcopy(fake.PROVISIONING_OPTIONS)))
+            mock.Mock(return_value=provisioning_options))
         vserver_client = mock.Mock()
 
         self.library._allocate_container(fake.EXTRA_SPEC_SHARE,
@@ -690,6 +694,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             thin_provisioned=True, snapshot_policy='default',
             language='en-US', dedup_enabled=True, split=True, encrypt=False,
             compression_enabled=False, max_files=5000, snapshot_reserve=8)
+
+        if hide_snapdir:
+            vserver_client.set_volume_snapdir_access.assert_called_once_with(
+                fake.SHARE_NAME, hide_snapdir)
+        else:
+            vserver_client.set_volume_snapdir_access.assert_not_called()
 
     def test_remap_standard_boolean_extra_specs(self):
 
@@ -863,6 +873,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'dedup_enabled': False,
             'split': False,
             'encrypt': False,
+            'hide_snapdir': False,
         }
 
         self.assertEqual(expected, result)
@@ -887,6 +898,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'dedup_enabled': False,
             'compression_enabled': False,
             'split': False,
+            'hide_snapdir': False,
         }
 
         result = self.library._get_boolean_provisioning_options(
@@ -1019,15 +1031,20 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           fake.AGGREGATES[1],
                           fake.EXTRA_SPEC)
 
-    @ddt.data({'provider_location': None, 'size': 50},
-              {'provider_location': 'fake_location', 'size': 30},
-              {'provider_location': 'fake_location', 'size': 20})
+    @ddt.data({'provider_location': None, 'size': 50, 'hide_snapdir': True},
+              {'provider_location': 'fake_location', 'size': 30,
+               'hide_snapdir': False},
+              {'provider_location': 'fake_location', 'size': 20,
+               'hide_snapdir': True})
     @ddt.unpack
-    def test_allocate_container_from_snapshot(self, provider_location, size):
+    def test_allocate_container_from_snapshot(
+            self, provider_location, size, hide_snapdir):
 
+        provisioning_options = copy.deepcopy(fake.PROVISIONING_OPTIONS)
+        provisioning_options['hide_snapdir'] = hide_snapdir
         mock_get_provisioning_opts = self.mock_object(
             self.library, '_get_provisioning_options_for_share',
-            mock.Mock(return_value=copy.deepcopy(fake.PROVISIONING_OPTIONS)))
+            mock.Mock(return_value=provisioning_options))
         vserver = fake.VSERVER1
         vserver_client = mock.Mock()
         original_snapshot_size = 20
@@ -1060,6 +1077,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 share_name, size)
         else:
             vserver_client.set_volume_size.assert_not_called()
+
+        if hide_snapdir:
+            vserver_client.set_volume_snapdir_access.assert_called_once_with(
+                fake.SHARE_NAME, hide_snapdir)
+        else:
+            vserver_client.set_volume_snapdir_access.assert_not_called()
 
     def test_share_exists(self):
 
@@ -4920,3 +4943,53 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fallback_create.assert_called_once_with(self.context, share_group,
                                                 snap_dict,
                                                 share_server=fake.SHARE_SERVER)
+
+    @ddt.data('default', 'hidden', 'visible')
+    def test_get_backend_info(self, snapdir):
+
+        self.library.configuration.netapp_reset_snapdir_visibility = snapdir
+        expected = {'snapdir_visibility': snapdir}
+
+        result = self.library.get_backend_info(self.context)
+        self.assertEqual(expected, result)
+
+    @ddt.data('default', 'hidden')
+    def test_ensure_shares(self, snapdir_cfg):
+        shares = [
+            fake_share.fake_share_instance(id='s-1',
+                                           share_server='fake_server_1'),
+            fake_share.fake_share_instance(id='s-2',
+                                           share_server='fake_server_2'),
+            fake_share.fake_share_instance(id='s-3',
+                                           share_server='fake_server_2')
+        ]
+
+        vserver_client = mock.Mock()
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(side_effect=[
+                (fake.VSERVER1, vserver_client),
+                (fake.VSERVER2, vserver_client),
+                (fake.VSERVER2, vserver_client)
+            ]))
+        (self.library.configuration.
+         netapp_reset_snapdir_visibility) = snapdir_cfg
+
+        self.library.ensure_shares(self.context, shares)
+
+        if snapdir_cfg == 'default':
+            self.library._get_vserver.assert_not_called()
+            vserver_client.set_volume_snapdir_access.assert_not_called()
+
+        else:
+            self.library._get_vserver.assert_has_calls([
+                mock.call(share_server='fake_server_1'),
+                mock.call(share_server='fake_server_2'),
+                mock.call(share_server='fake_server_2'),
+            ])
+
+            vserver_client.set_volume_snapdir_access.assert_has_calls([
+                mock.call('share_s_1', True),
+                mock.call('share_s_2', True),
+                mock.call('share_s_3', True),
+            ])
