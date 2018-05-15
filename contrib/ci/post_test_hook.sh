@@ -358,8 +358,8 @@ fi
 echo "Running tempest manila test suites"
 cd $BASE/new/tempest/
 sudo -H -u $USER tempest run -r $MANILA_TESTS --concurrency=$MANILA_TEMPEST_CONCURRENCY
-cd -
 RETVAL=$?
+cd -
 
 
 # If using the dummy driver, configure the second run. We can't use the
@@ -382,8 +382,8 @@ if [[ "$DRIVER" == "dummy" ]]; then
     echo "Running tempest manila test suites for DHSS=False mode"
     cd $BASE/new/tempest/
     sudo -H -u $USER tempest run -r  $MANILA_TESTS --concurrency=$MANILA_TEMPEST_CONCURRENCY
-    cd -
     RETVAL2=$?
+    cd -
     save_tempest_results 2
 
     # Exit with last code if first succeeded else exit with first error code
