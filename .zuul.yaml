@@ -319,6 +319,9 @@
       - openstack/manila
       - openstack/manila-tempest-plugin
       - openstack/neutron-dynamic-routing
+      # TODO(gouthamr): Remove the line below when neutron-dynamic-routing
+      # separates its tempest plugin from its tree
+      - openstack/neutron-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
 
