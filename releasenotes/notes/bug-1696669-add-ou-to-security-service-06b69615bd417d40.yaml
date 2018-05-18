@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added 'ou' field to 'security_service' object to be able to configure in
+    which organizational unit the share ends up.

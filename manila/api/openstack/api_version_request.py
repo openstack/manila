@@ -114,13 +114,14 @@ REST_API_VERSION_HISTORY = """
     * 2.41 - Added 'description' in share type create/list APIs.
     * 2.42 - Added ``with_count`` in share list API to get total count info.
     * 2.43 - Added filter search by extra spec for share type list.
+    * 2.44 - Added 'ou' field to 'security_service' object.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.43"
+_MAX_API_VERSION = "2.44"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

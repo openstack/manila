@@ -1,6 +1,7 @@
 {
     "security_service": {
         "domain": "my_domain",
+        "ou": "CN=Computers",
         "password": "***",
         "user": "new_user",
         "description": "Adding a description"

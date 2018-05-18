@@ -21,6 +21,9 @@ class ViewBuilder(common.ViewBuilder):
     """Model a server API response as a python dictionary."""
 
     _collection_name = 'security_services'
+    _detail_version_modifiers = [
+        'add_ou_to_security_service',
+    ]
 
     def summary_list(self, request, security_services):
         """Show a list of security services without many details."""
@@ -53,7 +56,13 @@ class ViewBuilder(common.ViewBuilder):
             'domain', 'user', 'password', 'project_id')
         for key in keys:
             view['security_service'][key] = security_service.get(key)
+        self.update_versioned_resource_dict(
+            request, view['security_service'], security_service)
         return view
+
+    @common.ViewBuilder.versioned_method("2.44")
+    def add_ou_to_security_service(self, context, ss_dict, ss):
+        ss_dict['ou'] = ss.get('ou')
 
     def _list_view(self, func, request, security_services):
         """Provide a view for a list of security services."""
