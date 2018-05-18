@@ -15,6 +15,7 @@
 
 import mock
 from oslo_config import cfg
+from oslo_utils import units
 import six
 
 from manila import context
@@ -114,7 +115,8 @@ class QuobyteShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.QBException,
                           self._driver.do_setup, self._context)
 
-    def test_create_share_new_volume(self):
+    @mock.patch.object(quobyte.QuobyteShareDriver, "_resize_share")
+    def test_create_share_new_volume(self, qb_resize_mock):
         self._driver.rpc.call = mock.Mock(wraps=fake_rpc_handler)
 
         result = self._driver.create_share(self._context, self.share)
@@ -130,8 +132,10 @@ class QuobyteShareDriverTestCase(test.TestCase):
             )),
             mock.call('exportVolume',
                       dict(protocol='NFS', volume_uuid='voluuid'))])
+        qb_resize_mock.assert_called_once_with(self.share, self.share['size'])
 
-    def test_create_share_existing_volume(self):
+    @mock.patch.object(quobyte.QuobyteShareDriver, "_resize_share")
+    def test_create_share_existing_volume(self, qb_resize_mock):
         self._driver.rpc.call = mock.Mock(wraps=fake_rpc_handler)
 
         self._driver.create_share(self._context, self.share)
@@ -153,6 +157,7 @@ class QuobyteShareDriverTestCase(test.TestCase):
             mock.call('createVolume', create_params),
             mock.call('exportVolume', dict(protocol='NFS',
                                            volume_uuid='voluuid'))])
+        qb_resize_mock.assert_called_once_with(self.share, self.share['size'])
 
     def test_create_share_wrong_protocol(self):
         share = {'share_proto': 'WRONG_PROTOCOL'}
@@ -413,18 +418,21 @@ class QuobyteShareDriverTestCase(test.TestCase):
 
     def test_resize_share(self):
         self._driver.rpc.call = mock.Mock(wraps=fake_rpc_handler)
+        manila_size = 7
+        newsize_bytes = manila_size * units.Gi
 
-        self._driver._resize_share(share=self.share, new_size=7)
+        self._driver._resize_share(share=self.share, new_size=manila_size)
 
         exp_params = {
             "quotas": [{
                 "consumer": [{
                     "type": "VOLUME",
                     "identifier": self.share["name"],
+                    "tenant_id": self.share["project_id"]
                 }],
                 "limits": [{
                     "type": "LOGICAL_DISK_SPACE",
-                    "value": 7,
+                    "value": newsize_bytes,
                 }],
             }]}
         self._driver.rpc.call.assert_has_calls([

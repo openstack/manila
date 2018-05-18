@@ -77,9 +77,10 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         1.2.2   - Minor optimizations
         1.2.3   - Updated RPC layer for improved stability
         1.2.4   - Fixed handling updated QB API error codes
+        1.2.5   - Fixed two quota handling bugs
     """
 
-    DRIVER_VERSION = '1.2.4'
+    DRIVER_VERSION = '1.2.5'
 
     def __init__(self, *args, **kwargs):
         super(QuobyteShareDriver, self).__init__(False, *args, **kwargs)
@@ -179,12 +180,14 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         return project_id
 
     def _resize_share(self, share, new_size):
+        newsize_bytes = new_size * units.Gi
         self.rpc.call('setQuota', {"quotas": [
             {"consumer":
                 [{"type": "VOLUME",
-                 "identifier": share["name"]}],
+                  "identifier": share["name"],
+                  "tenant_id": share["project_id"]}],
              "limits": [{"type": "LOGICAL_DISK_SPACE",
-                        "value": new_size}]}
+                        "value": newsize_bytes}]}
         ]})
 
     def _resolve_volume_name(self, volume_name, tenant_domain):
@@ -241,6 +244,8 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         result = self.rpc.call('exportVolume', dict(
             volume_uuid=volume_uuid,
             protocol='NFS'))
+
+        self._resize_share(share, share['size'])
 
         return '%(nfs_server_ip)s:%(nfs_export_path)s' % result
 
@@ -326,7 +331,7 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         self.rpc.call('exportVolume', call_params)
 
     def extend_share(self, ext_share, ext_size, share_server=None):
-        """Uses resize_share to extend a share.
+        """Uses _resize_share to extend a share.
 
         :param ext_share: Share model.
         :param ext_size: New size of share (new_size > share['size']).
@@ -335,7 +340,7 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         self._resize_share(share=ext_share, new_size=ext_size)
 
     def shrink_share(self, shrink_share, shrink_size, share_server=None):
-        """Uses resize_share to shrink a share.
+        """Uses _resize_share to shrink a share.
 
         Quobyte uses soft quotas. If a shares current size is bigger than
         the new shrunken size no data is lost. Data can be continuously read
