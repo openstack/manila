@@ -40,7 +40,7 @@
           SKIP_EPEL_INSTALL=True
           enable_plugin manila git://git.openstack.org/openstack/manila
           enable_plugin neutron-dynamic-routing git://git.openstack.org/openstack/neutron-dynamic-routing
-
+          enable_plugin neutron-tempest-plugin git://git.openstack.org/openstack/neutron-tempest-plugin
           EOF
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'
@@ -102,7 +102,9 @@
 
           # Keep localrc to be able to set some vars in pre_test_hook
           export KEEP_LOCALRC=1
-          export PROJECTS="openstack/manila-tempest-plugin openstack/neutron-dynamic-routing $PROJECTS"
+          export PROJECTS="openstack/manila-tempest-plugin $PROJECTS"
+          export PROJECTS="openstack/neutron-dynamic-routing $PROJECTS"
+          export PROJECTS="openstack/neutron-tempest-plugin $PROJECTS"
 
           function pre_test_hook {
               # 'dhss' - acronym for 'Driver Handles Share Servers',
