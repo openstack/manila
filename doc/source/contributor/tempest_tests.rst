@@ -97,9 +97,9 @@ or to run only scenario tests:
 
     $ tempest run -r manila_tempest_tests.tests.scenario
 
-.. _pip: https://pypi.python.org/pypi/pip
-.. _tox: https://pypi.python.org/pypi/tox
-.. _virtualenv: https://pypi.python.org/pypi/virtualenv
+.. _pip: https://pypi.org/project/pip/
+.. _tox: https://pypi.org/project/tox/
+.. _virtualenv: https://pypi.org/project/virtualenv
 
 Running a subset of tests based on test location
 ------------------------------------------------
