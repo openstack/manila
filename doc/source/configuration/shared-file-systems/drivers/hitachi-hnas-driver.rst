@@ -388,9 +388,7 @@ Where:
    should also be noted that the backslash ``\`` character has to be escaped
    when entered in Linux terminals.
 
-For additional details, refer to ``manila help manage`` or the
-`OpenStack Shared File Systems documentation
-<https://docs.openstack.org/manila/latest/admin/shared-file-systems-intro.html>`_.
+For additional details, refer to ``manila help manage``.
 
 To **unmanage** a share, use:
 
