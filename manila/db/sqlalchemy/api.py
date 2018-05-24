@@ -21,6 +21,7 @@
 import copy
 import datetime
 from functools import wraps
+import ipaddress
 import sys
 import warnings
 
@@ -2128,6 +2129,44 @@ def share_access_get_all_by_type_and_access(context, share_id, access_type,
 
 
 @require_context
+def share_access_check_for_existing_access(context, share_id, access_type,
+                                           access_to):
+    return _check_for_existing_access(
+        context, 'share', share_id, access_type, access_to)
+
+
+def _check_for_existing_access(context, resource, resource_id, access_type,
+                               access_to):
+
+    session = get_session()
+    if resource == 'share':
+        query_method = _share_access_get_query
+        access_to_field = models.ShareAccessMapping.access_to
+    else:
+        query_method = _share_snapshot_access_get_query
+        access_to_field = models.ShareSnapshotAccessMapping.access_to
+
+    with session.begin():
+        if access_type == 'ip':
+            rules = query_method(
+                context, session, {'%s_id' % resource: resource_id,
+                                   'access_type': access_type}).filter(
+                access_to_field.startswith(access_to.split('/')[0])).all()
+
+            matching_rules = [
+                rule for rule in rules if
+                ipaddress.ip_network(six.text_type(access_to)) ==
+                ipaddress.ip_network(six.text_type(rule['access_to']))
+            ]
+            return len(matching_rules) > 0
+        else:
+            return query_method(
+                context, session, {'%s_id' % resource: resource_id,
+                                   'access_type': access_type,
+                                   'access_to': access_to}).count() > 0
+
+
+@require_context
 def share_access_delete_all_by_share(context, share_id):
     session = get_session()
     with session.begin():
@@ -2606,6 +2645,13 @@ def share_snapshot_access_get_all_for_share_snapshot(context,
         context, session, filters).all()
 
     return access_list
+
+
+@require_context
+def share_snapshot_check_for_existing_access(context, share_snapshot_id,
+                                             access_type, access_to):
+    return _check_for_existing_access(
+        context, 'share_snapshot', share_snapshot_id, access_type, access_to)
 
 
 @require_context
