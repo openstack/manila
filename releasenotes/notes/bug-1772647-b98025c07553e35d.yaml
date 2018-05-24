@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fix ensure_shares running every time despite not having
+    any configuration option changed.
+

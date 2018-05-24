@@ -326,19 +326,23 @@ class ShareManager(manager.SchedulerDependentManager):
                   "host": self.host})
 
     def ensure_driver_resources(self, ctxt):
-        old_backend_info_hash = self.db.backend_info_get(ctxt, self.host)
+        old_backend_info = self.db.backend_info_get(ctxt, self.host)
+        old_backend_info_hash = (old_backend_info.get('info_hash')
+                                 if old_backend_info is not None else None)
         new_backend_info = None
         new_backend_info_hash = None
+        backend_info_implemented = True
         update_share_instances = []
         try:
             new_backend_info = self.driver.get_backend_info(ctxt)
         except Exception as e:
             if not isinstance(e, NotImplementedError):
                 LOG.exception(
-                    ("The backend %(host)s could not get backend info."),
+                    "The backend %(host)s could not get backend info.",
                     {'host': self.host})
                 raise
             else:
+                backend_info_implemented = False
                 LOG.debug(
                     ("The backend %(host)s does not support get backend"
                      " info method."),
@@ -347,12 +351,11 @@ class ShareManager(manager.SchedulerDependentManager):
         if new_backend_info:
             new_backend_info_hash = hashlib.sha1(six.text_type(
                 sorted(new_backend_info.items())).encode('utf-8')).hexdigest()
-
-        if (old_backend_info_hash and
-                old_backend_info_hash == new_backend_info_hash):
+        if (old_backend_info_hash == new_backend_info_hash and
+                backend_info_implemented):
             LOG.debug(
-                ("The ensure share be skipped because the old backend "
-                 "%(host)s info as the same as new backend info"),
+                ("Ensure shares is being skipped because the %(host)s's old "
+                 "backend info is the same as its new backend info."),
                 {'host': self.host})
             return
 
@@ -384,17 +387,20 @@ class ShareManager(manager.SchedulerDependentManager):
             self._ensure_share_instance_has_pool(ctxt, share_instance)
             share_instance = self.db.share_instance_get(
                 ctxt, share_instance['id'], with_share_data=True)
-            update_share_instances.append(share_instance)
+            share_instance_dict = self._get_share_replica_dict(
+                ctxt, share_instance)
+            update_share_instances.append(share_instance_dict)
 
-        try:
-            update_share_instances = self.driver.ensure_shares(
-                ctxt, update_share_instances)
-        except Exception as e:
-            if not isinstance(e, NotImplementedError):
-                LOG.exception("Caught exception trying ensure "
-                              "share instances.")
-            else:
-                self._ensure_share(ctxt, update_share_instances)
+        if update_share_instances:
+            try:
+                update_share_instances = self.driver.ensure_shares(
+                    ctxt, update_share_instances) or {}
+            except Exception as e:
+                if not isinstance(e, NotImplementedError):
+                    LOG.exception("Caught exception trying ensure "
+                                  "share instances.")
+                else:
+                    self._ensure_share(ctxt, update_share_instances)
 
         if new_backend_info:
             self.db.backend_info_update(
@@ -467,10 +473,9 @@ class ShareManager(manager.SchedulerDependentManager):
     def _ensure_share(self, ctxt, share_instances):
         for share_instance in share_instances:
             try:
-                share_server = self._get_share_server(
-                    ctxt, share_instance)
                 export_locations = self.driver.ensure_share(
-                    ctxt, share_instance, share_server=share_server)
+                    ctxt, share_instance,
+                    share_server=share_instance['share_server'])
             except Exception:
                 LOG.exception("Caught exception trying ensure "
                               "share '%(s_id)s'.",
@@ -4064,6 +4069,9 @@ class ShareManager(manager.SchedulerDependentManager):
             'terminated_at': share_replica.get('terminated_at'),
             'launched_at': share_replica.get('launched_at'),
             'scheduled_at': share_replica.get('scheduled_at'),
+            'updated_at': share_replica.get('updated_at'),
+            'deleted_at': share_replica.get('deleted_at'),
+            'created_at': share_replica.get('created_at'),
             'share_server': self._get_share_server(context, share_replica),
             'access_rules_status': share_replica.get('access_rules_status'),
             # Share details
@@ -4079,6 +4087,7 @@ class ShareManager(manager.SchedulerDependentManager):
             'share_group_id': share_replica.get('share_group_id'),
             'source_share_group_snapshot_member_id': share_replica.get(
                 'source_share_group_snapshot_member_id'),
+            'availability_zone': share_replica.get('availability_zone'),
         }
 
         return share_replica_ref
