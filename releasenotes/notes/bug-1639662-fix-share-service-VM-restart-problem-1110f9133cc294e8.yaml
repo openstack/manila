@@ -1,0 +1,6 @@
+---
+fixes:
+  - Changed sync mount permanently logic in the Generic
+    driver to select the newly mounted share from /etc/mtab
+    and insert it into /etc/fstab. Added corresponding
+    remove mount permanently functionality.
