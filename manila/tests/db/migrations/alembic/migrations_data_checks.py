@@ -2687,3 +2687,73 @@ class ShareInstancesShareIdIndexChecks(BaseMigrationChecks):
     def check_downgrade(self, engine):
         self.test_case.assertFalse(
             self._get_share_instances_share_id_index(engine))
+
+
+@map_to_migration('11ee96se625f3')
+class AccessMetadataTableChecks(BaseMigrationChecks):
+    new_table_name = 'share_access_rules_metadata'
+    record_access_id = uuidutils.generate_uuid()
+
+    def setup_upgrade_data(self, engine):
+        share_data = {
+            'id': uuidutils.generate_uuid(),
+            'share_proto': "NFS",
+            'size': 1,
+            'snapshot_id': None,
+            'user_id': 'fake',
+            'project_id': 'fake'
+        }
+        share_table = utils.load_table('shares', engine)
+        engine.execute(share_table.insert(share_data))
+
+        share_instance_data = {
+            'id': uuidutils.generate_uuid(),
+            'deleted': 'False',
+            'host': 'fake',
+            'share_id': share_data['id'],
+            'status': 'available',
+            'access_rules_status': 'active',
+            'cast_rules_to_readonly': False,
+        }
+        share_instance_table = utils.load_table('share_instances', engine)
+        engine.execute(share_instance_table.insert(share_instance_data))
+
+        share_access_data = {
+            'id': self.record_access_id,
+            'share_id': share_data['id'],
+            'access_type': 'NFS',
+            'access_to': '10.0.0.1',
+            'deleted': 'False'
+        }
+        share_access_table = utils.load_table('share_access_map', engine)
+        engine.execute(share_access_table.insert(share_access_data))
+
+        share_instance_access_data = {
+            'id': uuidutils.generate_uuid(),
+            'share_instance_id': share_instance_data['id'],
+            'access_id': share_access_data['id'],
+            'deleted': 'False'
+        }
+        share_instance_access_table = utils.load_table(
+            'share_instance_access_map', engine)
+        engine.execute(share_instance_access_table.insert(
+            share_instance_access_data))
+
+    def check_upgrade(self, engine, data):
+        data = {
+            'id': 1,
+            'key': 't' * 255,
+            'value': 'v' * 1023,
+            'access_id': self.record_access_id,
+            'created_at': datetime.datetime(2017, 7, 10, 18, 5, 58),
+            'updated_at': None,
+            'deleted_at': None,
+            'deleted': 'False',
+        }
+
+        new_table = utils.load_table(self.new_table_name, engine)
+        engine.execute(new_table.insert(data))
+
+    def check_downgrade(self, engine):
+        self.test_case.assertRaises(sa_exc.NoSuchTableError, utils.load_table,
+                                    self.new_table_name, engine)

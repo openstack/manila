@@ -197,7 +197,8 @@ class ShareAccessDatabaseAPITestCase(test.TestCase):
 
     def test_share_instance_access_delete(self):
         share = db_utils.create_share()
-        access = db_utils.create_access(share_id=share['id'])
+        access = db_utils.create_access(share_id=share['id'],
+                                        metadata={'key1': 'v1'})
         instance_access_mapping = db_api.share_instance_access_get(
             self.ctxt, access['id'], share.instance['id'])
 
@@ -210,6 +211,38 @@ class ShareAccessDatabaseAPITestCase(test.TestCase):
 
         self.assertRaises(exception.NotFound, db_api.share_instance_access_get,
                           self.ctxt, access['id'], share['instance']['id'])
+
+    def test_one_share_with_two_share_instance_access_delete(self):
+        metadata = {'key2': 'v2', 'key3': 'v3'}
+        share = db_utils.create_share()
+        instance = db_utils.create_share_instance(share_id=share['id'])
+        access = db_utils.create_access(share_id=share['id'],
+                                        metadata=metadata)
+        instance_access_mapping1 = db_api.share_instance_access_get(
+            self.ctxt, access['id'], share.instance['id'])
+        instance_access_mapping2 = db_api.share_instance_access_get(
+            self.ctxt, access['id'], instance['id'])
+        self.assertEqual(instance_access_mapping1['access_id'],
+                         instance_access_mapping2['access_id'])
+        db_api.share_instance_delete(self.ctxt, instance['id'])
+
+        get_accesses = db_api.share_access_get_all_for_share(self.ctxt,
+                                                             share['id'])
+        self.assertEqual(1, len(get_accesses))
+        get_metadata = (
+            get_accesses[0].get('share_access_rules_metadata') or {})
+        get_metadata = {item['key']: item['value'] for item in get_metadata}
+        self.assertEqual(metadata, get_metadata)
+        self.assertEqual(access['id'], get_accesses[0]['id'])
+
+        db_api.share_instance_delete(self.ctxt, share['instance']['id'])
+        self.assertRaises(exception.NotFound,
+                          db_api.share_instance_access_get,
+                          self.ctxt, access['id'], share['instance']['id'])
+
+        get_accesses = db_api.share_access_get_all_for_share(self.ctxt,
+                                                             share['id'])
+        self.assertEqual(0, len(get_accesses))
 
     @ddt.data(True, False)
     def test_share_instance_access_get_with_share_access_data(
@@ -262,6 +295,40 @@ class ShareAccessDatabaseAPITestCase(test.TestCase):
             self.ctxt, share['id'], new['access_type'], new['access_to'])
 
         self.assertEqual(result, rule_exists)
+
+    def test_share_access_get_all_for_share_with_metadata(self):
+        share = db_utils.create_share()
+        rules = [db_utils.create_access(
+            share_id=share['id'], metadata={'key1': i})
+            for i in range(0, 3)]
+        rule_ids = [r['id'] for r in rules]
+
+        result = db_api.share_access_get_all_for_share(self.ctxt, share['id'])
+
+        self.assertEqual(3, len(result))
+        result_ids = [r['id'] for r in result]
+        self.assertEqual(rule_ids, result_ids)
+
+        result = db_api.share_access_get_all_for_share(
+            self.ctxt, share['id'], {'metadata': {'key1': '2'}})
+        self.assertEqual(1, len(result))
+        self.assertEqual(rules[2]['id'], result[0]['id'])
+
+    def test_share_access_metadata_update(self):
+        share = db_utils.create_share()
+        new_metadata = {'key1': 'test_update', 'key2': 'v2'}
+        rule = db_utils.create_access(share_id=share['id'],
+                                      metadata={'key1': 'v1'})
+        result_metadata = db_api.share_access_metadata_update(
+            self.ctxt, rule['id'], metadata=new_metadata)
+        result = db_api.share_access_get(self.ctxt, rule['id'])
+        self.assertEqual(new_metadata, result_metadata)
+        metadata = result.get('share_access_rules_metadata')
+        if metadata:
+            metadata = {item['key']: item['value'] for item in metadata}
+        else:
+            metadata = {}
+        self.assertEqual(new_metadata, metadata)
 
 
 @ddt.ddt

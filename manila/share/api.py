@@ -73,7 +73,7 @@ class API(base.Base):
         """Create new share."""
         policy.check_policy(context, 'share', 'create')
 
-        self._check_metadata_properties(context, metadata)
+        self._check_metadata_properties(metadata)
 
         if snapshot_id is not None:
             snapshot = self.get_snapshot(context, snapshot_id)
@@ -1598,7 +1598,7 @@ class API(base.Base):
                 INVALID_SHARE_INSTANCE_STATUSES_FOR_ACCESS_RULE_UPDATES)
 
     def allow_access(self, ctx, share, access_type, access_to,
-                     access_level=None):
+                     access_level=None, metadata=None):
         """Allow access to share."""
 
         # Access rule validation:
@@ -1606,6 +1606,7 @@ class API(base.Base):
             msg = _("Invalid share access level: %s.") % access_level
             raise exception.InvalidShareAccess(reason=msg)
 
+        self._check_metadata_properties(metadata)
         access_exists = self.db.share_access_check_for_existing_access(
             ctx, share['id'], access_type, access_to)
 
@@ -1626,6 +1627,7 @@ class API(base.Base):
             'access_type': access_type,
             'access_to': access_to,
             'access_level': access_level,
+            'metadata': metadata,
         }
 
         access = self.db.share_access_create(ctx, values)
@@ -1672,10 +1674,11 @@ class API(base.Base):
 
         self.share_rpcapi.update_access(context, share_instance)
 
-    def access_get_all(self, context, share):
+    def access_get_all(self, context, share, filters=None):
         """Returns all access rules for share."""
         policy.check_policy(context, 'share', 'access_get_all')
-        rules = self.db.share_access_get_all_for_share(context, share['id'])
+        rules = self.db.share_access_get_all_for_share(
+            context, share['id'], filters=filters)
         return rules
 
     def access_get(self, context, access_id):
@@ -1705,7 +1708,7 @@ class API(base.Base):
             }
             raise exception.ShareBusyException(reason=msg)
 
-    def _check_metadata_properties(self, context, metadata=None):
+    def _check_metadata_properties(self, metadata=None):
         if not metadata:
             metadata = {}
 
@@ -1713,21 +1716,27 @@ class API(base.Base):
             if not k:
                 msg = _("Metadata property key is blank.")
                 LOG.warning(msg)
-                raise exception.InvalidShareMetadata(message=msg)
+                raise exception.InvalidMetadata(message=msg)
             if len(k) > 255:
                 msg = _("Metadata property key is "
                         "greater than 255 characters.")
                 LOG.warning(msg)
-                raise exception.InvalidShareMetadataSize(message=msg)
+                raise exception.InvalidMetadataSize(message=msg)
             if not v:
                 msg = _("Metadata property value is blank.")
                 LOG.warning(msg)
-                raise exception.InvalidShareMetadata(message=msg)
+                raise exception.InvalidMetadata(message=msg)
             if len(v) > 1023:
                 msg = _("Metadata property value is "
                         "greater than 1023 characters.")
                 LOG.warning(msg)
-                raise exception.InvalidShareMetadataSize(message=msg)
+                raise exception.InvalidMetadataSize(message=msg)
+
+    def update_share_access_metadata(self, context, access_id, metadata):
+        """Updates share access metadata."""
+        self._check_metadata_properties(metadata)
+        return self.db.share_access_metadata_update(
+            context, access_id, metadata)
 
     @policy.wrap_check_policy('share')
     def update_share_metadata(self, context, share, metadata, delete=False):
@@ -1744,7 +1753,7 @@ class API(base.Base):
             _metadata = orig_meta.copy()
             _metadata.update(metadata)
 
-        self._check_metadata_properties(context, _metadata)
+        self._check_metadata_properties(_metadata)
         self.db.share_metadata_update(context, share['id'],
                                       _metadata, delete)
 

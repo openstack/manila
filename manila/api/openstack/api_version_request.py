@@ -116,13 +116,16 @@ REST_API_VERSION_HISTORY = """
     * 2.42 - Added ``with_count`` in share list API to get total count info.
     * 2.43 - Added filter search by extra spec for share type list.
     * 2.44 - Added 'ou' field to 'security_service' object.
+    * 2.45 - Added access metadata for share access and also introduced
+             the GET /share-access-rules API. The prior API to retrieve
+             access rules will not work with API version >=2.45.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.44"
+_MAX_API_VERSION = "2.45"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

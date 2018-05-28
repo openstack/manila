@@ -1949,6 +1949,12 @@ class ShareActionsTest(test.TestCase):
          "version": "2.38"},
         {"access": {'access_type': 'ip', 'access_to': '127.0.0.1'},
          "version": "2.38"},
+        {"access": {'access_type': 'ip', 'access_to': '127.0.0.1',
+                    'metadata': {'test_key': 'test_value'}},
+         "version": "2.45"},
+        {"access": {'access_type': 'ip', 'access_to': '127.0.0.1',
+                    'metadata': {'k' * 255: 'v' * 1023}},
+         "version": "2.45"},
     )
     def test_allow_access(self, access, version):
         self.mock_object(share_api.API,
@@ -2008,6 +2014,12 @@ class ShareActionsTest(test.TestCase):
          "version": "2.38"},
         {"access": {'access_type': 'ip', 'access_to': 'ad80::abaa:0:c2:2/64'},
          "version": "2.38"},
+        {"access": {'access_type': 'ip', 'access_to': '127.0.0.1',
+                    'metadata': {'k' * 256: 'v' * 1024}},
+         "version": "2.45"},
+        {"access": {'access_type': 'ip', 'access_to': '127.0.0.1',
+                    'metadata': {'key': None}},
+         "version": "2.45"},
     )
     def test_allow_access_error(self, access, version):
         id = 'fake_share_id'
@@ -2130,7 +2142,7 @@ class ShareActionsTest(test.TestCase):
         self.assertEqual(expected_access, access['access'])
         share_api.API.allow_access.assert_called_once_with(
             req.environ['manila.context'], share, 'user',
-            'clemsontigers', 'rw')
+            'clemsontigers', 'rw', None)
 
     @ddt.data(*itertools.product(
         set(['2.28', api_version._MAX_API_VERSION]),
@@ -2171,10 +2183,16 @@ class ShareActionsTest(test.TestCase):
                     'updated_at': updated_access['updated_at'],
                 })
 
+        if api_version.APIVersionRequest(version) >= (
+                api_version.APIVersionRequest("2.45")):
+            expected_access.update(
+                {
+                    'metadata': {},
+                })
         self.assertEqual(expected_access, access['access'])
         share_api.API.allow_access.assert_called_once_with(
             req.environ['manila.context'], share, 'user',
-            'clemsontigers', 'rw')
+            'clemsontigers', 'rw', None)
 
     def test_deny_access(self):
         def _stub_deny_access(*args, **kwargs):

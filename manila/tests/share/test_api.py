@@ -2029,6 +2029,7 @@ class ShareAPITestCase(test.TestCase):
             'access_type': 'fake_access_type',
             'access_to': 'fake_access_to',
             'access_level': level,
+            'metadata': None,
         }
         fake_access = copy.deepcopy(values)
         fake_access.update({
@@ -2168,7 +2169,7 @@ class ShareAPITestCase(test.TestCase):
         share_api.policy.check_policy.assert_called_once_with(
             self.context, 'share', 'access_get_all')
         db_api.share_access_get_all_for_share.assert_called_once_with(
-            self.context, 'fakeid')
+            self.context, 'fakeid', filters=None)
 
     def test_share_metadata_get(self):
         metadata = {'a': 'b', 'c': 'd'}

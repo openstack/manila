@@ -216,13 +216,13 @@ class ManilaExceptionResponseCode400(test.TestCase):
         self.assertIn(reason, e.msg)
 
     def test_invalid_share_metadata(self):
-        # Verify response code for exception.InvalidShareMetadata
-        e = exception.InvalidShareMetadata()
+        # Verify response code for exception.InvalidMetadata
+        e = exception.InvalidMetadata()
         self.assertEqual(400, e.code)
 
     def test_invalid_share_metadata_size(self):
-        # Verify response code for exception.InvalidShareMetadataSize
-        e = exception.InvalidShareMetadataSize()
+        # Verify response code for exception.InvalidMetadataSize
+        e = exception.InvalidMetadataSize()
         self.assertEqual(400, e.code)
 
     def test_invalid_volume(self):

@@ -112,10 +112,10 @@ class ShareMetadataController(object):
             msg = _("Malformed request body")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        except exception.InvalidShareMetadata as error:
+        except exception.InvalidMetadata as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-        except exception.InvalidShareMetadataSize as error:
+        except exception.InvalidMetadataSize as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
     def show(self, req, share_id, id):

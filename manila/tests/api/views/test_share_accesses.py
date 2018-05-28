@@ -39,6 +39,7 @@ class ViewBuilderTestCase(test.TestCase):
             'access_key': 'fakeaccesskey',
             'created_at': 'fakecreated_at',
             'updated_at': 'fakeupdated_at',
+            'metadata': {},
         }
         self.fake_share = {
             'access_rules_status': self.fake_access['state'],
@@ -47,46 +48,29 @@ class ViewBuilderTestCase(test.TestCase):
     def test_collection_name(self):
         self.assertEqual('share_accesses', self.builder._collection_name)
 
-    @ddt.data("2.20", "2.21", "2.33")
+    @ddt.data("2.20", "2.21", "2.33", "2.45")
     def test_view(self, version):
         req = fakes.HTTPRequest.blank('/shares', version=version)
         self.mock_object(api.API, 'get',
                          mock.Mock(return_value=self.fake_share))
 
         result = self.builder.view(req, self.fake_access)
-
-        if (api_version.APIVersionRequest(version) <
-                api_version.APIVersionRequest("2.21")):
-            del self.fake_access['access_key']
-
-        if (api_version.APIVersionRequest(version) <
-                api_version.APIVersionRequest("2.33")):
-            del self.fake_access['created_at']
-            del self.fake_access['updated_at']
+        self._delete_unsupport_key(version, True)
 
         self.assertEqual({'access': self.fake_access}, result)
 
-    @ddt.data("2.20", "2.21", "2.33")
+    @ddt.data("2.20", "2.21", "2.33", "2.45")
     def test_summary_view(self, version):
         req = fakes.HTTPRequest.blank('/shares', version=version)
         self.mock_object(api.API, 'get',
                          mock.Mock(return_value=self.fake_share))
 
         result = self.builder.summary_view(req, self.fake_access)
-
-        if (api_version.APIVersionRequest(version) <
-                api_version.APIVersionRequest("2.21")):
-            del self.fake_access['access_key']
-
-        if (api_version.APIVersionRequest(version) <
-                api_version.APIVersionRequest("2.33")):
-            del self.fake_access['created_at']
-            del self.fake_access['updated_at']
-        del self.fake_access['share_id']
+        self._delete_unsupport_key(version)
 
         self.assertEqual({'access': self.fake_access}, result)
 
-    @ddt.data("2.20", "2.21", "2.33")
+    @ddt.data("2.20", "2.21", "2.33", "2.45")
     def test_list_view(self, version):
         req = fakes.HTTPRequest.blank('/shares', version=version)
         self.mock_object(api.API, 'get',
@@ -94,7 +78,11 @@ class ViewBuilderTestCase(test.TestCase):
         accesses = [self.fake_access, ]
 
         result = self.builder.list_view(req, accesses)
+        self._delete_unsupport_key(version)
 
+        self.assertEqual({'access_list': accesses}, result)
+
+    def _delete_unsupport_key(self, version, support_share_id=False):
         if (api_version.APIVersionRequest(version) <
                 api_version.APIVersionRequest("2.21")):
             del self.fake_access['access_key']
@@ -103,6 +91,8 @@ class ViewBuilderTestCase(test.TestCase):
                 api_version.APIVersionRequest("2.33")):
             del self.fake_access['created_at']
             del self.fake_access['updated_at']
-        del self.fake_access['share_id']
-
-        self.assertEqual({'access_list': accesses}, result)
+        if (api_version.APIVersionRequest(version) <
+                api_version.APIVersionRequest("2.45")):
+            del self.fake_access['metadata']
+        if not support_share_id:
+            del self.fake_access['share_id']

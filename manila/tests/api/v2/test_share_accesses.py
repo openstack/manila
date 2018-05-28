@@ -1,0 +1,134 @@
+# Copyright (c) 2018 Huawei Inc.
+# All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+import ddt
+import mock
+from webob import exc
+
+from manila.api.v2 import share_accesses
+from manila import exception
+from manila import policy
+from manila import test
+from manila.tests.api import fakes
+from manila.tests import db_utils
+from oslo_utils import uuidutils
+
+
+@ddt.ddt
+class ShareAccessesAPITest(test.TestCase):
+
+    def _get_index_request(self, share_id=None, filters='', version="2.45",
+                           use_admin_context=True):
+        share_id = share_id or self.share['id']
+        req = fakes.HTTPRequest.blank(
+            '/v2/share-access-rules?share_id=%s' % share_id + filters,
+            version=version, use_admin_context=use_admin_context)
+        return req
+
+    def _get_show_request(self, access_id=None, version="2.45",
+                          use_admin_context=True):
+        access_id = access_id or self.access['id']
+        req = fakes.HTTPRequest.blank(
+            '/v2/share-access-rules/%s' % access_id,
+            version=version, use_admin_context=use_admin_context)
+        return req
+
+    def setUp(self):
+        super(ShareAccessesAPITest, self).setUp()
+        self.controller = (
+            share_accesses.ShareAccessesController())
+        self.resource_name = self.controller.resource_name
+        self.mock_policy_check = self.mock_object(
+            policy, 'check_policy', mock.Mock(return_value=True))
+        self.share = db_utils.create_share()
+        self.access = db_utils.create_share_access(
+            id=uuidutils.generate_uuid(),
+            share_id=self.share['id'],
+        )
+        db_utils.create_share_access(
+            id=uuidutils.generate_uuid(),
+            share_id=self.share['id'],
+            metadata={'k1': 'v1'}
+        )
+
+    @ddt.data({'role': 'admin', 'version': '2.45',
+               'filters': '&metadata=%7B%27k1%27%3A+%27v1%27%7D'},
+              {'role': 'user', 'version': '2.45', 'filters': ''})
+    @ddt.unpack
+    def test_list_and_show(self, role, version, filters):
+        summary_keys = ['id', 'access_level', 'access_to',
+                        'access_type', 'state', 'metadata']
+
+        self._test_list_and_show(role, filters, version, summary_keys)
+
+    def _test_list_and_show(self, role, filters, version, summary_keys):
+
+        req = self._get_index_request(
+            filters=filters, version=version,
+            use_admin_context=(role == 'admin'))
+        index_result = self.controller.index(req)
+
+        self.assertIn('access_list', index_result)
+        self.assertEqual(1, len(index_result))
+
+        access_count = 1 if filters else 2
+        self.assertEqual(access_count, len(index_result['access_list']))
+
+        for index_access in index_result['access_list']:
+            self.assertIn('id', index_access)
+            req = self._get_show_request(
+                index_access['id'], version=version,
+                use_admin_context=(role == 'admin'))
+            show_result = self.controller.show(req, index_access['id'])
+            self.assertIn('access', show_result)
+            self.assertEqual(1, len(show_result))
+
+            show_el = show_result['access']
+
+            # Ensure keys common to index & show results have matching values
+            for key in summary_keys:
+                self.assertEqual(index_access[key], show_el[key])
+
+    def test_list_accesses_share_not_found(self):
+        self.assertRaises(
+            exc.HTTPBadRequest,
+            self.controller.index,
+            self._get_index_request(share_id='inexistent_share_id'))
+
+    def test_list_accesses_share_req_share_id_not_exist(self):
+        req = fakes.HTTPRequest.blank('/v2/share-access-rules?',
+                                      version="2.45")
+        self.assertRaises(exc.HTTPBadRequest, self.controller.index, req)
+
+    def test_show_access_not_found(self):
+        self.assertRaises(
+            exc.HTTPNotFound,
+            self.controller.show,
+            self._get_show_request('inexistent_id'), 'inexistent_id')
+
+    @ddt.data('1.0', '2.0', '2.8', '2.44')
+    def test_list_with_unsupported_version(self, version):
+        self.assertRaises(
+            exception.VersionNotFoundForAPIMethod,
+            self.controller.index,
+            self._get_index_request(version=version))
+
+    @ddt.data('1.0', '2.0', '2.44')
+    def test_show_with_unsupported_version(self, version):
+        self.assertRaises(
+            exception.VersionNotFoundForAPIMethod,
+            self.controller.show,
+            self._get_show_request(version=version),
+            self.access['id'])

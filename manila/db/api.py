@@ -429,9 +429,10 @@ def share_access_get(context, access_id):
     return IMPL.share_access_get(context, access_id)
 
 
-def share_access_get_all_for_share(context, share_id):
+def share_access_get_all_for_share(context, share_id, filters=None):
     """Get all access rules for given share."""
-    return IMPL.share_access_get_all_for_share(context, share_id)
+    return IMPL.share_access_get_all_for_share(context, share_id,
+                                               filters=filters)
 
 
 def share_access_get_all_for_instance(context, instance_id, filters=None,
@@ -488,6 +489,17 @@ def share_instance_access_update(context, access_id, instance_id, updates):
 def share_instance_access_delete(context, mapping_id):
     """Deny access to share instance."""
     return IMPL.share_instance_access_delete(context, mapping_id)
+
+
+def share_access_metadata_update(context, access_id, metadata):
+    """Update metadata of share access rule."""
+    return IMPL.share_access_metadata_update(context, access_id, metadata)
+
+
+def share_access_metadata_delete(context, access_id, key):
+    """Delete metadata of share access rule."""
+    return IMPL.share_access_metadata_delete(context, access_id, key)
+
 
 ####################
 

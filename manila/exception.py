@@ -472,6 +472,10 @@ class ShareAccessExists(ManilaException):
     message = _("Share access %(access_type)s:%(access)s exists.")
 
 
+class ShareAccessMetadataNotFound(NotFound):
+    message = _("Share access rule metadata does not exist.")
+
+
 class ShareSnapshotAccessExists(InvalidInput):
     message = _("Share snapshot access %(access_type)s:%(access)s exists.")
 
@@ -543,11 +547,11 @@ class ShareMetadataNotFound(NotFound):
     message = _("Metadata item is not found.")
 
 
-class InvalidShareMetadata(Invalid):
+class InvalidMetadata(Invalid):
     message = _("Invalid metadata.")
 
 
-class InvalidShareMetadataSize(Invalid):
+class InvalidMetadataSize(Invalid):
     message = _("Invalid metadata size.")
 
 

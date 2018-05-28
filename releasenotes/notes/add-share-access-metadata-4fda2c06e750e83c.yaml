@@ -1,0 +1,18 @@
+---
+ features:
+  - |
+    Metadata can be added to share access rules as key=value pairs, and also
+    introduced the GET /share-access-rules API with API version 2.45.
+    The prior API to retrieve access rules of a given share,
+    POST /shares/{share-id}/action {'access-list: null} has been
+    removed in API version 2.45.
+ upgrade:
+  - |
+    The API GET /share-access-rules?share_id={share-id} replaces
+    POST /shares/{share-id}/action with body {'access_list': null} in
+    API version 2.45. The new API supports access rule metadata and is expected
+    to support sorting, filtering and pagination features along with newer
+    fields to interact with access rules in future versions. The API request
+    header 'X-OpenStack-Manila-API-Version' can be set to 2.44 to
+    continue using the prior API to retrieve access rules, but no new features
+    will be added to that API.

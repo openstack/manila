@@ -392,10 +392,13 @@ class ShareMixin(object):
 
     @wsgi.Controller.authorize('allow_access')
     def _allow_access(self, req, id, body, enable_ceph=False,
-                      allow_on_error_status=False, enable_ipv6=False):
+                      allow_on_error_status=False, enable_ipv6=False,
+                      enable_metadata=False):
         """Add share access rule."""
         context = req.environ['manila.context']
         access_data = body.get('allow_access', body.get('os-allow_access'))
+        if not enable_metadata:
+            access_data.pop('metadata', None)
         share = self.share_api.get(context, id)
 
         if (not allow_on_error_status and
@@ -419,9 +422,15 @@ class ShareMixin(object):
         try:
             access = self.share_api.allow_access(
                 context, share, access_type, access_to,
-                access_data.get('access_level'))
+                access_data.get('access_level'), access_data.get('metadata'))
         except exception.ShareAccessExists as e:
             raise webob.exc.HTTPBadRequest(explanation=e.msg)
+
+        except exception.InvalidMetadata as error:
+            raise exc.HTTPBadRequest(explanation=error.msg)
+
+        except exception.InvalidMetadataSize as error:
+            raise exc.HTTPBadRequest(explanation=error.msg)
 
         return self._access_view_builder.view(req, access)
 

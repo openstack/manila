@@ -242,3 +242,9 @@ user documentation.
 2.44
 ----
   Added 'ou' field to 'security_service' object.
+
+2.45
+----
+  Added access metadata for share access and also introduced the
+  GET /share-access-rules API. The prior API to retrieve access
+  rules will not work with API version >=2.45.

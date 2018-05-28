@@ -346,7 +346,8 @@ class ShareController(shares.ShareMixin,
             kwargs['allow_on_error_status'] = True
         if req.api_version_request >= api_version.APIVersionRequest("2.38"):
             kwargs['enable_ipv6'] = True
-
+        if req.api_version_request >= api_version.APIVersionRequest("2.45"):
+            kwargs['enable_metadata'] = True
         return self._allow_access(*args, **kwargs)
 
     @wsgi.Controller.api_version('2.0', '2.6')
@@ -367,7 +368,7 @@ class ShareController(shares.ShareMixin,
         """List share access rules."""
         return self._access_list(req, id, body)
 
-    @wsgi.Controller.api_version('2.7')
+    @wsgi.Controller.api_version('2.7', '2.44')
     @wsgi.action('access_list')
     def access_list(self, req, id, body):
         """List share access rules."""

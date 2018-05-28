@@ -568,6 +568,24 @@ class ShareAccessMapping(BASE, ManilaBase):
     )
 
 
+class ShareAccessRulesMetadata(BASE, ManilaBase):
+    """Represents a metadata key/value pair for a share access rule."""
+    __tablename__ = 'share_access_rules_metadata'
+    id = Column(Integer, primary_key=True)
+    deleted = Column(String(36), default='False')
+    key = Column(String(255), nullable=False)
+    value = Column(String(1023), nullable=False)
+    access_id = Column(String(36), ForeignKey('share_access_map.id'),
+                       nullable=False)
+    access = orm.relationship(
+        ShareAccessMapping, backref="share_access_rules_metadata",
+        foreign_keys=access_id,
+        lazy='immediate',
+        primaryjoin='and_('
+        'ShareAccessRulesMetadata.access_id == ShareAccessMapping.id,'
+        'ShareAccessRulesMetadata.deleted == "False")')
+
+
 class ShareInstanceAccessMapping(BASE, ManilaBase):
     """Represents access to individual share instances."""
 

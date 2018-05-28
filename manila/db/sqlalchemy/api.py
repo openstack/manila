@@ -1938,8 +1938,10 @@ def share_delete(context, share_id):
 
 def _share_access_get_query(context, session, values, read_deleted='no'):
     """Get access record."""
-    query = model_query(context, models.ShareAccessMapping, session=session,
-                        read_deleted=read_deleted)
+    query = (model_query(
+        context, models.ShareAccessMapping, session=session,
+        read_deleted=read_deleted).options(
+            joinedload('share_access_rules_metadata')))
     return query.filter_by(**values)
 
 
@@ -1957,11 +1959,66 @@ def _share_instance_access_query(context, session, access_id=None,
                        session=session).filter_by(**filters)
 
 
+def _share_access_metadata_get_item(context, access_id, key, session=None):
+    result = (_share_access_metadata_get_query(
+        context, access_id, session=session).filter_by(key=key).first())
+    if not result:
+        raise exception.ShareAccessMetadataNotFound(
+            metadata_key=key, access_id=access_id)
+    return result
+
+
+def _share_access_metadata_get_query(context, access_id, session=None):
+    return (model_query(
+        context, models.ShareAccessRulesMetadata, session=session,
+        read_deleted="no").
+        filter_by(access_id=access_id).
+        options(joinedload('access')))
+
+
+@require_context
+def share_access_metadata_update(context, access_id, metadata):
+    session = get_session()
+
+    with session.begin():
+        # Now update all existing items with new values, or create new meta
+        # objects
+        for meta_key, meta_value in metadata.items():
+
+            # update the value whether it exists or not
+            item = {"value": meta_value}
+            try:
+                meta_ref = _share_access_metadata_get_item(
+                    context, access_id, meta_key, session=session)
+            except exception.ShareAccessMetadataNotFound:
+                meta_ref = models.ShareAccessRulesMetadata()
+                item.update({"key": meta_key, "access_id": access_id})
+
+            meta_ref.update(item)
+            meta_ref.save(session=session)
+
+        return metadata
+
+
+@require_context
+def share_access_metadata_delete(context, access_id, key):
+    session = get_session()
+    with session.begin():
+        metadata = _share_access_metadata_get_item(
+            context, access_id, key, session=session)
+
+        metadata.soft_delete(session)
+
+
 @require_context
 def share_access_create(context, values):
     values = ensure_model_dict_has_id(values)
     session = get_session()
     with session.begin():
+        values['share_access_rules_metadata'] = (
+            _metadata_refs(values.get('metadata'),
+                           models.ShareAccessRulesMetadata))
+
         access_ref = models.ShareAccessMapping()
         access_ref.update(values)
         access_ref.save(session=session)
@@ -2064,11 +2121,21 @@ def share_instance_access_get(context, access_id, instance_id,
 
 
 @require_context
-def share_access_get_all_for_share(context, share_id, session=None):
+def share_access_get_all_for_share(context, share_id, filters=None,
+                                   session=None):
+    filters = filters or {}
     session = session or get_session()
-    return _share_access_get_query(
+    query = (_share_access_get_query(
         context, session, {'share_id': share_id}).filter(
-        models.ShareAccessMapping.instance_mappings.any()).all()
+        models.ShareAccessMapping.instance_mappings.any()))
+
+    if 'metadata' in filters:
+        for k, v in filters['metadata'].items():
+            query = query.filter(
+                or_(models.ShareAccessMapping.
+                    share_access_rules_metadata.any(key=k, value=v)))
+
+    return query.all()
 
 
 @require_context
@@ -2193,11 +2260,11 @@ def share_instance_access_delete(context, mapping_id):
 
         # NOTE(u_glide): Remove access rule if all mappings were removed.
         if len(other_mappings) == 0:
-            (
-                session.query(models.ShareAccessMapping)
-                .filter_by(id=mapping['access_id'])
-                .soft_delete()
-            )
+            (session.query(models.ShareAccessRulesMetadata).filter_by(
+                access_id=mapping['access_id']).soft_delete())
+
+            (session.query(models.ShareAccessMapping).filter_by(
+                id=mapping['access_id']).soft_delete())
 
 
 @require_context

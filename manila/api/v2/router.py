@@ -35,6 +35,8 @@ from manila.api.v2 import messages
 from manila.api.v2 import quota_class_sets
 from manila.api.v2 import quota_sets
 from manila.api.v2 import services
+from manila.api.v2 import share_access_metadata
+from manila.api.v2 import share_accesses
 from manila.api.v2 import share_export_locations
 from manila.api.v2 import share_group_snapshots
 from manila.api.v2 import share_group_type_specs
@@ -415,3 +417,26 @@ class APIRouter(manila.api.openstack.APIRouter):
         self.resources['messages'] = messages.create_resource()
         mapper.resource("message", "messages",
                         controller=self.resources['messages'])
+
+        self.resources["share-access-rules"] = share_accesses.create_resource()
+        mapper.resource(
+            "share-access-rule",
+            "share-access-rules",
+            controller=self.resources["share-access-rules"],
+            collection={"detail": "GET"})
+
+        self.resources["access-metadata"] = (
+            share_access_metadata.create_resource())
+        access_metadata_controller = self.resources["access-metadata"]
+        mapper.connect("share-access-rules",
+                       "/{project_id}/share-access-rules/{access_id}/metadata",
+                       controller=access_metadata_controller,
+                       action="update",
+                       conditions={"method": ["PUT"]})
+
+        mapper.connect("share-access-rules",
+                       "/{project_id}/share-access-rules/"
+                       "{access_id}/metadata/{key}",
+                       controller=access_metadata_controller,
+                       action="delete",
+                       conditions={"method": ["DELETE"]})
