@@ -17,6 +17,7 @@ Share driver for QNAP Storage.
 This driver supports QNAP Storage for NFS.
 """
 import datetime
+import math
 import re
 import time
 
@@ -70,9 +71,11 @@ class QnapShareDriver(driver.ShareDriver):
         1.0.3 - Add supports for Thin Provisioning, SSD Cache, Deduplication
                 and Compression.
         1.0.4 - Add support for QES fw 2.0.0.
+        1.0.5 - Fix bug #1773761, when user tries to manage share, the size
+                of managed share should not be changed.
     """
 
-    DRIVER_VERSION = '1.0.4'
+    DRIVER_VERSION = '1.0.5'
 
     def __init__(self, *args, **kwargs):
         """Initialize QnapShareDriver."""
@@ -837,12 +840,11 @@ class QnapShareDriver(driver.ShareDriver):
 
         vol_no = existing_share.find('vol_no').text
         vol = self.api_executor.get_specific_volinfo(vol_no)
-        vol_size_gb = int(vol.find('size').text) / units.Gi
+        vol_size_gb = math.ceil(float(vol.find('size').text) / units.Gi)
 
         share_dict = {
             'sharename': share_name,
             'old_sharename': share_name,
-            'new_size': vol_size_gb,
             'thin_provision': qnap_thin_provision,
             'compression': qnap_compression,
             'deduplication': qnap_deduplication,
