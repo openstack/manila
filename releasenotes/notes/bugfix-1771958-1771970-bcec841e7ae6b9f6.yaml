@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    New shares created on a Quobyte backend are now initialized with the correct quota.
+  - |
+    fixes a bug causing incorrect quotas being set in the backend when resizing Quobyte shares.
