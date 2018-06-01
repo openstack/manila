@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed a bug in the Quobyte driver that allowed share resizing to
+    incorrectly address the share to be resized in the backend.
