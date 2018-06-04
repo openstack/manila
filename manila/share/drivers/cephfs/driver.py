@@ -57,6 +57,10 @@ cephfs_opts = [
                default="manila",
                help="The name of the ceph auth identity to use."
                ),
+    cfg.StrOpt('cephfs_volume_path_prefix',
+               default="/volumes",
+               help="The prefix of the cephfs volume path."
+               ),
     cfg.BoolOpt('cephfs_enable_snapshots',
                 default=False,
                 help="Whether to enable snapshots in this driver."
@@ -180,8 +184,10 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         conf_path = self.configuration.safe_get('cephfs_conf_path')
         cluster_name = self.configuration.safe_get('cephfs_cluster_name')
         auth_id = self.configuration.safe_get('cephfs_auth_id')
+        volume_prefix = self.configuration.safe_get(
+            'cephfs_volume_path_prefix')
         self._volume_client = ceph_volume_client.CephFSVolumeClient(
-            auth_id, conf_path, cluster_name)
+            auth_id, conf_path, cluster_name, volume_prefix=volume_prefix)
         LOG.info("[%(be)s}] Ceph client found, connecting...",
                  {"be": self.backend_name})
         if auth_id != CEPH_DEFAULT_AUTH_ID:
