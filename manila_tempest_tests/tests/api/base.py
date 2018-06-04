@@ -273,6 +273,12 @@ class BaseSharesTest(test.BaseTestCase):
                 cls.shares_v2_client, os.networks_client)
             cls.shares_client.share_network_id = share_network_id
             cls.shares_v2_client.share_network_id = share_network_id
+            resource = {
+                "type": "share_network",
+                "id": share_network_id,
+                "client": cls.shares_v2_client,
+            }
+            cls.class_resources.insert(0, resource)
 
     @classmethod
     def resource_setup(cls):
@@ -1058,6 +1064,13 @@ class BaseSharesMixedTest(BaseSharesTest):
                 cls.alt_shares_v2_client, cls.os_alt.networks_client)
             cls.alt_shares_client.share_network_id = alt_share_network_id
             cls.alt_shares_v2_client.share_network_id = alt_share_network_id
+
+            resource = {
+                "type": "share_network",
+                "id": alt_share_network_id,
+                "client": cls.alt_shares_v2_client,
+            }
+            cls.class_resources.insert(0, resource)
 
     @classmethod
     def _create_share_type(cls, specs=None):
