@@ -59,7 +59,9 @@ class JsonRpc(object):
         self._cert_file = cert_file
 
     @utils.synchronized('quobyte-request')
-    def call(self, method_name, user_parameters, expected_errors=[]):
+    def call(self, method_name, user_parameters, expected_errors=None):
+        if expected_errors is None:
+            expected_errors = []
         # prepare request
         self._id += 1
         parameters = {'retry': 'INFINITELY'}  # Backend specific setting
@@ -103,7 +105,9 @@ class JsonRpc(object):
         LOG.debug("Backend request resulted in error: %s", result.text)
         result.raise_for_status()
 
-    def _checked_for_application_error(self, result, expected_errors=[]):
+    def _checked_for_application_error(self, result, expected_errors=None):
+        if expected_errors is None:
+            expected_errors = []
         if 'error' in result and result['error']:
             if 'message' in result['error'] and 'code' in result['error']:
                 if result["error"]["code"] in expected_errors:
