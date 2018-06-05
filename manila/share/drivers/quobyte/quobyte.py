@@ -78,9 +78,10 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         1.2.3   - Updated RPC layer for improved stability
         1.2.4   - Fixed handling updated QB API error codes
         1.2.5   - Fixed two quota handling bugs
+        1.2.6   - Fixed volume resize and jsonrpc code style bugs
     """
 
-    DRIVER_VERSION = '1.2.5'
+    DRIVER_VERSION = '1.2.6'
 
     def __init__(self, *args, **kwargs):
         super(QuobyteShareDriver, self).__init__(False, *args, **kwargs)
