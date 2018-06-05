@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    The Quobyte driver now provides an option to adapt the export path
+    to the Quobyte NFS services PSEUDO path setting.

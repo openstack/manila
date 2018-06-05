@@ -96,7 +96,9 @@ class QuobyteShareDriverTestCase(test.TestCase):
         self.fake_conf = config.Configuration(None)
         self._driver = quobyte.QuobyteShareDriver(configuration=self.fake_conf)
         self._driver.rpc = mock.Mock()
-        self.share = fake_share.fake_share(share_proto='NFS')
+        self.share = fake_share.fake_share(
+            share_proto='NFS',
+            export_location='fake_location:/quobyte/fake_share')
         self.access = fake_share.fake_access()
 
     @mock.patch('manila.share.drivers.quobyte.jsonrpc.JsonRpc', mock.Mock())
@@ -138,8 +140,9 @@ class QuobyteShareDriverTestCase(test.TestCase):
     def test_create_share_existing_volume(self, qb_resize_mock):
         self._driver.rpc.call = mock.Mock(wraps=fake_rpc_handler)
 
-        self._driver.create_share(self._context, self.share)
+        result = self._driver.create_share(self._context, self.share)
 
+        self.assertEqual(self.share['export_location'], result)
         resolv_params = {'tenant_domain': 'fake_project_uuid',
                          'volume_name': 'fakename'}
         sett_params = {'tenant': {'tenant_id': 'fake_project_uuid'}}
