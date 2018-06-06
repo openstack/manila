@@ -1499,7 +1499,7 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
 class ShareExportLocationsDatabaseAPITestCase(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareExportLocationsDatabaseAPITestCase, self).setUp()
         self.ctxt = context.get_admin_context()
 
     def test_update_valid_order(self):
@@ -1597,7 +1597,8 @@ class ShareExportLocationsDatabaseAPITestCase(test.TestCase):
 class ShareInstanceExportLocationsMetadataDatabaseAPITestCase(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        clname = ShareInstanceExportLocationsMetadataDatabaseAPITestCase
+        super(clname, self).setUp()
         self.ctxt = context.get_admin_context()
         share_id = 'fake_share_id'
         instances = [
@@ -2868,7 +2869,7 @@ class PurgeDeletedTest(test.TestCase):
 class ShareTypeAPITestCase(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareTypeAPITestCase, self).setUp()
         self.ctxt = context.RequestContext(
             user_id='user_id', project_id='project_id', is_admin=True)
 

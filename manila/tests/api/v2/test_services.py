@@ -142,7 +142,7 @@ def fake_utcnow():
 class ServicesTest(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ServicesTest, self).setUp()
 
         self.mock_object(db, "service_get_all", fake_service_get_all)
         self.mock_object(timeutils, "utcnow", fake_utcnow)

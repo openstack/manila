@@ -27,7 +27,7 @@ from manila import test
 class ManagerTestCase(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ManagerTestCase, self).setUp()
         self.host = 'host'
         self.db_driver = 'fake_driver'
         self.mock_object(importutils, 'import_module')
@@ -60,7 +60,7 @@ class ManagerTestCase(test.TestCase):
 class SchedulerDependentManagerTestCase(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(SchedulerDependentManagerTestCase, self).setUp()
         self.context = 'fake_context'
         self.host = 'host'
         self.db_driver = 'fake_driver'

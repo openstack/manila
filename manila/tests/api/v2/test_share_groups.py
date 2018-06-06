@@ -47,7 +47,7 @@ class ShareGroupAPITest(test.TestCase):
     """Consistency Groups API Test suite."""
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareGroupAPITest, self).setUp()
         self.controller = share_groups.ShareGroupController()
         self.resource_name = self.controller.resource_name
         self.fake_share_type = {'id': six.text_type(uuidutils.generate_uuid())}

@@ -32,7 +32,7 @@ class ShareSnapshotInstancesController(wsgi.Controller,
 
     def __init__(self):
         self.share_api = share.API()
-        super(self.__class__, self).__init__()
+        super(ShareSnapshotInstancesController, self).__init__()
 
     @wsgi.Controller.api_version('2.19')
     @wsgi.Controller.authorize

@@ -47,7 +47,7 @@ class ShareController(shares.ShareMixin,
     _view_builder_class = share_views.ViewBuilder
 
     def __init__(self):
-        super(self.__class__, self).__init__()
+        super(ShareController, self).__init__()
         self.share_api = share.API()
         self._access_view_builder = share_access_views.ViewBuilder()
         self._migration_view_builder = share_migration_views.ViewBuilder()

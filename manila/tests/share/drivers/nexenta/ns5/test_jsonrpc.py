@@ -27,10 +27,10 @@ PATH_TO_RPC = 'manila.share.drivers.nexenta.ns5.jsonrpc.NexentaJSONProxy'
 class TestNexentaJSONProxy(test.TestCase):
 
     def __init__(self, method):
-        super(self.__class__, self).__init__(method)
+        super(TestNexentaJSONProxy, self).__init__(method)
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(TestNexentaJSONProxy, self).setUp()
         self.nef_get = jsonrpc.NexentaJSONProxy(
             'http', '1.1.1.1', '8080', 'user', 'pass', 'get')
         self.nef_post = jsonrpc.NexentaJSONProxy(

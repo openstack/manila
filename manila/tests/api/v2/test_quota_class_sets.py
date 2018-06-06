@@ -49,7 +49,7 @@ REQ_MEMBER.environ['manila.context'].is_admin = False
 class QuotaSetsControllerTest(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(QuotaSetsControllerTest, self).setUp()
         self.controller = quota_class_sets.QuotaClassSetsController()
         self.resource_name = self.controller.resource_name
         self.class_name = 'foo_class_name'

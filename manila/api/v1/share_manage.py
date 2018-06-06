@@ -118,7 +118,7 @@ class ShareManageController(ShareManageMixin, wsgi.Controller):
     _view_builder_class = share_views.ViewBuilder
 
     def __init__(self, *args, **kwargs):
-        super(self.__class__, self).__init__(*args, **kwargs)
+        super(ShareManageController, self).__init__(*args, **kwargs)
         self.share_api = share.API()
 
     @wsgi.Controller.api_version('1.0', '2.6')

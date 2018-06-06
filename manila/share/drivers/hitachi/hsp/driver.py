@@ -49,7 +49,7 @@ class HitachiHSPDriver(driver.ShareDriver):
     """
 
     def __init__(self, *args, **kwargs):
-        super(self.__class__, self).__init__(
+        super(HitachiHSPDriver, self).__init__(
             [False], *args, config_opts=[hitachi_hsp_opts], **kwargs)
 
         self.private_storage = kwargs.get('private_storage')

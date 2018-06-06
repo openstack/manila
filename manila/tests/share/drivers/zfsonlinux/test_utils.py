@@ -55,7 +55,7 @@ class FakeShareDriver(zfs_utils.ExecuteMixin):
 class ExecuteMixinTestCase(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ExecuteMixinTestCase, self).setUp()
         self.ssh_executor = self.mock_object(ganesha_utils, 'SSHExecutor')
         self.driver = FakeShareDriver()
 
@@ -238,7 +238,7 @@ foo_res  opt_3           some_value       local"""
 class NFSviaZFSHelperTestCase(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(NFSviaZFSHelperTestCase, self).setUp()
         configuration = get_fake_configuration()
         self.out = "fake_out"
         self.mock_object(

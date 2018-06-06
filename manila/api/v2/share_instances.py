@@ -31,7 +31,7 @@ class ShareInstancesController(wsgi.Controller, wsgi.AdminActionsMixin):
 
     def __init__(self):
         self.share_api = share.API()
-        super(self.__class__, self).__init__()
+        super(ShareInstancesController, self).__init__()
 
     def _get(self, *args, **kwargs):
         return db.share_instance_get(*args, **kwargs)

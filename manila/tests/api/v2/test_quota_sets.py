@@ -53,7 +53,7 @@ def _get_request(is_admin, user_in_url):
 class QuotaSetsControllerTest(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(QuotaSetsControllerTest, self).setUp()
         self.controller = quota_sets.QuotaSetsController()
         self.resource_name = self.controller.resource_name
         self.project_id = 'foo_project_id'

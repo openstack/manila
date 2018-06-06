@@ -133,7 +133,7 @@ class DummyDriver(driver.ShareDriver):
 
     def __init__(self, *args, **kwargs):
         """Do initialization."""
-        super(self.__class__, self).__init__(
+        super(DummyDriver, self).__init__(
             [False, True], *args, config_opts=[dummy_opts], **kwargs)
         self._verify_configuration()
         self.private_storage = kwargs.get('private_storage')
@@ -393,7 +393,7 @@ class DummyDriver(driver.ShareDriver):
         }
         if self.configuration.replication_domain:
             data["replication_type"] = "readable"
-        super(self.__class__, self)._update_share_stats(data)
+        super(DummyDriver, self)._update_share_stats(data)
 
     def get_share_server_pools(self, share_server):
         """Return list of pools related to a particular share server."""

@@ -29,7 +29,7 @@ class ShareSnapshotInstanceExportLocationController(wsgi.Controller):
         self._view_builder_class = (
             share_snapshot_export_locations.ViewBuilder)
         self.resource_name = 'share_snapshot_instance_export_location'
-        super(self.__class__, self).__init__()
+        super(ShareSnapshotInstanceExportLocationController, self).__init__()
 
     @wsgi.Controller.api_version('2.32')
     @wsgi.Controller.authorize
