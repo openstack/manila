@@ -138,7 +138,7 @@ class TestCase(base_test.BaseTestCase):
         self.addCleanup(rpc.cleanup)
 
         self.messaging_conf = messaging_conffixture.ConfFixture(CONF)
-        self.messaging_conf.transport_driver = 'fake'
+        self.messaging_conf.transport_url = 'fake:/'
         self.messaging_conf.response_timeout = 15
         self.useFixture(self.messaging_conf)
 
