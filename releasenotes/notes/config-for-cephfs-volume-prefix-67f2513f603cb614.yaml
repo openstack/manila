@@ -1,0 +1,4 @@
+---
+features:
+  - cephfs volume path prefix is now configurable in order to
+    enable support for multiple cephfs back ends.
