@@ -61,7 +61,7 @@ class APIRouter(manila.api.openstack.APIRouter):
     """
     ExtensionManager = extensions.ExtensionManager
 
-    def _setup_routes(self, mapper, ext_mgr):
+    def _setup_routes(self, mapper):
         self.resources["versions"] = versions.create_resource()
         mapper.connect("versions", "/",
                        controller=self.resources["versions"],
