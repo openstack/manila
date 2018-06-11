@@ -146,6 +146,11 @@ common_opts = [
         "max_time_to_build_instance",
         default=300,
         help="Maximum time in seconds to wait for creating service instance."),
+    cfg.BoolOpt(
+        "limit_ssh_access",
+        default=False,
+        help="Block SSH connection to the service instance from other "
+             "networks than service network."),
 ]
 
 CONF = cfg.CONF
@@ -304,43 +309,68 @@ class ServiceInstanceManager(object):
             raise exception.ServiceInstanceException(msg)
         return net_ips[0]
 
-    @utils.synchronized(
-        "service_instance_get_or_create_security_group", external=True)
-    def _get_or_create_security_group(self, context, name=None,
-                                      description=None):
+    def _get_or_create_security_groups(self, context, name=None,
+                                       description=None,
+                                       allow_ssh_subnet=False):
         """Get or create security group for service_instance.
 
         :param context: context, that should be used
         :param name: this is used for selection/creation of sec.group
         :param description: this is used on sec.group creation step only
+        :param allow_ssh_subnet: subnet details to allow ssh connection from,
+         if not supplied ssh will be allowed from any host
         :returns: SecurityGroup -- security group instance from Nova
         :raises: exception.ServiceInstanceException.
         """
+
+        sgs = []
+        # Common security group
         name = name or self.get_config_option(
             "service_instance_security_group")
         if not name:
             LOG.warning("Name for service instance security group is not "
                         "provided. Skipping security group step.")
             return None
+        if not description:
+            description = ("This security group is intended "
+                           "to be used by share service.")
+        sec_group_data = const.SERVICE_INSTANCE_SECGROUP_DATA
+        if not allow_ssh_subnet:
+            sec_group_data += const.SSH_PORTS
+
+        sgs.append(self._get_or_create_security_group(name, description,
+                                                      sec_group_data))
+        if allow_ssh_subnet:
+            if "cidr" not in allow_ssh_subnet or 'id' not in allow_ssh_subnet:
+                raise exception.ManilaException(
+                    "Unable to limit SSH access")
+            ssh_sg_name = "manila-service-subnet-{}".format(
+                allow_ssh_subnet["id"])
+            sgs.append(self._get_or_create_security_group(
+                ssh_sg_name, description,
+                const.SSH_PORTS, allow_ssh_subnet["cidr"]))
+        return sgs
+
+    @utils.synchronized(
+        "service_instance_get_or_create_security_group", external=True)
+    def _get_or_create_security_group(self, name,
+                                      description, sec_group_data,
+                                      cidr="0.0.0.0/0"):
         s_groups = self.network_helper.neutron_api.security_group_list({
             "name": name,
         })['security_groups']
         s_groups = [s for s in s_groups if s['name'] == name]
         if not s_groups:
-            # Creating security group
-            if not description:
-                description = ("This security group is intended "
-                               "to be used by share service.")
             LOG.debug("Creating security group with name '%s'.", name)
             sg = self.network_helper.neutron_api.security_group_create(
                 name, description)['security_group']
-            for protocol, ports in const.SERVICE_INSTANCE_SECGROUP_DATA:
+            for protocol, ports in sec_group_data:
                 self.network_helper.neutron_api.security_group_rule_create(
                     parent_group_id=sg['id'],
                     ip_protocol=protocol,
                     from_port=ports[0],
                     to_port=ports[1],
-                    cidr="0.0.0.0/0",
+                    cidr=cidr,
                 )
         elif len(s_groups) > 1:
             msg = _("Ambiguous security_groups.")
@@ -543,9 +573,24 @@ class ServiceInstanceManager(object):
                 service_instance['id'],
                 self.max_time_to_build_instance)
 
-            security_group = self._get_or_create_security_group(context)
-            if security_group:
-                sg_id = security_group['id']
+            if self.get_config_option("limit_ssh_access"):
+                try:
+                    service_subnet = network_data['service_subnet']
+                except KeyError:
+                    LOG.error(
+                        "Unable to limit ssh access to instance id: '%s'!",
+                        fail_safe_data['instance_id'])
+                    raise exception.ManilaException(
+                        "Unable to limit SSH access - "
+                        "invalid service subnet details provided")
+            else:
+                service_subnet = False
+
+            sec_groups = self._get_or_create_security_groups(
+                context, allow_ssh_subnet=service_subnet)
+
+            for sg in sec_groups:
+                sg_id = sg['id']
                 LOG.debug(
                     "Adding security group '%(sg)s' to server '%(si)s'.",
                     dict(sg=sg_id, si=service_instance["id"]))

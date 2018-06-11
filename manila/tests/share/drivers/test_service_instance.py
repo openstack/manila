@@ -355,7 +355,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
     def test_security_group_name_not_specified(self):
         self.mock_object(self._manager, 'get_config_option',
                          mock.Mock(return_value=None))
-        result = self._manager._get_or_create_security_group(
+        result = self._manager._get_or_create_security_groups(
             self._manager.admin_context)
         self.assertIsNone(result)
         self._manager.get_config_option.assert_called_once_with(
@@ -371,10 +371,10 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         neutron_api.security_group_list.return_value = {
             'security_groups': [fake_secgroup]}
 
-        result = self._manager._get_or_create_security_group(
+        result = self._manager._get_or_create_security_groups(
             self._manager.admin_context)
 
-        self.assertEqual(fake_secgroup, result)
+        self.assertEqual([fake_secgroup, ], result)
         self._manager.get_config_option.assert_called_once_with(
             'service_instance_security_group')
         neutron_api.security_group_list.assert_called_once_with({"name": name})
@@ -392,13 +392,13 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             'security_group': fake_secgroup,
         }
 
-        result = self._manager._get_or_create_security_group(
+        result = self._manager._get_or_create_security_groups(
             context=self._manager.admin_context,
             name=name,
             description=desc,
         )
 
-        self.assertEqual(fake_secgroup, result)
+        self.assertEqual([fake_secgroup, ], result)
         if not name:
             self._manager.get_config_option.assert_called_once_with(
                 'service_instance_security_group')
@@ -406,6 +406,67 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             {"name": name or config_name})
         neutron_api.security_group_create.assert_called_once_with(
             name or config_name, desc)
+
+    @ddt.data(None, 'fake_name')
+    def test_security_group_creation_with_name_from_conf_allow_ssh(self, name):
+        def fake_secgroup(*args, **kwargs):
+            return {'security_group': {'id': 'fake_sg_id', 'name': args[0],
+                    'description': args[1]}}
+
+        config_name = "fake_sg_name_from_config"
+        desc = "fake_sg_description"
+        self.mock_object(self._manager, 'get_config_option',
+                         mock.Mock(return_value=name or config_name))
+        neutron_api = self._manager.network_helper.neutron_api
+        neutron_api.security_group_list.return_value = {'security_groups': []}
+        self.mock_object(neutron_api, 'security_group_create',
+                         mock.Mock(side_effect=fake_secgroup))
+        fake_ssh_allow_subnet = dict(cidr="10.254.0.1/24",
+                                     id='allow_subnet_id')
+        ssh_sg_name = 'manila-service-subnet-{}'.format(
+            fake_ssh_allow_subnet['id'])
+
+        result = self._manager._get_or_create_security_groups(
+            context=self._manager.admin_context,
+            name=name,
+            description=desc,
+            allow_ssh_subnet=fake_ssh_allow_subnet
+        )
+
+        self.assertEqual([fake_secgroup(name if name else config_name,
+                                        desc)['security_group'],
+                          fake_secgroup(ssh_sg_name, desc)['security_group']],
+                         result)
+        if not name:
+            self._manager.get_config_option.assert_called_with(
+                'service_instance_security_group')
+        neutron_api.security_group_list.assert_has_calls([
+            mock.call({"name": name or config_name}),
+            mock.call({"name": ssh_sg_name})])
+        neutron_api.security_group_create.assert_has_calls([
+            mock.call(name or config_name, desc),
+            mock.call(ssh_sg_name, desc)])
+
+    def test_security_group_limit_ssh_invalid_subnet(self):
+        def fake_secgroup(*args, **kwargs):
+            return {'security_group': {'id': 'fake_sg_id', 'name': args[0],
+                                       'description': args[1]}}
+
+        config_name = "fake_sg_name_from_config"
+        desc = "fake_sg_description"
+        self.mock_object(self._manager, 'get_config_option',
+                         mock.Mock(config_name))
+        neutron_api = self._manager.network_helper.neutron_api
+        neutron_api.security_group_list.return_value = {'security_groups': []}
+        self.mock_object(neutron_api, 'security_group_create',
+                         mock.Mock(side_effect=fake_secgroup))
+        fake_ssh_allow_subnet = dict(id='allow_subnet_id')
+        self.assertRaises(exception.ManilaException,
+                          self._manager._get_or_create_security_groups,
+                          context=self._manager.admin_context,
+                          name=None,
+                          description=desc,
+                          allow_ssh_subnet=fake_ssh_allow_subnet)
 
     def test_security_group_two_sg_in_list(self):
         name = "fake_name"
@@ -416,7 +477,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             'security_groups': [fake_secgroup1, fake_secgroup2]}
 
         self.assertRaises(exception.ServiceInstanceException,
-                          self._manager._get_or_create_security_group,
+                          self._manager._get_or_create_security_groups,
                           self._manager.admin_context,
                           name)
 
@@ -934,13 +995,14 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                          mock.Mock(side_effect=FakeNetworkHelper))
         config_data = dict(DEFAULT=dict(
             driver_handles_share_servers=True,
-            service_instance_user='fake_user'))
+            service_instance_user='fake_user',
+            limit_ssh_access=True))
         with test_utils.create_temp_config_with_opts(config_data):
             self._manager = service_instance.ServiceInstanceManager()
 
         server_create = dict(id='fakeid', status='CREATING', networks=dict())
         net_name = self._manager.get_config_option("service_network_name")
-        sg = {'id': 'fakeid', 'name': 'fakename'}
+        sg = [{'id': 'fakeid', 'name': 'fakename'}, ]
         ip_address = 'fake_ip_address'
         service_image_id = 'fake_service_image_id'
         key_data = 'fake_key_name', 'fake_key_path'
@@ -957,7 +1019,10 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             service_port=dict(id='fake_service_port',
                               fixed_ips=[{'ip_address': ip_address}]),
             admin_port={'id': 'fake_admin_port',
-                        'fixed_ips': [{'ip_address': ip_address}]}))
+                        'fixed_ips': [{'ip_address': ip_address}]},
+            service_subnet={'id': 'fake_subnet_id',
+                            'cidr': '10.254.0.0/28'})
+        )
         self.mock_object(service_instance.time, 'time',
                          mock.Mock(return_value=5))
         self.mock_object(self._manager.network_helper, 'setup_network',
@@ -968,7 +1033,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                          mock.Mock(return_value=service_image_id))
         self.mock_object(self._manager, '_get_key',
                          mock.Mock(return_value=key_data))
-        self.mock_object(self._manager, '_get_or_create_security_group',
+        self.mock_object(self._manager, '_get_or_create_security_groups',
                          mock.Mock(return_value=sg))
         self.mock_object(self._manager.compute_api, 'server_create',
                          mock.Mock(return_value=server_create))
@@ -1004,8 +1069,9 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self._manager.admin_context)
         self._manager._get_key.assert_called_once_with(
             self._manager.admin_context)
-        self._manager._get_or_create_security_group.assert_called_once_with(
-            self._manager.admin_context)
+        self._manager._get_or_create_security_groups.assert_called_once_with(
+            self._manager.admin_context,
+            allow_ssh_subnet=network_data['service_subnet'])
         self._manager.compute_api.server_create.assert_called_once_with(
             self._manager.admin_context, name=instance_name,
             image=service_image_id, flavor=100,
@@ -1015,7 +1081,9 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self._manager.admin_context, server_create['id'])
         (self._manager.compute_api.add_security_group_to_server.
             assert_called_once_with(
-                self._manager.admin_context, server_get['id'], sg['id']))
+                self._manager.admin_context,
+                server_get['id'],
+                sg[0]['id']))
         self._manager.network_helper.get_network_name.assert_has_calls([])
 
     def test___create_service_instance_neutron_no_admin_ip(self):
@@ -1023,7 +1091,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                          mock.Mock(side_effect=FakeNetworkHelper))
         config_data = {'DEFAULT': {
             'driver_handles_share_servers': True,
-            'service_instance_user': 'fake_user'}}
+            'service_instance_user': 'fake_user',
+            'limit_ssh_access': True}}
         with test_utils.create_temp_config_with_opts(config_data):
             self._manager = service_instance.ServiceInstanceManager()
 
@@ -1044,7 +1113,10 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                              'fixed_ips': [{'ip_address': ip_address}]},
             'admin_port': {'id': 'fake_admin_port',
                            'fixed_ips': []},
-            'router': {'id': 'fake_router_id'}}
+            'router': {'id': 'fake_router_id'},
+            'service_subnet': {'id': 'fake_id',
+                               'cidr': '10.254.0.0/28'}
+        }
         server_get = {
             'id': 'fakeid', 'status': 'ACTIVE', 'networks':
             {net_name: [ip_address]}}
@@ -1059,8 +1131,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                          mock.Mock(return_value=service_image_id))
         self.mock_object(self._manager, '_get_key',
                          mock.Mock(return_value=key_data))
-        self.mock_object(self._manager, '_get_or_create_security_group',
-                         mock.Mock(return_value=sg))
+        self.mock_object(self._manager, '_get_or_create_security_groups',
+                         mock.Mock(return_value=[sg, ]))
         self.mock_object(self._manager.compute_api, 'server_create',
                          mock.Mock(return_value=server_create))
         self.mock_object(self._manager.compute_api, 'server_get',
@@ -1079,8 +1151,9 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self._manager.admin_context)
         self._manager._get_key.assert_called_once_with(
             self._manager.admin_context)
-        self._manager._get_or_create_security_group.assert_called_once_with(
-            self._manager.admin_context)
+        self._manager._get_or_create_security_groups.assert_called_once_with(
+            self._manager.admin_context,
+            allow_ssh_subnet=network_data['service_subnet'])
         self._manager.compute_api.server_create.assert_called_once_with(
             self._manager.admin_context, name=instance_name,
             image=service_image_id, flavor=100,
@@ -1146,6 +1219,56 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             image=service_image_id, flavor=100,
             key_name=key_data[0], nics=network_data['nics'],
             availability_zone=service_instance.CONF.storage_availability_zone)
+
+    def test___create_service_instance_limit_ssh_no_service_subnet(self):
+        self.mock_object(service_instance, 'NeutronNetworkHelper',
+                         mock.Mock(side_effect=FakeNetworkHelper))
+        config_data = dict(DEFAULT=dict(
+            driver_handles_share_servers=True,
+            service_instance_user='fake_user',
+            limit_ssh_access=True))
+        with test_utils.create_temp_config_with_opts(config_data):
+            self._manager = service_instance.ServiceInstanceManager()
+
+        server_create = dict(id='fakeid', status='CREATING', networks=dict())
+        net_name = self._manager.get_config_option("service_network_name")
+        ip_address = 'fake_ip_address'
+        service_image_id = 'fake_service_image_id'
+        key_data = 'fake_key_name', 'fake_key_path'
+        instance_name = 'fake_instance_name'
+        network_info = dict()
+        network_data = {'nics': ['fake_nic1', 'fake_nic2']}
+        network_data['router'] = dict(id='fake_router_id')
+        server_get = dict(
+            id='fakeid', status='ACTIVE', networks={net_name: [ip_address]})
+        network_data.update(dict(
+            router_id='fake_router_id', subnet_id='fake_subnet_id',
+            public_port=dict(id='fake_public_port',
+                             fixed_ips=[dict(ip_address=ip_address)]),
+            service_port=dict(id='fake_service_port',
+                              fixed_ips=[{'ip_address': ip_address}]),
+            admin_port={'id': 'fake_admin_port',
+                        'fixed_ips': [{'ip_address': ip_address}]},)
+        )
+        self.mock_object(service_instance.time, 'time',
+                         mock.Mock(return_value=5))
+        self.mock_object(self._manager.network_helper, 'setup_network',
+                         mock.Mock(return_value=network_data))
+        self.mock_object(self._manager.network_helper, 'get_network_name',
+                         mock.Mock(return_value=net_name))
+        self.mock_object(self._manager, '_get_service_image',
+                         mock.Mock(return_value=service_image_id))
+        self.mock_object(self._manager, '_get_key',
+                         mock.Mock(return_value=key_data))
+        self.mock_object(self._manager.compute_api, 'server_create',
+                         mock.Mock(return_value=server_create))
+        self.mock_object(self._manager.compute_api, 'server_get',
+                         mock.Mock(return_value=server_get))
+
+        self.assertRaises(exception.ManilaException,
+                          self._manager._create_service_instance,
+                          self._manager.admin_context, instance_name,
+                          network_info)
 
     def test___create_service_instance_failed_to_build(self):
         server_create = dict(id='fakeid', status='CREATING', networks=dict())

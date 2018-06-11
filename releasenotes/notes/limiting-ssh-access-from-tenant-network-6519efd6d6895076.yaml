@@ -1,0 +1,5 @@
+---
+security:
+  - |
+    Service Instance Module - Added option to block port 22 from other subnets
+    than manila service network using neutron security groups.
