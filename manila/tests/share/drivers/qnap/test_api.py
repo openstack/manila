@@ -475,7 +475,6 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
             'action': 'share_property',
             'sharename': 'fakeVolId',
             'old_sharename': 'fakeVolId',
-            'vol_size': '100GB',
             'dedup': 'off',
             'compression': '1',
             'thin_pro': '1',
@@ -491,6 +490,8 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
             'recycle_bin_administrators_only': '0',
             'sid': 'fakeSid',
         }
+        if expect_share_dict.get('new_size'):
+            fake_params['vol_size'] = '100GB'
         sanitized_params = self._sanitize_params(fake_params)
         fake_url = (
             '/cgi-bin/priv/privWizard.cgi?%s' % sanitized_params)

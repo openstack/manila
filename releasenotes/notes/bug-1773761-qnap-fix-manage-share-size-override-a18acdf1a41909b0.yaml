@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed the QNAP driver so that it does not modify the
+    share size on the back end when manila manages a share.

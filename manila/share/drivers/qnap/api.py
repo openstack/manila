@@ -499,7 +499,6 @@ class QnapAPIExecutor(object):
             'action': 'share_property',
             'sharename': share_dict['sharename'],
             'old_sharename': share_dict['old_sharename'],
-            'vol_size': six.text_type(share_dict['new_size']) + 'GB',
             'dedup': 'sha512' if share_dict['deduplication'] else 'off',
             'compression': '1' if share_dict['compression'] else '0',
             'thin_pro': '1' if share_dict['thin_provision'] else '0',
@@ -515,6 +514,8 @@ class QnapAPIExecutor(object):
             'recycle_bin_administrators_only': '0',
             'sid': self.sid,
         }
+        if share_dict.get('new_size'):
+            params['vol_size'] = six.text_type(share_dict['new_size']) + 'GB'
         sanitized_params = self._sanitize_params(params)
 
         sanitized_params = urllib.parse.urlencode(sanitized_params)
