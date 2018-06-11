@@ -4020,14 +4020,14 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager._report_driver_status(self.context)
 
         driver.get_share_stats.assert_called_once_with(refresh=True)
-        db.share_server_get_all_by_host.assert_called_once_with(
-            self.context,
-            self.share_manager.host)
-        driver.get_share_server_pools.assert_called_once_with(fake_ss)
+        # db.share_server_get_all_by_host.assert_called_once_with(
+        #     self.context,
+        #     self.share_manager.host)
+        # driver.get_share_server_pools.assert_called_once_with(fake_ss)
         expected_stats = {
             'field': 'val',
-            'server_pools_mapping': {
-                '1234': fake_pool},
+            # 'server_pools_mapping': {
+            #     '1234': fake_pool},
         }
         self.assertEqual(expected_stats, self.share_manager.last_capabilities)
 

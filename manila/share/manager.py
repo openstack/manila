@@ -3793,10 +3793,10 @@ class ShareManager(manager.SchedulerDependentManager):
         if not share_stats:
             return
 
-        if self.driver.driver_handles_share_servers:
-            share_stats['server_pools_mapping'] = (
-                self._get_servers_pool_mapping(context)
-            )
+        # if self.driver.driver_handles_share_servers:
+        #     share_stats['server_pools_mapping'] = (
+        #         self._get_servers_pool_mapping(context)
+        #     )
 
         self.update_service_capabilities(share_stats)
 
