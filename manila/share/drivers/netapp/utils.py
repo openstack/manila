@@ -150,7 +150,7 @@ class OpenStackInfo(object):
 
     @staticmethod
     def _get_version_info_release():
-        return version.version_info.release
+        return version.version_info.release_string()
 
     def _update_info_from_version_info(self):
         try:
