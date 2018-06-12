@@ -597,11 +597,5 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         # Validate response code and model status
         self.assertEqual(valid_code, resp.status_int)
 
-        if valid_code == 404:
-            self.assertRaises(exception.NotFound,
-                              db.share_group_snapshot_get,
-                              ctxt,
-                              group_snap['id'])
-        else:
-            actual_model = db.share_group_snapshot_get(ctxt, group_snap['id'])
-            self.assertEqual(valid_status, actual_model['status'])
+        actual_model = db.share_group_snapshot_get(ctxt, group_snap['id'])
+        self.assertEqual(valid_status, actual_model['status'])

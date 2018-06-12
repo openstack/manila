@@ -580,15 +580,9 @@ class ShareReplicasApiTest(test.TestCase):
         # validate response code and model status
         self.assertEqual(valid_code, resp.status_int)
 
-        if valid_code == 404:
-            self.assertRaises(exception.ShareReplicaNotFound,
-                              share_replicas.db.share_replica_get,
-                              context,
-                              replica['id'])
-        else:
-            actual_replica = share_replicas.db.share_replica_get(
-                context, replica['id'])
-            self.assertEqual(valid_status, actual_replica[status_attr])
+        actual_replica = share_replicas.db.share_replica_get(
+            context, replica['id'])
+        self.assertEqual(valid_status, actual_replica[status_attr])
 
     @ddt.data(*fakes.fixture_reset_replica_status_with_different_roles)
     @ddt.unpack
