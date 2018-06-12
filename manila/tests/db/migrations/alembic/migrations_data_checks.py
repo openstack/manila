@@ -2666,3 +2666,24 @@ class ShareInstanceAccessMapTableChecks(BaseMigrationChecks):
             elif share_access['id'] == self.error_share_access['id']:
                 self.test_case.assertEqual(
                     constants.ACCESS_STATE_ERROR, share_access['state'])
+
+
+@map_to_migration('097fad24d2fc')
+class ShareInstancesShareIdIndexChecks(BaseMigrationChecks):
+
+    def setup_upgrade_data(self, engine):
+        pass
+
+    def _get_share_instances_share_id_index(self, engine):
+        share_instances_table = utils.load_table('share_instances', engine)
+        for idx in share_instances_table.indexes:
+            if idx.name == 'share_instances_share_id_idx':
+                return idx
+
+    def check_upgrade(self, engine, data):
+        self.test_case.assertTrue(
+            self._get_share_instances_share_id_index(engine))
+
+    def check_downgrade(self, engine):
+        self.test_case.assertFalse(
+            self._get_share_instances_share_id_index(engine))
