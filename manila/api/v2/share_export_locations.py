@@ -28,7 +28,7 @@ class ShareExportLocationController(wsgi.Controller):
     def __init__(self):
         self._view_builder_class = export_locations_views.ViewBuilder
         self.resource_name = 'share_export_location'
-        super(self.__class__, self).__init__()
+        super(ShareExportLocationController, self).__init__()
 
     def _verify_share(self, context, share_id):
         try:

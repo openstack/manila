@@ -48,7 +48,6 @@ CONF = cfg.CONF
 class SchedulerManagerTestCase(test.TestCase):
     """Test case for scheduler manager."""
 
-    manager_cls = manager.SchedulerManager
     driver_cls = base.Scheduler
     driver_cls_name = 'manila.scheduler.drivers.base.Scheduler'
 
@@ -68,7 +67,7 @@ class SchedulerManagerTestCase(test.TestCase):
         reload(manager)
 
         self.flags(scheduler_driver=self.driver_cls_name)
-        self.manager = self.manager_cls()
+        self.manager = manager.SchedulerManager()
         self.context = context.RequestContext('fake_user', 'fake_project')
         self.topic = 'fake_topic'
         self.fake_args = (1, 2, 3)

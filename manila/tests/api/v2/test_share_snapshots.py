@@ -55,7 +55,7 @@ class ShareSnapshotAPITest(test.TestCase):
     """Share Snapshot API Test."""
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareSnapshotAPITest, self).setUp()
         self.controller = share_snapshots.ShareSnapshotsController()
 
         self.mock_object(share_api.API, 'get', stubs.stub_share_get)
@@ -579,7 +579,7 @@ class ShareSnapshotAPITest(test.TestCase):
 class ShareSnapshotAdminActionsAPITest(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareSnapshotAdminActionsAPITest, self).setUp()
         self.controller = share_snapshots.ShareSnapshotsController()
         self.flags(rpc_backend='manila.openstack.common.rpc.impl_fake')
         self.admin_context = context.RequestContext('admin', 'fake', True)

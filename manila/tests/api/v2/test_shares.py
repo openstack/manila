@@ -51,7 +51,7 @@ class ShareAPITest(test.TestCase):
     """Share API Test."""
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareAPITest, self).setUp()
         self.controller = shares.ShareController()
         self.mock_object(db, 'availability_zone_get')
         self.mock_object(share_api.API, 'get_all',
@@ -1910,7 +1910,7 @@ def _fake_access_get(self, ctxt, access_id):
 class ShareActionsTest(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareActionsTest, self).setUp()
         self.controller = shares.ShareController()
         self.mock_object(share_api.API, 'get', stubs.stub_share_get)
 
@@ -2321,7 +2321,7 @@ class ShareActionsTest(test.TestCase):
 class ShareAdminActionsAPITest(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareAdminActionsAPITest, self).setUp()
         CONF.set_default("default_share_type", None)
         self.flags(rpc_backend='manila.openstack.common.rpc.impl_fake')
         self.share_api = share_api.API()
@@ -2442,7 +2442,7 @@ class ShareAdminActionsAPITest(test.TestCase):
 class ShareUnmanageTest(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareUnmanageTest, self).setUp()
         self.controller = shares.ShareController()
         self.mock_object(share_api.API, 'get_all',
                          stubs.stub_get_all_shares)
@@ -2587,7 +2587,7 @@ def get_fake_manage_body(export_path='/fake', service_host='fake@host#POOL',
 class ShareManageTest(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareManageTest, self).setUp()
         self.controller = shares.ShareController()
         self.resource_name = self.controller.resource_name
         self.request = fakes.HTTPRequest.blank(

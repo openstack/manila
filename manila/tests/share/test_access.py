@@ -39,7 +39,7 @@ class LockedOperationsTestCase(test.TestCase):
             pass
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(LockedOperationsTestCase, self).setUp()
         self.access_helper = self.FakeAccessHelper()
         self.context = context.RequestContext('fake_user', 'fake_project')
         self.lock_call = self.mock_object(
@@ -59,7 +59,7 @@ class LockedOperationsTestCase(test.TestCase):
 class ShareInstanceAccessDatabaseMixinTestCase(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareInstanceAccessDatabaseMixinTestCase, self).setUp()
         self.driver = mock.Mock()
         self.access_helper = access.ShareInstanceAccess(db, self.driver)
         self.context = context.RequestContext('fake_user', 'fake_project')

@@ -47,7 +47,7 @@ class ShareTypesController(wsgi.Controller):
     def __getattr__(self, key):
         if key == 'os-share-type-access':
             return self.share_type_access
-        return super(self.__class__, self).__getattr__(key)
+        return super(ShareTypesController, self).__getattr__(key)
 
     def _notify_share_type_error(self, context, method, payload):
         rpc.get_notifier('shareType').error(context, method, payload)

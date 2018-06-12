@@ -42,7 +42,7 @@ CONF = cfg.CONF
 class ShareGroupSnapshotAPITest(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareGroupSnapshotAPITest, self).setUp()
         self.controller = share_group_snapshots.ShareGroupSnapshotController()
         self.resource_name = self.controller.resource_name
         self.api_version = '2.31'

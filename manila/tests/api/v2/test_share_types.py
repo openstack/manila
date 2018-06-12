@@ -119,7 +119,7 @@ def make_create_body(name="test_share_1", extra_specs=None,
 class ShareTypesAPITest(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareTypesAPITest, self).setUp()
         self.flags(host='fake')
         self.controller = types.ShareTypesController()
         self.resource_name = self.controller.resource_name
@@ -569,7 +569,7 @@ class FakeRequest(object):
 class ShareTypeAccessTest(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareTypeAccessTest, self).setUp()
         self.controller = types.ShareTypesController()
         self.req = FakeRequest()
         self.mock_object(db, 'share_type_get', fake_share_type_get)

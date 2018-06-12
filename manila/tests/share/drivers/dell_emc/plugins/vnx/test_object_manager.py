@@ -126,7 +126,7 @@ class StorageObjectTestCase(StorageObjectTestCaseBase):
 
 class FileSystemTestCase(StorageObjectTestCaseBase):
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(FileSystemTestCase, self).setUp()
         self.hook = utils.RequestSideEffect()
         self.ssh_hook = utils.SSHSideEffect()
 
@@ -539,7 +539,7 @@ class FileSystemTestCase(StorageObjectTestCaseBase):
 
 class MountPointTestCase(StorageObjectTestCaseBase):
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(MountPointTestCase, self).setUp()
         self.hook = utils.RequestSideEffect()
 
     def test_create_mount_point_on_vdm(self):
@@ -857,7 +857,7 @@ class MountPointTestCase(StorageObjectTestCaseBase):
 @ddt.ddt
 class VDMTestCase(StorageObjectTestCaseBase):
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(VDMTestCase, self).setUp()
         self.hook = utils.RequestSideEffect()
         self.ssh_hook = utils.SSHSideEffect()
 
@@ -1123,7 +1123,7 @@ class VDMTestCase(StorageObjectTestCaseBase):
 
 class StoragePoolTestCase(StorageObjectTestCaseBase):
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(StoragePoolTestCase, self).setUp()
         self.hook = utils.RequestSideEffect()
 
     def test_get_pool(self):
@@ -1190,7 +1190,7 @@ class StoragePoolTestCase(StorageObjectTestCaseBase):
 
 class MoverTestCase(StorageObjectTestCaseBase):
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(MoverTestCase, self).setUp()
         self.hook = utils.RequestSideEffect()
         self.ssh_hook = utils.SSHSideEffect()
 
@@ -1367,7 +1367,7 @@ class MoverTestCase(StorageObjectTestCaseBase):
 
 class SnapshotTestCase(StorageObjectTestCaseBase):
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(SnapshotTestCase, self).setUp()
         self.hook = utils.RequestSideEffect()
 
     def test_create_snapshot(self):
@@ -1557,7 +1557,7 @@ class SnapshotTestCase(StorageObjectTestCaseBase):
 @ddt.ddt
 class MoverInterfaceTestCase(StorageObjectTestCaseBase):
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(MoverInterfaceTestCase, self).setUp()
         self.hook = utils.RequestSideEffect()
 
     def test_create_mover_interface(self):
@@ -1850,7 +1850,7 @@ class MoverInterfaceTestCase(StorageObjectTestCaseBase):
 
 class DNSDomainTestCase(StorageObjectTestCaseBase):
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(DNSDomainTestCase, self).setUp()
         self.hook = utils.RequestSideEffect()
 
     def test_create_dns_domain(self):
@@ -1960,7 +1960,7 @@ class DNSDomainTestCase(StorageObjectTestCaseBase):
 
 class CIFSServerTestCase(StorageObjectTestCaseBase):
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(CIFSServerTestCase, self).setUp()
         self.hook = utils.RequestSideEffect()
 
     def test_create_cifs_server(self):
@@ -2398,7 +2398,7 @@ class CIFSServerTestCase(StorageObjectTestCaseBase):
 
 class CIFSShareTestCase(StorageObjectTestCaseBase):
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(CIFSShareTestCase, self).setUp()
         self.hook = utils.RequestSideEffect()
         self.ssh_hook = utils.SSHSideEffect()
 
@@ -2804,7 +2804,7 @@ class CIFSShareTestCase(StorageObjectTestCaseBase):
 
 class NFSShareTestCase(StorageObjectTestCaseBase):
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(NFSShareTestCase, self).setUp()
         self.ssh_hook = utils.SSHSideEffect()
 
     def test_create_nfs_share(self):

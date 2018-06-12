@@ -768,7 +768,7 @@ class FakeHuaweiNasHelper(helper.RestHelper):
 
 class FakeRpcClient(rpcapi.HuaweiV3API):
     def __init__(self, helper):
-        super(self.__class__, self).__init__()
+        super(FakeRpcClient, self).__init__()
         self.replica_mgr = replication.ReplicaPairManager(helper)
 
     class fake_call_context(object):
@@ -784,7 +784,7 @@ class FakeRpcClient(rpcapi.HuaweiV3API):
                             remote_device_wwn, remote_fs_id):
         self.client.prepare = mock.Mock(
             return_value=self.fake_call_context(self.replica_mgr))
-        return super(self.__class__, self).create_replica_pair(
+        return super(FakeRpcClient, self).create_replica_pair(
             context, host, local_share_info,
             remote_device_wwn, remote_fs_id)
 

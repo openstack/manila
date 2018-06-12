@@ -28,7 +28,7 @@ CONF = cfg.CONF
 class DbQuotaDriverTestCase(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(DbQuotaDriverTestCase, self).setUp()
         self.project_id = 'fake_project_id'
         self.user_id = 'fake_user_id'
         self.share_type_id = 'fake_share_type_id'
@@ -462,7 +462,7 @@ class DbQuotaDriverTestCase(test.TestCase):
 class QuotaEngineTestCase(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(QuotaEngineTestCase, self).setUp()
         self.ctxt = 'fake_context'
         self.mock_class('manila.quota.DbQuotaDriver')
         self.engine = quota.QuotaEngine()

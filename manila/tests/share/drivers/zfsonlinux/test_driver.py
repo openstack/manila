@@ -143,7 +143,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
 
     def setUp(self):
         self.mock_object(zfs_driver.CONF, '_check_required_opts')
-        super(self.__class__, self).setUp()
+        super(ZFSonLinuxShareDriverTestCase, self).setUp()
         self._context = context.get_admin_context()
         self.ssh_executor = self.mock_object(ganesha_utils, 'SSHExecutor')
         self.configuration = FakeConfig()

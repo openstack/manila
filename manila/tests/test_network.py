@@ -28,7 +28,7 @@ CONF = cfg.CONF
 class APITestCase(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(APITestCase, self).setUp()
         self.mock_object(importutils, 'import_class')
 
     def test_init_api_with_default_config_group_name(self):
@@ -65,7 +65,7 @@ class APITestCase(test.TestCase):
 class NetworkBaseAPITestCase(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(NetworkBaseAPITestCase, self).setUp()
         self.db_driver = 'fake_driver'
         self.mock_object(importutils, 'import_module')
 

@@ -67,7 +67,7 @@ class LockedOperationsTestCase(test.TestCase):
             pass
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(LockedOperationsTestCase, self).setUp()
         self.manager = self.FakeManager()
         self.fake_context = test_fakes.FakeRequestContext
         self.lock_call = self.mock_object(

@@ -74,7 +74,7 @@ class ShareUnmanageController(ShareUnmanageMixin, wsgi.Controller):
     resource_name = "share"
 
     def __init__(self, *args, **kwargs):
-        super(self.__class__, self).__init__(*args, **kwargs)
+        super(ShareUnmanageController, self).__init__(*args, **kwargs)
         self.share_api = share.API()
 
     @wsgi.Controller.api_version('1.0', '2.6')

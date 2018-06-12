@@ -37,7 +37,7 @@ class ShareExportLocationsAPITest(test.TestCase):
         return req
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareExportLocationsAPITest, self).setUp()
         self.controller = (
             export_locations.ShareExportLocationController())
         self.resource_name = self.controller.resource_name

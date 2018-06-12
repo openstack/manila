@@ -36,7 +36,7 @@ class ShareInstancesAPITest(test.TestCase):
     """Share instances API Test."""
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareInstancesAPITest, self).setUp()
         self.controller = share_instances.ShareInstancesController()
         self.resource_name = self.controller.resource_name
         self.mock_policy_check = self.mock_object(

@@ -36,7 +36,7 @@ class TestNexentaNasDriver(test.TestCase):
             return getattr(self.cfg, opt)
         self.cfg = conf.Configuration(None)
         self.cfg.nexenta_host = '1.1.1.1'
-        super(self.__class__, self).setUp()
+        super(TestNexentaNasDriver, self).setUp()
         self.ctx = context.get_admin_context()
         self.mock_object(
             self.cfg, 'safe_get', mock.Mock(side_effect=_safe_get))

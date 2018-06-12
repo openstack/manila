@@ -203,7 +203,7 @@ class ServiceTestCase(test.TestCase):
 class TestWSGIService(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(TestWSGIService, self).setUp()
         self.mock_object(wsgi.Loader, 'load_app')
         self.test_service = service.WSGIService("test_service")
 

@@ -164,7 +164,7 @@ def get_backend_configuration(backend_name):
 class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
 
     def __init__(self, *args, **kwargs):
-        super(self.__class__, self).__init__(
+        super(ZFSonLinuxShareDriver, self).__init__(
             [False], *args, config_opts=[zfsonlinux_opts], **kwargs)
         self.replica_snapshot_prefix = (
             self.configuration.zfs_replica_snapshot_prefix)
@@ -325,7 +325,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
 
     def do_setup(self, context):
         """Perform basic setup and checks."""
-        super(self.__class__, self).do_setup(context)
+        super(ZFSonLinuxShareDriver, self).do_setup(context)
         self._setup_helpers()
         for ip in (self.share_export_ip, self.service_ip):
             if not utils.is_valid_ip_address(ip, 4):
@@ -382,7 +382,7 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
         }
         if self.configuration.replication_domain:
             data['replication_type'] = 'readable'
-        super(self.__class__, self)._update_share_stats(data)
+        super(ZFSonLinuxShareDriver, self)._update_share_stats(data)
 
     def _get_share_name(self, share_id):
         """Returns name of dataset used for given share."""

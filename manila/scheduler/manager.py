@@ -81,7 +81,7 @@ class SchedulerManager(manager.Manager):
 
         self.driver = importutils.import_object(scheduler_driver)
         self.message_api = message_api.API()
-        super(self.__class__, self).__init__(*args, **kwargs)
+        super(SchedulerManager, self).__init__(*args, **kwargs)
 
     def init_host(self):
         ctxt = context.get_admin_context()

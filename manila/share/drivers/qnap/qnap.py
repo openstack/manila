@@ -278,7 +278,7 @@ class QnapShareDriver(driver.ShareDriver):
                 'driver_handles_share_servers'),
             'pools': [single_pool],
         }
-        super(self.__class__, self)._update_share_stats(data)
+        super(QnapShareDriver, self)._update_share_stats(data)
 
     @utils.retry(exception=exception.ShareBackendException,
                  interval=3,

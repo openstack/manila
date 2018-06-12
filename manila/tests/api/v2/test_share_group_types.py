@@ -70,7 +70,7 @@ def fake_request(url, admin=False, experimental=True, version='2.31',
 class ShareGroupTypesAPITest(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareGroupTypesAPITest, self).setUp()
         self.flags(host='fake')
         self.controller = types.ShareGroupTypesController()
         self.resource_name = self.controller.resource_name
@@ -434,7 +434,7 @@ class ShareGroupTypesAPITest(test.TestCase):
 class ShareGroupTypeAccessTest(test.TestCase):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super(ShareGroupTypeAccessTest, self).setUp()
         self.controller = types.ShareGroupTypesController()
 
     def test_list_type_access_public(self):
