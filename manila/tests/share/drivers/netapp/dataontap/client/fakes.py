@@ -418,6 +418,7 @@ CIFS_SECURITY_SERVICE = {
     'type': 'active_directory',
     'password': 'fake_password',
     'user': 'fake_user',
+    'ou': 'fake_ou',
     'domain': 'fake_domain',
     'dns_ip': 'fake_dns_ip',
 }

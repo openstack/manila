@@ -1389,6 +1389,10 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'cifs-server': cifs_server,
             'domain': security_service['domain'],
         }
+
+        if security_service['ou'] is not None:
+            api_args['organizational-unit'] = security_service['ou']
+
         try:
             LOG.debug("Trying to setup CIFS server with data: %s", api_args)
             self.send_request('cifs-server-create', api_args)

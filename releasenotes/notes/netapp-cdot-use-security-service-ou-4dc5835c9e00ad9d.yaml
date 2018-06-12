@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    The NetApp cDOT driver uses the ou field from security services to
+    set the organizational unit of a vserver's active directory
+    configuration. This is done at CIFS server creation.
