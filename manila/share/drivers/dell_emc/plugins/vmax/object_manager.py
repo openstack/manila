@@ -1160,19 +1160,21 @@ class MoverInterface(StorageObject):
 
         mover_id = self._get_mover_id(mover_name, False)
 
+        params = dict(device=device_name,
+                      ipAddress=six.text_type(ip_addr),
+                      mover=mover_id,
+                      name=name,
+                      netMask=net_mask,
+                      vlanid=six.text_type(vlan_id))
+
+        if interface.get('ip_version') == 6:
+            params['ipVersion'] = 'IPv6'
+
         if self.xml_retry:
             self.xml_retry = False
 
         request = self._build_task_package(
-            self.elt_maker.NewMoverInterface(
-                device=device_name,
-                ipAddress=six.text_type(ip_addr),
-                mover=mover_id,
-                name=name,
-                netMask=net_mask,
-                vlanid=six.text_type(vlan_id)
-            )
-        )
+            self.elt_maker.NewMoverInterface(**params))
 
         response = self._send_request(request)
 
@@ -1871,13 +1873,14 @@ class NFSShare(StorageObject):
             for field in fields:
                 field = field.strip()
                 if field.startswith('rw='):
-                    nfs_share['RwHosts'] = field[3:].split(":")
+                    nfs_share['RwHosts'] = vmax_utils.parse_ipaddr(field[3:])
                 elif field.startswith('access='):
-                    nfs_share['AccessHosts'] = field[7:].split(":")
+                    nfs_share['AccessHosts'] = vmax_utils.parse_ipaddr(
+                        field[7:])
                 elif field.startswith('root='):
-                    nfs_share['RootHosts'] = field[5:].split(":")
+                    nfs_share['RootHosts'] = vmax_utils.parse_ipaddr(field[5:])
                 elif field.startswith('ro='):
-                    nfs_share['RoHosts'] = field[3:].split(":")
+                    nfs_share['RoHosts'] = vmax_utils.parse_ipaddr(field[3:])
 
             self.nfs_share_map[name] = nfs_share
         else:
@@ -1898,6 +1901,9 @@ class NFSShare(StorageObject):
             changed = False
             rwhosts = share['RwHosts']
             rohosts = share['RoHosts']
+
+            host_ip = vmax_utils.convert_ipv6_format_if_needed(host_ip)
+
             if access_level == const.ACCESS_LEVEL_RW:
                 if host_ip not in rwhosts:
                     rwhosts.append(host_ip)

@@ -16,6 +16,7 @@
 
 import copy
 import random
+import six
 
 from oslo_config import cfg
 from oslo_log import log
@@ -33,7 +34,11 @@ from manila.share.drivers.dell_emc.plugins.vmax import (
 from manila.share import utils as share_utils
 from manila import utils
 
-VERSION = "1.0.0"
+"""Version history:
+    1.0.0 - Initial version
+    2.0.0 - Implement IPv6 support
+"""
+VERSION = "2.0.0"
 
 LOG = log.getLogger(__name__)
 
@@ -71,6 +76,7 @@ class VMAXStorageConnection(driver.StorageConnection):
         self.reserved_percentage = None
         self.driver_handles_share_servers = True
         self.port_conf = None
+        self.ipv6_implemented = True
 
     def create_share(self, context, share, share_server=None):
         """Create a share and export it based on protocol used."""
@@ -171,7 +177,7 @@ class VMAXStorageConnection(driver.StorageConnection):
             LOG.error(message)
             raise exception.EMCVmaxXMLAPIError(err=message)
 
-        interface = server['interfaces'][0]
+        interface = enas_utils.export_unc_path(server['interfaces'][0])
 
         self._get_context('CIFSShare').create(share_name, server['name'],
                                               vdm_name)
@@ -193,8 +199,11 @@ class VMAXStorageConnection(driver.StorageConnection):
 
         self._get_context('NFSShare').create(share_name, vdm_name)
 
+        nfs_if = enas_utils.convert_ipv6_format_if_needed(
+            share_server['backend_details']['nfs_if'])
+
         return ('%(nfs_if)s:/%(share_name)s'
-                % {'nfs_if': share_server['backend_details']['nfs_if'],
+                % {'nfs_if': nfs_if,
                    'share_name': share_name})
 
     def create_share_from_snapshot(self, context, share, snapshot,
@@ -222,10 +231,13 @@ class VMAXStorageConnection(driver.StorageConnection):
         self._allocate_container_from_snapshot(
             share, snapshot, share_server, pool_name)
 
+        nfs_if = enas_utils.convert_ipv6_format_if_needed(
+            share_server['backend_details']['nfs_if'])
+
         if share_proto == 'NFS':
             self._create_nfs_share(share_name, share_server)
             location = ('%(nfs_if)s:/%(share_name)s'
-                        % {'nfs_if': share_server['backend_details']['nfs_if'],
+                        % {'nfs_if': nfs_if,
                            'share_name': share_name})
         elif share_proto == 'CIFS':
             location = self._create_cifs_share(share_name, share_server)
@@ -412,7 +424,9 @@ class VMAXStorageConnection(driver.StorageConnection):
             white_list = []
             for rule in access_rules:
                 self.allow_access(context, share, rule, share_server)
-                white_list.append(rule['access_to'])
+                white_list.append(
+                    enas_utils.convert_ipv6_format_if_needed(
+                        rule['access_to']))
             self.clear_access(share, share_server, white_list)
 
     def clear_access(self, share, share_server, white_list):
@@ -487,9 +501,9 @@ class VMAXStorageConnection(driver.StorageConnection):
         status, server = self._get_context('CIFSServer').get(server_name,
                                                              vdm_name)
         if status != constants.STATUS_OK:
-                message = (_("CIFS server %s not found.") % server_name)
-                LOG.error(message)
-                raise exception.EMCVmaxXMLAPIError(err=message)
+            message = (_("CIFS server %s not found.") % server_name)
+            LOG.error(message)
+            raise exception.EMCVmaxXMLAPIError(err=message)
 
         self._get_context('CIFSShare').deny_share_access(
             vdm_name,
@@ -508,7 +522,7 @@ class VMAXStorageConnection(driver.StorageConnection):
             LOG.warning("Only ip access type allowed.")
             return
 
-        host_ip = access['access_to']
+        host_ip = enas_utils.convert_ipv6_format_if_needed(access['access_to'])
 
         self._get_context('NFSShare').deny_share_access(share['id'], host_ip,
                                                         vdm_name)
@@ -619,6 +633,7 @@ class VMAXStorageConnection(driver.StorageConnection):
                     'snapshot_support': True,
                     'create_share_from_snapshot_support': True,
                     'revert_to_snapshot_support': False,
+                    'ipv6_support': True
                 }
                 stats_dict['pools'].append(pool_stat)
 
@@ -686,20 +701,26 @@ class VMAXStorageConnection(driver.StorageConnection):
                           'share server...', vdm_name)
                 self._get_context('VDM').create(vdm_name, self.mover_name)
 
-            netmask = utils.cidr_to_netmask(network_info['cidr'])
-
             devices = self.get_managed_ports()
 
             for net_info in network_info['network_allocations']:
                 random.shuffle(devices)
+                ip_version = net_info['ip_version']
                 interface = {
                     'name': net_info['id'][-12:],
                     'device_name': devices[0],
                     'ip': net_info['ip_address'],
                     'mover_name': self.mover_name,
-                    'net_mask': netmask,
                     'vlan_id': vlan_id if vlan_id else -1,
                 }
+                if ip_version == 6:
+                    interface['ip_version'] = ip_version
+                    interface['net_mask'] = six.text_type(
+                        utils.cidr_to_prefixlen(
+                            network_info['cidr']))
+                else:
+                    interface['net_mask'] = utils.cidr_to_netmask(
+                        network_info['cidr'])
 
                 self._get_context('MoverInterface').create(interface)
 

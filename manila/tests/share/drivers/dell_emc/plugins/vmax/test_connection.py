@@ -173,7 +173,51 @@ class StorageConnectionTestCase(test.TestCase):
         ssh_calls = [mock.call(self.cifs_share.cmd_disable_access(), True)]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
-        self.assertEqual(location, r'\\192.168.1.1\%s' % share['name'],
+        self.assertEqual(location, r'\\%s\%s' %
+                         (fakes.FakeData.network_allocations_ip1,
+                          share['name']),
+                         'CIFS export path is incorrect')
+
+    def test_create_cifs_share_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        share = fakes.CIFS_SHARE
+
+        hook = utils.RequestSideEffect()
+        hook.append(self.vdm.resp_get_succeed(
+            interface1=fakes.FakeData.interface_name3,
+            interface2=fakes.FakeData.interface_name4))
+        hook.append(self.cifs_server.resp_get_succeed(
+            mover_id=self.vdm.vdm_id, is_vdm=True, join_domain=True,
+            ip_addr=fakes.FakeData.network_allocations_ip3))
+        hook.append(self.pool.resp_get_succeed())
+        hook.append(self.fs.resp_task_succeed())
+        hook.append(self.cifs_share.resp_task_succeed())
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append()
+        ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        location = self.connection.create_share(None, share, share_server)
+
+        expected_calls = [
+            mock.call(self.vdm.req_get()),
+            mock.call(self.cifs_server.req_get(self.vdm.vdm_id)),
+            mock.call(self.pool.req_get()),
+            mock.call(self.fs.req_create_on_vdm()),
+            mock.call(self.cifs_share.req_create(self.vdm.vdm_id)),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
+        ssh_calls = [mock.call(self.cifs_share.cmd_disable_access(), True)]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
+        self.assertEqual(location, r'\\%s.ipv6-literal.net\%s' %
+                         (fakes.FakeData.network_allocations_ip3.replace(
+                             ':', '-'),
+                          share['name']),
                          'CIFS export path is incorrect')
 
     def test_create_nfs_share(self):
@@ -205,6 +249,41 @@ class StorageConnectionTestCase(test.TestCase):
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
         self.assertEqual(location, '192.168.1.2:/%s' % share['name'],
+                         'NFS export path is incorrect')
+
+    def test_create_nfs_share_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        share = fakes.NFS_SHARE
+
+        hook = utils.RequestSideEffect()
+        hook.append(self.pool.resp_get_succeed())
+        hook.append(self.vdm.resp_get_succeed(
+            interface1=fakes.FakeData.interface_name3,
+            interface2=fakes.FakeData.interface_name4))
+        hook.append(self.fs.resp_task_succeed())
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append(self.nfs_share.output_create())
+        ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        location = self.connection.create_share(None, share, share_server)
+
+        expected_calls = [
+            mock.call(self.pool.req_get()),
+            mock.call(self.vdm.req_get()),
+            mock.call(self.fs.req_create_on_vdm()),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
+        ssh_calls = [mock.call(self.nfs_share.cmd_create(), True)]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
+        self.assertEqual(location, '[%s]:/%s' %
+                         (fakes.FakeData.network_allocations_ip4,
+                          share['name']),
                          'NFS export path is incorrect')
 
     def test_create_cifs_share_without_share_server(self):
@@ -336,6 +415,70 @@ class StorageConnectionTestCase(test.TestCase):
         self.assertEqual(location, r'\\192.168.1.1\%s' % share['name'],
                          'CIFS export path is incorrect')
 
+    def test_create_cifs_share_from_snapshot_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        share = fakes.CIFS_SHARE
+        snapshot = fake_share.fake_snapshot(
+            name=fakes.FakeData.src_snap_name,
+            share_name=fakes.FakeData.src_share_name,
+            share_id=fakes.FakeData.src_share_name,
+            id=fakes.FakeData.src_snap_name)
+
+        hook = utils.RequestSideEffect()
+        hook.append(self.fs.resp_get_succeed())
+        hook.append(self.vdm.resp_get_succeed(
+            interface1=fakes.FakeData.interface_name3,
+            interface2=fakes.FakeData.interface_name4))
+        hook.append(self.cifs_server.resp_get_succeed(
+            mover_id=self.vdm.vdm_id, is_vdm=True, join_domain=True,
+            ip_addr=fakes.FakeData.network_allocations_ip3))
+        hook.append(self.cifs_share.resp_task_succeed())
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append(self.mover.output_get_interconnect_id())
+        ssh_hook.append()
+        ssh_hook.append()
+        ssh_hook.append(self.fs.output_copy_ckpt)
+        ssh_hook.append(self.fs.output_info())
+        ssh_hook.append()
+        ssh_hook.append()
+        ssh_hook.append()
+        ssh_hook.append()
+        ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        location = self.connection.create_share_from_snapshot(
+            None, share, snapshot, share_server)
+
+        expected_calls = [
+            mock.call(self.fs.req_get()),
+            mock.call(self.vdm.req_get()),
+            mock.call(self.cifs_server.req_get(self.vdm.vdm_id)),
+            mock.call(self.cifs_share.req_create(self.vdm.vdm_id)),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
+        ssh_calls = [
+            mock.call(self.mover.cmd_get_interconnect_id(), False),
+            mock.call(self.fs.cmd_create_from_ckpt(), False),
+            mock.call(self.mount.cmd_server_mount('ro'), False),
+            mock.call(self.fs.cmd_copy_ckpt(), True),
+            mock.call(self.fs.cmd_nas_fs_info(), False),
+            mock.call(self.mount.cmd_server_umount(), False),
+            mock.call(self.fs.cmd_delete(), False),
+            mock.call(self.mount.cmd_server_mount('rw'), False),
+            mock.call(self.cifs_share.cmd_disable_access(), True),
+        ]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
+        self.assertEqual(location, r'\\%s.ipv6-literal.net\%s' %
+                         (fakes.FakeData.network_allocations_ip3.replace(':',
+                                                                         '-'),
+                          share['name']),
+                         'CIFS export path is incorrect')
+
     def test_create_nfs_share_from_snapshot(self):
         share_server = fakes.SHARE_SERVER
         share = fakes.NFS_SHARE
@@ -383,6 +526,57 @@ class StorageConnectionTestCase(test.TestCase):
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
         self.assertEqual(location, '192.168.1.2:/%s' % share['name'],
+                         'NFS export path is incorrect')
+
+    def test_create_nfs_share_from_snapshot_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        share = fakes.NFS_SHARE
+        snapshot = fake_share.fake_snapshot(
+            name=fakes.FakeData.src_snap_name,
+            share_name=fakes.FakeData.src_share_name,
+            share_id=fakes.FakeData.src_share_name,
+            id=fakes.FakeData.src_snap_name)
+
+        hook = utils.RequestSideEffect()
+        hook.append(self.fs.resp_get_succeed())
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append(self.mover.output_get_interconnect_id())
+        ssh_hook.append()
+        ssh_hook.append()
+        ssh_hook.append(self.fs.output_copy_ckpt)
+        ssh_hook.append(self.fs.output_info())
+        ssh_hook.append()
+        ssh_hook.append()
+        ssh_hook.append()
+        ssh_hook.append(self.nfs_share.output_create())
+        ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        location = self.connection.create_share_from_snapshot(
+            None, share, snapshot, share_server)
+
+        expected_calls = [mock.call(self.fs.req_get())]
+        xml_req_mock.assert_has_calls(expected_calls)
+
+        ssh_calls = [
+            mock.call(self.mover.cmd_get_interconnect_id(), False),
+            mock.call(self.fs.cmd_create_from_ckpt(), False),
+            mock.call(self.mount.cmd_server_mount('ro'), False),
+            mock.call(self.fs.cmd_copy_ckpt(), True),
+            mock.call(self.fs.cmd_nas_fs_info(), False),
+            mock.call(self.mount.cmd_server_umount(), False),
+            mock.call(self.fs.cmd_delete(), False),
+            mock.call(self.mount.cmd_server_mount('rw'), False),
+            mock.call(self.nfs_share.cmd_create(), True)
+        ]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
+        self.assertEqual(location, '[%s]:/%s' %
+                         (fakes.FakeData.network_allocations_ip4,
+                          share['name']),
                          'NFS export path is incorrect')
 
     def test_create_share_with_incorrect_proto(self):
@@ -440,12 +634,78 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         xml_req_mock.assert_has_calls(expected_calls)
 
+    def test_delete_cifs_share_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        share = fakes.CIFS_SHARE
+
+        hook = utils.RequestSideEffect()
+        hook.append(self.cifs_share.resp_get_succeed(self.vdm.vdm_id))
+        hook.append(self.vdm.resp_get_succeed(
+            interface1=fakes.FakeData.interface_name3,
+            interface2=fakes.FakeData.interface_name4))
+        hook.append(self.cifs_share.resp_task_succeed())
+        hook.append(self.mount.resp_task_succeed())
+        hook.append(self.fs.resp_get_succeed())
+        hook.append(self.fs.resp_task_succeed())
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        self.connection.delete_share(None, share, share_server)
+
+        expected_calls = [
+            mock.call(self.cifs_share.req_get()),
+            mock.call(self.vdm.req_get()),
+            mock.call(self.cifs_share.req_delete(self.vdm.vdm_id)),
+            mock.call(self.mount.req_delete(self.vdm.vdm_id)),
+            mock.call(self.fs.req_get()),
+            mock.call(self.fs.req_delete()),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
     def test_delete_nfs_share(self):
         share_server = fakes.SHARE_SERVER
         share = fakes.NFS_SHARE
 
         hook = utils.RequestSideEffect()
         hook.append(self.vdm.resp_get_succeed())
+        hook.append(self.mount.resp_task_succeed())
+        hook.append(self.fs.resp_get_succeed())
+        hook.append(self.fs.resp_task_succeed())
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append(self.nfs_share.output_get_succeed(
+            rw_hosts=self.nfs_share.rw_hosts,
+            ro_hosts=self.nfs_share.ro_hosts))
+        ssh_hook.append(self.nfs_share.output_delete_succeed())
+        ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        self.connection.delete_share(None, share, share_server)
+
+        expected_calls = [
+            mock.call(self.vdm.req_get()),
+            mock.call(self.mount.req_delete(self.vdm.vdm_id)),
+            mock.call(self.fs.req_get()),
+            mock.call(self.fs.req_delete()),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
+        ssh_calls = [
+            mock.call(self.nfs_share.cmd_get(), False),
+            mock.call(self.nfs_share.cmd_delete(), True),
+        ]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
+    def test_delete_nfs_share_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        share = fakes.NFS_SHARE
+
+        hook = utils.RequestSideEffect()
+        hook.append(self.vdm.resp_get_succeed(
+            interface1=fakes.FakeData.interface_name3,
+            interface2=fakes.FakeData.interface_name4))
         hook.append(self.mount.resp_task_succeed())
         hook.append(self.fs.resp_get_succeed())
         hook.append(self.fs.resp_task_succeed())
@@ -538,6 +798,27 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         xml_req_mock.assert_has_calls(expected_calls)
 
+    def test_extend_share_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        share = fakes.CIFS_SHARE
+        new_size = fakes.FakeData.new_size
+
+        hook = utils.RequestSideEffect()
+        hook.append(self.fs.resp_get_succeed())
+        hook.append(self.pool.resp_get_succeed())
+        hook.append(self.fs.resp_task_succeed())
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        self.connection.extend_share(share, new_size, share_server)
+
+        expected_calls = [
+            mock.call(self.fs.req_get()),
+            mock.call(self.pool.req_get()),
+            mock.call(self.fs.req_extend()),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
     def test_extend_share_without_pool_name(self):
         share_server = fakes.SHARE_SERVER
         share = fake_share.fake_share(host='HostA@BackendB',
@@ -550,6 +831,27 @@ class StorageConnectionTestCase(test.TestCase):
 
     def test_create_snapshot(self):
         share_server = fakes.SHARE_SERVER
+        snapshot = fake_share.fake_snapshot(
+            id=fakes.FakeData.snapshot_name,
+            share_id=fakes.FakeData.filesystem_name,
+            share_name=fakes.FakeData.share_name)
+
+        hook = utils.RequestSideEffect()
+        hook.append(self.fs.resp_get_succeed())
+        hook.append(self.snap.resp_task_succeed())
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        self.connection.create_snapshot(None, snapshot, share_server)
+
+        expected_calls = [
+            mock.call(self.fs.req_get()),
+            mock.call(self.snap.req_create()),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
+    def test_create_snapshot_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
         snapshot = fake_share.fake_snapshot(
             id=fakes.FakeData.snapshot_name,
             share_id=fakes.FakeData.filesystem_name,
@@ -609,6 +911,27 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         xml_req_mock.assert_has_calls(expected_calls)
 
+    def test_delete_snapshot_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        snapshot = fake_share.fake_snapshot(
+            id=fakes.FakeData.snapshot_name,
+            share_id=fakes.FakeData.filesystem_name,
+            share_name=fakes.FakeData.share_name)
+
+        hook = utils.RequestSideEffect()
+        hook.append(self.snap.resp_get_succeed())
+        hook.append(self.snap.resp_task_succeed())
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        self.connection.delete_snapshot(None, snapshot, share_server)
+
+        expected_calls = [
+            mock.call(self.snap.req_get()),
+            mock.call(self.snap.req_delete()),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
     @utils.patch_get_managed_ports_vnx(return_value=['cge-1-0'])
     def test_setup_server(self):
         hook = utils.RequestSideEffect()
@@ -630,8 +953,8 @@ class StorageConnectionTestCase(test.TestCase):
 
         self.connection.setup_server(fakes.NETWORK_INFO, None)
 
-        if_name_1 = fakes.FakeData.network_allocations_id1[-12:]
-        if_name_2 = fakes.FakeData.network_allocations_id2[-12:]
+        if_name_1 = fakes.FakeData.interface_name1
+        if_name_2 = fakes.FakeData.interface_name2
 
         expected_calls = [
             mock.call(self.vdm.req_get()),
@@ -652,6 +975,59 @@ class StorageConnectionTestCase(test.TestCase):
         ssh_calls = [
             mock.call(self.vdm.cmd_attach_nfs_interface(), False),
         ]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
+    @utils.patch_get_managed_ports_vnx(return_value=['cge-1-0'])
+    def test_setup_server_with_ipv6(self):
+        hook = utils.RequestSideEffect()
+        hook.append(self.vdm.resp_get_but_not_found())
+        hook.append(self.mover.resp_get_ref_succeed())
+        hook.append(self.vdm.resp_task_succeed())
+        hook.append(self.mover.resp_task_succeed())
+        hook.append(self.mover.resp_task_succeed())
+        hook.append(self.dns.resp_task_succeed())
+        hook.append(self.vdm.resp_get_succeed())
+        hook.append(self.cifs_server.resp_task_succeed())
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append()
+        ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        self.connection.setup_server(fakes.NETWORK_INFO_IPV6, None)
+
+        if_name_1 = fakes.FakeData.interface_name3
+        if_name_2 = fakes.FakeData.interface_name4
+
+        expect_ip_1 = fakes.FakeData.network_allocations_ip3
+        expect_ip_2 = fakes.FakeData.network_allocations_ip4
+
+        expected_calls = [
+            mock.call(self.vdm.req_get()),
+            mock.call(self.mover.req_get_ref()),
+            mock.call(self.vdm.req_create()),
+            mock.call(self.mover.req_create_interface_with_ipv6(
+                if_name=if_name_1,
+                ip=expect_ip_1)),
+            mock.call(self.mover.req_create_interface_with_ipv6(
+                if_name=if_name_2,
+                ip=expect_ip_2)),
+            mock.call(self.dns.req_create(
+                ip_addr=fakes.FakeData.dns_ipv6_address)),
+            mock.call(self.vdm.req_get()),
+            mock.call(self.cifs_server.req_create(
+                self.vdm.vdm_id,
+                ip_addr=fakes.FakeData.network_allocations_ip3)),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
+        ssh_calls = [
+            mock.call(self.vdm.cmd_attach_nfs_interface(
+                interface=fakes.FakeData.interface_name4), False),
+        ]
+
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
     @utils.patch_get_managed_ports_vnx(return_value=['cge-1-0'])
@@ -834,6 +1210,51 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
+    def test_teardown_server_with_ipv6(self):
+        hook = utils.RequestSideEffect()
+        hook.append(self.vdm.resp_get_succeed())
+        hook.append(self.cifs_server.resp_get_succeed(
+            mover_id=self.vdm.vdm_id, is_vdm=True, join_domain=True))
+        hook.append(self.cifs_server.resp_task_succeed())
+        hook.append(self.cifs_server.resp_get_succeed(
+            mover_id=self.vdm.vdm_id, is_vdm=True, join_domain=False))
+        hook.append(self.mover.resp_get_ref_succeed())
+        hook.append(self.mover.resp_task_succeed())
+        hook.append(self.mover.resp_task_succeed())
+        hook.append(self.vdm.resp_task_succeed())
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append(self.vdm.output_get_interfaces_vdm())
+        ssh_hook.append()
+        ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        self.connection.teardown_server(fakes.SERVER_DETAIL_IPV6,
+                                        fakes.SECURITY_SERVICE_IPV6)
+
+        expected_calls = [
+            mock.call(self.vdm.req_get()),
+            mock.call(self.cifs_server.req_get(self.vdm.vdm_id)),
+            mock.call(self.cifs_server.req_modify(
+                mover_id=self.vdm.vdm_id, is_vdm=True, join_domain=False)),
+            mock.call(self.cifs_server.req_delete(self.vdm.vdm_id)),
+            mock.call(self.mover.req_get_ref()),
+            mock.call(self.mover.req_delete_interface(
+                fakes.FakeData.network_allocations_ip3)),
+            mock.call(self.mover.req_delete_interface(
+                fakes.FakeData.network_allocations_ip4)),
+            mock.call(self.vdm.req_delete()),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
+        ssh_calls = [
+            mock.call(self.vdm.cmd_get_interfaces(), False),
+            mock.call(self.vdm.cmd_detach_nfs_interface(), True),
+        ]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
     def test_teardown_server_without_server_detail(self):
         self.connection.teardown_server(None, fakes.SECURITY_SERVICE)
 
@@ -1006,6 +1427,40 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
+    def test_update_access_add_cifs_rw_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        share = fakes.CIFS_SHARE
+        access = fakes.CIFS_RW_ACCESS
+
+        hook = utils.RequestSideEffect()
+        hook.append(self.vdm.resp_get_succeed(
+            interface1=fakes.FakeData.interface_name3,
+            interface2=fakes.FakeData.interface_name4))
+        hook.append(self.cifs_server.resp_get_succeed(
+            mover_id=self.vdm.vdm_id, is_vdm=True, join_domain=True,
+            ip_addr=fakes.FakeData.network_allocations_ip3))
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append(self.cifs_share.output_allow_access())
+        ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        self.connection.update_access(None, share, [], [access], [],
+                                      share_server=share_server)
+
+        expected_calls = [
+            mock.call(self.vdm.req_get()),
+            mock.call(self.cifs_server.req_get(self.vdm.vdm_id)),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
+        ssh_calls = [
+            mock.call(self.cifs_share.cmd_change_access(), True),
+        ]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
     def test_update_access_deny_nfs(self):
         share_server = fakes.SHARE_SERVER
         share = fakes.NFS_SHARE
@@ -1033,6 +1488,37 @@ class StorageConnectionTestCase(test.TestCase):
             mock.call(self.nfs_share.cmd_set_access(
                 rw_hosts=self.nfs_share.rw_hosts,
                 ro_hosts=self.nfs_share.ro_hosts), True),
+            mock.call(self.nfs_share.cmd_get(), True),
+        ]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
+    def test_update_access_deny_nfs_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        share = fakes.NFS_SHARE
+        access = fakes.NFS_RW_ACCESS
+
+        rw_hosts = copy.deepcopy(fakes.FakeData.rw_hosts_ipv6)
+        rw_hosts.append(access['access_to'])
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append(self.nfs_share.output_get_succeed(
+            rw_hosts=rw_hosts,
+            ro_hosts=fakes.FakeData.ro_hosts_ipv6))
+        ssh_hook.append(self.nfs_share.output_set_access_success())
+        ssh_hook.append(self.nfs_share.output_get_succeed(
+            rw_hosts=fakes.FakeData.rw_hosts_ipv6,
+            ro_hosts=fakes.FakeData.ro_hosts_ipv6))
+        ssh_cmd_mock = utils.EMCNFSShareMock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        self.connection.update_access(None, share, [], [], [access],
+                                      share_server=share_server)
+
+        ssh_calls = [
+            mock.call(self.nfs_share.cmd_get(), True),
+            mock.call(self.nfs_share.cmd_set_access(
+                rw_hosts=self.nfs_share.rw_hosts_ipv6,
+                ro_hosts=self.nfs_share.ro_hosts_ipv6), True),
             mock.call(self.nfs_share.cmd_get(), True),
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
@@ -1069,6 +1555,38 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
+    def test_update_access_recover_nfs_rule_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        share = fakes.NFS_SHARE
+        access = fakes.NFS_RW_ACCESS_IPV6
+        hosts = ['fdf8:f53b:82e1::5']
+
+        rw_hosts = copy.deepcopy(fakes.FakeData.rw_hosts_ipv6)
+        rw_hosts.append(access['access_to'])
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append(self.nfs_share.output_get_succeed(
+            rw_hosts=rw_hosts,
+            ro_hosts=fakes.FakeData.ro_hosts_ipv6))
+        ssh_hook.append(self.nfs_share.output_set_access_success())
+        ssh_hook.append(self.nfs_share.output_get_succeed(
+            rw_hosts=hosts,
+            ro_hosts=[]))
+        ssh_cmd_mock = utils.EMCNFSShareMock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        self.connection.update_access(None, share, [access], [], [],
+                                      share_server=share_server)
+
+        ssh_calls = [
+            mock.call(self.nfs_share.cmd_get(), True),
+            mock.call(self.nfs_share.cmd_set_access(
+                rw_hosts=hosts,
+                ro_hosts=[]), True),
+            mock.call(self.nfs_share.cmd_get(), True),
+        ]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
     def test_update_access_recover_cifs_rule(self):
         share_server = fakes.SHARE_SERVER
         share = fakes.CIFS_SHARE
@@ -1078,6 +1596,46 @@ class StorageConnectionTestCase(test.TestCase):
         hook.append(self.vdm.resp_get_succeed())
         hook.append(self.cifs_server.resp_get_succeed(
             mover_id=self.vdm.vdm_id, is_vdm=True, join_domain=True))
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append(self.cifs_share.output_allow_access())
+        ssh_hook.append(fakes.FakeData.cifs_access)
+        ssh_hook.append('Command succeeded')
+
+        ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        self.connection.update_access(None, share, [access], [], [],
+                                      share_server=share_server)
+
+        expected_calls = [
+            mock.call(self.vdm.req_get()),
+            mock.call(self.cifs_server.req_get(self.vdm.vdm_id)),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
+        ssh_calls = [
+            mock.call(self.cifs_share.cmd_change_access(), True),
+            mock.call(self.cifs_share.cmd_get_access(), True),
+            mock.call(self.cifs_share.cmd_change_access(
+                action='revoke', user='guest'), True),
+        ]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
+    def test_update_access_recover_cifs_rule_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        share = fakes.CIFS_SHARE
+        access = fakes.CIFS_RW_ACCESS
+
+        hook = utils.RequestSideEffect()
+        hook.append(self.vdm.resp_get_succeed(
+            interface1=fakes.FakeData.interface_name3,
+            interface2=fakes.FakeData.interface_name4))
+        hook.append(self.cifs_server.resp_get_succeed(
+            mover_id=self.vdm.vdm_id, is_vdm=True, join_domain=True,
+            ip_addr=fakes.FakeData.network_allocations_ip3))
         xml_req_mock = utils.EMCMock(side_effect=hook)
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
@@ -1157,6 +1715,39 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
+    def test_allow_cifs_rw_access_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        share = fakes.CIFS_SHARE
+        access = fakes.CIFS_RW_ACCESS
+
+        hook = utils.RequestSideEffect()
+        hook.append(self.vdm.resp_get_succeed(
+            interface1=fakes.FakeData.interface_name3,
+            interface2=fakes.FakeData.interface_name4))
+        hook.append(self.cifs_server.resp_get_succeed(
+            mover_id=self.vdm.vdm_id, is_vdm=True, join_domain=True,
+            ip_addr=fakes.FakeData.network_allocations_ip3))
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append(self.cifs_share.output_allow_access())
+        ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        self.connection.allow_access(None, share, access, share_server)
+
+        expected_calls = [
+            mock.call(self.vdm.req_get()),
+            mock.call(self.cifs_server.req_get(self.vdm.vdm_id)),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
+        ssh_calls = [
+            mock.call(self.cifs_share.cmd_change_access(), True),
+        ]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
     def test_allow_cifs_ro_access(self):
         share_server = fakes.SHARE_SERVER
         share = fakes.CIFS_SHARE
@@ -1166,6 +1757,39 @@ class StorageConnectionTestCase(test.TestCase):
         hook.append(self.vdm.resp_get_succeed())
         hook.append(self.cifs_server.resp_get_succeed(
             mover_id=self.vdm.vdm_id, is_vdm=True, join_domain=True))
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append(self.cifs_share.output_allow_access())
+        ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        self.connection.allow_access(None, share, access, share_server)
+
+        expected_calls = [
+            mock.call(self.vdm.req_get()),
+            mock.call(self.cifs_server.req_get(self.vdm.vdm_id)),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
+        ssh_calls = [
+            mock.call(self.cifs_share.cmd_change_access('ro'), True),
+        ]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
+    def test_allow_cifs_ro_access_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        share = fakes.CIFS_SHARE
+        access = fakes.CIFS_RO_ACCESS
+
+        hook = utils.RequestSideEffect()
+        hook.append(self.vdm.resp_get_succeed(
+            interface1=fakes.FakeData.interface_name3,
+            interface2=fakes.FakeData.interface_name4))
+        hook.append(self.cifs_server.resp_get_succeed(
+            mover_id=self.vdm.vdm_id, is_vdm=True, join_domain=True,
+            ip_addr=fakes.FakeData.network_allocations_ip3))
         xml_req_mock = utils.EMCMock(side_effect=hook)
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
@@ -1277,6 +1901,37 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
+    def test_allow_nfs_access_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        share = fakes.NFS_SHARE
+        access = fakes.NFS_RW_ACCESS_IPV6
+
+        rw_hosts = copy.deepcopy(fakes.FakeData.rw_hosts_ipv6)
+        rw_hosts.append(access['access_to'])
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append(self.nfs_share.output_get_succeed(
+            rw_hosts=fakes.FakeData.rw_hosts_ipv6,
+            ro_hosts=fakes.FakeData.ro_hosts_ipv6))
+        ssh_hook.append(self.nfs_share.output_set_access_success())
+        ssh_hook.append(self.nfs_share.output_get_succeed(
+            rw_hosts=rw_hosts,
+            ro_hosts=fakes.FakeData.ro_hosts_ipv6))
+        ssh_cmd_mock = utils.EMCNFSShareMock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        self.connection.allow_access(None, share, access, share_server)
+
+        ssh_calls = [
+            mock.call(self.nfs_share.cmd_get(), True),
+            mock.call(self.nfs_share.cmd_set_access(
+                rw_hosts=rw_hosts,
+                ro_hosts=self.nfs_share.ro_hosts_ipv6),
+                True),
+            mock.call(self.nfs_share.cmd_get(), True),
+        ]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
     def test_allow_cifs_access_with_incorrect_access_type(self):
         share_server = fakes.SHARE_SERVER
         share = fakes.CIFS_SHARE
@@ -1335,6 +1990,40 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
 
+    def test_deny_cifs_rw_access_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        share = fakes.CIFS_SHARE
+        access = fakes.CIFS_RW_ACCESS
+
+        hook = utils.RequestSideEffect()
+        hook.append(self.vdm.resp_get_succeed(
+            interface1=fakes.FakeData.interface_name3,
+            interface2=fakes.FakeData.interface_name4))
+        hook.append(self.cifs_server.resp_get_succeed(
+            mover_id=self.vdm.vdm_id, is_vdm=True, join_domain=True,
+            ip_addr=fakes.FakeData.network_allocations_ip3))
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append(self.cifs_share.output_allow_access())
+        ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        self.connection.deny_access(None, share, access, share_server)
+
+        expected_calls = [
+            mock.call(self.vdm.req_get()),
+            mock.call(self.cifs_server.req_get(self.vdm.vdm_id)),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
+        ssh_calls = [
+            mock.call(self.cifs_share.cmd_change_access(action='revoke'),
+                      True),
+        ]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
     def test_deny_cifs_ro_access(self):
         share_server = fakes.SHARE_SERVER
         share = fakes.CIFS_SHARE
@@ -1344,6 +2033,39 @@ class StorageConnectionTestCase(test.TestCase):
         hook.append(self.vdm.resp_get_succeed())
         hook.append(self.cifs_server.resp_get_succeed(
             mover_id=self.vdm.vdm_id, is_vdm=True, join_domain=True))
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append(self.cifs_share.output_allow_access())
+        ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        self.connection.deny_access(None, share, access, share_server)
+
+        expected_calls = [
+            mock.call(self.vdm.req_get()),
+            mock.call(self.cifs_server.req_get(self.vdm.vdm_id)),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
+        ssh_calls = [
+            mock.call(self.cifs_share.cmd_change_access('ro', 'revoke'), True),
+        ]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
+    def test_deny_cifs_ro_access_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        share = fakes.CIFS_SHARE
+        access = fakes.CIFS_RO_ACCESS
+
+        hook = utils.RequestSideEffect()
+        hook.append(self.vdm.resp_get_succeed(
+            interface1=fakes.FakeData.interface_name3,
+            interface2=fakes.FakeData.interface_name4))
+        hook.append(self.cifs_server.resp_get_succeed(
+            mover_id=self.vdm.vdm_id, is_vdm=True, join_domain=True,
+            ip_addr=fakes.FakeData.network_allocations_ip3))
         xml_req_mock = utils.EMCMock(side_effect=hook)
         self.connection.manager.connectors['XML'].request = xml_req_mock
 
@@ -1412,6 +2134,36 @@ class StorageConnectionTestCase(test.TestCase):
             mock.call(self.nfs_share.cmd_set_access(
                 rw_hosts=self.nfs_share.rw_hosts,
                 ro_hosts=self.nfs_share.ro_hosts), True),
+            mock.call(self.nfs_share.cmd_get(), True),
+        ]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
+    def test_deny_nfs_access_with_ipv6(self):
+        share_server = fakes.SHARE_SERVER_IPV6
+        share = fakes.NFS_SHARE
+        access = fakes.NFS_RW_ACCESS_IPV6
+
+        rw_hosts = copy.deepcopy(fakes.FakeData.rw_hosts_ipv6)
+        rw_hosts.append(access['access_to'])
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append(self.nfs_share.output_get_succeed(
+            rw_hosts=rw_hosts,
+            ro_hosts=fakes.FakeData.ro_hosts_ipv6))
+        ssh_hook.append(self.nfs_share.output_set_access_success())
+        ssh_hook.append(self.nfs_share.output_get_succeed(
+            rw_hosts=fakes.FakeData.rw_hosts_ipv6,
+            ro_hosts=fakes.FakeData.ro_hosts_ipv6))
+        ssh_cmd_mock = utils.EMCNFSShareMock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        self.connection.deny_access(None, share, access, share_server)
+
+        ssh_calls = [
+            mock.call(self.nfs_share.cmd_get(), True),
+            mock.call(self.nfs_share.cmd_set_access(
+                rw_hosts=self.nfs_share.rw_hosts_ipv6,
+                ro_hosts=self.nfs_share.ro_hosts_ipv6), True),
             mock.call(self.nfs_share.cmd_get(), True),
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
