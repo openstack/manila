@@ -456,6 +456,12 @@ Delete share network
 
 Deletes a share network.
 
+Preconditions
+
+- You cannot delete a share network if it has shares created/exported on it.
+
+- You cannot delete a share network if it has share groups created on it.
+
 Response codes
 --------------
 
