@@ -584,6 +584,16 @@ Delete share
 
 Deletes a share.
 
+Preconditions
+
+- Share status must be ``available``, ``error`` or ``inactive``
+
+- You cannot already have a snapshot of the share.
+
+- You cannot already have a group snapshot of the share.
+
+- You cannot already have a replica of the share.
+
 Response codes
 --------------
 
