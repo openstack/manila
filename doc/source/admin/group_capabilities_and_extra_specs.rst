@@ -22,7 +22,7 @@ Group-Specs
 The group specs contains the group capabilities, similar to snapshot_support
 in share types. Users know what a group can do from group specs.
 
-The group specs is a exact match requirement in share group filter
+The group specs is an exact match requirement in share group filter
 (such as ConsistentSnapshotFilter). When the ConsistentSnapshotFilter is enabled
 (it is enabled by default), the scheduler will only create a share group on
 a backend that reports capabilities that match the share group type's
