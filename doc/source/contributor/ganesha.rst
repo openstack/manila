@@ -152,7 +152,7 @@ These are:
 - `ganesha_service_name` = name of the system service representing Ganesha,
   defaults to ganesha.nfsd
 - `ganesha_db_path` = location of on-disk database storing permanent Ganesha
-  state, e.g. a export ID counter to generate export IDs for shares
+  state, e.g. an export ID counter to generate export IDs for shares
 
   (or)
 
