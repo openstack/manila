@@ -34,3 +34,6 @@ Python client
 -------------
 
 https://github.com/openstack/python-manilaclient.git
+
+* Release notes for the project can be found at:
+https://docs.openstack.org/releasenotes/manila/
