@@ -21,7 +21,6 @@ SQLAlchemy models for Manila data.
 
 from oslo_config import cfg
 from oslo_db.sqlalchemy import models
-from oslo_log import log
 from sqlalchemy import Column, Integer, String, schema
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import orm
@@ -31,8 +30,6 @@ from manila.common import constants
 
 CONF = cfg.CONF
 BASE = declarative_base()
-
-LOG = log.getLogger(__name__)
 
 
 class ManilaBase(models.ModelBase,
@@ -236,15 +233,9 @@ class Share(BASE, ManilaBase):
         return all_export_locations
 
     def __getattr__(self, item):
-        deprecated_properties = ('host', 'share_server_id', 'share_network_id',
-                                 'availability_zone', 'share_type_id',
-                                 'share_type')
-        proxified_properties = ('status',) + deprecated_properties
-
-        if item in deprecated_properties:
-            msg = ("Property '%s' is deprecated. Please use appropriate "
-                   "property from share instance." % item)
-            LOG.warning(msg)
+        proxified_properties = ('status', 'host', 'share_server_id',
+                                'share_network_id', 'availability_zone',
+                                'share_type_id', 'share_type')
 
         if item in proxified_properties:
             return getattr(self.instance, item, None)
