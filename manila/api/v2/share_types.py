@@ -283,13 +283,7 @@ class ShareTypesController(wsgi.Controller):
             expl = _("Access list not available for public share types.")
             raise webob.exc.HTTPNotFound(explanation=expl)
 
-        # TODO(vponomaryov): move to views.
-        rval = []
-        for project_id in share_type['projects']:
-            rval.append(
-                {'share_type_id': share_type['id'], 'project_id': project_id}
-            )
-        return {'share_type_access': rval}
+        return self._view_builder.share_type_access(req, share_type)
 
     @wsgi.action('addProjectAccess')
     @wsgi.Controller.authorize('add_project_access')
