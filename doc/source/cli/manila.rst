@@ -870,7 +870,7 @@ List NAS shares with filters.
   Default=None.
 
 ``--extra-specs [<key=value> [<key=value> ...]], --extra_specs [<key=value> [<key=value> ...]]``
-  Filters results by a extra specs key and value of
+  Filters results by an extra specs key and value of
   share type that was used for share creation. OPTIONAL:
   Default=None.
 
