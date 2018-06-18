@@ -1259,6 +1259,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         provisioning_options['hide_snapdir'] = hide_snapdir
         self.mock_object(self.library, '_get_backend_share_name', mock.Mock(
             return_value=fake.SHARE_NAME))
+        self.mock_object(self.library, '_get_backend_share_comment', mock.Mock(
+            return_value=fake.VOLUME_COMMENT))
         self.mock_object(share_utils, 'extract_host', mock.Mock(
             return_value=fake.POOL_NAME))
         mock_get_provisioning_opts = self.mock_object(
@@ -1279,7 +1281,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             thin_provisioned=True, snapshot_policy='default',
             language='en-US', dedup_enabled=True, split=True, encrypt=False,
             compression_enabled=False, max_files=5000, snapshot_reserve=8,
-            adaptive_qos_policy_group=None)
+            adaptive_qos_policy_group=None, comment=fake.VOLUME_COMMENT)
 
         if hide_snapdir:
             vserver_client.set_volume_snapdir_access.assert_called_once_with(
@@ -1298,6 +1300,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_allocate_container_as_replica(self):
         self.mock_object(self.library, '_get_backend_share_name', mock.Mock(
             return_value=fake.SHARE_NAME))
+        self.mock_object(self.library, '_get_backend_share_comment', mock.Mock(
+            return_value=fake.VOLUME_COMMENT))
         self.mock_object(share_utils, 'extract_host', mock.Mock(
             return_value=fake.POOL_NAME))
         mock_get_provisioning_opts = self.mock_object(
@@ -1318,7 +1322,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             language='en-US', dedup_enabled=True, split=True,
             compression_enabled=False, max_files=5000, encrypt=False,
             snapshot_reserve=8, volume_type='dp',
-            adaptive_qos_policy_group=None)
+            adaptive_qos_policy_group=None, comment=fake.VOLUME_COMMENT)
 
     def test_allocate_container_no_pool_name(self):
         self.mock_object(self.library, '_get_backend_share_name', mock.Mock(

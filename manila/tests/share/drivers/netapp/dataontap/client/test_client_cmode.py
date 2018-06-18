@@ -2834,6 +2834,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'volume': fake.SHARE_NAME,
             'volume-type': 'rw',
             'junction-path': '/%s' % fake.SHARE_NAME,
+            'volume-comment': '',
         }
 
         self.client.send_request.assert_called_once_with('volume-create',
@@ -2878,6 +2879,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'volume-type': 'rw',
             'snapshot-policy': 'default',
             'percentage-snapshot-reserve': '15',
+            'volume-comment': '',
         }
 
         if qos_policy_group_name:
@@ -2910,6 +2912,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'volume-type': 'rw',
             'junction-path': '/%s' % fake.SHARE_NAME,
             'encrypt': 'true',
+            'volume-comment': '',
         }
 
         self.client.send_request.assert_called_once_with('volume-create',
@@ -2930,6 +2933,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'volume': fake.SHARE_NAME,
             'volume-type': 'rw',
             'junction-path': '/%s' % fake.SHARE_NAME,
+            'volume-comment': '',
         }
 
         self.client.send_request.assert_called_once_with('volume-create',
@@ -3196,6 +3200,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             },
             'attributes': {
                 'volume-attributes': {
+                    'volume-id-attributes': {},
                     'volume-inode-attributes': {},
                     'volume-language-attributes': {},
                     'volume-snapshot-attributes': {},
@@ -3231,6 +3236,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             dedup_enabled=True,
             compression_enabled=False,
             max_files=fake.MAX_FILES,
+            comment=fake.VOLUME_COMMENT,
             qos_policy_group=qos_group,
             adaptive_qos_policy_group=adaptive_qos_group,
             autosize_attributes=fake.VOLUME_AUTOSIZE_ATTRS,
@@ -3247,6 +3253,9 @@ class NetAppClientCmodeTestCase(test.TestCase):
             },
             'attributes': {
                 'volume-attributes': {
+                    'volume-id-attributes': {
+                        'comment': fake.VOLUME_COMMENT,
+                    },
                     'volume-inode-attributes': {
                         'files-total': fake.MAX_FILES,
                     },

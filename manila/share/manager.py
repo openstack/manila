@@ -4610,6 +4610,10 @@ class ShareManager(manager.SchedulerDependentManager):
                 'source_share_group_snapshot_member_id'),
             'availability_zone': share_instance.get('availability_zone'),
         }
+        # share type is nullable
+        if share_instance_ref.get('share_type'):
+            share_instance_ref['share_type_name'] = share_instance_ref.get(
+                'share_type').get('name')
         if share_instance_ref['share_server']:
             share_instance_ref['share_server'] = self._get_share_server_dict(
                 context, share_instance_ref['share_server']

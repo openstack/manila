@@ -88,6 +88,7 @@ VSERVER_INFO = {
 SNAPMIRROR_POLICY_NAME = 'fake_snapmirror_policy'
 
 USER_NAME = 'fake_user'
+VOLUME_COMMENT = 'fake_comment'
 
 PORT = 'e0a'
 VLAN = '1001'
