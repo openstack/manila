@@ -248,6 +248,37 @@ class ShareAPITestCase(test.TestCase):
             ctx, sort_dir='desc', sort_key='created_at', filters={})
         self.assertEqual(_FAKE_LIST_OF_ALL_SHARES, shares)
 
+    def test_get_all_admin_filter_by_all_tenants_with_blank(self):
+        ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=True)
+        self.mock_object(db_api, 'share_get_all',
+                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES))
+        shares = self.api.get_all(ctx, {'all_tenants': ''})
+        share_api.policy.check_policy.assert_called_once_with(
+            ctx, 'share', 'get_all')
+        db_api.share_get_all.assert_called_once_with(
+            ctx, sort_dir='desc', sort_key='created_at', filters={})
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES, shares)
+
+    def test_get_all_admin_filter_by_all_tenants_with_false(self):
+        ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=True)
+        self.mock_object(db_api, 'share_get_all_by_project',
+                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
+        shares = self.api.get_all(ctx, {'all_tenants': 'false'})
+        share_api.policy.check_policy.assert_called_once_with(
+            ctx, 'share', 'get_all')
+        db_api.share_get_all_by_project.assert_called_once_with(
+            ctx, sort_dir='desc', sort_key='created_at',
+            project_id='fake_pid_1', filters={}, is_public=False
+        )
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[0], shares)
+
+    def test_get_all_admin_filter_by_all_tenants_with_invaild_value(self):
+        ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=True)
+        self.mock_object(db_api, 'share_get_all')
+        self.assertRaises(
+            exception.InvalidInput,
+            self.api.get_all, ctx, {'all_tenants': 'wonk'})
+
     @ddt.data(
         ({'share_server_id': 'fake_share_server'}, 'list_by_share_server_id'),
         ({'host': 'fake_host'}, 'list_by_host'),

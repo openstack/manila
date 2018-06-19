@@ -414,6 +414,24 @@ def is_valid_ip_address(ip_address, ip_version):
     return False
 
 
+def is_all_tenants(search_opts):
+    """Checks to see if the all_tenants flag is in search_opts
+
+    :param dict search_opts: The search options for a request
+    :returns: boolean indicating if all_tenants are being requested or not
+    """
+    all_tenants = search_opts.get('all_tenants')
+    if all_tenants:
+        try:
+            all_tenants = strutils.bool_from_string(all_tenants, True)
+        except ValueError as err:
+            raise exception.InvalidInput(six.text_type(err))
+    else:
+        # The empty string is considered enabling all_tenants
+        all_tenants = 'all_tenants' in search_opts
+    return all_tenants
+
+
 class IsAMatcher(object):
     def __init__(self, expected_value=None):
         self.expected_value = expected_value
