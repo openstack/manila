@@ -1518,7 +1518,7 @@ class API(base.Base):
             shares = self.db.share_get_all_by_share_server(
                 context, search_opts.pop('share_server_id'), filters=filters,
                 sort_key=sort_key, sort_dir=sort_dir)
-        elif (context.is_admin and 'all_tenants' in search_opts):
+        elif (context.is_admin and utils.is_all_tenants(search_opts)):
             shares = self.db.share_get_all(
                 context, filters=filters, sort_key=sort_key, sort_dir=sort_dir)
         else:

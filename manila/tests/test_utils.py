@@ -854,3 +854,26 @@ class TestDisableNotifications(test.TestCase):
                              group='oslo_messaging_notifications')
         result = self._decorated_method()
         self.assertEqual(utils.DO_NOTHING, result)
+
+
+@ddt.ddt
+class TestAllTenantsValueCase(test.TestCase):
+    @ddt.data(None, '', '1', 'true', 'True')
+    def test_is_all_tenants_true(self, value):
+        search_opts = {'all_tenants': value}
+        self.assertTrue(utils.is_all_tenants(search_opts))
+        self.assertIn('all_tenants', search_opts)
+
+    @ddt.data('0', 'false', 'False')
+    def test_is_all_tenants_false(self, value):
+        search_opts = {'all_tenants': value}
+        self.assertFalse(utils.is_all_tenants(search_opts))
+        self.assertIn('all_tenants', search_opts)
+
+    def test_is_all_tenants_missing(self):
+        self.assertFalse(utils.is_all_tenants({}))
+
+    def test_is_all_tenants_invalid(self):
+        search_opts = {'all_tenants': 'wonk'}
+        self.assertRaises(exception.InvalidInput, utils.is_all_tenants,
+                          search_opts)
