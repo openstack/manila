@@ -2806,6 +2806,13 @@ share_network_description_request:
   in: body
   required: false
   type: string
+share_network_gateway:
+  description: |
+    The gateway of a share network.
+  in: body
+  required: true
+  type: string
+  min_version: 2.18
 share_network_id:
   description: |
     The share network ID.
@@ -2848,6 +2855,13 @@ share_network_id_6:
   in: body
   required: true
   type: string
+share_network_mtu:
+  description:
+    The MTU value of a share network.
+  in: body
+  required: true
+  type: integer
+  min_version: 2.20
 share_network_name:
   description: |
     The name of a share network.

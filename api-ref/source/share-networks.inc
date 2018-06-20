@@ -128,6 +128,8 @@ Response parameters
    - description: share_network_description
    - created_at: share_network_created_at
    - updated_at: share_network_updated_at
+   - gateway: share_network_gateway
+   - mtu: share_network_mtu
 
 Response example
 ----------------
@@ -182,6 +184,8 @@ Response parameters
    - description: share_network_description
    - created_at: share_network_created_at
    - updated_at: share_network_updated_at
+   - gateway: share_network_gateway
+   - mtu: share_network_mtu
 
 Response example
 ----------------
@@ -247,6 +251,8 @@ Response parameters
    - description: share_network_description
    - created_at: share_network_created_at
    - updated_at: share_network_updated_at
+   - gateway: share_network_gateway
+   - mtu: share_network_mtu
 
 Response example
 ----------------
@@ -310,6 +316,8 @@ Response parameters
    - description: share_network_description
    - created_at: share_network_created_at
    - updated_at: share_network_updated_at
+   - gateway: share_network_gateway
+   - mtu: share_network_mtu
 
 Response example
 ----------------
@@ -373,6 +381,8 @@ Response parameters
    - description: share_network_description
    - created_at: share_network_created_at
    - updated_at: share_network_updated_at
+   - gateway: share_network_gateway
+   - mtu: share_network_mtu
 
 Response example
 ----------------
@@ -441,6 +451,8 @@ Response parameters
    - description: share_network_description
    - created_at: share_network_created_at
    - updated_at: share_network_updated_at
+   - gateway: share_network_gateway
+   - mtu: share_network_mtu
 
 Response example
 ----------------

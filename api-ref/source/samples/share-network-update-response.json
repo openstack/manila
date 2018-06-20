@@ -11,6 +11,8 @@
         "cidr": null,
         "project_id": "16e1ab15c35a457e9c2b2aa189f544e1",
         "network_type": null,
-        "description": "i'm adding a description"
+        "description": "i'm adding a description",
+        "gateway": null,
+        "mtu": null
     }
 }

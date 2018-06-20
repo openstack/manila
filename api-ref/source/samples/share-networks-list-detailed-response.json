@@ -12,7 +12,9 @@
             "cidr": null,
             "project_id": "16e1ab15c35a457e9c2b2aa189f544e1",
             "network_type": null,
-            "description": "descr"
+            "description": "descr",
+            "gateway": null,
+            "mtu": null
         },
         {
             "name": "net_my",
@@ -26,7 +28,9 @@
             "cidr": null,
             "project_id": "16e1ab15c35a457e9c2b2aa189f544e1",
             "network_type": null,
-            "description": "desecr"
+            "description": "desecr",
+            "gateway": null,
+            "mtu": null
         },
         {
             "name": null,
@@ -40,7 +44,9 @@
             "cidr": null,
             "project_id": "16e1ab15c35a457e9c2b2aa189f544e1",
             "network_type": null,
-            "description": null
+            "description": null,
+            "gateway": null,
+            "mtu": null
         }
     ]
 }

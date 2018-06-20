@@ -11,6 +11,8 @@
         "cidr": null,
         "project_id": "e10a683c20da41248cfd5e1ab3d88c62",
         "network_type": null,
-        "description": "This is my share network"
+        "description": "This is my share network",
+        "gateway": null,
+        "mtu": null
     }
 }
