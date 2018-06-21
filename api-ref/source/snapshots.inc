@@ -512,6 +512,10 @@ Delete share snapshot
 
 Deletes a share snapshot.
 
+Preconditions
+
+- Share snapshot status must be ``available`` or ``error``.
+
 Response codes
 --------------
 
