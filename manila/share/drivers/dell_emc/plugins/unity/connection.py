@@ -43,6 +43,7 @@ SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
 
 UNITY_OPTS = [
     cfg.StrOpt('unity_server_meta_pool',
+               required=True,
                deprecated_name='emc_nas_server_pool',
                help='Pool to persist the meta-data of NAS server.'),
     cfg.ListOpt('unity_share_data_pools',

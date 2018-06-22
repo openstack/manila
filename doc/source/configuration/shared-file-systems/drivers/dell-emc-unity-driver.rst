@@ -1,6 +1,6 @@
-================
-EMC Unity driver
-================
+=====================
+Dell EMC Unity driver
+=====================
 
 The EMC Shared File Systems service driver framework (EMCShareDriver)
 utilizes the EMC storage products to provide the shared file systems to
@@ -176,6 +176,7 @@ for the Unity driver.
 
 - ``unity_server_meta_pool``
     The name of the pool to persist the meta-data of NAS server.
+    This option is required.
 
 - ``unity_share_data_pools``
     Comma separated list specifying the name of the pools to be used
