@@ -54,7 +54,6 @@ def destroy(context, type_id):
 
 def get_all(context, inactive=0, search_opts=None):
     """Get all non-deleted share group types."""
-    # TODO(ameade): Fix docstring
     search_opts = search_opts or {}
     filters = {}
 

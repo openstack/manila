@@ -88,6 +88,14 @@ class ViewBuilder(common.ViewBuilder):
         return dict(volume_types=share_types_list,
                     share_types=share_types_list)
 
+    def share_type_access(self, request, share_type):
+        """Return a dictionary view of the projects with access to type."""
+        projects = [
+            {'share_type_id': share_type['id'], 'project_id': project_id}
+            for project_id in share_type['projects']
+        ]
+        return {'share_type_access': projects}
+
     def _filter_extra_specs(self, extra_specs, valid_keys):
         return {key: value for key, value in extra_specs.items()
                 if key in valid_keys}
