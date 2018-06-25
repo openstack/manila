@@ -406,7 +406,9 @@ class BaseSharesTest(test.BaseTestCase):
                       cleanup_in_class=True, is_public=False, **kwargs):
         client = client or cls.shares_v2_client
         description = description or "Tempest's share"
-        share_network_id = share_network_id or client.share_network_id or None
+        share_network_id = (share_network_id or
+                            CONF.share.share_network_id or
+                            client.share_network_id or None)
         metadata = metadata or {}
         size = size or CONF.share.share_size
         kwargs.update({
@@ -885,9 +887,10 @@ class BaseSharesTest(test.BaseTestCase):
                     elif res["type"] is "snapshot":
                         client.delete_snapshot(res_id)
                         client.wait_for_resource_deletion(snapshot_id=res_id)
-                    elif res["type"] is "share_network":
-                        client.delete_share_network(res_id)
-                        client.wait_for_resource_deletion(sn_id=res_id)
+                    elif (res["type"] is "share_network" and
+                            res_id != CONF.share.share_network_id):
+                            client.delete_share_network(res_id)
+                            client.wait_for_resource_deletion(sn_id=res_id)
                     elif res["type"] is "security_service":
                         client.delete_security_service(res_id)
                         client.wait_for_resource_deletion(ss_id=res_id)
