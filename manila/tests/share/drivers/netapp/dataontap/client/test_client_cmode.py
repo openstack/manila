@@ -6415,6 +6415,15 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with(
             'qos-policy-group-rename', qos_policy_group_rename_args, False)
 
+    def test_qos_policy_group_rename_noop(self):
+        self.mock_object(self.client, 'send_request')
+
+        # rename to same name = no-op
+        self.client.qos_policy_group_rename(
+            fake.QOS_POLICY_GROUP_NAME, fake.QOS_POLICY_GROUP_NAME)
+
+        self.assertFalse(self.client.send_request.called)
+
     def test_mark_qos_policy_group_for_deletion_rename_failure(self):
         self.mock_object(self.client, 'qos_policy_group_exists',
                          mock.Mock(return_value=True))
