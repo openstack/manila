@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver fixed to apply QoS policy on share only if the
+    throughput is changed. For more details, please check
+    `Launchpad bug #2061976 <https://bugs.launchpad.net/manila/+bug/2061976>`_
