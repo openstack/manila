@@ -221,7 +221,7 @@ into two parts:
 2. The driver is able to connect VNX management interface using its IPv6 address.
 
 Pre-Configurations for IPv6 support
-===================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following parameters need to be configured in `/etc/manila/manila.conf`
 for the VNX driver:
