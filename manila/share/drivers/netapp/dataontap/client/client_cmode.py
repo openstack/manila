@@ -659,6 +659,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def create_route(self, gateway, destination=None):
+        if not gateway:
+            return
         if not destination:
             if ':' in gateway:
                 destination = '::/0'
