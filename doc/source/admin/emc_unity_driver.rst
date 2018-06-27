@@ -71,7 +71,7 @@ Pre-Configurations
 ------------------
 
 On Manila Node
-``````````````
+~~~~~~~~~~~~~~
 
 StorOps library is required to run Unity driver.
 Please install it with the pip command.
@@ -83,7 +83,7 @@ You may need root privilege to install python libraries.
 
 
 On Unity System
-```````````````
+~~~~~~~~~~~~~~~
 
 1. Configure System level NTP Server
 
@@ -148,7 +148,7 @@ into two parts:
 2. The driver is able to connect Unity management interface using its IPv6 address.
 
 Pre-Configurations for IPv6 support
-===================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following parameters need to be configured in `/etc/manila/manila.conf`
 for the Unity driver:
