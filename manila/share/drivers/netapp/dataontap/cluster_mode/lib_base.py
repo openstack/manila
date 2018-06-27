@@ -2886,8 +2886,11 @@ class NetAppCmodeFileStorageLibrary(object):
 
                 max_throughput = self._get_max_throughput(
                     backend_volume_size, qos_specs)
-                self._client.qos_policy_group_modify(
-                    backend_volume['qos-policy-group-name'], max_throughput)
+                if (existing_qos_policy_group['max-throughput']
+                        != max_throughput):
+                    self._client.qos_policy_group_modify(
+                        backend_volume['qos-policy-group-name'],
+                        max_throughput)
                 self._client.qos_policy_group_rename(
                     backend_volume['qos-policy-group-name'],
                     qos_policy_group_name)
