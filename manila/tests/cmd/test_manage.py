@@ -45,6 +45,7 @@ class ManilaCmdManageTestCase(test.TestCase):
         self.config_commands = manila_manage.ConfigCommands()
         self.get_log_cmds = manila_manage.GetLogCommands()
         self.service_cmds = manila_manage.ServiceCommands()
+        self.share_cmds = manila_manage.ShareCommands()
 
     def test_param2id_is_uuid_like(self):
         obj_id = '12345678123456781234567812345678'
@@ -376,3 +377,44 @@ class ManilaCmdManageTestCase(test.TestCase):
     def test_get_arg_string(self, arg):
         parsed_arg = manila_manage.get_arg_string(arg)
         self.assertEqual('bar', parsed_arg)
+
+    @ddt.data({'current_host': 'controller-0@fancystore01#pool100',
+               'new_host': 'controller-0@fancystore01'},
+              {'current_host': 'controller-0@fancystore01',
+               'new_host': 'controller-0'})
+    @ddt.unpack
+    def test_share_update_host_fail_validation(self, current_host, new_host):
+        self.mock_object(context, 'get_admin_context',
+                         mock.Mock(return_value='admin_ctxt'))
+        self.mock_object(db, 'share_instances_host_update')
+
+        self.assertRaises(SystemExit,
+                          self.share_cmds.update_host,
+                          current_host, new_host)
+
+        self.assertFalse(db.share_instances_host_update.called)
+
+    @ddt.data({'current_host': 'controller-0@fancystore01#pool100',
+               'new_host': 'controller-0@fancystore02#pool0'},
+              {'current_host': 'controller-0@fancystore01',
+               'new_host': 'controller-1@fancystore01'},
+              {'current_host': 'controller-0',
+               'new_host': 'controller-1'},
+              {'current_host': 'controller-0@fancystore01#pool100',
+               'new_host': 'controller-1@fancystore02', 'force': True})
+    @ddt.unpack
+    def test_share_update_host(self, current_host, new_host, force=False):
+        self.mock_object(context, 'get_admin_context',
+                         mock.Mock(return_value='admin_ctxt'))
+        self.mock_object(db, 'share_instances_host_update',
+                         mock.Mock(return_value=20))
+
+        with mock.patch('sys.stdout', new=six.StringIO()) as intercepted_op:
+            self.share_cmds.update_host(current_host, new_host, force)
+
+        expected_op = ("Updated host of 20 share instances on "
+                       "%(chost)s to %(nhost)s." %
+                       {'chost': current_host, 'nhost': new_host})
+        self.assertEqual(expected_op, intercepted_op.getvalue().strip())
+        db.share_instances_host_update.assert_called_once_with(
+            'admin_ctxt', current_host, new_host)
