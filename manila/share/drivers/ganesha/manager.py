@@ -305,10 +305,13 @@ class GaneshaManager(object):
         tmpf = self._write_tmp_conf_file(path, data)
         try:
             self.execute('mv', tmpf, path)
-        except exception.ProcessExecutionError:
+        except exception.ProcessExecutionError as e:
             LOG.error('mv temp file ({0}) to {1} failed.'.format(tmpf, path))
             self.execute('rm', tmpf)
-            raise
+            raise exception.GaneshaCommandFailure(
+                stdout=e.stdout, stderr=e.stderr, exit_code=e.exit_code,
+                cmd=e.cmd)
+
         return path
 
     def _mkindex(self):
@@ -356,7 +359,9 @@ class GaneshaManager(object):
             if e.exit_code == 1:
                 return False
             else:
-                raise
+                raise exception.GaneshaCommandFailure(
+                    stdout=e.stdout, stderr=e.stderr, exit_code=e.exit_code,
+                    cmd=e.cmd)
 
     def _check_export_file_exists(self, name):
         return self._check_file_exists(self._getpath(name))
@@ -476,12 +481,14 @@ class GaneshaManager(object):
             else:
                 _mkindex_called = True
                 self._mkindex()
-        except Exception:
+        except Exception as e:
             for u in undos:
                 u()
             if not self.ganesha_rados_store_enable and not _mkindex_called:
                 self._mkindex()
-            raise
+            raise exception.GaneshaCommandFailure(
+                stdout=e.stdout, stderr=e.stderr, exit_code=e.exit_code,
+                cmd=e.cmd)
 
     def update_export(self, name, confdict):
         """Update an export to Ganesha specified by confdict."""
@@ -492,10 +499,12 @@ class GaneshaManager(object):
         try:
             self._dbus_send_ganesha("UpdateExport", "string:" + path,
                                     "string:EXPORT(Export_Id=%d)" % xid)
-        except Exception:
+        except Exception as e:
             # Revert the export update.
             self._write_export(name, old_confdict)
-            raise
+            raise exception.GaneshaCommandFailure(
+                stdout=e.stdout, stderr=e.stderr, exit_code=e.exit_code,
+                cmd=e.cmd)
         finally:
             if self.ganesha_rados_store_enable:
                 # Clean up temp export file used for the DBus update call
