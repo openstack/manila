@@ -401,7 +401,7 @@ class InfiniboxShareDriver(driver.ShareDriver):
                                    share_server=None):
         name = self._make_share_name(share)
         infinidat_snapshot = self._get_infinidat_snapshot(snapshot)
-        infinidat_new_share = infinidat_snapshot.create_child(
+        infinidat_new_share = infinidat_snapshot.create_snapshot(
             name=name, write_protected=False)
         self._extend_share(infinidat_new_share, share, share['size'])
         return self._create_filesystem_export(infinidat_new_share)
@@ -412,7 +412,7 @@ class InfiniboxShareDriver(driver.ShareDriver):
         share = snapshot['share']
         infinidat_filesystem = self._get_infinidat_filesystem(share)
         name = self._make_snapshot_name(snapshot)
-        infinidat_snapshot = infinidat_filesystem.create_child(name=name)
+        infinidat_snapshot = infinidat_filesystem.create_snapshot(name=name)
         # snapshot is created in the same size as the original share, so no
         # extending is needed
         self._set_manila_object_metadata(infinidat_snapshot, snapshot)

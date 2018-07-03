@@ -41,6 +41,7 @@ def _create_mock__getitem__(mock):
         return getattr(mock, key, default)
     return mock__getitem__
 
+
 test_share = mock.Mock(id=_MOCK_SHARE_ID, size=_MOCK_SHARE_SIZE,
                        share_proto='NFS')
 test_share.__getitem__ = _create_mock__getitem__(test_share)
@@ -140,7 +141,8 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
 
         self._mock_filesystem = mock.Mock()
         self._mock_filesystem.has_children.return_value = False
-        self._mock_filesystem.create_child.return_value = self._mock_filesystem
+        self._mock_filesystem.create_snapshot.return_value = (
+            self._mock_filesystem)
         self._mock_filesystem.get_exports.return_value = [self._mock_export, ]
 
         self._mock_filesystem.size = 4 * self._capacity_module.GiB
@@ -469,13 +471,13 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
 
     def test_create_snapshot(self):
         self.driver.create_snapshot(None, test_snapshot)
-        self._mock_filesystem.create_child.assert_called_once()
+        self._mock_filesystem.create_snapshot.assert_called_once()
         self._mock_filesystem.set_metadata_from_dict.assert_called_once()
         self._mock_filesystem.add_export.assert_called_once_with(
             permissions=[])
 
     def test_create_snapshot_metadata(self):
-        self._mock_filesystem.create_child.return_value = (
+        self._mock_filesystem.create_snapshot.return_value = (
             self._mock_filesystem)
         self.driver.create_snapshot(None, test_snapshot)
         self._mock_filesystem.set_metadata_from_dict.assert_called_once()
@@ -485,9 +487,9 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.assertRaises(exception.ShareResourceNotFound,
                           self.driver.create_snapshot, None, test_snapshot)
 
-    def test_create_snapshot_create_child_api_fail(self):
+    def test_create_snapshot_create_snapshot_api_fail(self):
         # will fail when trying to create a child to the original share:
-        self._mock_filesystem.create_child.side_effect = (
+        self._mock_filesystem.create_snapshot.side_effect = (
             self._raise_infinisdk)
         self.assertRaises(exception.ShareBackendException,
                           self.driver.create_snapshot, None, test_snapshot)
@@ -502,7 +504,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
     def test_create_share_from_snapshot(self):
         self.driver.create_share_from_snapshot(None, original_test_clone,
                                                test_snapshot)
-        self._mock_filesystem.create_child.assert_called_once()
+        self._mock_filesystem.create_snapshot.assert_called_once()
         self._mock_filesystem.add_export.assert_called_once_with(
             permissions=[])
 
@@ -522,7 +524,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                           None, original_test_clone, test_snapshot)
 
     def test_create_share_from_snapshot_create_fails(self):
-        self._mock_filesystem.create_child.side_effect = (
+        self._mock_filesystem.create_snapshot.side_effect = (
             self._raise_infinisdk)
         self.assertRaises(exception.ShareBackendException,
                           self.driver.create_share_from_snapshot,
