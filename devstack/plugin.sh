@@ -200,8 +200,13 @@ function configure_manila {
     iniset $MANILA_CONF DEFAULT rootwrap_config $MANILA_CONF_DIR/rootwrap.conf
     iniset $MANILA_CONF DEFAULT osapi_share_extension manila.api.contrib.standard_extensions
     iniset $MANILA_CONF DEFAULT state_path $MANILA_STATE_PATH
-    iniset $MANILA_CONF DEFAULT default_share_type $MANILA_DEFAULT_SHARE_TYPE
-    iniset $MANILA_CONF DEFAULT default_share_group_type $MANILA_DEFAULT_SHARE_GROUP_TYPE
+
+    # Note: Sample share types will still be created if the below is False
+
+    if [ $(trueorfalse False MANILA_CONFIGURE_DEFAULT_TYPES) == True ]; then
+        iniset $MANILA_CONF DEFAULT default_share_type $MANILA_DEFAULT_SHARE_TYPE
+        iniset $MANILA_CONF DEFAULT default_share_group_type $MANILA_DEFAULT_SHARE_GROUP_TYPE
+    fi
 
     if ! [[ -z $MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL ]]; then
         iniset $MANILA_CONF DEFAULT migration_driver_continue_update_interval $MANILA_SHARE_MIGRATION_PERIOD_TASK_INTERVAL
@@ -491,7 +496,10 @@ function create_default_share_group_type {
     fi
 }
 
-# create_default_share_type - create share type that will be set as default.
+# create_default_share_type - create share type that will be set as default
+# if $MANILA_CONFIGURE_DEFAULT_TYPES is set to True, if set to False, the share
+# type identified by $MANILA_DEFAULT_SHARE_TYPE is still created, but not
+# configured as default.
 function create_default_share_type {
     echo "Waiting for Manila API to start..."
     if ! wait_for_service 60 $MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT; then

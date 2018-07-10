@@ -101,6 +101,7 @@ MANILA_CONF=${MANILA_CONF:-/etc/manila/manila.conf}
 
 # Capabilitities
 CAPABILITY_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT=${CAPABILITY_CREATE_SHARE_FROM_SNAPSHOT_SUPPORT:-True}
+MANILA_CONFIGURE_DEFAULT_TYPES=${MANILA_CONFIGURE_DEFAULT_TYPES:-True}
 
 if [[ -z "$MULTITENANCY_ENABLED" ]]; then
     # Define whether share drivers handle share servers or not.
@@ -238,6 +239,7 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     iniset $TEMPEST_CONFIG share capability_snapshot_support True
 elif [[ "$DRIVER" == "dummy" ]]; then
     MANILA_TEMPEST_CONCURRENCY=24
+    MANILA_CONFIGURE_DEFAULT_TYPES=False
     RUN_MANILA_SG_TESTS=True
     RUN_MANILA_MANAGE_TESTS=False
     RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS=True
@@ -321,7 +323,9 @@ iniset $TEMPEST_CONFIG share capability_create_share_from_snapshot_support $CAPA
 iniset $TEMPEST_CONFIG validation ip_version_for_ssh 4
 iniset $TEMPEST_CONFIG validation network_for_ssh ${PRIVATE_NETWORK_NAME:-"private"}
 
-iniset $TEMPEST_CONFIG share default_share_type_name ${MANILA_DEFAULT_SHARE_TYPE:-default}
+if [ $(trueorfalse False MANILA_CONFIGURE_DEFAULT_TYPES) == True ]; then
+    iniset $TEMPEST_CONFIG share default_share_type_name ${MANILA_DEFAULT_SHARE_TYPE:-default}
+fi
 
 # check if tempest plugin was installed correctly
 echo 'import pkg_resources; print list(pkg_resources.iter_entry_points("tempest.test_plugins"))' | python
@@ -392,7 +396,10 @@ if [[ "$DRIVER" == "dummy" ]]; then
     iniset $TEMPEST_CONFIG share backend_replication_type 'readable'
 
     # Change driver mode for default share type to make tempest use
-    # DHSS=False backends.
+    # DHSS=False backends. This is just done here for semantics, if
+    # the default share type hasn't been configured
+    # ($MANILA_CONFIGURE_DEFAULT_TYPES=False), this command has no effect
+    # since there is no default share type configured.
     source $BASE/new/devstack/openrc admin demo
     manila type-key default set driver_handles_share_servers=False
 
