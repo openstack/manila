@@ -136,6 +136,7 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     echo "MANILA_OPTGROUP_adminnet_standalone_network_plugin_ip_version=4" >> $localconf
 
     export MANILA_TEMPEST_CONCURRENCY=24
+    export MANILA_CONFIGURE_DEFAULT_TYPES=False
 
 elif [[ "$DRIVER" == "lvm" ]]; then
     MANILA_SERVICE_IMAGE_ENABLED=True
@@ -164,6 +165,7 @@ fi
 
 echo "MANILA_SERVICE_IMAGE_ENABLED=$MANILA_SERVICE_IMAGE_ENABLED" >> $localconf
 echo "MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS=$DEFAULT_EXTRA_SPECS" >> $localconf
+echo "MANILA_CONFIGURE_DEFAULT_TYPES=${MANILA_CONFIGURE_DEFAULT_TYPES:-True}" >> $localconf
 
 # Enabling isolated metadata in Neutron is required because
 # Tempest creates isolated networks and created vm's in scenario tests don't
