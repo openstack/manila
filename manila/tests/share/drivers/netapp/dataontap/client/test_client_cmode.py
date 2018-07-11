@@ -189,7 +189,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_get_security_key_manager_nve_support_disabled(self):
         api_response = netapp_api.NaElement(
             fake.SECUTITY_KEY_MANAGER_NVE_SUPPORT_RESPONSE_FALSE)
-        self.mock_object(self.client, 'send_request',
+        self.mock_object(self.client,
+                         'send_request',
                          mock.Mock(return_value=api_response))
 
         result = self.client.get_security_key_manager_nve_support(
@@ -201,15 +202,20 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call('security-key-manager-volume-encryption-supported',
                       api_args)])
 
-        self.mock_object(self.client, 'send_request', self._mock_api_error())
-        self.assertRaises(netapp_api.NaApiError,
-                          self.client.get_security_key_manager_nve_support,
-                          fake.NODE_NAME)
-        self.mock_object(self.client, 'send_request', self._mock_api_error(
-            code=netapp_api.EAPIERROR, message=fake.FAKE_KEY_MANAGER_ERROR))
+    def test_get_security_key_manager_nve_support_disabled_no_license(self):
+        self.mock_object(self.client,
+                         'send_request',
+                         self._mock_api_error())
+
         result = self.client.get_security_key_manager_nve_support(
             fake.NODE_NAME)
+
         self.assertFalse(result)
+
+        api_args = {'node': fake.NODE_NAME}
+        self.client.send_request.assert_has_calls([
+            mock.call('security-key-manager-volume-encryption-supported',
+                      api_args)])
 
     @ddt.data((True, True, True), (False, None, False))
     @ddt.unpack

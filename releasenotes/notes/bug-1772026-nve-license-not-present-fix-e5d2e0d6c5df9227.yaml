@@ -1,0 +1,5 @@
+fixes:
+  - |
+    Since the addition of NVE support, the Netapp driver used to fail to start
+    when a VE license is not present on an ONTAP > 9.1. Now the driver starts
+    but it reports NVE not supported.

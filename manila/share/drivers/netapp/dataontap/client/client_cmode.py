@@ -428,12 +428,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             vol_encryption_supported = result.get_child_content(
                 'vol-encryption-supported') or 'false'
         except netapp_api.NaApiError as e:
-            if (e.code == netapp_api.EAPIERROR and
-                    "key manager is not enabled" in e.message):
-                LOG.debug("%s", e.message)
-                return False
-            else:
-                raise
+            LOG.debug("NVE disabled due to error code: %s - %s",
+                      e.code, e.message)
+            return False
 
         return strutils.bool_from_string(vol_encryption_supported)
 
