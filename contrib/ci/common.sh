@@ -92,20 +92,19 @@ function save_tempest_results {
     archive_file $src_dirname/tempest.txt
     sudo mv $src_dirname/tempest.txt.gz $dst_dirname/tempest.txt.gz
 
-    # 4. Save tempest testr results
+    # 4. Save tempest stestr results
 
-    # Check for an interrupted run first
-    if [ -f $src_dirname/.testrepository/tmp* ]; then
-        sudo cat $src_dirname/.testrepository/tmp* >> $src_dirname/tempest.subunit
-    elif [ -f $src_dirname/.testrepository/0 ]; then
+    if [ -f $src_dirname/.stestr/0 ]; then
         pushd $src_dirname
-        sudo testr last --subunit > $src_dirname/tempest.subunit
+        sudo stestr last --subunit > $src_dirname/tempest.subunit
         popd
+    else
+        echo "Tests have not run!"
     fi
 
     if [ -f $src_dirname/tempest.subunit ]; then
-        sudo /usr/os-testr-env/bin/subunit2html \
-            $src_dirname/tempest.subunit $src_dirname/testr_results.html
+        s2h=`type -p subunit2html`
+        sudo $s2h $src_dirname/tempest.subunit $src_dirname/testr_results.html
         archive_file $src_dirname/tempest.subunit
         sudo mv $src_dirname/tempest.subunit.gz $dst_dirname/tempest.subunit.gz
 
@@ -113,8 +112,8 @@ function save_tempest_results {
         sudo mv $src_dirname/testr_results.html.gz $dst_dirname/testr_results.html.gz
 
         # 5. Cleanup
-        sudo rm -rf $src_dirname/.testrepository
+        sudo rm -rf $src_dirname/.stestr
     else
-        echo "No 'testr' results available for saving. File '$src_dirname/tempest.subunit' is absent."
+        echo "No 'stestr' results available for saving. File '$src_dirname/tempest.subunit' is absent."
     fi
 }
