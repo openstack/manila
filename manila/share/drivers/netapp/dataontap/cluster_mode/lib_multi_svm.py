@@ -159,7 +159,14 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             msg = _('Vserver %s already exists.')
             raise exception.NetAppException(msg % vserver_name)
 
-        ipspace_name = self._create_ipspace(network_info)
+        # NOTE(lseki): If there's already an ipspace created for the same VLAN
+        # port, reuse it. It will be named after the previously created share
+        # server's neutron subnet id.
+        node_name = self._client.list_cluster_nodes()[0]
+        port = self._get_node_data_port(node_name)
+        vlan = network_info['segmentation_id']
+        ipspace_name = self._client.get_ipspace_name_for_vlan_port(
+            node_name, port, vlan) or self._create_ipspace(network_info)
 
         LOG.debug('Vserver %s does not exist, creating.', vserver_name)
         self._client.create_vserver(
@@ -222,8 +229,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             return client_cmode.DEFAULT_IPSPACE
 
         ipspace_name = self._get_valid_ipspace_name(ipspace_id)
-        if not self._client.ipspace_exists(ipspace_name):
-            self._client.create_ipspace(ipspace_name)
+        self._client.create_ipspace(ipspace_name)
 
         return ipspace_name
 

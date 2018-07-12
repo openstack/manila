@@ -469,6 +469,74 @@ SECUTITY_KEY_MANAGER_NVE_SUPPORT_RESPONSE_FALSE = etree.XML("""
   </results>
 """)
 
+NET_PORT_GET_RESPONSE_NO_VLAN = etree.XML("""
+  <results status="passed">
+    <attributes>
+      <net-port-info>
+        <administrative-duplex>auto</administrative-duplex>
+        <administrative-flowcontrol>full</administrative-flowcontrol>
+        <administrative-speed>auto</administrative-speed>
+        <broadcast-domain>%(domain)s</broadcast-domain>
+        <health-status>healthy</health-status>
+        <ignore-health-status>false</ignore-health-status>
+        <ipspace>%(ipspace)s</ipspace>
+        <is-administrative-auto-negotiate>true</is-administrative-auto-negotiate>
+        <is-administrative-up>true</is-administrative-up>
+        <is-operational-auto-negotiate>true</is-operational-auto-negotiate>
+        <link-status>up</link-status>
+        <mac-address>00:0c:29:fc:04:f7</mac-address>
+        <mtu>1500</mtu>
+        <mtu-admin>1500</mtu-admin>
+        <node>%(node_name)s</node>
+        <operational-duplex>full</operational-duplex>
+        <operational-flowcontrol>receive</operational-flowcontrol>
+        <operational-speed>1000</operational-speed>
+        <port>%(port)s</port>
+        <port-type>physical</port-type>
+        <role>data</role>
+      </net-port-info>
+    </attributes>
+  </results>
+""" % {'domain': BROADCAST_DOMAIN,
+       'ipspace': IPSPACE_NAME,
+       'node_name': NODE_NAME,
+       'port': PORT})
+
+NET_PORT_GET_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes>
+      <net-port-info>
+        <administrative-duplex>auto</administrative-duplex>
+        <administrative-flowcontrol>full</administrative-flowcontrol>
+        <administrative-speed>auto</administrative-speed>
+        <health-status>healthy</health-status>
+        <ignore-health-status>false</ignore-health-status>
+        <ipspace>%(ipspace)s</ipspace>
+        <is-administrative-auto-negotiate>true</is-administrative-auto-negotiate>
+        <is-administrative-up>true</is-administrative-up>
+        <is-operational-auto-negotiate>true</is-operational-auto-negotiate>
+        <link-status>up</link-status>
+        <mac-address>00:0c:29:fc:04:f7</mac-address>
+        <mtu>1500</mtu>
+        <mtu-admin>1500</mtu-admin>
+        <node>%(node_name)s</node>
+        <operational-duplex>full</operational-duplex>
+        <operational-flowcontrol>receive</operational-flowcontrol>
+        <operational-speed>1000</operational-speed>
+        <port>%(port)s-%(vlan)s</port>
+        <port-type>vlan</port-type>
+        <role>data</role>
+        <vlan-id>%(vlan)s</vlan-id>
+        <vlan-node>%(node_name)s</vlan-node>
+        <vlan-port>%(port)s</vlan-port>
+      </net-port-info>
+    </attributes>
+  </results>
+""" % {'ipspace': IPSPACE_NAME,
+       'node_name': NODE_NAME,
+       'port': PORT,
+       'vlan': VLAN})
+
 NET_PORT_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>

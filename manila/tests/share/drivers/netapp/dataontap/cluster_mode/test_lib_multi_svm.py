@@ -288,7 +288,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertEqual(vserver_name, actual_result)
 
-    def test_create_vserver(self):
+    @ddt.data(None, fake.IPSPACE)
+    def test_create_vserver(self, existing_ipspace):
 
         versions = ['fake_v1', 'fake_v2']
         self.library.configuration.netapp_enabled_share_protocols = versions
@@ -296,6 +297,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_name = fake.VSERVER_NAME_TEMPLATE % vserver_id
         vserver_client = mock.Mock()
 
+        self.mock_object(self.library._client,
+                         'list_cluster_nodes',
+                         mock.Mock(return_value=fake.CLUSTER_NODES))
+        self.mock_object(self.library,
+                         '_get_node_data_port',
+                         mock.Mock(return_value='fake_port'))
         self.mock_object(context,
                          'get_admin_context',
                          mock.Mock(return_value='fake_admin_context'))
@@ -311,13 +318,23 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_create_ipspace',
                          mock.Mock(return_value=fake.IPSPACE))
+        get_ipspace_name_for_vlan_port = self.mock_object(
+            self.library._client,
+            'get_ipspace_name_for_vlan_port',
+            mock.Mock(return_value=existing_ipspace))
         self.mock_object(self.library, '_create_vserver_lifs')
         self.mock_object(self.library, '_create_vserver_admin_lif')
         self.mock_object(self.library, '_create_vserver_routes')
 
         self.library._create_vserver(vserver_name, fake.NETWORK_INFO)
 
-        self.library._create_ipspace.assert_called_once_with(fake.NETWORK_INFO)
+        get_ipspace_name_for_vlan_port.assert_called_once_with(
+            fake.CLUSTER_NODES[0],
+            'fake_port',
+            fake.NETWORK_INFO['segmentation_id'])
+        if not existing_ipspace:
+            self.library._create_ipspace.assert_called_once_with(
+                fake.NETWORK_INFO)
         self.library._client.create_vserver.assert_called_once_with(
             vserver_name, fake.ROOT_VOLUME_AGGREGATE, fake.ROOT_VOLUME,
             fake.AGGREGATES, fake.IPSPACE)
@@ -351,13 +368,30 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           vserver_name,
                           fake.NETWORK_INFO)
 
-    @ddt.data(netapp_api.NaApiError, exception.NetAppException)
-    def test_create_vserver_lif_creation_failure(self, lif_exception):
+    @ddt.data(
+        {'lif_exception': netapp_api.NaApiError,
+         'existing_ipspace': fake.IPSPACE},
+        {'lif_exception': netapp_api.NaApiError,
+         'existing_ipspace': None},
+        {'lif_exception': exception.NetAppException,
+         'existing_ipspace': None},
+        {'lif_exception': exception.NetAppException,
+         'existing_ipspace': fake.IPSPACE})
+    @ddt.unpack
+    def test_create_vserver_lif_creation_failure(self,
+                                                 lif_exception,
+                                                 existing_ipspace):
 
         vserver_id = fake.NETWORK_INFO['server_id']
         vserver_name = fake.VSERVER_NAME_TEMPLATE % vserver_id
         vserver_client = mock.Mock()
 
+        self.mock_object(self.library._client,
+                         'list_cluster_nodes',
+                         mock.Mock(return_value=fake.CLUSTER_NODES))
+        self.mock_object(self.library,
+                         '_get_node_data_port',
+                         mock.Mock(return_value='fake_port'))
         self.mock_object(context,
                          'get_admin_context',
                          mock.Mock(return_value='fake_admin_context'))
@@ -370,6 +404,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_find_matching_aggregates',
                          mock.Mock(return_value=fake.AGGREGATES))
+        self.mock_object(self.library._client,
+                         'get_ipspace_name_for_vlan_port',
+                         mock.Mock(return_value=existing_ipspace))
         self.mock_object(self.library,
                          '_create_ipspace',
                          mock.Mock(return_value=fake.IPSPACE))
@@ -423,27 +460,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertEqual('Default', result)
 
-    def test_create_ipspace_already_present(self):
-
-        self.library._client.features.IPSPACES = True
-        self.mock_object(self.library._client,
-                         'ipspace_exists',
-                         mock.Mock(return_value=True))
-
-        result = self.library._create_ipspace(fake.NETWORK_INFO)
-
-        expected = self.library._get_valid_ipspace_name(
-            fake.NETWORK_INFO['neutron_subnet_id'])
-        self.assertEqual(expected, result)
-        self.library._client.ipspace_exists.assert_has_calls([
-            mock.call(expected)])
-        self.assertFalse(self.library._client.create_ipspace.called)
-
     def test_create_ipspace(self):
 
         self.library._client.features.IPSPACES = True
         self.mock_object(self.library._client,
-                         'ipspace_exists',
+                         'create_ipspace',
                          mock.Mock(return_value=False))
 
         result = self.library._create_ipspace(fake.NETWORK_INFO)
@@ -451,10 +472,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         expected = self.library._get_valid_ipspace_name(
             fake.NETWORK_INFO['neutron_subnet_id'])
         self.assertEqual(expected, result)
-        self.library._client.ipspace_exists.assert_has_calls([
-            mock.call(expected)])
-        self.library._client.create_ipspace.assert_has_calls([
-            mock.call(expected)])
+        self.library._client.create_ipspace.assert_called_once_with(expected)
 
     def test_create_vserver_lifs(self):
 

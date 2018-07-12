@@ -1849,6 +1849,68 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('net-ipspaces-destroy', net_ipspaces_destroy_args)])
 
+    def test_get_ipspace_name_for_vlan_port(self):
+        self.client.features.add_feature('IPSPACES')
+        api_response = netapp_api.NaElement(fake.NET_PORT_GET_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        ipspace = self.client.get_ipspace_name_for_vlan_port(
+            fake.NODE_NAME, fake.PORT, fake.VLAN)
+
+        port = '%(port)s-%(id)s' % {'port': fake.PORT, 'id': fake.VLAN}
+        self.client.send_request.assert_called_once_with(
+            'net-port-get',
+            {'node': fake.NODE_NAME, 'port': port})
+        self.assertEqual(fake.IPSPACE_NAME, ipspace)
+
+    def test_get_ipspace_name_for_vlan_port_no_ipspace_feature(self):
+        self.mock_object(self.client, 'send_request')
+
+        ipspace = self.client.get_ipspace_name_for_vlan_port(
+            fake.NODE_NAME, fake.PORT, fake.VLAN)
+
+        self.client.send_request.assert_not_called()
+        self.assertIsNone(ipspace)
+
+    def test_get_ipspace_name_for_vlan_port_no_ipspace_found(self):
+        self.client.features.add_feature('IPSPACES')
+        self.mock_object(
+            self.client,
+            'send_request',
+            self._mock_api_error(code=netapp_api.EOBJECTNOTFOUND))
+
+        ipspace = self.client.get_ipspace_name_for_vlan_port(
+            fake.NODE_NAME, fake.PORT, fake.VLAN)
+
+        self.assertIsNone(ipspace)
+
+    def test_get_ipspace_name_for_vlan_port_no_vlan(self):
+        self.client.features.add_feature('IPSPACES')
+        api_response = netapp_api.NaElement(fake.NET_PORT_GET_RESPONSE_NO_VLAN)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        ipspace = self.client.get_ipspace_name_for_vlan_port(
+            fake.NODE_NAME, fake.PORT, None)
+
+        self.client.send_request.assert_called_once_with(
+            'net-port-get',
+            {'node': fake.NODE_NAME, 'port': fake.PORT})
+        self.assertEqual(fake.IPSPACE_NAME, ipspace)
+
+    def test_get_ipspace_name_for_vlan_port_raises_api_error(self):
+        self.client.features.add_feature('IPSPACES')
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=self._mock_api_error()))
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.get_ipspace_name_for_vlan_port,
+                          fake.NODE_NAME, fake.VLAN_PORT, None)
+
     def test_add_vserver_to_ipspace(self):
 
         self.mock_object(self.client, 'send_request')

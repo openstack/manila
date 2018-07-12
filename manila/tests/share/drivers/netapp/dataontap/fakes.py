@@ -349,6 +349,7 @@ NETWORK_INFO = {
     'security_services': ['fake_ldap', 'fake_kerberos', 'fake_ad', ],
     'network_allocations': USER_NETWORK_ALLOCATIONS,
     'admin_network_allocations': ADMIN_NETWORK_ALLOCATIONS,
+    'neutron_net_id': '4eff22ca-5ad2-454d-a000-aadfd7b40b39',
     'neutron_subnet_id': '62bf1c2c-18eb-421b-8983-48a6d39aafe0',
     'segmentation_id': '1000',
 }
