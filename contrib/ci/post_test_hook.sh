@@ -54,6 +54,18 @@ else
 fi
 iniset $TEMPEST_CONFIG share backend_names $BACKENDS_NAMES
 
+
+# Grab the supported API micro-versions from the code
+_API_VERSION_REQUEST_PATH=$BASE/new/manila/manila/api/openstack/api_version_request.py
+_DEFAULT_MIN_VERSION=$(awk '$0 ~ /_MIN_API_VERSION = /{print $3}' $_API_VERSION_REQUEST_PATH)
+_DEFAULT_MAX_VERSION=$(awk '$0 ~ /_MAX_API_VERSION = /{print $3}' $_API_VERSION_REQUEST_PATH)
+# Override the *_api_microversion tempest options if present
+MANILA_TEMPEST_MIN_API_MICROVERSION=${MANILA_TEMPEST_MIN_API_MICROVERSION:-$_DEFAULT_MIN_VERSION}
+MANILA_TEMPEST_MAX_API_MICROVERSION=${MANILA_TEMPEST_MAX_API_MICROVERSION:-$_DEFAULT_MAX_VERSION}
+# Set these options in tempest.conf
+iniset $TEMPEST_CONFIG share min_api_microversion $MANILA_TEMPEST_MIN_API_MICROVERSION
+iniset $TEMPEST_CONFIG share max_api_microversion $MANILA_TEMPEST_MAX_API_MICROVERSION
+
 # Set two retries for CI jobs
 iniset $TEMPEST_CONFIG share share_creation_retry_number 2
 
