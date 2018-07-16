@@ -73,33 +73,39 @@ server is an instance where NFS shares are served.
 
    .. code-block:: console
 
-      $ glance image-create \
-      --copy-from http://tarballs.openstack.org/manila-image-elements/images/manila-service-image-master.qcow2 \
+      $ curl https://tarballs.openstack.org/manila-image-elements/images/manila-service-image-master.qcow2 | \
+      glance image-create \
       --name "manila-service-image" \
       --disk-format qcow2 \
       --container-format bare \
       --visibility public --progress
-      [=============================>] 100%
-      +------------------+--------------------------------------+
-      | Property         | Value                                |
-      +------------------+--------------------------------------+
-      | checksum         | 48a08e746cf0986e2bc32040a9183445     |
-      | container_format | bare                                 |
-      | created_at       | 2016-01-26T19:52:24Z                 |
-      | disk_format      | qcow2                                |
-      | id               | 1fc7f29e-8fe6-44ef-9c3c-15217e83997c |
-      | min_disk         | 0                                    |
-      | min_ram          | 0                                    |
-      | name             | manila-service-image                 |
-      | owner            | e2c965830ecc4162a002bf16ddc91ab7     |
-      | protected        | False                                |
-      | size             | 306577408                            |
-      | status           | active                               |
-      | tags             | []                                   |
-      | updated_at       | 2016-01-26T19:52:28Z                 |
-      | virtual_size     | None                                 |
-      | visibility       | public                               |
-      +------------------+--------------------------------------+
+      %   Total    %   Received %   Xferd  Average  Speed   Time     Time     Time      Current
+                                           Dload    Upload  Total    Spent    Left      Speed
+      100 3008k    100 3008k    0   0      1042k    0       0:00:02  0:00:02  --:--:--  1041k
+      +------------------+----------------------------------------------------------------------------------+
+      | Property         | Value                                                                            |
+      +------------------+----------------------------------------------------------------------------------+
+      | checksum         | 48a08e746cf0986e2bc32040a9183445                                                 |
+      | container_format | bare                                                                             |
+      | created_at       | 2016-01-26T19:52:24Z                                                             |
+      | direct_url       | rbd://3c3a4cbc-7331-4fc1-8cbb-79213b9cebff/images/ff97deff-b184-47f8-827c-       |
+      |                  | 16c349c82720/snap                                                                |
+      | disk_format      | qcow2                                                                            |
+      | id               | 1fc7f29e-8fe6-44ef-9c3c-15217e83997c                                             |
+      | locations        | [{"url": "rbd://3c3a4cbc-7331-4fc1-8cbb-79213b9cebff/images/ff97deff-b184-47f8   |
+      |                  | -827c-16c349c82720/snap", "metadata": {}}]                                       |
+      | min_disk         | 0                                                                                |
+      | min_ram          | 0                                                                                |
+      | name             | manila-service-image                                                             |
+      | owner            | e2c965830ecc4162a002bf16ddc91ab7                                                 |
+      | protected        | False                                                                            |
+      | size             | 306577408                                                                        |
+      | status           | active                                                                           |
+      | tags             | []                                                                               |
+      | updated_at       | 2016-01-26T19:52:28Z                                                             |
+      | virtual_size     | None                                                                             |
+      | visibility       | public                                                                           |
+      +------------------+----------------------------------------------------------------------------------+
 
 #. List available networks in order to get id and subnets of the private
    network:
