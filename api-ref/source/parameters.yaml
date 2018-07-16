@@ -14,6 +14,12 @@ export_location_id_path:
   in: path
   required: true
   type: string
+extra-spec-key-path:
+  description: |
+    The extra specification key
+  in: path
+  required: true
+  type: string
 group_snapshot_id_path:
   description: |
     The group snapshot ID.
