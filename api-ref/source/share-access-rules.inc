@@ -1,0 +1,119 @@
+.. -*- rst -*-
+
+.. _get-access-rules-after-2-45:
+
+====================================
+Share access rules (Since API v2.45)
+====================================
+
+Retrieve details about access rules
+
+Describe share access rule
+==========================
+
+.. rest_method::  GET /v2/{tenant_id}/share-access-rules/{access_id}
+
+
+Retrieve details about a specified access rule.
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - access_id: access_id_path
+   - tenant_id: tenant_id_path
+
+Response parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - share_id: access_share_id
+   - created_at: access_rule_created_at
+   - updated_at: access_rule_updated_at
+   - access_type: access_type
+   - access_to: access_to
+   - access_key: access_key
+   - state: state
+   - access_level: access_level
+   - id: access_rule_id
+   - access_metadata: access_metadata
+
+Response example
+----------------
+
+.. literalinclude:: samples/share-access-rules-show-response.json
+   :language: javascript
+
+
+List share access rules
+=======================
+
+.. rest_method::  GET /v2/{tenant_id}/share-access-rules?share_id={share-id}
+
+Lists the share access rules on a share.
+
+.. note::
+  This API replaces the older :ref:`List share access rules
+  <get-access-rules-before-2-45>` API from version 2.45.
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - metadata: metadata
+   - share_id: share_id
+   - tenant_id: tenant_id_path
+
+Response parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - metadata: access_metadata
+   - access_type: access_type
+   - access_key: access_key
+   - access_to: access_to
+   - access_level: access_level
+   - state: state
+   - access_list: access_list
+   - id: access_rule_id
+   - created_at: access_rule_created_at
+   - updated_at: access_rule_updated_at
+
+Response example
+----------------
+
+.. literalinclude:: samples/share-access-rules-list-response.json
+   :language: javascript

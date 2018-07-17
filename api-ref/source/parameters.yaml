@@ -2,6 +2,12 @@
 #{}
 
 # variables in path
+access_id_path:
+  description: |
+    The UUID of the access rule to which access is granted.
+  in: path
+  required: true
+  type: string
 api_version:
   in: path
   required: true
@@ -29,6 +35,14 @@ group_snapshot_id_path:
 message_id:
   description: |
     The UUID of the message.
+  in: path
+  required: false
+  type: string
+metadata_key_path:
+  description: |
+    The key of a metadata item. For example, if the metadata on an existing
+    share or access rule is as follows: ``"project": "my_test",
+    "aim": "testing"``, the keys are "project" and "aim".
   in: path
   required: false
   type: string
@@ -532,6 +546,13 @@ access_list:
   in: body
   required: true
   type: string
+access_metadata:
+  description: |
+    One or more access rule metadata key and value pairs as a
+    dictionary of strings.
+  in: body
+  required: true
+  type: object
 access_rule_created_at:
   description: |
     The date and time stamp when the access rule was created.
@@ -1806,9 +1827,9 @@ metadata_3:
   type: object
 metadata_key_request:
   description: |
-    The key of a metadata item. For example, if share metadata is
-    as follows: ``"project": "my_test", "aim": "testing"``, the keys are
-    "project" and "aim".
+    The key of a metadata item. For example, if the metadata on an existing
+    share or access rule is as follows: ``"project": "my_test",
+    "aim": "testing"``, the keys are "project" and "aim".
   in: body
   required: false
   type: object

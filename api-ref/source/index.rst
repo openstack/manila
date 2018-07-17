@@ -28,6 +28,8 @@ Shared File Systems API
 .. include:: quota-sets.inc
 .. include:: quota-classes.inc
 .. include:: user-messages.inc
+.. include:: share-access-rules.inc
+.. include:: share-access-rule-metadata.inc
 
 ======================================
 Shared File Systems API (EXPERIMENTAL)

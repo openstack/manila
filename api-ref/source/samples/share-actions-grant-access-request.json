@@ -2,6 +2,10 @@
     "allow_access": {
         "access_level": "rw",
         "access_type": "ip",
-        "access_to": "0.0.0.0/0"
+        "access_to": "0.0.0.0/0",
+        "metadata":{
+            "key1": "value1",
+            "key2": "value2"
+        }
     }
 }

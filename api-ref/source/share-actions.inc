@@ -1,5 +1,7 @@
 .. -*- rst -*-
 
+.. _get-access-rules-before-2-45:
+
 =============
 Share actions
 =============
@@ -97,6 +99,7 @@ Request
    - access_to: access_to
    - share_id: share_id
    - tenant_id: tenant_id_path
+   - access_metadata: metadata
 
 Request example
 ---------------
@@ -118,6 +121,7 @@ Response parameters
    - access: access
    - access_level: access_level
    - id: access_rule_id
+   - access_metadata: access_metadata
 
 Response example
 ----------------
@@ -166,13 +170,17 @@ Request example
    :language: javascript
 
 
-List access rules
-=================
+List access rules (versions 1.0 to 2.44)
+========================================
 
 .. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
 
 Lists access rules for a share. The Access ID returned is necessary to deny
 access.
+
+.. note::
+  Use :ref:`List share access rules <get-access-rules-after-2-45>` API
+  instead of this API from version 2.45
 
 Response codes
 --------------
