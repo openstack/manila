@@ -99,7 +99,17 @@ netapp_provisioning_opts = [
                max=90,
                default=5,
                help='The percentage of share space set aside as reserve for '
-                    'snapshot usage; valid values range from 0 to 90.'), ]
+                    'snapshot usage; valid values range from 0 to 90.'),
+    cfg.StrOpt('netapp_reset_snapdir_visibility',
+               choices=['visible', 'hidden', 'default'],
+               default="default",
+               help="This option forces all existing shares to have their "
+                    "snapshot directory visibility set to either 'visible' or "
+                    "'hidden' during driver startup. If set to 'default', "
+                    "nothing will be changed during startup. This will not "
+                    "affect new shares, which will have their snapshot "
+                    "directory always visible, unless toggled by the share "
+                    "type extra spec 'netapp:hide_snapdir'."), ]
 
 netapp_cluster_opts = [
     cfg.StrOpt('netapp_vserver',

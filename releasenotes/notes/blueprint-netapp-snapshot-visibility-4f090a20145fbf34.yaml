@@ -1,0 +1,11 @@
+---
+features:
+  - Snapshot directories of shares created by the NetApp driver
+    can now be controlled through extra-specs for newly created
+    shares and through a config option for existing shares.
+upgrades:
+  - A new config option ``netapp_reset_snapdir_visibility`` has
+    been added to the NetApp driver, allowing existing shares to
+    have their snapshot directory visibility setting changed at
+    driver startup.
+

@@ -70,9 +70,11 @@ class NetAppCmodeFileStorageLibrary(object):
         'netapp:dedup': 'dedup_enabled',
         'netapp:compression': 'compression_enabled',
         'netapp:split_clone_on_create': 'split',
+        'netapp:hide_snapdir': 'hide_snapdir',
     }
 
     STRING_QUALIFIED_EXTRA_SPECS_MAP = {
+
         'netapp:snapshot_policy': 'snapshot_policy',
         'netapp:language': 'language',
         'netapp:max_files': 'max_files',
@@ -90,6 +92,12 @@ class NetAppCmodeFileStorageLibrary(object):
         'netapp:maxiopspergib': 'maxiopspergib',
         'netapp:maxbps': 'maxbps',
         'netapp:maxbpspergib': 'maxbpspergib',
+    }
+
+    HIDE_SNAPDIR_CFG_MAP = {
+        'visible': False,
+        'hidden': True,
+        'default': None,
     }
 
     SIZE_DEPENDENT_QOS_SPECS = {'maxiopspergib', 'maxbpspergib'}
@@ -496,6 +504,8 @@ class NetAppCmodeFileStorageLibrary(object):
             # create it as the 'data-protection' type
             provisioning_options['volume_type'] = 'dp'
 
+        hide_snapdir = provisioning_options.pop('hide_snapdir')
+
         LOG.debug('Creating share %(share)s on pool %(pool)s with '
                   'provisioning options %(options)s',
                   {'share': share_name, 'pool': pool_name,
@@ -504,6 +514,19 @@ class NetAppCmodeFileStorageLibrary(object):
             pool_name, share_name, share['size'],
             snapshot_reserve=self.configuration.
             netapp_volume_snapshot_reserve_percent, **provisioning_options)
+
+        if hide_snapdir:
+            self._apply_snapdir_visibility(
+                hide_snapdir, share_name, vserver_client)
+
+    def _apply_snapdir_visibility(
+            self, hide_snapdir, share_name, vserver_client):
+
+        LOG.debug('Applying snapshot visibility according to hide_snapdir '
+                  'value of %(hide_snapdir)s on share %(share)s.',
+                  {'hide_snapdir': hide_snapdir, 'share': share_name})
+
+        vserver_client.set_volume_snapdir_access(share_name, hide_snapdir)
 
     @na_utils.trace
     def _remap_standard_boolean_extra_specs(self, extra_specs):
@@ -746,12 +769,18 @@ class NetAppCmodeFileStorageLibrary(object):
         provisioning_options = self._get_provisioning_options_for_share(
             share, vserver)
 
+        hide_snapdir = provisioning_options.pop('hide_snapdir')
+
         LOG.debug('Creating share from snapshot %s', snapshot['id'])
         vserver_client.create_volume_clone(share_name, parent_share_name,
                                            parent_snapshot_name,
                                            **provisioning_options)
         if share['size'] > snapshot['size']:
             vserver_client.set_volume_size(share_name, share['size'])
+
+        if hide_snapdir:
+            self._apply_snapdir_visibility(
+                hide_snapdir, share_name, vserver_client)
 
     @na_utils.trace
     def _share_exists(self, share_name, vserver_client):
@@ -2281,3 +2310,21 @@ class NetAppCmodeFileStorageLibrary(object):
             msg = _("Volume move operation did not complete after cut-over "
                     "was triggered. Retries exhausted. Not retrying.")
             raise exception.NetAppException(message=msg)
+
+    def get_backend_info(self, context):
+        snapdir_visibility = self.configuration.netapp_reset_snapdir_visibility
+        return {
+            'snapdir_visibility': snapdir_visibility,
+        }
+
+    def ensure_shares(self, context, shares):
+        cfg_snapdir = self.configuration.netapp_reset_snapdir_visibility
+        hide_snapdir = self.HIDE_SNAPDIR_CFG_MAP[cfg_snapdir.lower()]
+        if hide_snapdir is not None:
+            for share in shares:
+                share_server = share.get('share_server')
+                vserver, vserver_client = self._get_vserver(
+                    share_server=share_server)
+                share_name = self._get_backend_share_name(share['id'])
+                self._apply_snapdir_visibility(
+                    hide_snapdir, share_name, vserver_client)

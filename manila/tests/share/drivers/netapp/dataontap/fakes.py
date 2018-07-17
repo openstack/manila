@@ -171,6 +171,7 @@ PROVISIONING_OPTIONS = {
     'max_files': 5000,
     'split': True,
     'encrypt': False,
+    'hide_snapdir': False,
 }
 
 PROVISIONING_OPTIONS_WITH_QOS = copy.deepcopy(PROVISIONING_OPTIONS)
@@ -182,6 +183,7 @@ PROVISIONING_OPTIONS_BOOLEAN = {
     'dedup_enabled': False,
     'compression_enabled': False,
     'split': False,
+    'hide_snapdir': False,
 }
 
 PROVISIONING_OPTIONS_BOOLEAN_THIN_PROVISIONED_TRUE = {

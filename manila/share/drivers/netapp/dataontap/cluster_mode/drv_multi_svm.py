@@ -71,9 +71,6 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
     def shrink_share(self, share, new_size, **kwargs):
         self.library.shrink_share(share, new_size, **kwargs)
 
-    def ensure_share(self, context, share, **kwargs):
-        pass
-
     def manage_existing(self, share, driver_options):
         raise NotImplementedError
 
@@ -237,3 +234,9 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
 
     def get_configured_ip_versions(self):
         return self.library.get_configured_ip_versions()
+
+    def get_backend_info(self, context):
+        return self.library.get_backend_info(context)
+
+    def ensure_shares(self, context, shares):
+        return self.library.ensure_shares(context, shares)

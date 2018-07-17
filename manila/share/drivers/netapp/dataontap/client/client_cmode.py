@@ -1630,6 +1630,37 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                     errors[0].get_child_content('error-message'))
 
     @na_utils.trace
+    def set_volume_snapdir_access(self, volume_name, hide_snapdir):
+        """Set volume snapshot directory visibility."""
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                    },
+                },
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-snapshot-attributes': {
+                        'snapdir-access-enabled': six.text_type(
+                            not hide_snapdir).lower(),
+                    },
+                },
+            },
+        }
+        result = self.send_request('volume-modify-iter', api_args)
+        failures = result.get_child_content('num-failed')
+        if failures and int(failures) > 0:
+            failure_list = result.get_child_by_name(
+                'failure-list') or netapp_api.NaElement('none')
+            errors = failure_list.get_children()
+            if errors:
+                raise netapp_api.NaApiError(
+                    errors[0].get_child_content('error-code'),
+                    errors[0].get_child_content('error-message'))
+
+    @na_utils.trace
     def set_volume_security_style(self, volume_name, security_style='unix'):
         """Set volume security style"""
         api_args = {
@@ -1673,7 +1704,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                       thin_provisioned=False, snapshot_policy=None,
                       language=None, dedup_enabled=False,
                       compression_enabled=False, max_files=None,
-                      qos_policy_group=None, **options):
+                      qos_policy_group=None, hide_snapdir=None,
+                      **options):
         """Update backend volume for a share as necessary."""
         api_args = {
             'query': {
@@ -1711,6 +1743,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 'volume-qos-attributes'] = {
                 'policy-group-name': qos_policy_group,
             }
+        if hide_snapdir in (True, False):
+            # Value of hide_snapdir needs to be inverted for ZAPI parameter
+            api_args['attributes']['volume-attributes'][
+                'volume-snapshot-attributes'][
+                'snapdir-access-enabled'] = six.text_type(
+                not hide_snapdir).lower()
 
         self.send_request('volume-modify-iter', api_args)
 
