@@ -51,9 +51,10 @@ Response
 
   - versions: versions
   - id: version_id
+  - updated: version_updated
   - status: version_status
   - links: links
-  - media-types: media_types
+  - media-types: version_media_types
   - version: version_max
   - min_version: version_min
 
@@ -108,8 +109,9 @@ Response
   - status: version_status
   - links: links
   - version: version_max
+  - updated: version_updated
   - min_version: version_min
-  - media-types: media_types
+  - media-types: version_media_types
 
 .. note::
 

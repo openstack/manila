@@ -3736,6 +3736,12 @@ version_max:
     If this version of the API supports microversions, the maximum
     microversion that is supported. This will be the empty string if
     microversions are not supported.
+version_media_types:
+  description: |
+      Media types supported by the API.
+  in: body
+  required: true
+  type: object
 version_min:
   type: string
   in: body
@@ -3754,6 +3760,13 @@ version_status:
     - ``CURRENT``: this is the preferred version of the API to use
     - ``SUPPORTED``: this is an older, but still supported version of the API
     - ``DEPRECATED``: a deprecated version of the API that is slated for removal
+version_updated:
+  description: |
+    A date and time stamp for API versions. This field presents no meaningful
+    information.
+  in: body
+  required: true
+  type: string
 versions:
   type: array
   in: body
