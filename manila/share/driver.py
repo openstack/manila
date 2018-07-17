@@ -2541,7 +2541,7 @@ class ShareDriver(object):
         Driver can use this method to update the list of export locations of
         the shares if it changes. To do that, a dictionary of shares should
         be returned.
-        :shares: None or a list of all shares for updates.
+        :shares: A list of all shares for updates.
         :returns: None or a dictionary of updates in the format.
 
             Example::
