@@ -6,8 +6,8 @@ microversion change. The description for each version should be a
 verbose one which has enough information to be suitable for use in
 user documentation.
 
-1.0
----
+1.0 (Maximum in Kilo)
+---------------------
   The 1.0 Manila API includes all v1 core APIs existing prior to
   the introduction of microversions.  The /v1 URL is used to call
   1.0 APIs, and microversions headers sent to this endpoint are
@@ -57,8 +57,8 @@ user documentation.
 ---
   Share Migration admin API.
 
-2.6
----
+2.6 (Maximum in Liberty)
+------------------------
   Return share_type UUID instead of name in Share API and add share_type_name
   field.
 
@@ -101,8 +101,8 @@ user documentation.
   used preferentially by clients.  Also, change 'uuid' field to 'id', move
   timestamps to detail view, and return all non-admin fields to users.
 
-2.15
-----
+2.15 (Maximum in Mitaka)
+------------------------
   Added Share migration 'migration_cancel', 'migration_get_progress',
   'migration_complete' APIs, renamed 'migrate_share' to 'migration_start' and
   added notify parameter to 'migration_start'.
@@ -131,8 +131,8 @@ user documentation.
 ----
   Add access_key in access_list API.
 
-2.22
-----
+2.22 (Maximum in Newton)
+------------------------
   Updated migration_start API with 'preserve_metadata', 'writable',
   'nondisruptive' and 'new_share_network_id' parameters, renamed
   'force_host_copy' to 'force_host_assisted_migration', removed 'notify'
@@ -188,8 +188,8 @@ user documentation.
 ----
   Convert consistency groups to share groups.
 
-2.32
-----
+2.32 (Maximum in Ocata)
+-----------------------
   Added mountable snapshots APIs.
 
 2.33
@@ -223,16 +223,16 @@ user documentation.
 ----
   Added share-type quotas.
 
-2.40
-----
+2.40 (Maximum in Pike)
+----------------------
   Added share group and share group snapshot quotas.
 
 2.41
 ----
   Added 'description' in share type create/list APIs.
 
-2.42
-----
+2.42 (Maximum in Queens)
+------------------------
   Added ``with_count`` in share list API to get total count info.
 
 2.43

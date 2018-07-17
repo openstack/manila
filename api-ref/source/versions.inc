@@ -21,6 +21,11 @@ Systems API:
 Read more about microversion guidelines that the service adheres to `here
 <https://docs.openstack.org/manila/latest/contributor/api_microversion_dev.html>`_
 
+See `A history of the Shared File Systems API versions
+<https://docs.openstack.org/manila/latest/contributor/api_microversion_history.html>`_
+to view the evolution of the API and pick an appropriate version for API
+requests.
+
 
 List All Major Versions
 =======================
