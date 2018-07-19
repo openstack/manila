@@ -41,6 +41,39 @@ FAKE_RES_DETAIL_DATA_GETBASIC_INFO_ES_1_1_3 = """
         </firmware>
     </QDocRoot>"""
 
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_ES_2_0_0 = """
+    <QDocRoot version="1.0">
+        <model>
+            <displayModelName><![CDATA[ES1640dc]]></displayModelName>
+            <internalModelName><![CDATA[ES1640dc]]></internalModelName>
+        </model>
+        <firmware>
+            <version><![CDATA[2.0.0]]></version>
+        </firmware>
+    </QDocRoot>"""
+
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_ES_2_1_0 = """
+    <QDocRoot version="1.0">
+        <model>
+            <displayModelName><![CDATA[ES1640dc]]></displayModelName>
+            <internalModelName><![CDATA[ES1640dc]]></internalModelName>
+        </model>
+        <firmware>
+            <version><![CDATA[2.1.0]]></version>
+        </firmware>
+    </QDocRoot>"""
+
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_ES_2_2_0 = """
+    <QDocRoot version="1.0">
+        <model>
+            <displayModelName><![CDATA[ES1640dc]]></displayModelName>
+            <internalModelName><![CDATA[ES1640dc]]></internalModelName>
+        </model>
+        <firmware>
+            <version><![CDATA[2.2.0]]></version>
+        </firmware>
+    </QDocRoot>"""
+
 FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TS_4_0_0 = """
     <QDocRoot version="1.0">
         <model>
@@ -104,6 +137,39 @@ FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_ES_1_1_3 = """
         </model>
         <firmware>
             <version><![CDATA[1.1.3]]></version>
+        </firmware>
+    </QDocRoot>"""
+
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_ES_2_0_0 = """
+    <QDocRoot version="1.0">
+        <model>
+            <displayModelName><![CDATA[TES-1885U]]></displayModelName>
+            <internalModelName><![CDATA[ES-1885U]]></internalModelName>
+        </model>
+        <firmware>
+            <version><![CDATA[2.0.0]]></version>
+        </firmware>
+    </QDocRoot>"""
+
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_ES_2_1_0 = """
+    <QDocRoot version="1.0">
+        <model>
+            <displayModelName><![CDATA[TES-1885U]]></displayModelName>
+            <internalModelName><![CDATA[ES-1885U]]></internalModelName>
+        </model>
+        <firmware>
+            <version><![CDATA[2.1.0]]></version>
+        </firmware>
+    </QDocRoot>"""
+
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_ES_2_2_0 = """
+    <QDocRoot version="1.0">
+        <model>
+            <displayModelName><![CDATA[TES-1885U]]></displayModelName>
+            <internalModelName><![CDATA[ES-1885U]]></internalModelName>
+        </model>
+        <firmware>
+            <version><![CDATA[2.2.0]]></version>
         </firmware>
     </QDocRoot>"""
 
@@ -439,6 +505,36 @@ class FakeGetBasicInfoResponseEs_1_1_3(object):
         return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_ES_1_1_3
 
 
+class FakeGetBasicInfoResponseEs_2_0_0(object):
+    """Fake GetBasicInfo response from ES nas."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_ES_2_0_0
+
+
+class FakeGetBasicInfoResponseEs_2_1_0(object):
+    """Fake GetBasicInfo response from ES nas."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_ES_2_1_0
+
+
+class FakeGetBasicInfoResponseEs_2_2_0(object):
+    """Fake GetBasicInfo response from ES nas."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_ES_2_2_0
+
+
 class FakeGetBasicInfoResponseTs_4_0_0(object):
     """Fake GetBasicInfoTS response from TS nas."""
 
@@ -497,6 +593,36 @@ class FakeGetBasicInfoResponseTesEs_1_1_3(object):
     def read(self):
         """Mock response.read."""
         return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_ES_1_1_3
+
+
+class FakeGetBasicInfoResponseTesEs_2_0_0(object):
+    """Fake GetBasicInfoTS response from TS nas."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_ES_2_0_0
+
+
+class FakeGetBasicInfoResponseTesEs_2_1_0(object):
+    """Fake GetBasicInfoTS response from TS nas."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_ES_2_1_0
+
+
+class FakeGetBasicInfoResponseTesEs_2_2_0(object):
+    """Fake GetBasicInfoTS response from TS nas."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_ES_2_2_0
 
 
 class FakeGetBasicInfoResponseError(object):
