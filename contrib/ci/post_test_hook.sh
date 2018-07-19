@@ -368,7 +368,9 @@ if ! [[ -z "$OVERRIDE_IP_FOR_NFS_ACCESS" ]]; then
 fi
 
 echo "Running tempest manila test suites"
-sudo -H -u $USER tox -eall -- $MANILA_TESTS --concurrency=$MANILA_TEMPEST_CONCURRENCY
+cd $BASE/new/tempest/
+sudo -H -u $USER tempest run -r $MANILA_TESTS --concurrency=$MANILA_TEMPEST_CONCURRENCY
+cd -
 RETVAL=$?
 
 
@@ -390,7 +392,9 @@ if [[ "$DRIVER" == "dummy" ]]; then
     manila type-key default set driver_handles_share_servers=False
 
     echo "Running tempest manila test suites for DHSS=False mode"
-    sudo -H -u $USER tox -eall -- $MANILA_TESTS --concurrency=$MANILA_TEMPEST_CONCURRENCY
+    cd $BASE/new/tempest/
+    sudo -H -u $USER tempest run -r  $MANILA_TESTS --concurrency=$MANILA_TEMPEST_CONCURRENCY
+    cd -
     RETVAL2=$?
     save_tempest_results 2
 
