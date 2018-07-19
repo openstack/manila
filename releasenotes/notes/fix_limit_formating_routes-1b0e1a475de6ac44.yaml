@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed routes.mapper.Mapper.resource adds a bunch of formatted
+    routes that cannot accept something after a '.'.
