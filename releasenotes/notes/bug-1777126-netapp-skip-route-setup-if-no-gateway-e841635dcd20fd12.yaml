@@ -1,0 +1,5 @@
+---
+fixes:
+  - The NetApp driver has been fixed to not enforce route creation when the
+    share network provided has no gateway. See `Launchpad bug 1777126
+    <https://bugs.launchpad.net/manila/+bug/1777126>`_ for details.
