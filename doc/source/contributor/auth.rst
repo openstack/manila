@@ -39,29 +39,6 @@ The :mod:`manila.policy` Module
     :undoc-members:
     :show-inheritance:
 
-
-Tests
------
-
-The :mod:`test_quota` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.tests.test_quota
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`test_policy` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.tests.test_policy
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 System limits
 -------------
 
