@@ -486,7 +486,7 @@ Request
 
    - tenant_id: tenant_id_path
    - share_type_id: share_type_id
-   - extra-spec-key: extra-spec-key
+   - extra-spec-key: extra-spec-key-path
 
 
 Add share type access
