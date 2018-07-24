@@ -9,6 +9,7 @@
         },
         "id": "420e6a31-3f3d-4ed7-9d11-59450372182a",
         "name": "default",
+        "is_default": true,
         "description": "share type description"
     },
     "volume_type": {
@@ -21,6 +22,7 @@
         },
         "id": "420e6a31-3f3d-4ed7-9d11-59450372182a",
         "name": "default",
+        "is_default": true,
         "description": "share type description"
     }
 }

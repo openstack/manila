@@ -17,6 +17,7 @@ import datetime
 
 import ddt
 import mock
+from oslo_config import cfg
 from oslo_utils import timeutils
 import webob
 
@@ -31,6 +32,8 @@ from manila.share import share_types
 from manila import test
 from manila.tests.api import fakes
 from manila.tests import fake_notifier
+
+CONF = cfg.CONF
 
 
 def stub_share_type(id):
@@ -59,6 +62,34 @@ def return_share_types_get_all_types(context, search_opts=None):
         share_type_2=stub_share_type(2),
         share_type_3=stub_share_type(3)
     )
+
+
+def stub_default_name():
+    return 'default_share_type'
+
+
+def stub_default_share_type(id):
+    return dict(
+        id=id,
+        name=stub_default_name(),
+        description='description_%s' % str(id),
+        required_extra_specs={
+            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: "true",
+        }
+    )
+
+
+def return_all_share_types(context, search_opts=None):
+    mock_value = dict(
+        share_type_1=stub_share_type(1),
+        share_type_2=stub_share_type(2),
+        share_type_3=stub_default_share_type(3)
+    )
+    return mock_value
+
+
+def return_default_share_type(context, search_opts=None):
+    return stub_default_share_type(3)
 
 
 def return_empty_share_types_get_all_types(context, search_opts=None):
@@ -490,6 +521,65 @@ class ShareTypesAPITest(test.TestCase):
         observed = sorted(observed, key=lambda item: item['id'])
         for d1, d2 in zip(expected, observed):
             self.assertEqual(d1['id'], d2['id'])
+
+    @ddt.data(('2.45', True), ('2.45', False),
+              ('2.46', True), ('2.46', False))
+    @ddt.unpack
+    def test_share_types_create_with_is_default_key(self, version, admin):
+        req = fakes.HTTPRequest.blank('/v2/fake/types',
+                                      version=version,
+                                      use_admin_context=admin)
+
+        body = make_create_body()
+        res_dict = self.controller.create(req, body)
+        if self.is_microversion_ge(version, '2.46'):
+            self.assertIn('is_default', res_dict['share_type'])
+            self.assertIs(False, res_dict['share_type']['is_default'])
+        else:
+            self.assertNotIn('is_default', res_dict['share_type'])
+
+    @ddt.data(('2.45', True), ('2.45', False),
+              ('2.46', True), ('2.46', False))
+    @ddt.unpack
+    def test_share_types_index_with_is_default_key(self, version, admin):
+        default_type_name = stub_default_name()
+        CONF.set_default("default_share_type", default_type_name)
+        self.mock_object(share_types, 'get_all_types',
+                         return_all_share_types)
+
+        req = fakes.HTTPRequest.blank('/v2/fake/types',
+                                      version=version,
+                                      use_admin_context=admin)
+
+        res_dict = self.controller.index(req)
+        self.assertEqual(3, len(res_dict['share_types']))
+        for res in res_dict['share_types']:
+            if self.is_microversion_ge(version, '2.46'):
+                self.assertIn('is_default', res)
+                expected = res['name'] == default_type_name
+                self.assertIs(res['is_default'], expected)
+            else:
+                self.assertNotIn('is_default', res)
+
+    @ddt.data(('2.45', True), ('2.45', False),
+              ('2.46', True), ('2.46', False))
+    @ddt.unpack
+    def test_share_types_default_with_is_default_key(self, version, admin):
+        default_type_name = stub_default_name()
+        CONF.set_default("default_share_type", default_type_name)
+        self.mock_object(share_types, 'get_default_share_type',
+                         return_default_share_type)
+
+        req = fakes.HTTPRequest.blank('/v2/fake/types/default_share_type',
+                                      version=version,
+                                      use_admin_context=admin)
+
+        res_dict = self.controller.default(req)
+        if self.is_microversion_ge(version, '2.46'):
+            self.assertIn('is_default', res_dict['share_type'])
+            self.assertIs(True, res_dict['share_type']['is_default'])
+        else:
+            self.assertNotIn('is_default', res_dict['share_type'])
 
 
 def generate_type(type_id, is_public):

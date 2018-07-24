@@ -65,6 +65,7 @@ Response parameters
    - share_types: share_types_1
    - name: share_group_type_name
    - group_specs: group_specs_required
+   - is_default: is_group_type_default
 
 Response example
 ----------------
@@ -103,7 +104,7 @@ Request
 
 Response parameters
 -------------------
- 
+
 .. rest_parameters:: parameters.yaml
 
    - id: share_group_type_id_required
@@ -111,6 +112,7 @@ Response parameters
    - share_types: share_types_1
    - name: share_group_type_name
    - group_specs: group_specs_required
+   - is_default: is_group_type_default
 
 Response example
 ----------------
@@ -211,6 +213,7 @@ Response parameters
    - name: share_group_type_name
    - share_types: share_types_1
    - is_public: share_group_type_is_public
+   - is_default: is_group_type_default
 
 Response example
 ----------------

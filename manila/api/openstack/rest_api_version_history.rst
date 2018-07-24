@@ -248,3 +248,8 @@ user documentation.
   Added access metadata for share access and also introduced the
   GET /share-access-rules API. The prior API to retrieve access
   rules will not work with API version >=2.45.
+
+2.46
+----
+  Added 'is_default' field to 'share_type' and 'share_group_type'
+  objects.

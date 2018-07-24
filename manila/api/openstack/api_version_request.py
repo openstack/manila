@@ -119,13 +119,15 @@ REST_API_VERSION_HISTORY = """
     * 2.45 - Added access metadata for share access and also introduced
              the GET /share-access-rules API. The prior API to retrieve
              access rules will not work with API version >=2.45.
+    * 2.46 - Added 'is_default' field to 'share_type' and 'share_group_type'
+             objects.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.45"
+_MAX_API_VERSION = "2.46"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 
