@@ -14,6 +14,7 @@
         },
         "id": "7fa1342b-de9d-4d89-bdc8-af67795c0e52",
         "name": "testing",
+        "is_default": false,
         "description": "share type description"
     },
     "volume_type": {
@@ -31,6 +32,7 @@
         },
         "id": "7fa1342b-de9d-4d89-bdc8-af67795c0e52",
         "name": "testing",
+        "is_default": false,
         "description": "share type description"
     }
 }

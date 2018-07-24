@@ -9,6 +9,7 @@
         },
         "id": "2780fc88-526b-464a-a72c-ecb83f0e3929",
         "name": "default-share-type",
+        "is_default": true,
         "description": "manila share type"
     },
     "volume_type": {
@@ -21,6 +22,7 @@
         },
         "id": "2780fc88-526b-464a-a72c-ecb83f0e3929",
         "name": "default-share-type",
+        "is_default": true,
         "description": "manila share type"
     }
 }

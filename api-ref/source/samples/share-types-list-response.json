@@ -10,6 +10,7 @@
             },
             "id": "420e6a31-3f3d-4ed7-9d11-59450372182a",
             "name": "default",
+            "is_default": true,
             "description": "share type description"
         },
         {
@@ -27,6 +28,7 @@
             },
             "id": "7fa1342b-de9d-4d89-bdc8-af67795c0e52",
             "name": "testing",
+            "is_default": false,
             "description": "share type description"
         }
     ],
@@ -41,6 +43,7 @@
             },
             "id": "420e6a31-3f3d-4ed7-9d11-59450372182a",
             "name": "default",
+            "is_default": true,
             "description": "share type description"
         },
         {
@@ -58,6 +61,7 @@
             },
             "id": "7fa1342b-de9d-4d89-bdc8-af67795c0e52",
             "name": "testing",
+            "is_default": false,
             "description": "share type description"
         }
     ]

@@ -13,9 +13,13 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+from oslo_config import cfg
+
 from manila.api import common
 from manila.common import constants
 from manila.share import share_types
+
+CONF = cfg.CONF
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -27,6 +31,7 @@ class ViewBuilder(common.ViewBuilder):
         "add_is_public_attr_extension_like",
         "add_inferred_optional_extra_specs",
         "add_description_attr",
+        "add_is_default_attr"
     ]
 
     def show(self, request, share_type, brief=False):
@@ -103,3 +108,13 @@ class ViewBuilder(common.ViewBuilder):
     @common.ViewBuilder.versioned_method("2.41")
     def add_description_attr(self, context, share_type_dict, share_type):
         share_type_dict['description'] = share_type.get('description')
+
+    @common.ViewBuilder.versioned_method("2.46")
+    def add_is_default_attr(self, context, share_type_dict, share_type):
+        is_default = False
+        type_name = share_type.get('name')
+        default_name = CONF.default_share_type
+
+        if default_name is not None:
+            is_default = default_name == type_name
+        share_type_dict['is_default'] = is_default

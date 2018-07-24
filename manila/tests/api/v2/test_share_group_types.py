@@ -15,6 +15,7 @@ import datetime
 
 import ddt
 import mock
+from oslo_config import cfg
 import webob
 
 from manila.api.v2 import share_group_types as types
@@ -23,6 +24,8 @@ from manila import policy
 from manila.share_group import share_group_types
 from manila import test
 from manila.tests.api import fakes
+
+CONF = cfg.CONF
 
 PROJ1_UUID = '11111111-1111-1111-1111-111111111111'
 PROJ2_UUID = '22222222-2222-2222-2222-222222222222'
@@ -51,6 +54,18 @@ GROUP_TYPE_2 = {
     'is_public': False,
     'group_specs': {'consistent_snapshots': 'true'},
     'share_types': [{'share_type_id': SHARE_TYPE_ID}],
+}
+
+GROUP_TYPE_3 = {
+    'id': '61fdcbed-db27-4cc0-8938-8b4f74c2ae59',
+    'name': u'group type 3',
+    'deleted': False,
+    'created_at': datetime.datetime(2012, 1, 1, 1, 1, 1, 1),
+    'updated_at': None,
+    'deleted_at': None,
+    'is_public': True,
+    'group_specs': {},
+    'share_types': [],
 }
 
 
@@ -429,6 +444,98 @@ class ShareGroupTypesAPITest(test.TestCase):
         self.assertRaises(
             webob.exc.HTTPNotFound,
             self.controller._create, req, fake_body)
+
+    @ddt.data(('2.45', True), ('2.45', False),
+              ('2.46', True), ('2.46', False))
+    @ddt.unpack
+    def test_share_group_types_create_with_is_default_key(self,
+                                                          version,
+                                                          admin):
+        # is_default is false
+        fake_type = copy.deepcopy(GROUP_TYPE_1)
+        fake_type['share_types'] = [{'share_type_id': SHARE_TYPE_ID}]
+        self.mock_object(share_group_types, 'create')
+        self.mock_object(
+            share_group_types, 'get_by_name',
+            mock.Mock(return_value=fake_type))
+        req = fake_request('/v2/fake/share-group-types',
+                           version=version,
+                           admin=admin)
+        fake_body = {'share_group_type': {
+            'name': GROUP_TYPE_1['name'],
+            'share_types': [SHARE_TYPE_ID],
+        }}
+        res_dict = self.controller._create(req, fake_body)
+        if self.is_microversion_ge(version, '2.46'):
+            self.assertIn('is_default', res_dict['share_group_type'])
+            self.assertIs(False, res_dict['share_group_type']['is_default'])
+        else:
+            self.assertNotIn('is_default', res_dict['share_group_type'])
+
+        # is_default is true
+        default_type_name = 'group type 3'
+        CONF.set_default('default_share_group_type', default_type_name)
+
+        fake_type = copy.deepcopy(GROUP_TYPE_3)
+        fake_type['share_types'] = [{'share_type_id': SHARE_TYPE_ID}]
+        self.mock_object(share_group_types, 'create')
+        self.mock_object(
+            share_group_types, 'get_by_name',
+            mock.Mock(return_value=fake_type))
+        req = fake_request('/v2/fake/share-group-types',
+                           version=version,
+                           admin=admin)
+        fake_body = {'share_group_type': {
+            'name': GROUP_TYPE_3['name'],
+            'share_types': [SHARE_TYPE_ID],
+        }}
+        res_dict = self.controller._create(req, fake_body)
+        if self.is_microversion_ge(version, '2.46'):
+            self.assertIn('is_default', res_dict['share_group_type'])
+            self.assertIs(True, res_dict['share_group_type']['is_default'])
+        else:
+            self.assertNotIn('is_default', res_dict['share_group_type'])
+
+    @ddt.data(('2.45', True), ('2.45', False),
+              ('2.46', True), ('2.46', False))
+    @ddt.unpack
+    def test_share_group_types_list_with_is_default_key(self, version, admin):
+        fake_types = {
+            GROUP_TYPE_1['name']: GROUP_TYPE_1,
+            GROUP_TYPE_2['name']: GROUP_TYPE_2,
+        }
+        self.mock_object(
+            share_group_types, 'get_all',
+            mock.Mock(return_value=fake_types))
+        req = fake_request(
+            '/v2/fake/share-group-types?is_public=all',
+            version=version,
+            admin=admin)
+        res_dict = self.controller.index(req)
+        for res in res_dict['share_group_types']:
+            if self.is_microversion_ge(version, '2.46'):
+                self.assertIn('is_default', res)
+                self.assertIs(False, res['is_default'])
+            else:
+                self.assertNotIn('is_default', res)
+        self.assertEqual(2, len(res_dict['share_group_types']))
+
+    @ddt.data(('2.45', True), ('2.45', False),
+              ('2.46', True), ('2.46', False))
+    @ddt.unpack
+    def test_shares_group_types_show_with_is_default_key(self, version, admin):
+        self.mock_object(
+            share_group_types, 'get',
+            mock.Mock(return_value=GROUP_TYPE_2))
+        req = fake_request('/v2/fake/group-types/%s' % GROUP_TYPE_2['id'],
+                           version=version,
+                           admin=admin)
+        res_dict = self.controller.show(req, GROUP_TYPE_2['id'])
+        if self.is_microversion_ge(version, '2.46'):
+            self.assertIn('is_default', res_dict['share_group_type'])
+            self.assertIs(False, res_dict['share_group_type']['is_default'])
+        else:
+            self.assertNotIn('is_default', res_dict['share_group_type'])
 
 
 class ShareGroupTypeAccessTest(test.TestCase):

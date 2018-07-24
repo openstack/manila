@@ -1,0 +1,6 @@
+---
+features:
+
+  - The share type and share group type APIs in API version 2.46 return
+    field "is_default" which is set to 'true' if the share type or the
+    share group type is the default as configured by the administrator.

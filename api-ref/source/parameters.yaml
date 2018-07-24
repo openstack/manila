@@ -1611,6 +1611,24 @@ is_admin_only:
   in: body
   required: true
   type: boolean
+is_default_type:
+  description: |
+    Defines the share type created is default or not. If the returning
+    value is true, then it is the default share type, otherwise, it is
+    not default.
+  in: body
+  required: true
+  type: boolean
+  min_version: 2.46
+is_group_type_default:
+  description: |
+    Defines the share group type created is default or not. If the
+    returning value is true, then it is the default share group type,
+    otherwise, it is not default.
+  in: body
+  required: true
+  type: boolean
+  min_version: 2.46
 is_public:
   description: |
     (Since API v2.8) The level of visibility for the

@@ -9,12 +9,19 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
+from oslo_config import cfg
 
 from manila.api import common
+
+CONF = cfg.CONF
 
 
 class ShareGroupTypeViewBuilder(common.ViewBuilder):
     _collection_name = 'share_group_types'
+
+    _detail_version_modifiers = [
+        "add_is_default_attr",
+    ]
 
     def show(self, request, share_group_type, brief=False):
         """Trim away extraneous share group type attributes."""
@@ -37,3 +44,15 @@ class ShareGroupTypeViewBuilder(common.ViewBuilder):
             for share_group_type in share_group_types
         ]
         return {"share_group_types": share_group_types_list}
+
+    @common.ViewBuilder.versioned_method("2.46")
+    def add_is_default_attr(self, context,
+                            share_group_type_dict,
+                            share_group_type):
+        is_default = False
+        type_name = share_group_type.get('name')
+        default_name = CONF.default_share_group_type
+
+        if default_name is not None:
+            is_default = default_name == type_name
+        share_group_type_dict['is_default'] = is_default
