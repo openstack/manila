@@ -383,7 +383,8 @@ def serve(server, workers=None):
     global _launcher
     if _launcher:
         raise RuntimeError('serve() can only be called once')
-    _launcher = service.launch(CONF, server, workers=workers)
+    _launcher = service.launch(CONF, server, workers=workers,
+                               restart_method='mutate')
 
 
 def wait():
