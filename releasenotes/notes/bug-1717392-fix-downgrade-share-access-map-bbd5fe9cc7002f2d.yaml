@@ -1,0 +1,7 @@
+---
+fixes:
+  - The `Launchpad bug 1717392
+    <https://bugs.launchpad.net/manila/+bug/1717392>`_
+    has been fixed and database downgrades do not fail if the database
+    contains deleted access rules. Database downgrades are not recommended
+    in production environments.
