@@ -1,0 +1,5 @@
+---
+fixes:
+  - The SIGHUP behavior for the manila-scheduler service has been fixed.
+    Previously, only the manila-share service was responding to SIGHUP and
+    reloading its configuration, now manila-scheduler does the same.
