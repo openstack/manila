@@ -73,9 +73,10 @@ class QnapShareDriver(driver.ShareDriver):
         1.0.4 - Add support for QES fw 2.0.0.
         1.0.5 - Fix bug #1773761, when user tries to manage share, the size
                 of managed share should not be changed.
+        1.0.6 - Add support for QES fw 2.1.0.
     """
 
-    DRIVER_VERSION = '1.0.5'
+    DRIVER_VERSION = '1.0.6'
 
     def __init__(self, *args, **kwargs):
         """Initialize QnapShareDriver."""
@@ -164,14 +165,14 @@ class QnapShareDriver(driver.ShareDriver):
                         username=self.configuration.qnap_nas_login,
                         password=self.configuration.qnap_nas_password,
                         management_url=self.configuration.qnap_management_url)
-            elif "1.1.2" <= fw_version <= "2.0.9999":
+            elif "1.1.2" <= fw_version <= "2.1.9999":
                 LOG.debug('Create ES API Executor')
                 return api.QnapAPIExecutor(
                     username=self.configuration.qnap_nas_login,
                     password=self.configuration.qnap_nas_password,
                     management_url=self.configuration.qnap_management_url)
         elif model_type in es_model_types:
-            if "1.1.2" <= fw_version <= "2.0.9999":
+            if "1.1.2" <= fw_version <= "2.1.9999":
                 LOG.debug('Create ES API Executor')
                 return api.QnapAPIExecutor(
                     username=self.configuration.qnap_nas_login,
