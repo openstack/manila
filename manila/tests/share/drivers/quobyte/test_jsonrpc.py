@@ -141,6 +141,29 @@ class QuobyteJsonRpcTestCase(test.TestCase):
             verify=fake_ca_file)
         self.assertEqual("Sweet gorilla of Manila", result)
 
+    @mock.patch.object(jsonrpc.JsonRpc, "_checked_for_application_error",
+                       return_value="Sweet gorilla of Manila")
+    @mock.patch.object(requests, "post",
+                       return_value=FakeResponse(
+                           200, {"result": "Sweet gorilla of Manila"}))
+    def test_https_call_verify_expected_error(self, mock_req_get, mock_check):
+        fake_ca_file = tempfile.TemporaryFile()
+        self.rpc = jsonrpc.JsonRpc(url="https://test",
+                                   user_credentials=("me", "team"),
+                                   ca_file=fake_ca_file)
+
+        result = self.rpc.call('method', {'param': 'value'},
+                               expected_errors=[42])
+
+        mock_req_get.assert_called_once_with(
+            url=self.rpc._url,
+            json=mock.ANY,  # not checking here as of undefined order in dict
+            auth=self.rpc._credentials,
+            verify=fake_ca_file)
+        mock_check.assert_called_once_with(
+            {'result': 'Sweet gorilla of Manila'}, [42])
+        self.assertEqual("Sweet gorilla of Manila", result)
+
     @mock.patch.object(requests, "post", side_effect=exceptions.HTTPError)
     def test_jsonrpc_call_http_exception(self, req_get_mock):
         self.assertRaises(exceptions.HTTPError,
@@ -169,12 +192,22 @@ class QuobyteJsonRpcTestCase(test.TestCase):
                          (self.rpc._checked_for_application_error(
                              result=resultdict)))
 
+    def test_checked_for_application_error_enf(self):
+        resultdict = {"result": "Sweet gorilla of Manila",
+                      "error": {"message": "No Gorilla",
+                                "code": jsonrpc.ERROR_ENTITY_NOT_FOUND}}
+        self.assertIsNone(
+            self.rpc._checked_for_application_error(
+                result=resultdict,
+                expected_errors=[jsonrpc.ERROR_ENTITY_NOT_FOUND]))
+
     def test_checked_for_application_error_no_entry(self):
         resultdict = {"result": "Sweet gorilla of Manila",
                       "error": {"message": "No Gorilla",
                                 "code": jsonrpc.ERROR_ENOENT}}
         self.assertIsNone(
-            self.rpc._checked_for_application_error(result=resultdict))
+            self.rpc._checked_for_application_error(
+                result=resultdict, expected_errors=[jsonrpc.ERROR_ENOENT]))
 
     def test_checked_for_application_error_exception(self):
         self.assertRaises(exception.QBRpcException,
