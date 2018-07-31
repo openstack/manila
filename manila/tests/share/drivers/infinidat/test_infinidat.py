@@ -65,11 +65,7 @@ def skip_driver_setup(func):
 
 
 class FakeInfinisdkException(Exception):
-    def __init__(self, message=None, error_code=None, *args):
-        self.message = message
-        self.error_code = error_code
-        super(FakeInfinisdkException, self).__init__(
-            message, error_code, *args)
+    pass
 
 
 class FakeInfinisdkPermission(object):
