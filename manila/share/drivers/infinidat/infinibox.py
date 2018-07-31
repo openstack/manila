@@ -216,10 +216,11 @@ class InfiniboxShareDriver(driver.ShareDriver):
         return 'openstack-snap-%s' % manila_snapshot['id']
 
     def _set_manila_object_metadata(self, infinidat_object, manila_object):
-        data = dict(system="openstack",
-                    openstack_version=version.version_info.release_string(),
-                    manila_id=manila_object['id'],
-                    manila_name=manila_object['name'])
+        data = {"system": "openstack",
+                "openstack_version": version.version_info.release_string(),
+                "manila_id": manila_object['id'],
+                "manila_name": manila_object['name'],
+                "host.created_by": _INFINIDAT_MANILA_IDENTIFIER}
         infinidat_object.set_metadata_from_dict(data)
 
     @infinisdk_to_manila_exceptions

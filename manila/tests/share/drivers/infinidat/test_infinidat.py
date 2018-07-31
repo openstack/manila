@@ -24,6 +24,7 @@ from manila import exception
 from manila.share import configuration
 from manila.share.drivers.infinidat import infinibox
 from manila import test
+from manila import version
 
 
 _MOCK_SHARE_ID = 1
@@ -189,6 +190,17 @@ class InfiniboxDriverTestCaseBase(test.TestCase):
 
 
 class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
+    def _generate_mock_metadata(self, share):
+        return {"system": "openstack",
+                "openstack_version": version.version_info.release_string(),
+                "manila_id": share['id'],
+                "manila_name": share['name'],
+                "host.created_by": infinibox._INFINIDAT_MANILA_IDENTIFIER}
+
+    def _validate_metadata(self, share):
+        self._mock_filesystem.set_metadata_from_dict.assert_called_once_with(
+            self._generate_mock_metadata(share))
+
     @mock.patch("manila.share.drivers.infinidat.infinibox.infinisdk", None)
     def test_no_infinisdk_module(self):
         self.assertRaises(exception.ManilaException,
@@ -387,7 +399,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         # This test uses the default infinidat_thin_provision = True setting:
         self.driver.create_share(None, test_share)
         self._system.filesystems.create.assert_called_once()
-        self._mock_filesystem.set_metadata_from_dict.assert_called_once()
+        self._validate_metadata(test_share)
         self._mock_filesystem.add_export.assert_called_once_with(
             permissions=[])
 
@@ -395,7 +407,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self.configuration.infinidat_thin_provision = False
         self.driver.create_share(None, test_share)
         self._system.filesystems.create.assert_called_once()
-        self._mock_filesystem.set_metadata_from_dict.assert_called_once()
+        self._validate_metadata(test_share)
         self._mock_filesystem.add_export.assert_called_once_with(
             permissions=[])
 
@@ -472,7 +484,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
     def test_create_snapshot(self):
         self.driver.create_snapshot(None, test_snapshot)
         self._mock_filesystem.create_snapshot.assert_called_once()
-        self._mock_filesystem.set_metadata_from_dict.assert_called_once()
+        self._validate_metadata(test_snapshot)
         self._mock_filesystem.add_export.assert_called_once_with(
             permissions=[])
 
@@ -480,7 +492,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
         self._mock_filesystem.create_snapshot.return_value = (
             self._mock_filesystem)
         self.driver.create_snapshot(None, test_snapshot)
-        self._mock_filesystem.set_metadata_from_dict.assert_called_once()
+        self._validate_metadata(test_snapshot)
 
     def test_create_snapshot_share_doesnt_exist(self):
         self._system.filesystems.safe_get.return_value = None
