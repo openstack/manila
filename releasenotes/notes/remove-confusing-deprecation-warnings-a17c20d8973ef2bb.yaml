@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Removed confusing manila.db.sqlalchemy model messages indicating deprecated
+    properties for ``share_type``, ``host``, ``share_server_id``, ``share_network_id``,
+    ``available_zone``.  These are exposed in the API as properties of shares and
+    are not in fact actually deprecated as such.
