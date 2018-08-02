@@ -43,9 +43,20 @@ The following operations are supported:
 
 - Deny share access.
 
+- Bring an existing ZFSOnLinux share under the shared file system service (Managing a share)
+
+- Remove a ZFSOnLinux share from the shared file system service without
+  deleting it (Unmanaging a share)
+
 - Create a snapshot.
 
 - Delete a snapshot.
+
+- Bring an existing ZFSOnLinux snapshot under the shared file system
+  service (Managing a snapshot)
+
+- Remove a ZFSOnLinux snapshot from the shared file system service without
+  deleting it (Unmanaging a snapshot)
 
 - Create a share from snapshot.
 
@@ -93,10 +104,6 @@ The ZFSonLinux share driver has the following restrictions:
   one active replica available.
 
 - The below items are not yet implemented:
-
-  - ``Manage share`` operation.
-
-  - ``Manage snapshot`` operation.
 
   - ``SaMBa`` based sharing.
 
