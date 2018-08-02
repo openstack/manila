@@ -120,9 +120,3 @@ class SecurityServicesNegativeTest(base.BaseSharesTest):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_security_service,
                           ss["id"])
-
-    @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
-    def test_try_list_security_services_all_tenants(self):
-        self.assertRaises(lib_exc.Forbidden,
-                          self.shares_client.list_security_services,
-                          params={'all_tenants': 1})

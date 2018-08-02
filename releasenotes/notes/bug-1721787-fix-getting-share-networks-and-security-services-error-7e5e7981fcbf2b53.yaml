@@ -1,0 +1,6 @@
+---
+fixes:
+  - Non admin users may invoke GET /share-networks and GET /security-services
+    APIs with the 'all-tenants' flag in the query, however, the flag is
+    ignored, and only resources belonging to the project will be served. This
+    API change was made to fix bug 1721787 in the manila client project.

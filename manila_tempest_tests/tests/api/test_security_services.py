@@ -200,3 +200,11 @@ class SecurityServicesTest(base.BaseSharesTest,
         self.assertTrue(any(self.ss_ldap['id'] == ss['id'] for ss in listed))
         self.assertTrue(any(self.ss_kerberos['id'] == ss['id']
                             for ss in listed))
+
+    @tc.attr(base.TAG_POSITIVE, base.TAG_API)
+    def test_try_list_security_services_all_tenants(self):
+        listed = self.shares_client.list_security_services(
+            params={'all_tenants': 1})
+        self.assertTrue(any(self.ss_ldap['id'] == ss['id'] for ss in listed))
+        self.assertTrue(any(self.ss_kerberos['id'] == ss['id']
+                            for ss in listed))
