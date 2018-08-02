@@ -89,10 +89,12 @@ def downgrade():
     instance_access_table = utils.load_table('share_instance_access_map',
                                              connection)
 
-    for access_rule in connection.execute(access_table.select()):
+    share_access_rules = connection.execute(
+        access_table.select().where(access_table.c.deleted == "False"))
+
+    for access_rule in share_access_rules:
         access_mapping = connection.execute(
             instance_access_table.select().where(
-                instance_access_table.c.deleted == "False").where(
                 instance_access_table.c.access_id == access_rule['id'])
         ).first()
 
