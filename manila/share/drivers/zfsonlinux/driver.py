@@ -724,15 +724,6 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
             "username": self.configuration.zfs_ssh_username,
             "host": self.service_ip,
         }
-        self.private_storage.update(
-            share["id"], {
-                "entity_type": "share",
-                "dataset_name": new_dataset_name,
-                "ssh_cmd": ssh_cmd,  # used in replication
-                "pool_name": actual_pool_name,  # used in replication
-                "used_options": " ".join(options),
-            }
-        )
 
         # Perform checks on requested dataset
         if actual_pool_name != scheduled_pool_name:
@@ -760,13 +751,25 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
                     "dataset": old_dataset_name,
                     "zpool": actual_pool_name})
 
-        # Rename dataset
-        out, err = self.execute("sudo", "mount")
-        if "%s " % old_dataset_name in out:
-            self.zfs_with_retry("umount", "-f", old_dataset_name)
-            time.sleep(1)
+        # Unmount the dataset before attempting to rename and mount
+        try:
+            self._unmount_share_with_retry(old_dataset_name)
+        except exception.ZFSonLinuxException:
+            msg = _("Unable to unmount share before renaming and re-mounting.")
+            raise exception.ZFSonLinuxException(message=msg)
+
+        # Rename the dataset and mount with new name
         self.zfs_with_retry("rename", old_dataset_name, new_dataset_name)
-        self.zfs("mount", new_dataset_name)
+
+        try:
+            self.zfs("mount", new_dataset_name)
+        except exception.ProcessExecutionError:
+            # Workaround for bug/1785180
+            out, err = self.zfs("mount")
+            mounted = any([new_dataset_name in mountedfs
+                           for mountedfs in out.splitlines()])
+            if not mounted:
+                raise
 
         # Apply options to dataset
         for option in options:
@@ -775,6 +778,16 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
         # Get new export locations of renamed dataset
         export_locations = self._get_share_helper(
             share["share_proto"]).get_exports(new_dataset_name)
+
+        self.private_storage.update(
+            share["id"], {
+                "entity_type": "share",
+                "dataset_name": new_dataset_name,
+                "ssh_cmd": ssh_cmd,  # used in replication
+                "pool_name": actual_pool_name,  # used in replication
+                "used_options": " ".join(options),
+            }
+        )
 
         return {"size": share["size"], "export_locations": export_locations}
 
@@ -835,6 +848,17 @@ class ZFSonLinuxShareDriver(zfs_utils.ExecuteMixin, driver.ShareDriver):
     def unmanage_snapshot(self, snapshot_instance):
         """Unmanage dataset snapshot."""
         self.private_storage.delete(snapshot_instance["snapshot_id"])
+
+    @utils.retry(exception.ZFSonLinuxException)
+    def _unmount_share_with_retry(self, share_name):
+        out, err = self.execute("sudo", "mount")
+        if "%s " % share_name not in out:
+            return
+        self.zfs_with_retry("umount", "-f", share_name)
+        out, err = self.execute("sudo", "mount")
+        if "%s " % share_name in out:
+            raise exception.ZFSonLinuxException(
+                _("Unable to unmount dataset %s"), share_name)
 
     def _get_replication_snapshot_prefix(self, replica):
         """Returns replica-based snapshot prefix."""
