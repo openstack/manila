@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    The ZFSOnLinux driver now retries unmounting zfs shares
+    to perform the manage operation. See `Launchpad bug 1785180
+    <https://bugs.launchpad.net/manila/+bug/1785180>`_ for details.
