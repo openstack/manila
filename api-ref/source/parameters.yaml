@@ -389,10 +389,11 @@ share_server_id_query:
   type: string
 share_type_id_2:
   description: |
-    (Since API v2.6) The UUID of the share type.
+    The UUID of the share type.
   in: query
   required: false
   type: string
+  min_version: 2.6
 share_type_query:
   description: |
     The share type name or UUID. Allows filtering back end pools based
@@ -654,10 +655,11 @@ allow_access:
   type: object
 availability_zone:
   description: |
-    (Since API v2.1) The availability zone.
+    The availability zone.
   in: body
   required: false
   type: string
+  min_version: 2.1
 availability_zone_1:
   description: |
     The availability zone.
@@ -1466,11 +1468,11 @@ group_specs_required:
   type: object
 has_replicas:
   description: |
-    (Since API v2.11) Indicates whether a share has
-    replicas or not.
+    Indicates whether a share has replicas or not.
   in: body
   required: true
   type: boolean
+  min_version: 2.11
 host_1:
   description: |
     The share host name.
@@ -1631,12 +1633,13 @@ is_group_type_default:
   min_version: 2.46
 is_public:
   description: |
-    (Since API v2.8) The level of visibility for the
-    share. Set to ``true`` to make share public. Set to ``false`` to
-    make it private. Default value is ``false``.
+    The level of visibility for the share. Set to ``true`` to make
+    share public. Set to ``false`` to make it private. Default value
+    is ``false``.
   in: body
   required: false
   type: boolean
+  min_version: 2.8
 link_1:
   description: |
     The share links
@@ -2273,12 +2276,13 @@ remaining:
   type: integer
 replica_state:
   description: |
-    (Since API v2.11) The share replica state. Has
-    set value only when replication is used. List of possible values:
-    ``active``, ``in_sync``, ``out_of_sync``, and ``error``.
+    The share replica state. Has set value only when replication
+    is used. List of possible values: ``active``, ``in_sync``,
+    ``out_of_sync``, and ``error``.
   in: body
   required: true
   type: string
+  min_version: 2.11
 replication_type:
   description: |
     The share replication type.
@@ -3074,11 +3078,12 @@ share_type:
   type: string
 share_type_1:
   description: |
-    (Since API v2.6) The UUID of the share type.  In
-    minor versions, this parameter is a share type name, as a string.
+    The UUID of the share type.  In minor versions, this parameter is
+    a share type name, as a string.
   in: body
   required: true
   type: string
+  min_version: 2.6
 share_type_2:
   description: |
     The share type name.
@@ -3115,12 +3120,13 @@ share_type_id_body:
   type: string
 share_type_name:
   description: |
-    (Since API v2.6) The share type name.  Minor
-    versions support only the ``share_type`` parameter where the share
-    type name is expected.
+    The share type name.  Minor versions support only the
+    ``share_type`` parameter where the share type name is
+    expected.
   in: body
   required: true
   type: string
+  min_version: 2.6
 share_types:
   description: |
     A list of one or more share type IDs.
@@ -3383,12 +3389,12 @@ snapshot_status_request:
   type: string
 snapshot_support:
   description: |
-    (Since API v2.2) An extra specification that
-    filters back ends by whether they do or do not support share
-    snapshots.
+    An extra specification that filters back ends by whether
+    they do or do not support share snapshots.
   in: body
   required: true
   type: boolean
+  min_version: 2.2
 snapshot_support_1:
   description: |
     An extra specification that filters back ends by
@@ -3545,9 +3551,8 @@ storage_protocol:
   type: string
 task_state:
   description: |
-    (Since API v2.5) For the share migration, the
-    migration task state.  A valid value is ``null``,
-    ``migration_starting``, ``migration_error``,
+    For the share migration, the migration task state.  A valid
+    value is ``null``, ``migration_starting``, ``migration_error``,
     ``migration_success``, ``migration_completing``, or ``migrating``.
     The ``task_state`` is ``null`` unless the share is migrated from
     one back-end to another. For details, see ``os-migrate_share``
@@ -3555,6 +3560,7 @@ task_state:
   in: body
   required: true
   type: string
+  min_version: 2.5
 timestamp:
   description: |
     The date and time stamp when the API request was issued.
