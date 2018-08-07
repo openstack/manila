@@ -1819,7 +1819,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
     @na_utils.trace
     def update_share(self, share, share_comment=None, share_server=None):
-        """Updates comment for a share."""
+        """Updates a share: comment, qos settings, dedup and compression."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_name = self._get_backend_share_name(share['id'])
         aggregate_name = share_utils.extract_host(share['host'], level='pool')
@@ -1843,7 +1843,7 @@ class NetAppCmodeFileStorageLibrary(object):
         if qos_policy_group_name:
             provisioning_options['qos_policy_group'] = qos_policy_group_name
         vserver_client.modify_volume(aggregate_name, share_name,
-                                     comment=share_comment,
+                                     comment=share_comment, replica=True,
                                      **provisioning_options)
 
     def setup_server(self, network_info, metadata=None):
