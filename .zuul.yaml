@@ -65,6 +65,7 @@
       - openstack-infra/devstack-gate
       - openstack/manila
       - openstack/python-manilaclient
+      - openstack/manila-tempest-plugin
 
 - job:
     name: manila-tempest-base

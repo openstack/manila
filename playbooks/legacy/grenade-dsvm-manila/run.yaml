@@ -28,6 +28,7 @@
           set -e
           set -x
           export PROJECTS="openstack-dev/grenade $PROJECTS"
+          export PROJECTS="openstack/manila-tempest-plugin $PROJECTS"
           export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
           export PYTHONUNBUFFERED=true
           export DEVSTACK_GATE_NEUTRON=0
