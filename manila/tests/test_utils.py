@@ -593,7 +593,7 @@ class TestRetryDecorator(test.TestCase):
             def fails_once():
                 self.counter += 1
                 if self.counter < 2:
-                    raise exception.ManilaException(data='fake')
+                    raise exception.ManilaException(message='fake')
                 else:
                     return 'success'
 
