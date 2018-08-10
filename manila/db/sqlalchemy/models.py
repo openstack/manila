@@ -1085,10 +1085,10 @@ class ShareGroup(BASE, ManilaBase):
         ShareGroupTypes,
         backref="share_groups",
         foreign_keys=share_group_type_id,
-        primaryjoin='and_('
-                    'ShareGroup.share_group_type_id == '
-                    'ShareGroupTypes.id,'
-                    'ShareGroup.deleted == 0)')
+        primaryjoin="and_("
+                    "ShareGroup.share_group_type_id =="
+                    "ShareGroupTypes.id,"
+                    "ShareGroup.deleted == 'False')")
     _availability_zone = orm.relationship(
         "AvailabilityZone",
         lazy='immediate',
