@@ -47,7 +47,9 @@ Below you will a brief explanation of the different components.
 
 
 * DB: sql database for data storage. Used by all components (LINKS NOT SHOWN)
-* Web Dashboard: external component that talks to the api. Beta extended Horizon available here: https://github.com/NetApp/horizon/tree/manila
+* Web Dashboard: external component that talks to the api, implemented as a
+  plugin to the OpenStack Dashboard (Horizon) project, source
+  is `here <https://github.com/openstack/manila-ui>`_.
 * :term:`manila-api`
 * Auth Manager: component responsible for users/projects/and roles.  Can backend to DB or LDAP.  This is not a separate binary, but rather a python class that is used by most components in the system.
 * :term:`manila-scheduler`
