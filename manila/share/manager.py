@@ -311,6 +311,10 @@ class ShareManager(manager.SchedulerDependentManager):
                 self.driver.initialized = True
 
         _driver_setup()
+        if (self.driver.driver_handles_share_servers and
+                hasattr(self.driver, 'service_instance_manager')):
+            (self.driver.service_instance_manager.network_helper.
+             setup_connectivity_with_service_instances())
 
         share_instances = self.db.share_instances_get_all_by_host(ctxt,
                                                                   self.host)

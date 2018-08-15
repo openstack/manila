@@ -29,9 +29,18 @@ class FakeServiceInstanceManager(object):
         self.share_networks_servers = {}
         self.fake_server = fake_compute.FakeServer()
         self.service_instance_name_template = 'manila_fake_service_instance-%s'
+        self._network_helper = None
 
     def get_service_instance(self, context, share_network_id, create=True):
         return self.fake_server
+
+    @property
+    def network_helper(self):
+        return self._get_network_helper()
+
+    def _get_network_helper(self):
+        self._network_helper = FakeNeutronNetworkHelper()
+        return self._network_helper
 
     def _create_service_instance(self, context, instance_name,
                                  share_network_id, old_server_ip):
@@ -42,3 +51,9 @@ class FakeServiceInstanceManager(object):
 
     def _get_service_instance_name(self, share_network_id):
         return self.service_instance_name_template % share_network_id
+
+
+class FakeNeutronNetworkHelper(object):
+
+    def setup_connectivity_with_service_instances(self):
+        pass
