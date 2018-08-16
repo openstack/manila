@@ -32,6 +32,7 @@ VOLUME_NAME_TEMPLATE = 'share_%(share_id)s'
 VSERVER_NAME_TEMPLATE = 'os_%s'
 AGGREGATE_NAME_SEARCH_PATTERN = '(.*)'
 SHARE_NAME = 'share_7cf7c200_d3af_4e05_b87e_9167c95dfcad'
+SHARE_INSTANCE_NAME = 'share_d24e7257_124e_4fb6_b05b_d384f660bc85'
 FLEXVOL_NAME = 'fake_volume'
 JUNCTION_PATH = '/%s' % FLEXVOL_NAME
 EXPORT_LOCATION = '%s:%s' % (HOST_NAME, JUNCTION_PATH)
@@ -44,6 +45,7 @@ SHARE_ID = '7cf7c200-d3af-4e05-b87e-9167c95dfcad'
 SHARE_ID2 = 'b51c5a31-aa5b-4254-9ee8-7d39fa4c8c38'
 SHARE_ID3 = '1379991d-037b-4897-bf3a-81b4aac72eff'
 SHARE_ID4 = '1cb41aad-fd9b-4964-8059-646f69de925e'
+SHARE_INSTANCE_ID = 'd24e7257-124e-4fb6-b05b-d384f660bc85'
 PARENT_SHARE_ID = '585c3935-2aa9-437c-8bad-5abae1076555'
 SNAPSHOT_ID = 'de4c9050-e2f9-4ce1-ade4-5ed0c9f26451'
 CONSISTENCY_GROUP_ID = '65bfa2c9-dc6c-4513-951a-b8d15b453ad8'
@@ -104,6 +106,21 @@ SHARE = {
     'status': constants.STATUS_AVAILABLE,
     'share_server': None,
     'encrypt': False,
+}
+
+SHARE_INSTANCE = {
+    'id': SHARE_INSTANCE_ID,
+    'share_id': SHARE_ID,
+    'host': MANILA_HOST_NAME,
+    'project_id': TENANT_ID,
+    'name': SHARE_INSTANCE_NAME,
+    'size': SHARE_SIZE,
+    'share_proto': 'fake',
+    'share_type_id': SHARE_TYPE_ID,
+    'share_network_id': '5dfe0898-e2a1-4740-9177-81c7d26713b0',
+    'share_server_id': '7e6a2cc8-871f-4b1d-8364-5aad0f98da86',
+    'replica_state': constants.REPLICA_STATE_ACTIVE,
+    'status': constants.STATUS_AVAILABLE,
 }
 
 FLEXVOL_TO_MANAGE = {
@@ -267,9 +284,6 @@ REMAPPED_OVERLAPPING_EXTRA_SPEC = {
     'netapp:dedup': 'true',
     'netapp:thin_provisioned': 'false',
 }
-
-EXTRA_SPEC_SHARE = copy.deepcopy(SHARE)
-EXTRA_SPEC_SHARE['share_type_id'] = SHARE_TYPE_ID
 
 USER_NETWORK_ALLOCATIONS = [
     {
