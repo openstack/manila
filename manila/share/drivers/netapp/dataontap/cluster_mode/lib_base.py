@@ -2933,22 +2933,20 @@ class NetAppCmodeFileStorageLibrary(object):
             raise exception.NetAppException(message=msg)
 
     def get_backend_info(self, context):
+        # ccloud wants to always run this
+        raise NotImplementedError()
         snapdir_visibility = self.configuration.netapp_reset_snapdir_visibility
         return {
             'snapdir_visibility': snapdir_visibility,
         }
 
     def ensure_shares(self, context, shares):
-        cfg_snapdir = self.configuration.netapp_reset_snapdir_visibility
-        hide_snapdir = self.HIDE_SNAPDIR_CFG_MAP[cfg_snapdir.lower()]
-        if hide_snapdir is not None:
-            for share in shares:
-                share_server = share.get('share_server')
-                vserver, vserver_client = self._get_vserver(
-                    share_server=share_server)
-                share_name = self._get_backend_share_name(share['id'])
-                self._apply_snapdir_visibility(
-                    hide_snapdir, share_name, vserver_client)
+        updates = {}
+        for share in shares:
+            share_server = share.get('share_server')
+            self.update_share(share, share_server=share_server)
+            updates[share['id']] = {'status': constants.STATUS_AVAILABLE}
+        return updates
 
     def get_share_status(self, share, share_server=None):
         if share['status'] == constants.STATUS_CREATING_FROM_SNAPSHOT:

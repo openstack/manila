@@ -411,7 +411,10 @@ class ShareManager(manager.SchedulerDependentManager):
         LOG.debug("Re-exporting %s shares", len(share_instances))
 
         for share_instance in share_instances:
-            share_ref = self.db.share_get(ctxt, share_instance['share_id'])
+            try:
+                share_ref = self.db.share_get(ctxt, share_instance['share_id'])
+            except exception.NotFound:
+                continue
 
             if share_ref.is_busy:
                 LOG.info(

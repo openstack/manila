@@ -5788,55 +5788,55 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                 snap_dict,
                                                 share_server=fake.SHARE_SERVER)
 
-    @ddt.data('default', 'hidden', 'visible')
-    def test_get_backend_info(self, snapdir):
-
-        self.library.configuration.netapp_reset_snapdir_visibility = snapdir
-        expected = {'snapdir_visibility': snapdir}
-
-        result = self.library.get_backend_info(self.context)
-        self.assertEqual(expected, result)
-
-    @ddt.data('default', 'hidden')
-    def test_ensure_shares(self, snapdir_cfg):
-        shares = [
-            fake_share.fake_share_instance(id='s-1',
-                                           share_server='fake_server_1'),
-            fake_share.fake_share_instance(id='s-2',
-                                           share_server='fake_server_2'),
-            fake_share.fake_share_instance(id='s-3',
-                                           share_server='fake_server_2')
-        ]
-
-        vserver_client = mock.Mock()
-        self.mock_object(
-            self.library, '_get_vserver',
-            mock.Mock(side_effect=[
-                (fake.VSERVER1, vserver_client),
-                (fake.VSERVER2, vserver_client),
-                (fake.VSERVER2, vserver_client)
-            ]))
-        (self.library.configuration.
-         netapp_reset_snapdir_visibility) = snapdir_cfg
-
-        self.library.ensure_shares(self.context, shares)
-
-        if snapdir_cfg == 'default':
-            self.library._get_vserver.assert_not_called()
-            vserver_client.set_volume_snapdir_access.assert_not_called()
-
-        else:
-            self.library._get_vserver.assert_has_calls([
-                mock.call(share_server='fake_server_1'),
-                mock.call(share_server='fake_server_2'),
-                mock.call(share_server='fake_server_2'),
-            ])
-
-            vserver_client.set_volume_snapdir_access.assert_has_calls([
-                mock.call('share_s_1', True),
-                mock.call('share_s_2', True),
-                mock.call('share_s_3', True),
-            ])
+    # @ddt.data('default', 'hidden', 'visible')
+    # def test_get_backend_info(self, snapdir):
+    #
+    #     self.library.configuration.netapp_reset_snapdir_visibility = snapdir
+    #     expected = {'snapdir_visibility': snapdir}
+    #
+    #     result = self.library.get_backend_info(self.context)
+    #     self.assertEqual(expected, result)
+    #
+    # @ddt.data('default', 'hidden')
+    # def test_ensure_shares(self, snapdir_cfg):
+    #     shares = [
+    #         fake_share.fake_share_instance(id='s-1',
+    #                                        share_server='fake_server_1'),
+    #         fake_share.fake_share_instance(id='s-2',
+    #                                        share_server='fake_server_2'),
+    #         fake_share.fake_share_instance(id='s-3',
+    #                                        share_server='fake_server_2')
+    #     ]
+    #
+    #     vserver_client = mock.Mock()
+    #     self.mock_object(
+    #         self.library, '_get_vserver',
+    #         mock.Mock(side_effect=[
+    #             (fake.VSERVER1, vserver_client),
+    #             (fake.VSERVER2, vserver_client),
+    #             (fake.VSERVER2, vserver_client)
+    #         ]))
+    #     (self.library.configuration.
+    #      netapp_reset_snapdir_visibility) = snapdir_cfg
+    #
+    #     self.library.ensure_shares(self.context, shares)
+    #
+    #     if snapdir_cfg == 'default':
+    #         self.library._get_vserver.assert_not_called()
+    #         vserver_client.set_volume_snapdir_access.assert_not_called()
+    #
+    #     else:
+    #         self.library._get_vserver.assert_has_calls([
+    #             mock.call(share_server='fake_server_1'),
+    #             mock.call(share_server='fake_server_2'),
+    #             mock.call(share_server='fake_server_2'),
+    #         ])
+    #
+    #         vserver_client.set_volume_snapdir_access.assert_has_calls([
+    #             mock.call('share_s_1', True),
+    #             mock.call('share_s_2', True),
+    #             mock.call('share_s_3', True),
+    #         ])
 
     def test__check_volume_clone_split_completed(self):
         vserver_client = mock.Mock()
