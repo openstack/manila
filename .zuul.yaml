@@ -1,4 +1,11 @@
 - project:
+    templates:
+      - publish-openstack-sphinx-docs
+      - openstack-python-jobs
+      - openstack-python35-jobs
+      - check-requirements
+      - release-notes-jobs
+      - periodic-stable-jobs
     check:
       jobs:
         - manila-tox-genconfig
@@ -28,7 +35,12 @@
             voting: false
         - rally-dsvm-manila-multibackend-no-ss:
             voting: false
+        - openstack-tox-cover:
+            voting: false
+        - openstack-tox-pylint:
+            voting: false
     gate:
+      queue: manila
       jobs:
         - manila-tox-genconfig
         - manila-tempest-minimal-dsvm-dummy
@@ -40,6 +52,9 @@
         - manila-tempest-dsvm-glusterfs-nfs-heketi
         - manila-tempest-dsvm-glusterfs-native-heketi
 
+    post:
+      jobs:
+        - openstack-tox-cover
 - job:
     name: grenade-dsvm-manila
     parent: legacy-dsvm-base
