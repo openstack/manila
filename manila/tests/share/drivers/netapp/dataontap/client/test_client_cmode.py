@@ -2434,8 +2434,10 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.configure_active_directory(fake.CIFS_SECURITY_SERVICE,
                                                fake.VSERVER_NAME)
 
-        cifs_server = (
-            fake.VSERVER_NAME[0:7] + '..' + fake.VSERVER_NAME[-6:]).upper()
+        cifs_server = (fake.VSERVER_NAME[0:8] +
+                       '-' +
+                       fake.VSERVER_NAME[-6:]).replace('_', '-').upper()
+
         cifs_server_create_args = {
             'admin-username': fake.CIFS_SECURITY_SERVICE['user'],
             'admin-password': fake.CIFS_SECURITY_SERVICE['password'],
