@@ -88,7 +88,7 @@ class SchedulerRpcAPITestCase(test.TestCase):
         self._test_scheduler_api('get_pools',
                                  rpc_method='call',
                                  filters=None,
-                                 version='1.1')
+                                 version='1.9')
 
     def test_create_share_group(self):
         self._test_scheduler_api('create_share_group',

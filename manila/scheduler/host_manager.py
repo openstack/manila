@@ -626,9 +626,10 @@ class HostManager(object):
 
         return all_pools.values()
 
-    def get_pools(self, context, filters=None):
+    def get_pools(self, context, filters=None, cached=False):
         """Returns a dict of all pools on all hosts HostManager knows about."""
-        self._update_host_state_map(context)
+        if not cached or not self.host_state_map:
+            self._update_host_state_map(context)
 
         all_pools = []
         for host, host_state in self.host_state_map.items():

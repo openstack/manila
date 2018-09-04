@@ -40,9 +40,10 @@ class SchedulerAPI(object):
         1.6 - Add manage_share
         1.7 - Updated migrate_share_to_host method with new parameters
         1.8 - Rename create_consistency_group -> create_share_group method
+        1.9 - Add cached parameter to get_pools method
     """
 
-    RPC_API_VERSION = '1.8'
+    RPC_API_VERSION = '1.9'
 
     def __init__(self):
         super(SchedulerAPI, self).__init__()
@@ -69,9 +70,10 @@ class SchedulerAPI(object):
                           host=host,
                           capabilities=capabilities)
 
-    def get_pools(self, context, filters=None):
-        call_context = self.client.prepare(version='1.1')
-        return call_context.call(context, 'get_pools', filters=filters)
+    def get_pools(self, context, filters=None, cached=False):
+        call_context = self.client.prepare(version='1.9')
+        return call_context.call(context, 'get_pools', filters=filters,
+                                 cached=cached)
 
     def create_share_group(self, context, share_group_id, request_spec=None,
                            filter_properties=None):

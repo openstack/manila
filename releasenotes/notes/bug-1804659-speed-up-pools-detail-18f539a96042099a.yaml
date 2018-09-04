@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Added caching of host state map to speed up calls for
+    scheduler-stats/pools/detail.

@@ -224,7 +224,8 @@ class SchedulerManagerTestCase(test.TestCase):
 
         result = self.manager.get_pools(self.context, filters='fake_filters')
 
-        mock_get_pools.assert_called_once_with(self.context, 'fake_filters')
+        mock_get_pools.assert_called_once_with(self.context, 'fake_filters',
+                                               False)
         self.assertEqual('fake_pools', result)
 
     @mock.patch.object(db, 'share_group_update', mock.Mock())

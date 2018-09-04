@@ -101,7 +101,8 @@ class SchedulerStatsControllerTestCase(test.TestCase):
         }
 
         self.assertDictMatch(result, expected)
-        mock_get_pools.assert_called_once_with(self.ctxt, filters={})
+        mock_get_pools.assert_called_once_with(self.ctxt, filters={},
+                                               cached=True)
         self.mock_policy_check.assert_called_once_with(
             self.ctxt, self.resource_name, 'index')
 
@@ -148,7 +149,8 @@ class SchedulerStatsControllerTestCase(test.TestCase):
 
         self.assertDictMatch(result, expected_result)
         mock_get_pools.assert_called_once_with(self.ctxt,
-                                               filters=expected_filters)
+                                               filters=expected_filters,
+                                               cached=True)
 
     @ddt.data(('index', False, True),
               ('index', False, False),
@@ -210,7 +212,8 @@ class SchedulerStatsControllerTestCase(test.TestCase):
 
         self.assertDictMatch(result, expected_result)
         mock_get_pools.assert_called_once_with(self.ctxt,
-                                               filters=expected_filters)
+                                               filters=expected_filters,
+                                               cached=True)
 
     @ddt.data('index', 'detail')
     def test_pools_with_share_type_not_found(self, action):
@@ -271,7 +274,8 @@ class SchedulerStatsControllerTestCase(test.TestCase):
 
         self.assertDictMatch(result, expected)
         mock_get_pools.assert_called_once_with(self.ctxt,
-                                               filters=expected_filters)
+                                               filters=expected_filters,
+                                               cached=True)
         self.mock_policy_check.assert_called_once_with(
             self.ctxt, self.resource_name, 'index')
 
@@ -323,7 +327,8 @@ class SchedulerStatsControllerTestCase(test.TestCase):
         }
 
         self.assertDictMatch(expected, result)
-        mock_get_pools.assert_called_once_with(self.ctxt, filters={})
+        mock_get_pools.assert_called_once_with(self.ctxt, filters={},
+                                               cached=True)
         self.mock_policy_check.assert_called_once_with(
             self.ctxt, self.resource_name, 'detail')
 
