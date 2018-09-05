@@ -155,6 +155,9 @@ class OVSInterfaceDriver(LinuxInterfaceDriver):
 
         else:
             LOG.warning(_LW("Device %s already exists."), device_name)
+            if ns_dev.link.address != mac_address:
+                LOG.warning(_LW("Reset mac address to %s"), mac_address)
+                ns_dev.link.set_address(mac_address)
         ns_dev.link.set_up()
 
     @device_name_synchronized

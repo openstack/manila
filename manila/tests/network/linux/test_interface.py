@@ -160,6 +160,22 @@ class TestOVSInterfaceDriver(TestBase):
 
         self.ip.assert_has_calls(expected)
 
+    def test_plug_reset_mac(self):
+        fake_mac_addr = 'aa:bb:cc:dd:ee:ff'
+        self.device_exists.return_value = True
+
+        self.ip().device().link.address = mock.Mock(return_value=fake_mac_addr)
+        ovs = interface.OVSInterfaceDriver()
+        ovs.plug('tap0',
+                 'port-1234',
+                 'ff:ee:dd:cc:bb:aa',
+                 bridge='br-int')
+        expected = [mock.call(),
+                    mock.call().device('tap0'),
+                    mock.call().device().link.set_address('ff:ee:dd:cc:bb:aa'),
+                    mock.call().device().link.set_up()]
+        self.ip.assert_has_calls(expected)
+
     def test_unplug(self, bridge=None):
         if not bridge:
             bridge = 'br-int'
