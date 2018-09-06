@@ -268,7 +268,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     security_services=security_services, nfs_config=nfs_config)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error("Failed to configure Vserver.")
+                    LOG.warning("Failed to configure Vserver.")
                     # NOTE(dviroel): At this point, the lock was already
                     # acquired by the caller of _create_vserver.
                     self._delete_vserver(vserver_name,

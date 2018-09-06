@@ -325,7 +325,7 @@ class ShareMixin(object):
                          "because the snapshot's parent share does not have "
                          "that capability.")
                        % snapshot_id)
-                LOG.error(msg)
+                LOG.warning(msg)
                 raise exc.HTTPBadRequest(explanation=msg)
 
         if share_network_id:

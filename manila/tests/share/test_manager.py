@@ -985,7 +985,7 @@ class ShareManagerTestCase(test.TestCase):
         mock_replica_update_call = self.mock_object(db, 'share_replica_update')
         mock_export_locs_update_call = self.mock_object(
             db, 'share_export_locations_update')
-        mock_log_error = self.mock_object(manager.LOG, 'error')
+        mock_log_warning = self.mock_object(manager.LOG, 'warning')
         mock_log_info = self.mock_object(manager.LOG, 'info')
         self.mock_object(db, 'share_instance_access_get',
                          mock.Mock(return_value=fake_access_rules[0]))
@@ -1010,7 +1010,7 @@ class ShareManagerTestCase(test.TestCase):
             share_instance_id=replica['id'],
             status=constants.SHARE_INSTANCE_RULES_ERROR)
         self.assertFalse(mock_export_locs_update_call.called)
-        self.assertTrue(mock_log_error.called)
+        self.assertTrue(mock_log_warning.called)
         self.assertFalse(mock_log_info.called)
         self.assertTrue(driver_call.called)
         self.share_manager.message_api.create.assert_called_once_with(
@@ -2184,7 +2184,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(db,
                          'share_network_subnet_get_by_availability_zone_id',
                          mock.Mock(return_value=share_net_subnet))
-        self.mock_object(manager.LOG, 'error')
+        self.mock_object(manager.LOG, 'warning')
 
         def raise_share_server_not_found(*args, **kwargs):
             raise exception.ShareServerNotFound(
@@ -2223,8 +2223,8 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager._setup_server.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), fake_server,
             fake_metadata)
-        manager.LOG.error.assert_called_with(mock.ANY,
-                                             fake_share.instance['id'])
+        manager.LOG.warning.assert_called_with(mock.ANY,
+                                               fake_share.instance['id'])
         self.share_manager.message_api.create.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             message_field.Action.CREATE,
@@ -2236,7 +2236,7 @@ class ShareManagerTestCase(test.TestCase):
     def test_create_share_instance_with_share_network_subnet_not_found(self):
         """Test creation fails if share network not found."""
 
-        self.mock_object(manager.LOG, 'error')
+        self.mock_object(manager.LOG, 'warning')
 
         share = db_utils.create_share(share_network_id='fake-net-id')
         share_id = share['id']
@@ -2246,7 +2246,7 @@ class ShareManagerTestCase(test.TestCase):
             self.context,
             share.instance['id']
         )
-        manager.LOG.error.assert_called_with(mock.ANY, share.instance['id'])
+        manager.LOG.warning.assert_called_with(mock.ANY, share.instance['id'])
         shr = db.share_get(self.context, share_id)
         self.assertEqual(constants.STATUS_ERROR, shr['status'])
         self.share_manager.message_api.create.assert_called_once_with(

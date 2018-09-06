@@ -1780,7 +1780,7 @@ class NetAppCmodeFileStorageLibrary(object):
                         'The current used space is larger than the the size'
                         ' requested.')
                 msg_args = {'share_id': share['id']}
-                LOG.error(msg, msg_args)
+                LOG.warning(msg, msg_args)
                 raise exception.ShareShrinkingPossibleDataLoss(
                     share_id=share['id'])
 

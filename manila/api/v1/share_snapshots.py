@@ -183,7 +183,7 @@ class ShareSnapshotMixin(object):
         if not share['snapshot_support']:
             msg = _("Snapshot cannot be created from share '%s', because "
                     "share back end does not support it.") % share_id
-            LOG.error(msg)
+            LOG.warning(msg)
             raise exc.HTTPUnprocessableEntity(explanation=msg)
 
         LOG.info("Create snapshot from share %s",
