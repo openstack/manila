@@ -1,6 +1,8 @@
 - project:
     templates:
       - publish-openstack-docs-pti
+      - openstack-cover-jobs
+      - openstack-lower-constraints-jobs
       - openstack-python-jobs
       - openstack-python35-jobs
       - check-requirements
@@ -36,9 +38,6 @@
             voting: false
         - manila-rally-multibackend-no-ss:
             voting: false
-        - openstack-tox-lower-constraints
-        - openstack-tox-cover:
-            voting: false
         - openstack-tox-pylint:
             voting: false
     gate:
@@ -47,7 +46,6 @@
         - manila-tox-genconfig
         - manila-tempest-minimal-dsvm-dummy
         - manila-tempest-minimal-dsvm-lvm-centos-7
-        - openstack-tox-lower-constraints
     experimental:
       jobs:
         - manila-tempest-dsvm-glusterfs-nfs
@@ -55,9 +53,6 @@
         - manila-tempest-dsvm-glusterfs-nfs-heketi
         - manila-tempest-dsvm-glusterfs-native-heketi
 
-    post:
-      jobs:
-        - openstack-tox-cover
 - job:
     name: manila-grenade
     parent: legacy-dsvm-base
