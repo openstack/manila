@@ -6,7 +6,6 @@
       - check-requirements
       - release-notes-jobs-python3
       - periodic-stable-jobs
-      - install-guide-jobs
     check:
       jobs:
         - manila-tox-genconfig
