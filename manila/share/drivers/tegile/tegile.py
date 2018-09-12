@@ -416,7 +416,7 @@ class TegileShareDriver(driver.ShareDriver):
             # Remove user ACLs if share_proto is CIFS
             self._api('clearAccessRules', params)
 
-            # Looping thru all rules.
+            # Looping through all rules.
             # Will have one API call per rule.
             for access in access_rules:
                 self._allow_access(context, share, access, share_server)
