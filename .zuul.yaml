@@ -1,0 +1,19 @@
+- project:
+    templates:
+      - publish-openstack-sphinx-docs
+      - openstack-python-jobs
+      - openstack-python35-jobs
+      - check-requirements
+      - release-notes-jobs
+      - periodic-stable-jobs
+    check:
+      jobs:
+        - openstack-tox-cover:
+            voting: false
+        - openstack-tox-pylint:
+            voting: false
+    gate:
+      queue: manila
+    post:
+      jobs:
+        - openstack-tox-cover
