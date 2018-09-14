@@ -1,9 +1,12 @@
-===============
-HPE 3PAR driver
-===============
+====================================
+HPE 3PAR Driver for OpenStack Manila
+====================================
 
 The HPE 3PAR driver provides NFS and CIFS shared file systems to
 OpenStack using HPE 3PAR's File Persona capabilities.
+
+For information on HPE 3PAR Driver for OpenStack Manila, refer to
+`content kit page <https://www.hpe.com/us/en/product-catalog/storage/storage-software/pip.openstack-device-management-software.1008537377.html>`_.
 
 HPE 3PAR File Persona Software Suite concepts and terminology
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -114,15 +117,13 @@ On the HPE 3PAR array:
 
 -  HPE 3PAR Operating System software version 3.2.1 MU3 or higher.
 
--  A license that enables the File Persona feature.
-
 -  The array class and hardware configuration must support File Persona.
 
 Pre-configuration on the HPE 3PAR StoreServ
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The following HPE 3PAR CLI commands show how to set up the HPE 3PAR StoreServ
 to use File Persona with OpenStack Manila. HPE 3PAR File Persona must be
-licensed, initialized, and started on the HPE 3PAR storage.
+initialized, and started on the HPE 3PAR storage.
 
 .. code-block:: console
 
@@ -445,7 +446,7 @@ the share type to a tenant.
      Flash Cache. For Adaptive Flash Cache, the HPE 3PAR StoreServ Storage
      array must meet the following requirements:
 
-     -  Adaptive Flash Cache license installed
+     -  Adaptive Flash Cache enabled
      -  Available SSDs
      -  Adaptive Flash Cache must be enabled on the HPE 3PAR StoreServ
         Storage array. This is done with the following CLI command:
@@ -474,8 +475,8 @@ the share type to a tenant.
      this type are only created on a back end that uses deduplication. For HPE
      3PAR File Persona, the provisioning type is determined when the FPG is
      created. Using the ``createfpg –tdvv`` option creates an FPG that
-     supports both dedupe and thin provisioning. A thin deduplication license
-     must be installed to use the tdvv option.
+     supports both dedupe and thin provisioning. The thin deduplication must
+     be enabled to use the tdvv option.
 
    ``thin_provisioning``
      When the value is set to ``<is> True`` (or ``<is> False``), shares of
