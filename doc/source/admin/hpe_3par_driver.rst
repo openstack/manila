@@ -13,8 +13,8 @@
       License for the specific language governing permissions and limitations
       under the License.
 
-HPE 3PAR Driver
-===============
+HPE 3PAR Driver for OpenStack Manila
+====================================
 
 The HPE 3PAR manila driver provides NFS and CIFS shared file systems to
 OpenStack using HPE 3PAR's File Persona capabilities.
@@ -23,6 +23,9 @@ OpenStack using HPE 3PAR's File Persona capabilities.
     In OpenStack releases prior to Mitaka this driver was called the
     HP 3PAR driver. The Liberty configuration reference can be found
     at: http://docs.openstack.org/liberty/config-reference/content/hp-3par-share-driver.html
+
+For information on HPE 3PAR Driver for OpenStack Manila, refer to
+`content kit page <https://www.hpe.com/us/en/product-catalog/storage/storage-software/pip.openstack-device-management-software.1008537377.html>`_.
 
 Supported Operations
 --------------------
@@ -59,7 +62,6 @@ On the system running the manila share service:
 On the HPE 3PAR array:
 
 - HPE 3PAR Operating System software version 3.2.1 MU3 or higher
-- A license that enables the File Persona feature
 - The array class and hardware configuration must support File Persona
 
 Pre-Configuration on the HPE 3PAR
