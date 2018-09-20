@@ -29,7 +29,7 @@ LATEST_MICROVERSION = CONF.share.max_api_microversion
 
 
 @ddt.ddt
-class SharesActionsTest(base.BaseSharesTest):
+class SharesActionsTest(base.BaseSharesMixedTest):
     """Covers share functionality, that doesn't related to share type."""
 
     @classmethod
@@ -37,6 +37,10 @@ class SharesActionsTest(base.BaseSharesTest):
         super(SharesActionsTest, cls).resource_setup()
 
         cls.shares = []
+
+        # create share_type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
 
         # create share
         cls.share_name = data_utils.rand_name("tempest-share-name")
@@ -49,6 +53,7 @@ class SharesActionsTest(base.BaseSharesTest):
             name=cls.share_name,
             description=cls.share_desc,
             metadata=cls.metadata,
+            share_type_id=cls.share_type_id,
         ))
 
         if CONF.share.run_snapshot_tests:
@@ -394,12 +399,14 @@ class SharesActionsTest(base.BaseSharesTest):
         public_share = self.create_share(
             name='public_share',
             description='public_share_desc',
+            share_type_id=self.share_type_id,
             is_public=True,
             cleanup_in_class=False
         )
         private_share = self.create_share(
             name='private_share',
             description='private_share_desc',
+            share_type_id=self.share_type_id,
             is_public=False,
             cleanup_in_class=False
         )
@@ -604,7 +611,8 @@ class SharesActionsTest(base.BaseSharesTest):
         CONF.share.run_extend_tests,
         "Share extend tests are disabled.")
     def test_extend_share(self):
-        share = self.create_share(cleanup_in_class=False)
+        share = self.create_share(share_type_id=self.share_type_id,
+                                  cleanup_in_class=False)
         new_size = int(share['size']) + 1
 
         # extend share and wait for active status
@@ -628,7 +636,9 @@ class SharesActionsTest(base.BaseSharesTest):
         "Share shrink tests are disabled.")
     def test_shrink_share(self):
         size = CONF.share.share_size + 1
-        share = self.create_share(size=size, cleanup_in_class=False)
+        share = self.create_share(size=size,
+                                  share_type_id=self.share_type_id,
+                                  cleanup_in_class=False)
         new_size = int(share['size']) - 1
 
         # shrink share and wait for active status
@@ -647,17 +657,23 @@ class SharesActionsTest(base.BaseSharesTest):
         self.assertEqual(new_size, share_get['size'], msg)
 
 
-class SharesRenameTest(base.BaseSharesTest):
+class SharesRenameTest(base.BaseSharesMixedTest):
 
     @classmethod
     def resource_setup(cls):
         super(SharesRenameTest, cls).resource_setup()
 
+        # create share_type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+
         # create share
         cls.share_name = data_utils.rand_name("tempest-share-name")
         cls.share_desc = data_utils.rand_name("tempest-share-description")
         cls.share = cls.create_share(
-            name=cls.share_name, description=cls.share_desc)
+            name=cls.share_name,
+            description=cls.share_desc,
+            share_type_id=cls.share_type_id)
 
         if CONF.share.run_snapshot_tests:
             # create snapshot

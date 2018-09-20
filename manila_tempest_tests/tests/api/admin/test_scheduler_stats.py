@@ -38,7 +38,7 @@ class SchedulerStatsAdminTest(base.BaseSharesAdminTest):
         extra_specs = cls.add_extra_specs_to_dict(extra_specs=extra_specs)
         return cls.create_share_type(
             name, extra_specs=extra_specs,
-            client=cls.admin_client)
+            client=cls.admin_client)["share_type"]
 
     @classmethod
     def resource_setup(cls):
@@ -168,7 +168,7 @@ class SchedulerStatsAdminTest(base.BaseSharesAdminTest):
     def test_pool_list_with_share_type_filter_with_detail(
             self, detail, share_type_key):
         st = self._create_share_type()
-        search_opts = {"share_type": st["share_type"][share_type_key]}
+        search_opts = {"share_type": st[share_type_key]}
         kwargs = {'search_opts': search_opts}
 
         if detail:
@@ -193,7 +193,7 @@ class SchedulerStatsAdminTest(base.BaseSharesAdminTest):
     def test_pool_list_with_share_type_filter_with_detail_negative(
             self, detail, share_type_key):
         st_negative = self._create_share_type(negative=True)
-        search_opts = {"share_type": st_negative["share_type"][share_type_key]}
+        search_opts = {"share_type": st_negative[share_type_key]}
 
         pools = self.admin_client.list_pools(
             detail=detail, search_opts=search_opts)['pools']

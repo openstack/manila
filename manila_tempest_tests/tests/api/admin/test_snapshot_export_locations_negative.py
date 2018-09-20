@@ -38,7 +38,12 @@ class SnapshotExportLocationsNegativeTest(base.BaseSharesMixedTest):
     @classmethod
     def resource_setup(cls):
         super(SnapshotExportLocationsNegativeTest, cls).resource_setup()
-        cls.share = cls.create_share(client=cls.admin_client)
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+        # create share
+        cls.share = cls.create_share(share_type_id=cls.share_type_id,
+                                     client=cls.admin_client)
         cls.snapshot = cls.create_snapshot_wait_for_active(
             cls.share['id'], client=cls.admin_client)
         cls.snapshot = cls.admin_client.get_snapshot(cls.snapshot['id'])

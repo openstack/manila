@@ -15,7 +15,6 @@
 
 import ddt
 from tempest import config
-from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions as lib_exc
 import testtools
 from testtools import testcase as tc
@@ -41,6 +40,12 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
         super(SharesAdminQuotasNegativeTest, cls).resource_setup()
         cls.user_id = cls.shares_client.user_id
         cls.tenant_id = cls.shares_client.tenant_id
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+        # create share group type
+        cls.share_group_type = cls._create_share_group_type()
+        cls.share_group_type_id = cls.share_group_type['id']
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_get_quotas_with_empty_tenant_id(self):
@@ -106,6 +111,8 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
         self.assertRaises(
             lib_exc.OverLimit,
             self.create_share_group,
+            share_group_type_id=self.share_group_type_id,
+            share_type_ids=[self.share_type_id],
             client=client,
             cleanup_in_class=False)
 
@@ -242,17 +249,6 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
             getattr(client, op + '_quotas'),
             client.tenant_id,
             **kwargs)
-
-    def _create_share_type(self):
-        share_type = self.create_share_type(
-            data_utils.rand_name("tempest-manila"),
-            cleanup_in_class=False,
-            client=self.shares_v2_client,
-            extra_specs=self.add_extra_specs_to_dict(),
-        )
-        if 'share_type' in share_type:
-            share_type = share_type['share_type']
-        return share_type
 
     @ddt.data('id', 'name')
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)

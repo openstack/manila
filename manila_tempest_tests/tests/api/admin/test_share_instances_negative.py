@@ -22,7 +22,11 @@ class ShareInstancesNegativeTest(base.BaseSharesAdminTest):
     @classmethod
     def resource_setup(cls):
         super(ShareInstancesNegativeTest, cls).resource_setup()
-        cls.share = cls.create_share()
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+        # create share
+        cls.share = cls.create_share(share_type_id=cls.share_type_id)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @base.skip_if_microversion_not_supported("2.34")

@@ -23,17 +23,8 @@ from manila_tempest_tests.tests.api import base
 class ShareTypesNegativeTest(base.BaseSharesMixedTest):
 
     @classmethod
-    def _create_share_type(cls):
-        name = data_utils.rand_name("unique_st_name")
-        extra_specs = cls.add_extra_specs_to_dict()
-        return cls.create_share_type(
-            name, extra_specs=extra_specs,
-            client=cls.admin_client)
-
-    @classmethod
     def resource_setup(cls):
         super(ShareTypesNegativeTest, cls).resource_setup()
-        cls.admin_client = cls.admin_shares_v2_client
         cls.st = cls._create_share_type()
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
@@ -47,18 +38,18 @@ class ShareTypesNegativeTest(base.BaseSharesMixedTest):
     def test_try_delete_share_type_with_user(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.delete_share_type,
-                          self.st["share_type"]["id"])
+                          self.st["id"])
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_add_access_to_share_type_with_user(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.add_access_to_share_type,
-                          self.st['share_type']['id'],
+                          self.st['id'],
                           self.shares_client.tenant_id)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_remove_access_from_share_type_with_user(self):
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.remove_access_from_share_type,
-                          self.st['share_type']['id'],
+                          self.st['id'],
                           self.shares_client.tenant_id)

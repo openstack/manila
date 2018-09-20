@@ -29,15 +29,30 @@ CONF = config.CONF
     CONF.share.run_share_group_tests, 'Share Group tests disabled.')
 @base.skip_if_microversion_lt(constants.MIN_SHARE_GROUP_MICROVERSION)
 @ddt.ddt
-class ShareGroupsTest(base.BaseSharesTest):
+class ShareGroupsTest(base.BaseSharesMixedTest):
     """Covers share group functionality."""
+
+    @classmethod
+    def resource_setup(cls):
+        super(ShareGroupsTest, cls).resource_setup()
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+
+        # create share group type
+        cls.share_group_type = cls._create_share_group_type()
+        cls.share_group_type_id = cls.share_group_type['id']
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_create_populate_delete_share_group_min(self):
         # Create a share group
         share_group = self.create_share_group(
             cleanup_in_class=False,
-            version=constants.MIN_SHARE_GROUP_MICROVERSION)
+            version=constants.MIN_SHARE_GROUP_MICROVERSION,
+            share_group_type_id=self.share_group_type_id,
+            share_type_ids=[self.share_type_id],
+        )
+
         keys = set(share_group.keys())
         self.assertTrue(
             constants.SHARE_GROUP_DETAIL_REQUIRED_KEYS.issubset(keys),
@@ -48,6 +63,7 @@ class ShareGroupsTest(base.BaseSharesTest):
         )
         # Populate
         share = self.create_share(
+            share_type_id=self.share_type_id,
             share_group_id=share_group['id'],
             cleanup_in_class=False,
             version=constants.MIN_SHARE_GROUP_MICROVERSION,
@@ -76,6 +92,8 @@ class ShareGroupsTest(base.BaseSharesTest):
     def test_create_delete_empty_share_group_snapshot_min(self):
         # Create base share group
         share_group = self.create_share_group(
+            share_group_type_id=self.share_group_type_id,
+            share_type_ids=[self.share_type_id],
             cleanup_in_class=False,
             version=constants.MIN_SHARE_GROUP_MICROVERSION)
 
@@ -114,6 +132,8 @@ class ShareGroupsTest(base.BaseSharesTest):
     def test_create_share_group_from_empty_share_group_snapshot_min(self):
         # Create base share group
         share_group = self.create_share_group(
+            share_group_type_id=self.share_group_type_id,
+            share_type_ids=[self.share_type_id],
             cleanup_in_class=False,
             version=constants.MIN_SHARE_GROUP_MICROVERSION)
 
@@ -130,6 +150,7 @@ class ShareGroupsTest(base.BaseSharesTest):
             len(snapshot_members))
 
         new_share_group = self.create_share_group(
+            share_group_type_id=self.share_group_type_id,
             cleanup_in_class=False,
             source_share_group_snapshot_id=sg_snapshot['id'],
             version=constants.MIN_SHARE_GROUP_MICROVERSION)
@@ -177,6 +198,8 @@ class ShareGroupsTest(base.BaseSharesTest):
         azs = self.shares_v2_client.list_availability_zones()
 
         sg_kwargs = {
+            'share_group_type_id': self.share_group_type_id,
+            'share_type_ids': [self.share_type_id],
             'version': '2.34',
             'cleanup_in_class': False,
         }
@@ -203,6 +226,7 @@ class ShareGroupsTest(base.BaseSharesTest):
             share_group['consistent_snapshot_support'], ('host', 'pool', None))
 
         s_kwargs = {
+            'share_type_id': self.share_type_id,
             'share_group_id': share_group['id'],
             'version': '2.33',
             'cleanup_in_class': False,

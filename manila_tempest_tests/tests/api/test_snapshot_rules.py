@@ -25,14 +25,21 @@ from manila_tempest_tests.tests.api import base
 CONF = config.CONF
 
 
-class BaseShareSnapshotRulesTest(base.BaseSharesTest):
+class BaseShareSnapshotRulesTest(base.BaseSharesMixedTest):
 
     protocol = ""
 
     @classmethod
     def resource_setup(cls):
         super(BaseShareSnapshotRulesTest, cls).resource_setup()
-        cls.share = cls.create_share(cls.protocol)
+        # create share_type
+        extra_specs = {'mount_snapshot_support': 'True'}
+        cls.share_type = cls._create_share_type(extra_specs)
+        cls.share_type_id = cls.share_type['id']
+
+        # create share
+        cls.share = cls.create_share(cls.protocol,
+                                     share_type_id=cls.share_type_id)
         cls.snapshot = cls.create_snapshot_wait_for_active(cls.share['id'])
 
     def _test_create_delete_access_rules(self, access_to):

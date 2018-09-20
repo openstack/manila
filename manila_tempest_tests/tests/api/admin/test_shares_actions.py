@@ -35,14 +35,9 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         cls.shares = []
 
         # create share type for share filtering purposes
-        cls.st_name = data_utils.rand_name("tempest-st-name")
-        cls.extra_specs = cls.add_extra_specs_to_dict(
-            {'storage_protocol': CONF.share.capability_storage_protocol})
-        cls.st = cls.create_share_type(
-            name=cls.st_name,
-            cleanup_in_class=True,
-            extra_specs=cls.extra_specs,
-        )
+        specs = {"storage_protocol": CONF.share.capability_storage_protocol}
+        cls.share_type = cls._create_share_type(specs)
+        cls.share_type_id = cls.share_type['id']
 
         # create share
         cls.share_name = data_utils.rand_name("tempest-share-name")
@@ -55,7 +50,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
             name=cls.share_name,
             description=cls.share_desc,
             metadata=cls.metadata,
-            share_type_id=cls.st['share_type']['id'],
+            share_type_id=cls.share_type_id,
         ))
 
         if CONF.share.run_snapshot_tests:
@@ -82,6 +77,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
                     description=cls.share_desc2,
                     metadata=cls.metadata2,
                     snapshot_id=cls.snap['id'],
+                    share_type_id=cls.share_type_id,
                 ))
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
@@ -197,7 +193,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_list_shares_with_detail_filter_by_share_type_id(self):
-        filters = {'share_type_id': self.st['share_type']['id']}
+        filters = {'share_type_id': self.share_type_id}
 
         # list shares
         shares = self.shares_client.list_shares_with_detail(params=filters)
