@@ -256,23 +256,9 @@ function configure_manila {
         iniset $MANILA_CONF DEFAULT osapi_share_listen_port $MANILA_SERVICE_PORT_INT
     fi
 
-    if [ "$SYSLOG" != "False" ]; then
-        iniset $MANILA_CONF DEFAULT use_syslog True
-    fi
-
     iniset_rpc_backend manila $MANILA_CONF DEFAULT
 
-    if [ "$LOG_COLOR" == "True" ] && [ "$SYSLOG" == "False" ]; then
-        # Add color to logging output
-        iniset $MANILA_CONF DEFAULT logging_context_format_string \
-            "%(asctime)s.%(msecs)d %(color)s%(levelname)s %(name)s [[01;36m%(request_id)s [00;36m%(user_id)s %(project_id)s%(color)s] [01;35m%(instance)s%(color)s%(message)s[00m"
-        iniset $MANILA_CONF DEFAULT logging_default_format_string \
-            "%(asctime)s.%(msecs)d %(color)s%(levelname)s %(name)s [[00;36m-%(color)s] [01;35m%(instance)s%(color)s%(message)s[00m"
-        iniset $MANILA_CONF DEFAULT logging_debug_format_suffix \
-            "[00;33mfrom (pid=%(process)d) %(funcName)s %(pathname)s:%(lineno)d[00m"
-        iniset $MANILA_CONF DEFAULT logging_exception_prefix \
-            "%(color)s%(asctime)s.%(msecs)d TRACE %(name)s [01;35m%(instance)s[00m"
-    fi
+    setup_logging $MANILA_CONF
 
     MANILA_CONFIGURE_GROUPS=${MANILA_CONFIGURE_GROUPS:-"$MANILA_ENABLED_BACKENDS"}
     set_config_opts $MANILA_CONFIGURE_GROUPS
