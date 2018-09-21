@@ -31,7 +31,12 @@ class AdminActionsNegativeTest(base.BaseSharesMixedTest):
         super(AdminActionsNegativeTest, cls).resource_setup()
         cls.admin_client = cls.admin_shares_v2_client
         cls.member_client = cls.shares_v2_client
-        cls.sh = cls.create_share(client=cls.admin_client)
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+        # create share
+        cls.sh = cls.create_share(share_type_id=cls.share_type_id,
+                                  client=cls.admin_client)
         cls.sh_instance = (
             cls.admin_client.get_instances_of_share(cls.sh["id"])[0]
         )

@@ -14,6 +14,7 @@
 #    under the License.
 
 from tempest import config
+from tempest.lib.common.utils import data_utils
 from tempest.lib import exceptions as lib_exc
 import testtools
 from testtools import testcase as tc
@@ -24,11 +25,28 @@ CONF = config.CONF
 
 
 class SharesActionsNegativeTest(base.BaseSharesMixedTest):
+
     @classmethod
     def resource_setup(cls):
         super(SharesActionsNegativeTest, cls).resource_setup()
         cls.admin_client = cls.admin_shares_v2_client
-        cls.share = cls.create_share()
+        cls.share_name = data_utils.rand_name("tempest-share-name")
+        cls.share_desc = data_utils.rand_name("tempest-share-description")
+        # create share_type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+        # create share
+        cls.share = cls.create_share(
+            name=cls.share_name,
+            description=cls.share_desc,
+            share_type_id=cls.share_type_id)
+        if CONF.share.run_snapshot_tests:
+            # create snapshot
+            cls.snap_name = data_utils.rand_name("tempest-snapshot-name")
+            cls.snap_desc = data_utils.rand_name(
+                "tempest-snapshot-description")
+            cls.snap = cls.create_snapshot_wait_for_active(
+                cls.share["id"], cls.snap_name, cls.snap_desc)
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API_WITH_BACKEND)
     @testtools.skipUnless(
@@ -79,7 +97,8 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
         CONF.share.run_extend_tests,
         "Share extend tests are disabled.")
     def test_share_extend_with_invalid_share_state(self):
-        share = self.create_share(cleanup_in_class=False)
+        share = self.create_share(share_type_id=self.share_type_id,
+                                  cleanup_in_class=False)
         new_size = int(share['size']) + 1
 
         # set "error" state
@@ -123,7 +142,9 @@ class SharesActionsNegativeTest(base.BaseSharesMixedTest):
         "Share shrink tests are disabled.")
     def test_share_shrink_with_invalid_share_state(self):
         size = CONF.share.share_size + 1
-        share = self.create_share(size=size, cleanup_in_class=False)
+        share = self.create_share(share_type_id=self.share_type_id,
+                                  size=size,
+                                  cleanup_in_class=False)
         new_size = int(share['size']) - 1
 
         # set "error" state

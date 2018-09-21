@@ -31,6 +31,9 @@ class SharesAdminQuotasTest(base.BaseSharesAdminTest):
         super(SharesAdminQuotasTest, cls).resource_setup()
         cls.user_id = cls.shares_v2_client.user_id
         cls.tenant_id = cls.shares_v2_client.tenant_id
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API)
     def test_default_quotas(self):
@@ -72,6 +75,12 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
             msg = "Quota tests are disabled."
             raise cls.skipException(msg)
         super(SharesAdminQuotasUpdateTest, cls).resource_setup()
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+        # create share group type
+        cls.share_group_type = cls._create_share_group_type()
+        cls.share_group_type_id = cls.share_group_type['id']
 
     def setUp(self):
         super(self.__class__, self).setUp()

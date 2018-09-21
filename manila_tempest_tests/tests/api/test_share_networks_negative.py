@@ -23,7 +23,14 @@ from manila_tempest_tests.tests.api import base
 CONF = config.CONF
 
 
-class ShareNetworksNegativeTest(base.BaseSharesTest):
+class ShareNetworksNegativeTest(base.BaseSharesMixedTest):
+
+    @classmethod
+    def resource_setup(cls):
+        super(ShareNetworksNegativeTest, cls).resource_setup()
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
 
     @tc.attr(base.TAG_NEGATIVE, base.TAG_API)
     def test_try_get_share_network_without_id(self):
@@ -61,7 +68,8 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
     @testtools.skipIf(
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_try_update_invalid_keys_sh_server_exists(self):
-        self.create_share(cleanup_in_class=False)
+        self.create_share(share_type_id=self.share_type_id,
+                          cleanup_in_class=False)
 
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.update_share_network,
@@ -112,8 +120,9 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
             cleanup_in_class=False)
 
         # Create share with share network
-        self.create_share(
-            share_network_id=new_sn['id'], cleanup_in_class=False)
+        self.create_share(share_type_id=self.share_type_id,
+                          share_network_id=new_sn['id'],
+                          cleanup_in_class=False)
 
         # Try delete share network
         self.assertRaises(

@@ -28,17 +28,27 @@ CONF = config.CONF
 @testtools.skipUnless(
     CONF.share.run_share_group_tests, 'Share Group tests disabled.')
 @base.skip_if_microversion_lt(constants.MIN_SHARE_GROUP_MICROVERSION)
-class ShareGroupsNegativeTest(base.BaseSharesTest):
+class ShareGroupsNegativeTest(base.BaseSharesMixedTest):
 
     @classmethod
     def resource_setup(cls):
         super(ShareGroupsNegativeTest, cls).resource_setup()
+        # Create a share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+
+        # Create a share group type
+        cls.share_group_type = cls._create_share_group_type()
+        cls.share_group_type_id = cls.share_group_type['id']
+
         # Create a share group
         cls.share_group_name = data_utils.rand_name("tempest-sg-name")
         cls.share_group_desc = data_utils.rand_name("tempest-sg-description")
         cls.share_group = cls.create_share_group(
             name=cls.share_group_name,
-            description=cls.share_group_desc
+            description=cls.share_group_desc,
+            share_group_type_id=cls.share_group_type_id,
+            share_type_ids=[cls.share_type_id],
         )
         # Create a share in the share group
         cls.share_name = data_utils.rand_name("tempest-share-name")
@@ -48,6 +58,7 @@ class ShareGroupsNegativeTest(base.BaseSharesTest):
             name=cls.share_name,
             description=cls.share_desc,
             size=cls.share_size,
+            share_type_id=cls.share_type_id,
             share_group_id=cls.share_group['id'],
             experimental=True,
         )
@@ -56,7 +67,7 @@ class ShareGroupsNegativeTest(base.BaseSharesTest):
         cls.sg_snap_desc = data_utils.rand_name(
             "tempest-group-snap-description")
         cls.sg_snapshot = cls.create_share_group_snapshot_wait_for_active(
-            cls.share_group["id"],
+            cls.share_group['id'],
             name=cls.sg_snap_name,
             description=cls.sg_snap_desc
         )
@@ -228,6 +239,8 @@ class ShareGroupsNegativeTest(base.BaseSharesTest):
         share_group = self.create_share_group(
             name='tempest_sg',
             description='tempest_sg_desc',
+            share_group_type_id=self.share_group_type_id,
+            share_type_ids=[self.share_type_id],
             cleanup_in_class=False,
             version=constants.MIN_SHARE_GROUP_MICROVERSION,
         )

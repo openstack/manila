@@ -27,7 +27,11 @@ class ShareInstancesTest(base.BaseSharesAdminTest):
     @classmethod
     def resource_setup(cls):
         super(ShareInstancesTest, cls).resource_setup()
-        cls.share = cls.create_share()
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+        # create share
+        cls.share = cls.create_share(share_type_id=cls.share_type_id)
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_get_instances_of_share_v2_3(self):

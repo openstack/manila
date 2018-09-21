@@ -69,6 +69,10 @@ class MigrationBase(base.BaseSharesAdminTest):
             raise cls.skipException("At least two different pool entries are "
                                     "needed to run share migration tests.")
 
+        # create share type (generic)
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+
         cls.new_type = cls.create_share_type(
             name=data_utils.rand_name('new_share_type_for_migration'),
             cleanup_in_class=True,
@@ -202,7 +206,9 @@ class MigrationBase(base.BaseSharesAdminTest):
     def _test_resize_post_migration(self, force_host_assisted, resize):
         self._check_migration_enabled(force_host_assisted)
         new_size = CONF.share.share_size + 1
-        share = self.create_share(self.protocol, size=new_size)
+        share = self.create_share(self.protocol,
+                                  size=new_size,
+                                  share_type_id=self.share_type_id)
         share = self.shares_v2_client.get_share(share['id'])
 
         share, dest_pool = self._setup_migration(share)
@@ -259,12 +265,14 @@ class MigrationBase(base.BaseSharesAdminTest):
         self.assertNotEmpty(snapshot_list, msg)
         snapshot_id_list = [snap['id'] for snap in snapshot_list]
 
-        # verify that after migration original snapshots are retained
+        # Verify that after migration original snapshots are retained
         self.assertIn(snapshot1['id'], snapshot_id_list)
         self.assertIn(snapshot2['id'], snapshot_id_list)
         # Verify that a share can be created from a snapshot after migration
         snapshot1_share = self.create_share(
-            self.protocol, size=share['size'], snapshot_id=snapshot1['id'],
+            self.protocol,
+            size=share['size'],
+            snapshot_id=snapshot1['id'],
             share_network_id=share['share_network_id'])
         self.assertEqual(snapshot1['id'], snapshot1_share['snapshot_id'])
         self._cleanup_share(share)
@@ -351,7 +359,8 @@ class MigrationCancelNFSTest(MigrationBase):
     def test_migration_cancel(self, force_host_assisted):
         self._check_migration_enabled(force_host_assisted)
 
-        share = self.create_share(self.protocol)
+        share = self.create_share(self.protocol,
+                                  share_type_id=self.share_type_id)
         share = self.shares_v2_client.get_share(share['id'])
         share, dest_pool = self._setup_migration(share)
         task_state = (constants.TASK_STATE_DATA_COPYING_COMPLETED
@@ -392,7 +401,8 @@ class MigrationCancelNFSTest(MigrationBase):
         CONF.share.run_migration_with_preserve_snapshots_tests,
         'Migration with preserve snapshots tests are disabled.')
     def test_migration_cancel_share_with_snapshot(self):
-        share = self.create_share(self.protocol)
+        share = self.create_share(self.protocol,
+                                  share_type_id=self.share_type_id)
         share = self.shares_v2_client.get_share(share['id'])
 
         share, dest_pool = self._setup_migration(share)
@@ -421,7 +431,8 @@ class MigrationOppositeDriverModesNFSTest(MigrationBase):
     def test_migration_opposite_driver_modes(self, force_host_assisted):
         self._check_migration_enabled(force_host_assisted)
 
-        share = self.create_share(self.protocol)
+        share = self.create_share(self.protocol,
+                                  share_type_id=self.share_type_id)
         share = self.shares_v2_client.get_share(share['id'])
         share, dest_pool = self._setup_migration(share, opposite=True)
 
@@ -487,7 +498,8 @@ class MigrationTwoPhaseNFSTest(MigrationBase):
     def test_migration_2phase(self, force_host_assisted):
         self._check_migration_enabled(force_host_assisted)
 
-        share = self.create_share(self.protocol)
+        share = self.create_share(self.protocol,
+                                  share_type_id=self.share_type_id)
         share = self.shares_v2_client.get_share(share['id'])
         share, dest_pool = self._setup_migration(share)
 
@@ -570,7 +582,9 @@ class MigrationOfShareWithSnapshotNFSTest(MigrationBase):
     def test_migrating_share_with_snapshot(self):
         ss_type, __ = self._create_share_type_for_snapshot_capability()
 
-        share = self.create_share(self.protocol, cleanup_in_class=False)
+        share = self.create_share(self.protocol,
+                                  share_type_id=ss_type['share_type']['id'],
+                                  cleanup_in_class=False)
         share = self.shares_v2_client.get_share(share['id'])
 
         share, dest_pool = self._setup_migration(share)

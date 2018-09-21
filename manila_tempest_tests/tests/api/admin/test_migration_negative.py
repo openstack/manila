@@ -54,15 +54,18 @@ class MigrationNegativeTest(base.BaseSharesAdminTest):
             raise cls.skipException("At least two different pool entries "
                                     "are needed to run share migration tests.")
 
+        # create share type (generic)
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+
+        # create share
         cls.share = cls.create_share(cls.protocol,
-                                     size=CONF.share.share_size+1)
+                                     size=CONF.share.share_size + 1,
+                                     share_type_id=cls.share_type_id)
         cls.share = cls.shares_client.get_share(cls.share['id'])
 
-        cls.default_type = cls.shares_v2_client.list_share_types(
-            default=True)['share_type']
-
         dest_pool = utils.choose_matching_backend(
-            cls.share, pools, cls.default_type)
+            cls.share, pools, cls.share_type)
 
         if not dest_pool or dest_pool.get('name') is None:
             raise share_exceptions.ShareMigrationException(
@@ -142,7 +145,7 @@ class MigrationNegativeTest(base.BaseSharesAdminTest):
         new_share_type_id = None
         new_share_network_id = None
         if specified:
-            new_share_type_id = self.default_type['id']
+            new_share_type_id = self.share_type_id
             new_share_network_id = self.share['share_network_id']
         self.migrate_share(
             self.share['id'], self.share['host'],

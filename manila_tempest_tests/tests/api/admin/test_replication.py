@@ -14,7 +14,6 @@
 #    under the License.
 
 from tempest import config
-from tempest.lib.common.utils import data_utils
 import testtools
 from testtools import testcase as tc
 
@@ -34,8 +33,6 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
     @classmethod
     def resource_setup(cls):
         super(ReplicationAdminTest, cls).resource_setup()
-        # Create share_type
-        name = data_utils.rand_name(constants.TEMPEST_MANILA_PREFIX)
         cls.admin_client = cls.admin_shares_v2_client
         cls.member_client = cls.shares_v2_client
         cls.replication_type = CONF.share.backend_replication_type
@@ -48,15 +45,12 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
         cls.share_zone = cls.zones[0]
         cls.replica_zone = cls.zones[-1]
 
-        cls.extra_specs = cls.add_extra_specs_to_dict(
-            {"replication_type": cls.replication_type})
-        share_type = cls.create_share_type(
-            name,
-            extra_specs=cls.extra_specs,
-            client=cls.admin_client)
-        cls.share_type = share_type["share_type"]
+        extra_specs = {"replication_type": cls.replication_type}
+        cls.share_type = cls._create_share_type(extra_specs)
+        cls.share_type_id = cls.share_type['id']
+
         # Create share with above share_type
-        cls.share = cls.create_share(share_type_id=cls.share_type["id"],
+        cls.share = cls.create_share(share_type_id=cls.share_type_id,
                                      availability_zone=cls.share_zone,
                                      client=cls.admin_client)
         cls.replica = cls.admin_client.list_share_replicas(
@@ -77,7 +71,7 @@ class ReplicationAdminTest(base.BaseSharesMixedTest):
             raise self.skipException(
                 msg % ','.join(constants.REPLICATION_PROMOTION_CHOICES))
         share = self.create_share(
-            share_type_id=self.share_type['id'], client=self.admin_client)
+            share_type_id=self.share_type_id, client=self.admin_client)
         original_replica = self.admin_client.list_share_replicas(
             share_id=share['id'])[0]
 

@@ -18,12 +18,17 @@ from testtools import testcase as tc
 from manila_tempest_tests.tests.api import base
 
 
-class SharesMetadataTest(base.BaseSharesTest):
+class SharesMetadataTest(base.BaseSharesMixedTest):
 
     @classmethod
     def resource_setup(cls):
         super(SharesMetadataTest, cls).resource_setup()
-        cls.share = cls.create_share()
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+
+        # create share
+        cls.share = cls.create_share(share_type_id=cls.share_type_id)
 
     @tc.attr(base.TAG_POSITIVE, base.TAG_API_WITH_BACKEND)
     def test_set_metadata_in_share_creation(self):
@@ -31,7 +36,9 @@ class SharesMetadataTest(base.BaseSharesTest):
         md = {u"key1": u"value1", u"key2": u"value2", }
 
         # create share with metadata
-        share = self.create_share(metadata=md, cleanup_in_class=False)
+        share = self.create_share(share_type_id=self.share_type_id,
+                                  metadata=md,
+                                  cleanup_in_class=False)
 
         # get metadata of share
         metadata = self.shares_client.get_metadata(share["id"])
@@ -45,7 +52,8 @@ class SharesMetadataTest(base.BaseSharesTest):
         md = {u"key3": u"value3", u"key4": u"value4", }
 
         # create share
-        share = self.create_share(cleanup_in_class=False)
+        share = self.create_share(share_type_id=self.share_type_id,
+                                  cleanup_in_class=False)
 
         # set metadata
         self.shares_client.set_metadata(share["id"], md)
@@ -71,7 +79,8 @@ class SharesMetadataTest(base.BaseSharesTest):
         md2 = {u"key7": u"value7", u"key8": u"value8", }
 
         # create share
-        share = self.create_share(cleanup_in_class=False)
+        share = self.create_share(share_type_id=self.share_type_id,
+                                  cleanup_in_class=False)
 
         # set metadata
         self.shares_client.set_metadata(share["id"], md1)

@@ -32,7 +32,11 @@ class ShareSnapshotInstancesTest(base.BaseSharesAdminTest):
     @classmethod
     def resource_setup(cls):
         super(ShareSnapshotInstancesTest, cls).resource_setup()
-        cls.share = cls.create_share()
+        # create share type
+        cls.share_type = cls._create_share_type()
+        cls.share_type_id = cls.share_type['id']
+        # create share
+        cls.share = cls.create_share(share_type_id=cls.share_type_id)
         snap = cls.create_snapshot_wait_for_active(cls.share["id"])
         cls.snapshot = cls.shares_v2_client.get_snapshot(snap['id'])
 
