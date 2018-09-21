@@ -31,7 +31,6 @@ def fake_share(**kwargs):
         'share_proto': 'fake_proto',
         'share_network_id': 'fake share network id',
         'share_server_id': 'fake share server id',
-        'share_type_id': 'fake share type id',
         'export_location': 'fake_location:/fake_share',
         'project_id': 'fake_project_uuid',
         'availability_zone': 'fake_az',
@@ -39,7 +38,10 @@ def fake_share(**kwargs):
         'replication_type': None,
         'is_busy': False,
         'share_group_id': None,
-        'instance': {'host': 'fakehost'},
+        'instance': {
+            'host': 'fakehost',
+            'share_type_id': '1',
+        },
         'mount_snapshot_support': False,
     }
     share.update(kwargs)
