@@ -78,9 +78,6 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         # create share type
         cls.share_type = cls._create_share_type()
         cls.share_type_id = cls.share_type['id']
-        # create share group type
-        cls.share_group_type = cls._create_share_group_type()
-        cls.share_group_type_id = cls.share_group_type['id']
 
     def setUp(self):
         super(self.__class__, self).setUp()

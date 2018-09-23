@@ -1012,7 +1012,8 @@ class BaseSharesAdminTest(BaseSharesTest):
     def setup_clients(cls):
         super(BaseSharesAdminTest, cls).setup_clients()
         # Initialise share clients
-        cls.admin_shares_v2_client = cls.os_admin.share_v2.SharesV2Client()
+        cls.admin_shares_v2_client = shares_v2_client.SharesV2Client(
+            cls.os_admin.auth_provider)
 
     @classmethod
     def _create_share_type(cls, specs=None):
