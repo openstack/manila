@@ -28,6 +28,11 @@ echo "API_RATE_LIMIT=False" >> $localconf
 echo "VOLUME_BACKING_FILE_SIZE=22G" >> $localconf
 echo "CINDER_LVM_TYPE=thin" >> $localconf
 
+# Set DevStack's PYTHON3_VERSION variable if CI scripts specify it
+if ! [[ -z "PYTHON3_VERSION" ]]; then
+echo "PYTHON3_VERSION=$PYTHON3_VERSION" >> $localconf
+fi
+
 # NOTE(mkoderer): switch to keystone v3 by default
 echo "IDENTITY_API_VERSION=3" >> $localconf
 
