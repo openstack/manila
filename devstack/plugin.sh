@@ -718,11 +718,12 @@ function install_manila {
                         sudo apt-get install -y linux-headers-generic
                         sudo apt-get install -y build-essential
                         sudo apt-get install -y ubuntu-zfs
-                    elif [[ $(lsb_release -s -d) == *"16.04"* ]]; then
-                        # Xenial
+
+                    elif [[ $(echo $(lsb_release -rs) '>=' 16.04 | bc -l) == 1 ]]; then
+                        # Xenial and beyond
                         sudo apt-get install -y zfsutils-linux
                     else
-                        echo "Only 'Trusty' and 'Xenial' releases of Ubuntu are supported."
+                        echo "Only 'Trusty', 'Xenial' and newer releases of Ubuntu are supported."
                         exit 1
                     fi
                 else
