@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Pool stats collection has been fixed in the container driver to reflect
+    the differences in formatting of information for the underlying volume
+    groups across different operating systems.
