@@ -1,0 +1,94 @@
+- hosts: all
+  name: Autoconverted job legacy-manila-tempest-minimal-dsvm-dummy from old job gate-manila-tempest-minimal-dsvm-dummy-ubuntu-xenial
+  tasks:
+
+    - name: Ensure legacy workspace directory
+      file:
+        path: '{{ ansible_user_dir }}/workspace'
+        state: directory
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          cat > clonemap.yaml << EOF
+          clonemap:
+            - name: openstack-infra/devstack-gate
+              dest: devstack-gate
+          EOF
+          /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
+              git://git.openstack.org \
+              openstack-infra/devstack-gate
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          cat << 'EOF' >>"/tmp/dg-local.conf"
+          [[local|localrc]]
+          enable_plugin manila git://git.openstack.org/openstack/manila
+
+          EOF
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          export PYTHONUNBUFFERED=true
+          export DEVSTACK_GATE_NEUTRON=1
+          export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
+          # Basic services needed for minimal job
+          OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit,tempest
+          if [ "dummy" == "lvm" ]; then
+              # Enable glance for scenario tests
+              OVERRIDE_ENABLED_SERVICES+=,g-api,g-reg
+              # Enable nova for scenario tests
+              OVERRIDE_ENABLED_SERVICES+=,n-api,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-obj
+              # Enable neutron for scenario tests
+              OVERRIDE_ENABLED_SERVICES+=,q-svc,q-dhcp,q-meta,q-l3,q-agt
+
+              # Enable mandatory placement services for nova starting with ocata
+              if [[ "stable/newton" != $ZUUL_BRANCH ]]; then
+                 OVERRIDE_ENABLED_SERVICES+=,placement-api,placement-client
+              fi
+          fi
+          export OVERRIDE_ENABLED_SERVICES
+
+          # Keep localrc to be able to set some vars in pre_test_hook
+          export KEEP_LOCALRC=1
+
+          function pre_test_hook {
+              # 'dhss' - acronym for 'Driver Handles Share Servers',
+              # defines mode of a share driver. Boolean-like.
+              # 'driver' - codename of a share driver to configure.
+              # 'back_end_type' - defines which installation Manila should
+              # have - either 'singlebackend' or 'multibackend'.
+              source $BASE/new/manila/contrib/ci/pre_test_hook.sh False dummy multibackend
+          }
+          export -f pre_test_hook
+
+          function post_test_hook {
+              # 'back_end_type' - defines which installation Manila is
+              # configured to - either 'singlebackend' or 'multibackend'.
+              # 'driver' - codename of a share driver that is configured in
+              # Manila. It is used for enabling/disabling tests that are not
+              # supported by share driver that is used.
+              # 'test_type' - defines which set of test suites should be used,
+              # can have 'api' and 'scenario' values.
+              # 'postgres_enabled' - set of test suites depends on DB backend
+              # in some cases, so it is provided explicitely. Boolean-like.
+              source $BASE/new/manila/contrib/ci/post_test_hook.sh multibackend dummy api False
+          }
+          export -f post_test_hook
+
+          cp devstack-gate/devstack-vm-gate-wrap.sh ./safe-devstack-vm-gate-wrap.sh
+          ./safe-devstack-vm-gate-wrap.sh
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'

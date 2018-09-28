@@ -1,0 +1,108 @@
+- hosts: all
+  name: Autoconverted job legacy-manila-tempest-dsvm-generic-no-share-servers from
+    old job gate-manila-tempest-dsvm-generic-no-share-servers-ubuntu-xenial-nv
+  tasks:
+
+    - name: Ensure legacy workspace directory
+      file:
+        path: '{{ ansible_user_dir }}/workspace'
+        state: directory
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          cat > clonemap.yaml << EOF
+          clonemap:
+            - name: openstack-infra/devstack-gate
+              dest: devstack-gate
+          EOF
+          /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
+              git://git.openstack.org \
+              openstack-infra/devstack-gate
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          cat << 'EOF' >>"/tmp/dg-local.conf"
+          [[local|localrc]]
+          enable_plugin manila git://git.openstack.org/openstack/manila
+
+          EOF
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          export PYTHONUNBUFFERED=true
+          export DEVSTACK_GATE_NEUTRON=1
+          export DEVSTACK_GATE_POSTGRES=0
+          export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
+
+          # Install manila-image-elements project for building custom image
+          if [[ generic == *"_with_custom_image" ]]; then
+              export PROJECTS="openstack/manila-image-elements $PROJECTS"
+          fi
+          export ENABLED_SERVICES=tempest
+
+          # Keep localrc to be able to set some vars in pre_test_hook
+          export KEEP_LOCALRC=1
+
+          function pre_test_hook {
+              # Build custom image if needed
+              if [[ generic == *"_with_custom_image" ]]; then
+                  current_dir=$(pwd)
+
+                  # Go to 'manila-image-elements' dir, build image and get its name
+                  cd /opt/stack/new/manila-image-elements
+                  ./tools/gate/build-images generic True
+                  image_name=$(git ls-files --others --exclude-standard)
+                  export MANILA_SERVICE_IMAGE_URL="http://localhost:80/public_html/$image_name"
+                  export MANILA_SERVICE_IMAGE_NAME=$(basename -s .tar.gz $(basename -s .qcow2 $image_name))
+
+                  # Return back to execution dir
+                  cd $current_dir
+              fi
+
+              # 'dhss' - acronym for 'Driver Handles Share Servers',
+              # defines mode of a share driver. Boolean-like.
+              # 'driver' - codename of a share driver to configure.
+              # 'back_end_type' - defines which installation Manila should
+              # have - either 'singlebackend' or 'multibackend'.
+              source $BASE/new/manila/contrib/ci/pre_test_hook.sh \
+                  0 \
+                  generic \
+                  multibackend
+          }
+          export -f pre_test_hook
+
+          function post_test_hook {
+              # 'back_end_type' - defines which installation Manila is
+              # configured to - either 'singlebackend' or 'multibackend'.
+              # 'driver' - codename of a share driver that is configured in
+              # Manila. It is used for enabling/disabling tests that are not
+              # supported by share driver that is used.
+              # 'test_type' - defines which set of test suites should be used,
+              # can have 'api' and 'scenario' values.
+              # 'postgres_enabled' - set of test suites depends on DB backend
+              # in some cases, so it is provided explicitely. Boolean-like.
+              source $BASE/new/manila/contrib/ci/post_test_hook.sh \
+                  multibackend \
+                  generic \
+                  api \
+                  0
+          }
+          export -f post_test_hook
+
+          cp devstack-gate/devstack-vm-gate-wrap.sh ./safe-devstack-vm-gate-wrap.sh
+          ./safe-devstack-vm-gate-wrap.sh
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
