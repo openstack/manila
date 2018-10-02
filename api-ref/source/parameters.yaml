@@ -928,24 +928,6 @@ create_share_from_snapshot_support:
   required: false
   type: boolean
   min_version: 2.24
-created_at_11:
-  description: |
-    The date and time stamp when the share server was created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
 created_at_4:
   description: |
     The date and time stamp when the share was created.
@@ -993,6 +975,24 @@ created_at_8:
 created_at_9:
   description: |
     The date and time stamp when the share instance was created.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2015-08-27T09:49:58-05:00``.
+  in: body
+  required: true
+  type: string
+created_at_share_server_body:
+  description: |
+    The date and time stamp when the share server was created.
 
     The date and time stamp format is `ISO 8601
     <https://en.wikipedia.org/wiki/ISO_8601>`_:
@@ -1528,17 +1528,17 @@ host_6:
   in: body
   required: true
   type: string
-host_8:
-  description: |
-    The share server host name or IP address.
-  in: body
-  required: true
-  type: string
 host_9:
   description: |
     The share host name.
   in: body
   required: false
+  type: string
+host_share_server_body:
+  description: |
+    The share server host name or IP address.
+  in: body
+  required: true
   type: string
 id_12:
   description: |
@@ -1549,12 +1549,6 @@ id_12:
 id_13:
   description: |
     The share instance ID.
-  in: body
-  required: true
-  type: string
-id_14:
-  description: |
-    The share server ID.
   in: body
   required: true
   type: string
@@ -2043,12 +2037,6 @@ project_id_4:
   in: body
   required: true
   type: string
-project_id_7:
-  description: |
-    The project ID.
-  in: body
-  required: true
-  type: string
 project_id_8:
   description: |
     The UUID of the project where the share was
@@ -2066,6 +2054,12 @@ project_id_9:
 project_id_messages_body:
   description: |
     The UUID of the project for which the message was created.
+  in: body
+  required: true
+  type: string
+project_id_share_server_body:
+  description: |
+    The project ID.
   in: body
   required: true
   type: string
@@ -2878,7 +2872,7 @@ share_network_id_4:
   in: body
   required: true
   type: string
-share_network_id_6:
+share_network_id_share_server_body:
   description: |
     The UUID of a share network that is associated
     with the share server.
@@ -3476,13 +3470,6 @@ status_10:
   in: body
   required: true
   type: string
-status_15:
-  description: |
-    The share server status, which is ``active``,
-    ``error``, ``creating``, or ``deleting``.
-  in: body
-  required: true
-  type: string
 status_16:
   description: |
     The share status, which is ``creating``,
@@ -3539,6 +3526,13 @@ status_8:
   description: |
     The share status, which is ``available``,
     ``manage_starting``, or ``manage_error``.
+  in: body
+  required: true
+  type: string
+status_share_server_body:
+  description: |
+    The share server status, which is ``active``,
+    ``error``, ``creating``, or ``deleting``.
   in: body
   required: true
   type: string
@@ -3692,7 +3686,7 @@ updated_at_5:
   in: body
   required: true
   type: string
-updated_at_6:
+updated_at_share_server_body:
   description: |
     The date and time stamp when the share server was updated.
 
