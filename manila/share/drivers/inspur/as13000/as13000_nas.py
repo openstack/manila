@@ -464,9 +464,12 @@ class AS13000ShareDriver(driver.ShareDriver):
     @staticmethod
     def transfer_rule_to_client(proto, rule):
         """transfer manila access rule to backend client"""
+        access_level = rule['access_level']
+        if proto == 'cifs' and access_level == 'rw':
+            access_level = 'rwx'
         return dict(name=rule['access_to'],
                     type=(0 if proto == 'nfs' else 1),
-                    authority=rule['access_level'])
+                    authority=access_level)
 
     @inspur_driver_debug_trace
     def update_access(self, context, share, access_rules, add_rules,

@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed CIFS permission issue with Inspur AS13000 driver so that files and
+    folders can be created and deleted correctly.

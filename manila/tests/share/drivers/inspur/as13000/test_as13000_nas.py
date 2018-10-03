@@ -646,13 +646,15 @@ class AS13000ShareDriverTestCase(test.TestCase):
         mock_gsfs.assert_called_once_with('/P/share_fakeinstanceid')
         mock_rest.assert_not_called()
 
-    @ddt.data('nfs', 'icfs')
+    @ddt.data('nfs', 'icfs', 'cifs')
     def test_transfer_rule_to_client(self, proto):
         rule = {'access_to': '1.1.1.1', 'access_level': 'rw'}
 
         result = self.driver.transfer_rule_to_client(proto, rule)
 
-        client = {'name': '1.1.1.1', 'authority': 'rw'}
+        client = {'name': '1.1.1.1',
+                  'authority':  'rwx' if proto == 'cifs' else 'rw'}
+
         if proto == 'nfs':
             client.update({'type': 0})
         else:
