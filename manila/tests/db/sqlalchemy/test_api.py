@@ -3133,3 +3133,91 @@ class BackendInfoDatabaseAPITestCase(test.TestCase):
         self.assertIsNone(initial_data)
         self.assertEqual(value_2, actual_data['info_hash'])
         self.assertEqual(host, actual_data['host'])
+
+
+@ddt.ddt
+class ShareInstancesTestCase(test.TestCase):
+
+    def setUp(self):
+        super(ShareInstancesTestCase, self).setUp()
+        self.context = context.get_admin_context()
+
+    @ddt.data('controller-100', 'controller-0@otherstore03',
+              'controller-0@otherstore01#pool200')
+    def test_share_instances_host_update_no_matches(self, current_host):
+        share_id = uuidutils.generate_uuid()
+        if '@' in current_host:
+            if '#' in current_host:
+                new_host = 'new-controller-X@backendX#poolX'
+            else:
+                new_host = 'new-controller-X@backendX'
+        else:
+            new_host = 'new-controller-X'
+        instances = [
+            db_utils.create_share_instance(
+                share_id=share_id,
+                host='controller-0@fancystore01#pool100',
+                status=constants.STATUS_AVAILABLE),
+            db_utils.create_share_instance(
+                share_id=share_id,
+                host='controller-0@otherstore02#pool100',
+                status=constants.STATUS_ERROR),
+            db_utils.create_share_instance(
+                share_id=share_id,
+                host='controller-2@beststore07#pool200',
+                status=constants.STATUS_DELETING),
+        ]
+        db_utils.create_share(id=share_id, instances=instances)
+
+        updates = db_api.share_instances_host_update(self.context,
+                                                     current_host,
+                                                     new_host)
+
+        share_instances = db_api.share_instances_get_all(
+            self.context, filters={'share_id': share_id})
+        self.assertEqual(0, updates)
+        for share_instance in share_instances:
+            self.assertTrue(not share_instance['host'].startswith(new_host))
+
+    @ddt.data({'current_host': 'controller-2', 'expected_updates': 1},
+              {'current_host': 'controller-0@fancystore01',
+               'expected_updates': 2},
+              {'current_host': 'controller-0@fancystore01#pool100',
+               'expected_updates': 1})
+    @ddt.unpack
+    def test_share_instance_host_update_partial_matches(self, current_host,
+                                                        expected_updates):
+        share_id = uuidutils.generate_uuid()
+        if '@' in current_host:
+            if '#' in current_host:
+                new_host = 'new-controller-X@backendX#poolX'
+            else:
+                new_host = 'new-controller-X@backendX'
+        else:
+            new_host = 'new-controller-X'
+        instances = [
+            db_utils.create_share_instance(
+                share_id=share_id,
+                host='controller-0@fancystore01#pool100',
+                status=constants.STATUS_AVAILABLE),
+            db_utils.create_share_instance(
+                share_id=share_id,
+                host='controller-0@fancystore01#pool200',
+                status=constants.STATUS_ERROR),
+            db_utils.create_share_instance(
+                share_id=share_id,
+                host='controller-2@beststore07#pool200',
+                status=constants.STATUS_DELETING),
+        ]
+        db_utils.create_share(id=share_id, instances=instances)
+
+        actual_updates = db_api.share_instances_host_update(
+            self.context, current_host, new_host)
+
+        share_instances = db_api.share_instances_get_all(
+            self.context, filters={'share_id': share_id})
+
+        host_updates = [si for si in share_instances if
+                        si['host'].startswith(new_host)]
+        self.assertEqual(actual_updates, expected_updates)
+        self.assertEqual(expected_updates, len(host_updates))

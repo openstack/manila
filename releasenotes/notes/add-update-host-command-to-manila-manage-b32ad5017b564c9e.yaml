@@ -1,0 +1,7 @@
+---
+features:
+  - The ``manila-manage`` utility now has a new command to update the host
+    attribute of shares. This is useful when the share manager process
+    has been migrated to a different host, or if changes are made to the
+    ``host`` config option or the backend section name in ``manila.conf``.
+    Execute ``manila-manage share update_host -h`` to see usage instructions.

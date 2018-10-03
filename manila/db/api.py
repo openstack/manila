@@ -325,6 +325,11 @@ def share_instance_update(context, instance_id, values, with_share_data=False):
                                       with_share_data=with_share_data)
 
 
+def share_instances_host_update(context, current_host, new_host):
+    """Update the host attr of all share instances that are on current_host."""
+    return IMPL.share_instances_host_update(context, current_host, new_host)
+
+
 def share_instances_get_all(context, filters=None):
     """Returns all share instances."""
     return IMPL.share_instances_get_all(context, filters=filters)

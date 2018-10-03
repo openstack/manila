@@ -1339,6 +1339,20 @@ def _share_instance_create(context, share_id, values, session):
                               session=session)
 
 
+@require_admin_context
+def share_instances_host_update(context, current_host, new_host):
+    session = get_session()
+    host_field = models.ShareInstance.host
+    with session.begin():
+        query = model_query(
+            context, models.ShareInstance, session=session, read_deleted="no",
+        ).filter(host_field.like('{}%'.format(current_host)))
+        result = query.update(
+            {host_field: func.replace(host_field, current_host, new_host)},
+            synchronize_session=False)
+    return result
+
+
 @require_context
 def share_instance_update(context, share_instance_id, values,
                           with_share_data=False):

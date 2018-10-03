@@ -75,6 +75,16 @@ from manila import version
 
 CONF = cfg.CONF
 
+HOST_UPDATE_HELP_MSG = ("A fully qualified host string is of the format "
+                        "'HostA@BackendB#PoolC'. Provide only the host name "
+                        "(ex: 'HostA') to update the hostname part of "
+                        "the host string. Provide only the "
+                        "host name and backend name (ex: 'HostA@BackendB') to "
+                        "update the host and backend names.")
+HOST_UPDATE_CURRENT_HOST_HELP = ("Current share host name. %s" %
+                                 HOST_UPDATE_HELP_MSG)
+HOST_UPDATE_NEW_HOST_HELP = "New share host name. %s" % HOST_UPDATE_HELP_MSG
+
 
 # Decorators for actions
 def args(*args, **kwargs):
@@ -355,12 +365,47 @@ class ServiceCommands(object):
             ))
 
 
+class ShareCommands(object):
+
+    @staticmethod
+    def _validate_hosts(current_host, new_host):
+        err = None
+        if '@' in current_host:
+            if '#' in current_host and '#' not in new_host:
+                err = "%(chost)s specifies a pool but %(nhost)s does not."
+            elif '@' not in new_host:
+                err = "%(chost)s specifies a backend but %(nhost)s does not."
+        if err:
+            print(err % {'chost': current_host, 'nhost': new_host})
+            sys.exit(1)
+
+    @args('--currenthost', required=True, help=HOST_UPDATE_CURRENT_HOST_HELP)
+    @args('--newhost', required=True, help=HOST_UPDATE_NEW_HOST_HELP)
+    @args('--force', required=False, type=bool, default=False,
+          help="Ignore validations.")
+    def update_host(self, current_host, new_host, force=False):
+        """Modify the host name associated with a share.
+
+           Particularly to recover from cases where one has moved
+           their Manila Share node, or modified their 'host' opt
+           or their backend section name in the manila configuration file.
+        """
+        if not force:
+            self._validate_hosts(current_host, new_host)
+        ctxt = context.get_admin_context()
+        updated = db.share_instances_host_update(ctxt, current_host, new_host)
+        print("Updated host of %(count)s share instances on %(chost)s "
+              "to %(nhost)s." % {'count': updated, 'chost': current_host,
+                                 'nhost': new_host})
+
+
 CATEGORIES = {
     'config': ConfigCommands,
     'db': DbCommands,
     'host': HostCommands,
     'logs': GetLogCommands,
     'service': ServiceCommands,
+    'share': ShareCommands,
     'shell': ShellCommands,
     'version': VersionCommands
 }
