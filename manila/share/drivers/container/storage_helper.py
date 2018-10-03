@@ -52,9 +52,19 @@ class LVMHelper(driver.ExecuteMixin):
     def get_share_server_pools(self, share_server=None):
         out, err = self._execute('vgs',
                                  self.configuration.container_volume_group,
-                                 '--rows', run_as_root=True)
-        total_size = re.findall("VSize\s[0-9.]+g", out)[0][6:-1]
-        free_size = re.findall("VFree\s[0-9.]+g", out)[0][6:-1]
+                                 '--options', 'vg_size,vg_free',
+                                 '--noheadings',
+                                 '--units', 'g',
+                                 run_as_root=True)
+        if err:
+            msg = _("Unable to gather size of the volume group %(vg)s to be "
+                    "used by the driver. Error: %(err)s")
+            raise exception.ShareBackendException(
+                msg % {'vg': self.configuration.container_volume_group,
+                       'err': err})
+
+        (free_size, total_size) = sorted(re.findall("\d+\.\d+|\d+", out),
+                                         reverse=False)
         return [{
             'pool_name': self.configuration.container_volume_group,
             'total_capacity_gb': float(total_size),

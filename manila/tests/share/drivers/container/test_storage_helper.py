@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """Unit tests for the Storage helper module."""
-
+import ddt
 import functools
 import mock
 
@@ -24,6 +24,7 @@ from manila import test
 from manila.tests.share.drivers.container.fakes import fake_share
 
 
+@ddt.ddt
 class LVMHelperTestCase(test.TestCase):
     """Tests ContainerShareDriver"""
 
@@ -46,12 +47,12 @@ class LVMHelperTestCase(test.TestCase):
                           storage_helper.LVMHelper,
                           None)
 
-    def test_get_share_server_pools(self):
-        ret_vgs = "VSize 100g size\nVFree 100g whatever"
+    @ddt.data("62.50g 72.50g", "    72.50g 62.50g\n", "  <62.50g <72.50g\n")
+    def test_get_share_server_pools(self, ret_vgs):
         expected_result = [{'reserved_percentage': 0,
                             'pool_name': 'manila_docker_volumes',
-                            'total_capacity_gb': 100.0,
-                            'free_capacity_gb': 100.0}]
+                            'total_capacity_gb': 72.5,
+                            'free_capacity_gb': 62.5}]
         self.mock_object(self.LVMHelper, "_execute",
                          mock.Mock(return_value=(ret_vgs, 0)))
 
