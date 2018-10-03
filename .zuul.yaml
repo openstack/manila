@@ -71,7 +71,6 @@
       - ^manila/hacking/.*$
       - ^manila/tests/.*$
       - ^releasenotes/.*$
-      - ^run_tests.sh$
       - ^setup.cfg$
       - ^tools/.*$
       - ^tox.ini$
@@ -93,7 +92,6 @@
       - ^manila/hacking/.*$
       - ^manila/tests/.*$
       - ^releasenotes/.*$
-      - ^run_tests.sh$
       - ^setup.cfg$
       - ^tools/.*$
       - ^tox.ini$
@@ -394,7 +392,6 @@
       - ^manila/hacking/.*$
       - ^manila/tests/.*$
       - ^releasenotes/.*$
-      - ^run_tests.sh$
       - ^tools/.*$
       - ^tox.ini$
     required-projects:
@@ -417,7 +414,6 @@
       - ^manila/hacking/.*$
       - ^manila/tests/.*$
       - ^releasenotes/.*$
-      - ^run_tests.sh$
       - ^tools/.*$
       - ^tox.ini$
     required-projects:
