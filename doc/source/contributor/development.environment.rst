@@ -121,15 +121,21 @@ Grab the code::
 
 Running unit tests
 ------------------
-The unit tests will run by default inside a virtualenv in the ``.venv``
-directory. Run the unit tests by doing::
+The preferred way to run the unit tests is using ``tox``. Tox executes tests in
+isolated environment, by creating separate virtualenv and installing
+dependencies from the ``requirements.txt`` and ``test-requirements.txt`` files,
+so the only package you install is ``tox`` itself::
 
-    ./run_tests.sh
+    sudo pip install tox
 
-The first time you run them, you will be asked if you want to create a virtual
-environment (hit "y")::
+Run the unit tests with::
 
-    No virtual environment found...create one? (Y/n)
+    tox -e py{python-version}
+
+Example::
+
+    tox -epy27
+    tox -epy36
 
 See :doc:`unit_tests` for more details.
 
@@ -138,38 +144,39 @@ See :doc:`unit_tests` for more details.
 Manually installing and using the virtualenv
 --------------------------------------------
 
-You can manually install the virtual environment instead of having
-``run_tests.sh`` do it for you::
+You can also manually install the virtual environment::
 
-  python tools/install_venv.py
+  tox -epy27 --notest
+
+or::
+
+  tox -epy36 --notest
 
 This will install all of the Python packages listed in the
-``requirements.txt`` file into your virtualenv. There will also be some
-additional packages (pip, distribute, greenlet) that are installed
-by the ``tools/install_venv.py`` file into the virtualenv.
+``requirements.txt`` file into your virtualenv.
 
-If all goes well, you should get a message something like this::
+To activate the Manila virtualenv you can run::
 
-  Manila development environment setup is complete.
+     $ source .tox/py27/bin/activate
 
-To activate the manila virtualenv for the extent of your current shell session
-you can run::
+or::
 
-     $ source .venv/bin/activate
+     $ source .tox/py36/bin/activate
+
+To exit your virtualenv, just type::
+
+     $ deactivate
 
 Or, if you prefer, you can run commands in the virtualenv on a case by case
 basis by running::
 
-     $ tools/with_venv.sh <your command>
+     $ tox -e venv -- <your command>
 
 Contributing Your Work
 ----------------------
 
-Once your work is complete you may wish to contribute it to the project.  Add
-your name and email address to the ``Authors`` file, and also to the ``.mailmap``
-file if you use multiple email addresses. Your contributions can not be merged
-into trunk unless you are listed in the Authors file. Manila uses the Gerrit
-code review system. For information on how to submit your branch to Gerrit,
-see GerritWorkflow_.
+Once your work is complete you may wish to contribute it to the
+project. Manila uses the Gerrit code review system. For information on
+how to submit your branch to Gerrit, see GerritWorkflow_.
 
 .. _GerritWorkflow: https://docs.openstack.org/infra/manual/developers.html#development-workflow

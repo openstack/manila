@@ -34,12 +34,17 @@ is overridden.
 Running Tests
 -------------
 
-In the root of the Manila source code run the run_tests.sh script. This will
-offer to create a virtual environment and populate it with dependencies.
-If you don't have dependencies installed that are needed for compiling Manila's
-direct dependencies, you'll have to use your operating system's method of
-installing extra dependencies. To get help using this script execute it with
-the -h parameter to get options `./run_tests.sh -h`
+The preferred way to run the unit tests is using ``tox``. Tox executes tests in
+isolated environment, by creating separate virtualenv and installing
+dependencies from the ``requirements.txt`` and ``test-requirements.txt`` files,
+so the only package you install is ``tox`` itself::
+
+    sudo pip install tox
+
+Run the unit tests by doing::
+
+    tox -e py3
+    tox -e py27
 
 Tests and assertRaises
 ----------------------
