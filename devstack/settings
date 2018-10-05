@@ -48,6 +48,10 @@ MANILA_CONF_DIR=${MANILA_CONF_DIR:-/etc/manila}
 MANILA_CONF=$MANILA_CONF_DIR/manila.conf
 MANILA_API_PASTE_INI=$MANILA_CONF_DIR/api-paste.ini
 
+# Set this to False to leave "default_share_type" and
+# "default_share_group_type" configuration options empty.
+MANILA_CONFIGURE_DEFAULT_TYPES=${MANILA_CONFIGURE_DEFAULT_TYPES:-True}
+
 MANILA_DEFAULT_SHARE_TYPE=${MANILA_DEFAULT_SHARE_TYPE:-default}
 # MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS is expected to contain extra specs key-value pairs,
 # that should be assigned to default share type. Both - qualified and unqualified extra specs are supported.
