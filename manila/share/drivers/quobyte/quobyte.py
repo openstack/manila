@@ -59,6 +59,10 @@ quobyte_manila_share_opts = [
     cfg.StrOpt('quobyte_default_volume_group',
                default='root',
                help='Default owning group for new volumes.'),
+    cfg.StrOpt('quobyte_export_path',
+               default='/quobyte',
+               help='Export path for shares of this bacckend. This needs '
+                    'to match the quobyte-nfs services "Pseudo" option.'),
 ]
 
 CONF = cfg.CONF
@@ -79,9 +83,10 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         1.2.4   - Fixed handling updated QB API error codes
         1.2.5   - Fixed two quota handling bugs
         1.2.6   - Fixed volume resize and jsonrpc code style bugs
+        1.2.7   - Add quobyte_export_path option
     """
 
-    DRIVER_VERSION = '1.2.6'
+    DRIVER_VERSION = '1.2.7'
 
     def __init__(self, *args, **kwargs):
         super(QuobyteShareDriver, self).__init__(False, *args, **kwargs)
@@ -247,7 +252,7 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
 
         self._resize_share(share, share['size'])
 
-        return '%(nfs_server_ip)s:%(nfs_export_path)s' % result
+        return self._build_share_export_string(result)
 
     def delete_share(self, context, share, share_server=None):
         """Delete the corresponding Quobyte volume."""
@@ -293,7 +298,7 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
             volume_uuid=volume_uuid,
             protocol='NFS'))
 
-        return '%(nfs_server_ip)s:%(nfs_export_path)s' % result
+        return self._build_share_export_string(result)
 
     def _allow_access(self, context, share, access, share_server=None):
         """Allow access to a share."""
@@ -309,6 +314,12 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
             "read_only": ro,
             "add_allow_ip": access['access_to']}
         self.rpc.call('exportVolume', call_params)
+
+    def _build_share_export_string(self, rpc_result):
+        return '%(nfs_server_ip)s:%(qb_exp_path)s%(nfs_export_path)s' % {
+            "nfs_server_ip": rpc_result["nfs_server_ip"],
+            "qb_exp_path": self.configuration.quobyte_export_path,
+            "nfs_export_path": rpc_result["nfs_export_path"]}
 
     def _deny_access(self, context, share, access, share_server=None):
         """Remove white-list ip from a share."""
