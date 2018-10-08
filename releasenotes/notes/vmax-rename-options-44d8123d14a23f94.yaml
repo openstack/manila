@@ -1,0 +1,10 @@
+---
+upgrade:
+  - For Dell EMC VMAX Manila driver, replaced
+    emc_nas_pool_names with vmax_share_data_pools,
+    emc_interface_ports with vmax_ethernet_ports,
+    emc_nas_server_container with vmax_server_container.
+deprecations:
+  - For Dell EMC VMAX Manila driver, options emc_nas_pool_names,
+    emc_interface_ports, emc_nas_server_container are
+    deprecated.
