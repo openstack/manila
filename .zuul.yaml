@@ -25,8 +25,6 @@
             voting: false
         - manila-tempest-minimal-dsvm-cephfs-nfs-centos-7:
             voting: false
-        - manila-tempest-dsvm-glusterfs-nfs:
-            voting: false
         - manila-tempest-minimal-dsvm-dummy
         - manila-tempest-minimal-dsvm-lvm-centos-7
         - grenade-dsvm-manila:
