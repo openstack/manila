@@ -44,11 +44,14 @@ LOG = log.getLogger(__name__)
 
 VMAX_OPTS = [
     cfg.StrOpt('vmax_server_container',
+               deprecated_name='emc_nas_server_container',
                help='Data mover to host the NAS server.'),
     cfg.ListOpt('vmax_share_data_pools',
+                deprecated_name='emc_nas_pool_names',
                 help='Comma separated list of pools that can be used to '
                      'persist share data.'),
     cfg.ListOpt('vmax_ethernet_ports',
+                deprecated_name='emc_interface_ports',
                 help='Comma separated list of ports that can be used for '
                      'share server interfaces. Members of the list '
                      'can be Unix-style glob expressions.')
@@ -584,7 +587,7 @@ class VMAXStorageConnection(driver.StorageConnection):
             self.reserved_percentage = 0
 
         self.manager = manager.StorageObjectManager(config)
-        self.port_conf = config.safe_get('emc_interface_ports')
+        self.port_conf = config.safe_get('vmax_ethernet_ports')
 
     def get_managed_ports(self):
         # Get the real ports(devices) list from the backend storage
@@ -600,7 +603,7 @@ class VMAXStorageConnection(driver.StorageConnection):
 
         if not matched_ports:
             msg = (_("None of the specified network ports exist. "
-                     "Please check your configuration emc_interface_ports "
+                     "Please check your configuration vmax_ethernet_ports "
                      "in manila.conf. The available ports on the Data Mover "
                      "are %s.") %
                    ",".join(real_ports))
