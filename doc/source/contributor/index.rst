@@ -58,6 +58,7 @@ Other Resources
 
    launchpad
    gerrit
+   manila-review-policy
 
 API Reference
 -------------
