@@ -2341,7 +2341,7 @@ class ShareAdminActionsAPITest(test.TestCase):
     def setUp(self):
         super(ShareAdminActionsAPITest, self).setUp()
         CONF.set_default("default_share_type", None)
-        self.flags(rpc_backend='manila.openstack.common.rpc.impl_fake')
+        self.flags(transport_url='rabbit://fake:fake@mqhost:5672')
         self.share_api = share_api.API()
         self.admin_context = context.RequestContext('admin', 'fake', True)
         self.member_context = context.RequestContext('fake', 'fake')

@@ -56,7 +56,7 @@ class ShareGroupAPITest(test.TestCase):
         self.api_version = '2.34'
         self.request = fakes.HTTPRequest.blank(
             '/share-groups', version=self.api_version, experimental=True)
-        self.flags(rpc_backend='manila.openstack.common.rpc.impl_fake')
+        self.flags(transport_url='rabbit://fake:fake@mqhost:5672')
         self.admin_context = context.RequestContext('admin', 'fake', True)
         self.member_context = context.RequestContext('fake', 'fake')
         self.mock_policy_check = self.mock_object(

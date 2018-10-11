@@ -53,7 +53,7 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         self.context = self.request.environ['manila.context']
         self.admin_context = context.RequestContext('admin', 'fake', True)
         self.member_context = context.RequestContext('fake', 'fake')
-        self.flags(rpc_backend='manila.openstack.common.rpc.impl_fake')
+        self.flags(transport_url='rabbit://fake:fake@mqhost:5672')
 
     def _get_fake_share_group_snapshot(self, **values):
         snap = {

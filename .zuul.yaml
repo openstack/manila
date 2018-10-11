@@ -38,6 +38,8 @@
             voting: false
         - openstack-tox-pylint:
             voting: false
+        - openstack-tox-cover:
+            voting: false
     gate:
       queue: manila
       jobs:

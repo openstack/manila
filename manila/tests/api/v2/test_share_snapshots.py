@@ -581,7 +581,7 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
     def setUp(self):
         super(ShareSnapshotAdminActionsAPITest, self).setUp()
         self.controller = share_snapshots.ShareSnapshotsController()
-        self.flags(rpc_backend='manila.openstack.common.rpc.impl_fake')
+        self.flags(transport_url='rabbit://fake:fake@mqhost:5672')
         self.admin_context = context.RequestContext('admin', 'fake', True)
         self.member_context = context.RequestContext('fake', 'fake')
 
