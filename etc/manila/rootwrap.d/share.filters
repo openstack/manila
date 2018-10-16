@@ -174,7 +174,9 @@ docker: CommandFilter, docker, root
 # manila/share/drivers/container/container.py: brctl <whatever>
 brctl: CommandFilter, brctl, root
 
-# manila/share/drivers/container/container.py: e2fsck <whatever>
+# manila/share/drivers/container/storage_helper.py: e2fsck <whatever>
+# manila/share/drivers/generic.py: e2fsck <whatever>
+# manila/share/drivers/lvm.py: e2fsck <whatever>
 e2fsck: CommandFilter, e2fsck, root
 
 # manila/share/drivers/lvm.py: lvconvert --merge %s

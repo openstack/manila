@@ -131,9 +131,21 @@ class LVMMixin(driver.ExecuteMixin):
             'lvcreate', '-L', '%sG' % snapshot['share']['size'],
             '--name', snapshot['name'],
             '--snapshot', orig_lv_name, run_as_root=True)
-        snapshot_device_name = self._get_local_path(snapshot)
+
+        self._set_random_uuid_to_device(snapshot)
+
+    def _set_random_uuid_to_device(self, share_or_snapshot):
+        # NOTE(vponomaryov): 'tune2fs' is required to make
+        # filesystem of share created from snapshot have
+        # unique ID, in case of LVM volumes, by default,
+        # it will have the same UUID as source volume. Closes #1645751
+        # NOTE(gouthamr): Executing tune2fs -U only works on
+        # a recently checked filesystem.
+        # See: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=857336
+        device_path = self._get_local_path(share_or_snapshot)
+        self._execute('e2fsck', '-y', '-f', device_path, run_as_root=True)
         self._execute(
-            'tune2fs', '-U', 'random', snapshot_device_name, run_as_root=True,
+            'tune2fs', '-U', 'random', device_path, run_as_root=True,
         )
 
     def create_snapshot(self, context, snapshot, share_server=None):
@@ -248,9 +260,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         self._allocate_container(share)
         snapshot_device_name = self._get_local_path(snapshot)
         share_device_name = self._get_local_path(share)
-        self._execute(
-            'tune2fs', '-U', 'random', share_device_name, run_as_root=True,
-        )
+        self._set_random_uuid_to_device(share)
         self._copy_volume(
             snapshot_device_name, share_device_name, share['size'])
         location = self._get_helper(share).create_exports(
