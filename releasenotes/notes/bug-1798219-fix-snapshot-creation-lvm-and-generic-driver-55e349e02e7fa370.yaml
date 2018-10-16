@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    The generic and LVM drivers have been fixed to always perform a filesystem
+    check on newly created snapshots and derivative shares before attempting
+    to assign a UUID to them. See
+    `Launchpad bug 1798219 <https://bugs.launchpad.net/manila/+bug/1798219>`_
+    for more details.
