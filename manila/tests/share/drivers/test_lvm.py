@@ -228,6 +228,7 @@ class LVMShareDriverTestCase(test.TestCase):
         expected_exec = [
             'lvcreate -L 1G -n fakename fakevg',
             'mkfs.ext4 /dev/mapper/fakevg-fakename',
+            'e2fsck -y -f %s' % mount_share,
             'tune2fs -U random %s' % mount_share,
             ("dd count=0 if=%s of=%s iflag=direct oflag=direct" %
              (mount_snapshot, mount_share)),
@@ -333,6 +334,7 @@ class LVMShareDriverTestCase(test.TestCase):
         expected_exec = [
             ("lvcreate -L 1G --name fakesnapshotname --snapshot "
              "%s/fakename" % (CONF.lvm_share_volume_group,)),
+            "e2fsck -y -f /dev/mapper/fakevg-%s" % self.snapshot['name'],
             "tune2fs -U random /dev/mapper/fakevg-%s" % self.snapshot['name'],
             "mkdir -p " + mount_path,
             "mount /dev/mapper/fakevg-fakesnapshotname " + mount_path,
@@ -579,7 +581,9 @@ class LVMShareDriverTestCase(test.TestCase):
             ("lvconvert --merge %s" % snap_lv),
             ("lvcreate -L 1G --name fakesnapshotname --snapshot %s" %
                 share_lv),
-            ('tune2fs -U random /dev/mapper/%s-fakesnapshotname' %
+            ("e2fsck -y -f /dev/mapper/%s-fakesnapshotname" %
+                CONF.lvm_share_volume_group),
+            ("tune2fs -U random /dev/mapper/%s-fakesnapshotname" %
                 CONF.lvm_share_volume_group),
             ("mkdir -p %s" % share_mount_path),
             ("mount /dev/mapper/%s-fakename %s" %

@@ -323,6 +323,7 @@ class GenericShareDriverTestCase(test.TestCase):
                 '&&', 'sudo', 'mount', volume['mountpoint'], mount_path,
                 '&&', 'sudo', 'chmod', '777', mount_path,
                 '&&', 'sudo', 'umount', mount_path,
+                '&&', 'sudo', 'e2fsck', '-y', '-f', volume['mountpoint'],
                 '&&', 'sudo', 'tune2fs', '-U', 'random', volume['mountpoint'],
                 '&&', 'sudo', 'mount', volume['mountpoint'], mount_path,
             ),
