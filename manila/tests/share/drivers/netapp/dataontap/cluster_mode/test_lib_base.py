@@ -682,12 +682,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=provisioning_options))
         vserver_client = mock.Mock()
 
-        self.library._allocate_container(fake.EXTRA_SPEC_SHARE,
+        self.library._allocate_container(fake.SHARE_INSTANCE,
                                          fake.VSERVER1,
                                          vserver_client)
 
         mock_get_provisioning_opts.assert_called_once_with(
-            fake.EXTRA_SPEC_SHARE, fake.VSERVER1, replica=False)
+            fake.SHARE_INSTANCE, fake.VSERVER1, replica=False)
 
         vserver_client.create_volume.assert_called_once_with(
             fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
@@ -719,11 +719,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=copy.deepcopy(fake.PROVISIONING_OPTIONS)))
         vserver_client = mock.Mock()
 
-        self.library._allocate_container(fake.EXTRA_SPEC_SHARE, fake.VSERVER1,
+        self.library._allocate_container(fake.SHARE_INSTANCE, fake.VSERVER1,
                                          vserver_client, replica=True)
 
         mock_get_provisioning_opts.assert_called_once_with(
-            fake.EXTRA_SPEC_SHARE, fake.VSERVER1, replica=True)
+            fake.SHARE_INSTANCE, fake.VSERVER1, replica=True)
 
         vserver_client.create_volume.assert_called_once_with(
             fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
@@ -742,13 +742,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client = mock.Mock()
 
         self.assertRaises(exception.InvalidHost,
-                          self.library._allocate_container, fake.SHARE,
-                          fake.VSERVER1, vserver_client)
+                          self.library._allocate_container,
+                          fake.SHARE_INSTANCE, fake.VSERVER1, vserver_client)
 
         self.library._get_backend_share_name.assert_called_once_with(
-            fake.SHARE['id'])
-        share_utils.extract_host.assert_called_once_with(fake.SHARE['host'],
-                                                         level='pool')
+            fake.SHARE_INSTANCE['id'])
+        share_utils.extract_host.assert_called_once_with(
+            fake.SHARE_INSTANCE['host'], level='pool')
         self.assertEqual(0,
                          self.library._check_extra_specs_validity.call_count)
         self.assertEqual(0, self.library._get_provisioning_options.call_count)
@@ -762,33 +762,33 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library, '_check_string_extra_specs_validity')
 
         self.library._check_extra_specs_validity(
-            fake.EXTRA_SPEC_SHARE, fake.EXTRA_SPEC)
+            fake.SHARE_INSTANCE, fake.EXTRA_SPEC)
 
         mock_bool_check.assert_called_once_with(
-            fake.EXTRA_SPEC_SHARE, fake.EXTRA_SPEC, boolean_extra_spec_keys)
+            fake.SHARE_INSTANCE, fake.EXTRA_SPEC, boolean_extra_spec_keys)
         mock_string_check.assert_called_once_with(
-            fake.EXTRA_SPEC_SHARE, fake.EXTRA_SPEC)
+            fake.SHARE_INSTANCE, fake.EXTRA_SPEC)
 
     def test_check_extra_specs_validity_empty_spec(self):
         result = self.library._check_extra_specs_validity(
-            fake.EXTRA_SPEC_SHARE, fake.EMPTY_EXTRA_SPEC)
+            fake.SHARE_INSTANCE, fake.EMPTY_EXTRA_SPEC)
 
         self.assertIsNone(result)
 
     def test_check_extra_specs_validity_invalid_value(self):
         self.assertRaises(
             exception.Invalid, self.library._check_extra_specs_validity,
-            fake.EXTRA_SPEC_SHARE, fake.INVALID_EXTRA_SPEC)
+            fake.SHARE_INSTANCE, fake.INVALID_EXTRA_SPEC)
 
     def test_check_string_extra_specs_validity(self):
         result = self.library._check_string_extra_specs_validity(
-            fake.EXTRA_SPEC_SHARE, fake.EXTRA_SPEC)
+            fake.SHARE_INSTANCE, fake.EXTRA_SPEC)
 
         self.assertIsNone(result)
 
     def test_check_string_extra_specs_validity_empty_spec(self):
         result = self.library._check_string_extra_specs_validity(
-            fake.EXTRA_SPEC_SHARE, fake.EMPTY_EXTRA_SPEC)
+            fake.SHARE_INSTANCE, fake.EMPTY_EXTRA_SPEC)
 
         self.assertIsNone(result)
 
@@ -796,20 +796,20 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(
             exception.NetAppException,
             self.library._check_string_extra_specs_validity,
-            fake.EXTRA_SPEC_SHARE, fake.INVALID_MAX_FILE_EXTRA_SPEC)
+            fake.SHARE_INSTANCE, fake.INVALID_MAX_FILE_EXTRA_SPEC)
 
     def test_check_boolean_extra_specs_validity_invalid_value(self):
         self.assertRaises(
             exception.Invalid,
             self.library._check_boolean_extra_specs_validity,
-            fake.EXTRA_SPEC_SHARE, fake.INVALID_EXTRA_SPEC,
+            fake.SHARE_INSTANCE, fake.INVALID_EXTRA_SPEC,
             list(self.library.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP))
 
     def test_check_extra_specs_validity_invalid_combination(self):
         self.assertRaises(
             exception.Invalid,
             self.library._check_boolean_extra_specs_validity,
-            fake.EXTRA_SPEC_SHARE, fake.INVALID_EXTRA_SPEC_COMBO,
+            fake.SHARE_INSTANCE, fake.INVALID_EXTRA_SPEC_COMBO,
             list(self.library.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP))
 
     @ddt.data({'extra_specs': fake.EXTRA_SPEC, 'is_replica': False},
@@ -839,7 +839,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 return_value=fake.QOS_POLICY_GROUP_NAME))
 
         result = self.library._get_provisioning_options_for_share(
-            fake.EXTRA_SPEC_SHARE, fake.VSERVER1, replica=is_replica)
+            fake.SHARE_INSTANCE, fake.VSERVER1, replica=is_replica)
 
         if qos and is_replica:
             expected_provisioning_opts = fake.PROVISIONING_OPTIONS
@@ -847,16 +847,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         else:
             expected_provisioning_opts = fake.PROVISIONING_OPTIONS_WITH_QOS
             mock_create_qos_policy_group.assert_called_once_with(
-                fake.EXTRA_SPEC_SHARE, fake.VSERVER1,
+                fake.SHARE_INSTANCE, fake.VSERVER1,
                 {fake.QOS_NORMALIZED_SPEC: 3000})
 
         self.assertEqual(expected_provisioning_opts, result)
         mock_get_extra_specs_from_share.assert_called_once_with(
-            fake.EXTRA_SPEC_SHARE)
+            fake.SHARE_INSTANCE)
         mock_remap_standard_boolean_extra_specs.assert_called_once_with(
             extra_specs)
         mock_check_extra_specs_validity.assert_called_once_with(
-            fake.EXTRA_SPEC_SHARE, extra_specs)
+            fake.SHARE_INSTANCE, extra_specs)
         mock_get_provisioning_options.assert_called_once_with(extra_specs)
         mock_get_normalized_qos_specs.assert_called_once_with(extra_specs)
 
@@ -1002,12 +1002,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_allocate_container_no_pool(self):
 
         vserver_client = mock.Mock()
-        fake_share = copy.deepcopy(fake.SHARE)
-        fake_share['host'] = fake_share['host'].split('#')[0]
+        fake_share_inst = copy.deepcopy(fake.SHARE_INSTANCE)
+        fake_share_inst['host'] = fake_share_inst['host'].split('#')[0]
 
         self.assertRaises(exception.InvalidHost,
                           self.library._allocate_container,
-                          fake_share,
+                          fake_share_inst,
                           fake.VSERVER1,
                           vserver_client)
 
@@ -1049,24 +1049,25 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client = mock.Mock()
         original_snapshot_size = 20
 
-        fake_share = copy.deepcopy(fake.SHARE)
-        fake_share['size'] = size
+        fake_share_inst = copy.deepcopy(fake.SHARE_INSTANCE)
+        fake_share_inst['size'] = size
         fake_snapshot = copy.deepcopy(fake.SNAPSHOT)
         fake_snapshot['provider_location'] = provider_location
         fake_snapshot['size'] = original_snapshot_size
 
-        self.library._allocate_container_from_snapshot(fake_share,
+        self.library._allocate_container_from_snapshot(fake_share_inst,
                                                        fake_snapshot,
                                                        vserver,
                                                        vserver_client)
 
-        share_name = self.library._get_backend_share_name(fake_share['id'])
+        share_name = self.library._get_backend_share_name(
+            fake_share_inst['id'])
         parent_share_name = self.library._get_backend_share_name(
             fake_snapshot['share_id'])
         parent_snapshot_name = self.library._get_backend_snapshot_name(
             fake_snapshot['id']) if not provider_location else 'fake_location'
         mock_get_provisioning_opts.assert_called_once_with(
-            fake_share, fake.VSERVER1)
+            fake_share_inst, fake.VSERVER1)
         vserver_client.create_volume_clone.assert_called_once_with(
             share_name, parent_share_name, parent_snapshot_name,
             thin_provisioned=True, snapshot_policy='default',
@@ -1080,7 +1081,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         if hide_snapdir:
             vserver_client.set_volume_snapdir_access.assert_called_once_with(
-                fake.SHARE_NAME, hide_snapdir)
+                fake.SHARE_INSTANCE_NAME, hide_snapdir)
         else:
             vserver_client.set_volume_snapdir_access.assert_not_called()
 
