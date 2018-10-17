@@ -29,7 +29,7 @@
         - manila-tempest-minimal-dsvm-cephfs-nfs-centos-7:
             voting: false
         - manila-tempest-minimal-dsvm-dummy
-        - manila-tempest-minimal-dsvm-lvm-centos-7
+        - manila-tempest-minimal-dsvm-lvm
         - manila-grenade:
             voting: false
         - manila-rally-multibackend:
@@ -45,7 +45,7 @@
       jobs:
         - manila-tox-genconfig
         - manila-tempest-minimal-dsvm-dummy
-        - manila-tempest-minimal-dsvm-lvm-centos-7
+        - manila-tempest-minimal-dsvm-lvm
     experimental:
       jobs:
         - manila-tempest-dsvm-glusterfs-nfs
@@ -319,12 +319,11 @@
       - openstack/tempest
 
 - job:
-    name: manila-tempest-minimal-dsvm-lvm-centos-7
+    name: manila-tempest-minimal-dsvm-lvm
     parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-minimal-dsvm-lvm-centos-7/run.yaml
-    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-lvm-centos-7/post.yaml
+    run: playbooks/legacy/manila-tempest-minimal-dsvm-lvm/run.yaml
+    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-lvm/post.yaml
     timeout: 5400
-    nodeset: legacy-centos-7
     required-projects:
       - openstack-infra/devstack-gate
       - openstack/manila
