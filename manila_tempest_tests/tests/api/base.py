@@ -290,6 +290,12 @@ class BaseSharesTest(test.BaseTestCase):
                 cls.shares_v2_client, cls.networks_client)
             cls.shares_client.share_network_id = share_network_id
             cls.shares_v2_client.share_network_id = share_network_id
+            resource = {
+                "type": "share_network",
+                "id": share_network_id,
+                "client": cls.shares_v2_client,
+            }
+            cls.class_resources.insert(0, resource)
 
     @classmethod
     def resource_setup(cls):
