@@ -20,3 +20,4 @@ Command Line Interface
 
     manila
     manila-manage
+    manila-status
