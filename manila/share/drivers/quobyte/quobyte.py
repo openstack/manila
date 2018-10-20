@@ -89,9 +89,8 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
                              or CONF.share_backend_name or 'Quobyte')
 
     def _fetch_existing_access(self, context, share):
-        volume_uuid = self._resolve_volume_name(
-            share['name'],
-            self._get_project_name(context, share['project_id']))
+        volume_uuid = self._resolve_volume_name(share['name'],
+                                                share['project_id'])
         result = self.rpc.call('getConfiguration', {})
         if result is None:
             raise exception.QBException(
@@ -184,7 +183,8 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         self.rpc.call('setQuota', {"quotas": [
             {"consumer":
                 [{"type": "VOLUME",
-                  "identifier": share["name"],
+                  "identifier": self._resolve_volume_name(share["name"],
+                                                          share['project_id']),
                   "tenant_id": share["project_id"]}],
              "limits": [{"type": "LOGICAL_DISK_SPACE",
                         "value": newsize_bytes}]}
@@ -223,9 +223,8 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
             raise exception.QBException(
                 _('Quobyte driver only supports NFS shares'))
 
-        volume_uuid = self._resolve_volume_name(
-            share['name'],
-            self._get_project_name(context, share['project_id']))
+        volume_uuid = self._resolve_volume_name(share['name'],
+                                                share['project_id'])
 
         if not volume_uuid:
             # create tenant, expect ERROR_GARBAGE_ARGS if it already exists
@@ -251,9 +250,8 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
 
     def delete_share(self, context, share, share_server=None):
         """Delete the corresponding Quobyte volume."""
-        volume_uuid = self._resolve_volume_name(
-            share['name'],
-            self._get_project_name(context, share['project_id']))
+        volume_uuid = self._resolve_volume_name(share['name'],
+                                                share['project_id'])
         if not volume_uuid:
             LOG.warning("No volume found for "
                         "share %(project_id)s/%(name)s",
@@ -281,9 +279,8 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
             the backend
         """
 
-        volume_uuid = self._resolve_volume_name(
-            share['name'],
-            self._get_project_name(context, share['project_id']))
+        volume_uuid = self._resolve_volume_name(share['name'],
+                                                share['project_id'])
 
         LOG.debug("Ensuring Quobyte share %s", share['name'])
 
@@ -303,9 +300,8 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
             raise exception.InvalidShareAccess(
                 _('Quobyte driver only supports ip access control'))
 
-        volume_uuid = self._resolve_volume_name(
-            share['name'],
-            self._get_project_name(context, share['project_id']))
+        volume_uuid = self._resolve_volume_name(share['name'],
+                                                share['project_id'])
         ro = access['access_level'] == (constants.ACCESS_LEVEL_RO)
         call_params = {
             "volume_uuid": volume_uuid,
@@ -322,9 +318,8 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
                       self._get_project_name(context, share['project_id']))
             return
 
-        volume_uuid = self._resolve_volume_name(
-            share['name'],
-            self._get_project_name(context, share['project_id']))
+        volume_uuid = self._resolve_volume_name(share['name'],
+                                                share['project_id'])
         call_params = {
             "volume_uuid": volume_uuid,
             "remove_allow_ip": access['access_to']}

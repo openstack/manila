@@ -416,7 +416,9 @@ class QuobyteShareDriverTestCase(test.TestCase):
         mock_qsd_resize_share.assert_called_once_with(share=self.share,
                                                       new_size=2)
 
-    def test_resize_share(self):
+    @mock.patch.object(quobyte.QuobyteShareDriver, "_resolve_volume_name",
+                       return_value="fake_volume_uuid")
+    def test_resize_share(self, mock_qb_resolv):
         self._driver.rpc.call = mock.Mock(wraps=fake_rpc_handler)
         manila_size = 7
         newsize_bytes = manila_size * units.Gi
@@ -427,7 +429,7 @@ class QuobyteShareDriverTestCase(test.TestCase):
             "quotas": [{
                 "consumer": [{
                     "type": "VOLUME",
-                    "identifier": self.share["name"],
+                    "identifier": "fake_volume_uuid",
                     "tenant_id": self.share["project_id"]
                 }],
                 "limits": [{
@@ -437,6 +439,8 @@ class QuobyteShareDriverTestCase(test.TestCase):
             }]}
         self._driver.rpc.call.assert_has_calls([
             mock.call('setQuota', exp_params)])
+        mock_qb_resolv.assert_called_once_with(self.share['name'],
+                                               self.share['project_id'])
 
     @mock.patch.object(quobyte.QuobyteShareDriver,
                        "_resolve_volume_name",
