@@ -248,6 +248,33 @@ Restart of the ``manila-share`` service is needed for the configuration
 changes to take effect.
 
 
+IPv6 support
+~~~~~~~~~~~~
+IPv6 support for VMAX Manila driver is introduced in Rocky release. The feature is
+divided into two parts:
+
+#. The driver is able to manage share or snapshot in the Neutron IPv6 network.
+#. The driver is able to connect VMAX management interface using its IPv6
+   address.
+
+Pre-Configurations for IPv6 support
+-----------------------------------
+
+The following parameters need to be configured in ``/etc/manila/manila.conf``
+for the VMAX driver:
+
+.. code-block:: ini
+
+   network_plugin_ipv6_enabled = True
+
+If you want to connect to the eNAS controller using IPv6 address specify the
+address in ``/etc/manila/manila.conf``:
+
+.. code-block:: ini
+
+   emc_nas_server = <IPv6 address>
+
+
 Restrictions
 ~~~~~~~~~~~~
 
