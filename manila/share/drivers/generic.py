@@ -355,6 +355,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                         # 'tune2fs' command can be executed only when device
                         # is not mounted and also, in current case, it takes
                         # effect only after it was mounted. Closes #1645751
+                        # NOTE(gouthamr): Executing tune2fs -U only works on
+                        # a recently checked filesystem. See debian bug 857336
+                        '&&', 'sudo', 'e2fsck', '-y', '-f', device_path,
                         '&&', 'sudo', 'tune2fs', '-U', 'random', device_path,
                         '&&', 'sudo', 'mount', device_path, mount_path,
                     )
