@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Shares backed by CephFS no longer have hard-coded mode 755.  Use
+    the ``cephfs_volume_mode`` configuration option to set another
+    mode, such as 775 when using manila dynamic external storage
+    provider with OpenShift.  The default value remains 755 for
+    backwards compatibility.

@@ -29,6 +29,11 @@ from manila import test
 from manila.tests import fake_share
 
 
+DEFAULT_VOLUME_MODE = 0o755
+ALT_VOLUME_MODE_CFG = '775'
+ALT_VOLUME_MODE = 0o775
+
+
 class MockVolumeClientModule(object):
     """Mocked up version of ceph's VolumeClient interface."""
 
@@ -129,6 +134,8 @@ class CephFSDriverTestCase(test.TestCase):
 
         self._driver.protocol_helper.init_helper.assert_called_once_with()
 
+        self.assertEqual(DEFAULT_VOLUME_MODE, self._driver._cephfs_volume_mode)
+
     def test_create_share(self):
         cephfs_volume = {"mount_path": "/foo/bar"}
 
@@ -137,7 +144,7 @@ class CephFSDriverTestCase(test.TestCase):
         self._driver._volume_client.create_volume.assert_called_once_with(
             driver.cephfs_share_path(self._share),
             size=self._share['size'] * units.Gi,
-            data_isolated=False)
+            data_isolated=False, mode=DEFAULT_VOLUME_MODE)
         (self._driver.protocol_helper.get_export_locations.
             assert_called_once_with(self._share, cephfs_volume))
 
@@ -175,7 +182,8 @@ class CephFSDriverTestCase(test.TestCase):
         self._driver._volume_client.create_volume.assert_called_once_with(
             driver.cephfs_share_path(self._share),
             size=self._share['size'] * units.Gi,
-            data_isolated=False)
+            data_isolated=False,
+            mode=DEFAULT_VOLUME_MODE)
 
     def test_create_data_isolated(self):
         self.mock_object(share_types, 'get_share_type_extra_specs',
@@ -187,7 +195,8 @@ class CephFSDriverTestCase(test.TestCase):
         self._driver._volume_client.create_volume.assert_called_once_with(
             driver.cephfs_share_path(self._share),
             size=self._share['size'] * units.Gi,
-            data_isolated=True)
+            data_isolated=True,
+            mode=DEFAULT_VOLUME_MODE)
 
     def test_delete_share(self):
         self._driver.delete_share(self._context, self._share)
@@ -260,7 +269,8 @@ class CephFSDriverTestCase(test.TestCase):
         (self._driver._volume_client.create_snapshot_volume
             .assert_called_once_with(
                 driver.cephfs_share_path(self._share),
-                "snappy1_instance1"))
+                "snappy1_instance1",
+                mode=DEFAULT_VOLUME_MODE))
 
     def test_delete_snapshot(self):
         self._driver.delete_snapshot(self._context,
@@ -280,7 +290,7 @@ class CephFSDriverTestCase(test.TestCase):
         self._driver.create_share_group(self._context, {"id": "grp1"}, None)
 
         self._driver._volume_client.create_group.assert_called_once_with(
-            "grp1")
+            "grp1", mode=DEFAULT_VOLUME_MODE)
 
     def test_delete_share_group(self):
         self._driver.delete_share_group(self._context, {"id": "grp1"}, None)
@@ -291,16 +301,16 @@ class CephFSDriverTestCase(test.TestCase):
     def test_create_share_snapshot(self):
         self._driver.create_share_group_snapshot(self._context, {
             'share_group_id': 'sgid',
-            'id': 'snapid'
+            'id': 'snapid',
         })
 
         (self._driver._volume_client.create_snapshot_group.
-         assert_called_once_with("sgid", "snapid"))
+         assert_called_once_with("sgid", "snapid", mode=DEFAULT_VOLUME_MODE))
 
     def test_delete_share_group_snapshot(self):
         self._driver.delete_share_group_snapshot(self._context, {
             'share_group_id': 'sgid',
-            'id': 'snapid'
+            'id': 'snapid',
         })
 
         (self._driver._volume_client.destroy_snapshot_group.
@@ -676,3 +686,59 @@ class NFSProtocolHelperTestCase(test.TestCase):
         self._volume_client._get_path.assert_called_once_with(
             'fakevolumepath')
         self.assertEqual('/foo/bar', ret)
+
+
+@ddt.ddt
+class CephFSDriverAltConfigTestCase(test.TestCase):
+    """Test the CephFS driver with non-default config values."""
+
+    def setUp(self):
+        super(CephFSDriverAltConfigTestCase, self).setUp()
+        self._execute = mock.Mock()
+        self.fake_conf = configuration.Configuration(None)
+        self._context = context.get_admin_context()
+        self._share = fake_share.fake_share(share_proto='CEPHFS')
+
+        self.fake_conf.set_default('driver_handles_share_servers', False)
+        self.fake_conf.set_default('cephfs_auth_id', 'manila')
+
+        self.mock_object(driver, "ceph_volume_client",
+                         MockVolumeClientModule)
+        self.mock_object(driver, "ceph_module_found", True)
+        self.mock_object(driver, "cephfs_share_path")
+        self.mock_object(driver, 'NativeProtocolHelper')
+        self.mock_object(driver, 'NFSProtocolHelper')
+
+    @ddt.data('cephfs', 'nfs')
+    def test_do_setup_alt_volume_mode(self, protocol_helper):
+
+        self.fake_conf.set_default('cephfs_volume_mode', ALT_VOLUME_MODE_CFG)
+        self._driver = driver.CephFSDriver(execute=self._execute,
+                                           configuration=self.fake_conf)
+
+        self._driver.configuration.cephfs_protocol_helper_type = (
+            protocol_helper)
+
+        self._driver.do_setup(self._context)
+
+        if protocol_helper == 'cephfs':
+            driver.NativeProtocolHelper.assert_called_once_with(
+                self._execute, self._driver.configuration,
+                ceph_vol_client=self._driver._volume_client)
+        else:
+            driver.NFSProtocolHelper.assert_called_once_with(
+                self._execute, self._driver.configuration,
+                ceph_vol_client=self._driver._volume_client)
+
+        self._driver.protocol_helper.init_helper.assert_called_once_with()
+
+        self.assertEqual(ALT_VOLUME_MODE, self._driver._cephfs_volume_mode)
+
+    @ddt.data('0o759', '0x755', '12a3')
+    def test_volume_mode_exception(self, volume_mode):
+        # cephfs_volume_mode must be a string representing an int as octal
+        self.fake_conf.set_default('cephfs_volume_mode', volume_mode)
+
+        self.assertRaises(exception.BadConfigurationException,
+                          driver.CephFSDriver, execute=self._execute,
+                          configuration=self.fake_conf)
