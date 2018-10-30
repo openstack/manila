@@ -42,6 +42,8 @@ CEPHX_ACCESS_TYPE = "cephx"
 # The default Ceph administrative identity
 CEPH_DEFAULT_AUTH_ID = "admin"
 
+DEFAULT_VOLUME_MODE = '755'
+
 
 LOG = log.getLogger(__name__)
 
@@ -89,6 +91,11 @@ cephfs_opts = [
                help="The password to authenticate as the user in the remote "
                     "Ganesha server host. This is not required if "
                     "'cephfs_ganesha_path_to_private_key' is configured."),
+    cfg.StrOpt('cephfs_volume_mode',
+               default=DEFAULT_VOLUME_MODE,
+               help="The read/write/execute permissions mode for CephFS "
+                    "volumes, snapshots, and snapshot groups expressed in "
+                    "Octal as with linux 'chmod' or 'umask' commands."),
 ]
 
 
@@ -114,6 +121,14 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         self._volume_client = None
 
         self.configuration.append_config_values(cephfs_opts)
+
+        try:
+            self._cephfs_volume_mode = int(
+                self.configuration.cephfs_volume_mode, 8)
+        except ValueError:
+            msg = _("Invalid CephFS volume mode %s")
+            raise exception.BadConfigurationException(
+                msg % self.configuration.cephfs_volume_mode)
 
     def do_setup(self, context):
         if self.configuration.cephfs_protocol_helper_type.upper() == "CEPHFS":
@@ -237,7 +252,8 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
         # Create the CephFS volume
         cephfs_volume = self.volume_client.create_volume(
-            cephfs_share_path(share), size=size, data_isolated=data_isolated)
+            cephfs_share_path(share), size=size, data_isolated=data_isolated,
+            mode=self._cephfs_volume_mode)
 
         return self.protocol_helper.get_export_locations(share, cephfs_volume)
 
@@ -284,7 +300,8 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
     def create_snapshot(self, context, snapshot, share_server=None):
         self.volume_client.create_snapshot_volume(
             cephfs_share_path(snapshot['share']),
-            '_'.join([snapshot['snapshot_id'], snapshot['id']]))
+            '_'.join([snapshot['snapshot_id'], snapshot['id']]),
+            mode=self._cephfs_volume_mode)
 
     def delete_snapshot(self, context, snapshot, share_server=None):
         self.volume_client.destroy_snapshot_volume(
@@ -292,7 +309,8 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             '_'.join([snapshot['snapshot_id'], snapshot['id']]))
 
     def create_share_group(self, context, sg_dict, share_server=None):
-        self.volume_client.create_group(sg_dict['id'])
+        self.volume_client.create_group(sg_dict['id'],
+                                        mode=self._cephfs_volume_mode)
 
     def delete_share_group(self, context, sg_dict, share_server=None):
         self.volume_client.destroy_group(sg_dict['id'])
@@ -309,7 +327,8 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                                     share_server=None):
         self.volume_client.create_snapshot_group(
             snap_dict['share_group_id'],
-            snap_dict['id'])
+            snap_dict['id'],
+            mode=self._cephfs_volume_mode)
 
         return None, []
 
