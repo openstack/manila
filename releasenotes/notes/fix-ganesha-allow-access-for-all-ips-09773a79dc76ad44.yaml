@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Drivers using ganesha can now handle 'manila access-allow
+    <share-id> ip 0.0.0.0/0' as a way to allow access to the share
+    from all IPs.
