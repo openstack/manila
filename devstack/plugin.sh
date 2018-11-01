@@ -1022,16 +1022,22 @@ function setup_ipv6 {
     echo "log file /var/log/quagga/zebra.log"
     ) | sudo tee /etc/quagga/zebra.conf > /dev/null
 
+    # set Quagga vtysh.conf
+    (
+    echo "service integrated-vtysh-config"
+    echo "username quagga nopassword"
+    ) | sudo tee /etc/quagga/vtysh.conf > /dev/null
+
     # set Quagga bgpd.conf
     (
     echo "log file /var/log/quagga/bgpd.log"
     echo "bgp multiple-instance"
     echo "router bgp 200"
     echo " bgp router-id 1.2.3.4"
-    echo " neighbor ::1 remote-as 100"
-    echo " neighbor ::1 passive"
+    echo " neighbor $public_gateway_ipv6 remote-as 100"
+    echo " neighbor $public_gateway_ipv6 passive"
     echo " address-family ipv6"
-    echo "  neighbor ::1 activate"
+    echo "  neighbor $public_gateway_ipv6 activate"
     echo "line vty"
     echo "debug bgp events"
     echo "debug bgp filters"
@@ -1040,21 +1046,34 @@ function setup_ipv6 {
     echo "debug bgp updates"
     ) | sudo tee /etc/quagga/bgpd.conf > /dev/null
 
-    if is_ubuntu; then
-        sudo systemctl enable quagga
-        sudo systemctl restart quagga
-    else
+    # Quagga logging
+    sudo mkdir -p /var/log/quagga
+    sudo touch /var/log/quagga/zebra.log
+    sudo touch /var/log/quagga/bgpd.log
+    sudo chown -R quagga:quagga /var/log/quagga
+
+
+    GetOSVersion
+    QUAGGA_SERVICES="zebra bgpd"
+    if [[ is_ubuntu && "$os_CODENAME" == "xenial" ]]; then
+        # In Ubuntu Xenial, the services bgpd and zebra are under
+        # one systemd unit: quagga
+        QUAGGA_SERVICES="quagga"
+    elif is_fedora; then
         # Disable SELinux rule that conflicts with Zebra
         sudo setsebool -P zebra_write_config 1
-        sudo systemctl enable zebra
-        sudo systemctl enable bgpd
-        sudo systemctl restart zebra
-        sudo systemctl restart bgpd
     fi
+    sudo systemctl enable $QUAGGA_SERVICES
+    sudo systemctl restart $QUAGGA_SERVICES
+
+    # log the systemd status
+    sudo systemctl status $QUAGGA_SERVICES
 
     # add default IPv6 route back
     if ! [[ -z $default_route ]]; then
-        sudo ip -6 route add $default_route
+        # "replace" should ignore "RTNETLINK answers: File exists"
+        # error if the route wasn't flushed by the bgp setup we did earlier.
+        sudo ip -6 route replace $default_route
     fi
 
 }

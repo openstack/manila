@@ -358,11 +358,12 @@ source $BASE/new/devstack/openrc admin admin
 public_net_id=$(openstack network list --name $PUBLIC_NETWORK_NAME -f value -c ID )
 iniset $TEMPEST_CONFIG network public_network_id $public_net_id
 
-# Now that all plugins are loaded, setup BGP here
 if [ $(trueorfalse False MANILA_SETUP_IPV6) == True ]; then
+    # Now that all plugins are loaded, setup BGP here
+    public_gateway_ipv6=$(openstack subnet show ipv6-public-subnet -c gateway_ip -f value)
     neutron bgp-speaker-create --ip-version 6 --local-as 100 bgpspeaker
     neutron bgp-speaker-network-add bgpspeaker $PUBLIC_NETWORK_NAME
-    neutron bgp-peer-create --peer-ip ::1 --remote-as 200 bgppeer
+    neutron bgp-peer-create --peer-ip $public_gateway_ipv6 --remote-as 200 bgppeer
     neutron bgp-speaker-peer-add bgpspeaker bgppeer
 fi
 
