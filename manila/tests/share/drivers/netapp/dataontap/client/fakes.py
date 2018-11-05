@@ -2427,7 +2427,7 @@ QOS_POLICY_GROUP_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
       <qos-policy-group-info>
-        <max-throughput>%(max_througput)s</max-throughput>
+        <max-throughput>%(max_throughput)s</max-throughput>
         <num-workloads>1</num-workloads>
         <policy-group>%(qos_policy_group_name)s</policy-group>
         <vserver>%(vserver)s</vserver>
@@ -2437,7 +2437,7 @@ QOS_POLICY_GROUP_GET_ITER_RESPONSE = etree.XML("""
   </results>""" % {
     'qos_policy_group_name': QOS_POLICY_GROUP_NAME,
     'vserver': VSERVER_NAME,
-    'max_througput': QOS_MAX_THROUGHPUT,
+    'max_throughput': QOS_MAX_THROUGHPUT,
 })
 
 FAKE_VOL_XML = """<volume-info>
