@@ -62,7 +62,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - all_tenants: all_tenants
+   - all_tenants: all_tenants_query
 
 Response parameters
 -------------------
@@ -107,7 +107,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - all_tenants: all_tenants
+   - all_tenants: all_tenants_query
 
 Response parameters
 -------------------

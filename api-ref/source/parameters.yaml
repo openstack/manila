@@ -146,7 +146,7 @@ action_id:
   type: string
   description: >
     The ID of the action during which the message was created.
-all_tenants:
+all_tenants_query:
   description: |
     (Admin only). Defines whether to list the requested resources for
     all projects. Set to ``1`` to list resources for all projects.
@@ -234,9 +234,11 @@ group_snapshot_status_query:
   in: query
   required: false
   type: string
-host_7:
+host_query:
   description: |
-    The share host name.
+    The host name of the resource to query with. Querying by hostname is a
+    privileged operation. If restricted by API policy, this query parameter
+    may be silently ignored by the server.
   in: query
   required: false
   type: string
@@ -265,6 +267,13 @@ message_level:
   type: string
   description: >
     The message level.
+metadata_query:
+  in: query
+  required: false
+  type: object
+  description: |
+    One or more metadata key and value pairs as a
+    url encoded dictionary of strings.
 name_inexact_query:
   description: |
     The name pattern that can be used to filter shares,
@@ -385,13 +394,19 @@ share_id_replicas_query:
   type: string
 share_network_id_query:
   description: |
-    The UUID of the share network.
+    The UUID of the share network to filter resources by.
   in: query
   required: false
   type: string
 share_server_id_query:
   description: |
     The UUID of the share server.
+  in: query
+  required: false
+  type: string
+share_type_id_query:
+  description: |
+    The UUID of a share type to query resources by.
   in: query
   required: false
   type: string
@@ -450,12 +465,12 @@ source_share_group_snapshot_id_query:
   required: false
   type: string
   min_version: 2.31
-status_6:
+status_query:
   description: |
     Filters by a share status. A valid value is
     ``creating``, ``error``, ``available``, ``deleting``,
     ``error_deleting``, ``manage_starting``, ``manage_error``,
-    ``unmanage_starting``, ``unmanage_error``, ``unmanaged``,
+    ``unmanage_starting``, ``unmanage_error``, ``migrating``,
     ``extending``, ``extending_error``, ``shrinking``,
     ``shrinking_error``, or ``shrinking_possible_data_loss_error``.
   in: query
@@ -469,7 +484,7 @@ user_id_query:
   in: query
   required: false
   type: string
-with_count:
+with_count_query:
   description: |
     Whether to show ``count`` in API response or not, default is ``False``.
   in: query

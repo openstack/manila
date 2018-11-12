@@ -88,7 +88,7 @@ Response parameters
    - metadata: metadata
    - status: status_8
    - description: description
-   - host: host_7
+   - host: host_1
    - is_public: is_public
    - snapshot_support: snapshot_support
    - name: name

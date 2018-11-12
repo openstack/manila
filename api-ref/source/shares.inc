@@ -110,28 +110,28 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - all_tenants: all_tenants
-   - name: name_request
-   - status: status_6
-   - share_server_id: share_server_id
-   - metadata: metadata
-   - extra_specs: extra_specs
-   - share_type_id: share_type_id
-   - limit: limit
-   - offset: offset
-   - sort_key: sort_key
-   - sort_dir: sort_dir
+   - all_tenants: all_tenants_query
+   - name: name_query
+   - status: status_query
+   - share_server_id: share_server_id_query
+   - metadata: metadata_query
+   - extra_specs: extra_specs_query
+   - share_type_id: share_type_id_query
    - snapshot_id: snapshot_id_query
-   - host: host_1
-   - share_network_id: share_network_id
-   - project_id: project_id
-   - is_public: is_public
+   - host: host_query
+   - share_network_id: share_network_id_query
+   - project_id: project_id_query
+   - is_public: is_public_query
    - share_group_id: share_group_id_query
    - export_location_id: export_location_id_query
    - export_location_path: export_location_path_query
    - name~: name_inexact_query
    - description~: description_inexact_query
-   - with_count: with_count
+   - with_count: with_count_query
+   - limit: limit
+   - offset: offset
+   - sort_key: sort_key
+   - sort_dir: sort_dir
 
 Response parameters
 -------------------
@@ -178,20 +178,16 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - all_tenants: all_tenants
-   - status: status_6
-   - share_server_id: share_server_id
-   - metadata: metadata
-   - extra_specs: extra_specs
-   - share_type_id: share_type_id
-   - limit: limit
-   - offset: offset
-   - sort_key: sort_key
-   - sort_dir: sort_dir
+   - all_tenants: all_tenants_query
+   - status: status_query
+   - share_server_id: share_server_id_query
+   - metadata: metadata_query
+   - extra_specs: extra_specs_query
+   - share_type_id: share_type_id_query
    - name: name_query
    - snapshot_id: snapshot_id_query
-   - host: host_1
-   - share_network_id: share_network_id
+   - host: host_query
+   - share_network_id: share_network_id_query
    - project_id: project_id_query
    - is_public: is_public_query
    - share_group_id: share_group_id_query
@@ -199,7 +195,11 @@ Request
    - export_location_path: export_location_path_query
    - name~: name_inexact_query
    - description~: description_inexact_query
-   - with_count: with_count
+   - with_count: with_count_query
+   - limit: limit
+   - offset: offset
+   - sort_key: sort_key
+   - sort_dir: sort_dir
 
 Response parameters
 -------------------
