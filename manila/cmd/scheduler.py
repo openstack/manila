@@ -28,8 +28,6 @@ from oslo_log import log
 from oslo_reports import guru_meditation_report as gmr
 from oslo_reports import opts as gmr_opts
 
-from manila import i18n
-i18n.enable_lazy()
 from manila.common import config  # Need to register global_opts  # noqa
 from manila import service
 from manila import utils

@@ -19,9 +19,6 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_service import wsgi
 
-from manila import i18n
-i18n.enable_lazy()
-
 # Need to register global_opts
 from manila.common import config
 from manila import rpc
