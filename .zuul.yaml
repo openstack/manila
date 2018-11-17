@@ -80,6 +80,7 @@
 - job:
     name: manila-tempest-base
     parent: legacy-dsvm-base
+    nodeset: openstack-single-node-bionic
     irrelevant-files:
       - ^(test-|)requirements.txt$
       - ^.*\.rst$
@@ -378,6 +379,7 @@
 - job:
     name: manila-rally-multibackend
     parent: legacy-dsvm-base
+    nodeset: openstack-single-node-bionic
     run: playbooks/legacy/rally-dsvm-manila-multibackend/run.yaml
     post-run: playbooks/legacy/rally-dsvm-manila-multibackend/post.yaml
     timeout: 4200
@@ -400,6 +402,7 @@
 - job:
     name: manila-rally-multibackend-no-ss
     parent: legacy-dsvm-base
+    nodeset: openstack-single-node-bionic
     run: playbooks/legacy/rally-dsvm-manila-multibackend-no-ss/run.yaml
     post-run: playbooks/legacy/rally-dsvm-manila-multibackend-no-ss/post.yaml
     timeout: 4200

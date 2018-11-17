@@ -6,6 +6,8 @@ register_db_to_save manila
 export BASE_RUN_SMOKE=False
 export TARGET_RUN_SMOKE=False
 export ENABLE_TEMPEST=False
+export PYTHON3_VERSION=${PYTHON3_VERSION}
+
 
 devstack_localrc base enable_service manila m-api m-shr m-sch m-dat
 devstack_localrc base enable_plugin manila git://git.openstack.org/openstack/manila stable/rocky
