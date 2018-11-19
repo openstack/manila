@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    The NetApp ONTAP DHSS=True driver has been fixed to allow multiple shares
+    to use the same ipspace and VLAN port across all subnets belonging to the
+    same neutron network.

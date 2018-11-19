@@ -938,6 +938,37 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return interfaces
 
     @na_utils.trace
+    def get_ipspace_name_for_vlan_port(self, vlan_node, vlan_port, vlan_id):
+        """Gets IPSpace name for specified VLAN"""
+
+        if not self.features.IPSPACES:
+            return None
+
+        port = vlan_port if not vlan_id else '%(port)s-%(id)s' % {
+            'port': vlan_port,
+            'id': vlan_id,
+        }
+        api_args = {'node': vlan_node, 'port': port}
+
+        try:
+            result = self.send_request('net-port-get', api_args)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EOBJECTNOTFOUND:
+                msg = _('No pre-existing port or ipspace was found for '
+                        '%(port)s, will attempt to create one.')
+                msg_args = {'port': port}
+                LOG.debug(msg, msg_args)
+                return None
+            else:
+                raise
+
+        attributes = result.get_child_by_name('attributes')
+        net_port_info = attributes.get_child_by_name('net-port-info')
+        ipspace_name = net_port_info.get_child_content('ipspace')
+
+        return ipspace_name
+
+    @na_utils.trace
     def get_ipspaces(self, ipspace_name=None):
         """Gets one or more IPSpaces."""
 
