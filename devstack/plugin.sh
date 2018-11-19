@@ -964,8 +964,8 @@ function setup_ipv6 {
     sudo ovs-vsctl set Bridge $PUBLIC_BRIDGE other_config:disable-in-band=true
 
     # Create address scopes and subnet pools
-    neutron address-scope-create --shared scope-v4 4
-    neutron address-scope-create --shared scope-v6 6
+    openstack address scope create --share --ip-version 4 scope-v4
+    openstack address scope create --share --ip-version 6 scope-v6
     openstack subnet pool create $SUBNETPOOL_NAME_V4 --default-prefix-length $SUBNETPOOL_SIZE_V4 --pool-prefix $SUBNETPOOL_PREFIX_V4 --address-scope scope-v4 --default --share
     openstack subnet pool create $SUBNETPOOL_NAME_V6 --default-prefix-length $SUBNETPOOL_SIZE_V6 --pool-prefix $SUBNETPOOL_PREFIX_V6 --address-scope scope-v6 --default --share
 
