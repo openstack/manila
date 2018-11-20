@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed multi segment neutron data save in NeutronBindNetworkPlugin to
+    provide IP version for neutron port creation.

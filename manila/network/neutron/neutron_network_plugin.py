@@ -442,7 +442,7 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
                 "local_link_information": local_links}
         return arguments
 
-    def _store_neutron_net_info(self, context, share_network):
+    def _save_neutron_network_data(self, context, share_network):
         """Store the Neutron network info.
 
         In case of dynamic multi segments the segment is determined while
@@ -456,7 +456,7 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
             # In case of dynamic multi segment the segment is determined while
             # binding the port
             return
-        super(NeutronBindNetworkPlugin, self)._store_neutron_net_info(
+        super(NeutronBindNetworkPlugin, self)._save_neutron_network_data(
             context, share_network)
 
     def allocate_network(self, context, share_server, share_network=None,
@@ -473,8 +473,8 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
             self._wait_for_ports_bind(ports, share_server)
             if self._is_neutron_multi_segment(share_network):
                 # update segment information after port bind
-                super(NeutronBindNetworkPlugin, self)._store_neutron_net_info(
-                    context, share_network)
+                super(NeutronBindNetworkPlugin,
+                      self)._save_neutron_network_data(context, share_network)
                 for num, port in enumerate(ports):
                     port_info = {
                         'network_type': share_network['network_type'],

@@ -71,6 +71,14 @@ fake_neutron_network = {
                 'fake subnet id 2'],
 }
 
+fake_ip_version = 4
+
+fake_neutron_subnet = {
+    'cidr': '10.0.0.0/24',
+    'ip_version': fake_ip_version,
+    'gateway_ip': '10.0.0.1',
+}
+
 fake_share_network = {
     'id': 'fake nw info id',
     'neutron_subnet_id': fake_neutron_network['subnets'][0],
@@ -155,7 +163,7 @@ fake_share_network_multi = {
     'name': 'fake name',
     'description': 'fake description',
     'security_services': [],
-    'ip_version': 4,
+    'ip_version': None,
     'cidr': 'fake_cidr',
     'gateway': 'fake_gateway',
     'mtu': fake_neutron_network_multi['mtu'],
@@ -170,9 +178,9 @@ fake_network_allocation_multi = {
     'label': 'user',
     'network_type': None,
     'segmentation_id': None,
-    'ip_version': fake_share_network_multi['ip_version'],
-    'cidr': fake_share_network_multi['cidr'],
-    'gateway': 'fake_gateway',
+    'ip_version': fake_neutron_subnet['ip_version'],
+    'cidr': fake_neutron_subnet['cidr'],
+    'gateway': fake_neutron_subnet['gateway_ip'],
     'mtu': fake_share_network_multi['mtu'],
 }
 
@@ -435,11 +443,7 @@ class NeutronNetworkPluginTest(test.TestCase):
 
     @mock.patch.object(db_api, 'share_network_update', mock.Mock())
     def test_save_neutron_subnet_data(self):
-        neutron_subnet_info = {
-            'cidr': '10.0.0.0/24',
-            'ip_version': 4,
-            'gateway_ip': '10.0.0.1',
-        }
+        neutron_subnet_info = fake_neutron_subnet
         subnet_value = {
             'cidr': '10.0.0.0/24',
             'ip_version': 4,
@@ -770,6 +774,7 @@ class NeutronBindNetworkPluginTest(test.TestCase):
             network_allocation_update_data)
         fake_share_network_multi_updated = dict(fake_share_network_multi)
         fake_share_network_multi_updated.update(network_update_data)
+        fake_share_network_multi_updated.update(fake_neutron_subnet)
         config_data = {
             'DEFAULT': {
                 'neutron_net_id': 'fake net id',
@@ -783,8 +788,6 @@ class NeutronBindNetworkPluginTest(test.TestCase):
 
         self.mock_object(self.bind_plugin, '_has_provider_network_extension')
         self.bind_plugin._has_provider_network_extension.return_value = True
-        save_subnet_data = self.mock_object(self.bind_plugin,
-                                            '_save_neutron_subnet_data')
         self.mock_object(self.bind_plugin, '_wait_for_ports_bind')
         neutron_host_id_opts = plugin.neutron_bind_network_plugin_opts[1]
         self.mock_object(neutron_host_id_opts, 'default')
@@ -799,6 +802,9 @@ class NeutronBindNetworkPluginTest(test.TestCase):
         self.mock_object(self.bind_plugin.neutron_api, 'get_network')
         self.bind_plugin.neutron_api.get_network.return_value = (
             fake_neutron_network_multi)
+        self.mock_object(self.bind_plugin.neutron_api, 'get_subnet')
+        self.bind_plugin.neutron_api.get_subnet.return_value = (
+            fake_neutron_subnet)
         self.mock_object(db_api, 'share_network_update')
 
         with mock.patch.object(self.bind_plugin.neutron_api, 'create_port',
@@ -810,9 +816,6 @@ class NeutronBindNetworkPluginTest(test.TestCase):
                 allocation_info={'count': 1})
 
             self.bind_plugin._has_provider_network_extension.assert_any_call()
-            save_subnet_data.assert_called_once_with(
-                self.fake_context,
-                fake_share_network_multi_updated)
             expected_kwargs = {
                 'binding:vnic_type': 'baremetal',
                 'host_id': 'foohost1',
@@ -826,14 +829,14 @@ class NeutronBindNetworkPluginTest(test.TestCase):
             db_api.network_allocation_create.assert_called_once_with(
                 self.fake_context,
                 fake_network_allocation_multi)
-            db_api.share_network_update.assert_called_once_with(
+            db_api.share_network_update.assert_called_with(
                 self.fake_context,
                 fake_share_network_multi['id'],
                 network_update_data)
             network_allocation_update_data['cidr'] = (
-                fake_share_network_multi['cidr'])
+                fake_neutron_subnet['cidr'])
             network_allocation_update_data['ip_version'] = (
-                fake_share_network_multi['ip_version'])
+                fake_neutron_subnet['ip_version'])
             db_api.network_allocation_update.assert_called_once_with(
                 self.fake_context,
                 fake_neutron_port['id'],
