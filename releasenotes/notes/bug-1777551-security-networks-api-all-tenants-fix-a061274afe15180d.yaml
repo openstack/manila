@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    The ``all_tenants`` query parameter in the share networks API (GET
+    /v2/{project_id}/share-networks) has been fixed to accept 'f',
+    'false', 'off', 'n', 'no', or '0'. Setting the flag to any of these values
+    will retrieve security services only from the requester's project
+    namespace.

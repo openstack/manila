@@ -408,6 +408,33 @@ class ShareNetworkAPITest(test.TestCase):
             result[share_networks.RESOURCES_NAME][0],
             fake_share_network_shortened)
 
+    @mock.patch.object(db_api, 'share_network_get_all', mock.Mock())
+    def test_index_all_tenants_with_invaild_value(self):
+        req = fakes.HTTPRequest.blank(
+            '/share_networks?all_tenants=wonk',
+            use_admin_context=True)
+
+        self.assertRaises(exception.InvalidInput, self.controller.index, req)
+
+    @mock.patch.object(db_api, 'share_network_get_all_by_project', mock.Mock())
+    @mock.patch.object(db_api, 'share_network_get_all', mock.Mock())
+    def test_index_all_tenants_with_value_zero(self):
+        db_api.share_network_get_all_by_project.return_value = [
+            fake_share_network]
+        req = fakes.HTTPRequest.blank(
+            '/share_networks?all_tenants=0',
+            use_admin_context=True)
+
+        result = self.controller.index(req)
+
+        self.assertEqual(1, len(result[share_networks.RESOURCES_NAME]))
+        self._check_share_network_view_shortened(
+            result[share_networks.RESOURCES_NAME][0],
+            fake_share_network_shortened)
+        db_api.share_network_get_all_by_project.assert_called_once_with(
+            req.environ['manila.context'], self.context.project_id)
+        db_api.share_network_get_all.assert_not_called()
+
     @mock.patch.object(db_api, 'share_network_get_all_by_project', mock.Mock())
     def test_index_filter_by_project_id_non_admin_context(self):
         req = fakes.HTTPRequest.blank(
