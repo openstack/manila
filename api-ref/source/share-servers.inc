@@ -72,13 +72,13 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - id: id_14
-   - project_id: project_id_7
-   - status: status_15
+   - id: share_server_id
+   - project_id: project_id_share_server_body
+   - status: status_share_server_body
    - share_network_id: share_network_id
    - share_network_name: share_network_name
-   - host: host_8
-   - updated_at: updated_at_6
+   - host: host_share_server_body
+   - updated_at: updated_at_share_server_body
 
 Response example
 ----------------
@@ -87,12 +87,63 @@ Response example
    :language: javascript
 
 
-Show share server details
-=========================
+Show share server
+=================
 
-.. rest_method::  GET /v2/{tenant_id}/share-servers/{share_server_id}/detail
+.. rest_method::  GET /v2/{tenant_id}/share-servers/{share_server_id}
 
-Shows details for a share server.
+Show a share server's details.
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+  - 200
+
+.. rest_status_code:: error status.yaml
+
+  - 400
+  - 401
+  - 403
+  - 404
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+  - tenant_id: tenant_id_path
+  - share_server_id: share_server_id
+
+Response parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+  - id: share_server_id
+  - project_id: project_id_share_server_body
+  - status: status_share_server_body
+  - backend_details: backend_details
+  - share_network_id: share_network_id_share_server_body
+  - share_network_name: share_network_name
+  - host: host_share_server_body
+  - created_at: created_at_share_server_body
+  - updated_at: updated_at_share_server_body
+
+Response example
+----------------
+
+.. literalinclude:: samples/share-server-show-response.json
+  :language: javascript
+
+
+Show share server back end details
+==================================
+
+.. rest_method::  GET /v2/{tenant_id}/share-servers/{share_server_id}/details
+
+Shows back end details of a share server.
 
 Response codes
 --------------
@@ -119,17 +170,9 @@ Request
 Response parameters
 -------------------
 
-.. rest_parameters:: parameters.yaml
-
-   - id: id_14
-   - project_id: project_id_7
-   - status: status_15
-   - backend_details: backend_details
-   - share_network_id: share_network_id_6
-   - share_network_name: share_network_name
-   - host: host_8
-   - created_at: created_at_11
-   - updated_at: updated_at_6
+Response parameters can differ based on the back end used.
+Each back end can store any key-value information that it requires.
+For example, the generic back end driver might store the router ID.
 
 Response example
 ----------------
