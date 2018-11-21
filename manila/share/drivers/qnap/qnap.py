@@ -782,7 +782,7 @@ class QnapShareDriver(driver.ShareDriver):
         """Manages a share that exists on backend."""
         if share['share_proto'].lower() == 'nfs':
             # 10.0.0.1:/share/example
-            LOG.info("Share %(shr_path)s will be managed with ID"
+            LOG.info("Share %(shr_path)s will be managed with ID "
                      "%(shr_id)s.",
                      {'shr_path': share['export_locations'][0]['path'],
                       'shr_id': share['id']})

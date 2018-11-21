@@ -186,7 +186,7 @@ class API(base.Base):
                     'avail': constants.STATUS_AVAILABLE,
                     'status': share_group['status'],
                 }
-                msg = _("Share group status must be %(avail)s, got"
+                msg = _("Share group status must be %(avail)s, got "
                         "%(status)s.") % params
                 raise exception.InvalidShareGroup(message=msg)
 

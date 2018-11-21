@@ -50,7 +50,7 @@ va_share_opts = [
                secret=True,
                help='Veritas Access server REST password.'),
     cfg.StrOpt('va_pool',
-               help='Veritas Access storage pool from which'
+               help='Veritas Access storage pool from which '
                     'shares are served.'),
     cfg.StrOpt('va_fstype',
                default='simple',
@@ -364,7 +364,7 @@ class ACCESSShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                   json.dumps(data), 'POST')
 
         if not result:
-            message = (('ACCESSShareDriver access failed sharepath %s'
+            message = (('ACCESSShareDriver access failed sharepath %s '
                         'server %s'),
                        va_sharepath,
                        server)

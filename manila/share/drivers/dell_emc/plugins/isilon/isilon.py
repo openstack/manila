@@ -197,7 +197,7 @@ class IsilonStorageConnection(base.StorageConnection):
         """Allow access to nfs share."""
         access_type = access['access_type']
         if access_type != 'ip':
-            message = _('Only "ip" access type allowed for the NFS'
+            message = _('Only "ip" access type allowed for the NFS '
                         'protocol.')
             LOG.error(message)
             raise exception.InvalidShareAccess(reason=message)
