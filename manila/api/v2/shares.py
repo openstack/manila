@@ -140,7 +140,7 @@ class ShareController(shares.ShareMixin,
                         'state': constants.ACCESS_STATE_ACTIVE
                     }
                     msg = _("Snapshot %(snap_id)s belongs to a share "
-                            "%(share_id)s which has access rules that are"
+                            "%(share_id)s which has access rules that are "
                             "not %(state)s.")
                     raise exc.HTTPConflict(explanation=msg % msg_args)
 

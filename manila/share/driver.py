@@ -49,7 +49,7 @@ share_opts = [
         help="Name of the configuration group in the Manila conf file "
              "to look for network config options."
              "If not set, the share backend's config group will be used."
-             "If an option is not found within provided group, then"
+             "If an option is not found within provided group, then "
              "'DEFAULT' group will be used for search of option."),
     cfg.BoolOpt(
         'driver_handles_share_servers',

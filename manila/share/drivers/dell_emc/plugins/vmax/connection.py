@@ -320,7 +320,7 @@ class VMAXStorageConnection(driver.StorageConnection):
             # Delete file system
             self._get_context('FileSystem').delete(share_name)
         except exception.EMCVmaxXMLAPIError as e:
-            LOG.exception("File system  %(share_name)s not found due to"
+            LOG.exception("File system  %(share_name)s not found due to "
                           "error %(err)s. Skip the deletion.",
                           {'share_name': share_name,
                            'err': e.message})

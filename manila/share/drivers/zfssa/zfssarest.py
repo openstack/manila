@@ -330,7 +330,7 @@ class ZFSSAApi(object):
         sharenfs = details['sharenfs']
 
         if sharenfs == 'on' or sharenfs == 'rw':
-            LOG.debug('Share %s has read/write permission'
+            LOG.debug('Share %s has read/write permission '
                       'open to all.', share)
             return
         if sharenfs == 'off':

@@ -496,7 +496,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             volume_snapshot = volume_snapshot_list[0]
         elif len(volume_snapshot_list) > 1:
             LOG.error(
-                "Expected only one volume snapshot in list with name"
+                "Expected only one volume snapshot in list with name "
                 "'%(name)s', but got more than one in a result - "
                 "'%(result)s'.", {
                     'name': volume_snapshot_name,

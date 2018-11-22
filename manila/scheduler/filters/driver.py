@@ -59,7 +59,7 @@ class DriverFilter(base_host.BaseHostFilter):
                         "Skipping share backend name check.")
         elif (extra_specs['share_backend_name'] !=
                 host_stats['share_backend_name']):
-            LOG.warning("Share backend names do not match: '%(target)s'"
+            LOG.warning("Share backend names do not match: '%(target)s' "
                         "vs '%(current)s' :: Skipping.",
                         {'target': extra_specs['share_backend_name'],
                          'current': host_stats['share_backend_name']})
