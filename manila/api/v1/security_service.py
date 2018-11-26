@@ -28,6 +28,7 @@ from manila import db
 from manila import exception
 from manila.i18n import _
 from manila import policy
+from manila import utils
 
 
 RESOURCE_NAME = 'security_service'
@@ -106,7 +107,7 @@ class SecurityServiceController(wsgi.Controller):
             security_services = share_nw['security_services']
             del search_opts['share_network_id']
         else:
-            if 'all_tenants' in search_opts and context.is_admin:
+            if context.is_admin and utils.is_all_tenants(search_opts):
                 policy.check_policy(context, RESOURCE_NAME,
                                     'get_all_security_services')
                 security_services = db.security_service_get_all(context)
