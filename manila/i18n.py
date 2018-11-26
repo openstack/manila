@@ -28,10 +28,6 @@ _translators = oslo_i18n.TranslatorFactory(domain=DOMAIN)
 _ = _translators.primary
 
 
-def enable_lazy():
-    return oslo_i18n.enable_lazy()
-
-
 def translate(value, user_locale):
     return oslo_i18n.translate(value, user_locale)
 

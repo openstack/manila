@@ -58,9 +58,6 @@ from __future__ import print_function
 import os
 import sys
 
-from manila import i18n
-i18n.enable_lazy()
-
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import uuidutils
