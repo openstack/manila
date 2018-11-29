@@ -129,6 +129,9 @@ class GaneshaNASHelper(NASHelperBase):
         """Allow access to the share."""
         if access['access_type'] != 'ip':
             raise exception.InvalidShareAccess('Only IP access type allowed')
+
+        access = ganesha_utils.fixup_access_rule(access)
+
         cf = {}
         accid = access['id']
         name = share['name']
@@ -240,6 +243,7 @@ class GaneshaNASHelper2(GaneshaNASHelper):
 
         wanted_rw_clients, wanted_ro_clients = [], []
         for rule in access_rules:
+            rule = ganesha_utils.fixup_access_rule(rule)
             if rule['access_level'] == 'rw':
                 wanted_rw_clients.append(rule['access_to'])
             elif rule['access_level'] == 'ro':
