@@ -88,7 +88,7 @@ other roles.
 List share types
 ================
 
-.. rest_method::  GET /v2/{tenant_id}/types
+.. rest_method::  GET /v2/{project_id}/types
 
 Lists all share types.
 
@@ -104,7 +104,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - extra_specs: extra_specs_query
 
 Response parameters
@@ -136,7 +136,7 @@ Response example
 List default share types
 ========================
 
-.. rest_method::  GET /v2/{tenant_id}/types/default
+.. rest_method::  GET /v2/{project_id}/types/default
 
 Lists default share types.
 
@@ -159,7 +159,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
 
 Response parameters
 -------------------
@@ -186,7 +186,7 @@ Response example
 Show share type detail
 ======================
 
-.. rest_method::  GET /v2/{tenant_id}/types/{share_type_id}
+.. rest_method::  GET /v2/{project_id}/types/{share_type_id}
 
 Shows details for a specified share type.
 
@@ -209,7 +209,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - share_type_id: share_type_id
 
 Response Parameters
@@ -241,7 +241,7 @@ Response Example
 List extra specs
 ================
 
-.. rest_method::  GET /v2/{tenant_id}/types/{share_type_id}/extra_specs
+.. rest_method::  GET /v2/{project_id}/types/{share_type_id}/extra_specs
 
 Lists the extra specifications for a share type.
 
@@ -264,7 +264,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_type_id: share_type_id
 
 Response parameters
@@ -290,7 +290,7 @@ Response example
 Create share type
 =================
 
-.. rest_method::  POST /v2/{tenant_id}/types
+.. rest_method::  POST /v2/{project_id}/types
 
 Creates a share type.
 
@@ -315,7 +315,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - extra_specs: extra_specs
    - driver_handles_share_servers: driver_handles_share_servers
    - snapshot_support: snapshot_support_1
@@ -363,7 +363,7 @@ Response example
 Show share type access details
 ==============================
 
-.. rest_method::  GET /v2/{tenant_id}/types/{share_type_id}/share_type_access
+.. rest_method::  GET /v2/{project_id}/types/{share_type_id}/share_type_access
 
 Shows access details for a share type.
 
@@ -388,7 +388,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_type_id: share_type_id
 
 Response parameters
@@ -396,7 +396,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - project_id: project_id_9
+   - project_id: project_id_type_access
    - share_type_id: share_type_id_body
 
 Response example
@@ -409,7 +409,7 @@ Response example
 Set extra spec for share type
 =============================
 
-.. rest_method::  POST /v2/{tenant_id}/types/{share_type_id}/extra_specs
+.. rest_method::  POST /v2/{project_id}/types/{share_type_id}/extra_specs
 
 Sets an extra specification for the share type.
 
@@ -438,7 +438,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_type_id: share_type_id
    - extra_specs: extra_specs
 
@@ -465,7 +465,7 @@ Response example
 Unset an extra spec
 ===================
 
-.. rest_method::  DELETE /v2/{tenant_id}/types/{share_type_id}/extra_specs/{extra-spec-key}
+.. rest_method::  DELETE /v2/{project_id}/types/{share_type_id}/extra_specs/{extra-spec-key}
 
 Unsets an extra specification for the share type.
 
@@ -488,15 +488,15 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_type_id: share_type_id
-   - extra-spec-key: extra-spec-key-path
+   - extra-spec-key: extra_spec_key_path
 
 
 Add share type access
 =====================
 
-.. rest_method::  POST /v2/{tenant_id}/types/{share_type_id}/action
+.. rest_method::  POST /v2/{project_id}/types/{share_type_id}/action
 
 Adds share type access for a project.
 
@@ -522,9 +522,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_type_id: share_type_id
-   - project: project
+   - addProjectAccess: add_project_access
+   - project: project_id_type_access_grant_request
 
 Request example
 ---------------
@@ -536,7 +537,7 @@ Request example
 Remove share type access
 ========================
 
-.. rest_method::  POST /v2/{tenant_id}/types/{share_type_id}/action
+.. rest_method::  POST /v2/{project_id}/types/{share_type_id}/action
 
 Removes share type access from a project.
 
@@ -561,9 +562,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_type_id: share_type_id
-   - project: project
+   - removeProjectAccess: remove_project_access
+   - project: project_id_type_access_revoke_request
 
 Request example
 ---------------
@@ -575,7 +577,7 @@ Request example
 Delete share type
 =================
 
-.. rest_method::  DELETE /v2/{tenant_id}/types/{share_type_id}
+.. rest_method::  DELETE /v2/{project_id}/types/{share_type_id}
 
 Deletes a share type.
 
@@ -598,5 +600,5 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_type_id: share_type_id

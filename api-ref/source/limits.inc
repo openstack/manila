@@ -33,7 +33,7 @@ GET requests that can be processed during a one-minute period.
 List share limits
 =================
 
-.. rest_method::  GET /v2/{tenant_id}/limits
+.. rest_method::  GET /v2/{project_id}/limits
 
 Lists share limits.
 
@@ -55,7 +55,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
 
 Response parameters
 -------------------

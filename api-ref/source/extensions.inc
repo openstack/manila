@@ -10,7 +10,7 @@ Lists available Shared File Systems API extensions.
 List extensions
 ===============
 
-.. rest_method::  GET /v2/{tenant_id}/extensions
+.. rest_method::  GET /v2/{project_id}/extensions
 
 Lists all extensions.
 
@@ -32,7 +32,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
 
 Response parameters
 -------------------

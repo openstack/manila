@@ -20,7 +20,7 @@ creation request with different parameters.
 List user messages
 ==================
 
-.. rest_method::  GET /v2/{tenant_id}/messages
+.. rest_method::  GET /v2/{project_id}/messages
 
 .. versionadded:: 2.37
 
@@ -45,7 +45,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - limit: limit
    - offset: offset
    - sort_key: sort_key_messages
@@ -83,7 +83,7 @@ Response example
 Show user message details
 =========================
 
-.. rest_method::  GET /v2/{tenant_id}/messages/{message_id}
+.. rest_method::  GET /v2/{project_id}/messages/{message_id}
 
 .. versionadded:: 2.37
 
@@ -108,7 +108,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - message_id: message_id
 
 Response parameters
@@ -136,7 +136,7 @@ Response example
 Delete message
 ==============
 
-.. rest_method::  DELETE /v2/{tenant_id}/messages/{message_id}
+.. rest_method::  DELETE /v2/{project_id}/messages/{message_id}
 
 .. versionadded:: 2.37
 
@@ -161,5 +161,5 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - message_id: message_id

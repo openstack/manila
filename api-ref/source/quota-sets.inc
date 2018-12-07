@@ -26,9 +26,9 @@ Provides quotas management support.
 Show default quota set
 ======================
 
-.. rest_method::  GET /v2/{tenant_id}/quota-sets/{tenant_id}/defaults
+.. rest_method::  GET /v2/{project_id}/quota-sets/{project_id}/defaults
 
-Shows default quotas for a tenant.
+Shows default quotas for a given project.
 
 Response codes
 --------------
@@ -48,8 +48,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
-   - tenant_id: tenant_id
+   - project_id: project_id_path
+   - project_id: project_id_quota_request_path
 
 Response parameters
 -------------------
@@ -57,7 +57,7 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - quota_set: quota_set
-   - id: quota_tenant_id
+   - id: quota_project_id
    - gigabytes: quota_gigabytes
    - snapshots: quota_snapshots
    - shares: quota_shares
@@ -77,12 +77,12 @@ Response example
 Show quota set
 ==============
 
-.. rest_method::  GET /v2/{tenant_id}/quota-sets/{tenant_id}?user_id={user_id}
+.. rest_method::  GET /v2/{project_id}/quota-sets/{project_id}?user_id={user_id}
 
-Shows quotas for a tenant.
+Shows quotas for a given project..
 
 If you specify the optional ``user_id`` query parameter, you get
-the quotas for this user in the tenant. If you omit this parameter,
+the quotas for this user in the project. If you omit this parameter,
 you get the quotas for the project.
 
 Response codes
@@ -103,8 +103,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
-   - tenant_id: tenant_id
+   - project_id: project_id_path
+   - project_id: project_id_quota_request_path
    - user_id: user_id_query
    - share_type: share_type_for_quota
 
@@ -114,7 +114,7 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - quota_set: quota_set
-   - id: quota_tenant_id
+   - id: quota_project_id
    - gigabytes: quota_gigabytes
    - snapshots: quota_snapshots
    - shares: quota_shares
@@ -133,14 +133,14 @@ Response example
 Show quota set in detail (since API v2.25)
 ==========================================
 
-.. rest_method::  GET /v2/{tenant_id}/quota-sets/{tenant_id}/detail?user_id={user_id}
+.. rest_method::  GET /v2/{project_id}/quota-sets/{project_id}/detail?user_id={user_id}
 
 .. versionadded:: 2.25
 
-Shows quotas for a tenant in detail.
+Shows quotas for a project in detail.
 
 If you specify the optional ``user_id`` query parameter, you get
-the quotas for this user in the tenant. If you omit this parameter,
+the quotas for this user in the project. If you omit this parameter,
 you get the quotas for the project.
 
 Response codes
@@ -161,8 +161,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
-   - tenant_id: tenant_id
+   - project_id: project_id_path
+   - project_id: project_id_quota_request_path
    - user_id: user_id_query
    - share_type: share_type_for_quota
 
@@ -172,7 +172,7 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - quota_set: quota_set
-   - id: quota_tenant_id
+   - id: quota_project_id
    - gigabytes: quota_gigabytes_detail
    - snapshots: quota_snapshots_detail
    - shares: quota_shares_detail
@@ -191,12 +191,12 @@ Response example
 Update quota set
 ================
 
-.. rest_method::  PUT /v2/{tenant_id}/quota-sets/{tenant_id}?user_id={user_id}
+.. rest_method::  PUT /v2/{project_id}/quota-sets/{project_id}?user_id={user_id}
 
-Updates quotas for a tenant.
+Updates quotas for a project.
 
 If you specify the optional ``user_id`` query parameter, you update
-the quotas for this user in the tenant. If you omit this parameter,
+the quotas for this user in the project. If you omit this parameter,
 you update the quotas for the project.
 
 Response codes
@@ -217,8 +217,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
-   - tenant_id: tenant_id
+   - project_id: project_id_path
+   - project_id: project_id_quota_request_path
    - user_id: user_id_query
    - quota_set: quota_set
    - force: force
@@ -243,7 +243,7 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - quota_set: quota_set
-   - id: quota_tenant_id
+   - id: quota_project_id
    - gigabytes: quota_gigabytes
    - snapshots: quota_snapshots
    - shares: quota_shares
@@ -262,12 +262,12 @@ Response example
 Delete quota set
 ================
 
-.. rest_method::  DELETE /v2/{tenant_id}/quota-sets/{tenant_id}?user_id={user_id}
+.. rest_method::  DELETE /v2/{project_id}/quota-sets/{project_id}?user_id={user_id}
 
-Deletes quotas for a tenant. The quota reverts to the default quota.
+Deletes quotas for a project. The quota reverts to the default quota.
 
 If you specify the optional ``user_id`` query parameter, you delete
-the quotas for this user in the tenant. If you omit this parameter,
+the quotas for this user in the project. If you omit this parameter,
 you delete the quotas for the project.
 
 Response codes
@@ -288,7 +288,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
-   - tenant_id: tenant_id
+   - project_id: project_id_path
+   - project_id: project_id_quota_request_path
    - user_id: user_id_query
    - share_type: share_type_for_quota

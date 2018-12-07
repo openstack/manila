@@ -70,7 +70,7 @@ methods:
   an alphanumeric string that can contain some special characters
   and is from 4 to 255 characters long.
 
-.. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
 
 Grants access to a share.
 
@@ -93,12 +93,12 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
+   - share_id: share_id
    - allow_access: allow_access
    - access_level: access_level
    - access_type: access_type
    - access_to: access_to
-   - share_id: share_id
-   - tenant_id: tenant_id_path
    - access_metadata: metadata
 
 Request example
@@ -133,7 +133,7 @@ Response example
 Revoke access
 =============
 
-.. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
 
 The shared file systems service stores each access rule in its database and
 assigns it a unique ID. This ID can be used to revoke access after access
@@ -158,10 +158,11 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
+   - share_id: share_id
    - deny_access: deny_access
    - access_id: access_id
-   - share_id: share_id
-   - tenant_id: tenant_id_path
+
 
 Request example
 ---------------
@@ -180,7 +181,7 @@ List access rules (DEPRECATED)
    :ref:`List share access rules <get-access-rules-after-2-45>` API
    instead of this API from version 2.45.
 
-.. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
 
 Lists access rules for a share. The Access ID returned is necessary to deny
 access.
@@ -204,9 +205,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - access_list: access_list
+   - project_id: project_id_path
    - share_id: share_id
-   - tenant_id: tenant_id_path
+   - access_list: access_list
+
 
 Request example
 ---------------
@@ -240,7 +242,7 @@ Response example
 Reset share state
 =================
 
-.. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
 
 Administrator only. Explicitly updates the state of a share.
 
@@ -266,10 +268,11 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
+   - share_id: share_id
    - reset_status: reset_status
    - status: access_status
-   - share_id: share_id
-   - tenant_id: tenant_id_path
+
 
 Request example
 ---------------
@@ -281,7 +284,7 @@ Request example
 Force-delete share
 ==================
 
-.. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
 
 Administrator only. Force-deletes a share in any state.
 
@@ -307,9 +310,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - force_delete: share_force_delete
+   - project_id: project_id_path
    - share_id: share_id
-   - tenant_id: tenant_id_path
+   - force_delete: share_force_delete
 
 Request example
 ---------------
@@ -321,7 +324,7 @@ Request example
 Extend share
 ============
 
-.. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
 
 Increases the size of a share.
 
@@ -344,10 +347,11 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
+   - share_id: share_id
    - extend: extend
    - new_size: share_new_size
-   - share_id: share_id
-   - tenant_id: tenant_id_path
+
 
 Request example
 ---------------
@@ -359,7 +363,7 @@ Request example
 Shrink share
 ============
 
-.. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
 
 Shrinks the size of a share.
 
@@ -382,10 +386,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
+   - share_id: share_id
    - shrink: shrink
    - new_size: share_new_size
-   - share_id: share_id
-   - tenant_id: tenant_id_path
 
 Request example
 ---------------
@@ -397,7 +401,7 @@ Request example
 Unmanage share (since API v2.7)
 ===============================
 
-.. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
 
 .. versionadded:: 2.7
 
@@ -439,9 +443,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - unmanage: share_unmanage
+   - project_id: project_id_path
    - share_id: share_id
-   - tenant_id: tenant_id_path
+   - unmanage: share_unmanage
 
 Request example
 ---------------
@@ -458,7 +462,7 @@ There is no body content for the response.
 Revert share to snapshot (since API v2.27)
 ==========================================
 
-.. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
 
 .. versionadded:: 2.27
 
@@ -485,9 +489,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - snapshot_id: snapshot_id
+   - project_id: project_id_path
    - share_id: share_id
-   - tenant_id: tenant_id_path
+   - snapshot_id: snapshot_id
+
 
 Request example
 ---------------

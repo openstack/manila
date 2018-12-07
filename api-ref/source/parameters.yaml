@@ -20,7 +20,7 @@ export_location_id_path:
   in: path
   required: true
   type: string
-extra-spec-key-path:
+extra_spec_key_path:
   description: |
     The extra specification key
   in: path
@@ -48,7 +48,18 @@ metadata_key_path:
   type: string
 project_id_path:
   description: |
-    The ID of the project what owns the resource.
+    The project ID of the user or service making the API request.
+  in: path
+  required: true
+  type: string
+project_id_quota_request_path:
+  description: |
+    The ID of the project whose quotas must be acted upon by the API.
+    This ID can be different from the first project ID in the URI.
+    For example, in a multi-tenant cloud, the first ID in the URI is
+    typically the project ID of a privileged user (such as a cloud
+    administrator) that can create, query or delete quotas of other projects
+    in the cloud.
   in: path
   required: true
   type: string
@@ -127,21 +138,6 @@ snapshot_instance_id_path:
   in: path
   required: true
   type: string
-tenant_id:
-  description: |
-    The ID for the tenant for which you want to
-    show, update, or delete quotas. This ID is different from the
-    first tenant ID that you specify in the URI: That ID is for the
-    administrative tenant.
-  in: path
-  required: true
-  type: string
-tenant_id_path:
-  description: |
-    The tenant ID in a multi-tenancy cloud.
-  in: path
-  required: true
-  type: string
 
 # variables in query
 action_id:
@@ -154,7 +150,7 @@ all_tenants:
   description: |
     (Admin only). Defines whether to list the requested resources for
     all projects. Set to ``1`` to list resources for all projects.
-    Set to ``0`` to list resources only for the current tenant. Examples
+    Set to ``0`` to list resources only for the current project. Examples
     of resources include shares, snapshots, share networks, security services
     and share groups.
   in: query
@@ -259,6 +255,13 @@ host_7:
   in: query
   required: false
   type: string
+is_public_query:
+  description: |
+    A boolean query parameter that, when set to true, allows retrieving
+    public resources that belong to all projects.
+  in: query
+  required: false
+  type: boolean
 limit:
   description: |
     The maximum number of shares to return.
@@ -304,16 +307,16 @@ offset:
   in: query
   required: false
   type: integer
-project_id_6:
-  description: |
-    The ID of the project in which the share was
-    created. Useful with ``all_tenants`` parameter.
-  in: query
-  required: false
-  type: string
 project_id_messages:
   description: |
     The ID of the project for which the message was created.
+  in: query
+  required: false
+  type: string
+project_id_query:
+  description: |
+    The ID of the project that owns the resource. This query parameter is
+    useful in conjunction with the ``all_tenants`` parameter.
   in: query
   required: false
   type: string
@@ -386,6 +389,18 @@ share_group_status_query:
 share_group_type_id_query:
   description: |
     The share group type ID to filter share groups.
+  in: query
+  required: false
+  type: string
+share_id_access_rules_query:
+  description: |
+    The share ID to filter share access rules with.
+  in: query
+  required: true
+  type: string
+share_id_replicas_query:
+  description: |
+    The share ID to filter share replicas with.
   in: query
   required: false
   type: string
@@ -490,9 +505,9 @@ status_6:
   type: string
 user_id_query:
   description: |
-    The ID of the user. If you specify this query parameter,
-    you update the quotas for this user in the tenant.
-    If you omit this parameter, you update the quotas for the project.
+    The ID of the user. If you specify this query parameter, you update the
+    quotas for this user in the project. If you omit this parameter, you
+    update the quotas for the whole project.
   in: query
   required: false
   type: string
@@ -661,6 +676,13 @@ action_id_body:
   type: string
   description: >
     The ID of the action during which the message was created.
+add_project_access:
+  description: |
+    An object representing the project resource that access should be
+    granted to.
+  in: body
+  required: true
+  type: object
 alias:
   description: |
     The alias for the extension. For example,
@@ -1357,7 +1379,7 @@ extension_updated:
   in: body
   required: true
   type: string
-extra-spec-key:
+extra_spec_key:
   description: |
     The extra specification key
   in: body
@@ -2078,56 +2100,33 @@ project:
   in: body
   required: true
   type: string
-project_1:
-  description: |
-    The UUID of the project for which access to the
-    share type is denied.
-  in: body
-  required: true
-  type: string
 project_id:
   description: |
-    The UUID of the project where the share network
-    was created.
-  in: body
-  required: true
-  type: string
-project_id_4:
-  description: |
-    The UUID of the project in which the share was
-    created.
-  in: body
-  required: true
-  type: string
-project_id_8:
-  description: |
-    The UUID of the project where the share was
-    created.
-  in: body
-  required: true
-  type: string
-project_id_9:
-  description: |
-    The UUID of the project for which access to the
-    share type is granted.
+    The ID of the project that owns the resource.
   in: body
   required: true
   type: string
 project_id_messages_body:
   description: |
-    The UUID of the project for which the message was created.
+    The ID of the project for which the message was created.
   in: body
   required: true
   type: string
-project_id_share_server_body:
+project_id_type_access:
   description: |
-    The project ID.
+    The ID of the project that has been granted access to the type resource.
   in: body
   required: true
   type: string
-project_id_share_server_manage:
+project_id_type_access_grant_request:
   description: |
-    The ID of the project that owns the share server.
+    The ID of the project that needs to have access to the type resource.
+  in: body
+  required: true
+  type: string
+project_id_type_access_revoke_request:
+  description: |
+    The ID of the project whose access to the type resource must be revoked.
   in: body
   required: true
   type: string
@@ -2159,24 +2158,30 @@ quota_class_set:
   type: object
 quota_gigabytes:
   description: |
-    The number of gigabytes allowed for each tenant.
+    The number of gigabytes allowed for each project.
   in: body
   required: true
   type: integer
 quota_gigabytes_detail:
   description: |
     The limit, in_use, reserved number of gigabytes allowed
-    for each tenant.
+    for each project.
   in: body
   min_version: 2.25
   required: true
   type: object
 quota_gigabytes_request:
   description: |
-    The number of gigabytes for the tenant.
+    The number of gigabytes for the project.
   in: body
   required: false
   type: integer
+quota_project_id:
+  description: |
+    The ID of the project the quota pertains to.
+  in: body
+  required: true
+  type: string
 quota_set:
   description: |
     The ``quota_set`` object.
@@ -2185,7 +2190,7 @@ quota_set:
   type: object
 quota_share_group_snapshots:
   description: |
-    The number of share group snapshots allowed for each tenant or user.
+    The number of share group snapshots allowed for each project or user.
   in: body
   min_version: 2.40
   required: true
@@ -2193,21 +2198,21 @@ quota_share_group_snapshots:
 quota_share_group_snapshots_detail:
   description: |
     The limit, in_use, reserved number of share group snapshots
-    for each tenant or user.
+    for each project or user.
   in: body
   min_version: 2.40
   required: true
   type: object
 quota_share_group_snapshots_request:
   description: |
-    The number of share group snapshots allowed for each tenant or user.
+    The number of share group snapshots allowed for each project or user.
   in: body
   min_version: 2.40
   required: false
   type: integer
 quota_share_groups:
   description: |
-    The number of share groups allowed for each tenant or user.
+    The number of share groups allowed for each project or user.
   in: body
   min_version: 2.40
   required: true
@@ -2215,14 +2220,14 @@ quota_share_groups:
 quota_share_groups_detail:
   description: |
     The limit, in_use, reserved number of share groups
-    for each tenant or user.
+    for each project or user.
   in: body
   min_version: 2.40
   required: true
   type: object
 quota_share_groups_request:
   description: |
-    The number of share groups allowed for each tenant or user.
+    The number of share groups allowed for each project or user.
   in: body
   min_version: 2.40
   required: false
@@ -2236,7 +2241,7 @@ quota_share_networks:
   type: integer
 quota_share_networks_default:
   description: |
-    The number of share networks allowed for each tenant.
+    The number of share networks allowed for each project.
   in: body
   required: true
   type: integer
@@ -2250,41 +2255,40 @@ quota_share_networks_detail:
   type: object
 quota_share_networks_request:
   description: |
-    The number of share networks for the tenant.
+    The number of share networks for the project.
   in: body
   required: false
   type: integer
 quota_shares:
   description: |
-    The number of shares allowed for each tenant.
+    The number of shares allowed for each project.
   in: body
   required: true
   type: integer
 quota_shares_detail:
   description: |
     The limit, in_use, reserved number of shares allowed
-    for each tenant.
+    for each project.
   in: body
   min_version: 2.25
   required: true
   type: object
 quota_shares_request:
   description: |
-    The number of shares for the tenant.
+    The number of shares for the project.
   in: body
   required: false
   type: integer
 quota_snapshot_gigabytes:
   description: |
-    The number of gigabytes for the snapshots allowed
-    for each tenant.
+    The number of gigabytes for the snapshots allowed for each project.
   in: body
   required: true
   type: integer
 quota_snapshot_gigabytes_detail:
   description: |
     The limit, in_use, reserved number of gigabytes for the
-    snapshots allowed for each tenant.
+    snapshots allowed for each project.
   in: body
   min_version: 2.25
   required: true
@@ -2292,37 +2296,30 @@ quota_snapshot_gigabytes_detail:
 quota_snapshot_gigabytes_request:
   description: |
     The number of gigabytes for the snapshots for the
-    tenant.
+    project.
   in: body
   required: false
   type: integer
 quota_snapshots:
   description: |
-    The number of snapshots allowed for each tenant.
+    The number of snapshots allowed for each project.
   in: body
   required: true
   type: integer
 quota_snapshots_detail:
   description: |
     The limit, in_use, reserved number of snapshots allowed
-    for each tenant.
+    for each project.
   in: body
   min_version: 2.25
   required: true
   type: object
 quota_snapshots_request:
   description: |
-    The number of snapshots for the tenant.
+    The number of snapshots for the project.
   in: body
   required: false
   type: integer
-quota_tenant_id:
-  description: |
-    The UUID of the tenant for which you manage
-    quotas.
-  in: body
-  required: true
-  type: string
 regex:
   description: |
     An API regular expression. For example,
@@ -2336,6 +2333,13 @@ remaining:
   in: body
   required: false
   type: integer
+remove_project_access:
+  description: |
+    An object representing the project resource that access should be
+    revoked from.
+  in: body
+  required: true
+  type: object
 replica_state:
   description: |
     The share replica state. Has set value only when replication
@@ -2431,15 +2435,13 @@ security_service_description_request:
   type: string
 security_service_dns_ip:
   description: |
-    The DNS IP address that is used inside the tenant
-    network.
+    The DNS IP address that is used inside the project network.
   in: body
   required: true
   type: string
 security_service_dns_ip_request:
   description: |
-    The DNS IP address that is used inside the tenant
-    network.
+    The DNS IP address that is used inside the project network.
   in: body
   required: false
   type: string
@@ -2494,13 +2496,6 @@ security_service_password_request:
   in: body
   required: false
   type: string
-security_service_project_id:
-  description: |
-    The UUID of the project where the security
-    service was created.
-  in: body
-  required: true
-  type: string
 security_service_server:
   description: |
     The security service host name or IP address.
@@ -2553,15 +2548,13 @@ security_service_updated_at:
   type: string
 security_service_user:
   description: |
-    The security service user or group name that is
-    used by the tenant.
+    The security service user or group name that is used by the project.
   in: body
   required: true
   type: string
 security_service_user_request:
   description: |
-    The security service user or group name that is
-    used by the tenant.
+    The security service user or group name that is used by the project.
   in: body
   required: false
   type: string
@@ -3855,7 +3848,7 @@ uri:
   type: string
 user_id:
   description: |
-    ID of the user that is part of a given tenant.
+    ID of the user that is part of a given project.
   in: body
   required: false
   type: string

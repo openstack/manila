@@ -12,7 +12,7 @@ file to grant permissions for these actions to other roles.
 List share instances
 ====================
 
-.. rest_method::  GET /v2/{tenant_id}/share_instances
+.. rest_method::  GET /v2/{project_id}/share_instances
 
 .. versionadded:: 2.3
 
@@ -36,7 +36,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - export_location_id: export_location_id_query
    - export_location_path: export_location_path_query
 
@@ -69,7 +69,7 @@ Response example
 Show share instance details
 ===========================
 
-.. rest_method::  GET /v2/{tenant_id}/share_instances/{share_instance_id}
+.. rest_method::  GET /v2/{project_id}/share_instances/{share_instance_id}
 
 .. versionadded:: 2.3
 
@@ -94,7 +94,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_instance_id: share_instance_id
 
 Response parameters
@@ -126,7 +126,7 @@ Response example
 Reset share instance state
 ==========================
 
-.. rest_method::  POST /v2/{tenant_id}/share_instances/{share_instance_id}/action
+.. rest_method::  POST /v2/{project_id}/share_instances/{share_instance_id}/action
 
 .. versionadded:: 2.3
 
@@ -154,7 +154,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_instance_id: share_instance_id
    - status: status_5
 
@@ -168,7 +168,7 @@ Request example
 Force-delete share instance
 ===========================
 
-.. rest_method::  POST /v2/{tenant_id}/share_instances/{share_instance_id}/action
+.. rest_method::  POST /v2/{project_id}/share_instances/{share_instance_id}/action
 
 .. versionadded:: 2.3
 
@@ -196,7 +196,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_instance_id: share_instance_id
    - force_delete: force_delete_2
 

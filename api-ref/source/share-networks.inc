@@ -39,7 +39,7 @@ A share network has these attributes:
 List share networks
 ===================
 
-.. rest_method::  GET /v2/{tenant_id}/share-networks
+.. rest_method::  GET /v2/{project_id}/share-networks
 
 Lists all share networks.
 
@@ -62,7 +62,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - all_tenants: all_tenants
    - name~: name_inexact_query
    - description~: description_inexact_query
@@ -85,7 +85,7 @@ Response example
 List share networks with details
 ================================
 
-.. rest_method::  GET /v2/{tenant_id}/share-networks/detail
+.. rest_method::  GET /v2/{project_id}/share-networks/detail
 
 Lists all share networks with details.
 
@@ -108,7 +108,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - all_tenants: all_tenants
    - name~: name_inexact_query
    - description~: description_inexact_query
@@ -143,7 +143,7 @@ Response example
 Show share network details
 ==========================
 
-.. rest_method::  GET /v2/{tenant_id}/share-networks/{share_network_id}
+.. rest_method::  GET /v2/{project_id}/share-networks/{share_network_id}
 
 Shows details for a share network.
 
@@ -166,7 +166,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_network_id: share_network_id_path
 
 Response parameters
@@ -199,7 +199,7 @@ Response example
 Create share network
 ====================
 
-.. rest_method::  POST /v2/{tenant_id}/share-networks
+.. rest_method::  POST /v2/{project_id}/share-networks
 
 Creates a share network.
 
@@ -224,7 +224,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - neutron_net_id: neutron_net_id_request
    - neutron_subnet_id: neutron_subnet_id_request
    - name: share_network_name_request
@@ -266,7 +266,7 @@ Response example
 Add security service to share network
 =====================================
 
-.. rest_method::  POST /v2/{tenant_id}/share-networks/{share_network_id}/action
+.. rest_method::  POST /v2/{project_id}/share-networks/{share_network_id}/action
 
 Adds a security service to a share network.
 
@@ -290,7 +290,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id
    - share_network_id: share_network_id_path
    - security_service_id: security_service_id
 
@@ -331,7 +331,7 @@ Response example
 Remove security service from share network
 ==========================================
 
-.. rest_method::  POST /v2/{tenant_id}/share-networks/{share_network_id}/action
+.. rest_method::  POST /v2/{project_id}/share-networks/{share_network_id}/action
 
 Removes a security service from a share network.
 
@@ -356,7 +356,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_network_id: share_network_id_path
    - security_service_id: share_network_security_service_id
 
@@ -396,7 +396,7 @@ Response example
 Update share network
 ====================
 
-.. rest_method::  PUT /v2/{tenant_id}/share-networks/{share_network_id}
+.. rest_method::  PUT /v2/{project_id}/share-networks/{share_network_id}
 
 Updates a share network.
 
@@ -423,7 +423,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_network_id: share_network_id_path
    - name: share_network_name_request
    - description: share_network_description_request
@@ -466,7 +466,7 @@ Response example
 Delete share network
 ====================
 
-.. rest_method::  DELETE /v2/{tenant_id}/share-networks/{share_network_id}
+.. rest_method::  DELETE /v2/{project_id}/share-networks/{share_network_id}
 
 Deletes a share network.
 
@@ -496,5 +496,5 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_network_id: share_network_id_path

@@ -16,7 +16,7 @@ configured with.
 List availability zones
 =======================
 
-.. rest_method::  GET /v2/{tenant_id}/availability-zones
+.. rest_method::  GET /v2/{project_id}/availability-zones
 
 Lists all availability zones.
 
@@ -38,7 +38,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
 
 Response parameters
 -------------------

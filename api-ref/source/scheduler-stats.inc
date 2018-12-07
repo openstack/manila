@@ -11,7 +11,7 @@ to the scheduler service.
 List back-end storage pools
 ===========================
 
-.. rest_method::  GET /v2/{tenant_id}/scheduler-stats/pools?pool={pool_name}&host={host_name}&backend={backend_name}&capabilities={capabilities}&share_type={share_type}
+.. rest_method::  GET /v2/{project_id}/scheduler-stats/pools?pool={pool_name}&host={host_name}&backend={backend_name}&capabilities={capabilities}&share_type={share_type}
 
 Lists all back-end storage pools. If search options are provided, the pool
 list that is returned is filtered with these options.
@@ -34,7 +34,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - pool_name: backend_pool_query
    - host_name: backend_host_query
    - backend_name: backend_query
@@ -61,7 +61,7 @@ Response example
 List back-end storage pools with details
 ========================================
 
-.. rest_method::  GET /v2/{tenant_id}/scheduler-stats/pools/detail?pool={pool_name}&host={host_name}&backend={backend_name}&capabilities={capabilities}&share_type={share_type}
+.. rest_method::  GET /v2/{project_id}/scheduler-stats/pools/detail?pool={pool_name}&host={host_name}&backend={backend_name}&capabilities={capabilities}&share_type={share_type}
 
 Lists all back-end storage pools with details. If search options are provided,
 the pool list that is returned is filtered with these options.
@@ -84,7 +84,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - pool_name: backend_pool_query
    - host_name: backend_host_query
    - backend_name: backend_query

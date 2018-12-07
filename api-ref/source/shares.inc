@@ -85,7 +85,7 @@ A share has one of these status values:
 List shares
 ===========
 
-.. rest_method::  GET /v2/{tenant_id}/shares
+.. rest_method::  GET /v2/{project_id}/shares
 
 Lists all shares.
 
@@ -107,7 +107,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - all_tenants: all_tenants
    - name: name_5
    - status: status_6
@@ -122,7 +122,7 @@ Request
    - snapshot_id: snapshot_id_query
    - host: host_1
    - share_network_id: share_network_id
-   - project_id: project_id_6
+   - project_id: project_id
    - is_public: is_public
    - share_group_id: share_group_id_query
    - export_location_id: export_location_id_query
@@ -151,7 +151,7 @@ Response example
 List shares with details
 ========================
 
-.. rest_method::  GET /v2/{tenant_id}/shares/detail
+.. rest_method::  GET /v2/{project_id}/shares/detail
 
 Lists all shares, with details.
 
@@ -175,7 +175,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - all_tenants: all_tenants
    - name: name_5
    - status: status_6
@@ -190,8 +190,8 @@ Request
    - snapshot_id: snapshot_id_query
    - host: host_1
    - share_network_id: share_network_id
-   - project_id: project_id_6
-   - is_public: is_public
+   - project_id: project_id_query
+   - is_public: is_public_query
    - share_group_id: share_group_id_query
    - export_location_id: export_location_id_query
    - export_location_path: export_location_path_query
@@ -215,7 +215,7 @@ Response parameters
    - size: size_2
    - share_type: share_type_1
    - export_location: export_location
-   - project_id: project_id_4
+   - project_id: project_id
    - metadata: metadata
    - status: status_16
    - description: description_5
@@ -243,7 +243,7 @@ Response example
 Show share details
 ==================
 
-.. rest_method::  GET /v2/{tenant_id}/shares/{share_id}
+.. rest_method::  GET /v2/{project_id}/shares/{share_id}
 
 Shows details for a share.
 
@@ -267,8 +267,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
    - share_id: share_id
-   - tenant_id: tenant_id_path
 
 Response parameters
 -------------------
@@ -286,7 +286,7 @@ Response parameters
    - size: size_2
    - share_type: share_type_1
    - export_location: export_location
-   - project_id: project_id_4
+   - project_id: project_id
    - metadata: metadata
    - status: status_16
    - description: description_5
@@ -313,7 +313,7 @@ Response example
 Create share
 ============
 
-.. rest_method::  POST /v2/{tenant_id}/shares
+.. rest_method::  POST /v2/{project_id}/shares
 
 Creates a share.
 
@@ -338,7 +338,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_proto: share_proto
    - size: size
    - name: name_5
@@ -404,7 +404,7 @@ Response example
 Manage share (since API v2.7)
 =============================
 
-.. rest_method::  POST /v2/{tenant_id}/shares/manage
+.. rest_method::  GET /v2/{project_id}/shares/manage
 
 .. versionadded:: 2.7
 
@@ -441,7 +441,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share: share
    - protocol: protocol
    - name: name_5
@@ -478,7 +478,7 @@ Response parameters
    - has_replicas: has_replicas
    - replication_type: replication_type
    - export_location: export_location
-   - project_id: project_id_4
+   - project_id: project_id
    - metadata: metadata
    - status: status_8
    - share_server_id: manage_share_server_id
@@ -502,7 +502,7 @@ Response example
 Update share
 ============
 
-.. rest_method::  PUT /v2/{tenant_id}/shares/{share_id}
+.. rest_method::  PUT /v2/{project_id}/shares/{share_id}
 
 Updates a share.
 
@@ -538,11 +538,11 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
+   - share_id: share_id
    - is_public: is_public
    - display_name: display_name_3
    - display_description: display_description_3
-   - share_id: share_id
-   - tenant_id: tenant_id_path
 
 Request example
 ---------------
@@ -566,7 +566,7 @@ Response parameters
    - size: size_2
    - share_type: share_type_1
    - export_location: export_location
-   - project_id: project_id_4
+   - project_id: project_id
    - metadata: metadata
    - status: status_16
    - description: description_5
@@ -593,7 +593,7 @@ Response example
 Delete share
 ============
 
-.. rest_method::  DELETE /v2/{tenant_id}/shares/{share_id}
+.. rest_method::  DELETE /v2/{project_id}/shares/{share_id}
 
 Deletes a share.
 
@@ -627,5 +627,5 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
    - share_id: share_id
-   - tenant_id: tenant_id_path

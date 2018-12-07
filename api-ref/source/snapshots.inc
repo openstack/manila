@@ -42,7 +42,7 @@ file to grant permissions for these actions to other roles.
 List share snapshots
 ====================
 
-.. rest_method::  GET /v2/{tenant_id}/snapshots
+.. rest_method::  GET /v2/{project_id}/snapshots
 
 Lists all share snapshots.
 
@@ -63,7 +63,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - all_tenants: all_tenants
    - name~: name_inexact_query
    - description~: description_inexact_query
@@ -86,7 +86,7 @@ Response example
 List share snapshots with details
 =================================
 
-.. rest_method::  GET /v2/{tenant_id}/snapshots/detail
+.. rest_method::  GET /v2/{project_id}/snapshots/detail
 
 Lists all share snapshots with details.
 
@@ -107,7 +107,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - all_tenants: all_tenants
    - name~: name_inexact_query
    - description~: description_inexact_query
@@ -139,7 +139,7 @@ Response example
 Show share snapshot details
 ===========================
 
-.. rest_method::  GET /v2/{tenant_id}/snapshots/{snapshot_id}
+.. rest_method::  GET /v2/{project_id}/snapshots/{snapshot_id}
 
 Shows details for a share snapshot.
 
@@ -161,7 +161,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - snapshot_id: snapshot_id_path
 
 Response parameters
@@ -191,7 +191,7 @@ Response example
 Create share snapshot
 =====================
 
-.. rest_method::  POST /v2/{tenant_id}/snapshots
+.. rest_method::  POST /v2/{project_id}/snapshots
 
 Creates a snapshot from a share.
 
@@ -216,7 +216,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_id: snapshot_share_id_request
    - force: force_snapshot_request
    - name: snapshot_name_request
@@ -258,7 +258,7 @@ Response example
 Manage share snapshot (since API v2.12)
 =======================================
 
-.. rest_method::  POST /v2/{tenant_id}/snapshots/manage
+.. rest_method::  POST /v2/{project_id}/snapshots/manage
 
 .. versionadded:: 2.12
 
@@ -290,7 +290,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_id: snapshot_manage_share_id
    - provider_location: snapshot_provider_location_request
    - name: snapshot_name_request
@@ -333,7 +333,7 @@ Response example
 Unmanage share snapshot (since API v2.12)
 =========================================
 
-.. rest_method::  POST /v2/{tenant_id}/snapshots/{snapshot_id}/action
+.. rest_method::  POST /v2/{project_id}/snapshots/{snapshot_id}/action
 
 .. versionadded:: 2.12
 
@@ -365,7 +365,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - snapshot_id: snapshot_id_path
    - unmanage: snapshot_unmanage
 
@@ -383,7 +383,7 @@ There is no body content for the response.
 Reset share snapshot state
 ==========================
 
-.. rest_method::  POST /v2/{tenant_id}/snapshots/{snapshot_id}/action
+.. rest_method::  POST /v2/{project_id}/snapshots/{snapshot_id}/action
 
 Administrator only. Explicitly updates the state of a share snapshot.
 
@@ -409,7 +409,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - snapshot_id: snapshot_id_path
    - status: snapshot_status_request
 
@@ -423,7 +423,7 @@ Request example
 Force-delete share snapshot
 ===========================
 
-.. rest_method::  POST /v2/{tenant_id}/snapshots/{snapshot_id}/action
+.. rest_method::  POST /v2/{project_id}/snapshots/{snapshot_id}/action
 
 Administrator only. Force-deletes a share snapshot in any state.
 
@@ -449,7 +449,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - snapshot_id: snapshot_id_path
    - force_delete: snapshot_force_delete
 
@@ -463,7 +463,7 @@ Request example
 Update share snapshot
 =====================
 
-.. rest_method::  PUT /v2/{tenant_id}/snapshots/{snapshot_id}
+.. rest_method::  PUT /v2/{project_id}/snapshots/{snapshot_id}
 
 Updates a share snapshot.
 
@@ -498,7 +498,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - snapshot_id: snapshot_id_path
    - display_name: snapshot_display_name
    - display_description: snapshot_display_description
@@ -536,7 +536,7 @@ Response example
 Delete share snapshot
 =====================
 
-.. rest_method::  DELETE /v2/{tenant_id}/snapshots/{snapshot_id}
+.. rest_method::  DELETE /v2/{project_id}/snapshots/{snapshot_id}
 
 Deletes a share snapshot.
 
@@ -563,5 +563,5 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - snapshot_id: snapshot_id_path

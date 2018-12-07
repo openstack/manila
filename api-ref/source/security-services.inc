@@ -38,7 +38,7 @@ You can configure a security service with these options:
 List security services
 ======================
 
-.. rest_method::  GET /v2/{tenant_id}/security-services
+.. rest_method::  GET /v2/{project_id}/security-services
 
 Lists all security services.
 
@@ -60,7 +60,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - all_tenants: all_tenants
 
 Response parameters
@@ -83,7 +83,7 @@ Response example
 List security services with details
 ===================================
 
-.. rest_method::  GET /v2/{tenant_id}/security-services/detail
+.. rest_method::  GET /v2/{project_id}/security-services/detail
 
 Lists all security services with details.
 
@@ -105,7 +105,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - all_tenants: all_tenants
 
 Response parameters
@@ -115,7 +115,7 @@ Response parameters
 
    - status: security_service_status
    - id: security_service_id
-   - project_id: security_service_project_id
+   - project_id: project_id
    - type: security_service_type
    - name: security_service_name
    - description: security_service_description
@@ -138,7 +138,7 @@ Response example
 Show security service details
 =============================
 
-.. rest_method::  GET /v2/{tenant_id}/security-services/{security_service_id}
+.. rest_method::  GET /v2/{project_id}/security-services/{security_service_id}
 
 Shows details for a security service.
 
@@ -161,7 +161,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - security_service_id: security_service_id_path
 
 Response parameters
@@ -171,7 +171,7 @@ Response parameters
 
    - status: security_service_status
    - id: security_service_id
-   - project_id: security_service_project_id
+   - project_id: project_id
    - type: security_service_type
    - name: security_service_name
    - description: security_service_description
@@ -194,7 +194,7 @@ Response example
 Create security service
 =======================
 
-.. rest_method::  POST /v2/{tenant_id}/security-services
+.. rest_method::  POST /v2/{project_id}/security-services
 
 Creates a security service.
 
@@ -217,7 +217,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - type: security_service_type
    - name: security_service_name
    - description: security_service_description_request
@@ -241,7 +241,7 @@ Response parameters
 
    - status: security_service_status
    - id: security_service_id
-   - project_id: security_service_project_id
+   - project_id: project_id
    - type: security_service_type
    - name: security_service_name
    - description: security_service_description
@@ -264,7 +264,7 @@ Response example
 Update security service
 =======================
 
-.. rest_method::  PUT /v2/{tenant_id}/security-services/{security_service_id}
+.. rest_method::  PUT /v2/{project_id}/security-services/{security_service_id}
 
 Updates a security service.
 
@@ -293,7 +293,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - security_service_id: security_service_id_path
    - type: security_service_type
    - name: security_service_name
@@ -318,7 +318,7 @@ Response parameters
 
    - status: security_service_status
    - id: security_service_id
-   - project_id: security_service_project_id
+   - project_id: project_id
    - type: security_service_type
    - name: security_service_name
    - description: security_service_description
@@ -341,7 +341,7 @@ Response example
 Delete security service
 =======================
 
-.. rest_method::  DELETE /v2/{tenant_id}/security-services/{security_service_id}
+.. rest_method::  DELETE /v2/{project_id}/security-services/{security_service_id}
 
 Deletes a security service.
 
@@ -364,5 +364,5 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - security_service_id: security_service_id_path

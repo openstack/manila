@@ -16,7 +16,7 @@ These APIs help in interacting with the Shared File Systems services,
 List services
 =============
 
-.. rest_method::  GET /v2/{tenant_id}/services?host={host}&binary={binary}&zone={zone}&state={state}&status={status}
+.. rest_method::  GET /v2/{project_id}/services?host={host}&binary={binary}&zone={zone}&state={state}&status={status}
 
 Lists all services optionally filtered with the specified search options.
 
@@ -38,7 +38,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - host: service_host_query
    - binary: service_binary_query
    - zone: service_zone_query
@@ -69,7 +69,7 @@ Response example
 Enable service
 ==============
 
-.. rest_method::  PUT /v2/{tenant_id}/services/enable
+.. rest_method::  PUT /v2/{project_id}/services/enable
 
 Enables a service.
 
@@ -92,7 +92,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - binary: service_enable_binary_request
    - host: service_enable_host_request
 
@@ -121,7 +121,7 @@ Response example
 Disable service
 ===============
 
-.. rest_method::  PUT /v2/{tenant_id}/services/disable
+.. rest_method::  PUT /v2/{project_id}/services/disable
 
 Disables a service.
 
@@ -144,7 +144,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - binary: service_disable_binary_request
    - host: service_disable_host_request
 

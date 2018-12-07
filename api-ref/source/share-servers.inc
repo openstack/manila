@@ -43,7 +43,7 @@ The possible share servers statuses are:
 List share servers
 ==================
 
-.. rest_method::  GET /v2/{tenant_id}/share-servers
+.. rest_method::  GET /v2/{project_id}/share-servers
 
 Lists all share servers.
 
@@ -65,7 +65,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
 
 Response parameters
 -------------------
@@ -73,7 +73,7 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - id: share_server_id
-   - project_id: project_id_share_server_body
+   - project_id: project_id
    - status: status_share_server_body
    - share_network_id: share_network_id
    - share_network_name: share_network_name
@@ -90,7 +90,7 @@ Response example
 Show share server
 =================
 
-.. rest_method::  GET /v2/{tenant_id}/share-servers/{share_server_id}
+.. rest_method::  GET /v2/{project_id}/share-servers/{share_server_id}
 
 Show a share server's details.
 
@@ -113,7 +113,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-  - tenant_id: tenant_id_path
+  - project_id: project_id_path
   - share_server_id: share_server_id
 
 Response parameters
@@ -122,7 +122,7 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
   - id: share_server_id
-  - project_id: project_id_share_server_body
+  - project_id: project_id
   - status: status_share_server_body
   - backend_details: backend_details
   - share_network_id: share_network_id_share_server_body
@@ -143,7 +143,7 @@ Response example
 Show share server back end details
 ==================================
 
-.. rest_method::  GET /v2/{tenant_id}/share-servers/{share_server_id}/details
+.. rest_method::  GET /v2/{project_id}/share-servers/{share_server_id}/details
 
 Shows back end details of a share server.
 
@@ -166,7 +166,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_server_id: share_server_id
 
 Response parameters
@@ -186,7 +186,7 @@ Response example
 Delete share server
 ===================
 
-.. rest_method::  DELETE /v2/{tenant_id}/share-servers/{share_server_id}
+.. rest_method::  DELETE /v2/{project_id}/share-servers/{share_server_id}
 
 Deletes a share server.
 
@@ -213,7 +213,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_server_id: share_server_id
 
 
@@ -265,7 +265,7 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
     - id: share_server_id
-    - project_id: project_id_share_server_manage
+    - project_id: project_id
     - updated_at: share_server_updated_at
     - status: share_server_status
     - host: manage_host
@@ -318,7 +318,7 @@ Request parameters
 
 .. rest_parameters:: parameters.yaml
 
-    - project_id: project_id
+    - project_id: project_id_path
     - share_server_id: share_server_id
     - force: force
     - unmanage: share_server_unmanage
@@ -366,8 +366,8 @@ Request parameters
 
 .. rest_parameters:: parameters.yaml
 
-    - share_server_id: share_server_id
     - project_id: project_id_path
+    - share_server_id: share_server_id
     - status: share_server_status
 
 Request example

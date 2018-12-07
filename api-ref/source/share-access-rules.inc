@@ -11,7 +11,7 @@ Retrieve details about access rules
 Describe share access rule
 ==========================
 
-.. rest_method::  GET /v2/{tenant_id}/share-access-rules/{access_id}
+.. rest_method::  GET /v2/{project_id}/share-access-rules/{access_id}
 
 .. versionadded:: 2.45
 
@@ -36,8 +36,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
    - access_id: access_id_path
-   - tenant_id: tenant_id_path
 
 Response parameters
 -------------------
@@ -65,7 +65,7 @@ Response example
 List share access rules
 =======================
 
-.. rest_method::  GET /v2/{tenant_id}/share-access-rules?share_id={share-id}
+.. rest_method::  GET /v2/{project_id}/share-access-rules?share_id={share-id}
 
 .. versionadded:: 2.45
 
@@ -95,9 +95,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
+   - share_id: share_id_access_rules_query
    - metadata: metadata
-   - share_id: share_id
-   - tenant_id: tenant_id_path
 
 Response parameters
 -------------------

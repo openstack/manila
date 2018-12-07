@@ -9,7 +9,7 @@ Quota classes can be shown and updated for a project.
 Show quota classes for a project
 ================================
 
-.. rest_method::  GET /v2/{tenant_id}/quota-class-sets/{quota_class_name}
+.. rest_method::  GET /v2/{project_id}/quota-class-sets/{quota_class_name}
 
 Shows quota class set for a project. If no specific value for the quota class
 resource exists, then the default value will be reported.
@@ -31,7 +31,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - quota_class_name: quota_class_name
 
 
@@ -60,7 +60,7 @@ Response Example
 Update quota classes for a project
 ==================================
 
-.. rest_method::  PUT /v2/{tenant_id}/quota-class-sets/{quota_class_name}
+.. rest_method::  PUT /v2/{project_id}/quota-class-sets/{quota_class_name}
 
 Updates quota class set for a project. If the ``quota_class_name`` key does not
 exist, then the API will create one.
@@ -83,7 +83,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id
+   - project_id: project_id_path
    - quota_class_name: quota_class_name
    - shares: maxTotalSharesOptional
    - snapshots: maxTotalShareSnapshotsOptional

@@ -10,7 +10,7 @@ Shows, sets, updates, and unsets share metadata.
 Show share metadata
 ===================
 
-.. rest_method::  GET /v2/{tenant_id}/shares/{share_id}/metadata
+.. rest_method::  GET /v2/{project_id}/shares/{share_id}/metadata
 
 Shows the metadata for a share.
 
@@ -33,8 +33,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
    - share_id: share_id
-   - tenant_id: tenant_id_path
 
 Response parameters
 -------------------
@@ -53,7 +53,7 @@ Response example
 Set share metadata
 ==================
 
-.. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/metadata
+.. rest_method::  POST /v2/{project_id}/shares/{share_id}/metadata
 
 Sets the metadata on a share.
 
@@ -77,9 +77,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata_2
+   - project_id: project_id_path
    - share_id: share_id
-   - tenant_id: tenant_id_path
+   - metadata: metadata_2
+
 
 Request example
 ---------------
@@ -104,7 +105,7 @@ Response example
 Update share metadata
 =====================
 
-.. rest_method::  PUT /v2/{tenant_id}/shares/{share_id}/metadata
+.. rest_method::  PUT /v2/{project_id}/shares/{share_id}/metadata
 
 Updates the metadata for a share.
 
@@ -127,9 +128,10 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: metadata_2
+   - project_id: project_id_path
    - share_id: share_id
-   - tenant_id: tenant_id_path
+   - metadata: metadata_2
+
 
 Request example
 ---------------
@@ -154,7 +156,7 @@ Response example
 Unset share metadata
 ====================
 
-.. rest_method::  DELETE /v2/{tenant_id}/shares/{share_id}/metadata/{key}
+.. rest_method::  DELETE /v2/{project_id}/shares/{share_id}/metadata/{key}
 
 Un-sets the metadata on a share.
 
@@ -180,6 +182,6 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
    - share_id: share_id
-   - tenant_id: tenant_id_path
    - key: metadata_key_request

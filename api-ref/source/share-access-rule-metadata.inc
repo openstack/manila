@@ -9,7 +9,7 @@ Updates, and unsets share access rule metadata.
 Update share access rule metadata
 ==================================
 
-.. rest_method::  PUT /v2/{tenant_id}/share-access-rules/{access_id}/metadata
+.. rest_method::  PUT /v2/{project_id}/share-access-rules/{access_id}/metadata
 
 .. versionadded:: 2.45
 
@@ -34,9 +34,9 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - metadata: access_metadata
+   - project_id: project_id_path
    - access_id: access_id_path
-   - tenant_id: tenant_id_path
+   - metadata: access_metadata
 
 Request example
 ---------------
@@ -61,7 +61,7 @@ Response example
 Unset share access rule metadata
 ================================
 
-.. rest_method::  DELETE /v2/{tenant_id}/share-access-rules/{access_id}/metadata/{key}
+.. rest_method::  DELETE /v2/{project_id}/share-access-rules/{access_id}/metadata/{key}
 
 .. versionadded:: 2.45
 
@@ -89,6 +89,6 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
+   - project_id: project_id_path
    - access_id: access_id_path
-   - tenant_id: tenant_id_path
    - key: metadata_key_path

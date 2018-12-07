@@ -29,7 +29,7 @@ Migrate share (DEPRECATED)
    this API will fail with a 404 starting from microversion 2.15. Please see
    the new experimental API below.
 
-.. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
 
 .. versionadded:: 2.5
 
@@ -61,7 +61,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_id: share_id
    - os-migrate_share: os-migrate_share
    - migrate_share: migrate_share
@@ -72,7 +72,7 @@ Request
 Start Migration (since API v2.15)
 =================================
 
-.. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
 
 .. versionadded:: 2.15
 
@@ -99,7 +99,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_id: share_id
    - migrate-start: migrate-start
    - host: host_10
@@ -110,7 +110,7 @@ Request
 Complete Migration (since API v2.15)
 =======================================
 
-.. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
+.. rest_method::  POST /v2/{project_id}/shares/{share_id}/action
 
 .. versionadded:: 2.15
 
@@ -137,7 +137,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_id: share_id
    - migration_complete: migration_complete
    - host: host_10

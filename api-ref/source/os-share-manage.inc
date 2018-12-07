@@ -17,7 +17,7 @@ Manage share (DEPRECATED)
    `Share Manage API <#manage-share-since-api-v2-7>`_ instead of this API
    from version 2.7.
 
-.. rest_method::  POST /v2/{tenant_id}/os-share-manage
+.. rest_method::  POST /v2/{project_id}/os-share-manage
 
 Use this API to bring a share under the management of the Shared File
 Systems service.
@@ -45,7 +45,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share: share
    - protocol: protocol
    - name: name_5
@@ -83,7 +83,7 @@ Response parameters
    - has_replicas: has_replicas
    - replication_type: replication_type
    - export_location: export_location
-   - project_id: project_id_8
+   - project_id: project_id
    - metadata: metadata
    - status: status_8
    - description: description_5
@@ -112,7 +112,7 @@ Unmanage share (DEPRECATED)
    `Share Unmanage API <#unmanage-share-since-api-v2-7>`_ instead of this
    API from version 2.7.
 
-.. rest_method::  POST /v2/{tenant_id}/os-share-unmanage/{share_id}/unmanage
+.. rest_method::  POST /v2/{project_id}/os-share-unmanage/{share_id}/unmanage
 
 Use this API to remove a share from the management of the Shared File
 Systems service without deleting the share.
@@ -149,7 +149,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - tenant_id: tenant_id_path
+   - project_id: project_id_path
    - share_id: share_id
 
 
