@@ -47,9 +47,8 @@
           export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
 
           # Install manila-image-elements project for building custom image
-          if [[ container_with_custom_image == *"_with_custom_image" ]]; then
-              export PROJECTS="openstack/manila-image-elements $PROJECTS"
-          fi
+          export PROJECTS="openstack/manila-image-elements $PROJECTS"
+
           export ENABLED_SERVICES=tempest
 
           # Keep localrc to be able to set some vars in pre_test_hook
@@ -57,20 +56,17 @@
           export PROJECTS="openstack/manila-tempest-plugin $PROJECTS"
 
           function pre_test_hook {
-              # Build custom image if needed
-              if [[ container_with_custom_image == *"_with_custom_image" ]]; then
-                  current_dir=$(pwd)
+              current_dir=$(pwd)
 
-                  # Go to 'manila-image-elements' dir, build image and get its name
-                  cd /opt/stack/new/manila-image-elements
-                  ./tools/gate/build-images container_with_custom_image True
-                  image_name=$(git ls-files --others --exclude-standard)
-                  export MANILA_SERVICE_IMAGE_URL="http://localhost:80/public_html/$image_name"
-                  export MANILA_SERVICE_IMAGE_NAME=$(basename -s .tar.gz $(basename -s .qcow2 $image_name))
+              # Go to 'manila-image-elements' dir, build image and get its name
+              cd /opt/stack/new/manila-image-elements
+              ./tools/gate/build-images container_with_custom_image
+              image_name=$(cat ./IMAGE_NAME)
+              export MANILA_SERVICE_IMAGE_URL="file://$(pwd)/$image_name"
+              export MANILA_SERVICE_IMAGE_NAME=$(basename -s .tar.gz $(basename -s .qcow2 $image_name))
 
-                  # Return back to execution dir
-                  cd $current_dir
-              fi
+              # Return back to execution dir
+              cd $current_dir
 
               # 'dhss' - acronym for 'Driver Handles Share Servers',
               # defines mode of a share driver. Boolean-like.
