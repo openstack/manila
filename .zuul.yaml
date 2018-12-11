@@ -24,9 +24,9 @@
             voting: false
         - manila-tempest-dsvm-scenario:
             voting: false
-        - manila-tempest-minimal-dsvm-cephfs-native-centos-7:
+        - manila-tempest-minimal-dsvm-cephfs-native:
             voting: false
-        - manila-tempest-minimal-dsvm-cephfs-nfs-centos-7:
+        - manila-tempest-minimal-dsvm-cephfs-nfs:
             voting: false
         - manila-tempest-minimal-dsvm-dummy
         - manila-tempest-minimal-dsvm-lvm
@@ -52,6 +52,8 @@
         - manila-tempest-dsvm-glusterfs-native
         - manila-tempest-dsvm-glusterfs-nfs-heketi
         - manila-tempest-dsvm-glusterfs-native-heketi
+        - manila-tempest-minimal-dsvm-cephfs-native-centos-7
+        - manila-tempest-minimal-dsvm-cephfs-nfs-centos-7
 
 - job:
     name: manila-grenade
@@ -291,6 +293,20 @@
       - openstack/tempest
 
 - job:
+    name: manila-tempest-minimal-dsvm-cephfs-native
+    parent: manila-tempest-base
+    run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-native/run.yaml
+    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-native/post.yaml
+    timeout: 5400
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/devstack-plugin-ceph
+      - openstack/manila
+      - openstack/manila-tempest-plugin
+      - openstack/python-manilaclient
+      - openstack/tempest
+
+- job:
     name: manila-tempest-minimal-dsvm-cephfs-nfs-centos-7
     parent: manila-tempest-base
     run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-nfs-centos-7/run.yaml
@@ -304,6 +320,21 @@
       - openstack/manila-tempest-plugin
       - openstack/python-manilaclient
       - openstack/tempest
+
+- job:
+    name: manila-tempest-minimal-dsvm-cephfs-nfs
+    parent: manila-tempest-base
+    run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-nfs/run.yaml
+    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-cephfs-nfs/post.yaml
+    timeout: 5400
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/devstack-plugin-ceph
+      - openstack/manila
+      - openstack/manila-tempest-plugin
+      - openstack/python-manilaclient
+      - openstack/tempest
+
 
 - job:
     name: manila-tempest-minimal-dsvm-dummy
