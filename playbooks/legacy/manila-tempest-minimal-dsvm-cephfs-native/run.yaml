@@ -1,0 +1,96 @@
+- hosts: all
+  name: legacy-manila-tempest-minimal-dsvm-cephfs-native-ubuntu-bionic
+  tasks:
+
+    - name: Ensure legacy workspace directory
+      file:
+        path: '{{ ansible_user_dir }}/workspace'
+        state: directory
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          cat > clonemap.yaml << EOF
+          clonemap:
+            - name: openstack-infra/devstack-gate
+              dest: devstack-gate
+          EOF
+          /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
+              git://git.openstack.org \
+              openstack-infra/devstack-gate
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          cat << 'EOF' >>"/tmp/dg-local.conf"
+          [[local|localrc]]
+          enable_plugin manila git://git.openstack.org/openstack/manila
+
+          enable_plugin devstack-plugin-ceph git://git.openstack.org/openstack/devstack-plugin-ceph
+
+          # Enable CephFS as the backend for Manila.
+          ENABLE_CEPH_MANILA=True
+
+          # Disable Ceph as the storage backend for Nova.
+          ENABLE_CEPH_NOVA=False
+
+          # Disable Ceph as the storage backend for Glance.
+          ENABLE_CEPH_GLANCE=False
+
+          # Disable Ceph as the storage backend for Cinder.
+          ENABLE_CEPH_CINDER=False
+
+          # Disable Ceph as the storage backend for Cinder backup.
+          ENABLE_CEPH_C_BAK=False
+
+          # Set native or NFS variant of ceph driver
+          MANILA_CEPH_DRIVER=cephfsnative
+
+          EOF
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          export PYTHONUNBUFFERED=true
+          export DEVSTACK_GATE_NEUTRON=1
+          export ENABLED_SERVICES=tempest
+          export PROJECTS="openstack/devstack-plugin-ceph $PROJECTS"
+          export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
+          export KEEP_LOCALRC=1
+          export PROJECTS="openstack/manila-tempest-plugin $PROJECTS"
+          OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit,tempest
+          export OVERRIDE_ENABLED_SERVICES
+
+          function pre_test_hook {
+              # Configure Manila with a CephFS Native or NFS driver backend.
+              # Refer to job-template pre_test_hook for more details on the
+              # arguments.
+              source $BASE/new/devstack-plugin-ceph/manila/pre_test_hook.sh \
+                  false cephfsnative singlebackend
+          }
+          export -f pre_test_hook
+
+          function post_test_hook {
+              # Configure and run Tempest API tests on Manila with a
+              # CephFSNative driver backend.
+              # Refer to job-template post_test_hook for more details on the
+              # arguments.
+              source $BASE/new/devstack-plugin-ceph/manila/post_test_hook.sh \
+                  singlebackend cephfsnative api
+          }
+          export -f post_test_hook
+
+          cp devstack-gate/devstack-vm-gate-wrap.sh ./safe-devstack-vm-gate-wrap.sh
+          ./safe-devstack-vm-gate-wrap.sh
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
