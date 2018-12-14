@@ -20,7 +20,7 @@ and is expected to remain so for quite a long time.
 
 The Nova project was the first to implement microversions. For full
 details please read Nova's `Kilo spec for microversions
-<http://git.openstack.org/cgit/openstack/nova-specs/tree/specs/kilo/implemented/api-microversions.rst>`_
+<https://specs.openstack.org/openstack/nova-specs/specs/kilo/implemented/api-microversions.html>`_
 
 When do I need a new Microversion?
 ----------------------------------
