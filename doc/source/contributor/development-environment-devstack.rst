@@ -39,7 +39,7 @@ Start by cloning the devstack repository:
 
 ::
 
-    git clone https://github.com/openstack-dev/devstack
+    git clone https://git.openstack.org/openstack-dev/devstack
 
 Change to devstack directory:
 
@@ -57,7 +57,7 @@ Enable the manila plugin adding the following line to the end of the local.conf 
 
 ::
 
-    enable_plugin manila https://github.com/openstack/manila
+    enable_plugin manila https://git.openstack.org/openstack/manila
 
 If you would like to install python-manilaclient from git, add to local.conf:
 
@@ -79,7 +79,7 @@ just after manila plugin enablement:
 
 ::
 
-    enable_plugin manila-ui https://github.com/openstack/manila-ui
+    enable_plugin manila-ui https://git.openstack.org/openstack/manila-ui
 
 Running devstack
 ----------------

@@ -77,7 +77,7 @@ OpenStack API Reference
 - For releases prior to Newton, the API reference was maintained in `Web
   Application Description Language (WADL)
   <https://en.wikipedia.org/wiki/Web_Application_Description_Language>`_ in
-  the `api-site <https://github.com/openstack/api-site>`_ project.
+  the `api-site <https://git.openstack.org/cgit/openstack/api-site>`_ project.
 - Since the Newton release, manila's API reference is maintained
   in-tree in custom YAML/JSON format files.
 - **Link**: `REST API reference of the Shared File Systems Project v2.0
@@ -110,7 +110,7 @@ OpenStack Security Guide
   information needs to be documented here.
 - **Link**: `Security guide <http://docs.openstack.org/security-guide/>`_
 - **Repository**: The security guide is maintained within the
-  `OpenStack Security-doc project <https://github.com/openstack/security-doc>`_
+  `OpenStack Security-doc project <https://git.openstack.org/cgit/openstack/security-doc>`_
 
 
 OpenStack Command Line Reference

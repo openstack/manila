@@ -1155,7 +1155,7 @@ elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
     create_custom_share_types
 
     echo_summary "Manila UI is no longer enabled by default. \
-        Add enable_plugin manila-ui github.com/openstack/manila-ui \
+        Add enable_plugin manila-ui https://git.openstack.org/openstack/manila-ui \
         to your local.conf file to enable Manila UI"
 
 elif [[ "$1" == "stack" && "$2" == "test-config" ]]; then

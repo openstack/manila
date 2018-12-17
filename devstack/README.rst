@@ -8,6 +8,6 @@
 
      > cat local.conf
      [[local|localrc]]
-     enable_plugin manila https://github.com/openstack/manila
+     enable_plugin manila https://git.openstack.org/openstack/manila
 
 3. run ``stack.sh``

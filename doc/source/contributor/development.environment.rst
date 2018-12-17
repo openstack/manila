@@ -115,7 +115,7 @@ Getting the code
 ----------------
 Grab the code::
 
-    git clone https://github.com/openstack/manila.git
+    git clone https://git.openstack.org/openstack/manila.git
     cd manila
 
 

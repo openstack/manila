@@ -30,7 +30,7 @@
 
 # Defaults
 # --------
-MANILA_GIT_BASE=${MANILA_GIT_BASE:-https://github.com}
+MANILA_GIT_BASE=${MANILA_GIT_BASE:-https://git.openstack.org}
 MANILA_REPO_ROOT=${MANILA_REPO_ROOT:-openstack}
 
 MANILACLIENT_REPO=${MANILA_GIT_BASE}/${MANILA_REPO_ROOT}/python-manilaclient.git
