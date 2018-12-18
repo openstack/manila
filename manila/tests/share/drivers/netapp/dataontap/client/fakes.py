@@ -421,6 +421,7 @@ CIFS_SECURITY_SERVICE = {
     'ou': 'fake_ou',
     'domain': 'fake_domain',
     'dns_ip': 'fake_dns_ip',
+    'server': '',
 }
 
 LDAP_SECURITY_SERVICE = {

@@ -2492,6 +2492,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.mock_object(self.client, 'send_request')
         self.mock_object(self.client, 'configure_dns')
+        self.mock_object(self.client, 'set_preferred_dc')
 
         self.client.configure_active_directory(fake.CIFS_SECURITY_SERVICE,
                                                fake.VSERVER_NAME)
@@ -2510,6 +2511,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
         }
 
         self.client.configure_dns.assert_called_with(
+            fake.CIFS_SECURITY_SERVICE)
+        self.client.set_preferred_dc.assert_called_with(
             fake.CIFS_SECURITY_SERVICE)
         self.client.send_request.assert_has_calls([
             mock.call('cifs-server-create', cifs_server_create_args)])
@@ -2702,6 +2705,37 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertRaises(exception.NetAppException,
                           self.client.configure_dns,
                           fake.KERBEROS_SECURITY_SERVICE)
+
+    @ddt.data('', '10.0.0.1', ['10.0.0.2', '10.0.0.3'])
+    def test_set_preferred_dc(self, server):
+
+        self.mock_object(self.client, 'send_request')
+        security_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
+        security_service['server'] = ', '.join(server)
+
+        self.client.set_preferred_dc(security_service)
+
+        if server is '':
+            self.client.send_request.assert_not_called()
+        else:
+            preferred_dc_add_args = {
+                'domain': fake.CIFS_SECURITY_SERVICE['domain'],
+                'preferred-dc': [{'string': dc_ip} for dc_ip in server]
+            }
+
+            self.client.send_request.assert_has_calls([
+                mock.call('cifs-domain-preferred-dc-add',
+                          preferred_dc_add_args)])
+
+    def test_set_preferred_dc_api_error(self):
+
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+        security_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
+        security_service['server'] = 'fake_server'
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.set_preferred_dc,
+                          security_service)
 
     def test_create_volume(self):
 
