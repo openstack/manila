@@ -37,7 +37,7 @@
           set -x
           cat << 'EOF' >>"/tmp/dg-local.conf"
           [[local|localrc]]
-          SKIP_EPEL_INSTALL=True
+          SKIP_EPEL_INSTALL=False
           enable_plugin manila git://git.openstack.org/openstack/manila
 
           enable_plugin devstack-plugin-ceph git://git.openstack.org/openstack/devstack-plugin-ceph
@@ -75,6 +75,8 @@
           export PROJECTS="openstack/devstack-plugin-ceph $PROJECTS"
           export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
           export KEEP_LOCALRC=1
+          OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit,tempest
+          export OVERRIDE_ENABLED_SERVICES
 
           function pre_test_hook {
               # Configure Manila with a CephFS Native or NFS driver backend.
