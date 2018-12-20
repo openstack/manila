@@ -1,0 +1,19 @@
+---
+fixes:
+  - |
+    `Launchpad bug 1809318 <https://bugs.launchpad.net/manila/+bug/1809318>`_
+    has been fixed. The deprecated options ``api_insecure`` and
+    ``ca_certificates_file`` from nova, cinder, neutron or DEFAULT
+    configuration groups no longer override the newer ``insecure`` option if
+    provided. Always use ``insecure`` and ``cafile`` to control SSL
+    and validation since the deprecated options will be removed in a future
+    release.
+deprecations:
+  - |
+    The options ``ca_certificates_file``, ``nova_ca_certificates_file``,
+    ``cinder_ca_certificates_file``, ``api_insecure``, ``nova_api_insecure``
+    and ``cinder_api_insecure`` have been deprecated from the ``DEFAULT``
+    group as well as ``nova``, ``neutron`` and ``cinder`` configuration
+    groups. Use ``cafile`` to specify the CA certificates and ``insecure``
+    to turn off SSL validation in these respective groups (nova, neutron and
+    cinder).

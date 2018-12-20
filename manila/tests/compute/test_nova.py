@@ -135,8 +135,6 @@ class NovaclientTestCase(test.TestCase):
         data = {
             'nova': {
                 'api_microversion': 'foo_api_microversion',
-                'api_insecure': True,
-                'ca_certificates_file': 'foo_ca_certificates_file',
                 'endpoint_type': 'foo_endpoint_type',
                 'region_name': 'foo_region_name',
             }
@@ -153,8 +151,6 @@ class NovaclientTestCase(test.TestCase):
         mock_client_loader.return_value.get_client.assert_called_once_with(
             fake_context,
             version=data['nova']['api_microversion'],
-            insecure=data['nova']['api_insecure'],
-            cacert=data['nova']['ca_certificates_file'],
             endpoint_type=data['nova']['endpoint_type'],
             region_name=data['nova']['region_name'],
         )
@@ -165,8 +161,6 @@ class NovaclientTestCase(test.TestCase):
         data = {
             'nova': {
                 'api_microversion': 'foo_api_microversion',
-                'api_insecure': True,
-                'ca_certificates_file': 'foo_ca_certificates_file',
                 'endpoint_type': 'foo_endpoint_type',
                 'region_name': 'foo_region_name',
             }
@@ -178,8 +172,6 @@ class NovaclientTestCase(test.TestCase):
         nova.AUTH_OBJ.get_client.assert_called_once_with(
             fake_context,
             version=data['nova']['api_microversion'],
-            insecure=data['nova']['api_insecure'],
-            cacert=data['nova']['ca_certificates_file'],
             endpoint_type=data['nova']['endpoint_type'],
             region_name=data['nova']['region_name'],
         )
