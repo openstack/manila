@@ -50,8 +50,7 @@ class AuthClientLoader(object):
         :param group: group name
         :return: list of auth default configuration
         """
-        opts = copy.deepcopy(ks_loading.register_session_conf_options(
-                             CONF, group))
+        opts = copy.deepcopy(ks_loading.get_session_conf_options())
         opts.insert(0, ks_loading.get_auth_common_conf_options()[0])
 
         for plugin_option in ks_loading.get_auth_plugin_conf_options(

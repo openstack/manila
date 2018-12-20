@@ -41,22 +41,11 @@ neutron_opts = [
         deprecated_group="DEFAULT",
         deprecated_name="neutron_url_timeout",
         help='Timeout value for connecting to neutron in seconds.'),
-    cfg.BoolOpt(
-        'api_insecure',
-        default=False,
-        deprecated_group="DEFAULT",
-        help='If set, ignore any SSL validation issues.'),
     cfg.StrOpt(
         'auth_strategy',
         default='keystone',
         deprecated_group="DEFAULT",
         help='Auth strategy for connecting to neutron in admin context.'),
-    cfg.StrOpt(
-        'ca_certificates_file',
-        deprecated_for_removal=True,
-        deprecated_group="DEFAULT",
-        help='Location of CA certificates file to use for '
-             'neutron client requests.'),
     cfg.StrOpt(
         'endpoint_type',
         default='publicURL',
@@ -65,6 +54,19 @@ neutron_opts = [
         'region_name',
         help='Region name for connecting to neutron in admin context.'),
 ]
+
+# These fallback options can be removed in/after 9.0.0 (Train)
+deprecated_opts = {
+    'cafile': [
+        cfg.DeprecatedOpt('ca_certificates_file', group="DEFAULT"),
+        cfg.DeprecatedOpt('ca_certificates_file', group=NEUTRON_GROUP),
+    ],
+    'insecure': [
+        cfg.DeprecatedOpt('api_insecure', group="DEFAULT"),
+        cfg.DeprecatedOpt('api_insecure', group=NEUTRON_GROUP),
+    ],
+}
+
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
@@ -83,7 +85,8 @@ class API(object):
     def __init__(self, config_group_name=None):
         self.config_group_name = config_group_name or 'DEFAULT'
 
-        ks_loading.register_session_conf_options(CONF, NEUTRON_GROUP)
+        ks_loading.register_session_conf_options(
+            CONF, NEUTRON_GROUP, deprecated_opts=deprecated_opts)
         ks_loading.register_auth_conf_options(CONF, NEUTRON_GROUP)
         CONF.register_opts(neutron_opts, NEUTRON_GROUP)
 
