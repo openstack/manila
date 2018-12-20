@@ -78,12 +78,12 @@ class ClientAuthTestCase(test.TestCase):
         auth_result.load_from_options.assert_called_once_with(username='foo')
         self.assertEqual(result, 'foo_auth')
 
-    @mock.patch.object(auth, 'register_session_conf_options')
+    @mock.patch.object(auth, 'get_session_conf_options')
     @mock.patch.object(auth, 'get_auth_common_conf_options')
     @mock.patch.object(auth, 'get_auth_plugin_conf_options')
-    def test_list_opts(self, auth_conf, common_conf, register):
-        register.return_value = [cfg.StrOpt('username'),
-                                 cfg.StrOpt('password')]
+    def test_list_opts(self, auth_conf, common_conf, session_conf):
+        session_conf.return_value = [cfg.StrOpt('username'),
+                                     cfg.StrOpt('password')]
         common_conf.return_value = ([cfg.StrOpt('auth_url')])
         auth_conf.return_value = [cfg.StrOpt('password')]
 
@@ -95,12 +95,12 @@ class ClientAuthTestCase(test.TestCase):
         common_conf.assert_called_once_with()
         auth_conf.assert_called_once_with('password')
 
-    @mock.patch.object(auth, 'register_session_conf_options')
+    @mock.patch.object(auth, 'get_session_conf_options')
     @mock.patch.object(auth, 'get_auth_common_conf_options')
     @mock.patch.object(auth, 'get_auth_plugin_conf_options')
-    def test_list_opts_not_found(self, auth_conf, common_conf, register,):
-        register.return_value = [cfg.StrOpt('username'),
-                                 cfg.StrOpt('password')]
+    def test_list_opts_not_found(self, auth_conf, common_conf, session_conf):
+        session_conf.return_value = [cfg.StrOpt('username'),
+                                     cfg.StrOpt('password')]
         common_conf.return_value = ([cfg.StrOpt('auth_url')])
         auth_conf.return_value = [cfg.StrOpt('tenant')]
 

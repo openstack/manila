@@ -42,21 +42,11 @@ cinder_opts = [
                 deprecated_name="cinder_cross_az_attach",
                 help='Allow attaching between instances and volumes in '
                      'different availability zones.'),
-    cfg.StrOpt('ca_certificates_file',
-               help='Location of CA certificates file to use for cinder '
-                    'client requests.',
-               deprecated_group='DEFAULT',
-               deprecated_name="cinder_ca_certificates_file"),
     cfg.IntOpt('http_retries',
                default=3,
                help='Number of cinderclient retries on failed HTTP calls.',
                deprecated_group='DEFAULT',
                deprecated_name="cinder_http_retries"),
-    cfg.BoolOpt('api_insecure',
-                default=False,
-                help='Allow to perform insecure SSL requests to cinder.',
-                deprecated_group='DEFAULT',
-                deprecated_name="cinder_api_insecure"),
     cfg.StrOpt('endpoint_type',
                default='publicURL',
                help='Endpoint type to be used with cinder client calls.'),
@@ -64,10 +54,29 @@ cinder_opts = [
                help='Region name for connecting to cinder.'),
     ]
 
+# These fallback options can be removed in/after 9.0.0 (Train)
+deprecated_opts = {
+    'cafile': [
+        cfg.DeprecatedOpt('ca_certificates_file', group="DEFAULT"),
+        cfg.DeprecatedOpt('ca_certificates_file', group=CINDER_GROUP),
+        cfg.DeprecatedOpt('cinder_ca_certificates_file', group="DEFAULT"),
+        cfg.DeprecatedOpt('cinder_ca_certificates_file', group=CINDER_GROUP),
+    ],
+    'insecure': [
+        cfg.DeprecatedOpt('api_insecure', group="DEFAULT"),
+        cfg.DeprecatedOpt('api_insecure', group=CINDER_GROUP),
+        cfg.DeprecatedOpt('cinder_api_insecure', group="DEFAULT"),
+        cfg.DeprecatedOpt('cinder_api_insecure', group=CINDER_GROUP),
+    ],
+}
+
+
 CONF = cfg.CONF
 CONF.register_opts(core_opts)
 CONF.register_opts(cinder_opts, CINDER_GROUP)
-ks_loading.register_session_conf_options(CONF, CINDER_GROUP)
+ks_loading.register_session_conf_options(CONF,
+                                         CINDER_GROUP,
+                                         deprecated_opts=deprecated_opts)
 ks_loading.register_auth_conf_options(CONF, CINDER_GROUP)
 
 
@@ -83,8 +92,6 @@ def cinderclient(context):
             exception_module=cinder_exception,
             cfg_group=CINDER_GROUP)
     return AUTH_OBJ.get_client(context,
-                               insecure=CONF[CINDER_GROUP].api_insecure,
-                               cacert=CONF[CINDER_GROUP].ca_certificates_file,
                                retries=CONF[CINDER_GROUP].http_retries,
                                endpoint_type=CONF[CINDER_GROUP].endpoint_type,
                                region_name=CONF[CINDER_GROUP].region_name)
