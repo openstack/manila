@@ -64,7 +64,7 @@ API Reference
 .. toctree::
    :maxdepth: 3
 
-   api
+   Manila API v2 Reference <https://developer.openstack.org/api-ref/shared-file-system/>
    api_microversion_dev
    api_microversion_history
    experimental_apis
@@ -80,7 +80,6 @@ Module Reference
    share
    share_hooks
    auth
-   api
    scheduler
    fakes
    manila
