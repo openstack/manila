@@ -39,16 +39,6 @@ nova_opts = [
                deprecated_group="DEFAULT",
                deprecated_name="nova_api_microversion",
                help='Version of Nova API to be used.'),
-    cfg.StrOpt('ca_certificates_file',
-               deprecated_group="DEFAULT",
-               deprecated_name="nova_ca_certificates_file",
-               help='Location of CA certificates file to use for nova client '
-                    'requests.'),
-    cfg.BoolOpt('api_insecure',
-                default=False,
-                deprecated_group="DEFAULT",
-                deprecated_name="nova_api_insecure",
-                help='Allow to perform insecure SSL requests to nova.'),
     cfg.StrOpt('endpoint_type',
                default='publicURL',
                help='Endpoint type to be used with nova client calls.'),
@@ -56,10 +46,28 @@ nova_opts = [
                help='Region name for connecting to nova.'),
     ]
 
+# These fallback options can be removed in/after 9.0.0 (Train)
+deprecated_opts = {
+    'cafile': [
+        cfg.DeprecatedOpt('ca_certificates_file', group="DEFAULT"),
+        cfg.DeprecatedOpt('ca_certificates_file', group=NOVA_GROUP),
+        cfg.DeprecatedOpt('nova_ca_certificates_file', group="DEFAULT"),
+        cfg.DeprecatedOpt('nova_ca_certificates_file', group=NOVA_GROUP),
+    ],
+    'insecure': [
+        cfg.DeprecatedOpt('api_insecure', group="DEFAULT"),
+        cfg.DeprecatedOpt('api_insecure', group=NOVA_GROUP),
+        cfg.DeprecatedOpt('nova_api_insecure', group="DEFAULT"),
+        cfg.DeprecatedOpt('nova_api_insecure', group=NOVA_GROUP),
+    ],
+}
+
 CONF = cfg.CONF
 CONF.register_opts(core_opts)
 CONF.register_opts(nova_opts, NOVA_GROUP)
-ks_loading.register_session_conf_options(CONF, NOVA_GROUP)
+ks_loading.register_session_conf_options(CONF,
+                                         NOVA_GROUP,
+                                         deprecated_opts=deprecated_opts)
 ks_loading.register_auth_conf_options(CONF, NOVA_GROUP)
 
 
@@ -76,8 +84,6 @@ def novaclient(context):
             cfg_group=NOVA_GROUP)
     return AUTH_OBJ.get_client(context,
                                version=CONF[NOVA_GROUP].api_microversion,
-                               insecure=CONF[NOVA_GROUP].api_insecure,
-                               cacert=CONF[NOVA_GROUP].ca_certificates_file,
                                endpoint_type=CONF[NOVA_GROUP].endpoint_type,
                                region_name=CONF[NOVA_GROUP].region_name)
 

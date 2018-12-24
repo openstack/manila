@@ -90,14 +90,10 @@
      - (String) Volume snapshot name template.
    * - **[cinder]**
      -
-   * - ``api_insecure`` = ``False``
-     - (Boolean) Allow to perform insecure SSL requests to cinder.
    * - ``auth_section`` = ``None``
      - (Unknown) Config Section from which to load plugin specific options
    * - ``auth_type`` = ``None``
      - (Unknown) Authentication type to load
-   * - ``ca_certificates_file`` = ``None``
-     - (String) Location of CA certificates file to use for cinder client requests.
    * - ``cafile`` = ``None``
      - (String) PEM encoded Certificate Authority to use when verifying HTTPs connections.
    * - ``certfile`` = ``None``
@@ -130,16 +126,12 @@
      - (Integer) Timeout value for http requests
    * - **[nova]**
      -
-   * - ``api_insecure`` = ``False``
-     - (Boolean) Allow to perform insecure SSL requests to nova.
    * - ``api_microversion`` = ``2.10``
      - (String) Version of Nova API to be used.
    * - ``auth_section`` = ``None``
      - (Unknown) Config Section from which to load plugin specific options
    * - ``auth_type`` = ``None``
      - (Unknown) Authentication type to load
-   * - ``ca_certificates_file`` = ``None``
-     - (String) Location of CA certificates file to use for nova client requests.
    * - ``cafile`` = ``None``
      - (String) PEM encoded Certificate Authority to use when verifying HTTPs connections.
    * - ``certfile`` = ``None``
