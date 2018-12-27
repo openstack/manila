@@ -17,7 +17,9 @@ import ddt
 import mock
 from webob import exc
 
+from manila.api.openstack import api_version_request as api_version
 from manila.api.v2 import share_export_locations as export_locations
+from manila.common import constants
 from manila import context
 from manila import db
 from manila import exception
@@ -168,6 +170,63 @@ class ShareExportLocationsAPITest(test.TestCase):
         el = self.controller.show(self.req, self.share['id'], el_id)
         for k, v in el.items():
             self.assertEqual(v, el[k])
+
+    @ddt.data(*set(('2.46', '2.47', api_version._MAX_API_VERSION)))
+    def test_list_export_locations_replicated_share(self, version):
+        """Test the export locations API changes between 2.46 and 2.47
+
+        For API version <= 2.46, non-active replica export locations are
+        included in the API response. They are not included in and beyond
+        version 2.47.
+        """
+        # Setup data
+        share = db_utils.create_share(
+            replication_type=constants.REPLICATION_TYPE_READABLE,
+            replica_state=constants.REPLICA_STATE_ACTIVE)
+        active_replica_id = share.instance.id
+        exports = [
+            {'path': 'myshare.mydomain/active-replica-exp1',
+             'is_admin_only': False},
+            {'path': 'myshare.mydomain/active-replica-exp2',
+             'is_admin_only': False},
+        ]
+        db.share_export_locations_update(
+            self.ctxt['user'], active_replica_id, exports)
+
+        # Replicas
+        share_replica2 = db_utils.create_share_replica(
+            share_id=share.id, replica_state=constants.REPLICA_STATE_IN_SYNC)
+        share_replica3 = db_utils.create_share_replica(
+            share_id=share.id,
+            replica_state=constants.REPLICA_STATE_OUT_OF_SYNC)
+        replica2_exports = [
+            {'path': 'myshare.mydomain/insync-replica-exp',
+             'is_admin_only': False}
+        ]
+        replica3_exports = [
+            {'path': 'myshare.mydomain/outofsync-replica-exp',
+             'is_admin_only': False}
+        ]
+        db.share_export_locations_update(
+            self.ctxt['user'], share_replica2.id, replica2_exports)
+        db.share_export_locations_update(
+            self.ctxt['user'], share_replica3.id, replica3_exports)
+
+        req = self._get_request(version=version)
+        index_result = self.controller.index(req, share['id'])
+
+        actual_paths = [el['path'] for el in index_result['export_locations']]
+        if self.is_microversion_ge(version, '2.47'):
+            self.assertEqual(2, len(index_result['export_locations']))
+            self.assertNotIn(
+                'myshare.mydomain/insync-replica-exp', actual_paths)
+            self.assertNotIn(
+                'myshare.mydomain/outofsync-replica-exp', actual_paths)
+        else:
+            self.assertEqual(4, len(index_result['export_locations']))
+            self.assertIn('myshare.mydomain/insync-replica-exp', actual_paths)
+            self.assertIn(
+                'myshare.mydomain/outofsync-replica-exp', actual_paths)
 
     @ddt.data('1.0', '2.0', '2.8')
     def test_list_with_unsupported_version(self, version):

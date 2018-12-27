@@ -3005,7 +3005,8 @@ def _share_metadata_get_item(context, share_id, key, session=None):
 ############################
 
 def _share_export_locations_get(context, share_instance_ids,
-                                include_admin_only=True, session=None):
+                                include_admin_only=True,
+                                ignore_secondary_replicas=False, session=None):
     session = session or get_session()
 
     if not isinstance(share_instance_ids, (set, list, tuple)):
@@ -3027,6 +3028,13 @@ def _share_export_locations_get(context, share_instance_ids,
 
     if not include_admin_only:
         query = query.filter_by(is_admin_only=False)
+
+    if ignore_secondary_replicas:
+        replica_state_attr = models.ShareInstance.replica_state
+        query = query.join("share_instance").filter(
+            or_(replica_state_attr == None,  # noqa
+                replica_state_attr == constants.REPLICA_STATE_ACTIVE))
+
     return query.all()
 
 
@@ -3034,7 +3042,8 @@ def _share_export_locations_get(context, share_instance_ids,
 @require_share_exists
 def share_export_locations_get_by_share_id(context, share_id,
                                            include_admin_only=True,
-                                           ignore_migration_destination=False):
+                                           ignore_migration_destination=False,
+                                           ignore_secondary_replicas=False):
     share = share_get(context, share_id)
     if ignore_migration_destination:
         ids = [instance.id for instance in share.instances
@@ -3042,16 +3051,18 @@ def share_export_locations_get_by_share_id(context, share_id,
     else:
         ids = [instance.id for instance in share.instances]
     rows = _share_export_locations_get(
-        context, ids, include_admin_only=include_admin_only)
+        context, ids, include_admin_only=include_admin_only,
+        ignore_secondary_replicas=ignore_secondary_replicas)
     return rows
 
 
 @require_context
 @require_share_instance_exists
 def share_export_locations_get_by_share_instance_id(context,
-                                                    share_instance_id):
+                                                    share_instance_id,
+                                                    include_admin_only=True):
     rows = _share_export_locations_get(
-        context, [share_instance_id], include_admin_only=True)
+        context, [share_instance_id], include_admin_only=include_admin_only)
     return rows
 
 
@@ -3070,6 +3081,7 @@ def share_export_locations_get(context, share_id):
 
 @require_context
 def share_export_location_get_by_uuid(context, export_location_uuid,
+                                      ignore_secondary_replicas=False,
                                       session=None):
     session = session or get_session()
 
@@ -3083,6 +3095,12 @@ def share_export_location_get_by_uuid(context, export_location_uuid,
     ).options(
         joinedload("_el_metadata_bare"),
     )
+
+    if ignore_secondary_replicas:
+        replica_state_attr = models.ShareInstance.replica_state
+        query = query.join("share_instance").filter(
+            or_(replica_state_attr == None,  # noqa
+                replica_state_attr == constants.REPLICA_STATE_ACTIVE))
 
     result = query.first()
     if not result:

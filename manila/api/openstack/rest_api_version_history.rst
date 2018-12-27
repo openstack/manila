@@ -253,3 +253,14 @@ user documentation.
 -----------------------
   Added 'is_default' field to 'share_type' and 'share_group_type'
   objects.
+
+2.47
+----
+
+  Export locations for non-active share replicas are no longer retrievable
+  through the export locations APIs: ``GET
+  /v2/{tenant_id}/shares/{share_id}/export_locations`` and ``GET
+  /v2/{tenant_id}/shares/{share_id}/export_locations/{export_location_id}``.
+  A new API is introduced at this version: ``GET
+  /v2/{tenant_id}/share-replicas/{replica_id}/export-locations`` to allow
+  retrieving export locations of share replicas if available.

@@ -28,7 +28,7 @@ class ViewBuilder(common.ViewBuilder):
     ]
 
     def _get_export_location_view(self, request, export_location,
-                                  detail=False):
+                                  detail=False, replica=False):
 
         context = request.environ['manila.context']
 
@@ -38,43 +38,49 @@ class ViewBuilder(common.ViewBuilder):
         }
         self.update_versioned_resource_dict(request, view, export_location)
         if context.is_admin:
-            view['share_instance_id'] = export_location[
-                'share_instance_id']
+            view['share_instance_id'] = export_location['share_instance_id']
             view['is_admin_only'] = export_location['is_admin_only']
 
         if detail:
             view['created_at'] = export_location['created_at']
             view['updated_at'] = export_location['updated_at']
 
+        if replica:
+            share_instance = export_location['share_instance']
+            view['replica_state'] = share_instance['replica_state']
+            view['availability_zone'] = share_instance['availability_zone']
+
         return {'export_location': view}
 
-    def summary(self, request, export_location):
+    def summary(self, request, export_location, replica=False):
         """Summary view of a single export location."""
-        return self._get_export_location_view(request, export_location,
-                                              detail=False)
+        return self._get_export_location_view(
+            request, export_location, detail=False, replica=replica)
 
-    def detail(self, request, export_location):
+    def detail(self, request, export_location, replica=False):
         """Detailed view of a single export location."""
-        return self._get_export_location_view(request, export_location,
-                                              detail=True)
+        return self._get_export_location_view(
+            request, export_location, detail=True, replica=replica)
 
-    def _list_export_locations(self, request, export_locations, detail=False):
+    def _list_export_locations(self, req, export_locations,
+                               detail=False, replica=False):
         """View of export locations list."""
         view_method = self.detail if detail else self.summary
-        return {self._collection_name: [
-            view_method(request, export_location)['export_location']
-            for export_location in export_locations
-        ]}
+        return {
+            self._collection_name: [
+                view_method(req, elocation, replica=replica)['export_location']
+                for elocation in export_locations
+            ]}
 
     def detail_list(self, request, export_locations):
         """Detailed View of export locations list."""
         return self._list_export_locations(request, export_locations,
                                            detail=True)
 
-    def summary_list(self, request, export_locations):
+    def summary_list(self, request, export_locations, replica=False):
         """Summary View of export locations list."""
         return self._list_export_locations(request, export_locations,
-                                           detail=False)
+                                           detail=False, replica=replica)
 
     @common.ViewBuilder.versioned_method('2.14')
     def add_preferred_path_attribute(self, context, view_dict,

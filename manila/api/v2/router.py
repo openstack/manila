@@ -45,6 +45,7 @@ from manila.api.v2 import share_groups
 from manila.api.v2 import share_instance_export_locations
 from manila.api.v2 import share_instances
 from manila.api.v2 import share_networks
+from manila.api.v2 import share_replica_export_locations
 from manila.api.v2 import share_replicas
 from manila.api.v2 import share_snapshot_export_locations
 from manila.api.v2 import share_snapshot_instance_export_locations
@@ -413,6 +414,22 @@ class APIRouter(manila.api.openstack.APIRouter):
                         controller=self.resources['share-replicas'],
                         collection={'detail': 'GET'},
                         member={'action': 'POST'})
+        self.resources["share-replica-export-locations"] = (
+            share_replica_export_locations.create_resource())
+        mapper.connect("share-replicas",
+                       ("/{project_id}/share-replicas/{share_replica_id}/"
+                        "export-locations"),
+                       controller=self.resources[
+                           "share-replica-export-locations"],
+                       action="index",
+                       conditions={"method": ["GET"]})
+        mapper.connect("share-replicas",
+                       ("/{project_id}/share-replicas/{share_replica_id}/"
+                        "export-locations/{export_location_uuid}"),
+                       controller=self.resources[
+                           "share-replica-export-locations"],
+                       action="show",
+                       conditions={"method": ["GET"]})
 
         self.resources['messages'] = messages.create_resource()
         mapper.resource("message", "messages",
