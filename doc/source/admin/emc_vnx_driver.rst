@@ -235,6 +235,55 @@ by `nas_cs` command for VNX and specify the address in `/etc/manila/manila.conf`
 
     emc_nas_server = <IPv6 address>
 
+Snapshot support
+----------------
+
+In the Mitaka and Newton release of OpenStack, Snapshot support is enabled by default for a newly created share type.
+Starting with the Ocata release, the snapshot_support extra spec must be set to True in order to allow snapshots for
+a share type. If the 'snapshot_support' extra_spec is omitted or if it is set to False, users would not be able to
+create snapshots on shares of this share type. The feature is divided into two parts:
+
+1. The driver is able to create/delete snapshot of share.
+2. The driver is able to create share from snapshot.
+
+Pre-Configurations for Snapshot support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following extra specifications need to be configured with share type.
+
+- snapshot_support = True
+- create_share_from_snapshot_support = True
+
+For new share type, these extra specifications can be set directly when creating share type:
+
+.. code-block:: console
+
+    manila type-create --snapshot_support True --create_share_from_snapshot_support True ${share_type_name} True
+
+Or you can update already existing share type with command:
+
+.. code-block:: console
+
+    manila type-key ${share_type_name} set snapshot_support=True
+    manila type-key ${share_type_name} set create_share_from_snapshot_support=True
+
+To snapshot a share and create share from the snapshot
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Firstly, you need create a share from share type that has extra specifications(snapshot_support=True, create_share_from_snapshot_support=True).
+Then snapshot the share with command:
+
+.. code-block:: console
+
+    manila snapshot-create ${source_share_name} --name ${target_snapshot_name} --description " "
+
+After creating the snapshot from previous step, you can create share from that snapshot.
+Use command:
+
+.. code-block:: console
+
+    manila create nfs 1 --name ${target_share_name} --metadata source=snapshot --description " " --snapshot-id ${source_snapshot_id}
+
 Restrictions
 ------------
 
