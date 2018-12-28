@@ -162,6 +162,10 @@ elif [[ "$DRIVER" == "container"* ]]; then
 fi
 
 echo "MANILA_SERVICE_IMAGE_ENABLED=$MANILA_SERVICE_IMAGE_ENABLED" >> $localconf
+if [[ "$MANILA_SERVICE_IMAGE_ENABLED" == True ]]; then
+    echo "MANILA_SERVICE_IMAGE_URL=$MANILA_SERVICE_IMAGE_URL" >> $localconf
+    echo "MANILA_SERVICE_IMAGE_NAME=$MANILA_SERVICE_IMAGE_NAME" >> $localconf
+fi
 echo "MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS=$DEFAULT_EXTRA_SPECS" >> $localconf
 
 # Enabling isolated metadata in Neutron is required because

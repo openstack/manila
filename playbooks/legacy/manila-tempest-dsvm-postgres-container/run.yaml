@@ -46,10 +46,6 @@
           export DEVSTACK_GATE_POSTGRES=1
           export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
 
-          # Install manila-image-elements project for building custom image
-          if [[ container == *"_with_custom_image" ]]; then
-              export PROJECTS="openstack/manila-image-elements $PROJECTS"
-          fi
           export ENABLED_SERVICES=tempest
 
           # Keep localrc to be able to set some vars in pre_test_hook
@@ -57,21 +53,6 @@
           export PROJECTS="openstack/manila-tempest-plugin $PROJECTS"
 
           function pre_test_hook {
-              # Build custom image if needed
-              if [[ container == *"_with_custom_image" ]]; then
-                  current_dir=$(pwd)
-
-                  # Go to 'manila-image-elements' dir, build image and get its name
-                  cd /opt/stack/new/manila-image-elements
-                  ./tools/gate/build-images container True
-                  image_name=$(git ls-files --others --exclude-standard)
-                  export MANILA_SERVICE_IMAGE_URL="http://localhost:80/public_html/$image_name"
-                  export MANILA_SERVICE_IMAGE_NAME=$(basename -s .tar.gz $(basename -s .qcow2 $image_name))
-
-                  # Return back to execution dir
-                  cd $current_dir
-              fi
-
               # 'dhss' - acronym for 'Driver Handles Share Servers',
               # defines mode of a share driver. Boolean-like.
               # 'driver' - codename of a share driver to configure.
