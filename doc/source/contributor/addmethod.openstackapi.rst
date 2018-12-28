@@ -14,43 +14,60 @@
       License for the specific language governing permissions and limitations
       under the License.
 
-Adding a Method to the OpenStack API
-====================================
+Adding a Method to the OpenStack Manila API
+===========================================
 
-The interface is a mostly RESTful API. REST stands for Representational State Transfer and provides an architecture "style" for distributed systems using HTTP for transport. Figure out a way to express your request and response in terms of resources that are being created, modified, read, or destroyed.
+The interface to manila is a RESTful API. REST stands for Representational
+State Transfer and provides an architecture "style" for distributed systems
+using HTTP for transport. Figure out a way to express your request and
+response in terms of resources that are being created, modified, read, or
+destroyed. Manila's API aims to conform to the `guidelines <http://specs
+.openstack.org/openstack/api-sig/>`_ set by OpenStack API SIG.
 
 Routing
 -------
 
-To map URLs to controllers+actions, OpenStack uses the Routes package, a clone of Rails routes for Python implementations. See http://routes.groovie.org/ for more information.
+To map URLs to controllers+actions, manila uses the Routes package. See
+the `routes package documentation <https://routes.readthedocs.io/en/latest/>`_
+for more information.
 
-URLs are mapped to "action" methods on "controller" classes in ``manila/api/v1/router.py``.
+URLs are mapped to "action" methods on "controller" classes in
+``manila/api/<VERSION>/router.py``.
 
-See http://routes.groovie.org/manual.html for all syntax, but you'll probably just need these two:
-   - mapper.connect() lets you map a single URL to a single action on a controller.
-   - mapper.resource() connects many standard URLs to actions on a controller.
+These are two methods of the routes package that are used to perform the
+mapping and the routing:
+
+- mapper.connect() lets you map a single URL to a single action on a
+  controller.
+- mapper.resource() connects many standard URLs to actions on a controller.
 
 Controllers and actions
 -----------------------
 
-Controllers live in ``manila/api/v1`` and ``manila/api/contrib``.
+Controllers live in ``manila/api/v1`` and ``manila/api/v2``.
 
 See ``manila/api/v1/shares.py`` for an example.
 
-Action methods take parameters that are sucked out of the URL by mapper.connect() or .resource().  The first two parameters are self and the WebOb request, from which you can get the req.environ, req.body, req.headers, etc.
+Action methods take parameters that are sucked out of the URL by
+mapper.connect() or .resource().  The first two parameters are self and the
+WebOb request, from which you can get the req.environ, req.body,
+req.headers, etc.
 
-Serialization
--------------
-
-Actions return a dictionary, and wsgi.Controller serializes that to JSON or XML based on the request's content-type.
-
-If you define a new controller, you'll need to define a ``_serialization_metadata`` attribute on the class, to tell wsgi.Controller how to convert your dictionary to XML. It needs to know the singular form of any list tag (e.g. ``<shares>`` list contains ``<share>`` tags) and which dictionary keys are to be XML attributes as opposed to subtags (e.g. ``<share id="4"/>`` instead of ``<share><id>4</id></share>``).
-
-See `manila/api/v1/shares.py` for an example.
+Actions return a dictionary, and wsgi.Controller serializes that to JSON.
 
 Faults
 ------
 
-If you need to return a non-200, you should
-return faults.Fault(webob.exc.HTTPNotFound())
-replacing the exception as appropriate.
+If you need to return a non-200, you should return faults.Fault(webob.exc
+.HTTPNotFound()) replacing the exception as appropriate.
+
+Evolving the API
+----------------
+
+The ``v1`` version of the manila API has been deprecated. The ``v2`` version
+of the API supports micro versions. So all changes to the v2 API strive to
+maintain stability at any given API micro version, so consumers can safely
+rely on a specific micro version of the API never to change the request and
+response semantics. Read more about :doc:`API Microversions
+<api_microversion_dev>` to understand how stability and backwards
+compatibility are maintained.
