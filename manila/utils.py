@@ -103,13 +103,25 @@ class SSHPool(pools.Pool):
         elif self.password:
             look_for_keys = False
         try:
+            LOG.debug("ssh.connect: ip: %s, port: %s, username: %s, "
+                      "password: %s, key_filename: %s, look_for_keys: %s, "
+                      "timeout: %s, banner_timeout: %s",
+                      self.ip,
+                      self.port,
+                      self.login,
+                      self.password,
+                      self.path_to_private_key,
+                      look_for_keys,
+                      self.conn_timeout,
+                      self.conn_timeout)
             ssh.connect(self.ip,
                         port=self.port,
                         username=self.login,
                         password=self.password,
                         key_filename=self.path_to_private_key,
                         look_for_keys=look_for_keys,
-                        timeout=self.conn_timeout)
+                        timeout=self.conn_timeout,
+                        banner_timeout=self.conn_timeout)
             if self.conn_timeout:
                 transport = ssh.get_transport()
                 transport.set_keepalive(self.conn_timeout)
