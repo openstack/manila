@@ -53,6 +53,8 @@ from manila.i18n import _
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
+if hasattr('CONF', 'debug') and CONF.debug:
+    logging.getLogger("paramiko").setLevel(logging.DEBUG)
 
 _ISO8601_TIME_FORMAT_SUBSECOND = '%Y-%m-%dT%H:%M:%S.%f'
 _ISO8601_TIME_FORMAT = '%Y-%m-%dT%H:%M:%S'
