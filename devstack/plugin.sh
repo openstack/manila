@@ -102,6 +102,10 @@ function configure_default_backends {
         if [ $(trueorfalse False MANILA_USE_SERVICE_INSTANCE_PASSWORD) == True ]; then
             iniset $MANILA_CONF $group_name service_instance_password $MANILA_SERVICE_INSTANCE_PASSWORD
         fi
+
+        if [ "$SHARE_DRIVER" == "manila.share.drivers.generic.GenericShareDriver" ]; then
+            iniset $MANILA_CONF $group_name ssh_conn_timeout $MANILA_SSH_TIMEOUT
+        fi
     done
 }
 
