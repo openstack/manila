@@ -1491,7 +1491,8 @@ class HNASSSHTestCase(test.TestCase):
                                                       look_for_keys=False,
                                                       timeout=None,
                                                       password=self.password,
-                                                      port=self.port)
+                                                      port=self.port,
+                                                      banner_timeout=None)
         self.assertIn('Request submitted successfully.', output)
 
     def test__execute_ssh_exception(self):
