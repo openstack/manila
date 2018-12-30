@@ -141,6 +141,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 driver_config=self.configuration))
 
     def _ssh_exec(self, server, command, check_exit_code=True):
+        LOG.debug("_ssh_exec - server: %s, command: %s, check_exit_code: %s",
+                  server, command, check_exit_code)
         connection = self.ssh_connections.get(server['instance_id'])
         ssh_conn_timeout = self.configuration.ssh_conn_timeout
         if not connection:
