@@ -20,6 +20,7 @@
 import contextlib
 import functools
 import inspect
+import logging
 import os
 import pyclbr
 import random
@@ -52,6 +53,8 @@ from manila.i18n import _
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
+if hasattr('CONF', 'debug') and CONF.debug:
+    logging.getLogger("paramiko").setLevel(logging.DEBUG)
 
 synchronized = lockutils.synchronized_with_prefix('manila-')
 
