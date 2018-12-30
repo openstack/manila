@@ -949,6 +949,8 @@ class NeutronNetworkHelper(BaseNetworkhelper):
         and setting up required network devices.
         """
         if self.use_service_network:
+            LOG.debug("Plugging service instance into service network %s.",
+                      self.service_network_id)
             port = self._get_service_port(
                 self.service_network_id, None, 'manila-share')
             port = self._add_fixed_ips_to_service_port(port)
@@ -957,6 +959,8 @@ class NeutronNetworkHelper(BaseNetworkhelper):
             self._plug_interface_in_host(interface_name, device, port)
 
         if self.use_admin_port:
+            LOG.debug("Plugging service instance into admin network %s.",
+                      self.admin_network_id)
             port = self._get_service_port(
                 self.admin_network_id, self.admin_subnet_id,
                 'manila-admin-share')
@@ -971,6 +975,8 @@ class NeutronNetworkHelper(BaseNetworkhelper):
                         external=True)
     def _plug_interface_in_host(self, interface_name, device, port):
 
+        LOG.debug("Plug interface into host - interface_name: %s, "
+                  "device: %s, port: %s", interface_name, device, port)
         self.vif_driver.plug(interface_name, port['id'], port['mac_address'])
         ip_cidrs = []
         for fixed_ip in port['fixed_ips']:
