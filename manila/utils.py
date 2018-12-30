@@ -67,6 +67,8 @@ def execute(*cmd, **kwargs):
     """Convenience wrapper around oslo's execute() function."""
     if 'run_as_root' in kwargs and 'root_helper' not in kwargs:
         kwargs['root_helper'] = _get_root_helper()
+    if hasattr('CONF', 'debug') and CONF.debug:
+        kwargs['loglevel'] = logging.DEBUG
     return processutils.execute(*cmd, **kwargs)
 
 

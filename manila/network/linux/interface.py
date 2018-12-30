@@ -21,7 +21,7 @@ from oslo_log import log
 import six
 
 from manila import exception
-from manila.i18n import _, _LE, _LW
+from manila.i18n import _, _LE, _LI, _LW
 from manila.network.linux import ip_lib
 from manila.network.linux import ovs_lib
 from manila import utils
@@ -143,7 +143,8 @@ class OVSInterfaceDriver(LinuxInterfaceDriver):
 
         if not ip_lib.device_exists(device_name,
                                     namespace=namespace):
-
+            LOG.info(_LI("Device %s does not exist - creating ...."),
+                     device_name)
             tap_name = self._get_tap_name(device_name)
             self._ovs_add_port(bridge, tap_name, port_id, mac_address)
             ns_dev.link.set_address(mac_address)
@@ -154,7 +155,7 @@ class OVSInterfaceDriver(LinuxInterfaceDriver):
                 namespace_obj.add_device_to_namespace(ns_dev)
 
         else:
-            LOG.warning(_LW("Device %s already exists."), device_name)
+            LOG.info(_LI("Device %s already exists."), device_name)
             if ns_dev.link.address != mac_address:
                 LOG.warning(_LW("Reset mac address to %s"), mac_address)
                 ns_dev.link.set_address(mac_address)
