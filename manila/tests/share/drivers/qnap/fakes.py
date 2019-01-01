@@ -173,6 +173,62 @@ FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_ES_2_2_0 = """
         </firmware>
     </QDocRoot>"""
 
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TDS_TS_4_0_0 = """
+    <QDocRoot version="1.0">
+        <model>
+            <displayModelName><![CDATA[TDS-16489U R2]]></displayModelName>
+            <internalModelName><![CDATA[TS-X89]]></internalModelName>
+        </model>
+        <firmware>
+            <version><![CDATA[4.0.0]]></version>
+        </firmware>
+    </QDocRoot>"""
+
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TDS_TS_4_3_0 = """
+    <QDocRoot version="1.0">
+        <model>
+            <displayModelName><![CDATA[TDS-16489U R2]]></displayModelName>
+            <internalModelName><![CDATA[TS-X89]]></internalModelName>
+        </model>
+        <firmware>
+            <version><![CDATA[4.3.0]]></version>
+        </firmware>
+    </QDocRoot>"""
+
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TDS_ES_1_1_1 = """
+    <QDocRoot version="1.0">
+        <model>
+            <displayModelName><![CDATA[TDS-16489U R2]]></displayModelName>
+            <internalModelName><![CDATA[ES-X85U]]></internalModelName>
+        </model>
+        <firmware>
+            <version><![CDATA[1.1.1]]></version>
+        </firmware>
+    </QDocRoot>"""
+
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TDS_ES_2_1_0 = """
+    <QDocRoot version="1.0">
+        <model>
+            <displayModelName><![CDATA[TDS-16489U R2]]></displayModelName>
+            <internalModelName><![CDATA[ES-X85U]]></internalModelName>
+        </model>
+        <firmware>
+            <version><![CDATA[2.1.0]]></version>
+        </firmware>
+    </QDocRoot>"""
+
+FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TDS_ES_2_2_0 = """
+    <QDocRoot version="1.0">
+        <model>
+            <displayModelName><![CDATA[TDS-16489U R2]]></displayModelName>
+            <internalModelName><![CDATA[ES-X85U]]></internalModelName>
+        </model>
+        <firmware>
+            <version><![CDATA[2.2.0]]></version>
+        </firmware>
+    </QDocRoot>"""
+
+
 FAKE_RES_DETAIL_DATA_GETBASIC_INFO_ERROR = """
     <QDocRoot version="1.0">
         <model>
@@ -623,6 +679,56 @@ class FakeGetBasicInfoResponseTesEs_2_2_0(object):
     def read(self):
         """Mock response.read."""
         return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TES_ES_2_2_0
+
+
+class FakeGetBasicInfoResponseTdsTs_4_0_0(object):
+    """Fake GetBasicInfoTS response from TS nas."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TDS_TS_4_0_0
+
+
+class FakeGetBasicInfoResponseTdsTs_4_3_0(object):
+    """Fake GetBasicInfoTS response from TS nas."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TDS_TS_4_3_0
+
+
+class FakeGetBasicInfoResponseTdsEs_1_1_1(object):
+    """Fake GetBasicInfoTS response from ES nas."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TDS_ES_1_1_1
+
+
+class FakeGetBasicInfoResponseTdsEs_2_1_0(object):
+    """Fake GetBasicInfoTS response from ES nas."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TDS_ES_2_1_0
+
+
+class FakeGetBasicInfoResponseTdsEs_2_2_0(object):
+    """Fake GetBasicInfoTS response from ES nas."""
+
+    status = 'fackStatus'
+
+    def read(self):
+        """Mock response.read."""
+        return FAKE_RES_DETAIL_DATA_GETBASIC_INFO_TDS_ES_2_2_0
 
 
 class FakeGetBasicInfoResponseError(object):

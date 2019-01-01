@@ -74,9 +74,10 @@ class QnapShareDriver(driver.ShareDriver):
         1.0.5 - Fix bug #1773761, when user tries to manage share, the size
                 of managed share should not be changed.
         1.0.6 - Add support for QES fw 2.1.0.
+        1.0.7 - Add support for QES fw on TDS series NAS model.
     """
 
-    DRIVER_VERSION = '1.0.6'
+    DRIVER_VERSION = '1.0.7'
 
     def __init__(self, *args, **kwargs):
         """Initialize QnapShareDriver."""
@@ -131,10 +132,10 @@ class QnapShareDriver(driver.ShareDriver):
         model_type = matches.group(1)
 
         ts_model_types = (
-            "TS", "SS", "IS", "TVS", "TDS", "TBS"
+            "TS", "SS", "IS", "TVS", "TBS"
         )
         tes_model_types = (
-            "TES",
+            "TES", "TDS"
         )
         es_model_types = (
             "ES",
