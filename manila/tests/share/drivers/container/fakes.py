@@ -16,6 +16,56 @@
 
 from manila.tests.db import fakes as db_fakes
 
+FAKE_VSCTL_LIST_INTERFACES_X = (
+    'fake stuff\n'
+    'foo not_a_veth something_fake bar\n'
+    'foo veth11b2c34 something_fake bar\n'
+    'foo veth25f6g7h manila-container="fake1" bar\n'
+    'foo veth3jd83j7 manila-container="my_container" bar\n'
+    'foo veth4i9j10k manila-container="fake2" bar\n'
+    'more fake stuff\n'
+)
+
+FAKE_VSCTL_LIST_INTERFACES = (
+    'fake stuff\n'
+    'foo not_a_veth something_fake bar\n'
+    'foo veth11b2c34 something_fake bar\n'
+    'foo veth25f6g7h manila-container="fake1" bar\n'
+    'foo veth3jd83j7 manila-container="manila_my_container" bar\n'
+    'foo veth4i9j10k manila-container="fake2" bar\n'
+    'more fake stuff\n'
+)
+
+FAKE_VSCTL_LIST_INTERFACE_1 = (
+    'fake stuff\n'
+    'foo veth11b2c34 something_fake bar\n'
+    'more fake stuff\n'
+)
+
+FAKE_VSCTL_LIST_INTERFACE_2 = (
+    'fake stuff\n'
+    'foo veth25f6g7h manila-container="fake1" bar\n'
+    'more fake stuff\n'
+)
+
+FAKE_VSCTL_LIST_INTERFACE_3_X = (
+    'fake stuff\n'
+    'foo veth3jd83j7 manila-container="my_container" bar\n'
+    'more fake stuff\n'
+)
+
+FAKE_VSCTL_LIST_INTERFACE_3 = (
+    'fake stuff\n'
+    'foo veth3jd83j7 manila-container="manila_my_container" bar\n'
+    'more fake stuff\n'
+)
+
+FAKE_VSCTL_LIST_INTERFACE_4 = (
+    'fake stuff\n'
+    'foo veth4i9j10k manila-container="fake2" bar\n'
+    'more fake stuff\n'
+)
+
 
 def fake_share(**kwargs):
     share = {
@@ -55,3 +105,23 @@ def fake_network(**kwargs):
     }
     network.update(kwargs)
     return db_fakes.FakeModel(network)
+
+
+def fake_share_server(**kwargs):
+    share_server = {
+        'id': 'fake'
+    }
+    share_server.update(kwargs)
+    return db_fakes.FakeModel(share_server)
+
+
+def fake_identifier():
+    return '7cf7c200-d3af-4e05-b87e-9167c95dfcad'
+
+
+def fake_share_no_export_location(**kwargs):
+    share = {
+        'share_id': 'fakeshareid',
+    }
+    share.update(kwargs)
+    return db_fakes.FakeModel(share)

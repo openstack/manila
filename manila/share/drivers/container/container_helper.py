@@ -13,9 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import re
 import uuid
 
 from oslo_log import log
+from oslo_utils import excutils
 
 from manila import exception
 from manila.i18n import _
@@ -62,39 +64,84 @@ class DockerExecHelper(driver.ExecuteMixin):
         cmd = ["docker", "run", "-d", "-i", "-t", "--privileged",
                "-v", "/dev:/dev", "--name=%s" % name,
                "-v", "/tmp/shares:/shares", image_name]
-        result = self._inner_execute(cmd) or ["", 1]
-        if result[1] != "":
-            raise exception.ManilaException(
-                _("Container %s has failed to start.") % name)
+        try:
+            result = self._inner_execute(cmd)
+        except (exception.ProcessExecutionError, OSError):
+            raise exception.ShareBackendException(
+                msg="Container %s has failed to start." % name)
         LOG.info("A container has been successfully started! Its id is "
                  "%s.", result[0].rstrip('\n'))
 
     def stop_container(self, name):
         LOG.debug("Stopping container %s.", name)
-        cmd = ["docker", "stop", name]
-        result = self._inner_execute(cmd) or ['', 1]
-        if result[1] != '':
-            raise exception.ManilaException(
-                _("Container %s has failed to stop properly.") % name)
+        try:
+            self._inner_execute(["docker", "stop", name])
+        except (exception.ProcessExecutionError, OSError):
+            raise exception.ShareBackendException(
+                msg="Container %s has failed to stop properly." % name)
         LOG.info("Container %s is successfully stopped.", name)
 
-    def execute(self, name=None, cmd=None):
+    def execute(self, name=None, cmd=None, ignore_errors=False):
         if name is None:
             raise exception.ManilaException(_("Container name not specified."))
         if cmd is None or (type(cmd) is not list):
             raise exception.ManilaException(_("Missing or malformed command."))
         LOG.debug("Executing inside a container %s.", name)
         cmd = ["docker", "exec", "-i", name] + cmd
-        result = self._inner_execute(cmd)
-        LOG.debug("Run result: %s.", result)
+        result = self._inner_execute(cmd, ignore_errors=ignore_errors)
         return result
 
-    def _inner_execute(self, cmd):
+    def _inner_execute(self, cmd, ignore_errors=False):
         LOG.debug("Executing command: %s.", " ".join(cmd))
         try:
             result = self._execute(*cmd, run_as_root=True)
-        except Exception:
-            LOG.exception("Executing command failed.")
-            return None
-        LOG.debug("Execution result: %s.", result)
-        return result
+        except (exception.ProcessExecutionError, OSError) as e:
+            with excutils.save_and_reraise_exception(
+                    reraise=not ignore_errors):
+                LOG.warning("Failed to run command %(cmd)s due to "
+                            "%(reason)s.", {'cmd': cmd, 'reason': e})
+        else:
+            LOG.debug("Execution result: %s.", result)
+            return result
+
+    def fetch_container_address(self, name, address_family="inet6"):
+        result = self.execute(
+            name,
+            ["ip", "-oneline",
+             "-family", address_family,
+             "address", "show", "scope", "global", "dev", "eth0"],
+        )
+        address_w_prefix = result[0].split()[3]
+        address = address_w_prefix.split('/')[0]
+        return address
+
+    def find_container_veth(self, name):
+        interfaces = self._execute("ovs-vsctl", "list", "interface",
+                                   run_as_root=True)[0]
+        veths = set(re.findall("veth[0-9a-zA-Z]{7}", interfaces))
+        manila_re = "manila-container=\".*\""
+        for veth in veths:
+            try:
+                iface_data = self._execute("ovs-vsctl", "list", "interface",
+                                           veth, run_as_root=True)[0]
+            except (exception.ProcessExecutionError, OSError) as e:
+                LOG.debug("Error listing interface %(veth)s. "
+                          "Reason: %(reason)s", {'veth': veth,
+                                                 'reason': e})
+                continue
+
+            container_id = re.findall(manila_re, iface_data)
+            if container_id == []:
+                continue
+            elif container_id[0].split("manila-container=")[-1].split(
+                    "manila_")[-1].strip('"') == name.split("manila_")[-1]:
+                return veth
+
+    def container_exists(self, name):
+
+        result = self._execute("docker", "ps", "--no-trunc",
+                               "--format='{{.Names}}'", run_as_root=True)[0]
+        for line in result.split('\n'):
+            if name == line.strip("'"):
+                return True
+        return False

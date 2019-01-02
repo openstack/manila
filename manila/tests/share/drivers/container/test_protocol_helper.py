@@ -98,11 +98,11 @@ class DockerCIFSHelperTestCase(test.TestCase):
     def test_delete_share(self):
         self.DockerCIFSHelper.share = fake_share()
 
-        self.DockerCIFSHelper.delete_share("fakeserver")
+        self.DockerCIFSHelper.delete_share("fakeserver", "fakeshareid")
 
         self.DockerCIFSHelper.container.execute.assert_called_with(
             "fakeserver",
-            ["net", "conf", "delshare", "fakeshareid"])
+            ["net", "conf", "delshare", "fakeshareid"], ignore_errors=False)
 
     def test__get_access_group_ro(self):
         result = self.DockerCIFSHelper._get_access_group(const.ACCESS_LEVEL_RO)
@@ -130,7 +130,8 @@ class DockerCIFSHelperTestCase(test.TestCase):
         self.assertEqual("fake_user", result)
         self.DockerCIFSHelper.container.execute.assert_called_once_with(
             "fake_server_id",
-            ["net", "conf", "getparm", "fake_share", "fake_access"])
+            ["net", "conf", "getparm", "fake_share", "fake_access"],
+            ignore_errors=True)
 
     def test__set_users(self):
         self.DockerCIFSHelper.container.execute = mock.Mock()
@@ -239,7 +240,7 @@ class DockerCIFSHelperTestCase(test.TestCase):
 
         self.assertRaises(exception.InvalidShareAccess,
                           self.DockerCIFSHelper.update_access,
-                          "fakeserver", allow_rules, [], [])
+                          "fakeserver", "fakeshareid", allow_rules, [], [])
 
     def test_update_access_access_rules_ok(self):
         access_rules = [{
@@ -250,7 +251,7 @@ class DockerCIFSHelperTestCase(test.TestCase):
         self.mock_object(self.DockerCIFSHelper, "_allow_access")
         self.DockerCIFSHelper.container.execute = mock.Mock()
 
-        self.DockerCIFSHelper.update_access("fakeserver",
+        self.DockerCIFSHelper.update_access("fakeserver", "fakeshareid",
                                             access_rules, [], [])
 
         self.DockerCIFSHelper._allow_access.assert_called_once_with(
@@ -270,7 +271,7 @@ class DockerCIFSHelperTestCase(test.TestCase):
         }]
         self.mock_object(self.DockerCIFSHelper, "_allow_access")
 
-        self.DockerCIFSHelper.update_access("fakeserver", [],
+        self.DockerCIFSHelper.update_access("fakeserver", "fakeshareid", [],
                                             add_rules, [])
 
         self.DockerCIFSHelper._allow_access.assert_called_once_with(
@@ -287,30 +288,11 @@ class DockerCIFSHelperTestCase(test.TestCase):
         }]
         self.mock_object(self.DockerCIFSHelper, "_deny_access")
 
-        self.DockerCIFSHelper.update_access("fakeserver", [],
-                                            [], delete_rules)
+        self.DockerCIFSHelper.update_access("fakeserver", "fakeshareid",
+                                            [], [], delete_rules)
 
         self.DockerCIFSHelper._deny_access.assert_called_once_with(
             "fakeshareid",
             "fakeserver",
             "fakeuser",
             "ro")
-
-    @ddt.data(('inet',
-               "192.168.0.254",
-               ["5: br0 inet 192.168.0.254/24 brd 192.168.0.255 "
-                "scope global br0 valid_lft forever preferred_lft forever"]),
-              ("inet6",
-               "2001:470:8:c82:6600:6aff:fe84:8dda",
-               ["5: br0 inet6 2001:470:8:c82:6600:6aff:fe84:8dda/64 "
-                "scope global valid_lft forever preferred_lft forever"]),
-              )
-    @ddt.unpack
-    def test__fetch_container_address(self, address_family, expected_address,
-                                      return_value):
-        self.DockerCIFSHelper.container.execute = mock.Mock(
-            return_value=return_value)
-        address = self.DockerCIFSHelper._fetch_container_address(
-            "fakeserver",
-            address_family)
-        self.assertEqual(expected_address, address)

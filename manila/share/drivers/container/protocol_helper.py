@@ -49,24 +49,15 @@ class DockerCIFSHelper(object):
                 ["net", "conf", "setparm", share_name, param, value]
             )
         # TODO(tbarron): pass configured address family when we support IPv6
-        address = self._fetch_container_address(server_id, 'inet')
+        address = self.container.fetch_container_address(
+            server_id, address_family='inet')
         return r"//%(addr)s/%(name)s" % {"addr": address, "name": share_name}
 
-    def _fetch_container_address(self, server_id, address_family="inet6"):
-        result = self.container.execute(
-            server_id,
-            ["ip", "-oneline",
-             "-family", address_family,
-             "address", "show", "scope", "global", "dev", "eth0"],
-        )
-        address_w_prefix = result[0].split()[3]
-        address = address_w_prefix.split('/')[0]
-        return address
-
-    def delete_share(self, server_id):
+    def delete_share(self, server_id, share_name, ignore_errors=False):
         self.container.execute(
             server_id,
-            ["net", "conf", "delshare", self.share.share_id]
+            ["net", "conf", "delshare", share_name],
+            ignore_errors=ignore_errors
         )
 
     def _get_access_group(self, access_level):
@@ -81,9 +72,13 @@ class DockerCIFSHelper(object):
     def _get_existing_users(self, server_id, share_name, access):
         result = self.container.execute(
             server_id,
-            ["net", "conf", "getparm", share_name, access]
-        )[0].rstrip('\n')
-        return result
+            ["net", "conf", "getparm", share_name, access],
+            ignore_errors=True
+        )
+        if result:
+            return result[0].rstrip('\n')
+        else:
+            return ""
 
     def _set_users(self, server_id, share_name, access, users_to_set):
         self.container.execute(
@@ -118,7 +113,7 @@ class DockerCIFSHelper(object):
             if allowed_users != existing_users:
                 self._set_users(server_id, share_name, access, allowed_users)
 
-    def update_access(self, server_id, access_rules,
+    def update_access(self, server_id, share_name, access_rules,
                       add_rules=None, delete_rules=None):
 
         def _rule_updater(rules, action, override_type_check=False):
@@ -135,7 +130,6 @@ class DockerCIFSHelper(object):
                             "driver.") % access_type
                     raise exception.InvalidShareAccess(reason=msg)
 
-        share_name = self.share.share_id
         if not (add_rules or delete_rules):
             # clean all users first.
             self.container.execute(
