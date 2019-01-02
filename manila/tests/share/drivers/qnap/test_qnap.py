@@ -160,6 +160,12 @@ class QnapShareDriverLoginTestCase(QnapShareDriverBaseTestCase):
         'fake_basic_info': fakes.FakeGetBasicInfoResponseTesEs_2_1_0(),
         'expect_result': api.QnapAPIExecutor
     }, {
+        'fake_basic_info': fakes.FakeGetBasicInfoResponseTdsTs_4_3_0(),
+        'expect_result': api.QnapAPIExecutorTS
+    }, {
+        'fake_basic_info': fakes.FakeGetBasicInfoResponseTdsEs_2_1_0(),
+        'expect_result': api.QnapAPIExecutor
+    }, {
         'fake_basic_info': fakes.FakeGetBasicInfoResponseEs_1_1_3(),
         'expect_result': api.QnapAPIExecutor
     }, {
@@ -193,6 +199,15 @@ class QnapShareDriverLoginTestCase(QnapShareDriverBaseTestCase):
         'expect_result': exception.ShareBackendException
     }, {
         'fake_basic_info': fakes.FakeGetBasicInfoResponseTesEs_2_2_0(),
+        'expect_result': exception.ShareBackendException
+    }, {
+        'fake_basic_info': fakes.FakeGetBasicInfoResponseTdsTs_4_0_0(),
+        'expect_result': exception.ShareBackendException
+    }, {
+        'fake_basic_info': fakes.FakeGetBasicInfoResponseTdsEs_1_1_1(),
+        'expect_result': exception.ShareBackendException
+    }, {
+        'fake_basic_info': fakes.FakeGetBasicInfoResponseTdsEs_2_2_0(),
         'expect_result': exception.ShareBackendException
     }, {
         'fake_basic_info': fakes.FakeGetBasicInfoResponseEs_1_1_1(),
