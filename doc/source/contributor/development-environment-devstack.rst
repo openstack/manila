@@ -17,90 +17,187 @@ Setting up a development environment with devstack
 
 This page describes how to setup a working development
 environment that can be used in deploying manila on latest releases
-of Ubuntu or Fedora. These instructions assume you are already familiar
-with git. Refer to `Getting the code`_ for additional information.
+of Ubuntu, Fedora or CentOS. These instructions assume you are already familiar
+with git.
 
-.. _Getting the code: http://wiki.openstack.org/GettingTheCode
+We recommend using devstack to develop and test code changes to
+manila or to simply evaluate the manila project. Devstack is a shell script
+to build complete OpenStack development environments on a virtual machine.
+If you are not familar with devstack, these pages can give you context:
 
-Following these instructions will allow you to have a fully functional manila
-environment using the devstack project (a shell script to build
-complete OpenStack development environments).
+* `Testing Changes with DevStack <https://docs.openstack.org/contributors/code-and-documentation/devstack.html>`_
+* `Devstack project documentation <https://docs.openstack.org/devstack/latest>`_
 
-Configuring devstack with manila
---------------------------------
+Be aware that manila is not enabled in devstack by default; you will need to
+add a few lines to the devstack ``local.conf`` file to let devstack deploy and
+configure manila on your virtual machine.
 
-Manila
-``````
+Getting devstack
+----------------
 
-Manila can be enabled in devstack by using the plug-in based interface it
-offers.
-
-Start by cloning the devstack repository:
-
-::
+Start by cloning the devstack repository::
 
     git clone https://git.openstack.org/openstack-dev/devstack
 
-Change to devstack directory:
-
-::
+Change to devstack directory::
 
     cd devstack/
 
-Copy the local.conf sample file to the upper level directory:
 
-::
+You're now on ``master`` branch of devstack, switch to the branch you want
+to test or develop against.
 
-    cp samples/local.conf .
+Sample local.conf files that get you started
+--------------------------------------------
 
-Enable the manila plugin adding the following line to the end of the local.conf file:
+Now that you have cloned the devstack repository, you need to
+configure devstack before deploying it.  This is done with a ``local.conf``
+file.  For manila, the local.conf file can also determine which back end(s)
+are set up.
 
-::
+.. caution::
 
-    enable_plugin manila https://git.openstack.org/openstack/manila
+    When using devstack with the below configurations, be aware that you will
+    be setting up fake storage. The `LVM`, `Generic`, `ZFSOnLinux` drivers
+    have not been developed for production use. They exist to provide a
+    vanilla development and testing environment for manila contributors.
 
-If you would like to install python-manilaclient from git, add to local.conf:
+DHSS=False (`driver_handles_share_servers=False`) mode:
+`````````````````````````````````````````````````````````
+This is the easier mode for new contributors. Manila share back-end drivers
+that operate in ``driver_handles_share_servers=False`` mode do not allow
+creating shares on private project networks. On the resulting stack, all
+manila shares created by you are exported on the host network and hence are
+accessible to any compute resource (e.g.: virtual machine, baremetal,
+container) that is able to reach the devstack host.
 
-::
+* :download:`LVM driver <samples/lvm_local.conf>`
+* :download:`ZFSOnLinux driver <samples/zfsonlinux_local.conf>`
+* :download:`CEPHFS driver <samples/cephfs_local.conf>`
 
-    LIBS_FROM_GIT="python-manilaclient"
+DHSS=True (`driver_handles_share_servers=True`) mode:
+```````````````````````````````````````````````````````
 
-Manila UI
-`````````
+You may use the following setups if you are familiar with manila,
+and would like to test with the project (tenant) isolation that manila
+provides on the network and data path. Manila share back-end drivers that
+operate in ``driver_handles_share_servers=True`` mode create shares on
+isolated project networks if told to do so. On the resulting stack, when
+creating a share, you must specify a share network to export the share to,
+and the share will be accessible to any compute resource (e.g.: Virtual
+machine, baremetal, containers) that is able to reach the share network you
+indicated.
 
-In order to use the manila UI you will need to enable the UI plugin separately.
+Typically, new contributors take a while to understand OpenStack networking,
+and we recommend that you familiarize yourself with the DHSS=False mode
+setup before attempting DHSS=True.
 
-This is done in a similar fashion than enabling manila for devstack.
+* :download:`Generic driver <samples/generic_local.conf>`
+* :download:`Container driver <samples/container_local.conf>`
 
-Make sure you have horizon enabled (enabled by default in current devstack).
 
-Then, enable the manila UI plugin adding the following line to the end of the local.conf file,
-just after manila plugin enablement:
+Building your devstack
+----------------------
 
-::
-
-    enable_plugin manila-ui https://git.openstack.org/openstack/manila-ui
-
-Running devstack
-----------------
-
-Run the stack.sh script:
-
-::
+* Copy the appropriate sample local.conf file into the devstack folder on your
+  virtual machine, make sure to name it ``local.conf``
+* Make sure to read inline comments and customize values where necessary
+* If you would like to run minimal services in your stack, or allow devstack
+  to bootstrap tempest testing framework for you, see :ref:`more-customization`
+* Finally, run the stack.sh script from within the devstack directory. We
+  recommend that your run this inside a screen or tmux session because it
+  could take a while::
 
     ./stack.sh
 
-After it completes, you should have manila services running.
-You can check if they are running by attaching to the screen:
+* After the script completes, you should have manila services running. You can
+  verify that the services are running with the following commands::
 
-::
+    $ systemctl status devstack@m-sch
+    $ systemctl status devstack@m-shr
+    $ systemctl status devstack@m-dat
 
-    screen -r stack
+* By default, devstack sets up manila-api behind apache. The service name is
+  ``httpd`` on Red Hat based systems and ``apache2`` on Debian based systems.
 
-And navigating to the manila service tabs (use ctrl+a n, ctrl+a p,
-ctrl+a " <screen number> to navigate,
-ctrl+a esc to enter scrollback mode
-and ctrl+a d to detach from the screen).
+* You may also use your "demo" credentials to invoke the command line
+  clients::
 
-If you enabled manila UI as well, you should be able to access manila UI
-from the dashboard.
+    $ source DEVSTACK_DIR/openrc admin demo
+    $ manila service-list
+
+* The logs are accessible through ``journalctl``. The following commands let
+  you query logs. You may use the ``-f`` option to tail these logs::
+
+    $ journalctl -a -o short-precise --unit devstack@m-sch
+    $ journalctl -a -o short-precise --unit devstack@m-shr
+    $ journalctl -a -o short-precise --unit devstack@m-dat
+
+* If running behind apache, the manila-api logs will be in
+  ``/var/log/httpd/manila_api.log`` (Red Hat) or
+  in ``/var/log/apache2/manila_api.log`` (Debian).
+
+
+.. _more-customization:
+
+More devstack customizations
+----------------------------
+
+Testing branches and changes submitted for review
+`````````````````````````````````````````````````
+
+To test a patch in review::
+
+    enable_plugin manila git://git.openstack.org/openstack/manila <ref>
+
+If the ref is from review.openstack.org, it is structured as::
+
+    refs/changes/<last two digits of review number>/<review number>/<patchset number>
+
+For example, if you want to test patchset 4 of https://review.openstack.org/#/c/614170/,
+you can provide this in your ``local.conf``::
+
+    enable_plugin manila git://git.openstack.org/openstack/manila refs/changes/70/614170/4
+
+ref can also simply be a stable branch name, for example::
+
+    enable_plugin manila git://git.openstack.org/openstack/manila stable/rocky
+
+Limiting the services enabled in your stack
+````````````````````````````````````````````
+
+Manila needs only a message queue (rabbitmq) and a database (mysql,
+postgresql) to operate. Additionally, keystone service provides project
+administration if necessary, all other OpenStack services are not necessary
+to set up a basic test system. [#f1]_ [#f2]_
+
+You can add the following to your ``local.conf`` to deploy your stack in a
+minimal fashion. This saves you a lot of time and resources, but could limit
+your testing::
+
+    ENABLED_SERVICES=key,mysql,rabbit,tempest,manila,m-api,m-sch,m-shr,m-dat
+
+Optionally, you can deploy with Manila, Nova, Neutron, Glance and Tempest::
+
+    ENABLED_SERVICES=key,mysql,rabbit,tempest,g-api,g-reg
+    ENABLED_SERVICES+=n-api,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-obj,placement-api,placement-client
+    ENABLED_SERVICES+=q-svc,q-dhcp,q-meta,q-l3,q-agt
+    ENABLED_SERVICES+=tempest
+
+
+
+Bootstrapping Tempest
+`````````````````````
+
+Add the following options in your ``local.conf`` to set up tempest::
+
+    ENABLE_ISOLATED_METADATA=True
+    TEMPEST_USE_TEST_ACCOUNTS=True
+    TEMPEST_ALLOW_TENANT_ISOLATION=False
+    TEMPEST_CONCURRENCY=8
+
+
+.. [#f1] The Generic driver cannot be run without deploying Cinder, Nova,
+         Glance and Neutron.
+.. [#f2] You must enable Horizon to use manila-ui. Horizon will not work
+         well when Nova, Cinder, Glance and Neutron are not enabled.
