@@ -1,3 +1,5 @@
+.. _code-reviews-with-gerrit:
+
 Code Reviews with Gerrit
 ========================
 
