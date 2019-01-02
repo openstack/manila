@@ -115,6 +115,34 @@ class DockerExecHelper(driver.ExecuteMixin):
         address = address_w_prefix.split('/')[0]
         return address
 
+    def rename_container(self, name, new_name):
+        veth_name = self.find_container_veth(name)
+        if not veth_name:
+            raise exception.ManilaException(
+                _("Could not find OVS information related to "
+                  "container %s.") % name)
+
+        try:
+            self._inner_execute(["docker", "rename", name, new_name])
+        except (exception.ProcessExecutionError, OSError):
+            raise exception.ShareBackendException(
+                msg="Could not rename container %s." % name)
+
+        cmd = ["ovs-vsctl", "set", "interface", veth_name,
+               "external-ids:manila-container=%s" % new_name]
+        try:
+            self._inner_execute(cmd)
+        except (exception.ProcessExecutionError, OSError):
+            try:
+                self._inner_execute(["docker", "rename", new_name, name])
+            except (exception.ProcessExecutionError, OSError):
+                msg = _("Could not rename back container %s.") % name
+                LOG.exception(msg)
+            raise exception.ShareBackendException(
+                msg="Could not update OVS information %s." % name)
+
+        LOG.info("Container %s has been successfully renamed.", name)
+
     def find_container_veth(self, name):
         interfaces = self._execute("ovs-vsctl", "list", "interface",
                                    run_as_root=True)[0]

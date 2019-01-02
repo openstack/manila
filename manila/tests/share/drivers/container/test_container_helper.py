@@ -144,6 +144,63 @@ class DockerExecHelperTestCase(test.TestCase):
                         "show", "scope", "global", "dev", "eth0"]
         )
 
+    def test_rename_container(self):
+
+        fake_old_name = "old_name"
+        fake_new_name = "new_name"
+        fake_veth_name = "veth_fake"
+        self.DockerExecHelper.find_container_veth = mock.Mock(
+            return_value=fake_veth_name)
+        mock__inner_execute = self.DockerExecHelper._inner_execute = mock.Mock(
+            return_value=['fake', ''])
+
+        self.DockerExecHelper.rename_container(fake_old_name, fake_new_name)
+        self.DockerExecHelper.find_container_veth.assert_called_once_with(
+            fake_old_name
+        )
+        mock__inner_execute.assert_has_calls([
+            mock.call(["docker", "rename", fake_old_name, fake_new_name]),
+            mock.call(["ovs-vsctl", "set", "interface", fake_veth_name,
+                      "external-ids:manila-container=%s" % fake_new_name])
+        ])
+
+    def test_rename_container_exception_veth(self):
+
+        self.DockerExecHelper.find_container_veth = mock.Mock(
+            return_value=None)
+
+        self.assertRaises(exception.ManilaException,
+                          self.DockerExecHelper.rename_container,
+                          "old_name", "new_name")
+
+    @ddt.data([['fake', ''], OSError, ['fake', '']],
+              [['fake', ''], OSError, OSError],
+              [OSError])
+    def test_rename_container_exception_cmds(self, side_effect):
+        fake_old_name = "old_name"
+        fake_new_name = "new_name"
+        fake_veth_name = "veth_fake"
+
+        self.DockerExecHelper.find_container_veth = mock.Mock(
+            return_value=fake_veth_name)
+        mock__inner_execute = self.DockerExecHelper._inner_execute = mock.Mock(
+            side_effect=side_effect)
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.DockerExecHelper.rename_container,
+                          fake_old_name, fake_new_name)
+
+        if len(side_effect) > 1:
+            mock__inner_execute.assert_has_calls([
+                mock.call(["docker", "rename", fake_old_name, fake_new_name]),
+                mock.call(["ovs-vsctl", "set", "interface", fake_veth_name,
+                           "external-ids:manila-container=%s" % fake_new_name])
+            ])
+        else:
+            mock__inner_execute.assert_has_calls([
+                mock.call(["docker", "rename", fake_old_name, fake_new_name]),
+            ])
+
     @ddt.data('my_container', 'manila_my_container')
     def test_find_container_veth(self, name):
 

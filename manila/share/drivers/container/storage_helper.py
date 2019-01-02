@@ -111,9 +111,33 @@ class LVMHelper(driver.ExecuteMixin):
             LOG.warning("Failed to remove logical volume %(device)s due to "
                         "%(reason)s.", {'device': device, 'reason': e})
 
+    def rename_storage(self, share_name, new_share_name):
+        old_device = self._get_lv_device(share_name)
+        new_device = self._get_lv_device(new_share_name)
+
+        self._try_to_unmount_device(old_device)
+
+        try:
+            self._execute("lvrename", "--autobackup", "n",
+                          old_device, new_device, run_as_root=True)
+        except exception.ProcessExecutionError as e:
+            msg = ("Failed to rename logical volume %(device)s due to "
+                   "%(reason)s." % {'device': old_device, 'reason': e})
+            LOG.exception(msg)
+            raise
+
     def extend_share(self, share_name, new_size, share_server=None):
         lv_device = self._get_lv_device(share_name)
         cmd = ('lvextend', '-L', '%sG' % new_size, '-n', lv_device)
         self._execute(*cmd, run_as_root=True)
         self._execute("e2fsck", "-f", "-y", lv_device, run_as_root=True)
         self._execute('resize2fs', lv_device, run_as_root=True)
+
+    def get_size(self, share_name):
+        device = self._get_lv_device(share_name)
+        size = self._execute(
+            "lvs", "-o", "lv_size", "--noheadings", "--nosuffix",
+            "--units", "g", device, run_as_root=True)
+        LOG.debug("Found size %(size)s for LVM device "
+                  "%(lvm)s.", {'size': size[0], 'lvm': share_name})
+        return size[0]

@@ -260,7 +260,6 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     iniset $TEMPEST_CONFIG share create_networks_when_multitenancy_enabled False
     iniset $TEMPEST_CONFIG share multi_backend True
 elif [[ "$DRIVER" == "container"* ]]; then
-    MANILA_TESTS="(^manila_tempest_tests.tests.api)(?=.*\[.*\bbackend\b.*\])"
     if [[ "$DRIVER" == "container_with_custom_image" ]]; then
         # TODO(vponomaryov): set scenario tests for run when
         # manila tempest plugin supports share protocol and rules that
@@ -270,7 +269,7 @@ elif [[ "$DRIVER" == "container"* ]]; then
     fi
     MANILA_TEMPEST_CONCURRENCY=8
     RUN_MANILA_SG_TESTS=False
-    RUN_MANILA_MANAGE_TESTS=False
+    RUN_MANILA_MANAGE_TESTS=True
     RUN_MANILA_QUOTA_TESTS=False
     RUN_MANILA_SHRINK_TESTS=False
     RUN_MANILA_SNAPSHOT_TESTS=False

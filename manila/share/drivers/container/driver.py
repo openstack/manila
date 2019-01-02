@@ -20,6 +20,7 @@ Current implementation suggests that a container when started by Docker will
 be plugged into a Linux bridge. Also it is suggested that all interfaces
 willing to talk to each other reside in an OVS bridge."""
 
+import math
 import re
 
 from oslo_config import cfg
@@ -122,7 +123,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         share_name = share.share_id
         self.storage.provide_storage(share_name, share['size'])
 
-        location = self._create_and_mount_share_links(
+        location = self._create_export_and_mount_storage(
             share, server_id, share_name)
 
         return location
@@ -135,8 +136,8 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         server_id = self._get_container_name(share_server["id"])
         share_name = self._get_share_name(share)
 
-        self._delete_and_umount_share_links(share, server_id, share_name,
-                                            ignore_errors=True)
+        self._delete_export_and_umount_storage(share, server_id, share_name,
+                                               ignore_errors=True)
 
         self.storage.remove_storage(share_name)
         LOG.debug("Deleted share %s successfully.", share_name)
@@ -295,7 +296,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         LOG.info("Container %s was created.", server_id)
         return {"id": network_info["server_id"]}
 
-    def _delete_and_umount_share_links(
+    def _delete_export_and_umount_storage(
             self, share, server_id, share_name, ignore_errors=False):
 
         self._get_helper(share).delete_share(server_id, share_name,
@@ -317,7 +318,7 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
             ignore_errors=True
         )
 
-    def _create_and_mount_share_links(self, share, server_id, share_name):
+    def _create_export_and_mount_storage(self, share, server_id, share_name):
         self.container.execute(
             server_id,
             ["mkdir", "-m", "750", "/shares/%s" % share_name]
@@ -329,3 +330,50 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         )
         location = self._get_helper(share).create_share(server_id)
         return location
+
+    def manage_existing_with_server(
+            self, share, driver_options, share_server=None):
+        if not share_server and self.driver_handles_share_servers:
+            raise exception.ShareBackendException(
+                "A share server object is needed to manage a share in this "
+                "driver mode of operation.")
+        server_id = self._get_container_name(share_server["id"])
+        share_name = self._get_share_name(share)
+        size = int(math.ceil(float(self.storage.get_size(share_name))))
+
+        self._delete_export_and_umount_storage(share, server_id, share_name)
+
+        new_share_name = share.share_id
+        self.storage.rename_storage(share_name, new_share_name)
+
+        location = self._create_export_and_mount_storage(
+            share, server_id, new_share_name)
+
+        result = {'size': size, 'export_locations': [location]}
+        LOG.info("Successfully managed share %(share)s, returning %(data)s",
+                 {'share': share.id, 'data': result})
+        return result
+
+    def unmanage_with_server(self, share, share_server=None):
+        pass
+
+    def get_share_server_network_info(
+            self, context, share_server, identifier, driver_options):
+        name = self._get_correct_container_old_name(identifier)
+        return [self.container.fetch_container_address(name, "inet")]
+
+    def manage_server(self, context, share_server, identifier, driver_options):
+        new_name = self._get_container_name(share_server['id'])
+        old_name = self._get_correct_container_old_name(identifier)
+        self.container.rename_container(old_name, new_name)
+        return new_name, {'id': share_server['id']}
+
+    def unmanage_server(self, server_details, security_services=None):
+        pass
+
+    def _get_correct_container_old_name(self, name):
+        # Check if the container with the given name exists, else return
+        # the name based on the driver template
+        if not self.container.container_exists(name):
+            return self._get_container_name(name)
+        return name

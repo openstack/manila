@@ -187,3 +187,9 @@ sha256sum: CommandFilter, sha256sum, root
 
 # manila/utils.py: 'tee', '%s'
 tee: CommandFilter, tee, root
+
+# manila/share/drivers/container/storage_helper.py: lvs -o lv_size --noheadings --nosuffix --units g <device>
+lvs: CommandFilter, lvs, root
+
+# manila/share/drivers/container/storage_helper.py: lvrename --autobackup n <old_name> <new_name>
+lvrename: CommandFilter, lvrename, root

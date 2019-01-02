@@ -1,0 +1,6 @@
+---
+features:
+  - Added managing and unmanaging of share servers functionality
+    to the Container Driver, allowing for shares to be managed
+    and unmanaged.
+
