@@ -225,7 +225,8 @@ class FakeSSHClient(object):
         pass
 
     def connect(self, ip, port=22, username=None, password=None,
-                key_filename=None, look_for_keys=None, timeout=10):
+                key_filename=None, look_for_keys=None, timeout=10,
+                banner_timeout=10):
         pass
 
     def get_transport(self):
@@ -284,7 +285,7 @@ class SSHPoolTestCase(test.TestCase):
             fake_ssh_client.connect.assert_called_once_with(
                 "127.0.0.1", port=22, username="test",
                 password="test", key_filename=None, look_for_keys=False,
-                timeout=10)
+                timeout=10, banner_timeout=10)
 
     def test_create_ssh_with_key(self):
         path_to_private_key = "/fakepath/to/privatekey"
@@ -297,7 +298,7 @@ class SSHPoolTestCase(test.TestCase):
             fake_ssh_client.connect.assert_called_once_with(
                 "127.0.0.1", port=22, username="test", password=None,
                 key_filename=path_to_private_key, look_for_keys=False,
-                timeout=10)
+                timeout=10, banner_timeout=10)
 
     def test_create_ssh_with_nothing(self):
         fake_ssh_client = mock.Mock()
@@ -308,7 +309,7 @@ class SSHPoolTestCase(test.TestCase):
             fake_ssh_client.connect.assert_called_once_with(
                 "127.0.0.1", port=22, username="test", password=None,
                 key_filename=None, look_for_keys=True,
-                timeout=10)
+                timeout=10, banner_timeout=10)
 
     def test_create_ssh_error_connecting(self):
         attrs = {'connect.side_effect': paramiko.SSHException, }
@@ -320,7 +321,7 @@ class SSHPoolTestCase(test.TestCase):
             fake_ssh_client.connect.assert_called_once_with(
                 "127.0.0.1", port=22, username="test", password=None,
                 key_filename=None, look_for_keys=True,
-                timeout=10)
+                timeout=10, banner_timeout=10)
 
     def test_closed_reopend_ssh_connections(self):
         with mock.patch.object(paramiko, "SSHClient",
