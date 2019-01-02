@@ -15,9 +15,7 @@
 #    under the License.
 
 import datetime
-import errno
 import json
-import socket
 import time
 
 import ddt
@@ -74,24 +72,6 @@ class GenericUtilsTestCase(test.TestCase):
             result = utils.service_is_up(service)
             self.assertFalse(result)
             timeutils.utcnow.assert_called_once_with()
-
-    def test_is_eventlet_bug105(self):
-        fake_dns = mock.Mock()
-        fake_dns.getaddrinfo.side_effect = socket.gaierror(errno.EBADF)
-        with mock.patch.dict('sys.modules', {
-                'eventlet.support.greendns': fake_dns}):
-            self.assertTrue(utils.is_eventlet_bug105())
-            self.assertTrue(fake_dns.getaddrinfo.called)
-
-    def test_is_eventlet_bug105_neg(self):
-        fake_dns = mock.Mock()
-        fake_dns.getaddrinfo.return_value = [
-            (socket.AF_INET6, socket.SOCK_STREAM, 0, '', (u'127.0.0.1', 80)),
-        ]
-        with mock.patch.dict('sys.modules', {
-                'eventlet.support.greendns': fake_dns}):
-            self.assertFalse(utils.is_eventlet_bug105())
-            fake_dns.getaddrinfo.assert_called_once_with('::1', 80)
 
     @ddt.data(['ssh', '-D', 'my_name@name_of_remote_computer'],
               ['echo', '"quoted arg with space"'],

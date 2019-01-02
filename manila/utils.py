@@ -25,7 +25,6 @@ import pyclbr
 import random
 import re
 import shutil
-import socket
 import sys
 import tempfile
 import time
@@ -260,27 +259,6 @@ class LazyPluggable(object):
     def __getattr__(self, key):
         backend = self.__get_backend()
         return getattr(backend, key)
-
-
-def is_eventlet_bug105():
-    """Check if eventlet support IPv6 addresses.
-
-    See https://bitbucket.org/eventlet/eventlet/issue/105
-
-    :rtype: bool
-    """
-    try:
-        mod = sys.modules['eventlet.support.greendns']
-    except KeyError:
-        return False
-
-    try:
-        connect_data = mod.getaddrinfo('::1', 80)
-    except socket.gaierror:
-        return True
-
-    fail = [x for x in connect_data if x[0] != socket.AF_INET6]
-    return bool(fail)
 
 
 def monkey_patch():
