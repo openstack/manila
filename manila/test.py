@@ -48,6 +48,9 @@ test_opts = [
     cfg.StrOpt('sqlite_clean_db',
                default='clean.sqlite',
                help='File name of clean sqlite database.'),
+    cfg.StrOpt('sqlite_db',
+               default='manila.sqlite',
+               help='The filename to use with sqlite.'),
 ]
 
 CONF = cfg.CONF
