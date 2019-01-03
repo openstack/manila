@@ -1,0 +1,10 @@
+- hosts: all
+  roles:
+    - role: fetch-tox-output
+  tasks:
+    - name: Copy generated config sample file
+      synchronize:
+        src: "{{ zuul.project.src_dir }}/etc/manila/manila.conf.sample"
+        dest: "{{ zuul.executor.log_root }}"
+        mode: pull
+        verify_host: true
