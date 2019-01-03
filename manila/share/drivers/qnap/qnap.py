@@ -75,9 +75,11 @@ class QnapShareDriver(driver.ShareDriver):
                 of managed share should not be changed.
         1.0.6 - Add support for QES fw 2.1.0.
         1.0.7 - Add support for QES fw on TDS series NAS model.
+        1.0.8 - Fix bug, driver should not manage snapshot which does not
+                exist in NAS.
     """
 
-    DRIVER_VERSION = '1.0.7'
+    DRIVER_VERSION = '1.0.8'
 
     def __init__(self, *args, **kwargs):
         """Initialize QnapShareDriver."""
@@ -900,6 +902,7 @@ class QnapShareDriver(driver.ShareDriver):
 
         if len(snapshot_id_info) == 2:
             share_name = snapshot_id_info[0]
+            snapshot_name = snapshot_id_info[1]
         else:
             msg = _("Incorrect provider_location format. It should have the "
                     "following format: share_name@snapshot_name.")
@@ -913,6 +916,15 @@ class QnapShareDriver(driver.ShareDriver):
                     'vol_label': existing_share.find('vol_label').text})
             LOG.error(msg)
             raise exception.ShareNotFound(reason=msg)
+
+        check_snapshot = self.api_executor.get_snapshot_info(
+            volID=volID, snapshot_name=snapshot_name)
+        if check_snapshot is None:
+            msg = (_("The snapshot %(snapshot_name)s was not "
+                     "found on backend.") %
+                   {'snapshot_name': snapshot_name})
+            LOG.error(msg)
+            raise exception.InvalidParameterValue(err=msg)
 
         _metadata = {
             'snapshot_id': snapshot_id,

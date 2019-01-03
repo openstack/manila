@@ -1147,6 +1147,35 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
         mock_private_storage.update.assert_called_once_with(
             'fakeSnapshotId', fake_metadata)
 
+    @mock.patch.object(qnap.QnapShareDriver, '_get_location_path')
+    def test_manage_existing_snapshot_not_exist(
+            self,
+            mock_get_location_path):
+        """Test manage existing snapshot with snapshot which does not exist."""
+        fake_snapshot = fakes.SnapshotClass(
+            10, 'fakeShareName@fakeSnapshotName')
+
+        mock_api_executor = qnap.QnapShareDriver._create_api_executor
+        mock_api_executor.return_value.get_share_info.return_value = (
+            self.get_share_info_return_value())
+        mock_api_executor.return_value.get_snapshot_info.return_value = None
+        mock_private_storage = mock.Mock()
+        mock_private_storage.get.side_effect = [
+            'fakeVolId', 'fakeVolName']
+
+        self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
+                       'qnapadmin', 'Storage Pool 1',
+                       private_storage=mock_private_storage)
+
+        mock_api_return = mock_api_executor.return_value
+        self.assertRaises(
+            exception.InvalidParameterValue,
+            self.driver.manage_existing_snapshot,
+            snapshot=fake_snapshot,
+            driver_options='driver_options')
+        mock_api_return.get_share_info.assert_called_once_with(
+            'Storage Pool 1', vol_no='fakeVolId')
+
     def test_unmanage_snapshot(self):
         """Test unmanage snapshot."""
         fake_snapshot = fakes.SnapshotClass(

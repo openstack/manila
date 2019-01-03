@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed the QNAP driver so that the snapshot which does not exist in NAS
+    will not be managed.
