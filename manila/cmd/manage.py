@@ -60,7 +60,6 @@ import sys
 
 from oslo_config import cfg
 from oslo_log import log
-from oslo_utils import uuidutils
 
 from manila.common import config  # Need to register global_opts  # noqa
 from manila import context
@@ -89,20 +88,6 @@ def args(*args, **kwargs):
         func.__dict__.setdefault('args', []).insert(0, (args, kwargs))
         return func
     return _decorator
-
-
-def param2id(object_id):
-    """Helper function to convert various id types to internal id.
-
-    args: [object_id], e.g. 'vol-0000000a' or 'volume-0000000a' or '10'
-    """
-    if uuidutils.is_uuid_like(object_id):
-        return object_id
-    elif '-' in object_id:
-        # FIXME(ja): mapping occurs in nova?
-        pass
-    else:
-        return int(object_id)
 
 
 class ShellCommands(object):

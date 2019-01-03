@@ -47,22 +47,6 @@ class ManilaCmdManageTestCase(test.TestCase):
         self.service_cmds = manila_manage.ServiceCommands()
         self.share_cmds = manila_manage.ShareCommands()
 
-    def test_param2id_is_uuid_like(self):
-        obj_id = '12345678123456781234567812345678'
-        self.assertEqual(obj_id, manila_manage.param2id(obj_id))
-
-    def test_param2id_not_uuid_like_with_dash(self):
-        obj_id = '112-112-112'
-        self.assertIsNone(manila_manage.param2id(obj_id))
-
-    def test_param2id_not_uuid_like_without_dash(self):
-        obj_id = '123'
-        self.assertEqual(123, manila_manage.param2id(obj_id))
-
-    def test_param2id_not_uuid_like_value_error(self):
-        obj_id = 'invalidvalue'
-        self.assertRaises(ValueError, manila_manage.param2id, obj_id)
-
     @mock.patch.object(manila_manage.ShellCommands, 'run', mock.Mock())
     def test_shell_commands_bpython(self):
         self.shell_commands.bpython()
