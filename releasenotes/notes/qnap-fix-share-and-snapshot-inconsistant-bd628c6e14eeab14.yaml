@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed the QNAP driver so that the managed snapshot and the share which
+    created from snapshot will not be inconsistent in some cases.

@@ -467,13 +467,14 @@ class QnapAPIExecutor(object):
             raise exception.ShareBackendException(msg=msg)
 
     @_connection_checker
-    def clone_snapshot(self, snapshot_id, new_sharename):
+    def clone_snapshot(self, snapshot_id, new_sharename, clone_size):
         """Execute CGI to clone snapshot as share."""
         params = {
             'func': 'clone_qsnapshot',
             'by_vol': '1',
             'snapshotID': snapshot_id,
             'new_name': new_sharename,
+            'clone_size': '{}g'.format(clone_size),
             'sid': self.sid,
         }
         sanitized_params = self._sanitize_params(params)

@@ -424,13 +424,15 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
                        'qnapadmin', 'Storage Pool 1')
         self.driver.api_executor.clone_snapshot(
             'fakeSnapshotId',
-            'fakeNewShareName')
+            'fakeNewShareName',
+            'fakeCloneSize')
 
         fake_params = {
             'func': 'clone_qsnapshot',
             'by_vol': '1',
             'snapshotID': 'fakeSnapshotId',
             'new_name': 'fakeNewShareName',
+            'clone_size': '{}g'.format('fakeCloneSize'),
             'sid': 'fakeSid',
         }
         sanitized_params = self._sanitize_params(fake_params)
@@ -804,12 +806,14 @@ class QnapAPITestCase(QnapShareDriverBaseTestCase):
               fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.clone_snapshot',
               {'snapshot_id': 'fakeSnapshotId',
-               'new_sharename': 'fakeNewShareName'},
+               'new_sharename': 'fakeNewShareName',
+               'clone_size': 'fakeCloneSize'},
               fakes.FakeResultNegativeResponse(),
               fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.clone_snapshot',
               {'snapshot_id': 'fakeSnapshotId',
-               'new_sharename': 'fakeNewShareName'},
+               'new_sharename': 'fakeNewShareName',
+               'clone_size': 'fakeCloneSize'},
               fakes.FakeAuthPassFailResponse(),
               fakes.FakeGetBasicInfoResponseEs_1_1_3()],
               ['self.driver.api_executor.edit_share',
