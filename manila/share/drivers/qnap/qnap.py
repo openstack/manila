@@ -77,6 +77,8 @@ class QnapShareDriver(driver.ShareDriver):
         1.0.7 - Add support for QES fw on TDS series NAS model.
         1.0.8 - Fix bug, driver should not manage snapshot which does not
                 exist in NAS.
+                Fix bug, driver should create share from snapshot with
+                specified size.
     """
 
     DRIVER_VERSION = '1.0.8'
@@ -540,7 +542,8 @@ class QnapShareDriver(driver.ShareDriver):
             msg = _("Failed to create an unused share name.")
             raise exception.ShareBackendException(msg=msg)
 
-        self.api_executor.clone_snapshot(snapshot_id, create_share_name)
+        self.api_executor.clone_snapshot(snapshot_id,
+                                         create_share_name, share['size'])
 
         create_volID = ""
         created_share = self.api_executor.get_share_info(
@@ -552,10 +555,6 @@ class QnapShareDriver(driver.ShareDriver):
         else:
             msg = _("Failed to clone a snapshot in time.")
             raise exception.ShareBackendException(msg=msg)
-
-        snap_share = self.share_api.get(
-            context, snapshot['share_instance']['share_id'])
-        LOG.debug('snap_share[size]: %s', snap_share['size'])
 
         thin_provision = self.private_storage.get(
             snapshot['share_instance_id'], 'thin_provision')
@@ -573,19 +572,6 @@ class QnapShareDriver(driver.ShareDriver):
                    'compression': compression,
                    'deduplication': deduplication,
                    'ssd_cache': ssd_cache})
-
-        if (share['size'] > snap_share['size']):
-            share_dict = {
-                'sharename': create_share_name,
-                'old_sharename': create_share_name,
-                'new_size': share['size'],
-                'thin_provision': thin_provision == 'True',
-                'compression': compression == 'True',
-                'deduplication': deduplication == 'True',
-                'ssd_cache': ssd_cache == 'True',
-                'share_proto': share['share_proto']
-            }
-            self.api_executor.edit_share(share_dict)
 
         # Use private_storage to record volume ID and Name created in the NAS.
         _metadata = {
@@ -930,6 +916,11 @@ class QnapShareDriver(driver.ShareDriver):
             'snapshot_id': snapshot_id,
         }
         self.private_storage.update(snapshot['id'], _metadata)
+        parent_size = check_snapshot.find('parent_size')
+        snap_size_gb = None
+        if parent_size is not None:
+            snap_size_gb = math.ceil(float(parent_size.text) / units.Gi)
+        return {'size': snap_size_gb}
 
     def unmanage_snapshot(self, snapshot):
         """Remove the specified snapshot from Manila management."""
