@@ -96,13 +96,6 @@ def execute(*cmd, **kwargs):
     return processutils.execute(*cmd, **kwargs)
 
 
-def trycmd(*args, **kwargs):
-    """Convenience wrapper around oslo's trycmd() function."""
-    if 'run_as_root' in kwargs and 'root_helper' not in kwargs:
-        kwargs['root_helper'] = _get_root_helper()
-    return processutils.trycmd(*args, **kwargs)
-
-
 class SSHPool(pools.Pool):
     """A simple eventlet pool to hold ssh connections."""
 
