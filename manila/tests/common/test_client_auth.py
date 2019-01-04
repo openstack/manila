@@ -29,9 +29,9 @@ class ClientAuthTestCase(test.TestCase):
         super(ClientAuthTestCase, self).setUp()
         self.context = mock.Mock()
         self.fake_client = mock.Mock()
-        self.execption_mod = fake_client_exception_class
+        self.exception_mod = fake_client_exception_class
         self.auth = client_auth.AuthClientLoader(
-            self.fake_client, self.execption_mod, 'foo_group')
+            self.fake_client, self.exception_mod, 'foo_group')
 
     def test_get_client_admin_true(self):
         mock_load_session = self.mock_object(auth,
