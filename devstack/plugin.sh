@@ -530,6 +530,7 @@ function create_custom_share_types {
 
 # configure_backing_file - Set up backing file for LVM
 function configure_backing_file {
+    sudo vgscan
     if ! sudo vgs $SHARE_GROUP; then
         if [ "$CONFIGURE_BACKING_FILE" = "True" ]; then
             SHARE_BACKING_FILE=${SHARE_BACKING_FILE:-$DATA_DIR/${SHARE_GROUP}-backing-file}
