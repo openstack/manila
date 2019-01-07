@@ -27,7 +27,6 @@ from manila.api.v1 import scheduler_stats
 from manila.api.v1 import security_service
 from manila.api.v1 import share_manage
 from manila.api.v1 import share_metadata
-from manila.api.v1 import share_servers
 from manila.api.v1 import share_types_extra_specs
 from manila.api.v1 import share_unmanage
 from manila.api.v2 import availability_zones
@@ -47,6 +46,7 @@ from manila.api.v2 import share_instances
 from manila.api.v2 import share_networks
 from manila.api.v2 import share_replica_export_locations
 from manila.api.v2 import share_replicas
+from manila.api.v2 import share_servers
 from manila.api.v2 import share_snapshot_export_locations
 from manila.api.v2 import share_snapshot_instance_export_locations
 from manila.api.v2 import share_snapshot_instances
@@ -299,12 +299,18 @@ class APIRouter(manila.api.openstack.APIRouter):
         self.resources["share_servers"] = share_servers.create_resource()
         mapper.resource("share_server",
                         "share-servers",
-                        controller=self.resources["share_servers"])
+                        controller=self.resources["share_servers"],
+                        member={"action": "POST"})
         mapper.connect("details",
                        "/{project_id}/share-servers/{id}/details",
                        controller=self.resources["share_servers"],
                        action="details",
                        conditions={"method": ["GET"]})
+        mapper.connect("share_servers",
+                       "/{project_id}/share-servers/manage",
+                       controller=self.resources["share_servers"],
+                       action="manage",
+                       conditions={"method": ["POST"]})
 
         self.resources["types"] = share_types.create_resource()
         mapper.resource("type", "types",

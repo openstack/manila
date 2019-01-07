@@ -43,6 +43,7 @@ import six
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
+from sqlalchemy.sql.expression import literal
 from sqlalchemy.sql.expression import true
 from sqlalchemy.sql import func
 
@@ -3555,6 +3556,50 @@ def share_server_get(context, server_id, session=None):
 
 
 @require_context
+def share_server_search_by_identifier(context, identifier, session=None):
+
+    identifier_field = models.ShareServer.identifier
+
+    # try if given identifier is a substring of existing entry's identifier
+    result = (_server_get_query(context, session).filter(
+        identifier_field.like('%{}%'.format(identifier))).all())
+
+    if not result:
+        # repeat it with underscores instead of hyphens
+        result = (_server_get_query(context, session).filter(
+            identifier_field.like('%{}%'.format(
+                identifier.replace("-", "_")))).all())
+
+    if not result:
+        # repeat it with hypens instead of underscores
+        result = (_server_get_query(context, session).filter(
+            identifier_field.like('%{}%'.format(
+                identifier.replace("_", "-")))).all())
+
+    if not result:
+        # try if an existing identifier is a substring of given identifier
+        result = (_server_get_query(context, session).filter(
+            literal(identifier).contains(identifier_field)).all())
+
+    if not result:
+        # repeat it with underscores instead of hyphens
+        result = (_server_get_query(context, session).filter(
+            literal(identifier.replace("-", "_")).contains(
+                identifier_field)).all())
+
+    if not result:
+        # repeat it with hypens instead of underscores
+        result = (_server_get_query(context, session).filter(
+            literal(identifier.replace("_", "-")).contains(
+                identifier_field)).all())
+
+    if not result:
+        raise exception.ShareServerNotFound(share_server_id=identifier)
+
+    return result
+
+
+@require_context
 def share_server_get_all_by_host_and_share_net_valid(context, host,
                                                      share_net_id,
                                                      session=None):
@@ -3595,6 +3640,7 @@ def share_server_get_all_unused_deletable(context, host, updated_before):
         constants.STATUS_ERROR,
     )
     result = (_server_get_query(context)
+              .filter_by(is_auto_deletable=True)
               .filter_by(host=host)
               .filter(~models.ShareServer.share_groups.any())
               .filter(~models.ShareServer.share_instances.any())
@@ -3747,10 +3793,11 @@ def network_allocation_delete(context, id):
 
 
 @require_context
-def network_allocation_get(context, id, session=None):
+def network_allocation_get(context, id, session=None, read_deleted="no"):
     if session is None:
         session = get_session()
-    result = (model_query(context, models.NetworkAllocation, session=session).
+    result = (model_query(context, models.NetworkAllocation, session=session,
+                          read_deleted=read_deleted).
               filter_by(id=id).first())
     if result is None:
         raise exception.NotFound()
@@ -3791,10 +3838,11 @@ def network_allocations_get_for_share_server(context, share_server_id,
 
 
 @require_context
-def network_allocation_update(context, id, values):
+def network_allocation_update(context, id, values, read_deleted=None):
     session = get_session()
     with session.begin():
-        alloc_ref = network_allocation_get(context, id, session=session)
+        alloc_ref = network_allocation_get(context, id, session=session,
+                                           read_deleted=read_deleted)
         alloc_ref.update(values)
         alloc_ref.save(session=session)
         return alloc_ref

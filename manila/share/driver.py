@@ -933,6 +933,10 @@ class ShareDriver(object):
         If they are incompatible, raise a
         ManageExistingShareTypeMismatch, specifying a reason for the failure.
 
+        This method is invoked when the share is being managed with
+        a share type that has ``driver_handles_share_servers``
+        extra-spec set to False.
+
         :param share: Share model
         :param driver_options: Driver-specific options provided by admin.
         :return: share_update dictionary with required key 'size',
@@ -940,7 +944,53 @@ class ShareDriver(object):
         """
         raise NotImplementedError()
 
+    def manage_existing_with_server(
+            self, share, driver_options, share_server=None):
+        """Brings an existing share under Manila management.
+
+        If the provided share is not valid, then raise a
+        ManageInvalidShare exception, specifying a reason for the failure.
+
+        If the provided share is not in a state that can be managed, such as
+        being replicated on the backend, the driver *MUST* raise
+        ManageInvalidShare exception with an appropriate message.
+
+        The share has a share_type, and the driver can inspect that and
+        compare against the properties of the referenced backend share.
+        If they are incompatible, raise a
+        ManageExistingShareTypeMismatch, specifying a reason for the failure.
+
+        This method is invoked when the share is being managed with
+        a share type that has ``driver_handles_share_servers``
+        extra-spec set to True.
+
+        :param share: Share model
+        :param driver_options: Driver-specific options provided by admin.
+        :param share_server: Share server model or None.
+        :return: share_update dictionary with required key 'size',
+                 which should contain size of the share.
+        """
+        raise NotImplementedError()
+
     def unmanage(self, share):
+        """Removes the specified share from Manila management.
+
+        Does not delete the underlying backend share.
+
+        For most drivers, this will not need to do anything. However, some
+        drivers might use this call as an opportunity to clean up any
+        Manila-specific configuration that they have associated with the
+        backend share.
+
+        If provided share cannot be unmanaged, then raise an
+        UnmanageInvalidShare exception, specifying a reason for the failure.
+
+        This method is invoked when the share is being unmanaged with
+        a share type that has ``driver_handles_share_servers``
+        extra-spec set to False.
+        """
+
+    def unmanage_with_server(self, share, share_server=None):
         """Removes the specified share from Manila management.
 
         Does not delete the underlying backend share.
@@ -952,6 +1002,10 @@ class ShareDriver(object):
 
         If provided share cannot be unmanaged, then raise an
         UnmanageInvalidShare exception, specifying a reason for the failure.
+
+        This method is invoked when the share is being unmanaged with
+        a share type that has ``driver_handles_share_servers``
+        extra-spec set to True.
         """
 
     def manage_existing_snapshot(self, snapshot, driver_options):
@@ -960,6 +1014,10 @@ class ShareDriver(object):
         If provided snapshot is not valid, then raise a
         ManageInvalidShareSnapshot exception, specifying a reason for
         the failure.
+
+        This method is invoked when the snapshot that is being managed
+        belongs to a share that has its share type with
+        ``driver_handles_share_servers`` extra-spec set to False.
 
         :param snapshot: ShareSnapshotInstance model with ShareSnapshot data.
 
@@ -988,6 +1046,46 @@ class ShareDriver(object):
         """
         raise NotImplementedError()
 
+    def manage_existing_snapshot_with_server(self, snapshot, driver_options,
+                                             share_server=None):
+        """Brings an existing snapshot under Manila management.
+
+        If provided snapshot is not valid, then raise a
+        ManageInvalidShareSnapshot exception, specifying a reason for
+        the failure.
+
+        This method is invoked when the snapshot that is being managed
+        belongs to a share that has its share type with
+        ``driver_handles_share_servers`` extra-spec set to True.
+
+        :param snapshot: ShareSnapshotInstance model with ShareSnapshot data.
+
+        Example::
+            {
+            'id': <instance id>,
+            'snapshot_id': < snapshot id>,
+            'provider_location': <location>,
+            ...
+            }
+
+        :param driver_options: Optional driver-specific options provided
+            by admin.
+
+        Example::
+
+            {
+            'key': 'value',
+            ...
+            }
+
+        :param share_server: Share server model or None.
+        :return: model_update dictionary with required key 'size',
+            which should contain size of the share snapshot, and key
+            'export_locations' containing a list of export locations, if
+            snapshots can be mounted.
+        """
+        raise NotImplementedError()
+
     def unmanage_snapshot(self, snapshot):
         """Removes the specified snapshot from Manila management.
 
@@ -1001,6 +1099,29 @@ class ShareDriver(object):
         If provided share snapshot cannot be unmanaged, then raise an
         UnmanageInvalidShareSnapshot exception, specifying a reason for
         the failure.
+
+        This method is invoked when the snapshot that is being unmanaged
+        belongs to a share that has its share type with
+        ``driver_handles_share_servers`` extra-spec set to False.
+        """
+
+    def unmanage_snapshot_with_server(self, snapshot, share_server=None):
+        """Removes the specified snapshot from Manila management.
+
+        Does not delete the underlying backend share snapshot.
+
+        For most drivers, this will not need to do anything.  However, some
+        drivers might use this call as an opportunity to clean up any
+        Manila-specific configuration that they have associated with the
+        backend share snapshot.
+
+        If provided share snapshot cannot be unmanaged, then raise an
+        UnmanageInvalidShareSnapshot exception, specifying a reason for
+        the failure.
+
+        This method is invoked when the snapshot that is being unmanaged
+        belongs to a share that has its share type with
+        ``driver_handles_share_servers`` extra-spec set to True.
         """
 
     def revert_to_snapshot(self, context, snapshot, share_access_rules,
@@ -2570,5 +2691,53 @@ class ShareDriver(object):
 
                 }
 
+        """
+        raise NotImplementedError()
+
+    def get_share_server_network_info(
+            self, context, share_server, identifier, driver_options):
+        """Obtain network allocations used by share server.
+
+        :param context: Current context.
+        :param share_server: Share server model.
+        :param identifier: A driver-specific share server identifier
+        :param driver_options: Dictionary of driver options to assist managing
+            the share server
+        :return: A list containing IP addresses allocated in the backend.
+
+        Example::
+
+            ['10.10.10.10', 'fd11::2000', '192.168.10.10']
+
+        """
+        raise NotImplementedError()
+
+    def manage_server(self, context, share_server, identifier, driver_options):
+        """Manage the share server and return compiled back end details.
+
+        :param context: Current context.
+        :param share_server: Share server model.
+        :param identifier: A driver-specific share server identifier
+        :param driver_options: Dictionary of driver options to assist managing
+            the share server
+        :return: Identifier and dictionary with back end details to be saved
+            in the database.
+
+        Example::
+
+            'my_new_server_identifier',{'server_name': 'my_old_server'}
+
+        """
+        raise NotImplementedError()
+
+    def unmanage_server(self, server_details, security_services=None):
+        """Unmanages the share server.
+
+        If a driver supports unmanaging of share servers, the driver must
+        override this method and return successfully.
+
+        :param server_details: share server backend details.
+        :param security_services: list of security services configured with
+            this share server.
         """
         raise NotImplementedError()

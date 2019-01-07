@@ -2532,6 +2532,20 @@ class ShareUnmanageTest(test.TestCase):
         share_api.API.unmanage.assert_called_once_with(
             self.request.environ['manila.context'], share)
 
+    def test__unmanage(self):
+        body = {}
+        req = fakes.HTTPRequest.blank(
+            '/shares/1/action', use_admin_context=False, version='2.49')
+        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id',
+                     instance={})
+        mock_unmanage = self.mock_object(self.controller, '_unmanage')
+
+        self.controller.unmanage(req, share['id'], body)
+
+        mock_unmanage.assert_called_once_with(
+            req, share['id'], body, allow_dhss_true=True
+        )
+
     def test_unmanage_share_that_has_snapshots(self):
         share = dict(status=constants.STATUS_AVAILABLE, id='foo_id',
                      instance={})
@@ -2663,6 +2677,18 @@ class ShareManageTest(test.TestCase):
                 utils,
                 'validate_service_host',
                 mock.Mock(side_effect=exception.ServiceIsDown(service='fake')))
+
+    def test__manage(self):
+        body = {}
+        req = fakes.HTTPRequest.blank(
+            '/v2/shares/manage', use_admin_context=True, version='2.49')
+        mock_manage = self.mock_object(self.controller, '_manage')
+
+        self.controller.manage(req, body)
+
+        mock_manage.assert_called_once_with(
+            req, body, allow_dhss_true=True
+        )
 
     @ddt.data({},
               {'shares': {}},

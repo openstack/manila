@@ -163,6 +163,12 @@ if [[ "$DRIVER" == "generic"* ]]; then
     RUN_MANILA_HOST_ASSISTED_MIGRATION_TESTS=True
     RUN_MANILA_MANAGE_SNAPSHOT_TESTS=True
     RUN_MANILA_CG_TESTS=False
+    if [[ "$MULTITENANCY_ENABLED" == "True"  ]]; then
+        # NOTE(ganso): The generic driver has not implemented support for
+        # Manage/unmanage shares/snapshots in DHSS=True
+        RUN_MANILA_MANAGE_SNAPSHOT_TESTS=False
+        RUN_MANILA_MANAGE_TESTS=False
+    fi
     if [[ "$POSTGRES_ENABLED" == "True" ]]; then
         # Run only CIFS tests on PostgreSQL DB backend
         # to reduce amount of tests per job using 'generic' share driver.
@@ -241,7 +247,8 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     MANILA_TEMPEST_CONCURRENCY=24
     MANILA_CONFIGURE_DEFAULT_TYPES=False
     RUN_MANILA_SG_TESTS=True
-    RUN_MANILA_MANAGE_TESTS=False
+    RUN_MANILA_MANAGE_TESTS=True
+    RUN_MANILA_MANAGE_SNAPSHOT_TESTS=True
     RUN_MANILA_DRIVER_ASSISTED_MIGRATION_TESTS=True
     RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS=True
     RUN_MANILA_MOUNT_SNAPSHOT_TESTS=True

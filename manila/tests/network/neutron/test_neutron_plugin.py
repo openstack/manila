@@ -191,6 +191,7 @@ fake_binding_profile = {
 }
 
 
+@ddt.ddt
 class NeutronNetworkPluginTest(test.TestCase):
 
     def setUp(self):
@@ -322,6 +323,175 @@ class NeutronNetworkPluginTest(test.TestCase):
         save_nw_data.stop()
         save_subnet_data.stop()
         create_port.stop()
+
+    def _setup_manage_network_allocations(self):
+
+        allocations = ['192.168.0.11', '192.168.0.12', 'fd12::2000']
+
+        neutron_ports = [
+            copy.deepcopy(fake_neutron_port), copy.deepcopy(fake_neutron_port),
+            copy.deepcopy(fake_neutron_port), copy.deepcopy(fake_neutron_port),
+        ]
+
+        neutron_ports[0]['fixed_ips'][0]['ip_address'] = '192.168.0.10'
+        neutron_ports[0]['id'] = 'fake_port_id_0'
+        neutron_ports[1]['fixed_ips'][0]['ip_address'] = '192.168.0.11'
+        neutron_ports[1]['id'] = 'fake_port_id_1'
+        neutron_ports[2]['fixed_ips'][0]['ip_address'] = '192.168.0.12'
+        neutron_ports[2]['id'] = 'fake_port_id_2'
+        neutron_ports[3]['fixed_ips'][0]['ip_address'] = '192.168.0.13'
+        neutron_ports[3]['id'] = 'fake_port_id_3'
+
+        self.mock_object(self.plugin, '_verify_share_network')
+        self.mock_object(self.plugin, '_store_neutron_net_info')
+
+        self.mock_object(self.plugin.neutron_api, 'list_ports',
+                         mock.Mock(return_value=neutron_ports))
+
+        return neutron_ports, allocations
+
+    @ddt.data({}, exception.NotFound)
+    def test_manage_network_allocations_create_update(self, side_effect):
+
+        neutron_ports, allocations = self._setup_manage_network_allocations()
+
+        self.mock_object(db_api, 'network_allocation_get',
+                         mock.Mock(
+                             side_effect=[exception.NotFound, side_effect,
+                                          exception.NotFound, side_effect]))
+        if side_effect:
+            self.mock_object(db_api, 'network_allocation_create')
+        else:
+            self.mock_object(db_api, 'network_allocation_update')
+
+        result = self.plugin.manage_network_allocations(
+            self.fake_context, allocations, fake_share_server,
+            fake_share_network)
+
+        self.assertEqual(['fd12::2000'], result)
+
+        self.plugin.neutron_api.list_ports.assert_called_once_with(
+            network_id=fake_share_network['neutron_net_id'],
+            device_owner='manila:share',
+            fixed_ips='subnet_id=' + fake_share_network['neutron_subnet_id'])
+
+        db_api.network_allocation_get.assert_has_calls([
+            mock.call(self.fake_context, 'fake_port_id_1', read_deleted=False),
+            mock.call(self.fake_context, 'fake_port_id_1', read_deleted=True),
+            mock.call(self.fake_context, 'fake_port_id_2', read_deleted=False),
+            mock.call(self.fake_context, 'fake_port_id_2', read_deleted=True),
+        ])
+
+        port_dict_list = [{
+            'share_server_id': fake_share_server['id'],
+            'ip_address': x,
+            'gateway': fake_share_network['gateway'],
+            'mac_address': fake_neutron_port['mac_address'],
+            'status': constants.STATUS_ACTIVE,
+            'label': 'user',
+            'network_type': fake_share_network['network_type'],
+            'segmentation_id': fake_share_network['segmentation_id'],
+            'ip_version': fake_share_network['ip_version'],
+            'cidr': fake_share_network['cidr'],
+            'mtu': fake_share_network['mtu'],
+        } for x in ['192.168.0.11', '192.168.0.12']]
+
+        if side_effect:
+            port_dict_list[0]['id'] = 'fake_port_id_1'
+            port_dict_list[1]['id'] = 'fake_port_id_2'
+            db_api.network_allocation_create.assert_has_calls([
+                mock.call(self.fake_context, port_dict_list[0]),
+                mock.call(self.fake_context, port_dict_list[1])
+            ])
+        else:
+            for x in port_dict_list:
+                x['deleted_at'] = None
+                x['deleted'] = 'False'
+
+            db_api.network_allocation_update.assert_has_calls([
+                mock.call(self.fake_context, 'fake_port_id_1',
+                          port_dict_list[0], read_deleted=True),
+                mock.call(self.fake_context, 'fake_port_id_2',
+                          port_dict_list[1], read_deleted=True)
+            ])
+
+        self.plugin._verify_share_network.assert_called_once_with(
+            fake_share_server['id'], fake_share_network)
+
+        self.plugin._store_neutron_net_info(
+            self.fake_context, fake_share_network)
+
+    def test__get_ports_respective_to_ips_multiple_fixed_ips(self):
+        self.mock_object(plugin.LOG, 'warning')
+
+        allocations = ['192.168.0.10', '192.168.0.11', '192.168.0.12']
+
+        neutron_ports = [
+            copy.deepcopy(fake_neutron_port), copy.deepcopy(fake_neutron_port),
+        ]
+
+        neutron_ports[0]['fixed_ips'][0]['ip_address'] = '192.168.0.10'
+        neutron_ports[0]['id'] = 'fake_port_id_0'
+        neutron_ports[0]['fixed_ips'].append({'ip_address': '192.168.0.11',
+                                              'subnet_id': 'test_subnet_id'})
+        neutron_ports[1]['fixed_ips'][0]['ip_address'] = '192.168.0.12'
+        neutron_ports[1]['id'] = 'fake_port_id_2'
+
+        expected = [{'port': neutron_ports[0], 'allocation': '192.168.0.10'},
+                    {'port': neutron_ports[1], 'allocation': '192.168.0.12'}]
+
+        result = self.plugin._get_ports_respective_to_ips(allocations,
+                                                          neutron_ports)
+
+        self.assertEqual(expected, result)
+
+        self.assertIs(True, plugin.LOG.warning.called)
+
+    def test_manage_network_allocations_exception(self):
+
+        neutron_ports, allocations = self._setup_manage_network_allocations()
+
+        fake_allocation = {
+            'id': 'fake_port_id',
+            'share_server_id': 'fake_server_id'
+        }
+
+        self.mock_object(db_api, 'network_allocation_get',
+                         mock.Mock(return_value=fake_allocation))
+
+        self.assertRaises(
+            exception.ManageShareServerError,
+            self.plugin.manage_network_allocations, self.fake_context,
+            allocations, fake_share_server, fake_share_network)
+
+        db_api.network_allocation_get.assert_called_once_with(
+            self.fake_context, 'fake_port_id_1', read_deleted=False)
+
+    def test_unmanage_network_allocations(self):
+
+        neutron_ports = [
+            copy.deepcopy(fake_neutron_port), copy.deepcopy(fake_neutron_port),
+        ]
+
+        neutron_ports[0]['id'] = 'fake_port_id_0'
+        neutron_ports[1]['id'] = 'fake_port_id_1'
+
+        get_mock = self.mock_object(
+            db_api, 'network_allocations_get_for_share_server',
+            mock.Mock(return_value=neutron_ports))
+
+        self.mock_object(db_api, 'network_allocation_delete')
+
+        self.plugin.unmanage_network_allocations(
+            self.fake_context, fake_share_server['id'])
+
+        get_mock.assert_called_once_with(
+            self.fake_context, fake_share_server['id'])
+
+        db_api.network_allocation_delete.assert_has_calls([
+            mock.call(self.fake_context, 'fake_port_id_0'),
+            mock.call(self.fake_context, 'fake_port_id_1')
+        ])
 
     @mock.patch.object(db_api, 'network_allocation_delete', mock.Mock())
     @mock.patch.object(db_api, 'share_network_update', mock.Mock())
@@ -547,7 +717,8 @@ class NeutronSingleNetworkPluginTest(test.TestCase):
                 plugin.NeutronSingleNetworkPlugin)
             neutron_api.API.get_network.assert_called_once_with(fake_net_id)
 
-    def _get_neutron_network_plugin_instance(self, config_data=None):
+    def _get_neutron_network_plugin_instance(
+            self, config_data=None, label=None):
         if not config_data:
             fake_subnet_id = 'fake_subnet_id'
             config_data = {
@@ -561,7 +732,7 @@ class NeutronSingleNetworkPluginTest(test.TestCase):
                 neutron_api.API, 'get_network',
                 mock.Mock(return_value=fake_net))
         with test_utils.create_temp_config_with_opts(config_data):
-            instance = plugin.NeutronSingleNetworkPlugin()
+            instance = plugin.NeutronSingleNetworkPlugin(label=label)
             return instance
 
     def test___update_share_network_net_data_same_values(self):
@@ -639,6 +810,48 @@ class NeutronSingleNetworkPluginTest(test.TestCase):
         plugin.NeutronNetworkPlugin.allocate_network.assert_called_once_with(
             self.context, share_server, share_network_upd, count=count,
             device_owner=device_owner)
+
+    def test_manage_network_allocations(self):
+        allocations = ['192.168.10.10', 'fd12::2000']
+        instance = self._get_neutron_network_plugin_instance()
+        parent = self.mock_object(
+            plugin.NeutronNetworkPlugin, 'manage_network_allocations',
+            mock.Mock(return_value=['fd12::2000']))
+        self.mock_object(
+            instance, '_update_share_network_net_data',
+            mock.Mock(return_value=fake_share_network))
+
+        result = instance.manage_network_allocations(
+            self.context, allocations, fake_share_server, fake_share_network)
+
+        self.assertEqual(['fd12::2000'], result)
+
+        instance._update_share_network_net_data.assert_called_once_with(
+            self.context, fake_share_network)
+
+        parent.assert_called_once_with(
+            self.context, allocations, fake_share_server, fake_share_network)
+
+    def test_manage_network_allocations_admin(self):
+        allocations = ['192.168.10.10', 'fd12::2000']
+        instance = self._get_neutron_network_plugin_instance(label='admin')
+        parent = self.mock_object(
+            plugin.NeutronNetworkPlugin, 'manage_network_allocations',
+            mock.Mock(return_value=['fd12::2000']))
+
+        share_network_dict = {
+            'project_id': instance.neutron_api.admin_project_id,
+            'neutron_net_id': 'fake_net_id',
+            'neutron_subnet_id': 'fake_subnet_id',
+        }
+
+        result = instance.manage_network_allocations(
+            self.context, allocations, fake_share_server, None)
+
+        self.assertEqual(['fd12::2000'], result)
+
+        parent.assert_called_once_with(
+            self.context, allocations, fake_share_server, share_network_dict)
 
 
 @ddt.ddt

@@ -14,7 +14,6 @@
 #    under the License.
 
 from oslo_log import log
-import six
 from six.moves import http_client
 import webob
 from webob import exc
@@ -150,13 +149,13 @@ class ShareController(shares.ShareMixin,
 
             self.share_api.revert_to_snapshot(context, share, snapshot)
         except exception.ShareNotFound as e:
-            raise exc.HTTPNotFound(explanation=six.text_type(e))
+            raise exc.HTTPNotFound(explanation=e)
         except exception.ShareSnapshotNotFound as e:
-            raise exc.HTTPBadRequest(explanation=six.text_type(e))
+            raise exc.HTTPBadRequest(explanation=e)
         except exception.ShareSizeExceedsAvailableQuota as e:
-            raise exc.HTTPForbidden(explanation=six.text_type(e))
+            raise exc.HTTPForbidden(explanation=e)
         except exception.ReplicationException as e:
-            raise exc.HTTPBadRequest(explanation=six.text_type(e))
+            raise exc.HTTPBadRequest(explanation=e)
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
@@ -278,7 +277,7 @@ class ShareController(shares.ShareMixin,
                 new_share_network=new_share_network,
                 new_share_type=new_share_type)
         except exception.Conflict as e:
-            raise exc.HTTPConflict(explanation=six.text_type(e))
+            raise exc.HTTPConflict(explanation=e)
 
         return webob.Response(status_int=return_code)
 
@@ -407,18 +406,28 @@ class ShareController(shares.ShareMixin,
     @wsgi.Controller.api_version('2.7', '2.7')
     def manage(self, req, body):
         body.get('share', {}).pop('is_public', None)
-        detail = self._manage(req, body)
+        detail = self._manage(req, body, allow_dhss_true=False)
         return detail
 
-    @wsgi.Controller.api_version("2.8")  # noqa
+    @wsgi.Controller.api_version("2.8", "2.48")  # noqa
     def manage(self, req, body):  # pylint: disable=function-redefined
-        detail = self._manage(req, body)
+        detail = self._manage(req, body, allow_dhss_true=False)
         return detail
 
-    @wsgi.Controller.api_version('2.7')
+    @wsgi.Controller.api_version("2.49")  # noqa
+    def manage(self, req, body):  # pylint: disable=function-redefined
+        detail = self._manage(req, body, allow_dhss_true=True)
+        return detail
+
+    @wsgi.Controller.api_version('2.7', '2.48')
     @wsgi.action('unmanage')
     def unmanage(self, req, id, body=None):
-        return self._unmanage(req, id, body)
+        return self._unmanage(req, id, body, allow_dhss_true=False)
+
+    @wsgi.Controller.api_version('2.49')  # noqa
+    @wsgi.action('unmanage')  # pylint: disable=function-redefined
+    def unmanage(self, req, id, body=None):
+        return self._unmanage(req, id, body, allow_dhss_true=True)
 
     @wsgi.Controller.api_version('2.27')
     @wsgi.action('revert')

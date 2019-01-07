@@ -295,3 +295,21 @@ def fake_replica_request_spec(as_primitive=True, **kwargs):
         return request_spec
     else:
         return db_fakes.FakeModel(request_spec)
+
+
+def fake_share_server_get():
+    fake_share_server = {
+        'status': constants.STATUS_ACTIVE,
+        'updated_at': None,
+        'host': 'fake_host',
+        'share_network_id': 'fake_sn_id',
+        'share_network_name': 'fake_sn_name',
+        'project_id': 'fake_project_id',
+        'id': 'fake_share_server_id',
+        'backend_details': {
+            'security_service_active_directory': '{"name": "fake_AD"}',
+            'security_service_ldap': '{"name": "fake_LDAP"}',
+            'security_service_kerberos': '{"name": "fake_kerberos"}',
+        }
+    }
+    return fake_share_server

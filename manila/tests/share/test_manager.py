@@ -2447,46 +2447,10 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager._provide_share_server_for_share_group,
             self.context, None, None)
 
-    def test_manage_share_invalid_driver(self):
-        self.mock_object(self.share_manager, 'driver', mock.Mock())
-        self.share_manager.driver.driver_handles_share_servers = True
-        self.mock_object(share_types,
-                         'get_share_type_extra_specs',
-                         mock.Mock(return_value='False'))
-        self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
-        share = db_utils.create_share()
-        share_id = share['id']
-
-        self.assertRaises(
-            exception.InvalidDriverMode,
-            self.share_manager.manage_share, self.context, share_id, {})
-
-        self.share_manager.db.share_update.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), share_id,
-            {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
-
-    def test_manage_share_invalid_share_type(self):
-        self.mock_object(self.share_manager, 'driver', mock.Mock())
-        self.share_manager.driver.driver_handles_share_servers = False
-        self.mock_object(share_types,
-                         'get_share_type_extra_specs',
-                         mock.Mock(return_value='True'))
-        self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
-        share = db_utils.create_share()
-        share_id = share['id']
-
-        self.assertRaises(
-            exception.ManageExistingShareTypeMismatch,
-            self.share_manager.manage_share, self.context, share_id, {})
-
-        self.share_manager.db.share_update.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), share_id,
-            {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
-
     def test_manage_share_driver_exception(self):
-        CustomException = type('CustomException', (Exception,), dict())
-        self.mock_object(self.share_manager, 'driver', mock.Mock())
+        self.mock_object(self.share_manager, 'driver')
         self.share_manager.driver.driver_handles_share_servers = False
+        CustomException = type('CustomException', (Exception,), dict())
         self.mock_object(self.share_manager.driver,
                          'manage_existing',
                          mock.Mock(side_effect=CustomException))
@@ -2562,38 +2526,62 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY, share_id,
             {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
 
-    @ddt.data(
-        {'size': 1, 'replication_type': None},
-        {'size': 2, 'name': 'fake', 'replication_type': 'dr'},
-        {'size': 3, 'export_locations': ['foo', 'bar', 'quuz'],
-         'replication_type': 'writable'},
-    )
-    def test_manage_share_valid_share(self, driver_data):
+    def test_manage_share_incompatible_dhss(self):
+        self.mock_object(self.share_manager, 'driver')
+        self.share_manager.driver.driver_handles_share_servers = False
+        share = db_utils.create_share()
+        self.mock_object(share_types,
+                         'get_share_type_extra_specs',
+                         mock.Mock(return_value="True"))
+        self.assertRaises(
+            exception.InvalidShare, self.share_manager.manage_share,
+            self.context, share['id'], {})
+
+    @ddt.data({'dhss': True,
+               'driver_data': {'size': 1, 'replication_type': None}},
+              {'dhss': False,
+               'driver_data': {'size': 2, 'name': 'fake',
+                               'replication_type': 'dr'}},
+              {'dhss': False,
+               'driver_data': {'size': 3,
+                               'export_locations': ['foo', 'bar', 'quuz'],
+                               'replication_type': 'writable'}})
+    @ddt.unpack
+    def test_manage_share_valid_share(self, dhss, driver_data):
+        self.mock_object(self.share_manager, 'driver')
+        self.share_manager.driver.driver_handles_share_servers = dhss
         replication_type = driver_data.pop('replication_type')
         export_locations = driver_data.get('export_locations')
         self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
-        self.mock_object(self.share_manager, 'driver', mock.Mock())
         self.mock_object(quota.QUOTAS, 'reserve', mock.Mock())
         self.mock_object(
             self.share_manager.db,
             'share_export_locations_update',
             mock.Mock(side_effect=(
                 self.share_manager.db.share_export_locations_update)))
-        self.share_manager.driver.driver_handles_share_servers = False
         self.mock_object(share_types,
                          'get_share_type_extra_specs',
-                         mock.Mock(return_value='False'))
-        self.mock_object(self.share_manager.driver,
-                         "manage_existing",
-                         mock.Mock(return_value=driver_data))
+                         mock.Mock(return_value=six.text_type(dhss)))
+        if dhss:
+            mock_manage = self.mock_object(
+                self.share_manager.driver,
+                "manage_existing_with_server",
+                mock.Mock(return_value=driver_data))
+        else:
+            mock_manage = self.mock_object(
+                self.share_manager.driver,
+                "manage_existing",
+                mock.Mock(return_value=driver_data))
         share = db_utils.create_share(replication_type=replication_type)
         share_id = share['id']
         driver_options = {'fake': 'fake'}
 
         self.share_manager.manage_share(self.context, share_id, driver_options)
 
-        (self.share_manager.driver.manage_existing.
-            assert_called_once_with(mock.ANY, driver_options))
+        if dhss:
+            mock_manage.assert_called_once_with(mock.ANY, driver_options, None)
+        else:
+            mock_manage.assert_called_once_with(mock.ANY, driver_options)
         if export_locations:
             (self.share_manager.db.share_export_locations_update.
                 assert_called_once_with(
@@ -2646,35 +2634,26 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.quota_usage_create.assert_called_once_with(
             mock.ANY, project_id, mock.ANY, resource_name, usage)
 
-    def _setup_unmanage_mocks(self, mock_driver=True, mock_unmanage=None):
+    def _setup_unmanage_mocks(self, mock_driver=True, mock_unmanage=None,
+                              dhss=False):
         if mock_driver:
             self.mock_object(self.share_manager, 'driver')
 
         if mock_unmanage:
-            self.mock_object(self.share_manager.driver, "unmanage",
-                             mock_unmanage)
+            if dhss:
+                self.mock_object(
+                    self.share_manager.driver, "unmanage_with_share_server",
+                    mock_unmanage)
+            else:
+                self.mock_object(self.share_manager.driver, "unmanage",
+                                 mock_unmanage)
 
         self.mock_object(self.share_manager.db, 'share_update')
         self.mock_object(self.share_manager.db, 'share_instance_delete')
 
-    @ddt.data(True, False)
-    def test_unmanage_share_invalid_driver(self, driver_handles_share_servers):
-        self._setup_unmanage_mocks()
-        self.share_manager.driver.driver_handles_share_servers = (
-            driver_handles_share_servers
-        )
-        share_net = db_utils.create_share_network()
-        share_srv = db_utils.create_share_server(
-            share_network_id=share_net['id'], host=self.share_manager.host)
-        share = db_utils.create_share(share_network_id=share_net['id'],
-                                      share_server_id=share_srv['id'])
-
-        self.share_manager.unmanage_share(self.context, share['id'])
-
-        self.share_manager.db.share_update.assert_called_once_with(
-            mock.ANY, share['id'], {'status': constants.STATUS_UNMANAGE_ERROR})
-
     def test_unmanage_share_invalid_share(self):
+        self.mock_object(self.share_manager, 'driver')
+        self.share_manager.driver.driver_handles_share_servers = False
         unmanage = mock.Mock(side_effect=exception.InvalidShare(reason="fake"))
         self._setup_unmanage_mocks(mock_driver=False, mock_unmanage=unmanage)
         share = db_utils.create_share()
@@ -2685,22 +2664,52 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY, share['id'], {'status': constants.STATUS_UNMANAGE_ERROR})
 
     def test_unmanage_share_valid_share(self):
-        manager.CONF.set_default('driver_handles_share_servers', False)
+        self.mock_object(self.share_manager, 'driver')
+        self.share_manager.driver.driver_handles_share_servers = False
         self._setup_unmanage_mocks(mock_driver=False,
                                    mock_unmanage=mock.Mock())
         share = db_utils.create_share()
         share_id = share['id']
         share_instance_id = share.instance['id']
+        self.mock_object(self.share_manager.db, 'share_instance_get',
+                         mock.Mock(return_value=share.instance))
 
         self.share_manager.unmanage_share(self.context, share_id)
 
         (self.share_manager.driver.unmanage.
-            assert_called_once_with(mock.ANY))
+            assert_called_once_with(share.instance))
         self.share_manager.db.share_instance_delete.assert_called_once_with(
             mock.ANY, share_instance_id)
 
+    def test_unmanage_share_valid_share_with_share_server(self):
+        self.mock_object(self.share_manager, 'driver')
+        self.share_manager.driver.driver_handles_share_servers = True
+        self._setup_unmanage_mocks(mock_driver=False,
+                                   mock_unmanage=mock.Mock(),
+                                   dhss=True)
+        server = db_utils.create_share_server(id='fake_server_id')
+        share = db_utils.create_share(share_server_id='fake_server_id')
+        self.mock_object(self.share_manager.db, 'share_server_update')
+        self.mock_object(self.share_manager.db, 'share_server_get',
+                         mock.Mock(return_value=server))
+        self.mock_object(self.share_manager.db, 'share_instance_get',
+                         mock.Mock(return_value=share.instance))
+
+        share_id = share['id']
+        share_instance_id = share.instance['id']
+
+        self.share_manager.unmanage_share(self.context, share_id)
+
+        (self.share_manager.driver.unmanage_with_server.
+            assert_called_once_with(share.instance, server))
+        self.share_manager.db.share_instance_delete.assert_called_once_with(
+            mock.ANY, share_instance_id)
+        self.share_manager.db.share_server_update.assert_called_once_with(
+            mock.ANY, server['id'], {'is_auto_deletable': False})
+
     def test_unmanage_share_valid_share_with_quota_error(self):
-        manager.CONF.set_default('driver_handles_share_servers', False)
+        self.mock_object(self.share_manager, 'driver')
+        self.share_manager.driver.driver_handles_share_servers = False
         self._setup_unmanage_mocks(mock_driver=False,
                                    mock_unmanage=mock.Mock())
         self.mock_object(quota.QUOTAS, 'reserve',
@@ -2710,13 +2719,13 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.unmanage_share(self.context, share['id'])
 
-        (self.share_manager.driver.unmanage.
-            assert_called_once_with(mock.ANY))
+        self.share_manager.driver.unmanage.assert_called_once_with(mock.ANY)
         self.share_manager.db.share_instance_delete.assert_called_once_with(
             mock.ANY, share_instance_id)
 
     def test_unmanage_share_remove_access_rules_error(self):
-        manager.CONF.set_default('driver_handles_share_servers', False)
+        self.mock_object(self.share_manager, 'driver')
+        self.share_manager.driver.driver_handles_share_servers = False
         manager.CONF.unmanage_remove_access_rules = True
         self._setup_unmanage_mocks(mock_driver=False,
                                    mock_unmanage=mock.Mock())
@@ -2734,7 +2743,8 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY, share['id'], {'status': constants.STATUS_UNMANAGE_ERROR})
 
     def test_unmanage_share_valid_share_remove_access_rules(self):
-        manager.CONF.set_default('driver_handles_share_servers', False)
+        self.mock_object(self.share_manager, 'driver')
+        self.share_manager.driver.driver_handles_share_servers = False
         manager.CONF.unmanage_remove_access_rules = True
         self._setup_unmanage_mocks(mock_driver=False,
                                    mock_unmanage=mock.Mock())
@@ -3010,7 +3020,8 @@ class ShareManagerTestCase(test.TestCase):
             ]))
         self.share_manager.db.share_server_update.assert_called_once_with(
             self.context, share_server['id'],
-            {'status': constants.STATUS_ACTIVE})
+            {'status': constants.STATUS_ACTIVE,
+             'identifier': share_server['id']})
 
     def test_setup_server_server_info_not_present(self):
         # Setup required test data
@@ -3053,7 +3064,8 @@ class ShareManagerTestCase(test.TestCase):
             network_info, metadata=metadata)
         self.share_manager.db.share_server_update.assert_called_once_with(
             self.context, share_server['id'],
-            {'status': constants.STATUS_ACTIVE})
+            {'status': constants.STATUS_ACTIVE,
+             'identifier': share_server['id']})
         self.share_manager.driver.allocate_network.assert_called_once_with(
             self.context, share_server, share_network)
 
@@ -5527,53 +5539,237 @@ class ShareManagerTestCase(test.TestCase):
         (self.share_manager._create_share_server_in_backend.
          assert_called_once_with(self.context, server))
 
-    def test_manage_snapshot_invalid_driver_mode(self):
-        self.mock_object(self.share_manager, 'driver')
-        self.share_manager.driver.driver_handles_share_servers = True
-        share = db_utils.create_share()
-        snapshot = db_utils.create_snapshot(share_id=share['id'])
-        driver_options = {'fake': 'fake'}
+    @ddt.data({'admin_network_api': mock.Mock(),
+               'driver_return': ('new_identifier', {'some_id': 'some_value'})},
+              {'admin_network_api': None,
+               'driver_return': (None, None)})
+    @ddt.unpack
+    def test_manage_share_server(self, admin_network_api, driver_return):
+        driver_opts = {}
+        fake_share_server = fakes.fake_share_server_get()
+        fake_list_network_info = [{}, {}]
+        fake_list_empty_network_info = []
+        identifier = 'fake_id'
+        ss_data = {
+            'name': 'fake_name',
+            'ou': 'fake_ou',
+            'domain': 'fake_domain',
+            'server': 'fake_server',
+            'dns_ip': 'fake_dns_ip',
+            'user': 'fake_user',
+            'type': 'FAKE',
+            'password': 'fake_pass',
+        }
+        mock_manage_admin_network_allocations = mock.Mock()
+        share_server = db_utils.create_share_server(**fake_share_server)
+        security_service = db_utils.create_security_service(**ss_data)
+        share_network = db_utils.create_share_network()
+        db.share_network_add_security_service(context.get_admin_context(),
+                                              share_network['id'],
+                                              security_service['id'])
+        share_network = db.share_network_get(context.get_admin_context(),
+                                             share_network['id'])
+        self.share_manager.driver._admin_network_api = admin_network_api
 
-        self.assertRaises(
-            exception.InvalidDriverMode,
-            self.share_manager.manage_snapshot, self.context,
-            snapshot['id'], driver_options)
+        mock_share_server_update = self.mock_object(
+            db, 'share_server_update')
+        mock_share_server_get = self.mock_object(
+            db, 'share_server_get', mock.Mock(return_value=share_server))
+        mock_share_network_get = self.mock_object(
+            db, 'share_network_get', mock.Mock(return_value=share_network))
+        mock_network_allocations_get = self.mock_object(
+            self.share_manager.driver, 'get_network_allocations_number',
+            mock.Mock(return_value=1))
+        mock_share_server_net_info = self.mock_object(
+            self.share_manager.driver, 'get_share_server_network_info',
+            mock.Mock(return_value=fake_list_network_info))
+        mock_manage_network_allocations = self.mock_object(
+            self.share_manager.driver.network_api,
+            'manage_network_allocations',
+            mock.Mock(return_value=fake_list_empty_network_info))
+        mock_manage_server = self.mock_object(
+            self.share_manager.driver, 'manage_server',
+            mock.Mock(return_value=driver_return))
+        mock_set_backend_details = self.mock_object(
+            db, 'share_server_backend_details_set')
 
-    def test_manage_snapshot_invalid_snapshot(self):
-        fake_share_server = 'fake_share_server'
+        ss_from_db = share_network['security_services'][0]
+        ss_data_from_db = {
+            'name': ss_from_db['name'],
+            'ou': ss_from_db['ou'],
+            'domain': ss_from_db['domain'],
+            'server': ss_from_db['server'],
+            'dns_ip': ss_from_db['dns_ip'],
+            'user': ss_from_db['user'],
+            'type': ss_from_db['type'],
+            'password': ss_from_db['password'],
+        }
+
+        expected_backend_details = {
+            'security_service_FAKE': jsonutils.dumps(ss_data_from_db),
+        }
+        if driver_return[1]:
+            expected_backend_details.update(driver_return[1])
+
+        if admin_network_api is not None:
+            mock_manage_admin_network_allocations = self.mock_object(
+                self.share_manager.driver.admin_network_api,
+                'manage_network_allocations',
+                mock.Mock(return_value=fake_list_network_info))
+
+        self.share_manager.manage_share_server(self.context,
+                                               fake_share_server['id'],
+                                               identifier,
+                                               driver_opts)
+
+        mock_share_server_get.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_share_server['id']
+        )
+        mock_share_network_get.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            fake_share_server['share_network_id']
+        )
+        mock_network_allocations_get.assert_called_once_with()
+        mock_share_server_net_info.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), share_server, identifier,
+            driver_opts
+        )
+        mock_manage_network_allocations.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            fake_list_network_info, share_server, share_network
+        )
+        mock_manage_server.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), share_server, identifier,
+            driver_opts
+        )
+        mock_share_server_update.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_share_server['id'],
+            {'status': constants.STATUS_ACTIVE,
+             'identifier': driver_return[0] or share_server['id']}
+        )
+        mock_set_backend_details.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), share_server['id'],
+            expected_backend_details
+        )
+        if admin_network_api is not None:
+            mock_manage_admin_network_allocations.assert_called_once_with(
+                utils.IsAMatcher(context.RequestContext),
+                fake_list_network_info, share_server
+            )
+
+    def test_manage_share_server_dhss_false(self):
         self.mock_object(self.share_manager, 'driver')
         self.share_manager.driver.driver_handles_share_servers = False
-        mock_get_share_server = self.mock_object(
-            self.share_manager,
-            '_get_share_server',
-            mock.Mock(return_value=fake_share_server))
-        share = db_utils.create_share()
-        snapshot = db_utils.create_snapshot(share_id=share['id'])
-        driver_options = {'fake': 'fake'}
-        mock_get = self.mock_object(self.share_manager.db,
-                                    'share_snapshot_get',
-                                    mock.Mock(return_value=snapshot))
-
         self.assertRaises(
-            exception.InvalidShareSnapshot,
-            self.share_manager.manage_snapshot, self.context,
-            snapshot['id'], driver_options)
+            exception.ManageShareServerError,
+            self.share_manager.manage_share_server,
+            self.context, "fake_id", "foo", {})
 
-        mock_get.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), snapshot['id'])
-        mock_get_share_server.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), snapshot['share'])
+    def test_manage_share_server_without_allocations(self):
+
+        driver_opts = {}
+        fake_share_server = fakes.fake_share_server_get()
+        fake_list_empty_network_info = []
+        identifier = 'fake_id'
+        share_server = db_utils.create_share_server(**fake_share_server)
+        share_network = db_utils.create_share_network()
+        self.share_manager.driver._admin_network_api = mock.Mock()
+
+        mock_share_server_get = self.mock_object(
+            db, 'share_server_get', mock.Mock(return_value=share_server))
+        mock_share_network_get = self.mock_object(
+            db, 'share_network_get', mock.Mock(return_value=share_network))
+        mock_network_allocations_get = self.mock_object(
+            self.share_manager.driver, 'get_network_allocations_number',
+            mock.Mock(return_value=1))
+        mock_get_share_network_info = self.mock_object(
+            self.share_manager.driver, 'get_share_server_network_info',
+            mock.Mock(return_value=fake_list_empty_network_info))
+
+        self.assertRaises(exception.ManageShareServerError,
+                          self.share_manager.manage_share_server,
+                          context=self.context,
+                          share_server_id=fake_share_server['id'],
+                          identifier=identifier,
+                          driver_opts=driver_opts)
+        mock_share_server_get.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_share_server['id']
+        )
+        mock_share_network_get.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            fake_share_server['share_network_id']
+        )
+        mock_network_allocations_get.assert_called_once_with()
+        mock_get_share_network_info.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), share_server, identifier,
+            driver_opts
+        )
+
+    def test_manage_share_server_allocations_not_managed(self):
+        driver_opts = {}
+        fake_share_server = fakes.fake_share_server_get()
+        fake_list_network_info = [{}, {}]
+        identifier = 'fake_id'
+        share_server = db_utils.create_share_server(**fake_share_server)
+        share_network = db_utils.create_share_network()
+        self.share_manager.driver._admin_network_api = mock.Mock()
+
+        mock_share_server_get = self.mock_object(
+            db, 'share_server_get', mock.Mock(return_value=share_server))
+        mock_share_network_get = self.mock_object(
+            db, 'share_network_get', mock.Mock(return_value=share_network))
+        mock_network_allocations_get = self.mock_object(
+            self.share_manager.driver, 'get_network_allocations_number',
+            mock.Mock(return_value=1))
+        mock_get_share_network_info = self.mock_object(
+            self.share_manager.driver, 'get_share_server_network_info',
+            mock.Mock(return_value=fake_list_network_info))
+        mock_manage_admin_network_allocations = self.mock_object(
+            self.share_manager.driver.admin_network_api,
+            'manage_network_allocations',
+            mock.Mock(return_value=fake_list_network_info))
+        mock_manage_network_allocations = self.mock_object(
+            self.share_manager.driver.network_api,
+            'manage_network_allocations',
+            mock.Mock(return_value=fake_list_network_info))
+
+        self.assertRaises(exception.ManageShareServerError,
+                          self.share_manager.manage_share_server,
+                          context=self.context,
+                          share_server_id=fake_share_server['id'],
+                          identifier=identifier,
+                          driver_opts=driver_opts)
+        mock_share_server_get.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_share_server['id']
+        )
+        mock_share_network_get.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            fake_share_server['share_network_id']
+        )
+        mock_network_allocations_get.assert_called_once_with()
+        mock_get_share_network_info.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), share_server, identifier,
+            driver_opts
+        )
+        mock_manage_admin_network_allocations.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            fake_list_network_info, share_server
+        )
+        mock_manage_network_allocations.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            fake_list_network_info, share_server, share_network
+        )
 
     def test_manage_snapshot_driver_exception(self):
         CustomException = type('CustomException', (Exception,), {})
         self.mock_object(self.share_manager, 'driver')
         self.share_manager.driver.driver_handles_share_servers = False
+        self.mock_object(share_types,
+                         'get_share_type_extra_specs',
+                         mock.Mock(return_value="False"))
         mock_manage = self.mock_object(self.share_manager.driver,
                                        'manage_existing_snapshot',
                                        mock.Mock(side_effect=CustomException))
-        mock_get_share_server = self.mock_object(self.share_manager,
-                                                 '_get_share_server',
-                                                 mock.Mock(return_value=None))
         share = db_utils.create_share()
         snapshot = db_utils.create_snapshot(share_id=share['id'])
         driver_options = {}
@@ -5589,35 +5785,259 @@ class ShareManagerTestCase(test.TestCase):
         mock_manage.assert_called_once_with(mock.ANY, driver_options)
         mock_get.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), snapshot['id'])
-        mock_get_share_server.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), snapshot['share'])
 
-    @ddt.data({'driver_data': {'size': 1}, 'mount_snapshot_support': False},
-              {'driver_data': {'size': 2, 'name': 'fake'},
+    def test_unmanage_share_server_no_allocations(self):
+
+        fake_share_server = fakes.fake_share_server_get()
+
+        ss_list = [
+            {'name': 'fake_AD'},
+            {'name': 'fake_LDAP'},
+            {'name': 'fake_kerberos'}
+        ]
+
+        db_utils.create_share_server(**fake_share_server)
+        self.mock_object(self.share_manager.driver, 'unmanage_server',
+                         mock.Mock(side_effect=NotImplementedError()))
+        self.mock_object(self.share_manager.db, 'share_server_delete')
+
+        mock_network_allocations_number = self.mock_object(
+            self.share_manager.driver, 'get_network_allocations_number',
+            mock.Mock(return_value=0)
+        )
+        mock_admin_network_allocations_number = self.mock_object(
+            self.share_manager.driver, 'get_admin_network_allocations_number',
+            mock.Mock(return_value=0)
+        )
+
+        self.share_manager.unmanage_share_server(
+            self.context, fake_share_server['id'], True)
+
+        mock_network_allocations_number.assert_called_once_with()
+        mock_admin_network_allocations_number.assert_called_once_with()
+
+        self.share_manager.driver.unmanage_server.assert_called_once_with(
+            fake_share_server['backend_details'], ss_list)
+        self.share_manager.db.share_server_delete.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_share_server['id'])
+
+    def test_unmanage_share_server_no_allocations_driver_not_implemented(self):
+
+        fake_share_server = fakes.fake_share_server_get()
+        fake_share_server['status'] = constants.STATUS_UNMANAGING
+        ss_list = [
+            {'name': 'fake_AD'},
+            {'name': 'fake_LDAP'},
+            {'name': 'fake_kerberos'}
+        ]
+        db_utils.create_share_server(**fake_share_server)
+        self.mock_object(self.share_manager.driver, 'unmanage_server',
+                         mock.Mock(side_effect=NotImplementedError()))
+        self.mock_object(self.share_manager.db, 'share_server_update')
+
+        self.share_manager.unmanage_share_server(
+            self.context, fake_share_server['id'], False)
+
+        self.share_manager.driver.unmanage_server.assert_called_once_with(
+            fake_share_server['backend_details'], ss_list)
+
+        self.share_manager.db.share_server_update.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_share_server['id'],
+            {'status': constants.STATUS_UNMANAGE_ERROR})
+
+    def test_unmanage_share_server_with_network_allocations(self):
+
+        fake_share_server = fakes.fake_share_server_get()
+        db_utils.create_share_server(**fake_share_server)
+
+        mock_unmanage_network_allocations = self.mock_object(
+            self.share_manager.driver.network_api,
+            'unmanage_network_allocations'
+        )
+        mock_network_allocations_number = self.mock_object(
+            self.share_manager.driver, 'get_network_allocations_number',
+            mock.Mock(return_value=1)
+        )
+
+        self.share_manager.unmanage_share_server(
+            self.context, fake_share_server['id'], True)
+        mock_network_allocations_number.assert_called_once_with()
+        mock_unmanage_network_allocations.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_share_server['id'])
+
+    def test_unmanage_share_server_with_admin_network_allocations(self):
+
+        fake_share_server = fakes.fake_share_server_get()
+        db_utils.create_share_server(**fake_share_server)
+
+        mock_admin_network_allocations_number = self.mock_object(
+            self.share_manager.driver, 'get_admin_network_allocations_number',
+            mock.Mock(return_value=1)
+        )
+        mock_network_allocations_number = self.mock_object(
+            self.share_manager.driver, 'get_network_allocations_number',
+            mock.Mock(return_value=0)
+        )
+
+        self.share_manager.driver._admin_network_api = mock.Mock()
+        self.share_manager.unmanage_share_server(
+            self.context, fake_share_server['id'], True)
+
+        mock_admin_network_allocations_number.assert_called_once_with()
+        mock_network_allocations_number.assert_called_once_with()
+
+    def test_unmanage_share_server_error(self):
+
+        fake_share_server = fakes.fake_share_server_get()
+        db_utils.create_share_server(**fake_share_server)
+
+        mock_network_allocations_number = self.mock_object(
+            self.share_manager.driver, 'get_network_allocations_number',
+            mock.Mock(return_value=1)
+        )
+        error = mock.Mock(
+            side_effect=exception.ShareServerNotFound(share_server_id="fake"))
+
+        mock_share_server_delete = self.mock_object(
+            db, 'share_server_delete', error
+        )
+        mock_share_server_update = self.mock_object(
+            db, 'share_server_update'
+        )
+        self.share_manager.driver._admin_network_api = mock.Mock()
+
+        self.assertRaises(exception.ShareServerNotFound,
+                          self.share_manager.unmanage_share_server,
+                          self.context,
+                          fake_share_server['id'],
+                          True)
+        mock_network_allocations_number.assert_called_once_with()
+        mock_share_server_delete.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_share_server['id']
+        )
+        mock_share_server_update.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_share_server['id'],
+            {'status': constants.STATUS_UNMANAGE_ERROR}
+        )
+
+    def test_unmanage_share_server_network_allocations_error(self):
+
+        fake_share_server = fakes.fake_share_server_get()
+        db_utils.create_share_server(**fake_share_server)
+
+        mock_network_allocations_number = self.mock_object(
+            self.share_manager.driver, 'get_network_allocations_number',
+            mock.Mock(return_value=1)
+        )
+        error = mock.Mock(
+            side_effect=exception.ShareNetworkNotFound(share_network_id="fake")
+        )
+        mock_unmanage_network_allocations = self.mock_object(
+            self.share_manager.driver.network_api,
+            'unmanage_network_allocations', error)
+
+        mock_share_server_update = self.mock_object(
+            db, 'share_server_update'
+        )
+        self.share_manager.driver._admin_network_api = mock.Mock()
+
+        self.assertRaises(exception.ShareNetworkNotFound,
+                          self.share_manager.unmanage_share_server,
+                          self.context,
+                          fake_share_server['id'],
+                          True)
+
+        mock_network_allocations_number.assert_called_once_with()
+        mock_unmanage_network_allocations.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_share_server['id']
+        )
+        mock_share_server_update.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_share_server['id'],
+            {'status': constants.STATUS_UNMANAGE_ERROR}
+        )
+
+    def test_unmanage_share_server_admin_network_allocations_error(self):
+
+        fake_share_server = fakes.fake_share_server_get()
+        db_utils.create_share_server(**fake_share_server)
+        self.share_manager.driver._admin_network_api = mock.Mock()
+
+        mock_network_allocations_number = self.mock_object(
+            self.share_manager.driver, 'get_network_allocations_number',
+            mock.Mock(return_value=0)
+        )
+        mock_admin_network_allocations_number = self.mock_object(
+            self.share_manager.driver, 'get_admin_network_allocations_number',
+            mock.Mock(return_value=1)
+        )
+        error = mock.Mock(
+            side_effect=exception.ShareNetworkNotFound(share_network_id="fake")
+        )
+        mock_unmanage_admin_network_allocations = self.mock_object(
+            self.share_manager.driver._admin_network_api,
+            'unmanage_network_allocations', error
+        )
+        mock_unmanage_network_allocations = self.mock_object(
+            self.share_manager.driver.network_api,
+            'unmanage_network_allocations', error)
+
+        mock_share_server_update = self.mock_object(
+            db, 'share_server_update'
+        )
+
+        self.assertRaises(exception.ShareNetworkNotFound,
+                          self.share_manager.unmanage_share_server,
+                          self.context,
+                          fake_share_server['id'],
+                          True)
+        mock_network_allocations_number.assert_called_once_with()
+        mock_admin_network_allocations_number.assert_called_once_with()
+        mock_unmanage_network_allocations.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_share_server['id']
+        )
+        mock_unmanage_admin_network_allocations.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_share_server['id']
+        )
+        mock_share_server_update.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_share_server['id'],
+            {'status': constants.STATUS_UNMANAGE_ERROR}
+        )
+
+    @ddt.data({'dhss': True, 'driver_data': {'size': 1},
                'mount_snapshot_support': False},
-              {'driver_data': {'size': 3}, 'mount_snapshot_support': False},
-              {'driver_data': {'size': 3, 'export_locations': [
+              {'dhss': True, 'driver_data': {'size': 2, 'name': 'fake'},
+               'mount_snapshot_support': False},
+              {'dhss': False, 'driver_data': {'size': 3},
+               'mount_snapshot_support': False},
+              {'dhss': False, 'driver_data': {'size': 3, 'export_locations': [
                   {'path': '/path1', 'is_admin_only': True},
                   {'path': '/path2', 'is_admin_only': False}
               ]}, 'mount_snapshot_support': False},
-              {'driver_data': {'size': 3, 'export_locations': [
+              {'dhss': False, 'driver_data': {'size': 3, 'export_locations': [
                   {'path': '/path1', 'is_admin_only': True},
                   {'path': '/path2', 'is_admin_only': False}
               ]}, 'mount_snapshot_support': True})
     @ddt.unpack
     def test_manage_snapshot_valid_snapshot(
-            self, driver_data, mount_snapshot_support):
+            self, driver_data, mount_snapshot_support, dhss):
         mock_get_share_server = self.mock_object(self.share_manager,
                                                  '_get_share_server',
                                                  mock.Mock(return_value=None))
         self.mock_object(self.share_manager.db, 'share_snapshot_update')
         self.mock_object(self.share_manager, 'driver')
         self.mock_object(quota.QUOTAS, 'reserve', mock.Mock())
-        self.share_manager.driver.driver_handles_share_servers = False
-        mock_manage = self.mock_object(
-            self.share_manager.driver,
-            "manage_existing_snapshot",
-            mock.Mock(return_value=driver_data))
+        self.share_manager.driver.driver_handles_share_servers = dhss
+
+        if dhss:
+            mock_manage = self.mock_object(
+                self.share_manager.driver,
+                "manage_existing_snapshot_with_server",
+                mock.Mock(return_value=driver_data))
+        else:
+            mock_manage = self.mock_object(
+                self.share_manager.driver,
+                "manage_existing_snapshot",
+                mock.Mock(return_value=driver_data))
         size = driver_data['size']
         export_locations = driver_data.get('export_locations')
         share = db_utils.create_share(
@@ -5636,15 +6056,19 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.manage_snapshot(self.context, snapshot_id,
                                            driver_options)
 
-        mock_manage.assert_called_once_with(mock.ANY, driver_options)
+        if dhss:
+            mock_manage.assert_called_once_with(mock.ANY, driver_options, None)
+        else:
+            mock_manage.assert_called_once_with(mock.ANY, driver_options)
         valid_snapshot_data = {
             'status': constants.STATUS_AVAILABLE}
         valid_snapshot_data.update(driver_data)
         self.share_manager.db.share_snapshot_update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             snapshot_id, valid_snapshot_data)
-        mock_get_share_server.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), snapshot['share'])
+        if dhss:
+            mock_get_share_server.assert_called_once_with(
+                utils.IsAMatcher(context.RequestContext), snapshot['share'])
         mock_get.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), snapshot_id)
         if mount_snapshot_support and export_locations:
@@ -5659,48 +6083,6 @@ class ShareManagerTestCase(test.TestCase):
             ])
         else:
             mock_export_update.assert_not_called()
-
-    def test_unmanage_snapshot_invalid_driver_mode(self):
-        self.mock_object(self.share_manager, 'driver')
-        self.share_manager.driver.driver_handles_share_servers = True
-        share = db_utils.create_share()
-        snapshot = db_utils.create_snapshot(share_id=share['id'])
-        self.mock_object(self.share_manager.db, 'share_snapshot_update')
-
-        ret = self.share_manager.unmanage_snapshot(self.context,
-                                                   snapshot['id'])
-        self.assertIsNone(ret)
-        self.share_manager.db.share_snapshot_update.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext),
-            snapshot['id'],
-            {'status': constants.STATUS_UNMANAGE_ERROR})
-
-    def test_unmanage_snapshot_invalid_snapshot(self):
-        self.mock_object(self.share_manager, 'driver')
-        self.share_manager.driver.driver_handles_share_servers = False
-        mock_get_share_server = self.mock_object(
-            self.share_manager,
-            '_get_share_server',
-            mock.Mock(return_value='fake_share_server'))
-        self.mock_object(self.share_manager.db, 'share_snapshot_update')
-        share = db_utils.create_share()
-        snapshot = db_utils.create_snapshot(share_id=share['id'])
-        mock_get = self.mock_object(self.share_manager.db,
-                                    'share_snapshot_get',
-                                    mock.Mock(return_value=snapshot))
-
-        ret = self.share_manager.unmanage_snapshot(self.context,
-                                                   snapshot['id'])
-
-        self.assertIsNone(ret)
-        self.share_manager.db.share_snapshot_update.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext),
-            snapshot['id'],
-            {'status': constants.STATUS_UNMANAGE_ERROR})
-        mock_get.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), snapshot['id'])
-        mock_get_share_server.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), snapshot['share'])
 
     def test_unmanage_snapshot_invalid_share(self):
         manager.CONF.unmanage_remove_access_rules = False
@@ -5733,18 +6115,27 @@ class ShareManagerTestCase(test.TestCase):
         mock_get_share_server.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), snapshot['share'])
 
-    @ddt.data(False, True)
-    def test_unmanage_snapshot_valid_snapshot(self, quota_error):
+    @ddt.data({'dhss': False, 'quota_error': False},
+              {'dhss': True, 'quota_error': False},
+              {'dhss': False, 'quota_error': True},
+              {'dhss': True, 'quota_error': True})
+    @ddt.unpack
+    def test_unmanage_snapshot_valid_snapshot(self, dhss, quota_error):
         if quota_error:
             self.mock_object(quota.QUOTAS, 'reserve', mock.Mock(
                 side_effect=exception.ManilaException(message='error')))
         manager.CONF.unmanage_remove_access_rules = True
         mock_log_warning = self.mock_object(manager.LOG, 'warning')
         self.mock_object(self.share_manager, 'driver')
-        self.share_manager.driver.driver_handles_share_servers = False
+        self.share_manager.driver.driver_handles_share_servers = dhss
         mock_update_access = self.mock_object(
             self.share_manager.snapshot_access_helper, "update_access_rules")
-        self.mock_object(self.share_manager.driver, "unmanage_snapshot")
+        if dhss:
+            mock_unmanage = self.mock_object(
+                self.share_manager.driver, "unmanage_snapshot_with_server")
+        else:
+            mock_unmanage = self.mock_object(
+                self.share_manager.driver, "unmanage_snapshot")
         mock_get_share_server = self.mock_object(
             self.share_manager,
             '_get_share_server',
@@ -5762,8 +6153,10 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.unmanage_snapshot(self.context, snapshot['id'])
 
-        self.share_manager.driver.unmanage_snapshot.assert_called_once_with(
-            snapshot.instance)
+        if dhss:
+            mock_unmanage.assert_called_once_with(snapshot.instance, None)
+        else:
+            mock_unmanage.assert_called_once_with(snapshot.instance)
         mock_update_access.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), snapshot.instance['id'],
             delete_all_rules=True, share_server=None)

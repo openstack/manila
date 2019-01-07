@@ -12,7 +12,6 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
-import six
 from webob import exc
 
 from manila.api import common
@@ -29,7 +28,7 @@ from manila import utils
 class ShareManageMixin(object):
 
     @wsgi.Controller.authorize('manage')
-    def _manage(self, req, body):
+    def _manage(self, req, body, allow_dhss_true=False):
         context = req.environ['manila.context']
         share_data = self._validate_manage_parameters(context, body)
         share_data = common.validate_public_share_policy(context, share_data)
@@ -56,12 +55,17 @@ class ShareManageMixin(object):
 
         driver_options = share_data.get('driver_options', {})
 
+        if allow_dhss_true:
+            share['share_server_id'] = share_data.get('share_server_id')
+
         try:
             share_ref = self.share_api.manage(context, share, driver_options)
         except exception.PolicyNotAuthorized as e:
-            raise exc.HTTPForbidden(explanation=six.text_type(e))
-        except exception.InvalidShare as e:
-            raise exc.HTTPConflict(explanation=six.text_type(e))
+            raise exc.HTTPForbidden(explanation=e)
+        except (exception.InvalidShare, exception.InvalidShareServer) as e:
+            raise exc.HTTPConflict(explanation=e)
+        except exception.InvalidInput as e:
+            raise exc.HTTPBadRequest(explanation=e)
 
         return self._view_builder.detail(req, share_ref)
 
@@ -90,13 +94,13 @@ class ShareManageMixin(object):
             utils.validate_service_host(
                 context, share_utils.extract_host(data['service_host']))
         except exception.ServiceNotFound as e:
-            raise exc.HTTPNotFound(explanation=six.text_type(e))
+            raise exc.HTTPNotFound(explanation=e)
         except exception.PolicyNotAuthorized as e:
-            raise exc.HTTPForbidden(explanation=six.text_type(e))
+            raise exc.HTTPForbidden(explanation=e)
         except exception.AdminRequired as e:
-            raise exc.HTTPForbidden(explanation=six.text_type(e))
+            raise exc.HTTPForbidden(explanation=e)
         except exception.ServiceIsDown as e:
-            raise exc.HTTPBadRequest(explanation=six.text_type(e))
+            raise exc.HTTPBadRequest(explanation=e)
 
         data['share_type_id'] = self._get_share_type_id(
             context, data.get('share_type'))
@@ -110,7 +114,7 @@ class ShareManageMixin(object):
                                                              share_type)
             return stype['id']
         except exception.ShareTypeNotFound as e:
-            raise exc.HTTPNotFound(explanation=six.text_type(e))
+            raise exc.HTTPNotFound(explanation=e)
 
 
 class ShareManageController(ShareManageMixin, wsgi.Controller):

@@ -799,6 +799,21 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
                           self.controller.manage,
                           fake_req, body)
 
+    def test_snapshot__unmanage(self):
+        body = {}
+        snapshot = {'status': constants.STATUS_AVAILABLE, 'id': 'bar_id',
+                    'share_id': 'bar_id'}
+        fake_req = fakes.HTTPRequest.blank(
+            '/snapshots/unmanage',
+            use_admin_context=True,
+            version='2.49')
+        mock_unmanage = self.mock_object(self.controller, '_unmanage')
+
+        self.controller.unmanage(fake_req, snapshot['id'], body)
+
+        mock_unmanage.assert_called_once_with(fake_req, snapshot['id'], body,
+                                              allow_dhss_true=True)
+
     def test_snapshot_unmanage_share_server(self):
         self.mock_policy_check = self.mock_object(
             policy, 'check_policy', mock.Mock(return_value=True))
@@ -939,3 +954,33 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
         self.assertRaises(exception.VersionNotFoundForAPIMethod,
                           self.controller.unmanage,
                           fake_req, 'fake')
+
+    def test_snapshot_unmanage_dhss_true_with_share_server(self):
+        self.mock_policy_check = self.mock_object(
+            policy, 'check_policy', mock.Mock(return_value=True))
+        share = {'status': constants.STATUS_AVAILABLE, 'id': 'bar_id',
+                 'host': 'fake_host',
+                 'share_server_id': 'fake'}
+        mock_get = self.mock_object(share_api.API, 'get',
+                                    mock.Mock(return_value=share))
+        snapshot = {'status': constants.STATUS_AVAILABLE, 'id': 'bar_id',
+                    'share_id': 'bar_id'}
+        self.mock_object(share_api.API, 'get_snapshot',
+                         mock.Mock(return_value=snapshot))
+        self.mock_object(share_api.API, 'unmanage_snapshot')
+
+        actual_result = self.controller._unmanage(self.unmanage_request,
+                                                  snapshot['id'],
+                                                  allow_dhss_true=True)
+
+        self.assertEqual(202, actual_result.status_int)
+        self.controller.share_api.get_snapshot.assert_called_once_with(
+            self.unmanage_request.environ['manila.context'], snapshot['id'])
+        share_api.API.unmanage_snapshot.assert_called_once_with(
+            mock.ANY, snapshot, 'fake_host')
+        mock_get.assert_called_once_with(
+            self.unmanage_request.environ['manila.context'], snapshot['id']
+        )
+        self.mock_policy_check.assert_called_once_with(
+            self.unmanage_request.environ['manila.context'],
+            self.resource_name, 'unmanage_snapshot')

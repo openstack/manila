@@ -891,6 +891,7 @@ class ShareAPITestCase(test.TestCase):
                 'create_share_from_snapshot_support': False,
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
+                'driver_handles_share_servers': False,
             },
         }
 
@@ -938,6 +939,163 @@ class ShareAPITestCase(test.TestCase):
         self.scheduler_rpcapi.manage_share.assert_called_once_with(
             self.context, share['id'], driver_options, expected_request_spec)
 
+    @ddt.data((True, exception.InvalidInput, True),
+              (True, exception.InvalidInput, False),
+              (False, exception.InvalidInput, True),
+              (True, exception.InvalidInput, True))
+    @ddt.unpack
+    def test_manage_new_dhss_true_and_false(self, dhss, exception_type,
+                                            has_share_server_id):
+        share_data = {
+            'host': 'fake',
+            'export_location': 'fake',
+            'share_proto': 'fake',
+            'share_type_id': 'fake',
+        }
+        if has_share_server_id:
+            share_data['share_server_id'] = 'fake'
+
+        driver_options = {}
+        date = datetime.datetime(1, 1, 1, 1, 1, 1)
+        timeutils.utcnow.return_value = date
+        fake_type = {
+            'id': 'fake_type_id',
+            'extra_specs': {
+                'snapshot_support': False,
+                'create_share_from_snapshot_support': False,
+                'revert_to_snapshot_support': False,
+                'mount_snapshot_support': False,
+                'driver_handles_share_servers': dhss,
+            },
+        }
+
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=fake_type))
+        self.mock_object(self.api, 'get_all', mock.Mock(return_value=[]))
+
+        self.assertRaises(exception_type,
+                          self.api.manage,
+                          self.context,
+                          share_data=share_data,
+                          driver_options=driver_options
+                          )
+        share_types.get_share_type.assert_called_once_with(
+            self.context, share_data['share_type_id']
+        )
+        self.api.get_all.assert_called_once_with(
+            self.context, {
+                'host': share_data['host'],
+                'export_location': share_data['export_location'],
+                'share_proto': share_data['share_proto'],
+                'share_type_id': share_data['share_type_id']
+            }
+        )
+
+    def test_manage_new_share_server_not_found(self):
+        share_data = {
+            'host': 'fake',
+            'export_location': 'fake',
+            'share_proto': 'fake',
+            'share_type_id': 'fake',
+            'share_server_id': 'fake'
+
+        }
+        driver_options = {}
+        date = datetime.datetime(1, 1, 1, 1, 1, 1)
+        timeutils.utcnow.return_value = date
+
+        fake_type = {
+            'id': 'fake_type_id',
+            'extra_specs': {
+                'snapshot_support': False,
+                'replication_type': 'dr',
+                'create_share_from_snapshot_support': False,
+                'revert_to_snapshot_support': False,
+                'mount_snapshot_support': False,
+                'driver_handles_share_servers': True,
+            },
+        }
+
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=fake_type))
+        self.mock_object(self.api, 'get_all', mock.Mock(return_value=[]))
+
+        self.assertRaises(exception.InvalidInput,
+                          self.api.manage,
+                          self.context,
+                          share_data=share_data,
+                          driver_options=driver_options
+                          )
+        share_types.get_share_type.assert_called_once_with(
+            self.context, share_data['share_type_id']
+        )
+        self.api.get_all.assert_called_once_with(
+            self.context, {
+                'host': share_data['host'],
+                'export_location': share_data['export_location'],
+                'share_proto': share_data['share_proto'],
+                'share_type_id': share_data['share_type_id']
+            }
+        )
+
+    def test_manage_new_share_server_not_active(self):
+        share_data = {
+            'host': 'fake',
+            'export_location': 'fake',
+            'share_proto': 'fake',
+            'share_type_id': 'fake',
+            'share_server_id': 'fake'
+
+        }
+        fake_share_data = {
+            'id': 'fakeid',
+            'status': constants.STATUS_ERROR,
+        }
+        driver_options = {}
+        date = datetime.datetime(1, 1, 1, 1, 1, 1)
+        timeutils.utcnow.return_value = date
+
+        fake_type = {
+            'id': 'fake_type_id',
+            'extra_specs': {
+                'snapshot_support': False,
+                'replication_type': 'dr',
+                'create_share_from_snapshot_support': False,
+                'revert_to_snapshot_support': False,
+                'mount_snapshot_support': False,
+                'driver_handles_share_servers': True,
+            },
+        }
+
+        share = db_api.share_create(self.context, fake_share_data)
+
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=fake_type))
+        self.mock_object(self.api, 'get_all', mock.Mock(return_value=[]))
+        self.mock_object(db_api, 'share_server_get',
+                         mock.Mock(return_value=share))
+
+        self.assertRaises(exception.InvalidShareServer,
+                          self.api.manage,
+                          self.context,
+                          share_data=share_data,
+                          driver_options=driver_options
+                          )
+        share_types.get_share_type.assert_called_once_with(
+            self.context, share_data['share_type_id']
+        )
+        self.api.get_all.assert_called_once_with(
+            self.context, {
+                'host': share_data['host'],
+                'export_location': share_data['export_location'],
+                'share_proto': share_data['share_proto'],
+                'share_type_id': share_data['share_type_id']
+            }
+        )
+        db_api.share_server_get.assert_called_once_with(
+            self.context, share_data['share_server_id']
+        )
+
     @ddt.data(constants.STATUS_MANAGE_ERROR, constants.STATUS_AVAILABLE)
     def test_manage_duplicate(self, status):
         share_data = {
@@ -952,6 +1110,7 @@ class ShareAPITestCase(test.TestCase):
             'extra_specs': {
                 'snapshot_support': False,
                 'create_share_from_snapshot_support': False,
+                'driver_handles_share_servers': False,
             },
         }
         shares = [{'id': 'fake', 'status': status}]
@@ -1222,6 +1381,82 @@ class ShareAPITestCase(test.TestCase):
         mock_rpc_call.assert_called_once_with(
             self.context, snapshot, share_ref['host'], {})
 
+    def test_manage_share_server(self):
+        """Tests manage share server"""
+        host = 'fake_host'
+        fake_share_network = {
+            'id': 'fake_net_id'
+        }
+        identifier = 'fake_identifier'
+        values = {
+            'host': host,
+            'share_network_id': fake_share_network['id'],
+            'status': constants.STATUS_MANAGING,
+            'is_auto_deletable': False,
+            'identifier': identifier,
+        }
+
+        server_managing = {
+            'id': 'fake_server_id',
+            'status': constants.STATUS_MANAGING,
+            'host': host,
+            'share_network_id': fake_share_network['id'],
+            'is_auto_deletable': False,
+            'identifier': identifier,
+        }
+
+        mock_share_server_search = self.mock_object(
+            db_api, 'share_server_search_by_identifier',
+            mock.Mock(side_effect=exception.ShareServerNotFound('fake')))
+
+        mock_share_server_get = self.mock_object(
+            db_api, 'share_server_get',
+            mock.Mock(
+                return_value=server_managing)
+        )
+        mock_share_server_create = self.mock_object(
+            db_api, 'share_server_create',
+            mock.Mock(return_value=server_managing)
+        )
+        result = self.api.manage_share_server(
+            self.context, 'fake_identifier', host, fake_share_network,
+            {'opt1': 'val1', 'opt2': 'val2'}
+        )
+
+        mock_share_server_create.assert_called_once_with(
+            self.context, values)
+
+        mock_share_server_get.assert_called_once_with(
+            self.context, 'fake_server_id')
+
+        mock_share_server_search.assert_called_once_with(
+            self.context, 'fake_identifier')
+
+        result_dict = {
+            'host': result['host'],
+            'share_network_id': result['share_network_id'],
+            'status': result['status'],
+            'is_auto_deletable': result['is_auto_deletable'],
+            'identifier': result['identifier'],
+        }
+        self.assertEqual(values, result_dict)
+
+    def test_manage_share_server_invalid(self):
+
+        server = {'identifier': 'fake_server'}
+
+        mock_share_server_search = self.mock_object(
+            db_api, 'share_server_search_by_identifier',
+            mock.Mock(return_value=[server]))
+
+        self.assertRaises(
+            exception.InvalidInput, self.api.manage_share_server,
+            self.context, 'invalid_identifier', 'fake_host', 'fake_share_net',
+            {})
+
+        mock_share_server_search.assert_called_once_with(
+            self.context, 'invalid_identifier')
+
     def test_unmanage_snapshot(self):
         fake_host = 'fake_host'
         snapshot_data = {
@@ -1243,6 +1478,83 @@ class ShareAPITestCase(test.TestCase):
             self.context, snapshot['id'], snapshot_data)
         mock_rpc_call.assert_called_once_with(
             self.context, snapshot, fake_host)
+
+    def test_unmanage_share_server(self):
+        shr1 = {}
+        share_server = db_utils.create_share_server(**shr1)
+        update_data = {'status': constants.STATUS_UNMANAGING,
+                       'terminated_at': timeutils.utcnow()}
+
+        mock_share_instances_get_all = self.mock_object(
+            db_api, 'share_instances_get_all_by_share_server',
+            mock.Mock(return_value={}))
+        mock_share_group_get_all = self.mock_object(
+            db_api, 'share_group_get_all_by_share_server',
+            mock.Mock(return_value={}))
+        mock_share_server_update = self.mock_object(
+            db_api, 'share_server_update',
+            mock.Mock(return_value=share_server))
+
+        mock_rpc = self.mock_object(
+            self.api.share_rpcapi, 'unmanage_share_server')
+
+        self.api.unmanage_share_server(self.context, share_server, True)
+
+        mock_share_instances_get_all.assert_called_once_with(
+            self.context, share_server['id']
+        )
+        mock_share_group_get_all.assert_called_once_with(
+            self.context, share_server['id']
+        )
+        mock_share_server_update.assert_called_once_with(
+            self.context, share_server['id'], update_data
+        )
+
+        mock_rpc.assert_called_once_with(
+            self.context, share_server, force=True)
+
+    def test_unmanage_share_server_in_use(self):
+        fake_share = db_utils.create_share()
+        fake_share_server = db_utils.create_share_server()
+
+        fake_share_instance = db_utils.create_share_instance(
+            share_id=fake_share['id'])
+        share_instance_get_all_mock = self.mock_object(
+            db_api, 'share_instances_get_all_by_share_server',
+            mock.Mock(return_value=fake_share_instance)
+        )
+
+        self.assertRaises(exception.ShareServerInUse,
+                          self.api.unmanage_share_server,
+                          self.context,
+                          fake_share_server, True)
+        share_instance_get_all_mock.assert_called_once_with(
+            self.context, fake_share_server['id']
+        )
+
+    def test_unmanage_share_server_in_use_share_groups(self):
+        fake_share_server = db_utils.create_share_server()
+        fake_share_groups = db_utils.create_share_group()
+
+        share_instance_get_all_mock = self.mock_object(
+            db_api, 'share_instances_get_all_by_share_server',
+            mock.Mock(return_value={})
+        )
+        group_get_all_mock = self.mock_object(
+            db_api, 'share_group_get_all_by_share_server',
+            mock.Mock(return_value=fake_share_groups)
+        )
+
+        self.assertRaises(exception.ShareServerInUse,
+                          self.api.unmanage_share_server,
+                          self.context,
+                          fake_share_server, True)
+        share_instance_get_all_mock.assert_called_once_with(
+            self.context, fake_share_server['id']
+        )
+        group_get_all_mock.assert_called_once_with(
+            self.context, fake_share_server['id']
+        )
 
     @ddt.data(True, False)
     def test_revert_to_snapshot(self, has_replicas):

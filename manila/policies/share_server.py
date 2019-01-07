@@ -63,6 +63,36 @@ share_server_policies = [
                 'path': '/share-servers/{server_id}',
             }
         ]),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'manage_share_server',
+        check_str=base.RULE_ADMIN_API,
+        description="Manage share server.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/share-servers/manage'
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'unmanage_share_server',
+        check_str=base.RULE_ADMIN_API,
+        description="Unmanage share server.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/share-servers/{share_server_id}/action'
+            }
+        ]),
+    policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'reset_status',
+        check_str=base.RULE_ADMIN_API,
+        description="Reset the status of a share server.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/share-servers/{share_server_id}/action'
+            }
+        ]),
 ]
 
 

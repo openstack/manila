@@ -2757,3 +2757,44 @@ class AccessMetadataTableChecks(BaseMigrationChecks):
     def check_downgrade(self, engine):
         self.test_case.assertRaises(sa_exc.NoSuchTableError, utils.load_table,
                                     self.new_table_name, engine)
+
+
+@map_to_migration('6a3fd2984bc31')
+class ShareServerIsAutoDeletableAndIdentifierChecks(BaseMigrationChecks):
+
+    def setup_upgrade_data(self, engine):
+        user_id = 'user_id'
+        project_id = 'project_id'
+
+        # Create share network
+        share_network_data = {
+            'id': 'fake_sn_id',
+            'user_id': user_id,
+            'project_id': project_id,
+        }
+        sn_table = utils.load_table('share_networks', engine)
+        engine.execute(sn_table.insert(share_network_data))
+
+        # Create share server
+        share_server_data = {
+            'id': 'fake_ss_id',
+            'share_network_id': share_network_data['id'],
+            'host': 'fake_host',
+            'status': 'active',
+        }
+        ss_table = utils.load_table('share_servers', engine)
+        engine.execute(ss_table.insert(share_server_data))
+
+    def check_upgrade(self, engine, data):
+        ss_table = utils.load_table('share_servers', engine)
+        for ss in engine.execute(ss_table.select()):
+            self.test_case.assertTrue(hasattr(ss, 'is_auto_deletable'))
+            self.test_case.assertEqual(1, ss.is_auto_deletable)
+            self.test_case.assertTrue(hasattr(ss, 'identifier'))
+            self.test_case.assertEqual(ss.id, ss.identifier)
+
+    def check_downgrade(self, engine):
+        ss_table = utils.load_table('share_servers', engine)
+        for ss in engine.execute(ss_table.select()):
+            self.test_case.assertFalse(hasattr(ss, 'is_auto_deletable'))
+            self.test_case.assertFalse(hasattr(ss, 'identifier'))

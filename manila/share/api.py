@@ -613,6 +613,36 @@ class API(base.Base):
         share_type_id = share_data['share_type_id']
         share_type = share_types.get_share_type(context, share_type_id)
 
+        share_server_id = share_data.get('share_server_id')
+
+        dhss = share_types.parse_boolean_extra_spec(
+            'driver_handles_share_servers',
+            share_type['extra_specs']['driver_handles_share_servers'])
+
+        if dhss and not share_server_id:
+            msg = _("Share Server ID parameter is required when managing a "
+                    "share using a share type with "
+                    "driver_handles_share_servers extra-spec set to True.")
+            raise exception.InvalidInput(reason=msg)
+        if not dhss and share_server_id:
+            msg = _("Share Server ID parameter is not expected when managing a"
+                    " share using a share type with "
+                    "driver_handles_share_servers extra-spec set to False.")
+            raise exception.InvalidInput(reason=msg)
+
+        if share_server_id:
+            try:
+                share_server = self.db.share_server_get(
+                    context, share_data['share_server_id'])
+            except exception.ShareServerNotFound:
+                msg = _("Share Server specified was not found.")
+                raise exception.InvalidInput(reason=msg)
+
+            if share_server['status'] != constants.STATUS_ACTIVE:
+                msg = _("Share Server specified is not active.")
+                raise exception.InvalidShareServer(message=msg)
+            share_data['share_network_id'] = share_server['share_network_id']
+
         share_data.update({
             'user_id': context.user_id,
             'project_id': context.project_id,
@@ -987,6 +1017,65 @@ class API(base.Base):
         # for race condition between share creation on server
         # and server deletion.
         self.share_rpcapi.delete_share_server(context, server)
+
+    def manage_share_server(
+            self, context, identifier, host, share_network, driver_opts):
+        """Manage a share server."""
+
+        try:
+            matched_servers = self.db.share_server_search_by_identifier(
+                context, identifier)
+        except exception.ShareServerNotFound:
+            pass
+        else:
+            msg = _("Identifier %(identifier)s specified matches existing "
+                    "share servers: %(servers)s.") % {
+                'identifier': identifier,
+                'servers': ', '.join(s['identifier'] for s in matched_servers)
+            }
+            raise exception.InvalidInput(reason=msg)
+
+        values = {
+            'host': host,
+            'share_network_id': share_network['id'],
+            'status': constants.STATUS_MANAGING,
+            'is_auto_deletable': False,
+            'identifier': identifier,
+        }
+
+        server = self.db.share_server_create(context, values)
+
+        self.share_rpcapi.manage_share_server(
+            context, server, identifier, driver_opts)
+
+        return self.db.share_server_get(context, server['id'])
+
+    def unmanage_share_server(self, context, share_server, force=False):
+        """Unmanage a share server."""
+
+        shares = self.db.share_instances_get_all_by_share_server(
+            context, share_server['id'])
+
+        if shares:
+            raise exception.ShareServerInUse(
+                share_server_id=share_server['id'])
+
+        share_groups = self.db.share_group_get_all_by_share_server(
+            context, share_server['id'])
+        if share_groups:
+            LOG.error("share server '%(ssid)s' in use by share groups.",
+                      {'ssid': share_server['id']})
+            raise exception.ShareServerInUse(
+                share_server_id=share_server['id'])
+
+        update_data = {'status': constants.STATUS_UNMANAGING,
+                       'terminated_at': timeutils.utcnow()}
+
+        share_server = self.db.share_server_update(
+            context, share_server['id'], update_data)
+
+        self.share_rpcapi.unmanage_share_server(
+            context, share_server, force=force)
 
     def create_snapshot(self, context, share, name, description,
                         force=False):

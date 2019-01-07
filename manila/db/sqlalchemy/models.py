@@ -951,10 +951,15 @@ class ShareServer(BASE, ManilaBase):
     share_network_id = Column(String(36), ForeignKey('share_networks.id'),
                               nullable=True)
     host = Column(String(255), nullable=False)
-    status = Column(Enum(constants.STATUS_INACTIVE, constants.STATUS_ACTIVE,
-                         constants.STATUS_ERROR, constants.STATUS_DELETING,
-                         constants.STATUS_CREATING, constants.STATUS_DELETED),
-                    default=constants.STATUS_INACTIVE)
+    is_auto_deletable = Column(Boolean, default=True)
+    identifier = Column(String(255), nullable=True)
+    status = Column(Enum(
+        constants.STATUS_INACTIVE, constants.STATUS_ACTIVE,
+        constants.STATUS_ERROR, constants.STATUS_DELETING,
+        constants.STATUS_CREATING, constants.STATUS_DELETED,
+        constants.STATUS_MANAGING, constants.STATUS_UNMANAGING,
+        constants.STATUS_UNMANAGE_ERROR, constants.STATUS_MANAGE_ERROR),
+        default=constants.STATUS_INACTIVE)
     network_allocations = orm.relationship(
         "NetworkAllocation",
         primaryjoin='and_('

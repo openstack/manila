@@ -155,6 +155,36 @@ class ShareManageTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'manage')
 
+    def test_share_manage_invalid_input(self):
+        body = get_fake_manage_body()
+        self._setup_manage_mocks()
+        error = mock.Mock(side_effect=exception.InvalidInput(message="",
+                                                             reason="fake"))
+        self.mock_object(share_api.API, 'manage', mock.Mock(side_effect=error))
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create,
+                          self.request,
+                          body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'manage')
+
+    def test_share_manage_invalid_share_server(self):
+        body = get_fake_manage_body()
+        self._setup_manage_mocks()
+        error = mock.Mock(
+            side_effect=exception.InvalidShareServer(message="",
+                                                     share_server_id="")
+        )
+        self.mock_object(share_api.API, 'manage', mock.Mock(side_effect=error))
+
+        self.assertRaises(webob.exc.HTTPConflict,
+                          self.controller.create,
+                          self.request,
+                          body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'manage')
+
     @ddt.data(
         get_fake_manage_body(name='foo', description='bar'),
         get_fake_manage_body(display_name='foo', description='bar'),
@@ -184,6 +214,32 @@ class ShareManageTest(test.TestCase):
         share_api.API.manage.assert_called_once_with(
             mock.ANY, share, driver_options)
         self.assertIsNotNone(actual_result)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'manage')
+
+    def test_share_manage_allow_dhss_true(self):
+        self._setup_manage_mocks()
+        data = get_fake_manage_body(name='foo', description='bar')
+        return_share = {'share_type_id': '', 'id': 'fake'}
+        self.mock_object(
+            share_api.API, 'manage', mock.Mock(return_value=return_share))
+        share = {
+            'host': data['share']['service_host'],
+            'export_location': data['share']['export_path'],
+            'share_proto': data['share']['protocol'].upper(),
+            'share_type_id': 'fake',
+            'display_name': 'foo',
+            'display_description': 'bar',
+            'share_server_id': 'fake'
+        }
+        data['share']['share_server_id'] = 'fake'
+        driver_options = data['share'].get('driver_options', {})
+
+        self.controller._manage(self.request, data, allow_dhss_true=True)
+
+        share_api.API.manage.assert_called_once_with(
+            self.context, share, driver_options
+        )
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'manage')
 

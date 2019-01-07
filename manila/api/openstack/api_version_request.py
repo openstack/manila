@@ -131,13 +131,16 @@ REST_API_VERSION_HISTORY = """
              replica export locations if available.
     * 2.48 - Added support for extra-spec "availability_zones" within Share
              types along with validation in the API.
+    * 2.49 - Added Manage/Unmanage Share Server APIs. Updated Manage/Unmanage
+             Shares and Snapshots APIs to work in
+             ``driver_handles_shares_servers`` enabled mode.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.48"
+_MAX_API_VERSION = "2.49"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

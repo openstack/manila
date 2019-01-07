@@ -20,25 +20,29 @@ class ViewBuilder(common.ViewBuilder):
     """Model a server API response as a python dictionary."""
 
     _collection_name = 'share_servers'
+    _detail_version_modifiers = [
+        "add_is_auto_deletable_and_identifier_fields",
+    ]
 
-    def build_share_server(self, share_server):
+    def build_share_server(self, request, share_server):
         """View of a share server."""
         return {
             'share_server':
-                self._build_share_server_view(share_server, detailed=True)
+                self._build_share_server_view(
+                    request, share_server, detailed=True)
         }
 
-    def build_share_servers(self, share_servers):
+    def build_share_servers(self, request, share_servers):
         return {
             'share_servers':
-                [self._build_share_server_view(share_server)
+                [self._build_share_server_view(request, share_server)
                  for share_server in share_servers]
         }
 
     def build_share_server_details(self, details):
         return {'details': details}
 
-    def _build_share_server_view(self, share_server, detailed=False):
+    def _build_share_server_view(self, request, share_server, detailed=False):
         share_server_dict = {
             'id': share_server.id,
             'project_id': share_server.project_id,
@@ -51,4 +55,15 @@ class ViewBuilder(common.ViewBuilder):
         if detailed:
             share_server_dict['created_at'] = share_server.created_at
             share_server_dict['backend_details'] = share_server.backend_details
+
+            self.update_versioned_resource_dict(
+                request, share_server_dict, share_server)
+
         return share_server_dict
+
+    @common.ViewBuilder.versioned_method("2.49")
+    def add_is_auto_deletable_and_identifier_fields(
+            self, context, share_server_dict, share_server):
+        share_server_dict['is_auto_deletable'] = (
+            share_server['is_auto_deletable'])
+        share_server_dict['identifier'] = share_server['identifier']

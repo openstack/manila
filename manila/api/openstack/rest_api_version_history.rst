@@ -270,3 +270,8 @@ user documentation.
   'availability_zones' within share types to allow provisioning of shares
   only within specific availability zones. The extra-spec allows using
   comma separated names of one or more availability zones.
+
+2.49
+----
+  Added Manage/Unmanage Share Server APIs. Updated Manage/Unmanage Shares and
+  Snapshots APIs to work in ``driver_handles_shares_servers`` enabled mode.
