@@ -997,15 +997,15 @@ class NetAppCmodeFileStorageLibrary(object):
             raise exception.ShareSnapshotIsBusy(snapshot_name=snapshot_name)
 
     @na_utils.trace
-    def manage_existing(self, share, driver_options):
-        vserver, vserver_client = self._get_vserver(share_server=None)
+    def manage_existing(self, share, driver_options, share_server=None):
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_size = self._manage_container(share, vserver, vserver_client)
-        export_locations = self._create_export(share, None, vserver,
+        export_locations = self._create_export(share, share_server, vserver,
                                                vserver_client)
         return {'size': share_size, 'export_locations': export_locations}
 
     @na_utils.trace
-    def unmanage(self, share):
+    def unmanage(self, share, share_server=None):
         pass
 
     @na_utils.trace
@@ -1110,9 +1110,10 @@ class NetAppCmodeFileStorageLibrary(object):
             raise exception.ManageInvalidShare(reason=msg % msg_args)
 
     @na_utils.trace
-    def manage_existing_snapshot(self, snapshot, driver_options):
+    def manage_existing_snapshot(
+            self, snapshot, driver_options, share_server=None):
         """Brings an existing snapshot under Manila management."""
-        vserver, vserver_client = self._get_vserver(share_server=None)
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_name = self._get_backend_share_name(snapshot['share_id'])
         existing_snapshot_name = snapshot.get('provider_location')
         new_snapshot_name = self._get_backend_snapshot_name(snapshot['id'])
@@ -1159,7 +1160,7 @@ class NetAppCmodeFileStorageLibrary(object):
         return {'size': size, 'provider_location': new_snapshot_name}
 
     @na_utils.trace
-    def unmanage_snapshot(self, snapshot):
+    def unmanage_snapshot(self, snapshot, share_server=None):
         """Removes the specified snapshot from Manila management."""
 
     @na_utils.trace

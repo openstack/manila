@@ -1,0 +1,6 @@
+---
+features:
+  - Added managing and unmanaging of share servers
+    functionality to the NetApp driver, allowing for
+    shares and snapshots to be managed and unmanaged in
+    driver mode ``driver_handles_share_servers`` set to True.

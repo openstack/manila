@@ -110,6 +110,25 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           self.library._get_vserver)
 
+    def test_get_vserver_no_share_server_with_vserver_name(self):
+        fake_vserver_client = 'fake_client'
+
+        mock_vserver_exists = self.mock_object(
+            self.library._client, 'vserver_exists',
+            mock.Mock(return_value=True))
+        self.mock_object(self.library,
+                         '_get_api_client',
+                         mock.Mock(return_value=fake_vserver_client))
+
+        result_vserver, result_vserver_client = self.library._get_vserver(
+            share_server=None, vserver_name=fake.VSERVER1)
+
+        mock_vserver_exists.assert_called_once_with(
+            fake.VSERVER1
+        )
+        self.assertEqual(fake.VSERVER1, result_vserver)
+        self.assertEqual(fake_vserver_client, result_vserver_client)
+
     def test_get_vserver_no_backend_details(self):
 
         fake_share_server = copy.deepcopy(fake.SHARE_SERVER)
@@ -185,6 +204,69 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             },
         }
         self.assertEqual(expected, result)
+
+    @ddt.data('fake', fake.IDENTIFIER)
+    def test_manage_server(self, fake_vserver_name):
+
+        self.mock_object(context,
+                         'get_admin_context',
+                         mock.Mock(return_value='fake_admin_context'))
+        mock_get_vserver_name = self.mock_object(
+            self.library, '_get_vserver_name',
+            mock.Mock(return_value=fake_vserver_name))
+
+        new_identifier, new_details = self.library.manage_server(
+            context, fake.SHARE_SERVER, fake.IDENTIFIER, {})
+
+        mock_get_vserver_name.assert_called_once_with(fake.SHARE_SERVER['id'])
+        self.assertEqual(fake_vserver_name, new_details['vserver_name'])
+        self.assertEqual(fake_vserver_name, new_identifier)
+
+    def test_get_share_server_network_info(self):
+
+        fake_vserver_client = mock.Mock()
+
+        self.mock_object(context,
+                         'get_admin_context',
+                         mock.Mock(return_value='fake_admin_context'))
+        mock_get_vserver = self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=['fake', fake_vserver_client]))
+
+        net_interfaces = copy.deepcopy(c_fake.NETWORK_INTERFACES_MULTIPLE)
+
+        self.mock_object(fake_vserver_client,
+                         'get_network_interfaces',
+                         mock.Mock(return_value=net_interfaces))
+
+        result = self.library.get_share_server_network_info(context,
+                                                            fake.SHARE_SERVER,
+                                                            fake.IDENTIFIER,
+                                                            {})
+        mock_get_vserver.assert_called_once_with(
+            vserver_name=fake.IDENTIFIER
+        )
+        reference_allocations = []
+        for lif in net_interfaces:
+            reference_allocations.append(lif['address'])
+
+        self.assertEqual(reference_allocations, result)
+
+    @ddt.data((True, fake.IDENTIFIER),
+              (False, fake.IDENTIFIER))
+    @ddt.unpack
+    def test__verify_share_server_name(self, vserver_exists, identifier):
+
+        mock_exists = self.mock_object(self.client, 'vserver_exists',
+                                       mock.Mock(return_value=vserver_exists))
+        expected_result = identifier
+        if not vserver_exists:
+            expected_result = self.library._get_vserver_name(identifier)
+
+        result = self.library._get_correct_vserver_old_name(identifier)
+
+        self.assertEqual(result, expected_result)
+        mock_exists.assert_called_once_with(identifier)
 
     def test_handle_housekeeping_tasks(self):
 

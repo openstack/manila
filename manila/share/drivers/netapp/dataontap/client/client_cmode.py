@@ -1758,6 +1758,15 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('volume-rename', api_args)
 
     @na_utils.trace
+    def rename_vserver(self, vserver_name, new_vserver_name):
+        """Rename a vserver."""
+        api_args = {
+            'vserver-name': vserver_name,
+            'new-name': new_vserver_name,
+        }
+        self.send_request('vserver-rename', api_args)
+
+    @na_utils.trace
     def modify_volume(self, aggregate_name, volume_name,
                       thin_provisioned=False, snapshot_policy=None,
                       language=None, dedup_enabled=False,

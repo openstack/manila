@@ -146,7 +146,10 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
     def _get_export_location(share):
         """Returns IP address and export location of an NFS share."""
         export_location = share['export_location'] or ':'
-        return export_location.rsplit(':', 1)
+        result = export_location.rsplit(':', 1)
+        if len(result) != 2:
+            return ['', '']
+        return result
 
     @staticmethod
     def _get_temp_export_policy_name():
