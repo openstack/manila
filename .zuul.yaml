@@ -403,6 +403,7 @@
       Run tests for manila project.
 
       Uses tox with the ``genconfig`` environment.
+    post-run: playbooks/manila-tox-genconfig/post.yaml
     vars:
       tox_envlist: genconfig
 
