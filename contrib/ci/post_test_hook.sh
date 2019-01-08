@@ -327,9 +327,6 @@ if [ $(trueorfalse False MANILA_CONFIGURE_DEFAULT_TYPES) == True ]; then
     iniset $TEMPEST_CONFIG share default_share_type_name ${MANILA_DEFAULT_SHARE_TYPE:-default}
 fi
 
-# check if tempest plugin was installed correctly
-echo 'import pkg_resources; print list(pkg_resources.iter_entry_points("tempest.test_plugins"))' | python
-
 ADMIN_DOMAIN_NAME=${ADMIN_DOMAIN_NAME:-"Default"}
 export OS_PROJECT_DOMAIN_NAME=$ADMIN_DOMAIN_NAME
 export OS_USER_DOMAIN_NAME=$ADMIN_DOMAIN_NAME
@@ -379,6 +376,8 @@ fi
 
 echo "Running tempest manila test suites"
 cd $BASE/new/tempest/
+# List plugins in logs to enable debugging
+sudo -H -u $USER tempest list-plugins
 sudo -H -u $USER tempest run -r $MANILA_TESTS --concurrency=$MANILA_TEMPEST_CONCURRENCY
 RETVAL=$?
 cd -
