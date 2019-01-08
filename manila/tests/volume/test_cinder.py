@@ -55,8 +55,6 @@ class CinderclientTestCase(test.TestCase):
         fake_context = 'fake_context'
         data = {
             'cinder': {
-                'api_insecure': True,
-                'ca_certificates_file': 'foo_ca_certificates_file',
                 'http_retries': 3,
                 'endpoint_type': 'foo_endpoint_type',
                 'region_name': 'foo_region_name',
@@ -73,8 +71,6 @@ class CinderclientTestCase(test.TestCase):
         )
         mock_client_loader.return_value.get_client.assert_called_once_with(
             fake_context,
-            insecure=data['cinder']['api_insecure'],
-            cacert=data['cinder']['ca_certificates_file'],
             retries=data['cinder']['http_retries'],
             endpoint_type=data['cinder']['endpoint_type'],
             region_name=data['cinder']['region_name'],
@@ -85,8 +81,6 @@ class CinderclientTestCase(test.TestCase):
         fake_context = 'fake_context'
         data = {
             'cinder': {
-                'api_insecure': True,
-                'ca_certificates_file': 'foo_ca_certificates_file',
                 'http_retries': 3,
                 'endpoint_type': 'foo_endpoint_type',
                 'region_name': 'foo_region_name',
@@ -98,8 +92,6 @@ class CinderclientTestCase(test.TestCase):
 
         cinder.AUTH_OBJ.get_client.assert_called_once_with(
             fake_context,
-            insecure=data['cinder']['api_insecure'],
-            cacert=data['cinder']['ca_certificates_file'],
             retries=data['cinder']['http_retries'],
             endpoint_type=data['cinder']['endpoint_type'],
             region_name=data['cinder']['region_name'],
