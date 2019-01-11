@@ -374,6 +374,10 @@ if ! [[ -z "$OVERRIDE_IP_FOR_NFS_ACCESS" ]]; then
     iniset $TEMPEST_CONFIG share override_ip_for_nfs_access $OVERRIDE_IP_FOR_NFS_ACCESS
 fi
 
+echo "Manila service details"
+source $BASE/new/devstack/openrc admin admin
+manila service-list
+
 echo "Running tempest manila test suites"
 cd $BASE/new/tempest/
 # List plugins in logs to enable debugging
