@@ -91,6 +91,7 @@ class Manager(base.Base, PeriodicTasks):
             host = CONF.host
         self.host = host
         self.additional_endpoints = []
+        self.availability_zone = CONF.storage_availability_zone
         super(Manager, self).__init__(db_driver)
 
     def periodic_tasks(self, context, raise_on_error=False):

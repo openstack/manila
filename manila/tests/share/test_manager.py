@@ -990,7 +990,7 @@ class ShareManagerTestCase(test.TestCase):
         replica_2 = fake_replica(id='fake2')
         self.mock_object(db, 'share_replicas_get_all_by_share',
                          mock.Mock(return_value=[replica, replica_2]))
-        manager.CONF.set_default('storage_availability_zone', 'fake_az')
+        self.share_manager.availability_zone = 'fake_az'
         fake_access_rules = [{'id': '1'}, {'id': '2'}, {'id': '3'}]
         self.mock_object(db, 'share_replica_get',
                          mock.Mock(return_value=replica))

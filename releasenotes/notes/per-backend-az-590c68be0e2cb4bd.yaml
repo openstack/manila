@@ -1,0 +1,14 @@
+---
+features:
+  - |
+    Availability zones may now be configured per backend in a multi-backend
+    configuration. Individual back end sections can now have the configuration
+    option ``backend_availability_zone`` set. If set, this value will override
+    the ``storage_availability_zone`` option from the [DEFAULT] section.
+upgrade:
+  - The ``storage_availability_zone`` option can now be overridden per
+    backend by using the ``backend_availability_zone`` option within the
+    backend stanza. This allows enabling multiple storage backends that may
+    be deployed in different AZs in the same ``manila.conf`` file if
+    desired, simplifying service architecture around the Share Replication
+    feature.

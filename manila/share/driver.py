@@ -126,6 +126,11 @@ share_opts = [
              "replication between each other. If this option is not "
              "specified in the group, it means that replication is not "
              "enabled on the backend."),
+    cfg.StrOpt('backend_availability_zone',
+               default=None,
+               help='Availability zone for this share backend. If not set, '
+                    'the ``storage_availability_zone`` option from the '
+                    '``[DEFAULT]`` section is used.'),
     cfg.StrOpt('filter_function',
                help='String representation for an equation that will be '
                     'used to filter hosts.'),

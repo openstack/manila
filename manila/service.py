@@ -92,6 +92,7 @@ class Service(service.Service):
         self.manager = manager_class(host=self.host,
                                      service_name=service_name,
                                      *args, **kwargs)
+        self.availability_zone = self.manager.availability_zone
         self.report_interval = report_interval
         self.periodic_interval = periodic_interval
         self.periodic_fuzzy_delay = periodic_fuzzy_delay
@@ -145,13 +146,14 @@ class Service(service.Service):
             self.timers.append(periodic)
 
     def _create_service_ref(self, context):
-        zone = CONF.storage_availability_zone
-        service_ref = db.service_create(context,
-                                        {'host': self.host,
-                                         'binary': self.binary,
-                                         'topic': self.topic,
-                                         'report_count': 0,
-                                         'availability_zone': zone})
+        service_args = {
+            'host': self.host,
+            'binary': self.binary,
+            'topic': self.topic,
+            'report_count': 0,
+            'availability_zone': self.availability_zone
+        }
+        service_ref = db.service_create(context, service_args)
         self.service_id = service_ref['id']
 
     def __getattr__(self, key):
@@ -244,7 +246,6 @@ class Service(service.Service):
     def report_state(self):
         """Update the state of this service in the datastore."""
         ctxt = context.get_admin_context()
-        zone = CONF.storage_availability_zone
         state_catalog = {}
         try:
             try:
@@ -256,8 +257,9 @@ class Service(service.Service):
                 service_ref = db.service_get(ctxt, self.service_id)
 
             state_catalog['report_count'] = service_ref['report_count'] + 1
-            if zone != service_ref['availability_zone']['name']:
-                state_catalog['availability_zone'] = zone
+            if (self.availability_zone !=
+                    service_ref['availability_zone']['name']):
+                state_catalog['availability_zone'] = self.availability_zone
 
             db.service_update(ctxt,
                               self.service_id, state_catalog)

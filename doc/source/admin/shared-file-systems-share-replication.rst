@@ -122,7 +122,7 @@ The following examples have been implemented with the ZFSonLinux driver that
 is a reference implementation in the Shared File Systems service. It operates
 in ``driver_handles_share_servers=False`` mode and supports the ``readable``
 type of replication. In the example, we assume a configuration of two
-Availability Zones (configuration option: ``storage_availability_zone``),
+Availability Zones [1]_,
 called `availability_zone_1` and `availability_zone_2`.
 
 Multiple availability zones are not necessary to use the replication feature.
@@ -598,3 +598,14 @@ replica's ID to delete a share replica.
 .. note::
    You cannot delete the last ``active`` replica with this command. You should
    use the :command:`manila delete` command to remove the share.
+
+
+.. [1] When running in a multi-backend configuration, until the Stein
+       release, deployers could only configure one Availability Zone per manila
+       configuration file. This is achieved with the option
+       ``storage_availability_zone`` defined under the ``[DEFAULT]`` section.
+
+       Beyond the Stein release, the option ``backend_availability_zone``
+       can be specified in each back end stanza. The value of this
+       configuration option will override any configuration of the
+       ``storage_availability_zone`` from the ``[DEFAULT]`` section.
