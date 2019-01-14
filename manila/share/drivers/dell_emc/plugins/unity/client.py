@@ -330,3 +330,7 @@ class UnityClient(object):
             LOG.info("This system doesn't support tenant.")
 
         return tenant
+
+    def restore_snapshot(self, snap_name):
+        snap = self.get_snapshot(snap_name)
+        return snap.restore(delete_backup=True)

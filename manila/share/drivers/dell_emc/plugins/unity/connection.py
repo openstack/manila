@@ -36,7 +36,7 @@ from manila.share.drivers.dell_emc.plugins.unity import utils as unity_utils
 from manila.share import utils as share_utils
 from manila import utils
 
-VERSION = "4.0.0"
+VERSION = "6.0.0"
 
 LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
@@ -86,6 +86,7 @@ class UnityStorageConnection(driver.StorageConnection):
         self.max_over_subscription_ratio = None
         self.port_ids_conf = None
         self.ipv6_implemented = True
+        self.revert_to_snap_support = True
 
         # props from super class.
         self.driver_handles_share_servers = True
@@ -678,3 +679,8 @@ class UnityStorageConnection(driver.StorageConnection):
             raise exception.InvalidShare(
                 reason=(_('Invalid NAS protocol supplied: %s.') %
                         share_proto))
+
+    def revert_to_snapshot(self, context, snapshot, share_access_rules,
+                           snapshot_access_rules, share_server=None):
+        """Reverts a share (in place) to the specified snapshot."""
+        return self.client.restore_snapshot(snapshot['id'])

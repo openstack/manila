@@ -414,7 +414,6 @@ class TestConnection(test.TestCase):
 
     @res_mock.patch_connection
     def test_validate_port_configuration_exception(self, connection):
-
         self.assertRaises(exception.BadConfigurationException,
                           connection.validate_port_configuration,
                           ['xxxx*'])
@@ -653,3 +652,14 @@ class TestConnection(test.TestCase):
                     'vlan_id': '201'}
         connection.client.create_interface.assert_called_once_with(nas_server,
                                                                    **expected)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_revert_to_snapshot(self, connection, mocked_input):
+        context = mock.Mock()
+        snapshot = mocked_input['snapshot']
+        share_access_rules = [mocked_input['nfs_rw_access'], ]
+        snapshot_access_rules = [mocked_input['nfs_rw_access'], ]
+
+        connection.revert_to_snapshot(context, snapshot, share_access_rules,
+                                      snapshot_access_rules)

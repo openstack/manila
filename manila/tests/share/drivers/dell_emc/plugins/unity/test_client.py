@@ -231,3 +231,15 @@ class TestClient(test.TestCase):
             v6_prefix_length=mock_file_interface.prefix_length,
             gateway=mock_file_interface.gateway,
             vlan_id=mock_file_interface.vlan_id)
+
+    @res_mock.patch_client
+    def test_get_snapshot(self, client):
+        snapshot = client.get_snapshot('Snapshot_1')
+        self.assertEqual('snapshot_1', snapshot.id)
+
+    @res_mock.patch_client
+    def test_restore_snapshot(self, client):
+        snapshot = client.get_snapshot('Snapshot_1')
+        rst = client.restore_snapshot(snapshot.name)
+        self.assertIs(True, rst)
+        snapshot.restore.assert_called_once_with(delete_backup=True)

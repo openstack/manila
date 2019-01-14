@@ -81,6 +81,11 @@ class EMCShareDriver(driver.ShareDriver):
         if hasattr(self.plugin, 'ipv6_implemented'):
             self.ipv6_implemented = self.plugin.ipv6_implemented
 
+        if hasattr(self.plugin, 'revert_to_snap_support'):
+            self.revert_to_snap_support = self.plugin.revert_to_snap_support
+        else:
+            self.revert_to_snap_support = False
+
     def create_share(self, context, share, share_server=None):
         """Is called to create share."""
         location = self.plugin.create_share(context, share, share_server)
@@ -147,7 +152,8 @@ class EMCShareDriver(driver.ShareDriver):
             vendor_name='Dell EMC',
             storage_protocol='NFS_CIFS',
             snapshot_support=True,
-            create_share_from_snapshot_support=True)
+            create_share_from_snapshot_support=True,
+            revert_to_snapshot_support=self.revert_to_snap_support)
         self.plugin.update_share_stats(data)
         super(EMCShareDriver, self)._update_share_stats(data)
 
@@ -168,3 +174,13 @@ class EMCShareDriver(driver.ShareDriver):
             return [4, 6]
         else:
             return [4]
+
+    def revert_to_snapshot(self, context, snapshot, share_access_rules,
+                           snapshot_access_rules, share_server=None):
+        if self.revert_to_snap_support:
+            return self.plugin.revert_to_snapshot(context, snapshot,
+                                                  share_access_rules,
+                                                  snapshot_access_rules,
+                                                  share_server)
+        else:
+            raise NotImplementedError()

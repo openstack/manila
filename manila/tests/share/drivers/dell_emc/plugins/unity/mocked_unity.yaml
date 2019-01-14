@@ -173,6 +173,13 @@ tenant_1: &tenant_1
     uuid: "173ca6c3-5952-427d-82a6-df88f49e3926"
     vlans: [2]
 
+snapshot_1: &snapshot_1
+  _properties:
+    id: "snapshot_1"
+    name: "Snapshot_1"
+  _methods:
+    restore: True
+
 unity_base: &unity_base
   _methods: &unity_base_method
       get_sp: *sp_a
@@ -1102,3 +1109,20 @@ test_create_file_interface_ipv6:
   nas_server:
     _methods:
       create_file_interface:
+
+test_get_snapshot:
+  unity:
+    _methods:
+      get_snap: *snapshot_1
+
+test_get_snapshot_nonexistent_expt:
+  unity:
+    _methods:
+      get_snap:
+        _raise:
+          UnityResourceNotFoundError:
+
+test_restore_snapshot:
+  unity:
+    _methods:
+      get_snap: *snapshot_1
