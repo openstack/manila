@@ -57,30 +57,6 @@
         - tripleo-ci-centos-7-scenario004-standalone
 
 - job:
-    name: manila-grenade
-    parent: legacy-dsvm-base
-    run: playbooks/legacy/grenade-dsvm-manila/run.yaml
-    post-run: playbooks/legacy/grenade-dsvm-manila/post.yaml
-    timeout: 10800
-    irrelevant-files:
-      - ^(test-|)requirements.txt$
-      - ^.*\.rst$
-      - ^api-ref/.*$
-      - ^doc/.*$
-      - ^manila/hacking/.*$
-      - ^manila/tests/.*$
-      - ^releasenotes/.*$
-      - ^setup.cfg$
-      - ^tools/.*$
-      - ^tox.ini$
-    required-projects:
-      - openstack-dev/grenade
-      - openstack-infra/devstack-gate
-      - openstack/manila
-      - openstack/python-manilaclient
-      - openstack/manila-tempest-plugin
-
-- job:
     name: manila-tempest-base
     parent: legacy-dsvm-base
     nodeset: openstack-single-node-bionic
@@ -96,6 +72,19 @@
       - ^setup.cfg$
       - ^tools/.*$
       - ^tox.ini$
+
+- job:
+    name: manila-grenade
+    parent: manila-tempest-base
+    run: playbooks/legacy/grenade-dsvm-manila/run.yaml
+    post-run: playbooks/legacy/grenade-dsvm-manila/post.yaml
+    timeout: 10800
+    required-projects:
+      - openstack-dev/grenade
+      - openstack-infra/devstack-gate
+      - openstack/manila
+      - openstack/python-manilaclient
+      - openstack/manila-tempest-plugin
 
 - job:
     name: manila-tempest-dsvm-container-scenario-custom-image
