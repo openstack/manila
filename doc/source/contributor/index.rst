@@ -28,6 +28,7 @@ Programming HowTos and Tutorials
 
     development.environment
     development-environment-devstack
+    apache-httpd
     unit_tests
     tempest_tests
     addmethod.openstackapi
