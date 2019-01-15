@@ -25,10 +25,17 @@ class AvailabilityZoneFilter(base_host.BaseHostFilter):
     def host_passes(self, host_state, filter_properties):
         spec = filter_properties.get('request_spec', {})
         props = spec.get('resource_properties', {})
-        availability_zone_id = props.get(
-            'availability_zone_id', spec.get('availability_zone_id'))
+        request_az_id = props.get('availability_zone_id',
+                                  spec.get('availability_zone_id'))
+        request_azs = spec.get('availability_zones')
+        host_az_id = host_state.service['availability_zone_id']
+        host_az = host_state.service['availability_zone']['name']
 
-        if availability_zone_id:
-            return (availability_zone_id ==
-                    host_state.service['availability_zone_id'])
-        return True
+        host_satisfied = True
+        if request_az_id is not None:
+            host_satisfied = request_az_id == host_az_id
+
+        if request_azs:
+            host_satisfied = host_satisfied and host_az in request_azs
+
+        return host_satisfied

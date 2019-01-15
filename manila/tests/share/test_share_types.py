@@ -158,6 +158,80 @@ class ShareTypesTestCase(test.TestCase):
                                                   search_opts=search_filter)
         self.assertItemsEqual(share_type, returned_type)
 
+    @ddt.data("nova", "supernova,nova", "supernova",
+              "nova,hypernova,supernova")
+    def test_get_all_types_search_by_availability_zone(self, search_azs):
+        all_share_types = {
+            'gold': {
+                'extra_specs': {
+                    'somepoolcap': 'somevalue',
+                    'availability_zones': 'nova,supernova,hypernova',
+                },
+                'required_extra_specs': {
+                    'driver_handles_share_servers': True,
+                },
+                'id': '1e8f93a8-9669-4467-88a0-7b8229a9a609',
+                'name': u'gold-share-type',
+                'is_public': True,
+            },
+            'silver': {
+                'extra_specs': {
+                    'somepoolcap': 'somevalue',
+                    'availability_zones': 'nova,supernova',
+                },
+                'required_extra_specs': {
+                    'driver_handles_share_servers': False,
+                },
+                'id': '39a7b9a8-8c76-4b49-aed3-60b718d54325',
+                'name': u'silver-share-type',
+                'is_public': True,
+            },
+            'bronze': {
+                'extra_specs': {
+                    'somepoolcap': 'somevalue',
+                    'availability_zones': 'milkyway,andromeda',
+                },
+                'required_extra_specs': {
+                    'driver_handles_share_servers': True,
+                },
+                'id': '5a55a54d-6688-49b4-9344-bfc2d9634f70',
+                'name': u'bronze-share-type',
+                'is_public': True,
+            },
+            'default': {
+                'extra_specs': {
+                    'somepoolcap': 'somevalue',
+                },
+                'required_extra_specs': {
+                    'driver_handles_share_servers': True,
+                },
+                'id': '5a55a54d-6688-49b4-9344-bfc2d9634f70',
+                'name': u'bronze-share-type',
+                'is_public': True,
+            }
+        }
+        self.mock_object(
+            db, 'share_type_get_all', mock.Mock(return_value=all_share_types))
+        self.mock_object(share_types, 'get_valid_required_extra_specs')
+
+        search_opts = {
+            'extra_specs': {
+                'somepoolcap': 'somevalue',
+                'availability_zones': search_azs
+            },
+            'is_public': True,
+        }
+        returned_types = share_types.get_all_types(
+            self.context, search_opts=search_opts)
+
+        db.share_type_get_all.assert_called_once_with(
+            mock.ANY, 0, filters={'is_public': True})
+
+        expected_return_types = (['gold', 'silver', 'default']
+                                 if len(search_azs.split(',')) < 3
+                                 else ['gold', 'default'])
+        self.assertItemsEqual(expected_return_types, returned_types)
+
     def test_get_share_type_extra_specs(self):
         share_type = self.fake_type_w_extra['test_with_extra']
         self.mock_object(db,
@@ -271,11 +345,14 @@ class ShareTypesTestCase(test.TestCase):
               constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT,
               constants.ExtraSpecs.REVERT_TO_SNAPSHOT_SUPPORT,
               constants.ExtraSpecs.MOUNT_SNAPSHOT_SUPPORT),
-             strutils.TRUE_STRINGS + strutils.FALSE_STRINGS))) +
+             strutils.TRUE_STRINGS + strutils.FALSE_STRINGS)) +
         list(itertools.product(
              (constants.ExtraSpecs.REPLICATION_TYPE_SPEC,),
-             constants.ExtraSpecs.REPLICATION_TYPES))
-    )
+             constants.ExtraSpecs.REPLICATION_TYPES)) +
+        [(constants.ExtraSpecs.AVAILABILITY_ZONES, 'zone a, zoneb$c'),
+         (constants.ExtraSpecs.AVAILABILITY_ZONES, '    zonea,    zoneb'),
+         (constants.ExtraSpecs.AVAILABILITY_ZONES, 'zone1')]
+    ))
     @ddt.unpack
     def test_is_valid_optional_extra_spec_valid(self, key, value):
 
@@ -305,13 +382,27 @@ class ShareTypesTestCase(test.TestCase):
 
         self.assertEqual({}, result)
 
-    def test_get_valid_optional_extra_specs_invalid(self):
-
-        extra_specs = {constants.ExtraSpecs.SNAPSHOT_SUPPORT: 'fake'}
-
+    @ddt.data({constants.ExtraSpecs.SNAPSHOT_SUPPORT: 'fake'},
+              {constants.ExtraSpecs.AVAILABILITY_ZONES: 'ZoneA,'})
+    def test_get_valid_optional_extra_specs_invalid(self, extra_specs):
         self.assertRaises(exception.InvalidExtraSpec,
                           share_types.get_valid_optional_extra_specs,
                           extra_specs)
+
+    @ddt.data('      az 1,  az2 ,az 3  ', 'az 1,az2,az 3   ', None)
+    def test_sanitize_extra_specs(self, spec_value):
+        extra_specs = {
+            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'True',
+            constants.ExtraSpecs.SNAPSHOT_SUPPORT: 'True',
+            constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT: 'False'
+        }
+        expected_specs = copy.copy(extra_specs)
+        if spec_value is not None:
+            extra_specs[constants.ExtraSpecs.AVAILABILITY_ZONES] = spec_value
+            expected_specs['availability_zones'] = 'az 1,az2,az 3'
+
+        self.assertDictMatch(expected_specs,
+                             share_types.sanitize_extra_specs(extra_specs))
 
     def test_add_access(self):
         project_id = '456'

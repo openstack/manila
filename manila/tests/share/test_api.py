@@ -1700,7 +1700,8 @@ class ShareAPITestCase(test.TestCase):
             self.context, share, share_network_id=share['share_network_id'],
             host=valid_host, share_type_id=share_type['id'],
             availability_zone=snapshot['share']['availability_zone'],
-            share_group=None, share_group_snapshot_member=None)
+            share_group=None, share_group_snapshot_member=None,
+            availability_zones=None)
         share_api.policy.check_policy.assert_has_calls([
             mock.call(self.context, 'share', 'create'),
             mock.call(self.context, 'share_snapshot', 'get_snapshot')])
@@ -2513,7 +2514,8 @@ class ShareAPITestCase(test.TestCase):
     @ddt.unpack
     def test_migration_start(self, share_type, share_net, dhss):
         host = 'fake2@backend#pool'
-        service = {'availability_zone_id': 'fake_az_id'}
+        service = {'availability_zone_id': 'fake_az_id',
+                   'availability_zone': {'name': 'fake_az1'}}
         share_network = None
         share_network_id = None
         if share_net:
@@ -2540,6 +2542,7 @@ class ShareAPITestCase(test.TestCase):
                     'revert_to_snapshot_support': False,
                     'mount_snapshot_support': False,
                     'driver_handles_share_servers': dhss,
+                    'availability_zones': 'fake_az1,fake_az2',
                 },
             }
         else:
@@ -2587,6 +2590,65 @@ class ShareAPITestCase(test.TestCase):
         db_api.share_instance_update.assert_called_once_with(
             self.context, share.instance['id'],
             {'status': constants.STATUS_MIGRATING})
+
+    def test_migration_start_destination_az_upsupported(self):
+        host = 'fake2@backend#pool'
+        host_without_pool = host.split('#')[0]
+        service = {'availability_zone_id': 'fake_az_id',
+                   'availability_zone': {'name': 'fake_az3'}}
+        share_network = db_utils.create_share_network(id='fake_net_id')
+        share_network_id = share_network['id']
+        existing_share_type = {
+            'id': '4b5b0920-a294-401b-bb7d-c55b425e1cad',
+            'name': 'fake_type_1',
+            'extra_specs': {
+                'snapshot_support': False,
+                'create_share_from_snapshot_support': False,
+                'revert_to_snapshot_support': False,
+                'mount_snapshot_support': False,
+                'driver_handles_share_servers': 'true',
+                'availability_zones': 'fake_az3'
+            },
+        }
+        new_share_type = {
+            'id': 'fa844ae2-494d-4da9-95e7-37ac6a26f635',
+            'name': 'fake_type_2',
+            'extra_specs': {
+                'snapshot_support': False,
+                'create_share_from_snapshot_support': False,
+                'revert_to_snapshot_support': False,
+                'mount_snapshot_support': False,
+                'driver_handles_share_servers': 'true',
+                'availability_zones': 'fake_az1,fake_az2',
+            },
+        }
+        share = db_utils.create_share(
+            status=constants.STATUS_AVAILABLE,
+            host='fake@backend#pool', share_type_id=existing_share_type['id'],
+            share_network_id=share_network_id)
+        self.mock_object(self.api, '_get_request_spec_dict')
+        self.mock_object(self.scheduler_rpcapi, 'migrate_share_to_host')
+        self.mock_object(share_types, 'get_share_type')
+        self.mock_object(utils, 'validate_service_host')
+        self.mock_object(db_api, 'share_instance_update')
+        self.mock_object(db_api, 'share_update')
+        self.mock_object(db_api, 'service_get_by_args',
+                         mock.Mock(return_value=service))
+
+        self.assertRaises(exception.InvalidShare,
+                          self.api.migration_start,
+                          self.context, share, host, False, True, True,
+                          True, False, new_share_network=share_network,
+                          new_share_type=new_share_type)
+        utils.validate_service_host.assert_called_once_with(
+            self.context, host_without_pool)
+        share_types.get_share_type.assert_not_called()
+        db_api.share_update.assert_not_called()
+        db_api.service_get_by_args.assert_called_once_with(
+            self.context, host_without_pool, 'manila-share')
+        self.api._get_request_spec_dict.assert_not_called()
+        db_api.share_instance_update.assert_not_called()
+        self.scheduler_rpcapi.migrate_share_to_host.assert_not_called()
 
     @ddt.data({'force_host_assisted': True, 'writable': True,
                'preserve_metadata': False, 'preserve_snapshots': False,
@@ -2703,7 +2765,8 @@ class ShareAPITestCase(test.TestCase):
             },
         }
 
-        service = {'availability_zone_id': 'fake_az_id'}
+        service = {'availability_zone_id': 'fake_az_id',
+                   'availability_zone': {'name': 'fake_az'}}
         self.mock_object(db_api, 'service_get_by_args',
                          mock.Mock(return_value=service))
         self.mock_object(utils, 'validate_service_host')
@@ -2879,20 +2942,66 @@ class ShareAPITestCase(test.TestCase):
         self.assertFalse(mock_db_update_call.called)
         self.assertFalse(mock_scheduler_rpcapi_call.called)
 
+    @ddt.data(None, 'fake-share-type')
+    def test_create_share_replica_type_doesnt_support_AZ(self, st_name):
+        share_type = fakes.fake_share_type(
+            name=st_name,
+            extra_specs={'availability_zones': 'zone 1,zone 3'})
+        share = fakes.fake_share(
+            id='FAKE_SHARE_ID', replication_type='dr',
+            availability_zone='zone 2')
+        share['instance'].update({
+            'share_type': share_type,
+            'share_type_id': '359b9851-2bd5-4404-89a9-5cd22bbc5fb9',
+        })
+        mock_request_spec_call = self.mock_object(
+            self.api, 'create_share_instance_and_get_request_spec')
+        mock_db_update_call = self.mock_object(db_api, 'share_replica_update')
+        mock_scheduler_rpcapi_call = self.mock_object(
+            self.api.scheduler_rpcapi, 'create_share_replica')
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=share_type))
+        self.mock_object(db_api, 'share_replicas_get_available_active_replica',
+                         mock.Mock(return_value=mock.Mock(
+                             return_value={'host': 'fake_ar_host'})))
+
+        self.assertRaises(exception.InvalidShare,
+                          self.api.create_share_replica,
+                          self.context, share, availability_zone='zone 2')
+        share_types.get_share_type.assert_called_once_with(
+            self.context, '359b9851-2bd5-4404-89a9-5cd22bbc5fb9')
+        self.assertFalse(mock_request_spec_call.called)
+        self.assertFalse(mock_db_update_call.called)
+        self.assertFalse(mock_scheduler_rpcapi_call.called)
+
     @ddt.data({'has_snapshots': True,
-               'replication_type': constants.REPLICATION_TYPE_DR},
+               'extra_specs': {
+                   'replication_type': constants.REPLICATION_TYPE_DR,
+               }},
               {'has_snapshots': False,
-               'replication_type': constants.REPLICATION_TYPE_DR},
+               'extra_specs': {
+                   'availability_zones': 'FAKE_AZ,FAKE_AZ2',
+                   'replication_type': constants.REPLICATION_TYPE_DR,
+               }},
               {'has_snapshots': True,
-               'replication_type': constants.REPLICATION_TYPE_READABLE},
+               'extra_specs': {
+                   'availability_zones': 'FAKE_AZ,FAKE_AZ2',
+                   'replication_type': constants.REPLICATION_TYPE_READABLE,
+               }},
               {'has_snapshots': False,
-               'replication_type': constants.REPLICATION_TYPE_READABLE})
+               'extra_specs': {
+                   'replication_type': constants.REPLICATION_TYPE_READABLE,
+               }})
     @ddt.unpack
-    def test_create_share_replica(self, has_snapshots, replication_type):
+    def test_create_share_replica(self, has_snapshots, extra_specs):
         request_spec = fakes.fake_replica_request_spec()
+        replication_type = extra_specs['replication_type']
         replica = request_spec['share_instance_properties']
+        share_type = db_utils.create_share_type(extra_specs=extra_specs)
+        share_type = db_api.share_type_get(self.context, share_type['id'])
         share = db_utils.create_share(
-            id=replica['share_id'], replication_type=replication_type)
+            id=replica['share_id'], replication_type=replication_type,
+            share_type_id=share_type['id'])
         snapshots = (
             [fakes.fake_snapshot(), fakes.fake_snapshot()]
             if has_snapshots else []
@@ -2904,6 +3013,8 @@ class ShareAPITestCase(test.TestCase):
         fake_request_spec = fakes.fake_replica_request_spec()
         self.mock_object(db_api, 'share_replicas_get_available_active_replica',
                          mock.Mock(return_value={'host': 'fake_ar_host'}))
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=share_type))
         self.mock_object(
             share_api.API, 'create_share_instance_and_get_request_spec',
             mock.Mock(return_value=(fake_request_spec, fake_replica)))
@@ -2922,14 +3033,19 @@ class ShareAPITestCase(test.TestCase):
 
         self.assertTrue(mock_sched_rpcapi_call.called)
         self.assertEqual(replica, result)
+        share_types.get_share_type.assert_called_once_with(
+            self.context, share_type['id'])
         mock_snapshot_get_all_call.assert_called_once_with(
             self.context, fake_replica['share_id'])
         self.assertEqual(expected_snap_instance_create_call_count,
                          mock_snapshot_instance_create_call.call_count)
+        expected_azs = extra_specs.get('availability_zones', '')
+        expected_azs = expected_azs.split(',') if expected_azs else []
         (share_api.API.create_share_instance_and_get_request_spec.
          assert_called_once_with(
              self.context, share, availability_zone='FAKE_AZ',
-             share_network_id=None, share_type_id=None,
+             share_network_id=None, share_type_id=share_type['id'],
+             availability_zones=expected_azs,
              cast_rules_to_readonly=cast_rules_to_readonly))
 
     def test_delete_last_active_replica(self):

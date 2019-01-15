@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    A new common user-visible share types extra-spec called
+    "availability_zones" has been introduced. When using API version 2.48,
+    user requests to create new shares in a specific availability zone will
+    be validated against the configured availability zones of the share type.
+    Similarly, users requests to create share groups and share replicas are
+    validated against the share type ``availability_zones`` extra-spec when
+    present. Users can also filter share types by one or more AZs that are
+    supported by them.

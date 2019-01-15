@@ -233,7 +233,8 @@ class ShareMixin(object):
         return share
 
     def _create(self, req, body,
-                check_create_share_from_snapshot_support=False):
+                check_create_share_from_snapshot_support=False,
+                check_availability_zones_extra_spec=False):
         """Creates a new share."""
         context = req.environ['manila.context']
 
@@ -300,6 +301,7 @@ class ShareMixin(object):
 
         share_network_id = share.get('share_network_id')
 
+        parent_share_type = {}
         if snapshot:
             # Need to check that share_network_id from snapshot's
             # parents share equals to share_network_id from args.
@@ -307,6 +309,8 @@ class ShareMixin(object):
             # share_network_id of parent share.
             parent_share = self.share_api.get(context, snapshot['share_id'])
             parent_share_net_id = parent_share.instance['share_network_id']
+            parent_share_type = share_types.get_share_type(
+                context, parent_share.instance['share_type_id'])
             if share_network_id:
                 if share_network_id != parent_share_net_id:
                     msg = ("Share network ID should be the same as snapshot's"
@@ -370,6 +374,24 @@ class ShareMixin(object):
             msg = _('Share network must be set when the '
                     'driver_handles_share_servers is true.')
             raise exc.HTTPBadRequest(explanation=msg)
+
+        type_chosen = share_type or parent_share_type
+        if type_chosen and check_availability_zones_extra_spec:
+            type_azs = type_chosen.get(
+                'extra_specs', {}).get('availability_zones', '')
+            type_azs = type_azs.split(',') if type_azs else []
+            kwargs['availability_zones'] = type_azs
+            if (availability_zone and type_azs and
+                    availability_zone not in type_azs):
+                msg = _("Share type %(type)s is not supported within the "
+                        "availability zone chosen %(az)s.")
+                type_chosen = (
+                    req_share_type or "%s (from source snapshot)" % (
+                        parent_share_type.get('name') or
+                        parent_share_type.get('id'))
+                )
+                payload = {'type': type_chosen, 'az': availability_zone}
+                raise exc.HTTPBadRequest(explanation=msg % payload)
 
         if share_type:
             kwargs['share_type'] = share_type

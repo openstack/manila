@@ -22,13 +22,24 @@ from manila.scheduler.drivers import filter
 from manila.scheduler import host_manager
 from manila.scheduler.weighers import base_host as base_host_weigher
 
+
+FAKE_AZ_1 = {'name': 'zone1', 'id': '24433438-c9b5-4cb5-a472-f78462aa5f31'}
+FAKE_AZ_2 = {'name': 'zone2', 'id': 'ebef050c-d20d-4c44-b272-1a0adce11cb5'}
+FAKE_AZ_3 = {'name': 'zone3', 'id': '18e7e6e2-39d6-466b-a706-2717bd1086e1'}
+FAKE_AZ_4 = {'name': 'zone4', 'id': '9ca40ee4-3c2a-4635-9a18-233cf6e0ad0b'}
+FAKE_AZ_5 = {'name': 'zone4', 'id': 'd76d921d-d6fa-41b4-a180-fb68952784bd'}
+FAKE_AZ_6 = {'name': 'zone4', 'id': 'bc09c3d6-671c-4d55-9f43-f00757aabc50'}
+
 SHARE_SERVICES_NO_POOLS = [
     dict(id=1, host='host1', topic='share', disabled=False,
-         availability_zone='zone1', updated_at=timeutils.utcnow()),
+         updated_at=timeutils.utcnow(), availability_zone_id=FAKE_AZ_1['id'],
+         availability_zone=FAKE_AZ_1),
     dict(id=2, host='host2@back1', topic='share', disabled=False,
-         availability_zone='zone1', updated_at=timeutils.utcnow()),
+         updated_at=timeutils.utcnow(), availability_zone_id=FAKE_AZ_2['id'],
+         availability_zone=FAKE_AZ_2),
     dict(id=3, host='host2@back2', topic='share', disabled=False,
-         availability_zone='zone2', updated_at=timeutils.utcnow()),
+         updated_at=timeutils.utcnow(), availability_zone_id=FAKE_AZ_3['id'],
+         availability_zone=FAKE_AZ_3),
 ]
 
 SERVICE_STATES_NO_POOLS = {
@@ -69,18 +80,24 @@ SERVICE_STATES_NO_POOLS = {
 
 SHARE_SERVICES_WITH_POOLS = [
     dict(id=1, host='host1@AAA', topic='share', disabled=False,
-         availability_zone='zone1', updated_at=timeutils.utcnow()),
+         updated_at=timeutils.utcnow(), availability_zone_id=FAKE_AZ_1['id'],
+         availability_zone=FAKE_AZ_1),
     dict(id=2, host='host2@BBB', topic='share', disabled=False,
-         availability_zone='zone1', updated_at=timeutils.utcnow()),
+         updated_at=timeutils.utcnow(), availability_zone_id=FAKE_AZ_2['id'],
+         availability_zone=FAKE_AZ_2),
     dict(id=3, host='host3@CCC', topic='share', disabled=False,
-         availability_zone='zone2', updated_at=timeutils.utcnow()),
+         updated_at=timeutils.utcnow(), availability_zone_id=FAKE_AZ_3['id'],
+         availability_zone=FAKE_AZ_3),
     dict(id=4, host='host4@DDD', topic='share', disabled=False,
-         availability_zone='zone3', updated_at=timeutils.utcnow()),
+         updated_at=timeutils.utcnow(), availability_zone_id=FAKE_AZ_4['id'],
+         availability_zone=FAKE_AZ_4),
     # service on host5 is disabled
     dict(id=5, host='host5@EEE', topic='share', disabled=True,
-         availability_zone='zone4', updated_at=timeutils.utcnow()),
-    dict(id=5, host='host6@FFF', topic='share', disabled=True,
-         availability_zone='zone5', updated_at=timeutils.utcnow()),
+         updated_at=timeutils.utcnow(), availability_zone_id=FAKE_AZ_5['id'],
+         availability_zone=FAKE_AZ_5),
+    dict(id=6, host='host6@FFF', topic='share', disabled=True,
+         updated_at=timeutils.utcnow(), availability_zone_id=FAKE_AZ_6['id'],
+         availability_zone=FAKE_AZ_6),
 ]
 
 SHARE_SERVICE_STATES_WITH_POOLS = {
@@ -289,17 +306,23 @@ FAKE_HOST_STRING_3 = 'openstack@BackendC#PoolZ'
 def mock_host_manager_db_calls(mock_obj, disabled=None):
     services = [
         dict(id=1, host='host1', topic='share', disabled=False,
-             availability_zone_id='zone1', updated_at=timeutils.utcnow()),
+             availability_zone=FAKE_AZ_1, availability_zone_id=FAKE_AZ_1['id'],
+             updated_at=timeutils.utcnow()),
         dict(id=2, host='host2', topic='share', disabled=False,
-             availability_zone_id='zone1', updated_at=timeutils.utcnow()),
+             availability_zone=FAKE_AZ_1, availability_zone_id=FAKE_AZ_1['id'],
+             updated_at=timeutils.utcnow()),
         dict(id=3, host='host3', topic='share', disabled=False,
-             availability_zone_id='zone2', updated_at=timeutils.utcnow()),
+             availability_zone=FAKE_AZ_2, availability_zone_id=FAKE_AZ_2['id'],
+             updated_at=timeutils.utcnow()),
         dict(id=4, host='host4', topic='share', disabled=False,
-             availability_zone_id='zone3', updated_at=timeutils.utcnow()),
+             availability_zone=FAKE_AZ_3, availability_zone_id=FAKE_AZ_3['id'],
+             updated_at=timeutils.utcnow()),
         dict(id=5, host='host5', topic='share', disabled=False,
-             availability_zone_id='zone3', updated_at=timeutils.utcnow()),
+             availability_zone=FAKE_AZ_3, availability_zone_id=FAKE_AZ_3['id'],
+             updated_at=timeutils.utcnow()),
         dict(id=6, host='host6', topic='share', disabled=False,
-             availability_zone_id='zone4', updated_at=timeutils.utcnow()),
+             availability_zone=FAKE_AZ_4, availability_zone_id=FAKE_AZ_4['id'],
+             updated_at=timeutils.utcnow()),
     ]
     if disabled is None:
         mock_obj.return_value = services

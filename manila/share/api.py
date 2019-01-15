@@ -69,7 +69,8 @@ class API(base.Base):
     def create(self, context, share_proto, size, name, description,
                snapshot_id=None, availability_zone=None, metadata=None,
                share_network_id=None, share_type=None, is_public=False,
-               share_group_id=None, share_group_snapshot_member=None):
+               share_group_id=None, share_group_snapshot_member=None,
+               availability_zones=None):
         """Create new share."""
         policy.check_policy(context, 'share', 'create')
 
@@ -257,7 +258,7 @@ class API(base.Base):
             context, share, share_network_id=share_network_id, host=host,
             availability_zone=availability_zone, share_group=share_group,
             share_group_snapshot_member=share_group_snapshot_member,
-            share_type_id=share_type_id)
+            share_type_id=share_type_id, availability_zones=availability_zones)
 
         # Retrieve the share with instance details
         share = self.db.share_get(context, share['id'])
@@ -333,7 +334,7 @@ class API(base.Base):
     def create_instance(self, context, share, share_network_id=None,
                         host=None, availability_zone=None,
                         share_group=None, share_group_snapshot_member=None,
-                        share_type_id=None):
+                        share_type_id=None, availability_zones=None):
         policy.check_policy(context, 'share', 'create')
 
         request_spec, share_instance = (
@@ -341,7 +342,8 @@ class API(base.Base):
                 context, share, availability_zone=availability_zone,
                 share_group=share_group, host=host,
                 share_network_id=share_network_id,
-                share_type_id=share_type_id))
+                share_type_id=share_type_id,
+                availability_zones=availability_zones))
 
         if share_group_snapshot_member:
             # Inherit properties from the share_group_snapshot_member
@@ -379,7 +381,8 @@ class API(base.Base):
     def create_share_instance_and_get_request_spec(
             self, context, share, availability_zone=None,
             share_group=None, host=None, share_network_id=None,
-            share_type_id=None, cast_rules_to_readonly=False):
+            share_type_id=None, cast_rules_to_readonly=False,
+            availability_zones=None):
 
         availability_zone_id = None
         if availability_zone:
@@ -449,6 +452,7 @@ class API(base.Base):
             'share_type': share_type,
             'share_group': share_group,
             'availability_zone_id': availability_zone_id,
+            'availability_zones': availability_zones,
         }
         return request_spec, share_instance
 
@@ -473,6 +477,21 @@ class API(base.Base):
                     "state.")
             raise exception.ReplicationException(reason=msg % share['id'])
 
+        share_type = share_types.get_share_type(
+            context, share.instance['share_type_id'])
+        type_azs = share_type['extra_specs'].get('availability_zones', '')
+        type_azs = [t for t in type_azs.split(',') if type_azs]
+        if (availability_zone and type_azs and
+                availability_zone not in type_azs):
+            msg = _("Share replica cannot be created since the share type "
+                    "%(type)s is not supported within the availability zone "
+                    "chosen %(az)s.")
+            type_name = '%s' % (share_type['name'] or '')
+            type_id = '(ID: %s)' % share_type['id']
+            payload = {'type': '%s%s' % (type_name, type_id),
+                       'az': availability_zone}
+            raise exception.InvalidShare(message=msg % payload)
+
         if share['replication_type'] == constants.REPLICATION_TYPE_READABLE:
             cast_rules_to_readonly = True
         else:
@@ -483,7 +502,9 @@ class API(base.Base):
                 context, share, availability_zone=availability_zone,
                 share_network_id=share_network_id,
                 share_type_id=share['instance']['share_type_id'],
-                cast_rules_to_readonly=cast_rules_to_readonly))
+                cast_rules_to_readonly=cast_rules_to_readonly,
+                availability_zones=type_azs)
+        )
 
         all_replicas = self.db.share_replicas_get_all_by_share(
             context, share['id'])
@@ -1196,6 +1217,20 @@ class API(base.Base):
 
         service = self.db.service_get_by_args(
             context, dest_host_host, 'manila-share')
+
+        type_azs = share_type['extra_specs'].get('availability_zones', '')
+        type_azs = [t for t in type_azs.split(',') if type_azs]
+        if type_azs and service['availability_zone']['name'] not in type_azs:
+            msg = _("Share %(shr)s cannot be migrated to host %(dest)s "
+                    "because share type %(type)s is not supported within the "
+                    "availability zone (%(az)s) that the host is in.")
+            type_name = '%s' % (share_type['name'] or '')
+            type_id = '(ID: %s)' % share_type['id']
+            payload = {'type': '%s%s' % (type_name, type_id),
+                       'az': service['availability_zone']['name'],
+                       'shr': share['id'],
+                       'dest': dest_host}
+            raise exception.InvalidShare(reason=msg % payload)
 
         request_spec = self._get_request_spec_dict(
             share,

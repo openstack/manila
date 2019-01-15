@@ -57,6 +57,8 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'delete', stubs.stub_share_delete)
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get)
+        self.mock_object(share_types, 'get_share_type',
+                         stubs.stub_share_type_get)
         self.maxDiff = None
         self.share = {
             "size": 100,

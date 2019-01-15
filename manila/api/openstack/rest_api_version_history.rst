@@ -256,7 +256,6 @@ user documentation.
 
 2.47
 ----
-
   Export locations for non-active share replicas are no longer retrievable
   through the export locations APIs: ``GET
   /v2/{tenant_id}/shares/{share_id}/export_locations`` and ``GET
@@ -264,3 +263,10 @@ user documentation.
   A new API is introduced at this version: ``GET
   /v2/{tenant_id}/share-replicas/{replica_id}/export-locations`` to allow
   retrieving export locations of share replicas if available.
+
+2.48
+----
+  Administrators can now use the common, user-visible extra-spec
+  'availability_zones' within share types to allow provisioning of shares
+  only within specific availability zones. The extra-spec allows using
+  comma separated names of one or more availability zones.

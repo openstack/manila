@@ -263,6 +263,7 @@ class ShareGroupAPITest(test.TestCase):
 
         self.controller.share_group_api.create.assert_called_once_with(
             self.context, availability_zone_id=fake_az_id,
+            availability_zone=fake_az_name,
             share_group_type_id=self.fake_share_group_type['id'],
             share_type_ids=[self.fake_share_type['id']])
         share_groups.db.availability_zone_get.assert_called_once_with(
