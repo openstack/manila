@@ -253,6 +253,14 @@ class NetAppCmodeFileStorageLibrary(object):
             return self._client.get_vserver_aggregate_capacities(aggregates)
 
     @na_utils.trace
+    def _check_snaprestore_license(self):
+        """Check if snaprestore license is enabled."""
+        if not self._licenses:
+            self._licenses = self._client.get_licenses()
+
+        return 'snaprestore' in self._licenses
+
+    @na_utils.trace
     def _get_aggregate_node(self, aggregate_name):
         """Get home node for the specified aggregate, or None."""
         if self._have_cluster_creds:
@@ -323,6 +331,8 @@ class NetAppCmodeFileStorageLibrary(object):
         netapp_flexvol_encryption = self._cluster_info.get(
             'nve_support', False)
 
+        revert_to_snapshot_support = self._check_snaprestore_license()
+
         for aggr_name in sorted(aggregates):
 
             reserved_percentage = self.configuration.reserved_share_percentage
@@ -352,7 +362,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 'thin_provisioning': [True, False],
                 'snapshot_support': True,
                 'create_share_from_snapshot_support': True,
-                'revert_to_snapshot_support': True,
+                'revert_to_snapshot_support': revert_to_snapshot_support,
             }
 
             # Add storage service catalog data.
