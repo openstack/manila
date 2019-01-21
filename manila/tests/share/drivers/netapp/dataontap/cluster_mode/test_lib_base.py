@@ -329,6 +329,22 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             assert_called_once_with(fake.AGGREGATES))
         self.assertDictEqual(fake.AGGREGATE_CAPACITIES, result)
 
+    def test_check_snaprestore_license_notfound(self):
+        licenses = list(fake.LICENSES)
+        licenses.remove('snaprestore')
+        self.mock_object(self.client,
+                         'get_licenses',
+                         mock.Mock(return_value=licenses))
+        result = self.library._check_snaprestore_license()
+        self.assertIs(False, result)
+
+    def test_check_snaprestore_license_found(self):
+        self.mock_object(self.client,
+                         'get_licenses',
+                         mock.Mock(return_value=fake.LICENSES))
+        result = self.library._check_snaprestore_license()
+        self.assertIs(True, result)
+
     def test_get_aggregate_node_cluster_creds(self):
 
         self.library._have_cluster_creds = True
@@ -433,6 +449,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._ssc_stats = fake.SSC_INFO
         self.library._perf_library.get_node_utilization_for_pool = (
             mock.Mock(side_effect=[30.0, 42.0]))
+        self.mock_object(self.library,
+                         '_check_snaprestore_license',
+                         mock.Mock(return_value=True))
 
         result = self.library._get_pools(filter_function='filter',
                                          goodness_function='goodness')
@@ -449,6 +468,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._ssc_stats = fake.SSC_INFO_VSERVER_CREDS
         self.library._perf_library.get_node_utilization_for_pool = (
             mock.Mock(side_effect=[50.0, 50.0]))
+        self.mock_object(self.library,
+                         '_check_snaprestore_license',
+                         mock.Mock(return_value=True))
 
         result = self.library._get_pools()
 
