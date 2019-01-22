@@ -70,6 +70,8 @@
           OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit,tempest
           export OVERRIDE_ENABLED_SERVICES
 
+          export DEVSTACK_GATE_USE_PYTHON3=True
+
           function pre_test_hook {
               # Configure Manila with a CephFS Native or NFS driver backend.
               # Refer to job-template pre_test_hook for more details on the
