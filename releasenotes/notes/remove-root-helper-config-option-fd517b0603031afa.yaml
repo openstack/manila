@@ -1,0 +1,7 @@
+---
+other:
+  - |
+    The "root_helper" configuration option from the [DEFAULT] section
+    got removed. This option was not used anywhere in the codebase.
+    Manila uses "sudo" together with "rootwrap" to allow unprivileged users
+    running actions as root.
