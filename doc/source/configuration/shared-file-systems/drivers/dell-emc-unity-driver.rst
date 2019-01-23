@@ -20,7 +20,7 @@ Requirements
 
 - Unity OE 4.1.x or higher.
 
-- StorOps 0.4.3 or higher is installed on Manila node.
+- StorOps 1.1.0 or higher is installed on Manila node.
 
 - Following licenses are activated on Unity:
 
@@ -53,6 +53,8 @@ The following operations are supported:
 -  Create a share from a snapshot.
 
 -  Extend a share.
+
+-  Shrink a share.
 
 
 Supported network types

@@ -177,6 +177,22 @@ class TestConnection(test.TestCase):
 
     @res_mock.mock_manila_input
     @res_mock.patch_connection
+    def test_shrink_cifs_share(self, connection, mocked_input):
+        share = mocked_input['shrink_cifs_share']
+        new_size = 4 * units.Gi
+
+        connection.shrink_share(share, new_size)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_shrink_nfs_share(self, connection, mocked_input):
+        share = mocked_input['shrink_nfs_share']
+        new_size = 4 * units.Gi
+
+        connection.shrink_share(share, new_size)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
     def test_extend_cifs_share(self, connection, mocked_input):
         share = mocked_input['cifs_share']
         share_server = mocked_input['share_server']
@@ -202,6 +218,19 @@ class TestConnection(test.TestCase):
 
         self.assertRaises(exception.ShareExtendingError,
                           connection.extend_share,
+                          share,
+                          new_size,
+                          share_server)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_shrink_share_create_from_snap(self, connection, mocked_input):
+        share = mocked_input['shrink_cifs_share']
+        share_server = mocked_input['share_server']
+        new_size = 4 * units.Gi
+
+        self.assertRaises(exception.ShareShrinkingError,
+                          connection.shrink_share,
                           share,
                           new_size,
                           share_server)
