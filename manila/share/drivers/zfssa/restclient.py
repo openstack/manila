@@ -302,7 +302,7 @@ class RestClientURL(object):  # pylint: disable=R0902
                         '/access/v1' not in zfssaurl):
                     try:
                         log_debug_msg(self, ('Authorizing request: '
-                                             '%(zfssaurl)s'
+                                             '%(zfssaurl)s '
                                              'retry: %(retry)d .')
                                       % {'zfssaurl': zfssaurl,
                                          'retry': retry})
