@@ -104,8 +104,10 @@ global_opts = [
                 help='Memcached servers or None for in process cache.'),
     cfg.StrOpt('share_usage_audit_period',
                default='month',
+               deprecated_for_removal=True,
                help='Time period to generate share usages for.  '
-                    'Time period must be hour, day, month or year.'),
+                    'Time period must be hour, day, month or year.',
+               deprecated_reason="The config option is not used."),
     cfg.StrOpt('rootwrap_config',
                help='Path to the rootwrap configuration file to use for '
                     'running commands as root.'),
