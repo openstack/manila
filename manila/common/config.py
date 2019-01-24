@@ -106,10 +106,6 @@ global_opts = [
                default='month',
                help='Time period to generate share usages for.  '
                     'Time period must be hour, day, month or year.'),
-    cfg.StrOpt('root_helper',
-               default='sudo',
-               help='Deprecated: command to use for running commands as '
-                    'root.'),
     cfg.StrOpt('rootwrap_config',
                help='Path to the rootwrap configuration file to use for '
                     'running commands as root.'),

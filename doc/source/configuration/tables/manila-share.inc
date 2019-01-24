@@ -56,8 +56,6 @@
      - (Integer) Time to wait for access rules to be allowed/denied on backends when migrating shares using generic approach (seconds).
    * - ``network_config_group`` = ``None``
      - (String) Name of the configuration group in the Manila conf file to look for network config options.If not set, the share backend's config group will be used.If an option is not found within provided group, then'DEFAULT' group will be used for search of option.
-   * - ``root_helper`` = ``sudo``
-     - (String) Deprecated: command to use for running commands as root.
    * - ``share_manager`` = ``manila.share.manager.ShareManager``
      - (String) Full class name for the share manager.
    * - ``share_name_template`` = ``share-%s``
