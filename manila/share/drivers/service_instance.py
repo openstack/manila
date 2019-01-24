@@ -219,6 +219,9 @@ class ServiceInstanceManager(object):
         self.max_time_to_build_instance = self.get_config_option(
             "max_time_to_build_instance")
 
+        self.availability_zone = self.get_config_option(
+            'backend_availability_zone') or CONF.storage_availability_zone
+
         if self.get_config_option("driver_handles_share_servers"):
             self.path_to_public_key = self.get_config_option(
                 "path_to_public_key")
@@ -564,7 +567,7 @@ class ServiceInstanceManager(object):
                 flavor=self.get_config_option("service_instance_flavor_id"),
                 key_name=key_name,
                 nics=network_data['nics'],
-                availability_zone=CONF.storage_availability_zone,
+                availability_zone=self.availability_zone,
                 **create_kwargs)
 
             fail_safe_data['instance_id'] = service_instance['id']

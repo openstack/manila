@@ -239,6 +239,12 @@ class ShareManager(manager.SchedulerDependentManager):
             configuration=self.configuration,
         )
 
+        backend_availability_zone = self.driver.configuration.safe_get(
+            'backend_availability_zone')
+        self.availability_zone = (
+            backend_availability_zone or CONF.storage_availability_zone
+        )
+
         self.access_helper = access.ShareInstanceAccess(self.db, self.driver)
         self.snapshot_access_helper = (
             snapshot_access.ShareSnapshotInstanceAccess(self.db, self.driver))
@@ -1659,7 +1665,7 @@ class ShareManager(manager.SchedulerDependentManager):
         if not share_instance['availability_zone']:
             share_instance = self.db.share_instance_update(
                 context, share_instance_id,
-                {'availability_zone': CONF.storage_availability_zone},
+                {'availability_zone': self.availability_zone},
                 with_share_data=True
             )
 
@@ -1834,7 +1840,7 @@ class ShareManager(manager.SchedulerDependentManager):
         if not share_replica['availability_zone']:
             share_replica = self.db.share_replica_update(
                 context, share_replica['id'],
-                {'availability_zone': CONF.storage_availability_zone},
+                {'availability_zone': self.availability_zone},
                 with_share_data=True
             )
 
@@ -2400,7 +2406,7 @@ class ShareManager(manager.SchedulerDependentManager):
             share_update.update({
                 'status': constants.STATUS_AVAILABLE,
                 'launched_at': timeutils.utcnow(),
-                'availability_zone': CONF.storage_availability_zone,
+                'availability_zone': self.availability_zone,
             })
 
             # If the share was managed with `replication_type` extra-spec, the
@@ -3865,7 +3871,7 @@ class ShareManager(manager.SchedulerDependentManager):
     def _get_az_for_share_group(self, context, share_group_ref):
         if not share_group_ref['availability_zone_id']:
             return self.db.availability_zone_get(
-                context, CONF.storage_availability_zone)['id']
+                context, self.availability_zone)['id']
         return share_group_ref['availability_zone_id']
 
     @utils.require_driver_initialized

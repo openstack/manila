@@ -75,6 +75,8 @@ def fake_get_config_option(key):
         return None
     elif key == 'admin_subnet_id':
         return None
+    elif key == 'backend_availability_zone':
+        return None
     else:
         return mock.Mock()
 

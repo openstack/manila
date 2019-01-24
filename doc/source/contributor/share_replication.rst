@@ -56,8 +56,9 @@ pools, manila would allow for replication between two pools on the same
 backend.
 
 The ``replication_domain`` option is meant to be used in conjunction with the
-``storage_availability_zone`` option to utilize this solution for Data
-Protection/Disaster Recovery.
+``storage_availability_zone`` (or back end specific
+``backend_availability_zone``) option to utilize
+this solution for Data Protection/Disaster Recovery.
 
 
 Replication types
