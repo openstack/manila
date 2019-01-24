@@ -144,6 +144,23 @@ function set_cinder_quotas {
     fi
 }
 
+function set_backend_availability_zones {
+    ENABLED_BACKENDS=$1
+    echo_summary "Setting up backend_availability_zone option \
+        for any enabled backends that do not use the Generic driver. \
+        Availability zones for the Generic driver must coincide with those \
+        created for Nova and Cinder."
+    local zonenum
+    generic_driver='manila.share.drivers.generic.GenericShareDriver'
+    for BE in ${ENABLED_BACKENDS//,/ }; do
+        share_driver=$(iniget $MANILA_CONF $BE share_driver)
+        if [[ $share_driver != $generic_driver ]]; then
+            zone="manila-zone-$((zonenum++))"
+            iniset $MANILA_CONF $BE backend_availability_zone $zone
+        fi
+    done
+}
+
 # configure_manila - Set config files, create data dirs, etc
 function configure_manila {
     if [[ ! -d $MANILA_CONF_DIR ]]; then
@@ -272,6 +289,7 @@ function configure_manila {
     MANILA_CONFIGURE_GROUPS=${MANILA_CONFIGURE_GROUPS:-"$MANILA_ENABLED_BACKENDS"}
     set_config_opts $MANILA_CONFIGURE_GROUPS
     set_config_opts DEFAULT
+    set_backend_availability_zones $MANILA_ENABLED_BACKENDS
 
     if [ $(trueorfalse False MANILA_USE_MOD_WSGI) == True ]; then
         _config_manila_apache_wsgi
