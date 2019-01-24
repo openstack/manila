@@ -4,7 +4,7 @@ set -eu
 
 usage() {
     echo "Usage: $0 [OPTION]..."
-    echo "Run Cinder's coding check(s)"
+    echo "Run Manila's coding check(s)"
     echo ""
     echo " -Y, --pylint [<basecommit>] Run pylint check on the entire manila module or just files changed in basecommit (e.g. HEAD~1)"
     echo " -h, --help   Print this usage message"
