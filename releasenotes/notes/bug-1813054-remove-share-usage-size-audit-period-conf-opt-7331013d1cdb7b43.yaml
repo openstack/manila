@@ -1,0 +1,12 @@
+---
+deprecations:
+  - |
+    The configuration option ``share_usage_audit_period`` from the
+    [DEFAULT] section has been deprecated. Specifying this option
+    never had any effect on manila and so it will be removed in an
+    upcoming release. This option should not be confused
+    with ``share_usage_size_update_interval`` from the back end
+    section, which can be used to gather usage size for some back ends
+    that support that feature.
+
+

@@ -64,8 +64,6 @@
      - (String) Template string to be used to generate share snapshot names.
    * - ``share_topic`` = ``manila-share``
      - (String) The topic share nodes listen on.
-   * - ``share_usage_audit_period`` = ``month``
-     - (String) Time period to generate share usages for. Time period must be hour, day, month or year.
    * - ``suppress_post_hooks_errors`` = ``False``
      - (Boolean) Whether to suppress post hook errors (allow driver's results to pass through) or not.
    * - ``suppress_pre_hooks_errors`` = ``False``
