@@ -101,7 +101,10 @@ global_opts = [
     cfg.StrOpt('default_share_group_type',
                help='Default share group type to use.'),
     cfg.ListOpt('memcached_servers',
-                help='Memcached servers or None for in process cache.'),
+                help='Memcached servers or None for in process cache.',
+                deprecated_reason="The config option is not used. It should "
+                "not be confused with [keystone_authtoken]/memcached_servers.",
+                deprecated_for_removal=True),
     cfg.StrOpt('share_usage_audit_period',
                default='month',
                deprecated_for_removal=True,

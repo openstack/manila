@@ -1,0 +1,9 @@
+---
+deprecations:
+  - |
+    The configuration option "memcached_servers" from the [DEFAULT]
+    section is deprecated. This option has currently no effect and
+    will be removed in future releases.
+    To specify memcached servers for the authentication middleware
+    when using keystone, please use the option "memcached_servers"
+    from the [keystone_authtoken] configuration group.
