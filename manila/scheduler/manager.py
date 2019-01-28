@@ -62,7 +62,7 @@ MAPPING = {
 class SchedulerManager(manager.Manager):
     """Chooses a host to create shares."""
 
-    RPC_API_VERSION = '1.8'
+    RPC_API_VERSION = '1.9'
 
     def __init__(self, scheduler_driver=None, service_name=None,
                  *args, **kwargs):
@@ -120,9 +120,9 @@ class SchedulerManager(manager.Manager):
                     'create_share', {'status': constants.STATUS_ERROR},
                     context, ex, request_spec)
 
-    def get_pools(self, context, filters=None):
+    def get_pools(self, context, filters=None, cached=False):
         """Get active pools from the scheduler's cache."""
-        return self.driver.get_pools(context, filters)
+        return self.driver.get_pools(context, filters, cached)
 
     def manage_share(self, context, share_id, driver_options, request_spec,
                      filter_properties=None):

@@ -45,8 +45,8 @@ class FilterScheduler(base.Scheduler):
         """Fetch options dictionary. Broken out for testing."""
         return self.options.get_configuration()
 
-    def get_pools(self, context, filters):
-        return self.host_manager.get_pools(context, filters)
+    def get_pools(self, context, filters, cached):
+        return self.host_manager.get_pools(context, filters, cached)
 
     def _post_select_populate_filter_properties(self, filter_properties,
                                                 host_state):
