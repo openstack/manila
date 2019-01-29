@@ -481,7 +481,7 @@ class GaneshaManager(object):
             else:
                 _mkindex_called = True
                 self._mkindex()
-        except Exception as e:
+        except exception.ProcessExecutionError as e:
             for u in undos:
                 u()
             if not self.ganesha_rados_store_enable and not _mkindex_called:
@@ -499,7 +499,7 @@ class GaneshaManager(object):
         try:
             self._dbus_send_ganesha("UpdateExport", "string:" + path,
                                     "string:EXPORT(Export_Id=%d)" % xid)
-        except Exception as e:
+        except exception.ProcessExecutionError as e:
             # Revert the export update.
             self._write_export(name, old_confdict)
             raise exception.GaneshaCommandFailure(
