@@ -37,27 +37,28 @@ class ShareExportLocationController(wsgi.Controller):
             msg = _("Share '%s' not found.") % share_id
             raise exc.HTTPNotFound(explanation=msg)
 
-    @wsgi.Controller.api_version('2.9')
-    @wsgi.Controller.authorize
-    def index(self, req, share_id):
-        """Return a list of export locations for share."""
-
+    @wsgi.Controller.authorize('index')
+    def _index(self, req, share_id, ignore_secondary_replicas=False):
         context = req.environ['manila.context']
         self._verify_share(context, share_id)
+        kwargs = {
+            'include_admin_only': context.is_admin,
+            'ignore_migration_destination': True,
+            'ignore_secondary_replicas': ignore_secondary_replicas,
+        }
         export_locations = db_api.share_export_locations_get_by_share_id(
-            context, share_id, include_admin_only=context.is_admin,
-            ignore_migration_destination=True)
+            context, share_id, **kwargs)
         return self._view_builder.summary_list(req, export_locations)
 
-    @wsgi.Controller.api_version('2.9')
-    @wsgi.Controller.authorize
-    def show(self, req, share_id, export_location_uuid):
-        """Return data about the requested export location."""
+    @wsgi.Controller.authorize('show')
+    def _show(self, req, share_id, export_location_uuid,
+              ignore_secondary_replicas=False):
         context = req.environ['manila.context']
         self._verify_share(context, share_id)
         try:
             export_location = db_api.share_export_location_get_by_uuid(
-                context, export_location_uuid)
+                context, export_location_uuid,
+                ignore_secondary_replicas=ignore_secondary_replicas)
         except exception.ExportLocationNotFound:
             msg = _("Export location '%s' not found.") % export_location_uuid
             raise exc.HTTPNotFound(explanation=msg)
@@ -66,6 +67,28 @@ class ShareExportLocationController(wsgi.Controller):
             raise exc.HTTPForbidden()
 
         return self._view_builder.detail(req, export_location)
+
+    @wsgi.Controller.api_version('2.9', '2.46')
+    def index(self, req, share_id):
+        """Return a list of export locations for share."""
+        return self._index(req, share_id)
+
+    @wsgi.Controller.api_version('2.47')  # noqa: F811
+    def index(self, req, share_id):
+        """Return a list of export locations for share."""
+        return self._index(req, share_id,
+                           ignore_secondary_replicas=True)
+
+    @wsgi.Controller.api_version('2.9', '2.46')
+    def show(self, req, share_id, export_location_uuid):
+        """Return data about the requested export location."""
+        return self._show(req, share_id, export_location_uuid)
+
+    @wsgi.Controller.api_version('2.47')  # noqa: F811
+    def show(self, req, share_id, export_location_uuid):
+        """Return data about the requested export location."""
+        return self._show(req, share_id, export_location_uuid,
+                          ignore_secondary_replicas=True)
 
 
 def create_resource():

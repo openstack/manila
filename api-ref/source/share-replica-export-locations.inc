@@ -1,23 +1,17 @@
 .. -*- rst -*-
 
-=======================================
-Share export locations (since API v2.9)
-=======================================
+.. _share_replica_export_locations:
 
-Set of APIs used for viewing export locations of shares.
+================================================
+Share replica export locations (since API v2.47)
+================================================
 
-These APIs allow retrieval of export locations belonging to non-active share
-replicas until API version 2.46. In and beyond API version 2.47, export
-locations of non-active share replicas can only be retrieved using the
-:ref:`Share Replica Export Locations APIs <share_replica_export_locations>`.
-
+Set of APIs used to view export locations of share replicas.
 
 List export locations
 =====================
 
-.. rest_method::  GET /v2/{tenant_id}/shares/{share_id}/export_locations
-
-Lists all export locations for a share.
+.. rest_method::  GET /v2/{tenant_id}/share-replicas/{share_replica_id}/export-locations
 
 Response codes
 --------------
@@ -38,8 +32,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - share_id: share_id
    - tenant_id: tenant_id_path
+   - share_replica_id: share_replica_id_path
 
 Response parameters
 -------------------
@@ -50,21 +44,22 @@ Response parameters
    - share_instance_id: export_location_share_instance_id
    - path: export_location_path
    - is_admin_only: export_location_is_admin_only
-   - preferred: export_location_preferred
+   - preferred: export_location_preferred_replicas
+   - availability_zone: export_location_availability_zone
+   - replica_state: share_replica_replica_state
 
 Response example
 ----------------
 
-.. literalinclude:: samples/export-location-list-response.json
+.. literalinclude:: samples/share-replica-export-location-list-response.json
    :language: javascript
 
 
 Show single export location
 ===========================
 
-.. rest_method::  GET /v2/{tenant_id}/shares/{share_id}/export_locations/​{export_location_id}​
+.. rest_method::  GET /v2/{tenant_id}/share-replicas/{share_replica_id}/export-locations/{export-location-id}
 
-Show details of an export location belonging to a share.
 
 Response codes
 --------------
@@ -85,8 +80,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - share_id: share_id
    - tenant_id: tenant_id_path
+   - share_replica_id: share_replica_id_path
    - export_location_id: export_location_id_path
 
 Response parameters
@@ -98,12 +93,14 @@ Response parameters
    - share_instance_id: export_location_share_instance_id
    - path: export_location_path
    - is_admin_only: export_location_is_admin_only
-   - preferred: export_location_preferred
+   - preferred: export_location_preferred_replicas
+   - availability_zone: export_location_availability_zone
+   - replica_state: share_replica_replica_state
    - created_at: export_location_created_at
    - updated_at: export_location_updated_at
 
 Response example
 ----------------
 
-.. literalinclude:: samples/export-location-show-response.json
+.. literalinclude:: samples/share-replica-export-location-show-response.json
    :language: javascript

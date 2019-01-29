@@ -1,0 +1,22 @@
+---
+features:
+  - |
+    New experimental APIs were introduced version ``2.47`` to retrieve
+    export locations of share replicas. With API versions ``2.46`` and
+    prior, export locations of non-active or secondary share replicas are
+    included in the share export locations APIs, albeit these APIs do not
+    provide all the necessary distinguishing information (availability zone,
+    replica state and replica ID). See the `API reference
+    <https://developer.openstack.org/api-ref/shared-file-system/>`_ for more
+    information regarding these API changes.
+deprecations:
+  - |
+    In API version ``2.47``, export locations APIs: ``GET
+    /v2/{tenant_id}/shares/{share_id}/export_locations`` and ``GET
+    /v2/{tenant_id}/shares/{share_id}/export_locations/​{export_location_id
+    }`` no longer provide export locations of non-active or secondary share
+    replicas where available. Use the newly introduced share replica export
+    locations APIs to gather this information: ``GET
+    /v2/{tenant_id}/share-replicas/{share_replica_id}/export-locations`` and
+    ``GET /v2/{tenant_id}/share-replicas/{share_replica_id}/export
+    -locations/{export_location_id}``.

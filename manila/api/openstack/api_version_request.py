@@ -121,13 +121,21 @@ REST_API_VERSION_HISTORY = """
              access rules will not work with API version >=2.45.
     * 2.46 - Added 'is_default' field to 'share_type' and 'share_group_type'
              objects.
+    * 2.47 - Export locations for non-active share replicas are no longer
+             retrievable through the export locations APIs:
+             GET /v2/{tenant_id}/shares/{share_id}/export_locations and
+             GET /v2/{tenant_id}/shares/{share_id}/export_locations/{
+             export_location_id}. A new API is introduced at this
+             version: GET /v2/{tenant_id}/share-replicas/{
+             replica_id}/export-locations to allow retrieving individual
+             replica export locations if available.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.46"
+_MAX_API_VERSION = "2.47"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

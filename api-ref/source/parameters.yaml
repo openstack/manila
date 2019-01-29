@@ -1178,6 +1178,12 @@ export_location:
   required: false
   type: string
   max_version: 2.8
+export_location_availability_zone:
+  description: |
+    The name of the availability zone that the export location belongs to.
+  in: body
+  required: true
+  type: string
 export_location_created_at:
   description: |
     The date and time stamp when the share export location was
@@ -1208,7 +1214,9 @@ export_location_is_admin_only:
     Defines purpose of an export location. If set to
     ``true``, then it is expected to be used for service needs and by
     administrators only. If it is set to ``false``, then this export
-    location can be used by end users.
+    location can be used by end users. This parameter is only available to
+    users with an "administrator" role, and cannot be controlled via policy
+    .json.
   in: body
   required: true
   type: boolean
@@ -1227,10 +1235,19 @@ export_location_preferred:
   required: true
   type: boolean
   min_version: 2.14
+export_location_preferred_replicas:
+  description: |
+    Drivers may use this field to identify which export locations
+    are most efficient and should be used preferentially by clients.
+    By default it is set to ``false`` value.
+  in: body
+  required: true
+  type: boolean
 export_location_share_instance_id:
   description: |
     The UUID of the share instance that this
-    export location belongs to.
+    export location belongs to. This parameter is only available to users
+    with an "administrator" role, and cannot be controlled via policy.json.
   in: body
   required: true
   type: string

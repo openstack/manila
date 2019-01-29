@@ -400,7 +400,8 @@ class ShareInstance(BASE, ManilaBase):
 
     export_locations = orm.relationship(
         "ShareInstanceExportLocations",
-        lazy='immediate',
+        lazy='joined',
+        backref=orm.backref('share_instance', lazy='joined'),
         primaryjoin=(
             'and_('
             'ShareInstance.id == '
@@ -433,6 +434,10 @@ class ShareInstanceExportLocations(BASE, ManilaBase):
         for meta in self._el_metadata_bare:  # pylint: disable=E1101
             el_metadata[meta['key']] = meta['value']
         return el_metadata
+
+    @property
+    def replica_state(self):
+        return self.share_instance['replica_state']
 
     id = Column(Integer, primary_key=True)
     uuid = Column(String(36), nullable=False, unique=True)
