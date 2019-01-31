@@ -1,5 +1,5 @@
 - hosts: all
-  name: legacy-manila-tempest-minimal-dsvm-cephfs-native-ubuntu-bionic
+  name: manila-tempest-minimal-dsvm-cephfs-native
   tasks:
 
     - name: Ensure legacy workspace directory

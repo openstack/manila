@@ -1,5 +1,5 @@
 - hosts: all
-  name: Autoconverted job legacy-rally-dsvm-manila-multibackend from old job gate-rally-dsvm-manila-multibackend
+  name: Autoconverted job rally-dsvm-manila-multibackend from old job gate-rally-dsvm-manila-multibackend
   tasks:
 
     - name: Ensure legacy workspace directory

@@ -1,6 +1,5 @@
 - hosts: all
-  name: Autoconverted job legacy-manila-tempest-minimal-dsvm-cephfs-nfs-centos-7 from
-    old job gate-manila-tempest-minimal-dsvm-cephfs-nfs-centos-7-nv
+  name: Autoconverted job manila-tempest-minimal-dsvm-cephfs-nfs-centos-7 from old job gate-manila-tempest-minimal-dsvm-cephfs-nfs-centos-7-nv
   tasks:
 
     - name: Ensure legacy workspace directory

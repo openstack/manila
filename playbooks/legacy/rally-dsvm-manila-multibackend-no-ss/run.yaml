@@ -1,5 +1,5 @@
 - hosts: all
-  name: Autoconverted job legacy-rally-dsvm-manila-multibackend-no-ss from old job
+  name: Autoconverted job rally-dsvm-manila-multibackend-no-ss from old job
     gate-rally-dsvm-manila-multibackend-no-ss
   tasks:
 

@@ -1,5 +1,5 @@
 - hosts: all
-  name: Autoconverted job legacy-manila-tempest-dsvm-scenario from old job gate-manila-tempest-dsvm-scenario-ubuntu-xenial-nv
+  name: Autoconverted job manila-tempest-dsvm-scenario from old job gate-manila-tempest-dsvm-scenario-ubuntu-xenial-nv
   tasks:
 
     - name: Ensure legacy workspace directory

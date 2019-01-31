@@ -1,5 +1,5 @@
 - hosts: all
-  name: Autoconverted job legacy-manila-tempest-dsvm-mysql-generic from old job gate-manila-tempest-dsvm-mysql-generic-ubuntu-xenial-nv
+  name: Autoconverted job manila-tempest-dsvm-mysql-generic from old job gate-manila-tempest-dsvm-mysql-generic-ubuntu-xenial-nv
   tasks:
 
     - name: Ensure legacy workspace directory

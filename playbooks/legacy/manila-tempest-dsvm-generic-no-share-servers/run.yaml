@@ -1,6 +1,5 @@
 - hosts: all
-  name: Autoconverted job legacy-manila-tempest-dsvm-generic-no-share-servers from
-    old job gate-manila-tempest-dsvm-generic-no-share-servers-ubuntu-xenial-nv
+  name: Autoconverted job manila-tempest-dsvm-generic-no-share-servers from old job gate-manila-tempest-dsvm-generic-no-share-servers-ubuntu-xenial-nv
   tasks:
 
     - name: Ensure legacy workspace directory
