@@ -2808,6 +2808,9 @@ class ShareManageTest(test.TestCase):
             )
         self.mock_object(
             share_api.API, 'manage', return_share)
+        self.mock_object(
+            common, 'validate_public_share_policy',
+            mock.Mock(side_effect=lambda *args, **kwargs: args[1]))
         share = {
             'host': data['share']['service_host'],
             'export_location': data['share']['export_path'],

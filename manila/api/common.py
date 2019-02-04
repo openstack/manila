@@ -22,12 +22,15 @@ import string
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import encodeutils
+from oslo_utils import strutils
 from six.moves.urllib import parse
 import webob
 
 from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import versioned_method
+from manila import exception
 from manila.i18n import _
+from manila import policy
 
 api_common_opts = [
     cfg.IntOpt(
@@ -390,3 +393,35 @@ def validate_access(*args, **kwargs):
                         "are supported.")
 
         raise webob.exc.HTTPBadRequest(explanation=exc_str)
+
+
+def validate_public_share_policy(context, api_params, api='create'):
+    """Validates if policy allows is_public parameter to be set to True.
+
+    :arg api_params - A dictionary of values that may contain 'is_public'
+    :returns api_params with 'is_public' item sanitized if present
+    :raises exception.InvalidParameterValue if is_public is set but is Invalid
+            exception.NotAuthorized if is_public is True but policy prevents it
+    """
+    if 'is_public' not in api_params:
+        return api_params
+
+    policies = {
+        'create': 'create_public_share',
+        'update': 'set_public_share',
+    }
+    policy_to_check = policies[api]
+    try:
+        api_params['is_public'] = strutils.bool_from_string(
+            api_params['is_public'], strict=True)
+    except ValueError as e:
+        raise exception.InvalidParameterValue(six.text_type(e))
+
+    public_shares_allowed = policy.check_policy(
+        context, 'share', policy_to_check, do_raise=False)
+    if api_params['is_public'] and not public_shares_allowed:
+        message = _("User is not authorized to set 'is_public' to True in the "
+                    "request.")
+        raise exception.NotAuthorized(message=message)
+
+    return api_params
