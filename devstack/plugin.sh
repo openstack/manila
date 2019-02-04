@@ -59,6 +59,10 @@ function cleanup_manila {
     _clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
     _clean_manila_lvm_backing_file $SHARE_GROUP
     _clean_zfsonlinux_data
+
+    if [ $(trueorfalse False MANILA_USE_UWSGI) == True ]; then
+        remove_uwsgi_config "$MANILA_UWSGI_CONF" "$MANILA_WSGI"
+    fi
 }
 
 # _config_manila_apache_wsgi() - Configure manila-api wsgi application.
@@ -279,8 +283,9 @@ function configure_manila {
 
     REAL_MANILA_SERVICE_PORT=$MANILA_SERVICE_PORT
     if is_service_enabled tls-proxy; then
-        # Set the protocol to 'https', and set the default port
+        # Set the protocol to 'https', update the endpoint base and set the default port
         MANILA_SERVICE_PROTOCOL="https"
+        MANILA_ENDPOINT_BASE="${MANILA_ENDPOINT_BASE/http:/https:}"
         REAL_MANILA_SERVICE_PORT=$MANILA_SERVICE_PORT_INT
         # Set the service port for a proxy to take the original
         iniset $MANILA_CONF DEFAULT osapi_share_listen_port $REAL_MANILA_SERVICE_PORT
@@ -295,6 +300,10 @@ function configure_manila {
     set_config_opts $MANILA_CONFIGURE_GROUPS
     set_config_opts DEFAULT
     set_backend_availability_zones $MANILA_ENABLED_BACKENDS
+
+    if [ $(trueorfalse False MANILA_USE_UWSGI) == True ]; then
+        write_uwsgi_config "$MANILA_UWSGI_CONF" "$MANILA_WSGI" "/share"
+    fi
 
     if [ $(trueorfalse False MANILA_USE_MOD_WSGI) == True ]; then
         _config_manila_apache_wsgi
@@ -483,19 +492,14 @@ function create_manila_accounts {
 
     create_service_user "manila"
 
-    # Set up Manila v1 service and endpoint
     get_or_create_service "manila" "share" "Manila Shared Filesystem Service"
     get_or_create_endpoint "share" "$REGION_NAME" \
-        "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s" \
-        "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s" \
-        "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s"
+        "$MANILA_ENDPOINT_BASE/v1/\$(project_id)s"
 
     # Set up Manila v2 service and endpoint
     get_or_create_service "manilav2" "sharev2" "Manila Shared Filesystem Service V2"
     get_or_create_endpoint "sharev2" "$REGION_NAME" \
-        "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v2/\$(tenant_id)s" \
-        "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v2/\$(tenant_id)s" \
-        "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v2/\$(tenant_id)s"
+        "$MANILA_ENDPOINT_BASE/v2/\$(project_id)s"
 }
 
 # create_default_share_group_type - create share group type that will be set as default.
@@ -817,15 +821,31 @@ function configure_samba {
 
 # start_manila_api - starts manila API services and checks its availability
 function start_manila_api {
-    if [ $(trueorfalse False MANILA_USE_MOD_WSGI) == True ]; then
+
+    # NOTE(vkmc) If both options are set to true we are using uwsgi
+    # as the preferred way to deploy manila. See
+    # https://governance.openstack.org/tc/goals/pike/deploy-api-in-wsgi.html#uwsgi-vs-mod-wsgi
+    # for more details
+    if [ $(trueorfalse False MANILA_USE_UWSGI) == True ] && [ $(trueorfalse False MANILA_USE_MOD_WSGI) == True ]; then
+        MSG="Both MANILA_USE_UWSGI and MANILA_USE_MOD_WSGI are set to True.
+            Using UWSGI as the preferred option
+            Set MANILA_USE_UWSGI to False to deploy manila api with MOD_WSGI"
+        warn $LINENO $MSG
+    fi
+
+    if [ $(trueorfalse False MANILA_USE_UWSGI) == True ]; then
+        echo "Deploying with UWSGI"
+        run_process m-api "$MANILA_BIN_DIR/uwsgi --ini $MANILA_UWSGI_CONF --procname-prefix manila-api"
+    elif [ $(trueorfalse False MANILA_USE_MOD_WSGI) == True ]; then
+        echo "Deploying with MOD_WSGI"
         install_apache_wsgi
         enable_apache_site manila-api
         restart_apache_server
         tail_log m-api /var/log/$APACHE_NAME/manila_api.log
     else
+        echo "Deploying with built-in server"
         run_process m-api "$MANILA_BIN_DIR/manila-api --config-file $MANILA_CONF"
     fi
-
 
     echo "Waiting for Manila API to start..."
     # This is a health check against the manila-api service we just started.
@@ -833,12 +853,24 @@ function start_manila_api {
     # the bare service endpoint, even if the tls tunnel should be enabled.
     # We're making sure that the internal port is checked using unencryted
     # traffic at this point.
-    if ! wait_for_service $SERVICE_TIMEOUT $MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$REAL_MANILA_SERVICE_PORT; then
+
+    local MANILA_HEALTH_CHECK_URL=$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$REAL_MANILA_SERVICE_PORT
+
+    if [ $(trueorfalse False MANILA_USE_UWSGI) == True ]; then
+        MANILA_HEALTH_CHECK_URL=$MANILA_ENDPOINT_BASE
+    fi
+
+    if ! wait_for_service $SERVICE_TIMEOUT $MANILA_HEALTH_CHECK_URL; then
         die $LINENO "Manila API did not start"
     fi
 
     # Start proxies if enabled
-    if is_service_enabled tls-proxy; then
+    #
+    # If tls-proxy is enabled and MANILA_USE_UWSGI is set to True, a generic
+    # http-services-tls-proxy will be set up to handle tls-termination to
+    # manila as well as all the other https services, we don't need to
+    # create our own.
+    if [ $(trueorfalse False MANILA_USE_UWSGI) == False ] && is_service_enabled tls-proxy; then
         start_tls_proxy manila '*' $MANILA_SERVICE_PORT $MANILA_SERVICE_HOST $MANILA_SERVICE_PORT_INT
     fi
 }
