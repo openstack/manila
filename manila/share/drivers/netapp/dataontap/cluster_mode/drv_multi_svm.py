@@ -272,6 +272,10 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
     def ensure_shares(self, context, shares):
         return self.library.ensure_shares(context, shares)
 
+    def ensure_share_server(self, context, share_server, network_info):
+        return self.library.ensure_share_server(
+            context, share_server, network_info)
+
     def get_share_server_network_info(
             self, context, share_server, identifier, driver_options):
         return self.library.get_share_server_network_info(

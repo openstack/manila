@@ -406,6 +406,41 @@ class ShareManager(manager.SchedulerDependentManager):
                 {'host': self.host})
             return
 
+        share_servers = self.db.share_server_get_all_by_host(ctxt, self.host)
+        LOG.debug("Re-exporting %s share servers", len(share_servers))
+        for share_server in share_servers:
+            if share_server['status'] != constants.STATUS_ACTIVE:
+                LOG.info(
+                    "Share server %(id)s: skipping export, "
+                    "because it has '%(status)s' status.",
+                    {'id': share_server['id'],
+                     'status': share_server['status']},
+                )
+                continue
+
+            share_network_subnet = self.db.share_network_subnet_get(
+                ctxt, share_server['share_network_subnet_id'])
+            share_network = self.db.share_network_get(
+                ctxt, share_network_subnet['share_network_id'])
+            network_allocations = (
+                self.db.network_allocations_get_for_share_server(
+                    ctxt, share_server['id'], label='user'))
+            # add missing gateways to net_allocation
+            for net_allocation in network_allocations:
+                if not net_allocation['gateway']:
+                    LOG.debug(
+                        ("Adding gateway %(gateway)s to net allocation "
+                         "%(net_allocation)s"),
+                        {'gateway': share_network_subnet['gateway'],
+                         'net_allocation': net_allocation['id']})
+                    self.db.network_allocation_update(
+                        ctxt, net_allocation['id'],
+                        {'gateway': share_network_subnet['gateway']})
+            network_info = self._form_server_setup_info(
+                ctxt, share_server, share_network, share_network_subnet)
+            self.driver.ensure_share_server(
+                ctxt, share_server, network_info)
+
         share_instances = self.db.share_instances_get_all_by_host(
             ctxt, self.host)
         LOG.debug("Re-exporting %s shares", len(share_instances))

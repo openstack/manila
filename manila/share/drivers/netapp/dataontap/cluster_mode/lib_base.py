@@ -1849,6 +1849,9 @@ class NetAppCmodeFileStorageLibrary(object):
     def setup_server(self, network_info, metadata=None):
         raise NotImplementedError()
 
+    def update_server(self, server_details, network_info):
+        raise NotImplementedError()
+
     def teardown_server(self, server_details, security_services=None):
         raise NotImplementedError()
 
@@ -2950,6 +2953,10 @@ class NetAppCmodeFileStorageLibrary(object):
             self.update_share(share, share_server=share_server)
             updates[share['id']] = {'status': constants.STATUS_AVAILABLE}
         return updates
+
+    def ensure_share_server(self, context, share_server, network_info):
+        server_details = share_server['backend_details']
+        self.update_server(server_details, network_info)
 
     def get_share_status(self, share, share_server=None):
         if share['status'] == constants.STATUS_CREATING_FROM_SNAPSHOT:

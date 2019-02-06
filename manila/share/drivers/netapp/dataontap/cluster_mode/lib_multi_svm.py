@@ -437,6 +437,33 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         return 1 if admin_network_api else 0
 
     @na_utils.trace
+    def update_server(self, server_details, network_info):
+        """Update share server."""
+        vserver = server_details.get(
+            'vserver_name') if server_details else None
+
+        if not vserver:
+            LOG.warning("Vserver not specified for share server being "
+                        "updated.")
+            return
+
+        elif not self._client.vserver_exists(vserver):
+            LOG.warning("Could not find Vserver for share server being "
+                        "updated: %s.", vserver)
+            return
+
+        self._update_vserver(vserver, network_info)
+
+    @na_utils.trace
+    def _update_vserver(self, vserver, network_info):
+        """Update a Vserver as needed."""
+        vserver_client = self._get_api_client(vserver=vserver)
+
+        self._create_vserver_routes(vserver_client, network_info)
+        vserver_client.enable_nfs(
+            self.configuration.netapp_enabled_share_protocols)
+
+    @na_utils.trace
     def teardown_server(self, server_details, security_services=None):
         """Teardown share server."""
         vserver = server_details.get(
