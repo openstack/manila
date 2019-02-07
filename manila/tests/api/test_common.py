@@ -193,50 +193,36 @@ class PaginationParamsTest(test.TestCase):
 @ddt.ddt
 class MiscFunctionsTest(test.TestCase):
 
-    def test_remove_major_version_from_href(self):
-        fixture = 'http://www.testsite.com/v1/images'
-        expected = 'http://www.testsite.com/images'
+    @ddt.data(
+        ('http://manila.example.com/v2/b2d18606-2673-4965-885a-4f5a8b955b9b/',
+         'http://manila.example.com/b2d18606-2673-4965-885a-4f5a8b955b9b/'),
+        ('http://manila.example.com/v1/',
+         'http://manila.example.com/'),
+        ('http://manila.example.com/share/v2.22/',
+         'http://manila.example.com/share/'),
+        ('http://manila.example.com/share/v1/'
+            'b2d18606-2673-4965-885a-4f5a8b955b9b/',
+         'http://manila.example.com/share/'
+         'b2d18606-2673-4965-885a-4f5a8b955b9b/'),
+        ('http://10.10.10.10:3366/v1/',
+         'http://10.10.10.10:3366/'),
+        ('http://10.10.10.10:3366/v2/b2d18606-2673-4965-885a-4f5a8b955b9b/',
+         'http://10.10.10.10:3366/b2d18606-2673-4965-885a-4f5a8b955b9b/'),
+        ('http://manila.example.com:3366/v1.1/',
+         'http://manila.example.com:3366/'),
+        ('http://manila.example.com:3366/v2/'
+            'b2d18606-2673-4965-885a-4f5a8b955b9b/',
+         'http://manila.example.com:3366/'
+         'b2d18606-2673-4965-885a-4f5a8b955b9b/'))
+    @ddt.unpack
+    def test_remove_version_from_href(self, fixture, expected):
         actual = common.remove_version_from_href(fixture)
         self.assertEqual(expected, actual)
 
-    def test_remove_version_from_href(self):
-        fixture = 'http://www.testsite.com/v1.1/images'
-        expected = 'http://www.testsite.com/images'
-        actual = common.remove_version_from_href(fixture)
-        self.assertEqual(expected, actual)
-
-    def test_remove_version_from_href_2(self):
-        fixture = 'http://www.testsite.com/v1.1/'
-        expected = 'http://www.testsite.com/'
-        actual = common.remove_version_from_href(fixture)
-        self.assertEqual(expected, actual)
-
-    def test_remove_version_from_href_3(self):
-        fixture = 'http://www.testsite.com/v10.10'
-        expected = 'http://www.testsite.com'
-        actual = common.remove_version_from_href(fixture)
-        self.assertEqual(expected, actual)
-
-    def test_remove_version_from_href_4(self):
-        fixture = 'http://www.testsite.com/v1.1/images/v10.5'
-        expected = 'http://www.testsite.com/images/v10.5'
-        actual = common.remove_version_from_href(fixture)
-        self.assertEqual(expected, actual)
-
-    def test_remove_version_from_href_bad_request(self):
-        fixture = 'http://www.testsite.com/1.1/images'
-        self.assertRaises(ValueError,
-                          common.remove_version_from_href,
-                          fixture)
-
-    def test_remove_version_from_href_bad_request_2(self):
-        fixture = 'http://www.testsite.com/v/images'
-        self.assertRaises(ValueError,
-                          common.remove_version_from_href,
-                          fixture)
-
-    def test_remove_version_from_href_bad_request_3(self):
-        fixture = 'http://www.testsite.com/v1.1images'
+    @ddt.data('http://manila.example.com/1.1/shares',
+              'http://manila.example.com/v/shares',
+              'http://manila.example.com/v1.1shares')
+    def test_remove_version_from_href_bad_request(self, fixture):
         self.assertRaises(ValueError,
                           common.remove_version_from_href,
                           fixture)
