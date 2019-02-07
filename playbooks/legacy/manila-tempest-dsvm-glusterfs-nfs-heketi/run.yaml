@@ -1,5 +1,5 @@
 - hosts: all
-  name: Autoconverted job legacy-manila-tempest-dsvm-glusterfs-nfs-heketi from old
+  name: Autoconverted job manila-tempest-dsvm-glusterfs-nfs-heketi from old
     job gate-manila-tempest-dsvm-glusterfs-nfs-heketi-ubuntu-xenial-nv
   tasks:
 

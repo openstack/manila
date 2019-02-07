@@ -1,6 +1,5 @@
 - hosts: all
-  name: Autoconverted job legacy-manila-tempest-dsvm-glusterfs-native-heketi from
-    old job gate-manila-tempest-dsvm-glusterfs-native-heketi-ubuntu-xenial-nv
+  name: Autoconverted job manila-tempest-dsvm-glusterfs-native-heketi from old job gate-manila-tempest-dsvm-glusterfs-native-heketi-ubuntu-xenial-nv
   tasks:
 
     - name: Ensure legacy workspace directory

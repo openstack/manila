@@ -1,5 +1,5 @@
 - hosts: all
-  name: Autoconverted job legacy-manila-tempest-minimal-dsvm-dummy from old job gate-manila-tempest-minimal-dsvm-dummy-ubuntu-xenial
+  name: Autoconverted job manila-tempest-minimal-dsvm-dummy from old job gate-manila-tempest-minimal-dsvm-dummy-ubuntu-xenial
   tasks:
 
     - name: Ensure legacy workspace directory

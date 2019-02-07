@@ -1,6 +1,5 @@
 - hosts: all
-  name: Autoconverted job legacy-manila-tempest-minimal-dsvm-lvm from old
-    job gate-manila-tempest-minimal-dsvm-lvm
+  name: Autoconverted job manila-tempest-minimal-dsvm-lvm from old job gate-manila-tempest-minimal-dsvm-lvm
   tasks:
 
     - name: Ensure legacy workspace directory

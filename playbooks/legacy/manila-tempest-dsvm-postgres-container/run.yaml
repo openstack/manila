@@ -1,6 +1,5 @@
 - hosts: all
-  name: Autoconverted job legacy-manila-tempest-dsvm-postgres-container from old job
-    gate-manila-tempest-dsvm-postgres-container-ubuntu-xenial-nv
+  name: Autoconverted job manila-tempest-dsvm-postgres-container from old job gate-manila-tempest-dsvm-postgres-container-ubuntu-xenial-nv
   tasks:
 
     - name: Ensure legacy workspace directory
