@@ -1308,6 +1308,12 @@ def _extract_share_instance_values(values):
     return share_instance_values, share_values
 
 
+def _change_size_to_instance_size(snap_instance_values):
+    if 'size' in snap_instance_values:
+        snap_instance_values['instance_size'] = snap_instance_values['size']
+        snap_instance_values.pop('size')
+
+
 def _extract_snapshot_instance_values(values):
     fields = ['status', 'progress', 'provider_location']
     snapshot_instance_values, snapshot_values = (
@@ -2313,6 +2319,8 @@ def share_snapshot_instance_create(context, snapshot_id, values, session=None):
     session = session or get_session()
     values = copy.deepcopy(values)
 
+    _change_size_to_instance_size(values)
+
     if not values.get('id'):
         values['id'] = uuidutils.generate_uuid()
     values.update({'snapshot_id': snapshot_id})
@@ -2330,6 +2338,7 @@ def share_snapshot_instance_update(context, instance_id, values):
     session = get_session()
     instance_ref = share_snapshot_instance_get(context, instance_id,
                                                session=session)
+    _change_size_to_instance_size(values)
 
     # NOTE(u_glide): Ignore updates to custom properties
     for extra_key in models.ShareSnapshotInstance._extra_keys:
@@ -4651,6 +4660,8 @@ def share_group_snapshot_member_create(context, values):
     if not values.get('id'):
         values['id'] = six.text_type(uuidutils.generate_uuid())
 
+    _change_size_to_instance_size(values)
+
     session = get_session()
     with session.begin():
         member.update(values)
@@ -4663,6 +4674,7 @@ def share_group_snapshot_member_create(context, values):
 @require_context
 def share_group_snapshot_member_update(context, member_id, values):
     session = get_session()
+    _change_size_to_instance_size(values)
     with session.begin():
         member = share_group_snapshot_member_get(
             context, member_id, session=session)

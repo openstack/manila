@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed the size value not being present in share snapshot
+    instances, which caused the NetApp driver to crash when
+    creating a share from a snapshot using python3.
