@@ -98,6 +98,26 @@ class GaneshaUtilsTests(test.TestCase):
         self.assertRaises(trouble, ganesha_utils.validate_access_rule,
                           ['ip'], ['ro'], fake_access(rule), abort=True)
 
+    @ddt.data({'rule': {'access_type': 'ip',
+                        'access_level': 'rw',
+                        'access_to': '10.10.10.12'},
+               'result': {'access_type': 'ip',
+                          'access_level': 'rw',
+                          'access_to': '10.10.10.12'},
+               },
+              {'rule': {'access_type': 'ip',
+                        'access_level': 'rw',
+                        'access_to': '0.0.0.0/0'},
+               'result': {'access_type': 'ip',
+                          'access_level': 'rw',
+                          'access_to': '0.0.0.0'},
+               },
+              )
+    @ddt.unpack
+    def test_fixup_access_rules(self, rule, result):
+
+        self.assertEqual(result, ganesha_utils.fixup_access_rule(rule))
+
 
 @ddt.ddt
 class SSHExecutorTestCase(test.TestCase):

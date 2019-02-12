@@ -134,3 +134,16 @@ def validate_access_rule(supported_access_types, supported_access_levels,
          'details': "%(access_level)s"})
 
     return valid
+
+
+def fixup_access_rule(access_rule):
+    """Adjust access rule as required for ganesha to handle it properly.
+
+    :param access_rule: Access rules to be validated.
+    :return: access_rule
+    """
+    if access_rule['access_to'] == '0.0.0.0/0':
+        access_rule['access_to'] = '0.0.0.0'
+        LOG.debug("Set access_to field to '0.0.0.0' in ganesha back end.")
+
+    return access_rule
