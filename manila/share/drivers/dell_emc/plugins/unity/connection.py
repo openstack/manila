@@ -23,6 +23,7 @@ from oslo_utils import netutils
 
 storops = importutils.try_import('storops')
 if storops:
+    # pylint: disable=import-error
     from storops import exception as storops_ex
     from storops.unity import enums
 
