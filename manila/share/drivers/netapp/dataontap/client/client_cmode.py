@@ -1724,6 +1724,38 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                     errors[0].get_child_content('error-message'))
 
     @na_utils.trace
+    def set_volume_filesys_size_fixed(self,
+                                      volume_name, filesys_size_fixed=False):
+        """Set volume file system size fixed to true/false."""
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                    },
+                },
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-space-attributes': {
+                        'is-filesys-size-fixed': six.text_type(
+                            filesys_size_fixed).lower(),
+                    },
+                },
+            },
+        }
+        result = self.send_request('volume-modify-iter', api_args)
+        failures = result.get_child_content('num-failed')
+        if failures and int(failures) > 0:
+            failure_list = result.get_child_by_name(
+                'failure-list') or netapp_api.NaElement('none')
+            errors = failure_list.get_children()
+            if errors:
+                raise netapp_api.NaApiError(
+                    errors[0].get_child_content('error-code'),
+                    errors[0].get_child_content('error-message'))
+
+    @na_utils.trace
     def set_volume_security_style(self, volume_name, security_style='unix'):
         """Set volume security style"""
         api_args = {
