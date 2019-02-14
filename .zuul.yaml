@@ -53,6 +53,7 @@
         - manila-tempest-dsvm-glusterfs-native-heketi
         - manila-tempest-minimal-dsvm-cephfs-native-centos-7
         - manila-tempest-minimal-dsvm-cephfs-nfs-centos-7
+        - tripleo-ci-centos-7-scenario004-multinode-oooq-container
 
     post:
       jobs:
