@@ -1,0 +1,4 @@
+---
+fixes:
+  - The NetApp ONTAP driver is now fixed to allow extension and shrinking
+    of share replicas after they get promoted.

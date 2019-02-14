@@ -1325,6 +1325,8 @@ class NetAppCmodeFileStorageLibrary(object):
         """Extends size of existing share."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_name = self._get_backend_share_name(share['id'])
+        vserver_client.set_volume_filesys_size_fixed(share_name,
+                                                     filesys_size_fixed=False)
         LOG.debug('Extending share %(name)s to %(size)s GB.',
                   {'name': share_name, 'size': new_size})
         vserver_client.set_volume_size(share_name, new_size)
@@ -1336,6 +1338,8 @@ class NetAppCmodeFileStorageLibrary(object):
         """Shrinks size of existing share."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_name = self._get_backend_share_name(share['id'])
+        vserver_client.set_volume_filesys_size_fixed(share_name,
+                                                     filesys_size_fixed=False)
         LOG.debug('Shrinking share %(name)s to %(size)s GB.',
                   {'name': share_name, 'size': new_size})
         vserver_client.set_volume_size(share_name, new_size)
@@ -1744,6 +1748,11 @@ class NetAppCmodeFileStorageLibrary(object):
         new_active_replica['export_locations'] = self._create_export(
             new_active_replica, share_server, vserver, vserver_client)
         new_active_replica['replica_state'] = constants.REPLICA_STATE_ACTIVE
+
+        # 4. Set File system size fixed to false
+        vserver_client.set_volume_filesys_size_fixed(share_name,
+                                                     filesys_size_fixed=False)
+
         return new_active_replica
 
     def _safe_change_replica_source(self, dm_session, replica,
