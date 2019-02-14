@@ -3182,6 +3182,37 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           fake.SHARE_NAME,
                           10)
 
+    @ddt.data(True, False)
+    def test_set_volume_filesys_size_fixed(self, filesys_size_fixed):
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_MODIFY_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.client.set_volume_filesys_size_fixed(fake.SHARE_NAME,
+                                                  filesys_size_fixed)
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': fake.SHARE_NAME
+                    }
+                }
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-space-attributes': {
+                        'is-filesys-size-fixed': six.text_type(
+                            filesys_size_fixed).lower(),
+                    },
+                },
+            },
+        }
+        self.client.send_request.assert_called_once_with(
+            'volume-modify-iter', api_args)
+
     def test_set_volume_size_api_error(self):
 
         api_response = netapp_api.NaElement(
