@@ -1,0 +1,4 @@
+---
+fixes:
+  - APIs that were not returning a request ID ('x-compute-request-id') in the
+    response headers have been fixed.
