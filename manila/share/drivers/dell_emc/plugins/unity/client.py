@@ -303,6 +303,20 @@ class UnityClient(object):
                       'bytes.', {'id': fs.get_id(), 'size': size})
         return size
 
+    def shrink_filesystem(self, share_id, fs, new_size_gb):
+        size = utils.gib_to_byte(new_size_gb)
+        try:
+            fs.shrink(size, user_cap=True)
+        except storops_ex.UnityNothingToModifyError:
+            LOG.debug('The size of the file system %(id)s is %(size)s '
+                      'bytes.', {'id': fs.get_id(), 'size': size})
+        except storops_ex.UnityShareShrinkSizeTooSmallError:
+            LOG.error('The used size of the file system %(id)s is '
+                      'bigger than input shrink size,'
+                      'it may cause date loss.', {'id': fs.get_id()})
+            raise exception.ShareShrinkingPossibleDataLoss(share_id=share_id)
+        return size
+
     @staticmethod
     def _is_external_port(port_id):
         return 'eth' in port_id or '_la' in port_id

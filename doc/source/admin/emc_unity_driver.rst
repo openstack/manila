@@ -35,7 +35,7 @@ Requirements
 ------------
 
 - Unity OE 4.0.1 or higher.
-- StorOps 0.5.7 or higher is installed on Manila node.
+- StorOps 1.1.0 or higher is installed on Manila node.
 - Following licenses are activated on Unity:
 
   * CIFS/SMB Support
@@ -54,6 +54,7 @@ Storage Systems.
 * Create/delete a NFS share.
 * Create/delete a CIFS share.
 * Extend the size of a share.
+* Shrink the size of a share.
 * Modify the host access privilege of a NFS share.
 * Modify the user access privilege of a CIFS share.
 * Take/Delete snapshot of a share.
@@ -233,6 +234,7 @@ Following driver features are implemented in the plugin.
   snapshot.
 * delete_share: Delete a share.
 * extend_share: Extend the maximum size of a share.
+* shrink_share: Shrink the minimum size of a share.
 * create_snapshot: Create a snapshot for the specified share.
 * delete_snapshot: Delete the snapshot of the share.
 * update_access: recover, add or delete user/host access to a share.

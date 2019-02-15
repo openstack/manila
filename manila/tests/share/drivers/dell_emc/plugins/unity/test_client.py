@@ -179,6 +179,23 @@ class TestClient(test.TestCase):
 
         self.assertEqual(5 * units.Gi, size)
 
+    @res_mock.mock_client_input
+    @res_mock.patch_client
+    def test_shrink_filesystem(self, client, mocked_input):
+        fs = mocked_input['fs']
+
+        size = client.shrink_filesystem('fake_share_id_1', fs, 4)
+
+        self.assertEqual(4 * units.Gi, size)
+
+    @res_mock.mock_client_input
+    @res_mock.patch_client
+    def test_shrink_filesystem_size_too_small(self, client, mocked_input):
+        fs = mocked_input['fs']
+
+        self.assertRaises(exception.ShareShrinkingPossibleDataLoss,
+                          client.shrink_filesystem, 'fake_share_id_2', fs, 4)
+
     @res_mock.patch_client
     def test_get_file_ports(self, client):
         ports = client.get_file_ports()

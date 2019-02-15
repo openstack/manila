@@ -70,6 +70,10 @@ class UnityNothingToModifyError(UnityException):
     pass
 
 
+class UnityShareShrinkSizeTooSmallError(UnityException):
+    pass
+
+
 class UnityTenantNameInUseError(UnityException):
     pass
 

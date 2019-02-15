@@ -86,6 +86,11 @@ class EMCShareDriver(driver.ShareDriver):
         else:
             self.revert_to_snap_support = False
 
+        if hasattr(self.plugin, 'shrink_share_support'):
+            self.shrink_share_support = self.plugin.shrink_share_support
+        else:
+            self.shrink_share_support = False
+
     def create_share(self, context, share, share_server=None):
         """Is called to create share."""
         location = self.plugin.create_share(context, share, share_server)
@@ -103,6 +108,13 @@ class EMCShareDriver(driver.ShareDriver):
     def extend_share(self, share, new_size, share_server=None):
         """Is called to extend share."""
         self.plugin.extend_share(share, new_size, share_server)
+
+    def shrink_share(self, share, new_size, share_server=None):
+        """Is called to shrink share."""
+        if self.shrink_share_support:
+            self.plugin.shrink_share(share, new_size, share_server)
+        else:
+            raise NotImplementedError()
 
     def create_snapshot(self, context, snapshot, share_server=None):
         """Is called to create snapshot."""

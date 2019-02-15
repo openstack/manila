@@ -419,6 +419,44 @@ test_extend_nfs_share:
       <<: *unity_base_method
       get_nfs_share: *cifs_share__test_extend_nfs_share
 
+test_shrink_cifs_share:
+  filesystem: &filesystem__test_shrink_cifs_share
+    _properties: &filesystem_prop__test_shrink_cifs_share
+      <<: *filesystem_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      shrink:
+
+  cifs_share: &cifs_share__test_shrink_cifs_share
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      filesystem: *filesystem__test_shrink_cifs_share
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share__test_shrink_cifs_share
+
+test_shrink_nfs_share:
+  filesystem: &filesystem__test_shrink_nfs_share
+    _properties: &filesystem_prop__test_shrink_nfs_share
+      <<: *filesystem_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      shrink:
+
+  cifs_share: &cifs_share__test_shrink_nfs_share
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      filesystem: *filesystem__test_shrink_nfs_share
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_nfs_share: *cifs_share__test_shrink_nfs_share
+
 test_extend_share__create_from_snap:
   snap: &snap__test_extend_share__create_from_snap
     _properties: &snap_prop__test_extend_share__create_from_snap
@@ -435,6 +473,23 @@ test_extend_share__create_from_snap:
     _methods:
       <<: *unity_base_method
       get_cifs_share: *cifs_share__test_extend_share__create_from_snap
+
+test_shrink_share_create_from_snap:
+  snap: &snap__test_shrink_share_create_from_snap
+    _properties: &snap_prop__test_shrink_share__create_from_snap
+      <<: *snap_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+
+  cifs_share: &cifs_share__test_shrink_share__create_from_snap
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+      snap: *snap__test_shrink_share_create_from_snap
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_cifs_share: *cifs_share__test_shrink_share__create_from_snap
 
 test_create_snapshot_from_filesystem:
   filesystem: &filesystem__test_create_snapshot_from_filesystem
@@ -1062,6 +1117,22 @@ test_extend_filesystem:
       extend:
         _raise:
           UnityNothingToModifyError:
+
+test_shrink_filesystem:
+  fs:
+    _methods:
+      get_id: 'svc_11'
+      shrink:
+        _raise:
+          UnityNothingToModifyError:
+
+test_shrink_filesystem_size_too_small:
+  fs:
+    _methods:
+      get_id: 'svc_10'
+      shrink:
+        _raise:
+          UnityShareShrinkSizeTooSmallError:
 
 test_get_tenant:
   unity:

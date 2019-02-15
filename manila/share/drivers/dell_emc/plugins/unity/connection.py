@@ -36,7 +36,7 @@ from manila.share.drivers.dell_emc.plugins.unity import utils as unity_utils
 from manila.share import utils as share_utils
 from manila import utils
 
-VERSION = "6.0.0"
+VERSION = "6.1.0"
 
 LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
@@ -87,6 +87,7 @@ class UnityStorageConnection(driver.StorageConnection):
         self.port_ids_conf = None
         self.ipv6_implemented = True
         self.revert_to_snap_support = True
+        self.shrink_share_support = True
 
         # props from super class.
         self.driver_handles_share_servers = True
@@ -268,6 +269,29 @@ class UnityStorageConnection(driver.StorageConnection):
                       "snapshot based share.")
             raise exception.ShareExtendingError(share_id=share_id,
                                                 reason=reason)
+
+    def shrink_share(self, share, new_size, share_server=None):
+        """Shrinks a share to new size.
+
+        :param share: Share that will be shrunk.
+        :param new_size: New size of share.
+        :param share_server: Data structure with share server information.
+            Not used by this driver.
+        """
+        share_id = share['id']
+        backend_share = self.client.get_share(share_id,
+                                              share['share_proto'])
+        if self._is_share_from_snapshot(backend_share):
+            reason = ("Driver does not support shrinking a "
+                      "snapshot based share.")
+            raise exception.ShareShrinkingError(share_id=share_id,
+                                                reason=reason)
+        self.client.shrink_filesystem(share_id, backend_share.filesystem,
+                                      new_size)
+        LOG.info("Share %(shr_id)s successfully shrunk to "
+                 "%(shr_size)sG.",
+                 {'shr_id': share_id,
+                  'shr_size': new_size})
 
     def create_snapshot(self, context, snapshot, share_server=None):
         """Create snapshot from share."""

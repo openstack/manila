@@ -43,6 +43,9 @@ class FakeConnection(base.StorageConnection):
     def extend_share(self, share, new_size, share_server):
         """Is called to extend share."""
 
+    def shrink_share(self, share, new_size, share_server):
+        """Is called to shrink share."""
+
     def delete_snapshot(self, context, snapshot, share_server):
         """Is called to remove snapshot."""
 
