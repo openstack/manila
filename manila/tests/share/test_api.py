@@ -2591,7 +2591,7 @@ class ShareAPITestCase(test.TestCase):
             self.context, share.instance['id'],
             {'status': constants.STATUS_MIGRATING})
 
-    def test_migration_start_destination_az_upsupported(self):
+    def test_migration_start_destination_az_unsupported(self):
         host = 'fake2@backend#pool'
         host_without_pool = host.split('#')[0]
         service = {'availability_zone_id': 'fake_az_id',
