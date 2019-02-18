@@ -325,6 +325,40 @@ class SSHPoolTestCase(test.TestCase):
             self.assertNotEqual(first_id, third_id)
             paramiko.SSHClient.assert_called_once_with()
 
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch('paramiko.SSHClient')
+    @mock.patch('os.path.isfile', return_value=True)
+    def test_sshpool_remove(self, mock_isfile, mock_sshclient, mock_open):
+        ssh_to_remove = mock.Mock()
+        mock_sshclient.side_effect = [mock.Mock(), ssh_to_remove, mock.Mock()]
+        sshpool = utils.SSHPool("127.0.0.1", 22, 10, "test", password="test",
+                                min_size=3, max_size=3)
+
+        self.assertIn(ssh_to_remove, list(sshpool.free_items))
+
+        sshpool.remove(ssh_to_remove)
+
+        self.assertNotIn(ssh_to_remove, list(sshpool.free_items))
+
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch('paramiko.SSHClient')
+    @mock.patch('os.path.isfile', return_value=True)
+    def test_sshpool_remove_object_not_in_pool(self, mock_isfile,
+                                               mock_sshclient, mock_open):
+        # create an SSH Client that is not a part of sshpool.
+        ssh_to_remove = mock.Mock()
+        mock_sshclient.side_effect = [mock.Mock(), mock.Mock()]
+
+        sshpool = utils.SSHPool("127.0.0.1", 22, 10, "test", password="test",
+                                min_size=2, max_size=2)
+        listBefore = list(sshpool.free_items)
+
+        self.assertNotIn(ssh_to_remove, listBefore)
+
+        sshpool.remove(ssh_to_remove)
+
+        self.assertEqual(listBefore, list(sshpool.free_items))
+
 
 @ddt.ddt
 class CidrToNetmaskTestCase(test.TestCase):
