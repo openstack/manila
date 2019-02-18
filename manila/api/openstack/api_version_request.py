@@ -129,13 +129,15 @@ REST_API_VERSION_HISTORY = """
              version: GET /v2/{tenant_id}/share-replicas/{
              replica_id}/export-locations to allow retrieving individual
              replica export locations if available.
+    * 2.48 - Added support for extra-spec "availability_zones" within Share
+             types along with validation in the API.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.47"
+_MAX_API_VERSION = "2.48"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

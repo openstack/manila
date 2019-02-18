@@ -45,6 +45,9 @@ def create(context, name, extra_specs=None, is_public=True,
         get_valid_optional_extra_specs(extra_specs)
     except exception.InvalidExtraSpec as e:
         raise exception.InvalidShareType(reason=six.text_type(e))
+
+    extra_specs = sanitize_extra_specs(extra_specs)
+
     try:
         type_ref = db.share_type_create(context,
                                         dict(name=name,
@@ -57,6 +60,14 @@ def create(context, name, extra_specs=None, is_public=True,
         raise exception.ShareTypeCreateFailed(name=name,
                                               extra_specs=extra_specs)
     return type_ref
+
+
+def sanitize_extra_specs(extra_specs):
+    """Post process extra specs here if necessary"""
+    az_spec = constants.ExtraSpecs.AVAILABILITY_ZONES
+    if az_spec in extra_specs:
+        extra_specs[az_spec] = sanitize_csv(extra_specs[az_spec])
+    return extra_specs
 
 
 def destroy(context, id):
@@ -92,39 +103,61 @@ def get_all_types(context, inactive=0, search_opts=None):
         type_args['required_extra_specs'] = required_extra_specs
 
     search_vars = {}
-    if 'extra_specs' in search_opts:
-        search_vars['extra_specs'] = search_opts.pop('extra_specs')
+    availability_zones = search_opts.get('extra_specs', {}).pop(
+        'availability_zones', None)
+    extra_specs = search_opts.pop('extra_specs', {})
+
+    if extra_specs:
+        search_vars['extra_specs'] = extra_specs
+
+    if availability_zones:
+        search_vars['availability_zones'] = availability_zones.split(',')
 
     if search_opts:
+        # No other search options are currently supported
         return {}
-    elif search_vars:
-        LOG.debug("Searching by: %s", search_vars)
+    elif not search_vars:
+        return share_types
 
-        def _check_extra_specs_match(share_type, searchdict):
-            for k, v in searchdict.items():
-                if (k not in share_type['extra_specs'].keys()
-                        or share_type['extra_specs'][k] != v):
-                    return False
+    LOG.debug("Searching by: %s", search_vars)
+
+    def _check_extra_specs_match(share_type, searchdict):
+        for k, v in searchdict.items():
+            if (k not in share_type['extra_specs'].keys()
+                    or share_type['extra_specs'][k] != v):
+                return False
             return True
 
-        # search_option to filter_name mapping.
-        filter_mapping = {'extra_specs': _check_extra_specs_match}
+    def _check_availability_zones_match(share_type, availability_zones):
+        type_azs = share_type['extra_specs'].get('availability_zones')
+        if type_azs:
+            type_azs = type_azs.split(',')
+            return set(availability_zones).issubset(set(type_azs))
+        return True
 
-        result = {}
-        for type_name, type_args in share_types.items():
-            # go over all filters in the list
-            for opt, values in search_vars.items():
-                try:
-                    filter_func = filter_mapping[opt]
-                except KeyError:
-                    # no such filter - ignore it, go to next filter
-                    continue
-                else:
-                    if filter_func(type_args, values):
-                        result[type_name] = type_args
-                        break
-        share_types = result
-    return share_types
+    # search_option to filter_name mapping.
+    filter_mapping = {
+        'extra_specs': _check_extra_specs_match,
+        'availability_zones': _check_availability_zones_match,
+    }
+
+    result = {}
+    for type_name, type_args in share_types.items():
+        # go over all filters in the list (*AND* operation)
+        type_matches = True
+        for opt, value in search_vars.items():
+            try:
+                filter_func = filter_mapping[opt]
+            except KeyError:
+                # no such filter - ignore it, go to next filter
+                continue
+            else:
+                if not filter_func(type_args, value):
+                    type_matches = False
+                    break
+        if type_matches:
+            result[type_name] = type_args
+    return result
 
 
 def get_share_type(ctxt, id, expected_fields=None):
@@ -264,6 +297,18 @@ def get_valid_required_extra_specs(extra_specs):
     return required_extra_specs
 
 
+def is_valid_csv(extra_spec_value):
+    if not isinstance(extra_spec_value, six.string_types):
+        extra_spec_value = six.text_type(extra_spec_value)
+    values = extra_spec_value.split(',')
+    return all([v.strip() for v in values])
+
+
+def sanitize_csv(csv_string):
+    return ','.join(value.strip() for value in csv_string.split(',')
+                    if (csv_string and value))
+
+
 def is_valid_optional_extra_spec(key, value):
     """Validates optional but standardized extra_spec value.
 
@@ -285,6 +330,8 @@ def is_valid_optional_extra_spec(key, value):
         return value in constants.ExtraSpecs.REPLICATION_TYPES
     elif key == constants.ExtraSpecs.MOUNT_SNAPSHOT_SUPPORT:
         return parse_boolean_extra_spec(key, value) is not None
+    elif key == constants.ExtraSpecs.AVAILABILITY_ZONES:
+        return is_valid_csv(value)
 
     return False
 

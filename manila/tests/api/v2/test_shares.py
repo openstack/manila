@@ -21,6 +21,7 @@ import ddt
 import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
+from oslo_utils import uuidutils
 import six
 import webob
 import webob.exc
@@ -41,9 +42,12 @@ from manila.tests.api.contrib import stubs
 from manila.tests.api import fakes
 from manila.tests import db_utils
 from manila.tests import fake_share
+from manila.tests import utils as test_utils
 from manila import utils
 
 CONF = cfg.CONF
+
+LATEST_MICROVERSION = api_version._MAX_API_VERSION
 
 
 @ddt.ddt
@@ -62,6 +66,8 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'delete', stubs.stub_share_delete)
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get)
+        self.mock_object(share_types, 'get_share_type',
+                         stubs.stub_share_type_get)
         self.maxDiff = None
         self.share = {
             "id": "1",
@@ -102,7 +108,40 @@ class ShareAPITest(test.TestCase):
 
         CONF.set_default("default_share_type", None)
 
-    def _get_expected_share_detailed_response(self, values=None, admin=False):
+    def _process_expected_share_detailed_response(self, shr_dict, req_version):
+        """Sets version based parameters on share dictionary."""
+
+        share_dict = copy.deepcopy(shr_dict)
+        changed_parameters = {
+            '2.2': {'snapshot_support': True},
+            '2.5': {'task_state': None},
+            '2.6': {'share_type_name': None},
+            '2.10': {'access_rules_status': constants.ACCESS_STATE_ACTIVE},
+            '2.11': {'replication_type': None, 'has_replicas': False},
+            '2.16': {'user_id': 'fakeuser'},
+            '2.24': {'create_share_from_snapshot_support': True},
+            '2.27': {'revert_to_snapshot_support': False},
+            '2.31': {'share_group_id': None,
+                     'source_share_group_snapshot_member_id': None},
+            '2.32': {'mount_snapshot_support': False},
+        }
+
+        # Apply all the share transformations
+        if self.is_microversion_ge(req_version, '2.9'):
+            share_dict.pop('export_locations', None)
+            share_dict.pop('export_location', None)
+
+        for version, parameters in changed_parameters.items():
+            for param, default in parameters.items():
+                if self.is_microversion_ge(req_version, version):
+                    share_dict[param] = share_dict.get(param, default)
+                else:
+                    share_dict.pop(param, None)
+
+        return share_dict
+
+    def _get_expected_share_detailed_response(self, values=None,
+                                              admin=False, version='2.0'):
         share = {
             'id': '1',
             'name': 'displayname',
@@ -146,7 +185,10 @@ class ShareAPITest(test.TestCase):
         if admin:
             share['share_server_id'] = 'fake_share_server_id'
             share['host'] = 'fakehost'
-        return {'share': share}
+        return {
+            'share': self._process_expected_share_detailed_response(
+                share, version)
+        }
 
     def test__revert(self):
 
@@ -445,10 +487,8 @@ class ShareAPITest(test.TestCase):
 
         res_dict = self.controller.create(req, body)
 
-        expected = self._get_expected_share_detailed_response(self.share)
-        expected['share'].pop('snapshot_support')
-        expected['share'].pop('share_type_name')
-        expected['share'].pop('task_state')
+        expected = self._get_expected_share_detailed_response(
+            self.share, version=microversion)
         self.assertEqual(expected, res_dict)
 
     @ddt.data("2.2", "2.3")
@@ -459,31 +499,20 @@ class ShareAPITest(test.TestCase):
 
         res_dict = self.controller.create(req, body)
 
-        expected = self._get_expected_share_detailed_response(self.share)
-        expected['share'].pop('share_type_name')
-        expected['share'].pop('task_state')
+        expected = self._get_expected_share_detailed_response(
+            self.share, version=microversion)
         self.assertEqual(expected, res_dict)
 
-    @ddt.data("2.31")
-    def test_share_create_with_share_group(self, microversion):
+    def test_share_create_with_share_group(self):
         self.mock_object(share_api.API, 'create', self.create_mock)
         body = {"share": copy.deepcopy(self.share)}
-        req = fakes.HTTPRequest.blank('/shares', version=microversion,
+        req = fakes.HTTPRequest.blank('/shares', version="2.31",
                                       experimental=True)
 
         res_dict = self.controller.create(req, body)
 
-        expected = self._get_expected_share_detailed_response(self.share)
-        expected['share'].pop('export_location')
-        expected['share'].pop('export_locations')
-        expected['share']['access_rules_status'] = 'active'
-        expected['share']['replication_type'] = None
-        expected['share']['has_replicas'] = False
-        expected['share']['user_id'] = 'fakeuser'
-        expected['share']['create_share_from_snapshot_support'] = True
-        expected['share']['revert_to_snapshot_support'] = False
-        expected['share']['share_group_id'] = None
-        expected['share']['source_share_group_snapshot_member_id'] = None
+        expected = self._get_expected_share_detailed_response(
+            self.share, version="2.31")
         self.assertEqual(expected, res_dict)
 
     def test_share_create_with_sg_and_availability_zone(self):
@@ -586,7 +615,8 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/shares', version='2.7')
         res_dict = self.controller.create(req, body)
 
-        expected = self._get_expected_share_detailed_response(self.share)
+        expected = self._get_expected_share_detailed_response(self.share,
+                                                              version='2.7')
         share_types.get_share_type_by_name.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), self.vt['name'])
         self.assertEqual(expected, res_dict)
@@ -612,15 +642,8 @@ class ShareAPITest(test.TestCase):
 
         res_dict = self.controller.create(req, body)
 
-        expected = self._get_expected_share_detailed_response(self.share)
-
-        expected['share']['task_state'] = None
-        expected['share']['replication_type'] = None
-        expected['share']['share_type_name'] = None
-        expected['share']['has_replicas'] = False
-        expected['share']['access_rules_status'] = 'active'
-        expected['share'].pop('export_location')
-        expected['share'].pop('export_locations')
+        expected = self._get_expected_share_detailed_response(
+            self.share, version=share_replicas.MIN_SUPPORTED_API_VERSION)
 
         self.assertEqual(expected, res_dict)
 
@@ -648,7 +671,8 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/shares', version='2.7')
         res_dict = self.controller.create(req, body)
 
-        expected = self._get_expected_share_detailed_response(shr)
+        expected = self._get_expected_share_detailed_response(
+            shr, version='2.7')
         self.assertDictMatch(expected, res_dict)
         self.assertEqual("fakenetid",
                          create_mock.call_args[1]['share_network_id'])
@@ -661,21 +685,66 @@ class ShareAPITest(test.TestCase):
 
         res_dict = self.controller.create(req, body)
 
-        expected = self._get_expected_share_detailed_response(self.share)
-        if api_version.APIVersionRequest(microversion) >= (
-                api_version.APIVersionRequest("2.16")):
-            expected['share']['user_id'] = 'fakeuser'
-        else:
-            self.assertNotIn('user_id', expected['share'])
-        expected['share']['task_state'] = None
-        expected['share']['replication_type'] = None
-        expected['share']['share_type_name'] = None
-        expected['share']['has_replicas'] = False
-        expected['share']['access_rules_status'] = 'active'
-        expected['share'].pop('export_location')
-        expected['share'].pop('export_locations')
+        expected = self._get_expected_share_detailed_response(
+            self.share, version=microversion)
 
         self.assertEqual(expected, res_dict)
+
+    @ddt.data(test_utils.annotated('v2.0_az_unsupported', ('2.0', False)),
+              test_utils.annotated('v2.0_az_supported', ('2.0', True)),
+              test_utils.annotated('v2.47_az_unsupported', ('2.47', False)),
+              test_utils.annotated('v2.47_az_supported', ('2.47', True)))
+    @ddt.unpack
+    def test_share_create_with_share_type_azs(self, version, az_supported):
+        """For API version<2.48, AZ validation should not be performed."""
+        self.mock_object(share_api.API, 'create', self.create_mock)
+        create_args = copy.deepcopy(self.share)
+        create_args['availability_zone'] = 'az1' if az_supported else 'az2'
+        create_args['share_type'] = uuidutils.generate_uuid()
+        stype_with_azs = copy.deepcopy(self.vt)
+        stype_with_azs['extra_specs']['availability_zones'] = 'az1,az3'
+        self.mock_object(share_types, 'get_share_type', mock.Mock(
+            return_value=stype_with_azs))
+
+        req = fakes.HTTPRequest.blank('/shares', version=version)
+
+        res_dict = self.controller.create(req, {'share': create_args})
+
+        expected = self._get_expected_share_detailed_response(
+            values=self.share, version=version)
+
+        self.assertEqual(expected, res_dict)
+
+    @ddt.data(*set([
+        test_utils.annotated('v2.48_share_from_snap', ('2.48', True)),
+        test_utils.annotated('v2.48_share_not_from_snap', ('2.48', False)),
+        test_utils.annotated('v%s_share_from_snap' % LATEST_MICROVERSION,
+                             (LATEST_MICROVERSION, True)),
+        test_utils.annotated('v%s_share_not_from_snap' % LATEST_MICROVERSION,
+                             (LATEST_MICROVERSION, False))]))
+    @ddt.unpack
+    def test_share_create_az_not_in_share_type(self, version, snap):
+        """For API version>=2.48, AZ validation should be performed."""
+        self.mock_object(share_api.API, 'create', self.create_mock)
+        create_args = copy.deepcopy(self.share)
+        create_args['availability_zone'] = 'az2'
+        create_args['share_type'] = (uuidutils.generate_uuid() if not snap
+                                     else None)
+        create_args['snapshot_id'] = (uuidutils.generate_uuid() if snap
+                                      else None)
+        stype_with_azs = copy.deepcopy(self.vt)
+        stype_with_azs['extra_specs']['availability_zones'] = 'az1 , az3'
+        self.mock_object(share_types, 'get_share_type', mock.Mock(
+            return_value=stype_with_azs))
+        self.mock_object(share_api.API, 'get_snapshot',
+                         stubs.stub_snapshot_get)
+
+        req = fakes.HTTPRequest.blank('/shares', version=version)
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create,
+                          req, {'share': create_args})
+        share_api.API.create.assert_not_called()
 
     def test_migration_start(self):
         share = db_utils.create_share()
@@ -1138,8 +1207,11 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'create', create_mock)
         body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares', version='2.7')
+
         res_dict = self.controller.create(req, body)
-        expected = self._get_expected_share_detailed_response(shr)
+
+        expected = self._get_expected_share_detailed_response(
+            shr, version='2.7')
         self.assertEqual(expected, res_dict)
 
     def test_share_create_from_snapshot_without_share_net_parent_exists(self):
@@ -1175,8 +1247,11 @@ class ShareAPITest(test.TestCase):
 
         body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares', version='2.7')
+
         res_dict = self.controller.create(req, body)
-        expected = self._get_expected_share_detailed_response(shr)
+
+        expected = self._get_expected_share_detailed_response(
+            shr, version='2.7')
         self.assertEqual(expected, res_dict)
         self.assertEqual(parent_share_net,
                          create_mock.call_args[1]['share_network_id'])
@@ -1215,7 +1290,8 @@ class ShareAPITest(test.TestCase):
         body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares', version='2.7')
         res_dict = self.controller.create(req, body)
-        expected = self._get_expected_share_detailed_response(shr)
+        expected = self._get_expected_share_detailed_response(
+            shr, version='2.7')
         self.assertDictMatch(expected, res_dict)
         self.assertEqual(parent_share_net,
                          create_mock.call_args[1]['share_network_id'])
@@ -1294,9 +1370,6 @@ class ShareAPITest(test.TestCase):
     def test_share_show(self):
         req = fakes.HTTPRequest.blank('/shares/1')
         expected = self._get_expected_share_detailed_response()
-        expected['share'].pop('snapshot_support')
-        expected['share'].pop('share_type_name')
-        expected['share'].pop('task_state')
 
         res_dict = self.controller.show(req, '1')
 
@@ -1305,17 +1378,7 @@ class ShareAPITest(test.TestCase):
     def test_share_show_with_share_group(self):
         req = fakes.HTTPRequest.blank(
             '/shares/1', version='2.31', experimental=True)
-        expected = self._get_expected_share_detailed_response()
-        expected['share'].pop('export_location')
-        expected['share'].pop('export_locations')
-        expected['share']['create_share_from_snapshot_support'] = True
-        expected['share']['revert_to_snapshot_support'] = False
-        expected['share']['share_group_id'] = None
-        expected['share']['source_share_group_snapshot_member_id'] = None
-        expected['share']['access_rules_status'] = 'active'
-        expected['share']['replication_type'] = None
-        expected['share']['has_replicas'] = False
-        expected['share']['user_id'] = 'fakeuser'
+        expected = self._get_expected_share_detailed_response(version='2.31')
 
         res_dict = self.controller.show(req, '1')
 
@@ -1324,13 +1387,7 @@ class ShareAPITest(test.TestCase):
     def test_share_show_with_share_group_earlier_version(self):
         req = fakes.HTTPRequest.blank(
             '/shares/1', version='2.23', experimental=True)
-        expected = self._get_expected_share_detailed_response()
-        expected['share'].pop('export_location')
-        expected['share'].pop('export_locations')
-        expected['share']['access_rules_status'] = 'active'
-        expected['share']['replication_type'] = None
-        expected['share']['has_replicas'] = False
-        expected['share']['user_id'] = 'fakeuser'
+        expected = self._get_expected_share_detailed_response(version='2.23')
 
         res_dict = self.controller.show(req, '1')
 
@@ -1338,10 +1395,10 @@ class ShareAPITest(test.TestCase):
 
     def test_share_show_with_share_type_name(self):
         req = fakes.HTTPRequest.blank('/shares/1', version='2.6')
+
         res_dict = self.controller.show(req, '1')
-        expected = self._get_expected_share_detailed_response()
-        expected['share']['share_type_name'] = None
-        expected['share']['task_state'] = None
+
+        expected = self._get_expected_share_detailed_response(version='2.6')
         self.assertEqual(expected, res_dict)
 
     @ddt.data("2.15", "2.16")
@@ -1350,28 +1407,14 @@ class ShareAPITest(test.TestCase):
 
         res_dict = self.controller.show(req, '1')
 
-        expected = self._get_expected_share_detailed_response()
-        if api_version.APIVersionRequest(microversion) >= (
-                api_version.APIVersionRequest("2.16")):
-            expected['share']['user_id'] = 'fakeuser'
-        else:
-            self.assertNotIn('user_id', expected['share'])
-        expected['share']['share_type_name'] = None
-        expected['share']['task_state'] = None
-        expected['share']['access_rules_status'] = 'active'
-        expected['share'].pop('export_location')
-        expected['share'].pop('export_locations')
-        expected['share']['replication_type'] = None
-        expected['share']['has_replicas'] = False
+        expected = self._get_expected_share_detailed_response(
+            version=microversion)
 
         self.assertEqual(expected, res_dict)
 
     def test_share_show_admin(self):
         req = fakes.HTTPRequest.blank('/shares/1', use_admin_context=True)
         expected = self._get_expected_share_detailed_response(admin=True)
-        expected['share'].pop('snapshot_support')
-        expected['share'].pop('share_type_name')
-        expected['share'].pop('task_state')
 
         res_dict = self.controller.show(req, '1')
 
@@ -1390,15 +1433,8 @@ class ShareAPITest(test.TestCase):
             '/shares/1', version=share_replicas.MIN_SUPPORTED_API_VERSION)
         res_dict = self.controller.show(req, '1')
 
-        expected = self._get_expected_share_detailed_response()
-
-        expected['share']['task_state'] = None
-        expected['share']['access_rules_status'] = 'active'
-        expected['share']['share_type_name'] = None
-        expected['share']['replication_type'] = None
-        expected['share']['has_replicas'] = False
-        expected['share'].pop('export_location')
-        expected['share'].pop('export_locations')
+        expected = self._get_expected_share_detailed_response(
+            version=share_replicas.MIN_SUPPORTED_API_VERSION)
 
         self.assertEqual(expected, res_dict)
 

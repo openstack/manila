@@ -212,8 +212,9 @@ class ShareGroupController(wsgi.Controller, wsgi.AdminActionsMixin):
                     "availability zone is inherited from the source.")
                 raise exc.HTTPBadRequest(explanation=msg)
             try:
-                az_id = db.availability_zone_get(context, availability_zone).id
-                kwargs['availability_zone_id'] = az_id
+                az = db.availability_zone_get(context, availability_zone)
+                kwargs['availability_zone_id'] = az.id
+                kwargs['availability_zone'] = az.name
             except exception.AvailabilityZoneNotFound as e:
                 raise exc.HTTPNotFound(explanation=six.text_type(e))
 

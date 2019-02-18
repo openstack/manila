@@ -122,6 +122,21 @@ def stub_snapshot(id, **kwargs):
     return snapshot
 
 
+def stub_share_type(id, **kwargs):
+    share_type = {
+        'id': id,
+        'name': 'fakesharetype',
+        'description': 'fakesharetypedescription',
+        'is_public': True,
+    }
+    share_type.update(kwargs)
+    return share_type
+
+
+def stub_share_type_get(context, share_type_id, **kwargs):
+    return stub_share_type(share_type_id, **kwargs)
+
+
 def stub_share_get(self, context, share_id, **kwargs):
     return stub_share(share_id, **kwargs)
 

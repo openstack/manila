@@ -51,6 +51,14 @@ class HostFiltersTestCase(test.TestCase):
             especs={'opt1': '1', 'opt2': '2'},
             passes=True)
 
+    def test_capability_filter_passes_extra_specs_ignore_azs_spec(self):
+        self._do_test_type_filter_extra_specs(
+            ecaps={'opt1': '1', 'opt2': '2'},
+            especs={'opt1': '1',
+                    'opt2': '2',
+                    'availability_zones': 'az1,az2'},
+            passes=True)
+
     def test_capability_filter_fails_extra_specs_simple(self):
         self._do_test_type_filter_extra_specs(
             ecaps={'opt1': '1', 'opt2': '2'},

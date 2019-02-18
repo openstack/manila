@@ -99,6 +99,7 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(e.message)
 
         self._check_key_names(specs.keys())
+        specs = share_types.sanitize_extra_specs(specs)
         db.share_type_extra_specs_update_or_create(context, type_id, specs)
         notifier_info = dict(type_id=type_id, specs=specs)
         notifier = rpc.get_notifier('shareTypeExtraSpecs')
@@ -119,11 +120,12 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
             expl = _('Request body contains too many items')
             raise webob.exc.HTTPBadRequest(explanation=expl)
         self._verify_extra_specs(body, False)
-        db.share_type_extra_specs_update_or_create(context, type_id, body)
+        specs = share_types.sanitize_extra_specs(body)
+        db.share_type_extra_specs_update_or_create(context, type_id, specs)
         notifier_info = dict(type_id=type_id, id=id)
         notifier = rpc.get_notifier('shareTypeExtraSpecs')
         notifier.info(context, 'share_type_extra_specs.update', notifier_info)
-        return body
+        return specs
 
     @wsgi.Controller.authorize
     def show(self, req, type_id, id):

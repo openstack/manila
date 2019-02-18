@@ -126,17 +126,19 @@ class ShareTypesController(wsgi.Controller):
         else:
             filters['is_public'] = True
 
-        if (req.api_version_request < api_version.APIVersionRequest("2.43")):
-            extra_specs = req.params.get('extra_specs')
-            if extra_specs:
-                msg = _("Filter by 'extra_specs' is not supported by this "
-                        "microversion. Use 2.43 or greater microversion to "
-                        "be able to use filter search by 'extra_specs.")
-                raise webob.exc.HTTPBadRequest(explanation=msg)
-        else:
-            extra_specs = req.params.get('extra_specs')
-            if extra_specs:
-                filters['extra_specs'] = ast.literal_eval(extra_specs)
+        extra_specs = req.params.get('extra_specs', {})
+        extra_specs_disallowed = (req.api_version_request <
+                                  api_version.APIVersionRequest("2.43"))
+
+        if extra_specs and extra_specs_disallowed:
+            msg = _("Filter by 'extra_specs' is not supported by this "
+                    "microversion. Use 2.43 or greater microversion to "
+                    "be able to use filter search by 'extra_specs.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+        elif extra_specs:
+            extra_specs = ast.literal_eval(extra_specs)
+            filters['extra_specs'] = share_types.sanitize_extra_specs(
+                extra_specs)
 
         limited_types = share_types.get_all_types(
             context, search_opts=filters).values()

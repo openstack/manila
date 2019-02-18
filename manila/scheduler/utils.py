@@ -129,7 +129,16 @@ def thin_provisioning(host_state_thin_provisioning):
 
 def capabilities_satisfied(capabilities, extra_specs):
 
+    # These extra-specs are not capabilities for matching hosts
+    ignored_extra_specs = (
+        'availability_zones', 'capabilities:availability_zones',
+    )
+
     for key, req in extra_specs.items():
+        # Ignore some extra_specs if told to
+        if key in ignored_extra_specs:
+            continue
+
         # Either not scoped format, or in capabilities scope
         scope = key.split(':')
 

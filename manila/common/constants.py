@@ -196,6 +196,7 @@ class ExtraSpecs(object):
     CREATE_SHARE_FROM_SNAPSHOT_SUPPORT = "create_share_from_snapshot_support"
     REVERT_TO_SNAPSHOT_SUPPORT = "revert_to_snapshot_support"
     MOUNT_SNAPSHOT_SUPPORT = "mount_snapshot_support"
+    AVAILABILITY_ZONES = "availability_zones"
 
     # Extra specs containers
     REQUIRED = (
@@ -208,6 +209,7 @@ class ExtraSpecs(object):
         REVERT_TO_SNAPSHOT_SUPPORT,
         REPLICATION_TYPE_SPEC,
         MOUNT_SNAPSHOT_SUPPORT,
+        AVAILABILITY_ZONES,
     )
 
     # NOTE(cknight): Some extra specs are necessary parts of the Manila API and

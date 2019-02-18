@@ -50,7 +50,7 @@ class API(base.Base):
     def create(self, context, name=None, description=None,
                share_type_ids=None, source_share_group_snapshot_id=None,
                share_network_id=None, share_group_type_id=None,
-               availability_zone_id=None):
+               availability_zone_id=None, availability_zone=None):
         """Create new share group."""
 
         share_group_snapshot = None
@@ -132,11 +132,45 @@ class API(base.Base):
 
         supported_share_types = set(
             [x['share_type_id'] for x in share_group_type['share_types']])
+        supported_share_type_objects = [
+            share_types.get_share_type(context, share_type_id) for
+            share_type_id in supported_share_types
+        ]
 
         if not set(share_type_ids or []) <= supported_share_types:
             msg = _("The specified share types must be a subset of the share "
                     "types supported by the share group type.")
             raise exception.InvalidInput(reason=msg)
+
+        # Grab share type AZs for scheduling
+        share_types_of_new_group = (
+            share_type_objects or supported_share_type_objects
+        )
+        stype_azs_of_new_group = []
+        stypes_unsupported_in_az = []
+        for stype in share_types_of_new_group:
+            stype_azs = stype.get('extra_specs', {}).get(
+                'availability_zones', '')
+            if stype_azs:
+                stype_azs = stype_azs.split(',')
+                stype_azs_of_new_group.extend(stype_azs)
+                if availability_zone and availability_zone not in stype_azs:
+                    # If an AZ is requested, it must be supported by the AZs
+                    # configured in each of the share types requested
+                    stypes_unsupported_in_az.append((stype['name'],
+                                                     stype['id']))
+
+        if stypes_unsupported_in_az:
+            msg = _("Share group cannot be created since the following share "
+                    "types are not supported within the availability zone "
+                    "'%(az)s': (%(stypes)s)")
+            payload = {'az': availability_zone, 'stypes': ''}
+            for type_name, type_id in set(stypes_unsupported_in_az):
+                if payload['stypes']:
+                    payload['stypes'] += ', '
+                type_name = '%s ' % (type_name or '')
+            payload['stypes'] += type_name + '(ID: %s)' % type_id
+            raise exception.InvalidInput(reason=msg % payload)
 
         try:
             reservations = QUOTAS.reserve(context, share_groups=1)
@@ -213,6 +247,7 @@ class API(base.Base):
 
         request_spec = {'share_group_id': share_group['id']}
         request_spec.update(options)
+        request_spec['availability_zones'] = set(stype_azs_of_new_group)
         request_spec['share_types'] = share_type_objects
         request_spec['resource_type'] = share_group_type
 

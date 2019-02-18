@@ -30,6 +30,7 @@ from manila.share import share_types
 import manila.share_group.api as share_group_api
 from manila import test
 from manila.tests.api.contrib import stubs
+from manila.tests import utils as test_utils
 
 CONF = cfg.CONF
 
@@ -111,6 +112,8 @@ class ShareGroupsAPITestCase(test.TestCase):
                 {'share_type_id': self.fake_share_type_2['id']},
             ]
         }
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=self.fake_share_type))
         self.mock_object(
             db_driver, 'share_group_type_get',
             mock.Mock(return_value=self.fake_share_group_type))
@@ -150,6 +153,7 @@ class ShareGroupsAPITestCase(test.TestCase):
             expected_values.pop(name, None)
         expected_request_spec = {'share_group_id': share_group['id']}
         expected_request_spec.update(share_group)
+        expected_request_spec['availability_zones'] = set([])
         del expected_request_spec['id']
         del expected_request_spec['created_at']
         del expected_request_spec['host']
@@ -218,26 +222,59 @@ class ShareGroupsAPITestCase(test.TestCase):
             self.context, share_group_api.QUOTAS.reserve.return_value)
         share_group_api.QUOTAS.rollback.assert_not_called()
 
-    def test_create_with_multiple_share_types(self):
-        fake_share_types = [self.fake_share_type, self.fake_share_type_2]
+    @ddt.data(True, False)
+    def test_create_with_multiple_share_types_with_az(self, with_az):
+        share_type_1 = copy.deepcopy(self.fake_share_type)
+        share_type_2 = copy.deepcopy(self.fake_share_type_2)
+        share_type_1['extra_specs']['availability_zones'] = 'nova,supernova'
+        share_type_2['extra_specs']['availability_zones'] = 'nova'
+        fake_share_types = [share_type_1, share_type_2]
         fake_share_type_ids = [x['id'] for x in fake_share_types]
-        self.mock_object(share_types, 'get_share_type')
+        share_group_type = {
+            'share_types': [
+                {'share_type_id': share_type_1['id']},
+                {'share_type_id': share_type_2['id']},
+                {'share_type_id': self.fake_share_type['id']},
+            ]
+        }
+        self.mock_object(
+            db_driver, 'share_group_type_get',
+            mock.Mock(return_value=share_group_type))
+        self.mock_object(share_types, 'get_share_type', mock.Mock(
+            side_effect=[share_type_1, share_type_2,
+                         share_type_1, share_type_2, self.fake_share_type]))
         share_group = fake_share_group(
             'fakeid', user_id=self.context.user_id,
             project_id=self.context.project_id,
-            status=constants.STATUS_CREATING)
+            status=constants.STATUS_CREATING,
+            availability_zone_id=('e030620e-892c-4ff4-8764-9f3f2b560bd1'
+                                  if with_az else None)
+        )
         expected_values = share_group.copy()
         for name in ('id', 'host', 'created_at'):
             expected_values.pop(name, None)
         expected_values['share_types'] = fake_share_type_ids
-
         self.mock_object(
             db_driver, 'share_group_create',
             mock.Mock(return_value=share_group))
         self.mock_object(db_driver, 'share_network_get')
+        az_kwargs = {
+            'availability_zone': 'nova',
+            'availability_zone_id': share_group['availability_zone_id'],
+        }
 
-        self.api.create(self.context, share_type_ids=fake_share_type_ids)
+        kwargs = {} if not with_az else az_kwargs
+        self.api.create(self.context, share_type_ids=fake_share_type_ids,
+                        **kwargs)
 
+        scheduler_request_spec = (
+            self.scheduler_rpcapi.create_share_group.call_args_list[
+                0][1]['request_spec']
+        )
+        az_id = az_kwargs['availability_zone_id'] if with_az else None
+        self.assertEqual({'nova', 'supernova'},
+                         scheduler_request_spec['availability_zones'])
+        self.assertEqual(az_id, scheduler_request_spec['availability_zone_id'])
         db_driver.share_group_create.assert_called_once_with(
             self.context, expected_values)
         share_group_api.QUOTAS.reserve.assert_called_once_with(
@@ -245,6 +282,58 @@ class ShareGroupsAPITestCase(test.TestCase):
         share_group_api.QUOTAS.commit.assert_called_once_with(
             self.context, share_group_api.QUOTAS.reserve.return_value)
         share_group_api.QUOTAS.rollback.assert_not_called()
+
+    @ddt.data(
+        test_utils.annotated('specified_stypes_one_unsupported_in_AZ',
+                             (True, True)),
+        test_utils.annotated('specified_stypes_all_unsupported_in_AZ',
+                             (True, False)),
+        test_utils.annotated('group_type_stypes_one_unsupported_in_AZ',
+                             (False, True)),
+        test_utils.annotated('group_type_stypes_all_unsupported_in_AZ',
+                             (False, False)))
+    @ddt.unpack
+    def test_create_unsupported_az(self, specify_stypes, all_unsupported):
+        share_type_1 = copy.deepcopy(self.fake_share_type)
+        share_type_2 = copy.deepcopy(self.fake_share_type_2)
+        share_type_1['extra_specs']['availability_zones'] = 'nova,supernova'
+        share_type_2['extra_specs']['availability_zones'] = (
+            'nova' if all_unsupported else 'nova,hypernova'
+        )
+        share_group_type = {
+            'share_types': [
+                {'share_type_id': share_type_1['id'], },
+                {'share_type_id': share_type_2['id']},
+            ]
+        }
+        share_group = fake_share_group(
+            'fakeid', user_id=self.context.user_id,
+            project_id=self.context.project_id,
+            status=constants.STATUS_CREATING,
+            availability_zone_id='e030620e-892c-4ff4-8764-9f3f2b560bd1')
+        self.mock_object(
+            db_driver, 'share_group_create',
+            mock.Mock(return_value=share_group))
+        self.mock_object(db_driver, 'share_network_get')
+        self.mock_object(
+            db_driver, 'share_group_type_get',
+            mock.Mock(return_value=share_group_type))
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(side_effect=[share_type_1, share_type_1]*2))
+        self.mock_object(db_driver, 'share_group_snapshot_get')
+        kwargs = {
+            'availability_zone': 'hypernova',
+            'availability_zone_id': share_group['availability_zone_id'],
+        }
+        if specify_stypes:
+            kwargs['share_type_ids'] = [share_type_1['id'], share_type_2['id']]
+
+        self.assertRaises(
+            exception.InvalidInput,
+            self.api.create,
+            self.context, **kwargs)
+        db_driver.share_group_snapshot_get.assert_not_called()
+        db_driver.share_network_get.assert_not_called()
 
     def test_create_with_share_type_not_found(self):
         self.mock_object(share_types, 'get_share_type',

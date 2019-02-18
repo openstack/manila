@@ -178,8 +178,14 @@ class ShareController(shares.ShareMixin,
 
         return data
 
-    @wsgi.Controller.api_version("2.31")
+    @wsgi.Controller.api_version("2.48")
     def create(self, req, body):
+        return self._create(req, body,
+                            check_create_share_from_snapshot_support=True,
+                            check_availability_zones_extra_spec=True)
+
+    @wsgi.Controller.api_version("2.31", "2.47")  # noqa
+    def create(self, req, body):  # pylint: disable=E0102
         return self._create(
             req, body, check_create_share_from_snapshot_support=True)
 

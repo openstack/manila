@@ -16,7 +16,7 @@
 """
 Tests For AvailabilityZoneFilter.
 """
-
+import ddt
 from oslo_context import context
 
 from manila.scheduler.filters import availability_zone
@@ -24,12 +24,23 @@ from manila import test
 from manila.tests.scheduler import fakes
 
 
+@ddt.ddt
 class HostFiltersTestCase(test.TestCase):
     """Test case for AvailabilityZoneFilter."""
 
     def setUp(self):
         super(HostFiltersTestCase, self).setUp()
         self.filter = availability_zone.AvailabilityZoneFilter()
+        self.az_id = 'e3ecad6f-e984-4cd1-b149-d83c962374a8'
+        self.fake_service = {
+            'service': {
+                'availability_zone_id': self.az_id,
+                'availability_zone': {
+                    'name': 'nova',
+                    'id': self.az_id
+                }
+            }
+        }
 
     @staticmethod
     def _make_zone_request(zone, is_admin=False):
@@ -44,22 +55,52 @@ class HostFiltersTestCase(test.TestCase):
         }
 
     def test_availability_zone_filter_same(self):
-        service = {'availability_zone_id': 'nova'}
-        request = self._make_zone_request('nova')
-        host = fakes.FakeHostState('host1',
-                                   {'service': service})
+        request = self._make_zone_request(self.az_id)
+        host = fakes.FakeHostState('host1', self.fake_service)
         self.assertTrue(self.filter.host_passes(host, request))
 
     def test_availability_zone_filter_different(self):
-        service = {'availability_zone_id': 'nova'}
         request = self._make_zone_request('bad')
-        host = fakes.FakeHostState('host1',
-                                   {'service': service})
+        host = fakes.FakeHostState('host1', self.fake_service)
         self.assertFalse(self.filter.host_passes(host, request))
 
     def test_availability_zone_filter_empty(self):
-        service = {'availability_zone_id': 'nova'}
         request = {}
-        host = fakes.FakeHostState('host1',
-                                   {'service': service})
+        host = fakes.FakeHostState('host1', self.fake_service)
         self.assertTrue(self.filter.host_passes(host, request))
+
+    def test_availability_zone_filter_both_request_AZ_and_type_AZs_match(self):
+        request = self._make_zone_request(
+            '9382098d-d40f-42a2-8f31-8eb78ee18c02')
+        request['request_spec']['availability_zones'] = [
+            'nova', 'super nova', 'hypernova']
+        service = {
+            'availability_zone': {
+                'name': 'nova',
+                'id': '9382098d-d40f-42a2-8f31-8eb78ee18c02',
+            },
+            'availability_zone_id': '9382098d-d40f-42a2-8f31-8eb78ee18c02',
+        }
+        host = fakes.FakeHostState('host1', {'service': service})
+
+        self.assertTrue(self.filter.host_passes(host, request))
+
+    @ddt.data((['zone1', 'zone2', 'zone 4', 'zone3'], 'zone2', True),
+              (['zone1zone2zone3'], 'zone2', False),
+              (['zone1zone2zone3'], 'nova', False),
+              (['zone1', 'zone2', 'zone 4', 'zone3'], 'zone 4', True))
+    @ddt.unpack
+    def test_availability_zone_filter_only_share_type_AZs(
+            self, supported_azs, request_az, host_passes):
+        service = {
+            'availability_zone': {
+                'name': request_az,
+                'id': '9382098d-d40f-42a2-8f31-8eb78ee18c02',
+            },
+            'availability_zone_id': '9382098d-d40f-42a2-8f31-8eb78ee18c02',
+        }
+        request = self._make_zone_request(None)
+        request['request_spec']['availability_zones'] = supported_azs
+        host = fakes.FakeHostState('host1', {'service': service})
+
+        self.assertEqual(host_passes, self.filter.host_passes(host, request))
