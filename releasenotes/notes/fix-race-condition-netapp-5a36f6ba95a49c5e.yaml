@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed an issue with the NetApp driver leaving leftover
+    resources when it was handling too many share server
+    creation and deletion requests in parallel.
