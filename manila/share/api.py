@@ -72,7 +72,6 @@ class API(base.Base):
                share_group_id=None, share_group_snapshot_member=None,
                availability_zones=None):
         """Create new share."""
-        policy.check_policy(context, 'share', 'create')
 
         self._check_metadata_properties(metadata)
 
@@ -168,11 +167,6 @@ class API(base.Base):
                                 's_pid': context.project_id,
                                 'd_consumed': _consumed('shares')})
                 raise exception.ShareLimitExceeded(allowed=quotas['shares'])
-
-        try:
-            is_public = strutils.bool_from_string(is_public, strict=True)
-        except ValueError as e:
-            raise exception.InvalidParameterValue(six.text_type(e))
 
         share_group = None
         if share_group_id:
@@ -335,8 +329,6 @@ class API(base.Base):
                         host=None, availability_zone=None,
                         share_group=None, share_group_snapshot_member=None,
                         share_type_id=None, availability_zones=None):
-        policy.check_policy(context, 'share', 'create')
-
         request_spec, share_instance = (
             self.create_share_instance_and_get_request_spec(
                 context, share, availability_zone=availability_zone,
@@ -611,8 +603,6 @@ class API(base.Base):
         self.share_rpcapi.update_share_replica(context, share_replica)
 
     def manage(self, context, share_data, driver_options):
-        policy.check_policy(context, 'share', 'manage')
-
         shares = self.get_all(context, {
             'host': share_data['host'],
             'export_location': share_data['export_location'],
@@ -1483,12 +1473,6 @@ class API(base.Base):
 
     @policy.wrap_check_policy('share')
     def update(self, context, share, fields):
-        if 'is_public' in fields:
-            try:
-                fields['is_public'] = strutils.bool_from_string(
-                    fields['is_public'], strict=True)
-            except ValueError as e:
-                raise exception.InvalidParameterValue(six.text_type(e))
         return self.db.share_update(context, share['id'], fields)
 
     @policy.wrap_check_policy('share')

@@ -199,11 +199,11 @@ def wrap_check_policy(resource):
     return check_policy_wraper
 
 
-def check_policy(context, resource, action, target_obj=None):
+def check_policy(context, resource, action, target_obj=None, do_raise=True):
     target = {
         'project_id': context.project_id,
         'user_id': context.user_id,
     }
     target.update(target_obj or {})
     _action = '%s:%s' % (resource, action)
-    authorize(context, _action, target)
+    return authorize(context, _action, target, do_raise=do_raise)

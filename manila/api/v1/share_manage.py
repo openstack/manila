@@ -15,6 +15,7 @@
 import six
 from webob import exc
 
+from manila.api import common
 from manila.api.openstack import wsgi
 from manila.api.views import shares as share_views
 from manila import exception
@@ -31,6 +32,7 @@ class ShareManageMixin(object):
     def _manage(self, req, body):
         context = req.environ['manila.context']
         share_data = self._validate_manage_parameters(context, body)
+        share_data = common.validate_public_share_policy(context, share_data)
 
         # NOTE(vponomaryov): compatibility actions are required between API and
         # DB layers for 'name' and 'description' API params that are

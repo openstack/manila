@@ -17,6 +17,7 @@ import ddt
 import mock
 import webob
 
+from manila.api import common
 from manila.api.v1 import share_manage
 from manila.db import api as db_api
 from manila import exception
@@ -52,6 +53,9 @@ class ShareManageTest(test.TestCase):
         self.context = self.request.environ['manila.context']
         self.mock_policy_check = self.mock_object(
             policy, 'check_policy', mock.Mock(return_value=True))
+        self.mock_object(
+            common, 'validate_public_share_policy',
+            mock.Mock(side_effect=lambda *args, **kwargs: args[1]))
 
     @ddt.data({},
               {'shares': {}},

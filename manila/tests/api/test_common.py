@@ -18,10 +18,13 @@ Test suites for 'common' code used throughout the OpenStack HTTP API.
 """
 
 import ddt
+import mock
 import webob
 import webob.exc
 
 from manila.api import common
+from manila import exception
+from manila import policy
 from manila import test
 from manila.tests.api import fakes
 from manila.tests.db import fakes as db_fakes
@@ -281,6 +284,63 @@ class MiscFunctionsTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest, common.validate_access,
                           access_type=access_type, access_to=access_to,
                           enable_ceph=ceph)
+
+    def test_validate_public_share_policy_no_is_public(self):
+        api_params = {'foo': 'bar', 'clemson': 'tigers'}
+        self.mock_object(policy, 'check_policy')
+
+        actual_params = common.validate_public_share_policy(
+            'fake_context', api_params)
+
+        self.assertDictMatch(api_params, actual_params)
+        policy.check_policy.assert_not_called()
+
+    @ddt.data('foo', 123, 'all', None)
+    def test_validate_public_share_policy_invalid_value(self, is_public):
+        api_params = {'is_public': is_public}
+        self.mock_object(policy, 'check_policy')
+
+        self.assertRaises(exception.InvalidParameterValue,
+                          common.validate_public_share_policy,
+                          'fake_context',
+                          api_params)
+        policy.check_policy.assert_not_called()
+
+    @ddt.data('1', True, 'true', 'yes')
+    def test_validate_public_share_not_authorized(self, is_public):
+        api_params = {'is_public': is_public, 'size': '16'}
+        self.mock_object(policy, 'check_policy', mock.Mock(return_value=False))
+
+        self.assertRaises(exception.NotAuthorized,
+                          common.validate_public_share_policy,
+                          'fake_context',
+                          api_params)
+        policy.check_policy.assert_called_once_with(
+            'fake_context', 'share', 'create_public_share', do_raise=False)
+
+    @ddt.data('0', False, 'false', 'no')
+    def test_validate_public_share_is_public_False(self, is_public):
+        api_params = {'is_public': is_public, 'size': '16'}
+        self.mock_object(policy, 'check_policy', mock.Mock(return_value=False))
+
+        actual_params = common.validate_public_share_policy(
+            'fake_context', api_params, api='update')
+
+        self.assertDictMatch({'is_public': False, 'size': '16'}, actual_params)
+        policy.check_policy.assert_called_once_with(
+            'fake_context', 'share', 'set_public_share', do_raise=False)
+
+    @ddt.data('1', True, 'true', 'yes')
+    def test_validate_public_share_is_public_True(self, is_public):
+        api_params = {'is_public': is_public, 'size': '16'}
+        self.mock_object(policy, 'check_policy', mock.Mock(return_value=True))
+
+        actual_params = common.validate_public_share_policy(
+            'fake_context', api_params, api='update')
+
+        self.assertDictMatch({'is_public': True, 'size': '16'}, actual_params)
+        policy.check_policy.assert_called_once_with(
+            'fake_context', 'share', 'set_public_share', do_raise=False)
 
 
 @ddt.ddt

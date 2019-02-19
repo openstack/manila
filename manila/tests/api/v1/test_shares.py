@@ -59,6 +59,11 @@ class ShareAPITest(test.TestCase):
                          stubs.stub_snapshot_get)
         self.mock_object(share_types, 'get_share_type',
                          stubs.stub_share_type_get)
+        self.mock_object(
+            common, 'validate_public_share_policy',
+            mock.Mock(side_effect=lambda *args, **kwargs: args[1]))
+        self.resource_name = self.controller.resource_name
+        self.mock_policy_check = self.mock_object(policy, 'check_policy')
         self.maxDiff = None
         self.share = {
             "size": 100,
@@ -142,6 +147,8 @@ class ShareAPITest(test.TestCase):
 
         res_dict = self.controller.create(req, body)
 
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
         expected = self._get_expected_share_detailed_response(self.share)
         expected['share'].pop('snapshot_support')
         self.assertEqual(expected, res_dict)
@@ -154,6 +161,8 @@ class ShareAPITest(test.TestCase):
 
         res_dict = self.controller.create(req, body)
 
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
         expected = self._get_expected_share_detailed_response(self.share)
         self.assertEqual(expected, res_dict)
 
@@ -167,6 +176,8 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/shares')
         res_dict = self.controller.create(req, body)
 
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
         expected = self._get_expected_share_detailed_response(self.share)
         expected['share'].pop('snapshot_support')
         share_types.get_share_type_by_name.assert_called_once_with(
@@ -181,8 +192,11 @@ class ShareAPITest(test.TestCase):
         )
         CONF.set_default("default_share_type", self.vt['name'])
         req = fakes.HTTPRequest.blank('/shares')
+
         self.assertRaises(exception.ShareTypeNotFoundByName,
                           self.controller.create, req, {'share': self.share})
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
         share_types.get_default_share_type.assert_called_once_with()
 
     def test_share_create_with_dhss_true_and_network_notexist(self):
@@ -199,8 +213,11 @@ class ShareAPITest(test.TestCase):
         )
         CONF.set_default("default_share_type", fake_share_type['name'])
         req = fakes.HTTPRequest.blank('/shares')
+
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, {'share': self.share})
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
         share_types.get_default_share_type.assert_called_once_with()
 
     def test_share_create_with_share_net(self):
@@ -227,6 +244,8 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/shares')
         res_dict = self.controller.create(req, body)
 
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
         expected = self._get_expected_share_detailed_response(shr)
         expected['share'].pop('snapshot_support')
         self.assertEqual(expected, res_dict)
@@ -254,7 +273,11 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'create', create_mock)
         body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares')
+
         res_dict = self.controller.create(req, body)
+
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
         expected = self._get_expected_share_detailed_response(shr)
         expected['share'].pop('snapshot_support')
         self.assertEqual(expected, res_dict)
@@ -292,7 +315,11 @@ class ShareAPITest(test.TestCase):
 
         body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares')
+
         res_dict = self.controller.create(req, body)
+
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
         expected = self._get_expected_share_detailed_response(shr)
         expected['share'].pop('snapshot_support')
         self.assertEqual(expected, res_dict)
@@ -332,7 +359,11 @@ class ShareAPITest(test.TestCase):
 
         body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares')
+
         res_dict = self.controller.create(req, body)
+
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
         expected = self._get_expected_share_detailed_response(shr)
         expected['share'].pop('snapshot_support')
         self.assertEqual(expected, res_dict)
@@ -352,10 +383,13 @@ class ShareAPITest(test.TestCase):
         }
         body = {"share": shr}
         req = fakes.HTTPRequest.blank('/shares')
+
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create,
                           req,
                           body)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
 
     @ddt.data("1.0", "2.0")
     def test_share_create_from_snapshot_not_supported(self, microversion):
@@ -397,6 +431,8 @@ class ShareAPITest(test.TestCase):
 
         res_dict = self.controller.create(req, body)
 
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
         expected = self._get_expected_share_detailed_response(shr)
         expected['share'].pop('snapshot_support')
         self.assertDictEqual(expected, res_dict)
@@ -415,6 +451,8 @@ class ShareAPITest(test.TestCase):
                           self.controller.create,
                           req,
                           body)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
 
     def test_share_create_no_body(self):
         body = {}
@@ -423,6 +461,8 @@ class ShareAPITest(test.TestCase):
                           self.controller.create,
                           req,
                           body)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'create')
 
     def test_share_create_invalid_availability_zone(self):
         self.mock_object(
@@ -482,7 +522,11 @@ class ShareAPITest(test.TestCase):
         body = {"share": shr}
 
         req = fakes.HTTPRequest.blank('/share/1')
+
         res_dict = self.controller.update(req, 1, body)
+
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'update')
         self.assertEqual(shr["display_name"], res_dict['share']["name"])
         self.assertEqual(shr["display_description"],
                          res_dict['share']["description"])
@@ -491,7 +535,11 @@ class ShareAPITest(test.TestCase):
 
     def test_share_not_updates_size(self):
         req = fakes.HTTPRequest.blank('/share/1')
+
         res_dict = self.controller.update(req, 1, {"share": self.share})
+
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'update')
         self.assertNotEqual(res_dict['share']["size"], self.share["size"])
 
     def test_share_delete_no_share(self):

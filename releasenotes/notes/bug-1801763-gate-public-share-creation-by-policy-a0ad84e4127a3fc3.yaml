@@ -1,0 +1,22 @@
+---
+features:
+  - |
+    New API policies (share:create_public_share and share:set_public_share)
+    have been introduced for the "create" (POST /shares) and "update"
+    (PUT /shares) APIs to validate requests to create publicly visible
+    shares.
+deprecations:
+  - |
+    The API policies to create publicly visible shares
+    (share:create_public_share) or modify existing shares to become publicly
+    visible (share:set_public_share) have their default value changed to
+    rule:admin_api. This means that these APIs (POST /shares and PUT
+    /shares) will allow the 'is_public' parameter to be set to True in the
+    request body if the requester's role is set to an Administrator role.
+    These policies will allow their previous default behavior in the Stein
+    release (8.0.0) (i.e., any user can create publicly visible shares and
+    even non-privileged users within a project can update their shares to
+    become publicly visible). If the previous default behavior is always
+    desired, deployers *must* explicitly set "share:create_public_share"
+    and "share:set_public_share" to "rule:default" in their policy.json
+    file.

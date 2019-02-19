@@ -662,12 +662,6 @@ class ShareAPITestCase(test.TestCase):
         self.assertSubDictMatch(share_data,
                                 db_api.share_create.call_args[0][1])
 
-    @ddt.data('', 'fake', 'Truebar', 'Bartrue')
-    def test_create_share_with_invalid_is_public_value(self, is_public):
-        self.assertRaises(exception.InvalidParameterValue,
-                          self.api.create, self.context, 'nfs', '1',
-                          'fakename', 'fakedesc', is_public=is_public)
-
     @ddt.data(*constants.SUPPORTED_SHARE_PROTOCOLS)
     def test_create_share_valid_protocol(self, proto):
         share, share_data = self._setup_create_mocks(protocol=proto)
@@ -1702,9 +1696,8 @@ class ShareAPITestCase(test.TestCase):
             availability_zone=snapshot['share']['availability_zone'],
             share_group=None, share_group_snapshot_member=None,
             availability_zones=None)
-        share_api.policy.check_policy.assert_has_calls([
-            mock.call(self.context, 'share', 'create'),
-            mock.call(self.context, 'share_snapshot', 'get_snapshot')])
+        share_api.policy.check_policy.assert_called_once_with(
+            self.context, 'share_snapshot', 'get_snapshot')
         quota.QUOTAS.reserve.assert_called_once_with(
             self.context, share_type_id=share_type['id'],
             gigabytes=1, shares=1)
@@ -1884,12 +1877,6 @@ class ShareAPITestCase(test.TestCase):
             self.context,
             instance
         )
-
-    @ddt.data('', 'fake', 'Truebar', 'Bartrue')
-    def test_update_share_with_invalid_is_public_value(self, is_public):
-        self.assertRaises(exception.InvalidParameterValue,
-                          self.api.update, self.context, 'fakeid',
-                          {'is_public': is_public})
 
     def test_get(self):
         share = db_utils.create_share()

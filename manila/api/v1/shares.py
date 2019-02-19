@@ -199,6 +199,7 @@ class ShareMixin(object):
             'display_description'
         )
 
+    @wsgi.Controller.authorize
     def update(self, req, id, body):
         """Update a share."""
         context = req.environ['manila.context']
@@ -222,6 +223,9 @@ class ShareMixin(object):
         except exception.NotFound:
             raise exc.HTTPNotFound()
 
+        update_dict = common.validate_public_share_policy(
+            context, update_dict, api='update')
+
         share = self.share_api.update(context, share, update_dict)
         share.update(update_dict)
         return self._view_builder.detail(req, share)
@@ -232,6 +236,7 @@ class ShareMixin(object):
         share = self._create(req, body)
         return share
 
+    @wsgi.Controller.authorize('create')
     def _create(self, req, body,
                 check_create_share_from_snapshot_support=False,
                 check_availability_zones_extra_spec=False):
@@ -242,7 +247,7 @@ class ShareMixin(object):
             raise exc.HTTPUnprocessableEntity()
 
         share = body['share']
-        availability_zone_id = None
+        share = common.validate_public_share_policy(context, share)
 
         # NOTE(rushiagr): Manila API allows 'name' instead of 'display_name'.
         if share.get('name'):
@@ -262,6 +267,7 @@ class ShareMixin(object):
                {'share_proto': share_proto, 'size': size})
         LOG.info(msg, context=context)
 
+        availability_zone_id = None
         availability_zone = share.get('availability_zone')
         if availability_zone:
             try:
