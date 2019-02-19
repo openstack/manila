@@ -73,6 +73,7 @@ class APIRouter(base_wsgi.Router):
     def __init__(self, ext_mgr=None):
         if ext_mgr is None:
             if self.ExtensionManager:
+                # pylint: disable=not-callable
                 ext_mgr = self.ExtensionManager()
             else:
                 raise Exception(_("Must specify an ExtensionManager class"))

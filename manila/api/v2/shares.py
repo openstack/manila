@@ -185,18 +185,18 @@ class ShareController(shares.ShareMixin,
                             check_availability_zones_extra_spec=True)
 
     @wsgi.Controller.api_version("2.31", "2.47")  # noqa
-    def create(self, req, body):  # pylint: disable=E0102
+    def create(self, req, body):  # pylint: disable=function-redefined
         return self._create(
             req, body, check_create_share_from_snapshot_support=True)
 
     @wsgi.Controller.api_version("2.24", "2.30")  # noqa
-    def create(self, req, body):  # pylint: disable=E0102
+    def create(self, req, body):  # pylint: disable=function-redefined
         body.get('share', {}).pop('share_group_id', None)
         return self._create(req, body,
                             check_create_share_from_snapshot_support=True)
 
     @wsgi.Controller.api_version("2.0", "2.23")  # noqa
-    def create(self, req, body):  # pylint: disable=E0102
+    def create(self, req, body):  # pylint: disable=function-redefined
         body.get('share', {}).pop('share_group_id', None)
         return self._create(req, body)
 
@@ -411,7 +411,7 @@ class ShareController(shares.ShareMixin,
         return detail
 
     @wsgi.Controller.api_version("2.8")  # noqa
-    def manage(self, req, body):  # pylint: disable=E0102
+    def manage(self, req, body):  # pylint: disable=function-redefined
         detail = self._manage(req, body)
         return detail
 

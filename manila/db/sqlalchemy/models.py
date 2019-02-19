@@ -431,7 +431,7 @@ class ShareInstanceExportLocations(BASE, ManilaBase):
     @property
     def el_metadata(self):
         el_metadata = {}
-        for meta in self._el_metadata_bare:  # pylint: disable=E1101
+        for meta in self._el_metadata_bare:  # pylint: disable=no-member
             el_metadata[meta['key']] = meta['value']
         return el_metadata
 
@@ -472,7 +472,7 @@ class ShareInstanceExportLocationsMetadata(BASE, ManilaBase):
 
     @property
     def export_location_uuid(self):
-        return self.export_location.uuid  # pylint: disable=E1101
+        return self.export_location.uuid  # pylint: disable=no-member
 
 
 class ShareTypes(BASE, ManilaBase):

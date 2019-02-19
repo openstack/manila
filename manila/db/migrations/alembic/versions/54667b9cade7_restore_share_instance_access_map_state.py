@@ -67,6 +67,7 @@ def upgrade():
 
     for instance in connection.execute(instances_query):
         access_rule_status = instance['access_rules_status']
+        # pylint: disable=no-value-for-parameter
         op.execute(
             instance_access_map_table.update().where(
                 instance_access_map_table.c.share_instance_id == instance['id']
@@ -91,6 +92,7 @@ def downgrade():
     connection = op.get_bind()
     share_instances_table = utils.load_table('share_instances', connection)
 
+    # pylint: disable=no-value-for-parameter
     op.execute(
         share_instances_table.update().where(
             share_instances_table.c.access_rules_status ==

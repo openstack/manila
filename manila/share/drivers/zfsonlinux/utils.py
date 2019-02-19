@@ -162,7 +162,7 @@ class NASHelperBase(object):
         :return: share helper instance.
         """
         self.configuration = configuration
-        self.init_execute_mixin()  # pylint: disable=E1101
+        self.init_execute_mixin()  # pylint: disable=no-member
         self.verify_setup()
 
     @abc.abstractmethod

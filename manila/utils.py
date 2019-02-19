@@ -114,7 +114,7 @@ class SSHPool(pools.Pool):
         self.path_to_private_key = privatekey
         super(SSHPool, self).__init__(*args, **kwargs)
 
-    def create(self):
+    def create(self):  # pylint: disable=method-hidden
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         look_for_keys = True

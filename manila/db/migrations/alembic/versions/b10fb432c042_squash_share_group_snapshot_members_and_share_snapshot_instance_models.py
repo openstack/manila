@@ -140,7 +140,7 @@ def downgrade():
 
     # Remove copied records from source table
     connection.execute(
-        ssi_table.delete().where(
+        ssi_table.delete().where(  # pylint: disable=no-value-for-parameter
             ssi_table.c.share_group_snapshot_id.isnot(None)))
 
     # Remove redundant fields from 'share_snapshot_instance' table

@@ -20,8 +20,8 @@ from oslo_log import log
 from oslo_utils import excutils
 import six
 from six.moves import http_cookiejar
-from six.moves.urllib import error as url_error  # pylint: disable=E0611
-from six.moves.urllib import request as url_request  # pylint: disable=E0611
+from six.moves.urllib import error as url_error
+from six.moves.urllib import request as url_request
 
 from manila import exception
 from manila.i18n import _

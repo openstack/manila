@@ -210,7 +210,7 @@ class API(base.Base):
         if original_share_group:
             options['host'] = original_share_group['host']
 
-        share_group = None
+        share_group = {}
         try:
             share_group = self.db.share_group_create(context, options)
             if share_group_snapshot:
@@ -395,7 +395,7 @@ class API(base.Base):
                 })
             raise exception.ShareGroupSnapshotsLimitExceeded()
 
-        snap = None
+        snap = {}
         try:
             snap = self.db.share_group_snapshot_create(context, options)
             members = []

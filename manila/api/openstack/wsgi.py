@@ -1023,6 +1023,7 @@ class Controller(object):
         if view_builder:
             self._view_builder = view_builder
         elif self._view_builder_class:
+            # pylint: disable=not-callable
             self._view_builder = self._view_builder_class()
         else:
             self._view_builder = None

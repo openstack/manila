@@ -16,8 +16,8 @@
 from eventlet import greenthread
 import mock
 from oslo_concurrency import processutils
-from six.moves.urllib import error as url_error  # pylint: disable=E0611
-from six.moves.urllib import request as url_request  # pylint: disable=E0611
+from six.moves.urllib import error as url_error
+from six.moves.urllib import request as url_request
 
 from manila import exception
 from manila.share import configuration as conf

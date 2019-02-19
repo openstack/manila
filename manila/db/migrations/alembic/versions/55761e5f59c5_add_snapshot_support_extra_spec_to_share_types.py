@@ -95,6 +95,7 @@ def upgrade():
         autoload=True,
         autoload_with=connection)
 
+    # pylint: disable=no-value-for-parameter
     update = shares.update().where(shares.c.deleted == 'False').values(
         snapshot_support=True)
     connection.execute(update)
@@ -113,6 +114,7 @@ def downgrade():
         autoload=True,
         autoload_with=connection)
 
+    # pylint: disable=no-value-for-parameter
     update = extra_specs.update().where(
         extra_specs.c.spec_key == constants.ExtraSpecs.SNAPSHOT_SUPPORT).where(
         extra_specs.c.deleted == 0).values(

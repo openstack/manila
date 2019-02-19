@@ -47,7 +47,7 @@ class ShareTypesController(wsgi.Controller):
     def __getattr__(self, key):
         if key == 'os-share-type-access':
             return self.share_type_access
-        return super(ShareTypesController, self).__getattr__(key)
+        return super(ShareTypesController, self).__getattribute__(key)
 
     def _notify_share_type_error(self, context, method, payload):
         rpc.get_notifier('shareType').error(context, method, payload)
@@ -171,7 +171,7 @@ class ShareTypesController(wsgi.Controller):
 
     @wsgi.Controller.api_version("2.24")  # noqa
     @wsgi.action("create")
-    def create(self, req, body):  # pylint: disable=E0102
+    def create(self, req, body):  # pylint: disable=function-redefined
         return self._create(req, body, set_defaults=False)
 
     @wsgi.Controller.authorize('create')

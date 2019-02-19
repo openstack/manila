@@ -29,11 +29,12 @@ def run_migrations_online():
     engine = db_api.get_engine()
     connection = engine.connect()
     target_metadata = db_models.ManilaBase.metadata
-    context.configure(connection=connection,  # pylint: disable=E1101
+    # pylint: disable=no-member
+    context.configure(connection=connection,
                       target_metadata=target_metadata)
     try:
-        with context.begin_transaction():  # pylint: disable=E1101
-            context.run_migrations()  # pylint: disable=E1101
+        with context.begin_transaction():
+            context.run_migrations()
     finally:
         connection.close()
 

@@ -120,6 +120,7 @@ def remove_share_instances_table(connection):
                 share_inst_table.c.share_id == share.id)
         ).first()
 
+        # pylint: disable=no-value-for-parameter
         op.execute(
             shares_table.update().where(
                 shares_table.c.id == share.id
@@ -204,6 +205,7 @@ def remove_snapshot_instances_table(connection):
                 snapshots_table.c.id == snapshot_instance.snapshot_id)
         ).first()
 
+        # pylint: disable=no-value-for-parameter
         op.execute(
             snapshots_table.update().where(
                 snapshots_table.c.id == snapshot.id
@@ -235,6 +237,7 @@ def upgrade_export_locations_table(connection):
                 share_instances_table.c.share_id == export.share_id)
         ).first()
 
+        # pylint: disable=no-value-for-parameter
         op.execute(
             share_el_table.update().where(
                 share_el_table.c.id == export.id
@@ -265,6 +268,7 @@ def downgrade_export_locations_table(connection):
                 share_instances_table.c.id == export.share_instance_id)
         ).first()
 
+        # pylint: disable=no-value-for-parameter
         op.execute(
             share_el_table.update().where(
                 share_el_table.c.id == export.id

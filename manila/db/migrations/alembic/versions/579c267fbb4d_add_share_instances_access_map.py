@@ -55,6 +55,7 @@ def upgrade():
     instances_table = utils.load_table('share_instances', connection)
 
     for access_rule in connection.execute(access_table.select()):
+        # pylint: disable=assignment-from-no-return
         instances_query = instances_table.select().where(
             instances_table.c.share_id == access_rule.share_id
         )
@@ -98,6 +99,7 @@ def downgrade():
                 instance_access_table.c.access_id == access_rule['id'])
         ).first()
 
+        # pylint: disable=no-value-for-parameter
         op.execute(
             access_table.update().where(
                 access_table.c.id == access_rule['id']

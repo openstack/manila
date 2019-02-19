@@ -48,6 +48,7 @@ def upgrade():
         sa.Column('deleted', sa.String(length=36)),
         sa.Column('revert_to_snapshot_support', sa.Boolean),
     )
+    # pylint: disable=no-value-for-parameter
     update = shares_table.update().where(
         shares_table.c.deleted == 'False').values(
             revert_to_snapshot_support=False)
