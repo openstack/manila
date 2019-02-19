@@ -46,6 +46,12 @@ metadata_key_path:
   in: path
   required: false
   type: string
+project_id_path:
+  description: |
+    The ID of the project what owns the resource.
+  in: path
+  required: true
+  type: string
 quota_class_name:
   description:
     The name of the quota class for which to set quotas.
@@ -380,12 +386,6 @@ share_group_status_query:
 share_group_type_id_query:
   description: |
     The share group type ID to filter share groups.
-  in: query
-  required: false
-  type: string
-share_network_id_5:
-  description: |
-    The UUID of the share network.
   in: query
   required: false
   type: string
@@ -986,13 +986,6 @@ created_at_5:
   in: body
   required: true
   type: string
-created_at_8:
-  description: |
-    The date and time stamp when the member was
-    created.
-  in: body
-  required: true
-  type: string
 created_at_9:
   description: |
     The date and time stamp when the share instance was created.
@@ -1013,7 +1006,7 @@ created_at_9:
   type: string
 created_at_share_server_body:
   description: |
-    The date and time stamp when the share server was created.
+    The date and time stamp when the share server was created or managed.
 
     The date and time stamp format is `ISO 8601
     <https://en.wikipedia.org/wiki/ISO_8601>`_:
@@ -1621,6 +1614,12 @@ id_8:
   in: body
   required: true
   type: string
+identifier:
+  description: |
+    The identifier of the share server in the back-end storage system.
+  in: body
+  required: true
+  type: string
 ip_version:
   description: |
     The IP version of the network. A valid value is
@@ -1642,6 +1641,15 @@ is_admin_only:
     ``true``, then it is expected to be used for service needs and by
     admin only. If it is set to ``false``, then this export location
     should be used by end users.
+  in: body
+  required: true
+  type: boolean
+is_auto_deletable:
+  description: |
+    Defines if a share server can be deleted automatically by  the service.
+    Share server deletion can be automated with configuration. However, Share
+    servers that have ever had a share removed from service management cannot
+    be automatically deleted by the service.
   in: body
   required: true
   type: boolean
@@ -1696,6 +1704,21 @@ links_2:
   in: body
   required: true
   type: array
+manage_host:
+  description: |
+    The host of the destination back end, in this format: ``host@backend``.
+    - ``host``. The host name for the destination back end.
+    - ``backend``. The name of the destination back end.
+  in: body
+  required: true
+  type: string
+manage_share_server_id:
+  description: |
+    The UUID of the share server.
+  in: body
+  required: true
+  type: string
+  min_version: 2.49
 maxTotalShareGigabytes:
   description: |
     The total maximum number of share gigabytes that
@@ -2098,6 +2121,12 @@ project_id_messages_body:
 project_id_share_server_body:
   description: |
     The project ID.
+  in: body
+  required: true
+  type: string
+project_id_share_server_manage:
+  description: |
+    The ID of the project that owns the share server.
   in: body
   required: true
   type: string
@@ -3089,6 +3118,57 @@ share_replica_updated_at:
 share_server_id:
   description: |
     The UUID of the share server.
+  in: body
+  required: true
+  type: string
+share_server_show_identifier:
+  description: |
+    The identifier of the share server in the back-end storage system.
+  in: body
+  required: true
+  type: string
+  min_version: 2.49
+share_server_show_is_auto_deletable:
+  description: |
+    Defines if a share server can be deleted automatically by  the service.
+    Share server deletion can be automated with configuration. However, Share
+    servers that have ever had a share removed from service management cannot
+    be automatically deleted by the service.
+  in: body
+  required: true
+  type: boolean
+  min_version: 2.49
+share_server_status:
+  description: |
+    The share server status, which can be ``active``,
+    ``error``, ``creating``, ``deleting``, ``manage_starting``,
+    ``manage_error``, ``unmanage_starting``, ``unmanage_error`` or
+    ``error_deleting``.
+  in: body
+  required: true
+  type: string
+share_server_unmanage:
+  description: |
+    To unmanage a share server, either set this value to ``null`` or {}.
+    Optionally, the ``force`` attribute can be included in this object.
+  in: body
+  required: true
+  type: object
+share_server_updated_at:
+  description: |
+    The date and time stamp when the share server was updated.
+
+    The date and time stamp format is `ISO 8601
+    <https://en.wikipedia.org/wiki/ISO_8601>`_:
+
+    ::
+
+       CCYY-MM-DDThh:mm:ss±hh:mm
+
+    The ``±hh:mm`` value, if included, returns the time zone as an
+    offset from UTC.
+
+    For example, ``2015-08-27T09:49:58-05:00``.
   in: body
   required: true
   type: string

@@ -409,6 +409,11 @@ Manage share
 Configures Shared File Systems to manage a share.
 This API is available for API versions later than or equal to 2.7
 
+.. note::
+
+    Managing shares that are created on top of managed share servers (i.e. with
+    parameter ``share_server_id``) is not supported prior to API version 2.49.
+
 Response codes
 --------------
 
@@ -438,6 +443,7 @@ Request
    - driver_options: driver_options
    - export_path: export_path
    - service_host: service_host
+   - share_server_id: manage_share_server_id
    - is_public: is_public
    - description: description_5
 
@@ -469,6 +475,7 @@ Response parameters
    - project_id: project_id_4
    - metadata: metadata
    - status: status_8
+   - share_server_id: manage_share_server_id
    - description: description_5
    - host: host_9
    - is_public: is_public

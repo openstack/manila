@@ -1,0 +1,15 @@
+{
+    "share_server": {
+        "id": "dd218d97-6b16-45b7-9b23-19681ccdec3a",
+        "project_id": "5b23075b4b504261a5987b18588f86cf",
+        "updated_at": null,
+        "status": "manage_starting",
+        "host": "myhost@mybackend",
+        "share_network_name": "share-net-name",
+        "share_network_id": "78cef6eb-648a-4bbd-9ae1-d2eaaf594cc0",
+        "created_at": "2019-03-06T11:59:41.000000",
+        "backend_details": {},
+        "is_auto_deletable": false,
+        "identifier": "4ef3507e-0513-4140-beda-f619ab30d424"
+    }
+}

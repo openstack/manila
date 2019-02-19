@@ -130,6 +130,8 @@ Response parameters
   - host: host_share_server_body
   - created_at: created_at_share_server_body
   - updated_at: updated_at_share_server_body
+  - identifier: share_server_show_identifier
+  - is_auto_deletable: share_server_show_is_auto_deletable
 
 Response example
 ----------------
@@ -213,3 +215,168 @@ Request
 
    - tenant_id: tenant_id_path
    - share_server_id: share_server_id
+
+
+Manage share server (since API v2.49)
+=====================================
+
+.. rest_method:: POST /v2/{project_id}/share-servers/manage
+
+.. versionadded:: 2.49
+
+Manages a share server
+
+An administrator can bring a pre-existing share server if the back end driver
+is operating in ``driver_handles_share_servers=True`` mode.
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+    - 202
+
+.. rest_status_code:: error status.yaml
+
+    - 400
+    - 403
+    - 422
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+    - project_id: project_id_path
+    - host: manage_host
+    - identifier: identifier
+    - share_network: share_network_id
+    - driver_options: driver_options
+
+Request example
+---------------
+
+.. literalinclude:: samples/share-server-manage-request.json
+   :language: javascript
+
+Response parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+    - id: share_server_id
+    - project_id: project_id_share_server_manage
+    - updated_at: share_server_updated_at
+    - status: share_server_status
+    - host: manage_host
+    - share_network_name: share_network_name
+    - share_network_id: share_network_id
+    - created_at: created_at_share_server_body
+    - backend_details: backend_details
+    - is_auto_deletable: is_auto_deletable
+    - identifier: identifier
+
+Response examples
+-----------------
+
+.. literalinclude:: samples/share-server-manage-response.json
+   :language: javascript
+
+
+Unmanage share server (since API v2.49)
+=======================================
+
+.. rest_method:: POST /v2/{project_id}/share-servers/{share_server_id}/action
+
+.. versionadded:: 2.49
+
+Unmanages a share server
+
+An administrator can remove a share server from the Shared File System
+service's management if there are no associated shares that the service is
+aware of. The share server will not be torn down in the back end.
+
+Preconditions
+
+- Share server status must be either ``error``, ``manage_error``, ``active`` or
+  ``unmanage_error``.
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+    - 202
+
+.. rest_status_code:: error status.yaml
+
+    - 400
+    - 404
+
+Request parameters
+------------------
+
+.. rest_parameters:: parameters.yaml
+
+    - project_id: project_id
+    - share_server_id: share_server_id
+    - force: force
+    - unmanage: share_server_unmanage
+
+Request example
+---------------
+
+.. literalinclude:: samples/share-server-unmanage-request.json
+  :language: javascript
+
+Response parameters
+-------------------
+
+There is no body content for the response.
+
+
+Reset status (since API v2.49)
+==============================
+
+.. rest_method:: POST /v2/{project_id}/share-servers/{share_server_id}/action
+
+.. versionadded:: 2.49
+
+Resets a share server status
+
+Administrator only. Explicitly updates the state of a share server.
+
+Use the ``policy.json`` file to grant permissions for this action to other
+roles.
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+    - 202
+
+.. rest_status_code:: error status.yaml
+
+    - 400
+    - 404
+
+Request parameters
+------------------
+
+.. rest_parameters:: parameters.yaml
+
+    - share_server_id: share_server_id
+    - project_id: project_id_path
+    - status: share_server_status
+
+Request example
+---------------
+
+.. literalinclude:: samples/share-server-reset-state-request.json
+   :language: javascript
+
+Response parameters
+-------------------
+
+There is no body content for the response.
