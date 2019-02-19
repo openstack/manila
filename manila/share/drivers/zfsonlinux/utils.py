@@ -116,6 +116,8 @@ class ExecuteMixin(driver.ExecuteMixin):
 
         data = self.parse_zfs_answer(out)
         option = data[0]['VALUE']
+        msg_payload = {'option': option_name, 'value': option}
+        LOG.debug("ZFS option %(option)s's value is %(value)s.", msg_payload)
         return option
 
     def parse_zfs_answer(self, string):
