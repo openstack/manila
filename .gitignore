@@ -29,8 +29,6 @@ keys
 local_settings.py
 subunit.log
 tools/conf/manila.conf*
-tools/lintstack.head.py
-tools/pylint_exceptions
 tags
 # Files created by Sphinx build
 doc/build
