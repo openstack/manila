@@ -32,8 +32,8 @@ run_pylint() {
     CODE_OKAY=0
 
     if [[ "$target" = *"all"* ]]; then
-        files="manila"
-        test_files="manila.tests"
+        files=$(find manila/ -type f -name "*.py" -and ! -path "manila/tests*")
+        test_files=$(find manila/tests/ -type f -name "*.py")
     else
         files=$(git diff --name-only --diff-filter=ACMRU HEAD~1 ':!manila/tests/*' '*.py')
         test_files=$(git diff --name-only --diff-filter=ACMRU HEAD~1 'manila/tests/*.py')
