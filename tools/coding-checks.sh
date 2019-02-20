@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -eu
 
@@ -26,23 +26,36 @@ process_options() {
 }
 
 run_pylint() {
+
     local target="${scriptargs:-HEAD~1}"
+    local concurrency=$(python -c 'import multiprocessing as mp; print(mp.cpu_count())')
+    CODE_OKAY=0
 
     if [[ "$target" = *"all"* ]]; then
         files="manila"
+        test_files="manila.tests"
     else
-        files=$(git diff --name-only --diff-filter=ACMRU $target "*.py")
+        files=$(git diff --name-only --diff-filter=ACMRU HEAD~1 ':!manila/tests/*' '*.py')
+        test_files=$(git diff --name-only --diff-filter=ACMRU HEAD~1 'manila/tests/*.py')
     fi
-
-    if [ -n "${files}" ]; then
-        echo "Running pylint against:"
-        printf "\t%s\n" "${files[@]}"
-        pylint --rcfile=.pylintrc --output-format=colorized ${files} -E \
-            -j `python -c 'import multiprocessing as mp; print(mp.cpu_count())'`
-    else
+    if [[ -z "${files}" || -z "${test_files}" ]]; then
         echo "No python changes in this commit, pylint check not required."
         exit 0
     fi
+    if [[ -n "${files}" ]]; then
+        echo "Running pylint against manila code modules:"
+        printf "\t%s\n" "${files[@]}"
+        pylint --rcfile=.pylintrc --output-format=colorized ${files} \
+            -E -j $concurrency || CODE_OKAY=1
+    fi
+    if [[ -n "${test_files}" ]]; then
+        echo "Running pylint against manila test modules:"
+        printf "\t%s\n" "${test_files[@]}"
+        pylint --rcfile=.pylintrc --output-format=colorized ${test_files} \
+            -E -d "no-member,assignment-from-no-return,assignment-from-none" \
+            -j $concurrency || CODE_OKAY=1
+    fi
+    exit $CODE_OKAY
 }
 
 scriptargs=
