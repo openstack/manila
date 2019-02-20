@@ -751,7 +751,9 @@ class NeutronBindNetworkPluginTest(test.TestCase):
                 self.fake_context,
                 fake_network_allocation)
             self.bind_plugin._wait_for_ports_bind.assert_called_once_with(
-                [db_api.network_allocation_create()], fake_share_server)
+                [db_api.network_allocation_create(
+                    self.fake_context, fake_network_allocation)],
+                fake_share_server)
 
     @mock.patch.object(db_api, 'network_allocation_create',
                        mock.Mock(return_values=fake_network_allocation_multi))
@@ -1270,7 +1272,9 @@ class NeutronBindSingleNetworkPluginTest(test.TestCase):
                 self.fake_context,
                 fake_network_allocation)
             self.bind_plugin._wait_for_ports_bind.assert_called_once_with(
-                [db_api.network_allocation_create()], fake_share_server)
+                [db_api.network_allocation_create(
+                    self.fake_context, fake_network_allocation)],
+                fake_share_server)
 
     @ddt.data({
         'neutron_binding_profiles': None,

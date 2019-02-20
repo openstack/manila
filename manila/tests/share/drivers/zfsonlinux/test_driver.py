@@ -95,7 +95,7 @@ class FakeTempDir(object):
     def __enter__(self, *args, **kwargs):
         return '/foo/path'
 
-    def __exit__(*args, **kwargs):
+    def __exit__(self, *args, **kwargs):
         pass
 
 

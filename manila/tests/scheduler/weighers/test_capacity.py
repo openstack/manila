@@ -90,7 +90,7 @@ class CapacityWeigherTestCase(test.TestCase):
     @ddt.unpack
     def test_default_of_spreading_first(self, cap_thin, cap_thin_key,
                                         winner):
-        hostinfo_list = self._get_all_hosts()
+        hosts = self._get_all_hosts()  # pylint: disable=no-value-for-parameter
 
         # Results for the 1st test
         # {'capabilities:thin_provisioning': '<is> True'}:
@@ -131,16 +131,16 @@ class CapacityWeigherTestCase(test.TestCase):
             }
         }
         weighed_host = self._get_weighed_host(
-            hostinfo_list,
+            hosts,
             weight_properties=weight_properties)
         self.assertEqual(1.0, weighed_host.weight)
         self.assertEqual(
             winner, utils.extract_host(weighed_host.obj.host))
 
     def test_unknown_is_last(self):
-        hostinfo_list = self._get_all_hosts()
+        hosts = self._get_all_hosts()  # pylint: disable=no-value-for-parameter
 
-        last_host = self._get_weighed_host(hostinfo_list, index=-1)
+        last_host = self._get_weighed_host(hosts, index=-1)
         self.assertEqual(
             'host6', utils.extract_host(last_host.obj.host))
         self.assertEqual(0.0, last_host.weight)
@@ -173,7 +173,7 @@ class CapacityWeigherTestCase(test.TestCase):
                                                    cap_thin_key,
                                                    winner):
         self.flags(capacity_weight_multiplier=-1.0)
-        hostinfo_list = self._get_all_hosts()
+        hosts = self._get_all_hosts()  # pylint: disable=no-value-for-parameter
 
         # Results for the 1st test
         # {'capabilities:thin_provisioning': '<is> True'}:
@@ -220,7 +220,7 @@ class CapacityWeigherTestCase(test.TestCase):
             }
         }
         weighed_host = self._get_weighed_host(
-            hostinfo_list,
+            hosts,
             weight_properties=weight_properties)
         self.assertEqual(0.0, weighed_host.weight)
         self.assertEqual(
@@ -253,7 +253,7 @@ class CapacityWeigherTestCase(test.TestCase):
     def test_capacity_weight_multiplier_2(self, cap_thin, cap_thin_key,
                                           winner):
         self.flags(capacity_weight_multiplier=2.0)
-        hostinfo_list = self._get_all_hosts()
+        hosts = self._get_all_hosts()  # pylint: disable=no-value-for-parameter
 
         # Results for the 1st test
         # {'capabilities:thin_provisioning': '<is> True'}:
@@ -299,8 +299,7 @@ class CapacityWeigherTestCase(test.TestCase):
             }
         }
         weighed_host = self._get_weighed_host(
-            hostinfo_list,
-            weight_properties=weight_properties)
+            hosts, weight_properties=weight_properties)
         self.assertEqual(2.0, weighed_host.weight)
         self.assertEqual(
             winner, utils.extract_host(weighed_host.obj.host))

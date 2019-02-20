@@ -46,6 +46,7 @@ class FakeSchedulerOptions(scheduler_options.SchedulerOptions):
     def _get_file_handle(self, filename):
         self.file_was_loaded = True
         if six.PY2:
+            # pylint: disable=import-error
             import StringIO
             return StringIO.StringIO(self._file_data)
         else:

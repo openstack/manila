@@ -73,7 +73,7 @@ class SchedulerManagerTestCase(test.TestCase):
         self.fake_args = (1, 2, 3)
         self.fake_kwargs = {'cat': 'meow', 'dog': 'woof'}
 
-    def raise_no_valid_host(*args, **kwargs):
+    def raise_no_valid_host(self, *args, **kwargs):
             raise exception.NoValidHost(reason="")
 
     def test_1_correct_init(self):

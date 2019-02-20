@@ -20,7 +20,7 @@ from manila.share.drivers.dell_emc.plugins.unity import utils
 from manila import test
 
 
-class MockPort(object):
+class MockSP(object):
     def __init__(self, sp_id):
         self.sp_id = sp_id
 
@@ -28,8 +28,8 @@ class MockPort(object):
         return self.sp_id
 
 
-SPA = MockPort('spa')
-SPB = MockPort('spb')
+SPA = MockSP('spa')
+SPB = MockSP('spb')
 
 
 class MockPort(object):

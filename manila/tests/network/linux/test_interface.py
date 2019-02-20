@@ -24,10 +24,10 @@ from manila import utils
 
 
 class BaseChild(interface.LinuxInterfaceDriver):
-    def plug(*args):
+    def plug(self, *args):
         pass
 
-    def unplug(*args):
+    def unplug(self, *args):
         pass
 
 
@@ -74,6 +74,7 @@ class TestABCDriver(TestBase):
             pass
 
         try:
+            # pylint: disable=abstract-class-instantiated
             ICanNotBeInstancetiated()
         except TypeError:
             pass

@@ -22,15 +22,11 @@ import webob.dec
 import webob.request
 
 from manila.api import common as api_common
-from manila.api.middleware import auth
-from manila.api.middleware import fault
 from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi as os_wsgi
 from manila.api import urlmap
-from manila.api.v1 import limits
 from manila.api.v1 import router as router_v1
 from manila.api.v2 import router as router_v2
-from manila.api import versions
 from manila.common import constants
 from manila import context
 from manila import exception
@@ -61,31 +57,6 @@ def fake_wsgi(self, req):
     return self.application
 
 
-def wsgi_app(inner_app_v2=None, fake_auth=True, fake_auth_context=None,
-             use_no_auth=False, ext_mgr=None):
-    if not inner_app_v2:
-        inner_app_v2 = router_v2.APIRouter(ext_mgr)
-
-    if fake_auth:
-        if fake_auth_context is not None:
-            ctxt = fake_auth_context
-        else:
-            ctxt = context.RequestContext('fake', 'fake', auth_token=True)
-        api_v2 = fault.FaultWrapper(auth.InjectContext(ctxt,
-                                                       inner_app_v2))
-    elif use_no_auth:
-        api_v2 = fault.FaultWrapper(auth.NoAuthMiddleware(
-            limits.RateLimitingMiddleware(inner_app_v2)))
-    else:
-        api_v2 = fault.FaultWrapper(auth.AuthMiddleware(
-            limits.RateLimitingMiddleware(inner_app_v2)))
-
-    mapper = urlmap.URLMap()
-    mapper['/v2'] = api_v2
-    mapper['/'] = fault.FaultWrapper(versions.Versions())
-    return mapper
-
-
 class FakeToken(object):
     id_count = 0
 
@@ -95,6 +66,7 @@ class FakeToken(object):
     def __init__(self, **kwargs):
         FakeToken.id_count += 1
         self.id = FakeToken.id_count
+        self.token_hash = None
         for k, v in kwargs.items():
             setattr(self, k, v)
 

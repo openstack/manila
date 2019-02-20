@@ -43,7 +43,8 @@ class ClientAuthTestCase(test.TestCase):
                                                   'foo_group')
         self.fake_client.assert_called_once_with(
             session=mock_load_session(),
-            auth=auth.load_auth_from_conf_options())
+            auth=auth.load_auth_from_conf_options(
+                client_auth.CONF, 'foo_group'))
 
     def test_get_client_admin_false(self):
         self.mock_object(auth, 'load_session_from_conf_options')

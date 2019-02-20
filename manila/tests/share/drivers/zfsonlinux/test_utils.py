@@ -220,7 +220,7 @@ foo_res  opt_3           some_value       local"""
         self.driver.zfs('foo', 'bar')
 
         self.assertEqual(0, self.driver.execute_with_retry.call_count)
-        self.driver.execute.asssert_called_once_with(
+        self.driver.execute.assert_called_once_with(
             'sudo', 'zfs', 'foo', 'bar')
 
     def test_zfs_with_retry(self):
@@ -230,7 +230,7 @@ foo_res  opt_3           some_value       local"""
         self.driver.zfs_with_retry('foo', 'bar')
 
         self.assertEqual(0, self.driver.execute.call_count)
-        self.driver.execute_with_retry.asssert_called_once_with(
+        self.driver.execute_with_retry.assert_called_once_with(
             'sudo', 'zfs', 'foo', 'bar')
 
 

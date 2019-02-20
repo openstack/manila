@@ -116,7 +116,7 @@ def fake_snapshot(create_instance=False, **kwargs):
         'name': 'fakesnapshotname',
         'share_size': 1,
         'share_proto': 'fake_proto',
-        'instance': None,
+        'instance': {},
         'share': 'fake_share',
         'aggregate_status': aggregate_status,
         'project_id': 'fakeprojectid',
