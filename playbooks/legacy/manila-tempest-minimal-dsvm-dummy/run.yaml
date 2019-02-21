@@ -44,7 +44,7 @@
           export DEVSTACK_GATE_NEUTRON=1
           export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
           # Basic services needed for minimal job
-          OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit,tempest
+          OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit,tempest,tls-proxy
           if [ "dummy" == "lvm" ]; then
               # Enable glance for scenario tests
               OVERRIDE_ENABLED_SERVICES+=,g-api,g-reg
