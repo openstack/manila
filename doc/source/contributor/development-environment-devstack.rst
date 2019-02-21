@@ -184,7 +184,10 @@ Optionally, you can deploy with Manila, Nova, Neutron, Glance and Tempest::
     ENABLED_SERVICES+=q-svc,q-dhcp,q-meta,q-l3,q-agt
     ENABLED_SERVICES+=tempest
 
-
+You can also enable ``tls-proxy`` with ``ENABLED_SERVICES`` to allow
+devstack to use Apache and setup a TLS proxy to terminate TLS connections.
+Using tls-proxy secures all OpenStack service API endpoints and inter-service
+communication on your devstack.
 
 Bootstrapping Tempest
 `````````````````````

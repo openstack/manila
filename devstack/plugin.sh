@@ -71,7 +71,7 @@ function _config_manila_apache_wsgi {
     sudo sed -e "
         s|%APACHE_NAME%|$APACHE_NAME|g;
         s|%MANILA_BIN_DIR%|$MANILA_BIN_DIR|g;
-        s|%PORT%|$MANILA_SERVICE_PORT|g;
+        s|%PORT%|$REAL_MANILA_SERVICE_PORT|g;
         s|%APIWORKERS%|$API_WORKERS|g;
         s|%USER%|$STACK_USER|g;
     " -i $manila_api_apache_conf
@@ -277,9 +277,14 @@ function configure_manila {
 
     iniset $MANILA_CONF DEFAULT manila_service_keypair_name $MANILA_SERVICE_KEYPAIR_NAME
 
+    REAL_MANILA_SERVICE_PORT=$MANILA_SERVICE_PORT
     if is_service_enabled tls-proxy; then
+        # Set the protocol to 'https', and set the default port
+        MANILA_SERVICE_PROTOCOL="https"
+        REAL_MANILA_SERVICE_PORT=$MANILA_SERVICE_PORT_INT
         # Set the service port for a proxy to take the original
-        iniset $MANILA_CONF DEFAULT osapi_share_listen_port $MANILA_SERVICE_PORT_INT
+        iniset $MANILA_CONF DEFAULT osapi_share_listen_port $REAL_MANILA_SERVICE_PORT
+        iniset $MANILA_CONF oslo_middleware enable_proxy_headers_parsing True
     fi
 
     iniset_rpc_backend manila $MANILA_CONF DEFAULT
@@ -509,11 +514,6 @@ function create_default_share_group_type {
 # type identified by $MANILA_DEFAULT_SHARE_TYPE is still created, but not
 # configured as default.
 function create_default_share_type {
-    echo "Waiting for Manila API to start..."
-    if ! wait_for_service 60 $MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT; then
-        die $LINENO "Manila did not start"
-    fi
-
     enabled_backends=(${MANILA_ENABLED_BACKENDS//,/ })
     driver_handles_share_servers=$(iniget $MANILA_CONF ${enabled_backends[0]} driver_handles_share_servers)
 
@@ -826,14 +826,20 @@ function start_manila_api {
         run_process m-api "$MANILA_BIN_DIR/manila-api --config-file $MANILA_CONF"
     fi
 
+
     echo "Waiting for Manila API to start..."
-    if ! wait_for_service $SERVICE_TIMEOUT $MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT; then
+    # This is a health check against the manila-api service we just started.
+    # We use the port ($REAL_MANILA_SERVICE_PORT) here because we want to hit
+    # the bare service endpoint, even if the tls tunnel should be enabled.
+    # We're making sure that the internal port is checked using unencryted
+    # traffic at this point.
+    if ! wait_for_service $SERVICE_TIMEOUT $MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$REAL_MANILA_SERVICE_PORT; then
         die $LINENO "Manila API did not start"
     fi
 
     # Start proxies if enabled
     if is_service_enabled tls-proxy; then
-        start_tls_proxy '*' $MANILA_SERVICE_PORT $MANILA_SERVICE_HOST $MANILA_SERVICE_PORT_INT &
+        start_tls_proxy manila '*' $MANILA_SERVICE_PORT $MANILA_SERVICE_HOST $MANILA_SERVICE_PORT_INT
     fi
 }
 
