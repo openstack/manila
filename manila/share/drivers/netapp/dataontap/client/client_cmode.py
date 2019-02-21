@@ -1468,6 +1468,10 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'is-nfsv3-enabled': nfs3,
             'is-nfsv40-enabled': nfs40,
             'is-nfsv41-enabled': nfs41,
+            'showmount': 'true',
+            'is-v3-ms-dos-client-enabled': 'true',
+            'is-nfsv3-connection-drop-enabled': 'false',
+            'enable-ejukebox': 'false',
         }
         self.send_request('nfs-service-modify', nfs_service_modify_args)
 
