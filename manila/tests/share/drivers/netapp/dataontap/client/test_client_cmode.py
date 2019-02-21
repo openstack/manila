@@ -2431,6 +2431,10 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'is-nfsv3-enabled': 'true' if v3 else 'false',
             'is-nfsv40-enabled': 'true' if v40 else 'false',
             'is-nfsv41-enabled': 'true' if v41 else 'false',
+            'showmount': 'true',
+            'is-v3-ms-dos-client-enabled': 'true',
+            'is-nfsv3-connection-drop-enabled': 'false',
+            'enable-ejukebox': 'false',
         }
         self.client.send_request.assert_called_once_with(
             'nfs-service-modify', nfs_service_modify_args)
