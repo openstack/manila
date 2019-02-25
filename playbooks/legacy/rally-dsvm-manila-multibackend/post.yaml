@@ -1,4 +1,4 @@
-- hosts: controller
+- hosts: primary
   tasks:
 
     - name: Copy files from {{ ansible_user_dir }}/workspace/ on node
