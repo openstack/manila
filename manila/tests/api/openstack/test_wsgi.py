@@ -17,6 +17,7 @@ import webob
 
 import inspect
 
+from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi
 from manila import context
 from manila import exception
@@ -141,6 +142,91 @@ class RequestTest(test.TestCase):
         self.assertEqual(
             {'id%s' % i: resources[i] for i in res_range},
             getattr(r, get_db_all_func)())
+
+    def test_set_api_version_request_exception(self):
+        min_version = api_version.APIVersionRequest('2.0')
+        max_version = api_version.APIVersionRequest('2.45')
+        self.mock_object(api_version, 'max_api_version',
+                         mock.Mock(return_value=max_version))
+        self.mock_object(api_version, 'min_api_version',
+                         mock.Mock(return_value=min_version))
+        headers = {'X-OpenStack-Manila-API-Version': '2.50'}
+        request = wsgi.Request.blank(
+            'https://openstack.acme.com/v2/shares', method='GET',
+            headers=headers, script_name='/v2/shares')
+
+        self.assertRaises(exception.InvalidGlobalAPIVersion,
+                          request.set_api_version_request)
+        self.assertEqual(api_version.APIVersionRequest('2.50'),
+                         request.api_version_request)
+
+    @ddt.data('', '/share', '/v1', '/v2/shares', '/v1.1/', '/share/v1',
+              '/shared-file-sytems/v2', '/share/v3.5/share-replicas',
+              '/shared-file-sytems/v2/shares/xyzzy/action')
+    def test_set_api_version_request(self, resource):
+        min_version = api_version.APIVersionRequest('2.0')
+        max_version = api_version.APIVersionRequest('3.0')
+        self.mock_object(api_version, 'max_api_version',
+                         mock.Mock(return_value=max_version))
+        self.mock_object(api_version, 'min_api_version',
+                         mock.Mock(return_value=min_version))
+        request = wsgi.Request.blank(
+            'https://openstack.acme.com%s' % resource, method='GET',
+            headers={'X-OpenStack-Manila-API-Version': '2.117'},
+            script_name=resource)
+
+        self.assertIsNone(request.set_api_version_request())
+
+        if not resource:
+            self.assertEqual(api_version.APIVersionRequest(),
+                             request.api_version_request)
+        elif 'v1' in resource:
+            self.assertEqual(api_version.APIVersionRequest('1.0'),
+                             request.api_version_request)
+        else:
+            self.assertEqual(api_version.APIVersionRequest('2.117'),
+                             request.api_version_request)
+
+    def test_set_api_version_request_no_version_header(self):
+        min_version = api_version.APIVersionRequest('2.0')
+        max_version = api_version.APIVersionRequest('2.45')
+        self.mock_object(api_version, 'max_api_version',
+                         mock.Mock(return_value=max_version))
+        self.mock_object(api_version, 'min_api_version',
+                         mock.Mock(return_value=min_version))
+        headers = {}
+        request = wsgi.Request.blank(
+            'https://openstack.acme.com/v2/shares', method='GET',
+            headers=headers, script_name='/v2/shares')
+
+        self.assertIsNone(request.set_api_version_request())
+
+        self.assertEqual(api_version.APIVersionRequest('2.0'),
+                         request.api_version_request)
+
+    @ddt.data(None, 'true', 'false')
+    def test_set_api_version_request_experimental_header(self, experimental):
+        min_version = api_version.APIVersionRequest('2.0')
+        max_version = api_version.APIVersionRequest('2.45')
+        self.mock_object(api_version, 'max_api_version',
+                         mock.Mock(return_value=max_version))
+        self.mock_object(api_version, 'min_api_version',
+                         mock.Mock(return_value=min_version))
+        headers = {'X-OpenStack-Manila-API-Version': '2.38'}
+        if experimental:
+            headers['X-OpenStack-Manila-API-Experimental'] = experimental
+        request = wsgi.Request.blank(
+            'https://openstack.acme.com/v2/shares', method='GET',
+            headers=headers, script_name='/v2/shares')
+
+        self.assertIsNone(request.set_api_version_request())
+
+        self.assertEqual(request.api_version_request,
+                         api_version.APIVersionRequest('2.38'))
+
+        expected_experimental = experimental == 'true' or False
+        self.assertEqual(expected_experimental,
+                         request.api_version_request.experimental)
 
 
 class ActionDispatcherTest(test.TestCase):
