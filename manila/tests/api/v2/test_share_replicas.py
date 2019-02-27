@@ -62,9 +62,9 @@ class ShareReplicasApiTest(test.TestCase):
         if 'replica_state' not in kwargs:
             kwargs['replica_state'] = constants.REPLICA_STATE_IN_SYNC
         replica = db_utils.create_share_replica(**kwargs)
-        req = fakes.HTTPRequest.blank(
-            '/v2/fake/share-replicas/%s/action' % replica['id'],
-            version=self.api_version)
+        path = '/v2/fake/share-replicas/%s/action' % replica['id']
+        req = fakes.HTTPRequest.blank(path, script_name=path,
+                                      version=self.api_version)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.headers['X-Openstack-Manila-Api-Version'] = self.api_version
