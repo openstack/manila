@@ -74,9 +74,8 @@ class ShareGroupAPITest(test.TestCase):
         if share_group is None:
             share_group = db_utils.create_share_group(
                 status=constants.STATUS_AVAILABLE)
-        req = fakes.HTTPRequest.blank(
-            '/v2/fake/share-groups/%s/action' % share_group['id'],
-            version=version)
+        path = '/v2/fake/share-groups/%s/action' % share_group['id']
+        req = fakes.HTTPRequest.blank(path, script_name=path, version=version)
         req.headers[wsgi.API_VERSION_REQUEST_HEADER] = version
         req.headers[wsgi.EXPERIMENTAL_API_REQUEST_HEADER] = 'True'
 

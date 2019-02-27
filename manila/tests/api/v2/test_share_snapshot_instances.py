@@ -89,9 +89,9 @@ class ShareSnapshotInstancesApiTest(test.TestCase):
                 status=constants.STATUS_AVAILABLE,
                 share_instance_id=share_instance['id'])
 
-        req = fakes.HTTPRequest.blank(
-            '/v2/fake/snapshot-instances/%s/action' % instance['id'],
-            version=self.api_version)
+        path = '/v2/fake/snapshot-instances/%s/action' % instance['id']
+        req = fakes.HTTPRequest.blank(path, version=self.api_version,
+                                      script_name=path)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.headers['X-Openstack-Manila-Api-Version'] = self.api_version

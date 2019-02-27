@@ -218,10 +218,9 @@ class Request(webob.Request):
         Microversions starts with /v2, so if a client sends a /v1 URL, then
         ignore the headers and request 1.0 APIs.
         """
-
         if not self.script_name:
             self.api_version_request = api_version.APIVersionRequest()
-        elif self.script_name == V1_SCRIPT_NAME:
+        elif V1_SCRIPT_NAME in self.script_name:
             self.api_version_request = api_version.APIVersionRequest('1.0')
         else:
             if API_VERSION_REQUEST_HEADER in self.headers:
