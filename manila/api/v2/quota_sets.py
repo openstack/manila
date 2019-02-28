@@ -214,8 +214,8 @@ class QuotaSetsMixin(object):
                               {'key': key, 'quota_used': quota_used,
                                'value': value})
                     if quota_used > value:
-                        msg = (_("Quota value %(value)s for %(key)s are "
-                                 "greater than already used and reserved "
+                        msg = (_("Quota value %(value)s for %(key)s is "
+                                 "smaller than already used and reserved "
                                  "%(quota_used)s.") %
                                {'value': value, 'key': key,
                                 'quota_used': quota_used})
