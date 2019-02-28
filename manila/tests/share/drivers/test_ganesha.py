@@ -238,6 +238,8 @@ class GaneshaNASHelperTestCase(test.TestCase):
                          mock.Mock(return_value='fakefsal'))
         self.mock_object(ganesha.ganesha_utils, 'patch',
                          mock.Mock(side_effect=fake_patch_run))
+        self.mock_object(ganesha.ganesha_utils, 'validate_access_rule',
+                         mock.Mock(return_value=True))
         ret = self._helper._allow_access(fake_basepath, self.share,
                                          self.access)
         self._helper.ganesha.get_export_id.assert_called_once_with()
@@ -307,6 +309,26 @@ class GaneshaNASHelperTestCase(test.TestCase):
         self.assertFalse(self._helper._deny_access.called)
         self.assertTrue(self._helper.ganesha.reset_exports.called)
         self.assertTrue(self._helper.ganesha.restart_service.called)
+
+    def test_update_access_invalid_share_access_type(self):
+        bad_rule = fake_share.fake_access(access_type='notip', id='fakeid')
+        expected = {'fakeid': {'state': 'error'}}
+
+        result = self._helper.update_access(self._context, self.share,
+                                            access_rules=[bad_rule],
+                                            add_rules=[], delete_rules=[])
+
+        self.assertEqual(expected, result)
+
+    def test_update_access_invalid_share_access_level(self):
+        bad_rule = fake_share.fake_access(access_level='RO', id='fakeid')
+        expected = {'fakeid': {'state': 'error'}}
+
+        result = self._helper.update_access(self._context, self.share,
+                                            access_rules=[bad_rule],
+                                            add_rules=[], delete_rules=[])
+
+        self.assertEqual(expected, result)
 
 
 @ddt.ddt
@@ -445,6 +467,8 @@ class GaneshaNASHelper2TestCase(test.TestCase):
                          mock.Mock(return_value='/fakepath'))
         self.mock_object(self._helper, '_fsal_hook',
                          mock.Mock(return_value={'Name': 'fake'}))
+        self.mock_object(ganesha.ganesha_utils, 'validate_access_rule',
+                         mock.Mock(return_value=True))
         result_confdict = {
             'EXPORT': {
                 'Export_Id': 100,
@@ -484,6 +508,8 @@ class GaneshaNASHelper2TestCase(test.TestCase):
             mock_gh, '_read_export',
             mock.Mock(return_value={'EXPORT': {'CLIENT': client}})
         )
+        self.mock_object(ganesha.ganesha_utils, 'validate_access_rule',
+                         mock.Mock(return_value=True))
         result_confdict = {
             'EXPORT': {
                 'CLIENT': [
@@ -541,3 +567,30 @@ class GaneshaNASHelper2TestCase(test.TestCase):
         self.assertFalse(mock_gh.update_export.called)
         self.assertFalse(mock_gh.remove_export.called)
         self.assertFalse(self._helper._cleanup_fsal_hook.called)
+
+    def test_update_access_invalid_share_access_type(self):
+        mock_gh = self._helper.ganesha
+        self.mock_object(mock_gh, 'check_export_exists',
+                         mock.Mock(return_value=False))
+        bad_rule = fake_share.fake_access(access_type='notip', id='fakeid')
+        expected = {'fakeid': {'state': 'error'}}
+
+        result = self._helper.update_access(self._context, self.share,
+                                            access_rules=[bad_rule],
+                                            add_rules=[], delete_rules=[])
+
+        self.assertEqual(expected, result)
+
+    def test_update_access_invalid_share_access_level(self):
+        bad_rule = fake_share.fake_access(access_level='NOT_RO_OR_RW',
+                                          id='fakeid')
+        expected = {'fakeid': {'state': 'error'}}
+        mock_gh = self._helper.ganesha
+        self.mock_object(mock_gh, 'check_export_exists',
+                         mock.Mock(return_value=False))
+
+        result = self._helper.update_access(self._context, self.share,
+                                            access_rules=[bad_rule],
+                                            add_rules=[], delete_rules=[])
+
+        self.assertEqual(expected, result)
