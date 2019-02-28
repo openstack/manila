@@ -38,7 +38,7 @@ class NASHelperBase(object):
 
     # drivers that use a helper derived from this class
     # should pass the following attributes to
-    # ganesha_utils.validate_acces_rule in their
+    # ganesha_utils.validate_access_rule in their
     # update_access implementation.
     supported_access_types = ()
     supported_access_levels = ()
@@ -60,7 +60,8 @@ class GaneshaNASHelper(NASHelperBase):
     """Perform share access changes using Ganesha version < 2.4."""
 
     supported_access_types = ('ip', )
-    supported_access_levels = (constants.ACCESS_LEVEL_RW, )
+    supported_access_levels = (constants.ACCESS_LEVEL_RW,
+                               constants.ACCESS_LEVEL_RO)
 
     def __init__(self, execute, config, tag='<no name>', **kwargs):
         super(GaneshaNASHelper, self).__init__(execute, config, **kwargs)
@@ -127,8 +128,9 @@ class GaneshaNASHelper(NASHelperBase):
 
     def _allow_access(self, base_path, share, access):
         """Allow access to the share."""
-        if access['access_type'] != 'ip':
-            raise exception.InvalidShareAccess('Only IP access type allowed')
+        ganesha_utils.validate_access_rule(
+            self.supported_access_types, self.supported_access_levels,
+            access, abort=True)
 
         access = ganesha_utils.fixup_access_rule(access)
 
@@ -157,15 +159,23 @@ class GaneshaNASHelper(NASHelperBase):
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
         """Update access rules of share."""
+        rule_state_map = {}
         if not (add_rules or delete_rules):
             add_rules = access_rules
             self.ganesha.reset_exports()
             self.ganesha.restart_service()
 
         for rule in add_rules:
-            self._allow_access('/', share, rule)
+            try:
+                self._allow_access('/', share, rule)
+            except (exception.InvalidShareAccess,
+                    exception.InvalidShareAccessLevel):
+                rule_state_map[rule['id']] = {'state': 'error'}
+                continue
+
         for rule in delete_rules:
             self._deny_access('/', share, rule)
+        return rule_state_map
 
 
 class GaneshaNASHelper2(GaneshaNASHelper):
@@ -228,6 +238,7 @@ class GaneshaNASHelper2(GaneshaNASHelper):
 
         confdict = {}
         existing_access_rules = []
+        rule_state_map = {}
 
         if self.ganesha.check_export_exists(share['name']):
             confdict = self.ganesha._read_export(share['name'])
@@ -243,6 +254,16 @@ class GaneshaNASHelper2(GaneshaNASHelper):
 
         wanted_rw_clients, wanted_ro_clients = [], []
         for rule in access_rules:
+
+            try:
+                ganesha_utils.validate_access_rule(
+                    self.supported_access_types, self.supported_access_levels,
+                    rule, True)
+            except (exception.InvalidShareAccess,
+                    exception.InvalidShareAccessLevel):
+                rule_state_map[rule['id']] = {'state': 'error'}
+                continue
+
             rule = ganesha_utils.fixup_access_rule(rule)
             if rule['access_level'] == 'rw':
                 wanted_rw_clients.append(rule['access_to'])
@@ -263,28 +284,30 @@ class GaneshaNASHelper2(GaneshaNASHelper):
                     'Clients': ','.join(wanted_rw_clients)
                 })
 
-            if existing_access_rules:
-                # Update existing export.
-                ganesha_utils.patch(confdict, {
-                    'EXPORT': {
-                        'CLIENT': clients
-                    }
-                })
-                self.ganesha.update_export(share['name'], confdict)
-            else:
-                # Add new export.
-                ganesha_utils.patch(confdict, self.export_template, {
-                    'EXPORT': {
-                        'Export_Id': self.ganesha.get_export_id(),
-                        'Path': self._get_export_path(share),
-                        'Pseudo': self._get_export_pseudo_path(share),
-                        'Tag': share['name'],
-                        'CLIENT': clients,
-                        'FSAL': self._fsal_hook(None, share, None)
-                    }
-                })
-                self.ganesha.add_export(share['name'], confdict)
+            if clients:  # Empty list if no rules passed validation
+                if existing_access_rules:
+                    # Update existing export.
+                    ganesha_utils.patch(confdict, {
+                        'EXPORT': {
+                            'CLIENT': clients
+                        }
+                    })
+                    self.ganesha.update_export(share['name'], confdict)
+                else:
+                    # Add new export.
+                    ganesha_utils.patch(confdict, self.export_template, {
+                        'EXPORT': {
+                            'Export_Id': self.ganesha.get_export_id(),
+                            'Path': self._get_export_path(share),
+                            'Pseudo': self._get_export_pseudo_path(share),
+                            'Tag': share['name'],
+                            'CLIENT': clients,
+                            'FSAL': self._fsal_hook(None, share, None)
+                        }
+                    })
+                    self.ganesha.add_export(share['name'], confdict)
         else:
             # No clients have access to the share. Remove export.
             self.ganesha.remove_export(share['name'])
             self._cleanup_fsal_hook(None, share, None)
+        return rule_state_map

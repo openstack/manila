@@ -42,6 +42,9 @@ class FakeModel(object):
     def __contains__(self, key):
         return self._getattr__(key)
 
+    def to_dict(self):
+        return self.values
+
 
 def stub_out(stubs, funcs):
     """Set the stubs in mapping in the db api."""
