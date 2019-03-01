@@ -44,7 +44,7 @@
           export DEVSTACK_GATE_NEUTRON=1
           export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
           # Basic services needed for minimal job
-          export OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit,tempest
+          export OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit,tempest,tls-proxy
 
           export DEVSTACK_GATE_USE_PYTHON3=True
           export PYTHON3_VERSION="3.6"
