@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed the driver filter to not check for hard equality between the
+    share_backend_name and the name reported by the host as it defeats the
+    purpose of the capabilities filter giving the ability to use "<in>"
+    selection operator in the extra-spec. Refer to `Launchpad bug 1815700
+    <https://bugs.launchpad.net/manila/+bug/1815700>`_ for more details.
