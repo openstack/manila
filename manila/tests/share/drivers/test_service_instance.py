@@ -1387,7 +1387,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             {'status': 'ACTIVE'}]
         # Note that in this case, although the status is active, the
         # 'networks' field is missing.
-        self._test_wait_for_instance(
+        self._test_wait_for_instance(  # pylint: disable=no-value-for-parameter
             server_get_side_eff=server_get_side_eff,
             expected_exc=exception.ServiceInstanceException,
             expected_try_count=3,
@@ -1395,7 +1395,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
 
     def test_wait_for_instance_error_state(self):
         mock_instance = {'status': 'ERROR'}
-        self._test_wait_for_instance(
+        self._test_wait_for_instance(  # pylint: disable=no-value-for-parameter
             server_get_side_eff=[mock_instance],
             expected_exc=exception.ServiceInstanceException,
             expected_try_count=1)
@@ -1403,7 +1403,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
     def test_wait_for_instance_available(self):
         mock_instance = {'status': 'ACTIVE',
                          'networks': mock.sentinel.networks}
-        self._test_wait_for_instance(
+        self._test_wait_for_instance(  # pylint: disable=no-value-for-parameter
             server_get_side_eff=[mock_instance],
             expected_try_count=1,
             expected_ret_val=mock_instance)

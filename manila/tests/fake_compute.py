@@ -43,6 +43,7 @@ class FakeServer(object):
 class FakeKeypair(object):
     def __init__(self, **kwargs):
         self.id = kwargs.pop('id', 'fake_keypair_id')
+        self.name = None
         for key, value in kwargs.items():
             setattr(self, key, value)
 

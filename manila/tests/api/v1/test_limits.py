@@ -369,7 +369,7 @@ class ParseLimitsTest(BaseLimitTestSuite):
                                             '(POST, /bar*, /bar.*, 5, second);'
                                             '(Say, /derp*, /derp.*, 1, day)')
         except ValueError as e:
-            assert False, six.text_types(e)
+            assert False, six.text_type(e)
 
         # Make sure the number of returned limits are correct
         self.assertEqual(4, len(l))

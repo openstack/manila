@@ -492,13 +492,13 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_add_mount_permanently(self):
         self.mock_object(self._driver, '_ssh_exec')
         self._driver._add_mount_permanently(self.share.id, self.server)
-        self._driver._ssh_exec.has_calls(
+        self._driver._ssh_exec.assert_has_calls([
             mock.call(
                 self.server,
                 ['grep', self.share.id, const.MOUNT_FILE_TEMP,
                  '|', 'sudo', 'tee', '-a', const.MOUNT_FILE]),
             mock.call(self.server, ['sudo', 'mount', '-a'])
-        )
+        ])
 
     def test_add_mount_permanently_raise_error_on_add(self):
         self.mock_object(

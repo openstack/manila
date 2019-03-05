@@ -798,7 +798,8 @@ class MapRFSNativeShareDriverTestCase(test.TestCase):
         self.mock_object(utils, 'SSHPool', mock.Mock(return_value=ssh_pool))
         self.mock_object(processutils, 'ssh_execute',
                          mock.Mock(return_value=ssh_output))
-        result = self._driver._maprfs_util._run_ssh(self.local_ip, cmd_list)
+        result = self._driver._maprfs_util._run_ssh(
+            self.local_ip, cmd_list, check_exit_code=False)
         utils.SSHPool.assert_called_once_with(
             self._driver.configuration.maprfs_clinode_ip[0],
             self._driver.configuration.maprfs_ssh_port,

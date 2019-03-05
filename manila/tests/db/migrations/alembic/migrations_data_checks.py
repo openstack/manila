@@ -2100,6 +2100,7 @@ class ShareGroupSnapshotMemberNewProviderLocationColumnChecks(
             self.test_case.assertTrue(hasattr(sgsm, 'provider_location'))
 
             # Check that we can write string data to the new field
+            # pylint: disable=no-value-for-parameter
             engine.execute(sgsm_table.update().where(
                 sgsm_table.c.id == self.share_group_snapshot_member_id,
             ).values({
@@ -2151,12 +2152,14 @@ class ShareGroupNewConsistentSnapshotSupportColumnChecks(BaseMigrationChecks):
 
             # Check that we can write proper enum data to the new field
             for value in (None, 'pool', 'host'):
+                # pylint: disable=no-value-for-parameter
                 engine.execute(sg_table.update().where(
                     sg_table.c.id == self.share_group_id,
                 ).values({self.new_attr_name: value}))
 
             # Check that we cannot write values that are not allowed by enum.
             for value in ('', 'fake', 'pool1', 'host1', '1pool', '1host'):
+                # pylint: disable=no-value-for-parameter
                 self.test_case.assertRaises(
                     oslo_db_exc.DBError,
                     engine.execute,
@@ -2241,6 +2244,7 @@ class ShareGroupNewAvailabilityZoneIDColumnChecks(BaseMigrationChecks):
 
             # Check that we can write proper data to the new field
             for value in (None, self.availability_zone_id):
+                # pylint: disable=no-value-for-parameter
                 engine.execute(sg_table.update().where(
                     sg_table.c.id == self.share_group_id,
                 ).values({self.new_attr_name: value}))
@@ -2337,6 +2341,7 @@ class SquashSGSnapshotMembersAndSSIModelsChecks(BaseMigrationChecks):
                 self.test_case.assertTrue(hasattr(ssi, key))
 
             # Check that we can write string data to the new fields
+            # pylint: disable=no-value-for-parameter
             engine.execute(ssi_table.update().where(
                 ssi_table.c.id == self.share_group_snapshot_member_id,
             ).values({

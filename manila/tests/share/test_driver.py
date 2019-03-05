@@ -167,7 +167,7 @@ class ShareDriverTestCase(test.TestCase):
         conf = configuration.Configuration(None)
         self.mock_object(conf, 'safe_get', mock.Mock(return_value=opt))
         share_driver = driver.ShareDriver(allowed, configuration=conf)
-        self.assertTrue(conf.safe_get.celled)
+        self.assertTrue(conf.safe_get.called)
         self.assertEqual(opt, share_driver.driver_handles_share_servers)
 
     @ddt.data(
@@ -187,7 +187,7 @@ class ShareDriverTestCase(test.TestCase):
         self.assertRaises(
             exception.ManilaException,
             driver.ShareDriver, allowed, configuration=conf)
-        self.assertTrue(conf.safe_get.celled)
+        self.assertTrue(conf.safe_get.called)
 
     def test_setup_server_handling_disabled(self):
         share_driver = self._instantiate_share_driver(None, False)

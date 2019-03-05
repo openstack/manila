@@ -90,7 +90,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
                           api_trace_pattern=regex)
 
     @na_utils.trace
-    def _trace_test_method(*args, **kwargs):
+    def _trace_test_method(self, *args, **kwargs):
         return 'OK'
 
     def test_trace_no_tracing(self):
