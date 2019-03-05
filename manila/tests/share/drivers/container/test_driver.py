@@ -109,62 +109,142 @@ class ContainerShareDriverTestCase(test.TestCase):
         self.assertFalse(self._driver._stats['ipv6_support'])
 
     def test_create_share(self):
-        helper = mock.Mock()
-        self.mock_object(helper, 'create_share',
-                         mock.Mock(return_value='export_location'))
-        self.mock_object(self._driver, "_get_helper",
-                         mock.Mock(return_value=helper))
-        self.mock_object(self._driver.storage, 'provide_storage')
-        self.mock_object(self._driver.container, 'execute')
+
+        share_server = {'id': 'fake'}
+        fake_container_name = 'manila_fake_container'
+
+        mock_provide_storage = self.mock_object(self._driver.storage,
+                                                'provide_storage')
+        mock_get_container_name = self.mock_object(
+            self._driver, '_get_container_name',
+            mock.Mock(return_value=fake_container_name))
+        mock_create_and_mount = self.mock_object(
+            self._driver, '_create_and_mount_share_links',
+            mock.Mock(return_value='export_location'))
 
         self.assertEqual('export_location',
                          self._driver.create_share(self._context, self.share,
-                                                   {'id': 'fake'}))
+                                                   share_server))
+        mock_provide_storage.assert_called_once_with(
+            self.share.share_id, self.share.size
+        )
+        mock_create_and_mount.assert_called_once_with(
+            self.share, fake_container_name, self.share.share_id
+        )
+        mock_get_container_name.assert_called_once_with(
+            share_server['id']
+        )
 
-    def test_delete_share_ok(self):
+    def test__create_and_mount_share_links(self):
         helper = mock.Mock()
-        self.mock_object(self._driver, "_get_helper",
-                         mock.Mock(return_value=helper))
-        self.mock_object(self._driver.container, 'execute')
+        server_id = 'fake_id'
+        share_name = 'fake_name'
+
+        mock_create_share = self.mock_object(
+            helper, 'create_share', mock.Mock(return_value='export_location'))
+        mock__get_helper = self.mock_object(
+            self._driver, "_get_helper", mock.Mock(return_value=helper))
+        self.mock_object(self._driver.storage, "_get_lv_device",
+                         mock.Mock(return_value={}))
+        mock_execute = self.mock_object(self._driver.container, 'execute')
+
+        self.assertEqual('export_location',
+                         self._driver._create_and_mount_share_links(
+                             self.share, server_id, share_name))
+        mock_create_share.assert_called_once_with(server_id)
+        mock__get_helper.assert_called_once_with(self.share)
+        mock_execute.assert_has_calls([
+            mock.call(server_id, ["mkdir", "-m", "750",
+                                  "/shares/%s" % share_name]),
+            mock.call(server_id, ["mount", {},
+                                  "/shares/%s" % share_name])
+        ])
+
+    def test__delete_and_umount_share_links(self):
+        helper = mock.Mock()
+        server_id = 'fake_id'
+        share_name = 'fake_name'
+        mock__get_helper = self.mock_object(
+            self._driver, "_get_helper", mock.Mock(return_value=helper))
+        mock_delete_share = self.mock_object(helper, 'delete_share')
+        mock_execute = self.mock_object(self._driver.container, 'execute')
+        self._driver._delete_and_umount_share_links(
+            self.share, server_id, share_name)
+
+        mock__get_helper.assert_called_once_with(self.share)
+        mock_delete_share.assert_called_once_with(
+            server_id, share_name, ignore_errors=False)
+        mock_execute.assert_has_calls([
+            mock.call(server_id, ["umount", "/shares/%s" % share_name],
+                      ignore_errors=False),
+            mock.call(server_id, ["rm", "-fR", "/shares/%s" % share_name],
+                      ignore_errors=True)]
+        )
+
+    def test_delete_share(self):
+        fake_server_id = "manila_container_name"
+        fake_share_name = "fake_share_name"
+        fake_share_server = {'id': 'fake'}
+
+        mock_get_container_name = self.mock_object(
+            self._driver, '_get_container_name',
+            mock.Mock(return_value=fake_server_id))
+        mock_get_share_name = self.mock_object(
+            self._driver, '_get_share_name',
+            mock.Mock(return_value=fake_share_name))
         self.mock_object(self._driver.storage, 'remove_storage')
+        mock_delete_and_umount = self.mock_object(
+            self._driver, '_delete_and_umount_share_links')
 
-        self._driver.delete_share(self._context, self.share, {'id': 'fake'})
+        self._driver.delete_share(self._context, self.share, fake_share_server)
 
-        self._driver.container.execute.assert_called_with(
-            'manila_fake',
-            ['rm', '-fR', '/shares/fakeshareid']
-            )
+        mock_get_container_name.assert_called_once_with(
+            fake_share_server['id']
+        )
+        mock_get_share_name.assert_called_with(
+            self.share
+        )
+        mock_delete_and_umount.assert_called_once_with(
+            self.share, fake_server_id, fake_share_name,
+            ignore_errors=True
+        )
 
-    def test_delete_share_rm_fails(self):
-        def fake_execute(*args):
-            if 'rm' in args[1]:
-                raise exception.ProcessExecutionError()
-        self.mock_object(driver.LOG, "warning")
-        self.mock_object(self._driver, "_get_helper")
-        self.mock_object(self._driver.container, "execute", fake_execute)
-        self.mock_object(self._driver.storage, 'remove_storage')
+    @ddt.data(True, False)
+    def test__get_share_name(self, has_export_location):
 
-        self._driver.delete_share(self._context, self.share, {'id': 'fake'})
+        if not has_export_location:
+            fake_share = cont_fakes.fake_share_no_export_location()
+            expected_result = fake_share.share_id
+        else:
+            fake_share = cont_fakes.fake_share()
+            expected_result = fake_share['export_location'].split('/')[-1]
 
-        self.assertTrue(driver.LOG.warning.called)
+        result = self._driver._get_share_name(fake_share)
+        self.assertEqual(expected_result, result)
 
     def test_extend_share(self):
+        fake_new_size = 2
+        fake_share_server = {'id': 'fake-server'}
         share = cont_fakes.fake_share()
+        share_name = self._driver._get_share_name(share)
         actual_arguments = []
         expected_arguments = [
-            ('manila_fake_server', ['umount', '/shares/fakeshareid']),
+            ('manila_fake_server', ['umount', '/shares/%s' % share_name]),
             ('manila_fake_server',
-             ['mount', '/dev/manila_docker_volumes/fakeshareid',
-              '/shares/fakeshareid'])
+             ['mount', '/dev/manila_docker_volumes/%s' % share_name,
+              '/shares/%s' % share_name])
         ]
-        self.mock_object(self._driver.storage, "extend_share")
+        mock_extend_share = self.mock_object(self._driver.storage,
+                                             "extend_share")
         self._driver.container.execute = functools.partial(
             self.fake_exec_sync, execute_arguments=actual_arguments,
             ret_val='')
 
-        self._driver.extend_share(share, 2, {'id': 'fake-server'})
+        self._driver.extend_share(share, fake_new_size, fake_share_server)
 
         self.assertEqual(expected_arguments, actual_arguments)
+        mock_extend_share.assert_called_once_with(share_name, fake_new_size,
+                                                  fake_share_server)
 
     def test_ensure_share(self):
         # Does effectively nothing by design.
@@ -172,6 +252,7 @@ class ContainerShareDriverTestCase(test.TestCase):
 
     def test_update_access_access_rules_ok(self):
         helper = mock.Mock()
+        fake_share_name = self._driver._get_share_name(self.share)
         self.mock_object(self._driver, "_get_helper",
                          mock.Mock(return_value=helper))
 
@@ -179,7 +260,7 @@ class ContainerShareDriverTestCase(test.TestCase):
                                    [{'access_level': const.ACCESS_LEVEL_RW}],
                                    [], [], {"id": "fake"})
 
-        helper.update_access.assert_called_with('manila_fake',
+        helper.update_access.assert_called_with('manila_fake', fake_share_name,
                                                 [{'access_level': 'rw'}],
                                                 [], [])
 
@@ -229,75 +310,37 @@ class ContainerShareDriverTestCase(test.TestCase):
         self._driver._connect_to_network("fake-server", network_info,
                                          "fake-veth")
 
-    @ddt.data(['veth0000000'], ['veth0000000' * 2])
-    def test__teardown_server(self, list_of_veths):
-        def fake_ovs_execute(*args, **kwargs):
-            kwargs['arguments'].append(args)
-            if len(args) == 3:
-                return list_of_veths
-            elif len(args) == 4:
-                return ('fake:manila_b5afb5c1_6011_43c4_8a37_29820e6951a7', '')
-            else:
-                return 0
-        actual_arguments = []
-        expected_arguments = [
-            ('ovs-vsctl', 'list', 'interface'),
-            ('ovs-vsctl', 'list', 'interface', 'veth0000000'),
-            ('ovs-vsctl', '--', 'del-port', 'br-int', 'veth0000000')
-        ]
-        self.mock_object(self._driver.container, "stop_container", mock.Mock())
-        self._driver._execute = functools.partial(
-            fake_ovs_execute, arguments=actual_arguments)
+    @ddt.data({'veth': "fake_veth", 'exception': None},
+              {'veth': "fake_veth", 'exception':
+                  exception.ProcessExecutionError('fake')},
+              {'veth': None, 'exception': None})
+    @ddt.unpack
+    def test__teardown_server(self, veth, exception):
+        fake_server_details = {"id": "b5afb5c1-6011-43c4-8a37-29820e6951a7"}
+        container_name = self._driver._get_container_name(
+            fake_server_details['id'])
+        mock_stop_container = self.mock_object(
+            self._driver.container, "stop_container")
+        mock_find_container = self.mock_object(
+            self._driver.container, "find_container_veth",
+            mock.Mock(return_value=veth))
+        mock_execute = self.mock_object(self._driver, "_execute",
+                                        mock.Mock(side_effect=exception))
 
         self._driver._teardown_server(
-            server_details={"id": "b5afb5c1-6011-43c4-8a37-29820e6951a7"})
+            server_details=fake_server_details)
 
-        self.assertEqual(expected_arguments.sort(), actual_arguments.sort())
-
-    @ddt.data(['veth0000000'], ['veth0000000' * 2])
-    def test__teardown_server_veth_disappeared_mysteriously(self,
-                                                            list_of_veths):
-        def fake_ovs_execute(*args, **kwargs):
-            if len(args) == 3:
-                return list_of_veths
-            if len(args) == 4:
-                return ('fake:manila_b5afb5c1_6011_43c4_8a37_29820e6951a7', '')
-            if 'del-port' in args:
-                raise exception.ProcessExecutionError()
-            else:
-                return 0
-        self.mock_object(driver.LOG, "warning")
-        self.mock_object(self._driver, "_execute", fake_ovs_execute)
-
-        self._driver._teardown_server(
-            server_details={"id": "b5afb5c1-6011-43c4-8a37-29820e6951a7"})
-
-        self.assertTrue(driver.LOG.warning.called)
-
-    @ddt.data(['veth0000000'], ['veth0000000' * 2])
-    def test__teardown_server_check_continuation(self, list_of_veths):
-        def fake_ovs_execute(*args, **kwargs):
-            kwargs['arguments'].append(args)
-            if len(args) == 3:
-                return list_of_veths
-            elif len(args) == 4:
-                return ('fake:', '')
-            else:
-                return 0
-        actual_arguments = []
-        expected_arguments = [
-            ('ovs-vsctl', 'list', 'interface'),
-            ('ovs-vsctl', 'list', 'interface', 'veth0000000'),
-            ('ovs-vsctl', '--', 'del-port', 'br-int', 'veth0000000')
-        ]
-        self.mock_object(self._driver.container, "stop_container", mock.Mock())
-        self._driver._execute = functools.partial(
-            fake_ovs_execute, arguments=actual_arguments)
-
-        self._driver._teardown_server(
-            server_details={"id": "b5afb5c1-6011-43c4-8a37-29820e6951a7"})
-
-        self.assertEqual(expected_arguments.sort(), actual_arguments.sort())
+        mock_stop_container.assert_called_once_with(
+            container_name
+        )
+        mock_find_container.assert_called_once_with(
+            container_name
+        )
+        if exception is None and veth is not None:
+            mock_execute.assert_called_once_with(
+                "ovs-vsctl", "--", "del-port",
+                self._driver.configuration.container_ovs_bridge_name, veth,
+                run_as_root=True)
 
     def test__get_veth_state(self):
         retval = ('veth0000000\n', '')

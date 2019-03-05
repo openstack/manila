@@ -72,43 +72,47 @@ class LVMHelper(driver.ExecuteMixin):
             'reserved_percentage': 0,
         }, ]
 
-    def _get_lv_device(self, share):
+    def _get_lv_device(self, share_name):
         return os.path.join("/dev", self.configuration.container_volume_group,
-                            share.share_id)
+                            share_name)
 
-    def _get_lv_folder(self, share):
+    def _get_lv_folder(self, share_name):
         # Provides folder name in hosts /tmp to which logical volume is
         # mounted prior to providing access to it from a container.
-        return os.path.join("/tmp/shares", share.share_id)
+        return os.path.join("/tmp/shares", share_name)
 
-    def provide_storage(self, share):
-        share_name = share.share_id
+    def provide_storage(self, share_name, size):
         self._execute("lvcreate", "-p", "rw", "-L",
-                      str(share.size) + "G", "-n", share_name,
+                      str(size) + "G", "-n", share_name,
                       self.configuration.container_volume_group,
                       run_as_root=True)
-        self._execute("mkfs.ext4", self._get_lv_device(share),
+        self._execute("mkfs.ext4", self._get_lv_device(share_name),
                       run_as_root=True)
 
-    def remove_storage(self, share):
-        to_remove = self._get_lv_device(share)
+    def _try_to_unmount_device(self, device):
+        # NOTE(ganso): We invoke this method to be sure volume was unmounted,
+        # and we swallow the exception in case it fails to.
         try:
-            self._execute("umount", to_remove, run_as_root=True)
+            self._execute("umount", device, run_as_root=True)
         except exception.ProcessExecutionError as e:
-            LOG.warning("Failed to umount helper directory %s.",
-                        to_remove)
-            LOG.error(e)
+            LOG.warning("Failed to umount helper directory %(device)s due to "
+                        "%(reason)s.", {'device': device, 'reason': e})
+
+    def remove_storage(self, share_name):
+        device = self._get_lv_device(share_name)
+        self._try_to_unmount_device(device)
+
         # (aovchinnikov): bug 1621784 manifests itself in jamming logical
         # volumes, so try removing once and issue warning until it is fixed.
         try:
             self._execute("lvremove", "-f", "--autobackup", "n",
-                          to_remove, run_as_root=True)
+                          device, run_as_root=True)
         except exception.ProcessExecutionError as e:
-            LOG.warning("Failed to remove logical volume %s.", to_remove)
-            LOG.error(e)
+            LOG.warning("Failed to remove logical volume %(device)s due to "
+                        "%(reason)s.", {'device': device, 'reason': e})
 
-    def extend_share(self, share, new_size, share_server=None):
-        lv_device = self._get_lv_device(share)
+    def extend_share(self, share_name, new_size, share_server=None):
+        lv_device = self._get_lv_device(share_name)
         cmd = ('lvextend', '-L', '%sG' % new_size, '-n', lv_device)
         self._execute(*cmd, run_as_root=True)
         self._execute("e2fsck", "-f", "-y", lv_device, run_as_root=True)

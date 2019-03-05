@@ -120,61 +120,45 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         LOG.debug("Create share on server '%s'.", share_server["id"])
         server_id = self._get_container_name(share_server["id"])
         share_name = share.share_id
-        self.container.execute(
-            server_id,
-            ["mkdir", "-m", "750", "/shares/%s" % share_name]
-        )
-        self.storage.provide_storage(share)
-        lv_device = self.storage._get_lv_device(share)
-        self.container.execute(
-            server_id,
-            ["mount", lv_device, "/shares/%s" % share_name]
-        )
-        location = self._get_helper(share).create_share(server_id)
+        self.storage.provide_storage(share_name, share['size'])
+
+        location = self._create_and_mount_share_links(
+            share, server_id, share_name)
+
         return location
 
     @utils.synchronized('container_driver_delete_share_lock', external=True)
     def delete_share(self, context, share, share_server=None):
         LOG.debug("Deleting share %(share)s on server '%(server)s'.",
                   {"server": share_server["id"],
-                   "share": share.share_id})
+                   "share": self._get_share_name(share)})
         server_id = self._get_container_name(share_server["id"])
-        self._get_helper(share).delete_share(server_id)
+        share_name = self._get_share_name(share)
 
-        self.container.execute(
-            server_id,
-            ["umount", "/shares/%s" % share.share_id]
-        )
-        # (aovchinnikov): bug 1621784 manifests itself here as well as in
-        # storage helper. There is a chance that we won't be able to remove
-        # this directory, despite the fact that it is not shared anymore and
-        # already contains nothing. In such case the driver should not fail
-        # share deletion, but issue a warning.
-        try:
-            self.container.execute(
-                server_id,
-                ["rm", "-fR", "/shares/%s" % share.share_id]
-            )
-        except exception.ProcessExecutionError as e:
-            LOG.warning("Failed to remove /shares/%(share)s directory in "
-                        "container %(cont)s.", {"share": share.share_id,
-                                                "cont": server_id})
-            LOG.error(e)
+        self._delete_and_umount_share_links(share, server_id, share_name,
+                                            ignore_errors=True)
 
-        self.storage.remove_storage(share)
-        LOG.debug("Deletion of share %s is completed!", share.share_id)
+        self.storage.remove_storage(share_name)
+        LOG.debug("Deleted share %s successfully.", share_name)
+
+    def _get_share_name(self, share):
+        if share.get('export_location'):
+            return share['export_location'].split('/')[-1]
+        else:
+            return share.share_id
 
     def extend_share(self, share, new_size, share_server=None):
         server_id = self._get_container_name(share_server["id"])
+        share_name = self._get_share_name(share)
         self.container.execute(
             server_id,
-            ["umount", "/shares/%s" % share.share_id]
+            ["umount", "/shares/%s" % share_name]
         )
-        self.storage.extend_share(share, new_size, share_server)
-        lv_device = self.storage._get_lv_device(share)
+        self.storage.extend_share(share_name, new_size, share_server)
+        lv_device = self.storage._get_lv_device(share_name)
         self.container.execute(
             server_id,
-            ["mount", lv_device, "/shares/%s" % share.share_id]
+            ["mount", lv_device, "/shares/%s" % share_name]
         )
 
     def ensure_share(self, context, share, share_server=None):
@@ -183,11 +167,12 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
         server_id = self._get_container_name(share_server["id"])
+        share_name = self._get_share_name(share)
         LOG.debug("Updating access to share %(share)s at "
                   "share server %(share_server)s.",
                   {"share_server": share_server["id"],
-                   "share": share.share_id})
-        self._get_helper(share).update_access(server_id,
+                   "share": share_name})
+        self._get_helper(share).update_access(server_id, share_name,
                                               access_rules, add_rules,
                                               delete_rules)
 
@@ -262,27 +247,17 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
     def _teardown_server(self, *args, **kwargs):
         server_id = self._get_container_name(kwargs["server_details"]["id"])
         self.container.stop_container(server_id)
-        interfaces = self._execute("ovs-vsctl", "list", "interface",
-                                   run_as_root=True)[0]
-        veths = set(re.findall("veth[0-9a-zA-Z]{7}", interfaces))
-        manila_re = ("manila_[0-9a-f]{8}_[0-9a-f]{4}_[0-9a-f]{4}_[0-9a-f]{4}_"
-                     "[0-9a-f]{12}")
-        for veth in veths:
-            iface_data = self._execute("ovs-vsctl", "list", "interface", veth,
-                                       run_as_root=True)[0]
-            container_id = re.findall(manila_re, iface_data)
-            if container_id == []:
-                continue
-            elif container_id[0] == server_id:
-                LOG.debug("Deleting veth %s.", veth)
-                try:
-                    self._execute("ovs-vsctl", "--", "del-port",
-                                  self.configuration.container_ovs_bridge_name,
-                                  veth, run_as_root=True)
-                except exception.ProcessExecutionError as e:
-                    LOG.warning("Failed to delete port %s: port "
-                                "vanished.", veth)
-                    LOG.error(e)
+        veth = self.container.find_container_veth(server_id)
+        if veth:
+            LOG.debug("Deleting veth %s.", veth)
+            try:
+                self._execute("ovs-vsctl", "--", "del-port",
+                              self.configuration.container_ovs_bridge_name,
+                              veth, run_as_root=True)
+            except exception.ProcessExecutionError as e:
+                LOG.warning("Failed to delete port %s: port "
+                            "vanished.", veth)
+                LOG.error(e)
 
     def _get_veth_state(self):
         result = self._execute("brctl", "show",
@@ -319,3 +294,38 @@ class ContainerShareDriver(driver.ShareDriver, driver.ExecuteMixin):
         self._connect_to_network(server_id, network_info, veth)
         LOG.info("Container %s was created.", server_id)
         return {"id": network_info["server_id"]}
+
+    def _delete_and_umount_share_links(
+            self, share, server_id, share_name, ignore_errors=False):
+
+        self._get_helper(share).delete_share(server_id, share_name,
+                                             ignore_errors=ignore_errors)
+
+        self.container.execute(
+            server_id,
+            ["umount", "/shares/%s" % share_name],
+            ignore_errors=ignore_errors
+        )
+        # (aovchinnikov): bug 1621784 manifests itself here as well as in
+        # storage helper. There is a chance that we won't be able to remove
+        # this directory, despite the fact that it is not shared anymore and
+        # already contains nothing. In such case the driver should not fail
+        # share deletion, but issue a warning.
+        self.container.execute(
+            server_id,
+            ["rm", "-fR", "/shares/%s" % share_name],
+            ignore_errors=True
+        )
+
+    def _create_and_mount_share_links(self, share, server_id, share_name):
+        self.container.execute(
+            server_id,
+            ["mkdir", "-m", "750", "/shares/%s" % share_name]
+        )
+        lv_device = self.storage._get_lv_device(share_name)
+        self.container.execute(
+            server_id,
+            ["mount", lv_device, "/shares/%s" % share_name]
+        )
+        location = self._get_helper(share).create_share(server_id)
+        return location

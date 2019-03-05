@@ -61,15 +61,18 @@ class LVMHelperTestCase(test.TestCase):
         self.assertEqual(expected_result, result)
 
     def test__get_lv_device(self):
-        self.assertEqual("/dev/manila_docker_volumes/fakeshareid",
-                         self.LVMHelper._get_lv_device(self.share))
+        fake_share_name = 'fakeshareid'
+        self.assertEqual("/dev/manila_docker_volumes/%s" % fake_share_name,
+                         self.LVMHelper._get_lv_device(fake_share_name))
 
     def test__get_lv_folder(self):
-        self.assertEqual("/tmp/shares/fakeshareid",
-                         self.LVMHelper._get_lv_folder(self.share))
+        fake_share_name = 'fakeshareid'
+        self.assertEqual("/tmp/shares/%s" % fake_share_name,
+                         self.LVMHelper._get_lv_folder(fake_share_name))
 
     def test_provide_storage(self):
         actual_arguments = []
+        fake_share_name = 'fakeshareid'
         expected_arguments = [
             ('lvcreate', '-p', 'rw', '-L', '1G', '-n', 'fakeshareid',
              'manila_docker_volumes'),
@@ -79,38 +82,49 @@ class LVMHelperTestCase(test.TestCase):
             self.fake_exec_sync, execute_arguments=actual_arguments,
             ret_val='')
 
-        self.LVMHelper.provide_storage(self.share)
+        self.LVMHelper.provide_storage(fake_share_name, 1)
 
         self.assertEqual(expected_arguments, actual_arguments)
+
+    @ddt.data(None, exception.ProcessExecutionError)
+    def test__try_to_unmount_device(self, side_effect):
+        device = {}
+        mock_warning = self.mock_object(storage_helper.LOG, 'warning')
+        mock_execute = self.mock_object(self.LVMHelper, '_execute',
+                                        mock.Mock(side_effect=side_effect))
+        self.LVMHelper._try_to_unmount_device(device)
+
+        mock_execute.assert_called_once_with(
+            "umount", device, run_as_root=True
+        )
+        if side_effect is not None:
+            mock_warning.assert_called_once()
 
     def test_remove_storage(self):
-        actual_arguments = []
-        expected_arguments = [
-            ('umount', '/dev/manila_docker_volumes/fakeshareid'),
-            ('lvremove', '-f', '--autobackup', 'n',
-             '/dev/manila_docker_volumes/fakeshareid')
-        ]
-        self.LVMHelper._execute = functools.partial(
-            self.fake_exec_sync, execute_arguments=actual_arguments,
-            ret_val='')
+        fake_share_name = 'fakeshareid'
+        fake_device = {}
 
-        self.LVMHelper.remove_storage(self.share)
+        mock_get_lv_device = self.mock_object(
+            self.LVMHelper, '_get_lv_device',
+            mock.Mock(return_value=fake_device))
+        mock_try_to_umount = self.mock_object(self.LVMHelper,
+                                              '_try_to_unmount_device')
+        mock_execute = self.mock_object(self.LVMHelper, '_execute')
 
-        self.assertEqual(expected_arguments, actual_arguments)
+        self.LVMHelper.remove_storage(fake_share_name)
 
-    def test_remove_storage_umount_failed(self):
-        def fake_execute(*args, **kwargs):
-            if 'umount' in args:
-                raise exception.ProcessExecutionError()
-
-        self.mock_object(storage_helper.LOG, "warning")
-        self.mock_object(self.LVMHelper, "_execute", fake_execute)
-
-        self.LVMHelper.remove_storage(self.share)
-
-        self.assertTrue(storage_helper.LOG.warning.called)
+        mock_get_lv_device.assert_called_once_with(
+            fake_share_name
+        )
+        mock_try_to_umount.assert_called_once_with(fake_device)
+        mock_execute.assert_called_once_with(
+            'lvremove', '-f', '--autobackup', 'n', fake_device,
+            run_as_root=True
+        )
 
     def test_remove_storage_lvremove_failed(self):
+        fake_share_name = 'fakeshareid'
+
         def fake_execute(*args, **kwargs):
             if 'lvremove' in args:
                 raise exception.ProcessExecutionError()
@@ -118,7 +132,7 @@ class LVMHelperTestCase(test.TestCase):
         self.mock_object(storage_helper.LOG, "warning")
         self.mock_object(self.LVMHelper, "_execute", fake_execute)
 
-        self.LVMHelper.remove_storage(self.share)
+        self.LVMHelper.remove_storage(fake_share_name)
 
         self.assertTrue(storage_helper.LOG.warning.called)
 
@@ -130,10 +144,11 @@ class LVMHelperTestCase(test.TestCase):
             ('e2fsck', '-f', '-y', '/dev/manila_docker_volumes/fakeshareid'),
             ('resize2fs', '/dev/manila_docker_volumes/fakeshareid'),
         ]
+        fake_share_name = 'fakeshareid'
         self.LVMHelper._execute = functools.partial(
             self.fake_exec_sync, execute_arguments=actual_arguments,
             ret_val='')
 
-        self.LVMHelper.extend_share(self.share, 'share', 3)
+        self.LVMHelper.extend_share(fake_share_name, 'share', 3)
 
         self.assertEqual(expected_arguments, actual_arguments)
