@@ -38,6 +38,8 @@
           # Basic services needed for grenade manila job using dummy driver
           export OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit
 
+          export DEVSTACK_GATE_USE_PYTHON3=True
+
           # Enable manila grenade plugin. Provided repo should be
           # cloned by zuul before devstack run and below provided
           # link should not be used.
