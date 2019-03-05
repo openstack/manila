@@ -116,6 +116,7 @@ def upgrade():
         sa.Column('snapshot_support', sa.Boolean),
         sa.Column('create_share_from_snapshot_support', sa.Boolean),
     )
+    # pylint: disable=no-value-for-parameter
     update = shares_table.update().where(
         shares_table.c.deleted == 'False').values(
         create_share_from_snapshot_support=shares_table.c.snapshot_support)
@@ -139,6 +140,7 @@ def downgrade():
         autoload=True,
         autoload_with=connection)
 
+    # pylint: disable=no-value-for-parameter
     update = extra_specs.update().where(
         extra_specs.c.spec_key ==
         constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT).where(

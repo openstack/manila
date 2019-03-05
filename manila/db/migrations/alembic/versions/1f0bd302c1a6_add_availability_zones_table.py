@@ -81,6 +81,7 @@ def upgrade():
         connection, services_table, availability_zones_table)
 
     # Map string AZ names to ID's in target tables
+    # pylint: disable=no-value-for-parameter
     set_az_id_in_table = lambda table, id, name: (
         op.execute(
             table.update().where(table.c.availability_zone == name).values(
@@ -112,6 +113,7 @@ def downgrade():
     services_table = utils.load_table('services', connection)
 
     for az in connection.execute(az_table.select()):
+        # pylint: disable=no-value-for-parameter
         op.execute(
             share_instances_table.update().where(
                 share_instances_table.c.availability_zone_id == az.id

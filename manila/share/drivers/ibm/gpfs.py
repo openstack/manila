@@ -170,10 +170,13 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
         return self._run_ssh(host, cmd, ignore_exit_code, check_exit_code)
 
+    def _sanitize_command(self, cmd_list):
+        # pylint: disable=too-many-function-args
+        return ' '.join(six.moves.shlex_quote(cmd_arg) for cmd_arg in cmd_list)
+
     def _run_ssh(self, host, cmd_list, ignore_exit_code=None,
                  check_exit_code=True):
-        command = ' '.join(six.moves.shlex_quote(cmd_arg)
-                           for cmd_arg in cmd_list)
+        command = self._sanitize_command(cmd_list)
         if not self.sshpool:
             gpfs_ssh_login = self.configuration.gpfs_ssh_login
             password = self.configuration.gpfs_ssh_password

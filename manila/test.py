@@ -89,7 +89,7 @@ class Database(fixtures.Fixture):
         if self.sql_connection == "sqlite://":
             conn = self.engine.connect()
             conn.connection.executescript(self._DB)
-            self.addCleanup(self.engine.dispose)  # pylint: disable=E1101
+            self.addCleanup(self.engine.dispose)  # pylint: disable=no-member
         else:
             shutil.copyfile(
                 os.path.join(CONF.state_path, self.sqlite_clean_db),

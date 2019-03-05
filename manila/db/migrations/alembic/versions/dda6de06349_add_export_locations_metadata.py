@@ -63,6 +63,7 @@ def upgrade():
             sa.Column('is_admin_only', sa.Boolean),
         )
         for record in el_table.select().execute():
+            # pylint: disable=no-value-for-parameter
             el_table.update().values(
                 is_admin_only=False,
                 uuid=uuidutils.generate_uuid(),

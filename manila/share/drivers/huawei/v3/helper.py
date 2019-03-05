@@ -39,10 +39,12 @@ class RestHelper(object):
         self.url = None
         self.session = None
 
+        # pylint: disable=no-member
         requests.packages.urllib3.disable_warnings(
             requests.packages.urllib3.exceptions.InsecureRequestWarning)
         requests.packages.urllib3.disable_warnings(
             requests.packages.urllib3.exceptions.InsecurePlatformWarning)
+        # pylint: enable=no-member
 
     def init_http_head(self):
         self.url = None

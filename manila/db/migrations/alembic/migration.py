@@ -16,7 +16,7 @@ import os
 
 import alembic
 from alembic import config as alembic_config
-import alembic.migration as alembic_migration
+import alembic.migration as alembic_migration  # pylint: disable=import-error
 from oslo_config import cfg
 
 from manila.db.sqlalchemy import api as db_api

@@ -39,6 +39,7 @@ def upgrade():
         op.add_column('share_types', is_public)
 
         share_types = sql.Table('share_types', meta, is_public.copy())
+        # pylint: disable=no-value-for-parameter
         share_types.update().values(is_public=True).execute()
     except Exception:
         LOG.error("Column |%s| not created!", repr(is_public))

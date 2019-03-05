@@ -148,6 +148,7 @@ class Middleware(Application):
 
     @webob.dec.wsgify(RequestClass=Request)
     def __call__(self, req):
+        # pylint: disable=assignment-from-none
         response = self.process_request(req)
         if response:
             return response

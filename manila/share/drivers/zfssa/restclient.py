@@ -23,7 +23,6 @@ import time
 from oslo_serialization import jsonutils
 import six
 from six.moves import http_client
-# pylint: disable=E0611,F0401
 from six.moves.urllib import error as urlerror
 from six.moves.urllib import request as urlrequest
 

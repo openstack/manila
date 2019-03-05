@@ -294,10 +294,12 @@ class ShareDriver(object):
 
         if hasattr(self, 'init_execute_mixin'):
             # Instance with 'ExecuteMixin'
-            self.init_execute_mixin(*args, **kwargs)  # pylint: disable=E1101
+            # pylint: disable=no-member
+            self.init_execute_mixin(*args, **kwargs)
         if hasattr(self, 'init_ganesha_mixin'):
             # Instance with 'GaneshaMixin'
-            self.init_ganesha_mixin(*args, **kwargs)  # pylint: disable=E1101
+            # pylint: disable=no-member
+            self.init_ganesha_mixin(*args, **kwargs)
 
     @property
     def admin_network_api(self):
@@ -2370,7 +2372,9 @@ class ShareDriver(object):
         if not ret_function:
             ret_function = CONF.filter_function
         if not ret_function:
+            # pylint: disable=assignment-from-none
             ret_function = self.get_default_filter_function()
+            # pylint: enable=assignment-from-none
         return ret_function
 
     def get_goodness_function(self):
@@ -2387,7 +2391,9 @@ class ShareDriver(object):
         if not ret_function:
             ret_function = CONF.goodness_function
         if not ret_function:
+            # pylint: disable=assignment-from-none
             ret_function = self.get_default_goodness_function()
+            # pylint: enable=assignment-from-none
         return ret_function
 
     def get_default_filter_function(self):

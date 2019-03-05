@@ -21,20 +21,23 @@
 
 import base64
 import json
-import requests
-from requests.packages.urllib3 import exceptions
 import time
 
 from oslo_log import log
 from oslo_serialization import jsonutils
+import requests
+# pylint: disable=no-member,import-error
+from requests.packages.urllib3 import exceptions
+requests.packages.urllib3.disable_warnings(exceptions.InsecureRequestWarning)
+requests.packages.urllib3.disable_warnings(
+    exceptions.InsecurePlatformWarning)
+# pylint: enable=no-member,import-error
 
 from manila import exception
 from manila.i18n import _
 
+
 LOG = log.getLogger(__name__)
-requests.packages.urllib3.disable_warnings(exceptions.InsecureRequestWarning)
-requests.packages.urllib3.disable_warnings(
-    exceptions.InsecurePlatformWarning)
 session = requests.Session()
 
 

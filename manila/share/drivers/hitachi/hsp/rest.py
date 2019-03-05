@@ -22,7 +22,7 @@ from manila import utils
 
 
 # Suppress the Insecure request warnings
-requests.packages.urllib3.disable_warnings()
+requests.packages.urllib3.disable_warnings()  # pylint: disable=no-member
 
 
 class HSPRestBackend(object):

@@ -74,7 +74,7 @@ class ShareExportLocationController(wsgi.Controller):
         return self._index(req, share_id)
 
     @wsgi.Controller.api_version('2.47')  # noqa: F811
-    def index(self, req, share_id):  # pylint: disable=E0102
+    def index(self, req, share_id):  # pylint: disable=function-redefined
         """Return a list of export locations for share."""
         return self._index(req, share_id,
                            ignore_secondary_replicas=True)
@@ -85,7 +85,7 @@ class ShareExportLocationController(wsgi.Controller):
         return self._show(req, share_id, export_location_uuid)
 
     @wsgi.Controller.api_version('2.47')  # noqa: F811
-    def show(self, req, share_id,  # pylint: disable=E0102
+    def show(self, req, share_id,  # pylint: disable=function-redefined
              export_location_uuid):
         """Return data about the requested export location."""
         return self._show(req, share_id, export_location_uuid,

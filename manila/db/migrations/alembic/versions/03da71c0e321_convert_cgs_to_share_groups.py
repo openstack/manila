@@ -210,6 +210,7 @@ def downgrade():
     si_table = utils.load_table('share_instances', connection)
     member_table = utils.load_table('cgsnapshot_members', connection)
     for si_record in connection.execute(si_table.select()):
+        # pylint: disable=no-value-for-parameter
         connection.execute(
             member_table.update().where(
                 member_table.c.share_instance_id == si_record.id,

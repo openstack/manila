@@ -86,6 +86,7 @@ def upgrade():
     connection = op.get_bind()
     shares_table = utils.load_table('shares', connection)
 
+    # pylint: disable=no-value-for-parameter
     op.execute(
         shares_table.update().where(
             shares_table.c.deleted == 'False').values({

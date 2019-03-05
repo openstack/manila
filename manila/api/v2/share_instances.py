@@ -64,7 +64,7 @@ class ShareInstancesController(wsgi.Controller, wsgi.AdminActionsMixin):
 
     @wsgi.Controller.api_version("2.3", "2.34")  # noqa
     @wsgi.Controller.authorize
-    def index(self, req):  # pylint: disable=E0102
+    def index(self, req):  # pylint: disable=function-redefined
         context = req.environ['manila.context']
 
         req.GET.pop('export_location_id', None)
@@ -74,7 +74,7 @@ class ShareInstancesController(wsgi.Controller, wsgi.AdminActionsMixin):
 
     @wsgi.Controller.api_version("2.35")  # noqa
     @wsgi.Controller.authorize
-    def index(self, req):  # pylint: disable=E0102
+    def index(self, req):  # pylint: disable=function-redefined
         context = req.environ['manila.context']
         filters = {}
         filters.update(req.GET)

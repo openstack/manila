@@ -84,6 +84,7 @@ def upgrade():
             if priorities[access_rule['state']] > priorities[status]:
                 status = access_rule['state']
 
+        # pylint: disable=no-value-for-parameter
         op.execute(
             share_instances_table.update().where(
                 share_instances_table.c.id == instance['id']
@@ -119,6 +120,7 @@ def downgrade():
         else:
             state = 'error'
 
+        # pylint: disable=no-value-for-parameter
         op.execute(
             instance_access_table.update().where(
                 instance_access_table.c.share_instance_id == instance['id']

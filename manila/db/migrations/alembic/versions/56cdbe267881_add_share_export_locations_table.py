@@ -103,6 +103,7 @@ def downgrade():
                       autoload=True, autoload_with=connection)
 
     for location in export_locations:
+        # pylint: disable=no-value-for-parameter
         update = (shares.update().where(shares.c.id == location.share_id).
                   values(export_location=location.path))
         connection.execute(update)

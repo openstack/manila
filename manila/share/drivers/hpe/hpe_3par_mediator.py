@@ -30,7 +30,7 @@ from manila import utils
 
 hpe3parclient = importutils.try_import("hpe3parclient")
 if hpe3parclient:
-    from hpe3parclient import file_client
+    from hpe3parclient import file_client  # pylint: disable=import-error
 
 
 LOG = log.getLogger(__name__)

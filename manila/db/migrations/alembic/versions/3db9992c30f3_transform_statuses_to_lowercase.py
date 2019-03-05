@@ -51,7 +51,7 @@ def _transform_case(table_name, make_upper):
 
     for row in connection.execute(table.select()):
         op.execute(
-            table.update().where(
+            table.update().where(  # pylint: disable=no-value-for-parameter
                 table.c.id == row.id
             ).values({'status': case(row.status)})
         )

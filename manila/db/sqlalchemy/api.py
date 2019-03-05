@@ -1861,8 +1861,9 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
 
     if 'metadata' in filters:
         for k, v in filters['metadata'].items():
+            # pylint: disable=no-member
             query = query.filter(
-                or_(models.Share.share_metadata.any(  # pylint: disable=E1101
+                or_(models.Share.share_metadata.any(
                     key=k, value=v)))
     if 'extra_specs' in filters:
         query = query.join(

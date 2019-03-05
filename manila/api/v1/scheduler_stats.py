@@ -39,7 +39,7 @@ class SchedulerStatsController(wsgi.Controller):
 
     @wsgi.Controller.api_version('2.23')   # noqa
     @wsgi.Controller.authorize('index')
-    def pools_index(self, req):  # pylint: disable=E0102
+    def pools_index(self, req):  # pylint: disable=function-redefined
         return self._pools(req, action='index', enable_share_type=True)
 
     @wsgi.Controller.api_version('1.0', '2.22')
@@ -50,7 +50,7 @@ class SchedulerStatsController(wsgi.Controller):
 
     @wsgi.Controller.api_version('2.23')   # noqa
     @wsgi.Controller.authorize('detail')
-    def pools_detail(self, req):  # pylint: disable=E0102
+    def pools_detail(self, req):  # pylint: disable=function-redefined
         return self._pools(req, action='detail', enable_share_type=True)
 
     def _pools(self, req, action='index', enable_share_type=False):

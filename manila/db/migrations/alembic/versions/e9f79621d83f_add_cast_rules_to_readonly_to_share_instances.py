@@ -46,6 +46,7 @@ def upgrade():
 
     # First, set the value of ``cast_rules_to_readonly`` in every existing
     # share instance to False
+    # pylint: disable=no-value-for-parameter
     op.execute(
         share_instances_table.update().values({
             'cast_rules_to_readonly': False,
@@ -78,6 +79,7 @@ def upgrade():
             )
         )
         for replica in connection.execute(secondary_replicas_query):
+            # pylint: disable=no-value-for-parameter
             op.execute(
                 share_instances_table.update().where(
                     share_instances_table.c.id == replica.id

@@ -47,7 +47,7 @@ class StorageObjectManager(object):
         elt_maker = builder.ElementMaker(nsmap={None: constants.XML_NAMESPACE})
         xml_parser = parser.XMLAPIParser()
 
-        obj_types = StorageObject.__subclasses__()  # pylint: disable=E1101
+        obj_types = StorageObject.__subclasses__()  # pylint: disable=no-member
         for item in obj_types:
             key = item.__name__
             self.context[key] = eval(key)(self.connectors,
