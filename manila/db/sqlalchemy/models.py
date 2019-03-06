@@ -751,6 +751,14 @@ class ShareSnapshotInstance(BASE, ManilaBase):
         # with share drivers
         return self.share_instance_id
 
+    @property
+    def size(self):
+        # NOTE(silvacarlose) for backwards compatibility
+        if self.instance_size is None:
+            return self.snapshot.size
+        else:
+            return self.instance_size
+
     id = Column(String(36), primary_key=True)
     deleted = Column(String(36), default='False')
     snapshot_id = Column(String(36), nullable=True)
@@ -760,7 +768,7 @@ class ShareSnapshotInstance(BASE, ManilaBase):
     progress = Column(String(255))
     provider_location = Column(String(255))
     share_proto = Column(String(255))
-    size = Column(Integer)
+    instance_size = Column('size', Integer)
     share_group_snapshot_id = Column(String(36), nullable=True)
     user_id = Column(String(255))
     project_id = Column(String(255))
