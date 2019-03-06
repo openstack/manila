@@ -30,7 +30,6 @@ from oslo_serialization import jsonutils
 from oslo_service import periodic_task
 from oslo_utils import excutils
 from oslo_utils import importutils
-from oslo_utils import strutils
 from oslo_utils import timeutils
 import six
 
@@ -210,7 +209,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.18'
+    RPC_API_VERSION = '1.19'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -597,7 +596,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     {
                         'host': self.host,
                         'share_network_id': share_network_id,
-                        'status': constants.STATUS_CREATING
+                        'status': constants.STATUS_CREATING,
                     }
                 )
 
@@ -2357,6 +2356,24 @@ class ShareManager(manager.SchedulerDependentManager):
                    {'id': share_replica['id'], 'state': replica_state})
             LOG.warning(msg)
 
+    def _validate_share_and_driver_mode(self, share_instance):
+        driver_dhss = self.driver.driver_handles_share_servers
+
+        share_dhss = share_types.parse_boolean_extra_spec(
+            'driver_handles_share_servers',
+            share_types.get_share_type_extra_specs(
+                share_instance['share_type_id'],
+                constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS))
+
+        if driver_dhss != share_dhss:
+            msg = _("Driver mode of share %(share)s being managed is "
+                    "incompatible with mode DHSS=%(dhss)s configured for"
+                    " this backend.") % {'share': share_instance['share_id'],
+                                         'dhss': driver_dhss}
+            raise exception.InvalidShare(reason=msg)
+
+        return driver_dhss
+
     @add_hooks
     @utils.require_driver_initialized
     def manage_share(self, context, share_id, driver_options):
@@ -2366,25 +2383,23 @@ class ShareManager(manager.SchedulerDependentManager):
         project_id = share_ref['project_id']
 
         try:
-            if self.driver.driver_handles_share_servers:
-                msg = _("Manage share is not supported for "
-                        "driver_handles_share_servers=True mode.")
-                raise exception.InvalidDriverMode(driver_mode=msg)
 
-            driver_mode = share_types.get_share_type_extra_specs(
-                share_instance['share_type_id'],
-                constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS)
+            driver_dhss = self._validate_share_and_driver_mode(share_instance)
 
-            if strutils.bool_from_string(driver_mode):
-                msg = _("%(mode)s != False") % {
-                    'mode': constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
-                }
-                raise exception.ManageExistingShareTypeMismatch(reason=msg)
+            if driver_dhss is True:
+                share_server = self._get_share_server(context, share_instance)
 
-            share_update = (
-                self.driver.manage_existing(share_instance, driver_options)
-                or {}
-            )
+                share_update = (
+                    self.driver.manage_existing_with_server(
+                        share_instance, driver_options, share_server)
+                    or {}
+                )
+            else:
+                share_update = (
+                    self.driver.manage_existing(
+                        share_instance, driver_options)
+                    or {}
+                )
 
             if not share_update.get('size'):
                 msg = _("Driver cannot calculate share size.")
@@ -2436,47 +2451,34 @@ class ShareManager(manager.SchedulerDependentManager):
     @add_hooks
     @utils.require_driver_initialized
     def manage_snapshot(self, context, snapshot_id, driver_options):
-        if self.driver.driver_handles_share_servers:
-            msg = _("Manage snapshot is not supported for "
-                    "driver_handles_share_servers=True mode.")
-            # NOTE(vponomaryov): set size as 1 because design expects size
-            # to be set, it also will allow us to handle delete/unmanage
-            # operations properly with this errored snapshot according to
-            # quotas.
-            self.db.share_snapshot_update(
-                context, snapshot_id,
-                {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
-            raise exception.InvalidDriverMode(driver_mode=msg)
 
         context = context.elevated()
         snapshot_ref = self.db.share_snapshot_get(context, snapshot_id)
-        share_server = self._get_share_server(context,
-                                              snapshot_ref['share'])
-
-        if share_server:
-            msg = _("Manage snapshot is not supported for "
-                    "share snapshots with share servers.")
-            # NOTE(vponomaryov): set size as 1 because design expects size
-            # to be set, it also will allow us to handle delete/unmanage
-            # operations properly with this errored snapshot according to
-            # quotas.
-            self.db.share_snapshot_update(
-                context, snapshot_id,
-                {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
-            raise exception.InvalidShareSnapshot(reason=msg)
 
         snapshot_instance = self.db.share_snapshot_instance_get(
             context, snapshot_ref.instance['id'], with_share_data=True
         )
         project_id = snapshot_ref['project_id']
 
+        driver_dhss = self.driver.driver_handles_share_servers
+
         try:
-            snapshot_update = (
-                self.driver.manage_existing_snapshot(
-                    snapshot_instance,
-                    driver_options)
-                or {}
-            )
+            if driver_dhss is True:
+
+                share_server = self._get_share_server(context,
+                                                      snapshot_ref['share'])
+
+                snapshot_update = (
+                    self.driver.manage_existing_snapshot_with_server(
+                        snapshot_instance, driver_options, share_server)
+                    or {}
+                )
+            else:
+                snapshot_update = (
+                    self.driver.manage_existing_snapshot(
+                        snapshot_instance, driver_options)
+                    or {}
+                )
 
             if not snapshot_update.get('size'):
                 snapshot_update['size'] = snapshot_ref['share']['size']
@@ -2541,7 +2543,7 @@ class ShareManager(manager.SchedulerDependentManager):
         context = context.elevated()
         share_ref = self.db.share_get(context, share_id)
         share_instance = self._get_share_instance(context, share_ref)
-        share_server = self._get_share_server(context, share_instance)
+        share_server = None
         project_id = share_ref['project_id']
 
         def share_manage_set_error_status(msg, exception):
@@ -2549,18 +2551,14 @@ class ShareManager(manager.SchedulerDependentManager):
             self.db.share_update(context, share_id, status)
             LOG.error(msg, exception)
 
+        dhss = self.driver.driver_handles_share_servers
+
         try:
-            if self.driver.driver_handles_share_servers:
-                msg = _("Unmanage share is not supported for "
-                        "driver_handles_share_servers=True mode.")
-                raise exception.InvalidShare(reason=msg)
-
-            if share_server:
-                msg = _("Unmanage share is not supported for "
-                        "shares with share servers.")
-                raise exception.InvalidShare(reason=msg)
-
-            self.driver.unmanage(share_instance)
+            if dhss is True:
+                share_server = self._get_share_server(context, share_instance)
+                self.driver.unmanage_with_server(share_instance, share_server)
+            else:
+                self.driver.unmanage(share_instance)
 
         except exception.InvalidShare as e:
             share_manage_set_error_status(
@@ -2600,19 +2598,20 @@ class ShareManager(manager.SchedulerDependentManager):
                 return
 
         self.db.share_instance_delete(context, share_instance['id'])
+
+        # NOTE(ganso): Since we are unmanaging a share that is still within a
+        # share server, we need to prevent the share server from being
+        # auto-deleted.
+        if share_server and share_server['is_auto_deletable']:
+            self.db.share_server_update(context, share_server['id'],
+                                        {'is_auto_deletable': False})
+
         LOG.info("Share %s: unmanaged successfully.", share_id)
 
     @add_hooks
     @utils.require_driver_initialized
     def unmanage_snapshot(self, context, snapshot_id):
         status = {'status': constants.STATUS_UNMANAGE_ERROR}
-        if self.driver.driver_handles_share_servers:
-            msg = _("Unmanage snapshot is not supported for "
-                    "driver_handles_share_servers=True mode.")
-            self.db.share_snapshot_update(context, snapshot_id, status)
-            LOG.error("Share snapshot cannot be unmanaged: %s.",
-                      msg)
-            return
 
         context = context.elevated()
         snapshot_ref = self.db.share_snapshot_get(context, snapshot_id)
@@ -2624,14 +2623,6 @@ class ShareManager(manager.SchedulerDependentManager):
         )
 
         project_id = snapshot_ref['project_id']
-
-        if share_server:
-            msg = _("Unmanage snapshot is not supported for "
-                    "share snapshots with share servers.")
-            self.db.share_snapshot_update(context, snapshot_id, status)
-            LOG.error("Share snapshot cannot be unmanaged: %s.",
-                      msg)
-            return
 
         if self.configuration.safe_get('unmanage_remove_access_rules'):
             try:
@@ -2647,8 +2638,14 @@ class ShareManager(manager.SchedulerDependentManager):
                 self.db.share_snapshot_update(context, snapshot_id, status)
                 return
 
+        dhss = self.driver.driver_handles_share_servers
+
         try:
-            self.driver.unmanage_snapshot(snapshot_instance)
+            if dhss:
+                self.driver.unmanage_snapshot_with_server(
+                    snapshot_instance, share_server)
+            else:
+                self.driver.unmanage_snapshot(snapshot_instance)
         except exception.UnmanageInvalidShareSnapshot as e:
             self.db.share_snapshot_update(context, snapshot_id, status)
             LOG.error("Share snapshot cannot be unmanaged: %s.", e)
@@ -2676,6 +2673,169 @@ class ShareManager(manager.SchedulerDependentManager):
 
         self.db.share_snapshot_instance_delete(
             context, snapshot_instance['id'])
+
+    @add_hooks
+    @utils.require_driver_initialized
+    def manage_share_server(self, context, share_server_id, identifier,
+                            driver_opts):
+
+        if self.driver.driver_handles_share_servers is False:
+            msg = _("Cannot manage share server %s in a "
+                    "backend configured with driver_handles_share_servers"
+                    " set to False.") % share_server_id
+            raise exception.ManageShareServerError(reason=msg)
+
+        server = self.db.share_server_get(context, share_server_id)
+
+        share_network = self.db.share_network_get(
+            context, server['share_network_id'])
+
+        try:
+
+            number_allocations = (
+                self.driver.get_network_allocations_number())
+
+            if self.driver.admin_network_api:
+                number_allocations += (
+                    self.driver.get_admin_network_allocations_number())
+
+            if number_allocations > 0:
+
+                # allocations obtained from the driver that still need to
+                # be validated
+                remaining_allocations = (
+                    self.driver.get_share_server_network_info(
+                        context, server, identifier, driver_opts))
+
+                if len(remaining_allocations) > 0:
+
+                    if self.driver.admin_network_api:
+                        remaining_allocations = (
+                            self.driver.admin_network_api.
+                            manage_network_allocations(
+                                context, remaining_allocations, server))
+
+                    # allocations that are managed are removed from
+                    # remaining_allocations
+
+                    remaining_allocations = (
+                        self.driver.network_api.
+                        manage_network_allocations(
+                            context, remaining_allocations, server,
+                            share_network))
+
+                    # We require that all allocations are managed, else we
+                    # may have problems deleting this share server
+                    if len(remaining_allocations) > 0:
+                        msg = ("Failed to manage all allocations. "
+                               "Allocations %s were not "
+                               "managed." % six.text_type(
+                                   remaining_allocations))
+                        raise exception.ManageShareServerError(reason=msg)
+
+                else:
+                    # if there should be allocations, but the driver
+                    # doesn't return any something is wrong
+
+                    msg = ("Driver did not return required network "
+                           "allocations to be managed. Required number "
+                           "of allocations is %s." % number_allocations)
+                    raise exception.ManageShareServerError(reason=msg)
+
+            new_identifier, backend_details = self.driver.manage_server(
+                context, server, identifier, driver_opts)
+
+            if not new_identifier:
+                new_identifier = server['id']
+
+            if backend_details is None or not isinstance(
+                    backend_details, dict):
+                backend_details = {}
+
+            for security_service in share_network['security_services']:
+                ss_type = security_service['type']
+                data = {
+                    'name': security_service['name'],
+                    'ou': security_service['ou'],
+                    'domain': security_service['domain'],
+                    'server': security_service['server'],
+                    'dns_ip': security_service['dns_ip'],
+                    'user': security_service['user'],
+                    'type': ss_type,
+                    'password': security_service['password'],
+                }
+                backend_details.update({
+                    'security_service_' + ss_type: jsonutils.dumps(data)
+                })
+
+            if backend_details:
+                self.db.share_server_backend_details_set(
+                    context, server['id'], backend_details)
+
+            self.db.share_server_update(
+                context, share_server_id,
+                {'status': constants.STATUS_ACTIVE,
+                 'identifier': new_identifier})
+
+        except Exception:
+            msg = "Error managing share server %s"
+            LOG.exception(msg, share_server_id)
+            self.db.share_server_update(
+                context, share_server_id,
+                {'status': constants.STATUS_MANAGE_ERROR})
+            raise
+
+        LOG.info("Share server %s managed successfully.", share_server_id)
+
+    @add_hooks
+    @utils.require_driver_initialized
+    def unmanage_share_server(self, context, share_server_id, force=False):
+
+        server = self.db.share_server_get(
+            context, share_server_id)
+        server_details = server['backend_details']
+
+        security_services = []
+        for ss_name in constants.SECURITY_SERVICES_ALLOWED_TYPES:
+            ss = server_details.get('security_service_' + ss_name)
+            if ss:
+                security_services.append(jsonutils.loads(ss))
+
+        try:
+            self.driver.unmanage_server(server_details, security_services)
+        except NotImplementedError:
+            if not force:
+                LOG.error("Did not unmanage share server %s since the driver "
+                          "does not support managing share servers and no "
+                          "``force`` option was supplied.",
+                          share_server_id)
+                self.db.share_server_update(
+                    context, share_server_id,
+                    {'status': constants.STATUS_UNMANAGE_ERROR})
+                return
+
+        try:
+
+            if self.driver.get_network_allocations_number() > 0:
+                # NOTE(ganso): This will already remove admin allocations.
+                self.driver.network_api.unmanage_network_allocations(
+                    context, share_server_id)
+            elif (self.driver.get_admin_network_allocations_number() > 0
+                    and self.driver.admin_network_api):
+                # NOTE(ganso): This is here in case there are only admin
+                # allocations.
+                self.driver.admin_network_api.unmanage_network_allocations(
+                    context, share_server_id)
+            self.db.share_server_delete(context, share_server_id)
+        except Exception:
+            msg = "Error unmanaging share server %s"
+            LOG.exception(msg, share_server_id)
+            self.db.share_server_update(
+                context, share_server_id,
+                {'status': constants.STATUS_UNMANAGE_ERROR})
+            raise
+
+        LOG.info("Share server %s unmanaged successfully.", share_server_id)
 
     @add_hooks
     @utils.require_driver_initialized
@@ -2858,7 +3018,8 @@ class ShareManager(manager.SchedulerDependentManager):
 
         if CONF.delete_share_server_with_last_share:
             share_server = self._get_share_server(context, share_instance)
-            if share_server and len(share_server.share_instances) == 0:
+            if (share_server and len(share_server.share_instances) == 0
+                    and share_server.is_auto_deletable is True):
                 LOG.debug("Scheduled deletion of share-server "
                           "with id '%s' automatically by "
                           "deletion of last share.", share_server['id'])
@@ -3477,7 +3638,9 @@ class ShareManager(manager.SchedulerDependentManager):
                     context, share_server['id'], server_info)
             return self.db.share_server_update(
                 context, share_server['id'],
-                {'status': constants.STATUS_ACTIVE})
+                {'status': constants.STATUS_ACTIVE,
+                 'identifier': server_info.get(
+                     'identifier', share_server['id'])})
         except Exception as e:
             with excutils.save_and_reraise_exception():
                 details = getattr(e, "detail_data", {})

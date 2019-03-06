@@ -135,6 +135,16 @@ class ManilaExceptionTestCase(test.TestCase):
         self.assertIn(access_type, e.msg)
         self.assertIn(access, e.msg)
 
+    def test_manage_share_server_error(self):
+        # Verify response code for exception.ManageShareServerError
+        reason = 'Invalid share server id.'
+        share_server_id = 'fake'
+        e = exception.ManageShareServerError(reason=reason,
+                                             share_server_id=share_server_id)
+
+        self.assertEqual(500, e.code)
+        self.assertIn(reason, e.msg)
+
 
 class ManilaExceptionResponseCode400(test.TestCase):
 

@@ -2424,6 +2424,7 @@ class SecurityServiceDatabaseAPITestCase(BaseDatabaseAPITestCase):
         self._check_expected_fields(result2[0], dict2)
 
 
+@ddt.ddt
 class ShareServerDatabaseAPITestCase(test.TestCase):
 
     def setUp(self):
@@ -2600,6 +2601,70 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         self.assertEqual(num_records - 1,
                          len(db_api.share_server_get_all(self.ctxt)))
 
+    @ddt.data('fake', '-fake-', 'foo_some_fake_identifier_bar',
+              'foo-some-fake-identifier-bar', 'foobar')
+    def test_share_server_search_by_identifier(self, identifier):
+
+        server = {
+            'share_network_id': 'fake-share-net-id',
+            'host': 'hostname',
+            'status': constants.STATUS_ACTIVE,
+            'is_auto_deletable': True,
+            'updated_at': datetime.datetime(2018, 5, 1),
+            'identifier': 'some_fake_identifier',
+        }
+
+        server = db_utils.create_share_server(**server)
+        if identifier == 'foobar':
+            self.assertRaises(exception.ShareServerNotFound,
+                              db_api.share_server_search_by_identifier,
+                              self.ctxt, identifier)
+        else:
+            result = db_api.share_server_search_by_identifier(
+                self.ctxt, identifier)
+            self.assertEqual(server['id'], result[0]['id'])
+
+    @ddt.data((True, True, True, 3),
+              (True, True, False, 2),
+              (True, False, False, 1),
+              (False, False, False, 0))
+    @ddt.unpack
+    def test_share_server_get_all_unused_deletable(self,
+                                                   server_1_is_auto_deletable,
+                                                   server_2_is_auto_deletable,
+                                                   server_3_is_auto_deletable,
+                                                   expected_len):
+        server1 = {
+            'share_network_id': 'fake-share-net-id',
+            'host': 'hostname',
+            'status': constants.STATUS_ACTIVE,
+            'is_auto_deletable': server_1_is_auto_deletable,
+            'updated_at': datetime.datetime(2018, 5, 1)
+        }
+        server2 = {
+            'share_network_id': 'fake-share-net-id',
+            'host': 'hostname',
+            'status': constants.STATUS_ACTIVE,
+            'is_auto_deletable': server_2_is_auto_deletable,
+            'updated_at': datetime.datetime(2018, 5, 1)
+        }
+        server3 = {
+            'share_network_id': 'fake-share-net-id',
+            'host': 'hostname',
+            'status': constants.STATUS_ACTIVE,
+            'is_auto_deletable': server_3_is_auto_deletable,
+            'updated_at': datetime.datetime(2018, 5, 1)
+        }
+        db_utils.create_share_server(**server1)
+        db_utils.create_share_server(**server2)
+        db_utils.create_share_server(**server3)
+        host = 'hostname'
+        updated_before = datetime.datetime(2019, 5, 1)
+
+        unused_deletable = db_api.share_server_get_all_unused_deletable(
+            self.ctxt, host, updated_before)
+        self.assertEqual(expected_len, len(unused_deletable))
+
 
 class ServiceDatabaseAPITestCase(test.TestCase):
 
@@ -2772,6 +2837,90 @@ class NetworkAllocationsDatabaseAPITestCase(test.TestCase):
         )
         for na in result:
             self.assertIn(na.label, ('admin', 'user', None))
+
+    def test_network_allocation_get(self):
+        self._setup_network_allocations_get_for_share_server()
+
+        for allocation in self.admin_network_allocations:
+            result = db_api.network_allocation_get(self.ctxt, allocation['id'])
+
+            self.assertIsInstance(result, models.NetworkAllocation)
+            self.assertEqual(allocation['id'], result.id)
+
+        for allocation in self.user_network_allocations:
+            result = db_api.network_allocation_get(self.ctxt, allocation['id'])
+
+            self.assertIsInstance(result, models.NetworkAllocation)
+            self.assertEqual(allocation['id'], result.id)
+
+    def test_network_allocation_get_no_result(self):
+        self._setup_network_allocations_get_for_share_server()
+
+        self.assertRaises(exception.NotFound,
+                          db_api.network_allocation_get,
+                          self.ctxt,
+                          id='fake')
+
+    @ddt.data(True, False)
+    def test_network_allocation_get_read_deleted(self, read_deleted):
+        self._setup_network_allocations_get_for_share_server()
+
+        deleted_allocation = {
+            'share_server_id': self.share_server_id,
+            'ip_address': '1.1.1.1',
+            'status': constants.STATUS_ACTIVE,
+            'label': None,
+            'deleted': True,
+        }
+
+        new_obj = db_api.network_allocation_create(self.ctxt,
+                                                   deleted_allocation)
+        if read_deleted:
+            result = db_api.network_allocation_get(self.ctxt, new_obj.id,
+                                                   read_deleted=read_deleted)
+            self.assertIsInstance(result, models.NetworkAllocation)
+            self.assertEqual(new_obj.id, result.id)
+        else:
+            self.assertRaises(exception.NotFound,
+                              db_api.network_allocation_get,
+                              self.ctxt,
+                              id=self.share_server_id)
+
+    def test_network_allocation_update(self):
+        self._setup_network_allocations_get_for_share_server()
+
+        for allocation in self.admin_network_allocations:
+            old_obj = db_api.network_allocation_get(self.ctxt,
+                                                    allocation['id'])
+            self.assertEqual('False', old_obj.deleted)
+            updated_object = db_api.network_allocation_update(
+                self.ctxt, allocation['id'], {'deleted': 'True'})
+
+            self.assertEqual('True', updated_object.deleted)
+
+    @ddt.data(True, False)
+    def test_network_allocation_update_read_deleted(self, read_deleted):
+        self._setup_network_allocations_get_for_share_server()
+
+        db_api.network_allocation_update(
+            self.ctxt,
+            self.admin_network_allocations[0]['id'],
+            {'deleted': 'True'}
+        )
+
+        if read_deleted:
+            updated_object = db_api.network_allocation_update(
+                self.ctxt, self.admin_network_allocations[0]['id'],
+                {'deleted': 'False'}, read_deleted=read_deleted
+            )
+            self.assertEqual('False', updated_object.deleted)
+        else:
+            self.assertRaises(exception.NotFound,
+                              db_api.network_allocation_update,
+                              self.ctxt,
+                              id=self.share_server_id,
+                              values={'deleted': read_deleted},
+                              read_deleted=read_deleted)
 
 
 class ReservationDatabaseAPITest(test.TestCase):

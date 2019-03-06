@@ -459,6 +459,10 @@ class ManageInvalidShare(InvalidShare):
                 "invalid share: %(reason)s")
 
 
+class ManageShareServerError(ManilaException):
+    message = _("Manage existing share server failed due to: %(reason)s")
+
+
 class UnmanageInvalidShare(InvalidShare):
     message = _("Unmanage existing share failed due to "
                 "invalid share: %(reason)s")

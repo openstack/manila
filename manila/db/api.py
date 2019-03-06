@@ -859,9 +859,16 @@ def network_allocation_delete(context, id):
     return IMPL.network_allocation_delete(context, id)
 
 
-def network_allocation_update(context, id, values):
+def network_allocation_update(context, id, values, read_deleted=None):
     """Update a network allocation DB record."""
-    return IMPL.network_allocation_update(context, id, values)
+    return IMPL.network_allocation_update(context, id, values,
+                                          read_deleted=read_deleted)
+
+
+def network_allocation_get(context, id, session=None, read_deleted=None):
+    """Get a network allocation DB record."""
+    return IMPL.network_allocation_get(context, id, session,
+                                       read_deleted=read_deleted)
 
 
 def network_allocations_get_for_share_server(context, share_server_id,
@@ -897,6 +904,12 @@ def share_server_update(context, id, values):
 def share_server_get(context, id, session=None):
     """Get share server DB record by ID."""
     return IMPL.share_server_get(context, id, session=session)
+
+
+def share_server_search_by_identifier(context, identifier, session=None):
+    """Search for share servers based on given identifier."""
+    return IMPL.share_server_search_by_identifier(
+        context, identifier, session=session)
 
 
 def share_server_get_all_by_host_and_share_net_valid(context, host,

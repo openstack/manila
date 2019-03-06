@@ -1,0 +1,24 @@
+---
+features:
+  - Added APIs with default policy set to
+    'rule:admin_api' that allow managing and
+    unmanaging share servers. Managing Share servers
+    is useful for importing pre-existing shares and
+    snapshots into Manila's management when the driver
+    is configured in ``driver_handles_share_servers``
+    enabled mode. Unmanaging removes manila share
+    servers from the database without removing them
+    from the back end. Managed share servers, or share
+    servers that have had one or more shares unmanaged will
+    not be deleted automatically when they do not have
+    any shares managed by Manila, even if the config options
+    [DEFAULT]/delete_share_server_with_last_share or
+    [DEFAULT]/automatic_share_server_cleanup have been
+    set to True.
+  - Updated Manage Share API to be able to manage shares
+    in ``driver_handles_share_servers`` enabled driver
+    mode by supplying the Share Server ID.
+  - Updated Unmanage Share and Unmanage Snapshot APIs
+    to allow unmanaging shares and snapshots in
+    ``driver_handles_share_servers`` enabled driver
+    mode.

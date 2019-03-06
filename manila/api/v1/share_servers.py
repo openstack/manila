@@ -14,7 +14,6 @@
 #    under the License.
 
 from oslo_log import log
-import six
 from six.moves import http_client
 import webob
 from webob import exc
@@ -33,10 +32,11 @@ LOG = log.getLogger(__name__)
 class ShareServerController(wsgi.Controller):
     """The Share Server API controller for the OpenStack API."""
 
+    _view_builder_class = share_servers_views.ViewBuilder
+    resource_name = 'share_server'
+
     def __init__(self):
         self.share_api = share.API()
-        self._view_builder_class = share_servers_views.ViewBuilder
-        self.resource_name = 'share_server'
         super(ShareServerController, self).__init__()
 
     @wsgi.Controller.authorize
@@ -62,7 +62,7 @@ class ShareServerController(wsgi.Controller):
                                   s[k] == v or k == 'share_network' and
                                   v in [s.share_network['name'],
                                         s.share_network['id']])]
-        return self._view_builder.build_share_servers(share_servers)
+        return self._view_builder.build_share_servers(req, share_servers)
 
     @wsgi.Controller.authorize
     def show(self, req, id):
@@ -76,8 +76,8 @@ class ShareServerController(wsgi.Controller):
             else:
                 server.share_network_name = server.share_network_id
         except exception.ShareServerNotFound as e:
-            raise exc.HTTPNotFound(explanation=six.text_type(e))
-        return self._view_builder.build_share_server(server)
+            raise exc.HTTPNotFound(explanation=e)
+        return self._view_builder.build_share_server(req, server)
 
     @wsgi.Controller.authorize
     def details(self, req, id):
@@ -86,7 +86,7 @@ class ShareServerController(wsgi.Controller):
         try:
             share_server = db_api.share_server_get(context, id)
         except exception.ShareServerNotFound as e:
-            raise exc.HTTPNotFound(explanation=six.text_type(e))
+            raise exc.HTTPNotFound(explanation=e)
 
         return self._view_builder.build_share_server_details(
             share_server['backend_details'])
@@ -98,7 +98,7 @@ class ShareServerController(wsgi.Controller):
         try:
             share_server = db_api.share_server_get(context, id)
         except exception.ShareServerNotFound as e:
-            raise exc.HTTPNotFound(explanation=six.text_type(e))
+            raise exc.HTTPNotFound(explanation=e)
         allowed_statuses = [constants.STATUS_ERROR, constants.STATUS_ACTIVE]
         if share_server['status'] not in allowed_statuses:
             data = {
@@ -112,7 +112,7 @@ class ShareServerController(wsgi.Controller):
         try:
             self.share_api.delete_share_server(context, share_server)
         except exception.ShareServerInUse as e:
-            raise exc.HTTPConflict(explanation=six.text_type(e))
+            raise exc.HTTPConflict(explanation=e)
         return webob.Response(status_int=http_client.ACCEPTED)
 
 

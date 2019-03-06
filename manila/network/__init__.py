@@ -105,6 +105,15 @@ class NetworkBaseAPI(db_base.Base):
     def deallocate_network(self, context, share_server_id):
         pass
 
+    @abc.abstractmethod
+    def manage_network_allocations(self, context, allocations, share_server,
+                                   share_network=None):
+        pass
+
+    @abc.abstractmethod
+    def unmanage_network_allocations(self, context, share_server_id):
+        pass
+
     @property
     def enabled_ip_versions(self):
         if not hasattr(self, '_enabled_ip_versions'):

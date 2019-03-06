@@ -318,3 +318,46 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
             context, share_server_id)
         for allocation in allocations:
             self.db.network_allocation_delete(context, allocation['id'])
+
+    def unmanage_network_allocations(self, context, share_server_id):
+        self.deallocate_network(context, share_server_id)
+
+    def manage_network_allocations(self, context, allocations, share_server,
+                                   share_network=None):
+        if self.label != 'admin':
+            self._verify_share_network(share_server['id'], share_network)
+        else:
+            share_network = share_network or {}
+        self._save_network_info(context, share_network)
+
+        # We begin matching the allocations to known neutron ports and
+        # finally return the non-consumed allocations
+        remaining_allocations = list(allocations)
+
+        ips = [netaddr.IPAddress(allocation) for allocation
+               in remaining_allocations]
+        cidrs = [netaddr.IPNetwork(cidr) for cidr in self.allowed_cidrs]
+        selected_allocations = []
+
+        for ip in ips:
+            if any(ip in cidr for cidr in cidrs):
+                allocation = six.text_type(ip)
+                selected_allocations.append(allocation)
+
+        for allocation in selected_allocations:
+            data = {
+                'share_server_id': share_server['id'],
+                'ip_address': allocation,
+                'status': constants.STATUS_ACTIVE,
+                'label': self.label,
+                'network_type': share_network['network_type'],
+                'segmentation_id': share_network['segmentation_id'],
+                'cidr': share_network['cidr'],
+                'gateway': share_network['gateway'],
+                'ip_version': share_network['ip_version'],
+                'mtu': share_network['mtu'],
+            }
+            self.db.network_allocation_create(context, data)
+            remaining_allocations.remove(allocation)
+
+        return remaining_allocations

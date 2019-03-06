@@ -465,3 +465,67 @@ class StandaloneNetworkPluginTest(test.TestCase):
                  mtu=1500))
         instance.db.network_allocations_get_by_ip_address.assert_has_calls(
             [mock.call(fake_context, '10.0.0.2')])
+
+    def _setup_manage_network_allocations(self, label=None):
+        data = {
+            'DEFAULT': {
+                'standalone_network_plugin_gateway': '192.168.0.1',
+                'standalone_network_plugin_mask': '24',
+            },
+        }
+        with test_utils.create_temp_config_with_opts(data):
+            instance = plugin.StandaloneNetworkPlugin(label=label)
+
+        return instance
+
+    @ddt.data('admin', None)
+    def test_manage_network_allocations(self, label):
+        allocations = ['192.168.0.11', '192.168.0.12', 'fd12::2000']
+
+        instance = self._setup_manage_network_allocations(label=label)
+        if not label:
+            self.mock_object(instance, '_verify_share_network')
+            self.mock_object(instance.db, 'share_network_update')
+        self.mock_object(instance.db, 'network_allocation_create')
+
+        result = instance.manage_network_allocations(
+            fake_context, allocations, fake_share_server, fake_share_network)
+
+        self.assertEqual(['fd12::2000'], result)
+
+        network_data = {
+            'network_type': instance.network_type,
+            'segmentation_id': instance.segmentation_id,
+            'cidr': six.text_type(instance.net.cidr),
+            'gateway': six.text_type(instance.gateway),
+            'ip_version': instance.ip_version,
+            'mtu': instance.mtu,
+        }
+
+        data_list = [{
+            'share_server_id': fake_share_server['id'],
+            'ip_address': x,
+            'status': constants.STATUS_ACTIVE,
+            'label': instance.label,
+        } for x in ['192.168.0.11', '192.168.0.12']]
+
+        data_list[0].update(network_data)
+        data_list[1].update(network_data)
+
+        if not label:
+            instance.db.share_network_update.assert_called_once_with(
+                fake_context, fake_share_network['id'], network_data)
+            instance._verify_share_network.assert_called_once_with(
+                fake_share_server['id'], fake_share_network)
+
+        instance.db.network_allocation_create.assert_has_calls([
+            mock.call(fake_context, data_list[0]),
+            mock.call(fake_context, data_list[1])
+        ])
+
+    def test_unmanage_network_allocations(self):
+        instance = self._setup_manage_network_allocations()
+        self.mock_object(instance, 'deallocate_network')
+        instance.unmanage_network_allocations('context', 'server_id')
+        instance.deallocate_network.assert_called_once_with(
+            'context', 'server_id')

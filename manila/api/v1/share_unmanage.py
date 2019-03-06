@@ -13,7 +13,6 @@
 #   under the License.
 
 from oslo_log import log
-import six
 from six.moves import http_client
 import webob
 from webob import exc
@@ -30,7 +29,7 @@ LOG = log.getLogger(__name__)
 class ShareUnmanageMixin(object):
 
     @wsgi.Controller.authorize("unmanage")
-    def _unmanage(self, req, id, body=None):
+    def _unmanage(self, req, id, body=None, allow_dhss_true=False):
         """Unmanage a share."""
         context = req.environ['manila.context']
 
@@ -42,7 +41,8 @@ class ShareUnmanageMixin(object):
                 msg = _("Share %s has replicas. It cannot be unmanaged "
                         "until all replicas are removed.") % share['id']
                 raise exc.HTTPConflict(explanation=msg)
-            if share['instance'].get('share_server_id'):
+            if (not allow_dhss_true and
+                    share['instance'].get('share_server_id')):
                 msg = _("Operation 'unmanage' is not supported for shares "
                         "that are created on top of share servers "
                         "(created with share-networks).")
@@ -61,9 +61,9 @@ class ShareUnmanageMixin(object):
                 raise exc.HTTPForbidden(explanation=msg)
             self.share_api.unmanage(context, share)
         except exception.NotFound as e:
-            raise exc.HTTPNotFound(explanation=six.text_type(e))
+            raise exc.HTTPNotFound(explanation=e)
         except (exception.InvalidShare, exception.PolicyNotAuthorized) as e:
-            raise exc.HTTPForbidden(explanation=six.text_type(e))
+            raise exc.HTTPForbidden(explanation=e)
 
         return webob.Response(status_int=http_client.ACCEPTED)
 

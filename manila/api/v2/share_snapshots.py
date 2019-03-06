@@ -17,7 +17,6 @@
 """The share snapshots api."""
 
 from oslo_log import log
-import six
 from six.moves import http_client
 import webob
 from webob import exc
@@ -47,7 +46,7 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
         self.share_api = share.API()
 
     @wsgi.Controller.authorize('unmanage_snapshot')
-    def _unmanage(self, req, id, body=None):
+    def _unmanage(self, req, id, body=None, allow_dhss_true=False):
         """Unmanage a share snapshot."""
         context = req.environ['manila.context']
 
@@ -57,7 +56,7 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
             snapshot = self.share_api.get_snapshot(context, id)
 
             share = self.share_api.get(context, snapshot['share_id'])
-            if share.get('share_server_id'):
+            if not allow_dhss_true and share.get('share_server_id'):
                 msg = _("Operation 'unmanage_snapshot' is not supported for "
                         "snapshots of shares that are created with share"
                         " servers (created with share-networks).")
@@ -76,7 +75,7 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
 
             self.share_api.unmanage_snapshot(context, snapshot, share['host'])
         except (exception.ShareSnapshotNotFound, exception.ShareNotFound) as e:
-            raise exc.HTTPNotFound(explanation=six.text_type(e))
+            raise exc.HTTPNotFound(explanation=e)
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
@@ -128,10 +127,10 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
             snapshot_ref = self.share_api.manage_snapshot(context, snapshot,
                                                           driver_options)
         except (exception.ShareNotFound, exception.ShareSnapshotNotFound) as e:
-            raise exc.HTTPNotFound(explanation=six.text_type(e))
+            raise exc.HTTPNotFound(explanation=e)
         except (exception.InvalidShare,
                 exception.ManageInvalidShareSnapshot) as e:
-            raise exc.HTTPConflict(explanation=six.text_type(e))
+            raise exc.HTTPConflict(explanation=e)
 
         return self._view_builder.detail(req, snapshot_ref)
 
@@ -266,10 +265,15 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
     def manage(self, req, body):
         return self._manage(req, body)
 
-    @wsgi.Controller.api_version('2.12')
+    @wsgi.Controller.api_version('2.12', '2.48')
     @wsgi.action('unmanage')
     def unmanage(self, req, id, body=None):
         return self._unmanage(req, id, body)
+
+    @wsgi.Controller.api_version('2.49')  # noqa
+    @wsgi.action('unmanage')  # pylint: disable=function-redefined
+    def unmanage(self, req, id, body=None):
+        return self._unmanage(req, id, body, allow_dhss_true=True)
 
     @wsgi.Controller.api_version('2.32')
     @wsgi.action('allow_access')

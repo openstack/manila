@@ -80,11 +80,27 @@ class NetworkBaseAPITestCase(test.TestCase):
             def allocate_network(self, *args, **kwargs):
                 pass
 
+            def manage_network_allocations(
+                    self, context, allocations, share_server,
+                    share_network=None):
+                pass
+
+            def unmanage_network_allocations(self, context, share_server_id):
+                pass
+
         self.assertRaises(TypeError, FakeNetworkAPI)
 
     def test_inherit_network_base_api_allocate_not_redefined(self):
         class FakeNetworkAPI(network.NetworkBaseAPI):
             def deallocate_network(self, *args, **kwargs):
+                pass
+
+            def manage_network_allocations(
+                    self, context, allocations, share_server,
+                    share_network=None):
+                pass
+
+            def unmanage_network_allocations(self, context, share_server_id):
                 pass
 
         self.assertRaises(TypeError, FakeNetworkAPI)
@@ -95,6 +111,14 @@ class NetworkBaseAPITestCase(test.TestCase):
                 pass
 
             def deallocate_network(self, *args, **kwargs):
+                pass
+
+            def manage_network_allocations(
+                    self, context, allocations, share_server,
+                    share_network=None):
+                pass
+
+            def unmanage_network_allocations(self, context, share_server_id):
                 pass
 
         result = FakeNetworkAPI()
@@ -111,6 +135,14 @@ class NetworkBaseAPITestCase(test.TestCase):
             def deallocate_network(self, *args, **kwargs):
                 pass
 
+            def manage_network_allocations(
+                    self, context, allocations, share_server,
+                    share_network=None):
+                pass
+
+            def unmanage_network_allocations(self, context, share_server_id):
+                pass
+
         result = FakeNetworkAPI()
 
         result._verify_share_network('foo_id', {'id': 'bar_id'})
@@ -121,6 +153,14 @@ class NetworkBaseAPITestCase(test.TestCase):
                 pass
 
             def deallocate_network(self, *args, **kwargs):
+                pass
+
+            def manage_network_allocations(
+                    self, context, allocations, share_server,
+                    share_network=None):
+                pass
+
+            def unmanage_network_allocations(self, context, share_server_id):
                 pass
 
         result = FakeNetworkAPI()
@@ -140,6 +180,14 @@ class NetworkBaseAPITestCase(test.TestCase):
                 pass
 
             def deallocate_network(self, *args, **kwargs):
+                pass
+
+            def manage_network_allocations(
+                    self, context, allocations, share_server,
+                    share_network=None):
+                pass
+
+            def unmanage_network_allocations(self, context, share_server_id):
                 pass
 
         network.CONF.set_default('network_plugin_ipv6_enabled',

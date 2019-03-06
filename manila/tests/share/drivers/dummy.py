@@ -303,21 +303,80 @@ class DummyDriver(driver.ShareDriver):
     @slow_me_down
     def manage_existing(self, share, driver_options):
         """Brings an existing share under Manila management."""
-        return {"size": 1, "export_locations": self._create_share(share)}
+        new_export = share['export_location']
+        old_share_id = self._get_share_id_from_export(new_export)
+        old_export = self.private_storage.get(
+            old_share_id, key='export_location')
+        if old_export.split(":/")[-1] == new_export.split(":/")[-1]:
+            result = {"size": 1, "export_locations": self._create_share(share)}
+            self.private_storage.delete(old_share_id)
+            return result
+        else:
+            msg = ("Invalid export specified, existing share %s"
+                   " could not be found" % old_share_id)
+            raise exception.ShareBackendException(msg=msg)
+
+    @slow_me_down
+    def manage_existing_with_server(
+            self, share, driver_options, share_server=None):
+        return self.manage_existing(share, driver_options)
+
+    def _get_share_id_from_export(self, export_location):
+        values = export_location.split('share_')
+        if len(values) > 1:
+            return values[1][37:].replace("_", "-")
+        else:
+            return export_location
 
     @slow_me_down
     def unmanage(self, share):
         """Removes the specified share from Manila management."""
+        self.private_storage.update(
+            share['id'], {'export_location': share['export_location']})
+
+    @slow_me_down
+    def unmanage_with_server(self, share, share_server=None):
+        self.unmanage(share)
+
+    @slow_me_down
+    def manage_existing_snapshot_with_server(self, snapshot, driver_options,
+                                             share_server=None):
+        return self.manage_existing_snapshot(snapshot, driver_options)
 
     @slow_me_down
     def manage_existing_snapshot(self, snapshot, driver_options):
         """Brings an existing snapshot under Manila management."""
-        self._create_snapshot(snapshot)
-        return {"size": 1, "provider_location": snapshot["provider_location"]}
+        old_snap_id = self._get_snap_id_from_provider_location(
+            snapshot['provider_location'])
+        old_provider_location = self.private_storage.get(
+            old_snap_id, key='provider_location')
+        if old_provider_location == snapshot['provider_location']:
+            self._create_snapshot(snapshot)
+            self.private_storage.delete(old_snap_id)
+            return {"size": 1,
+                    "provider_location": snapshot["provider_location"]}
+        else:
+            msg = ("Invalid provider location specified, existing snapshot %s"
+                   " could not be found" % old_snap_id)
+            raise exception.ShareBackendException(msg=msg)
+
+    def _get_snap_id_from_provider_location(self, provider_location):
+        values = provider_location.split('snapshot_')
+        if len(values) > 1:
+            return values[1][37:].replace("_", "-")
+        else:
+            return provider_location
 
     @slow_me_down
     def unmanage_snapshot(self, snapshot):
         """Removes the specified snapshot from Manila management."""
+        self.private_storage.update(
+            snapshot['id'],
+            {'provider_location': snapshot['provider_location']})
+
+    @slow_me_down
+    def unmanage_snapshot_with_server(self, snapshot, share_server=None):
+        self.unmanage_snapshot(snapshot)
 
     @slow_me_down
     def revert_to_snapshot(self, context, snapshot, share_access_rules,
@@ -354,6 +413,7 @@ class DummyDriver(driver.ShareDriver):
             "service_ip": network_info[
                 "admin_network_allocations"][0]["ip_address"],
             "username": "fake_username",
+            "server_id": network_info['server_id']
         }
         return server_details
 
@@ -639,3 +699,27 @@ class DummyDriver(driver.ShareDriver):
                                   'used_size':  1,
                                   'gathered_at': gathered_at})
         return share_updates
+
+    @slow_me_down
+    def get_share_server_network_info(
+            self, context, share_server, identifier, driver_options):
+        try:
+            server_details = self.private_storage.get(identifier)
+        except Exception:
+            msg = ("Unable to find share server %s in "
+                   "private storage." % identifier)
+            raise exception.ShareBackendException(msg=msg)
+
+        return [server_details['primary_public_ip'],
+                server_details['secondary_public_ip'],
+                server_details['service_ip']]
+
+    @slow_me_down
+    def manage_server(self, context, share_server, identifier, driver_options):
+        server_details = self.private_storage.get(identifier)
+        self.private_storage.delete(identifier)
+        return identifier, server_details
+
+    def unmanage_server(self, server_details, security_services=None):
+        self.private_storage.update(server_details['server_id'],
+                                    server_details)

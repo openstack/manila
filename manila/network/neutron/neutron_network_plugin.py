@@ -161,6 +161,108 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
 
         return ports
 
+    def manage_network_allocations(self, context, allocations, share_server,
+                                   share_network=None):
+
+        self._verify_share_network(share_server['id'], share_network)
+        self._store_neutron_net_info(context, share_network)
+
+        # We begin matching the allocations to known neutron ports and
+        # finally return the non-consumed allocations
+        remaining_allocations = list(allocations)
+
+        fixed_ip_filter = 'subnet_id=' + share_network['neutron_subnet_id']
+
+        port_list = self.neutron_api.list_ports(
+            network_id=share_network['neutron_net_id'],
+            device_owner='manila:share',
+            fixed_ips=fixed_ip_filter)
+
+        selected_ports = self._get_ports_respective_to_ips(
+            remaining_allocations, port_list)
+
+        LOG.debug("Found matching allocations in Neutron:"
+                  " %s", six.text_type(selected_ports))
+
+        for selected_port in selected_ports:
+            port_dict = {
+                'id': selected_port['port']['id'],
+                'share_server_id': share_server['id'],
+                'ip_address': selected_port['allocation'],
+                'gateway': share_network['gateway'],
+                'mac_address': selected_port['port']['mac_address'],
+                'status': constants.STATUS_ACTIVE,
+                'label': self.label,
+                'network_type': share_network.get('network_type'),
+                'segmentation_id': share_network.get('segmentation_id'),
+                'ip_version': share_network['ip_version'],
+                'cidr': share_network['cidr'],
+                'mtu': share_network['mtu'],
+            }
+
+            # There should not be existing allocations with the same port_id.
+            try:
+                existing_port = self.db.network_allocation_get(
+                    context, selected_port['port']['id'], read_deleted=False)
+            except exception.NotFound:
+                pass
+            else:
+                msg = _("There were existing conflicting manila network "
+                        "allocations found while trying to manage share "
+                        "server %(new_ss)s. The conflicting port belongs to "
+                        "share server %(old_ss)s.") % {
+                            'new_ss': share_server['id'],
+                            'old_ss': existing_port['share_server_id'],
+                    }
+                raise exception.ManageShareServerError(reason=msg)
+
+            # If there are previously deleted allocations, we undelete them
+            try:
+                self.db.network_allocation_get(
+                    context, selected_port['port']['id'], read_deleted=True)
+            except exception.NotFound:
+                self.db.network_allocation_create(context, port_dict)
+            else:
+                port_dict.pop('id')
+                port_dict.update({
+                    'deleted_at': None,
+                    'deleted': 'False',
+                })
+                self.db.network_allocation_update(
+                    context, selected_port['port']['id'], port_dict,
+                    read_deleted=True)
+
+            remaining_allocations.remove(selected_port['allocation'])
+
+        return remaining_allocations
+
+    def unmanage_network_allocations(self, context, share_server_id):
+
+        ports = self.db.network_allocations_get_for_share_server(
+            context, share_server_id)
+
+        for port in ports:
+            self.db.network_allocation_delete(context, port['id'])
+
+    def _get_ports_respective_to_ips(self, allocations, port_list):
+
+        selected_ports = []
+
+        for port in port_list:
+            for ip in port['fixed_ips']:
+                if ip['ip_address'] in allocations:
+                    if not any(port['id'] == p['port']['id']
+                               for p in selected_ports):
+                        selected_ports.append(
+                            {'port': port, 'allocation': ip['ip_address']})
+                    else:
+                        LOG.warning("Port %s has more than one IP that "
+                                    "matches allocations, please use ports "
+                                    "respective to only one allocation IP.",
+                                    port['id'])
+
+        return selected_ports
+
     def _get_matched_ip_address(self, fixed_ips, ip_version):
         """Get first ip address which matches the specified ip_version."""
 
@@ -314,8 +416,7 @@ class NeutronSingleNetworkPlugin(NeutronNetworkPlugin):
         self.subnet = self.neutron_api.configuration.neutron_subnet_id
         self._verify_net_and_subnet()
 
-    def allocate_network(self, context, share_server, share_network=None,
-                         **kwargs):
+    def _select_proper_share_network(self, context, share_network):
         if self.label != 'admin':
             share_network = self._update_share_network_net_data(
                 context, share_network)
@@ -325,8 +426,26 @@ class NeutronSingleNetworkPlugin(NeutronNetworkPlugin):
                 'neutron_net_id': self.net,
                 'neutron_subnet_id': self.subnet,
             }
+        return share_network
+
+    def allocate_network(self, context, share_server, share_network=None,
+                         **kwargs):
+
+        share_network = self._select_proper_share_network(
+            context, share_network)
+
         return super(NeutronSingleNetworkPlugin, self).allocate_network(
             context, share_server, share_network, **kwargs)
+
+    def manage_network_allocations(self, context, allocations, share_server,
+                                   share_network=None):
+
+        share_network = self._select_proper_share_network(
+            context, share_network)
+
+        return super(NeutronSingleNetworkPlugin,
+                     self).manage_network_allocations(
+            context, allocations, share_server, share_network)
 
     def _verify_net_and_subnet(self):
         data = dict(net=self.net, subnet=self.subnet)

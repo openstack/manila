@@ -115,6 +115,11 @@ class ShareRpcAPITestCase(test.TestCase):
         if 'snapshot_instance' in expected_msg:
             snapshot_instance = expected_msg.pop('snapshot_instance', None)
             expected_msg['snapshot_instance_id'] = snapshot_instance['id']
+        if ('share_server' in expected_msg
+                and (method == 'manage_share_server')
+                or method == 'unmanage_share_server'):
+            share_server = expected_msg.pop('share_server', None)
+            expected_msg['share_server_id'] = share_server['id']
 
         if 'host' in kwargs:
             host = kwargs['host']
@@ -321,6 +326,21 @@ class ShareRpcAPITestCase(test.TestCase):
                              version='1.9',
                              snapshot=self.fake_snapshot,
                              host='fake_host')
+
+    def test_manage_share_server(self):
+        self._test_share_api('manage_share_server',
+                             rpc_method='cast',
+                             version='1.19',
+                             share_server=self.fake_share_server,
+                             identifier='fake',
+                             driver_opts={})
+
+    def test_unmanage_share_server(self):
+        self._test_share_api('unmanage_share_server',
+                             rpc_method='cast',
+                             version='1.19',
+                             share_server=self.fake_share_server,
+                             force='fake_force')
 
     def test_revert_to_snapshot(self):
         self._test_share_api('revert_to_snapshot',
