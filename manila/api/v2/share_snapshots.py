@@ -271,8 +271,9 @@ class ShareSnapshotsController(share_snapshots.ShareSnapshotMixin,
         return self._unmanage(req, id, body)
 
     @wsgi.Controller.api_version('2.49')  # noqa
-    @wsgi.action('unmanage')  # pylint: disable=function-redefined
-    def unmanage(self, req, id, body=None):
+    @wsgi.action('unmanage')
+    def unmanage(self, req, id,
+                 body=None):  # pylint: disable=function-redefined
         return self._unmanage(req, id, body, allow_dhss_true=True)
 
     @wsgi.Controller.api_version('2.32')
