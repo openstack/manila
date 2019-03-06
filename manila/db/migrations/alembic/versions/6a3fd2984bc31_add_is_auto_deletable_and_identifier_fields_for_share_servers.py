@@ -51,6 +51,7 @@ def upgrade():
         connection = op.get_bind()
         share_servers_table = utils.load_table('share_servers', connection)
         for server in connection.execute(share_servers_table.select()):
+            # pylint: disable=no-value-for-parameter
             connection.execute(
                 share_servers_table.update().where(
                     share_servers_table.c.id == server.id,
