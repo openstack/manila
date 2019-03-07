@@ -163,10 +163,11 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
         self.assertEqual(fake.SHARE_ADDRESS_1, host_ip)
         self.assertEqual('/' + fake.SHARE_NAME, export_path)
 
-    def test_get_export_location_missing_location(self):
+    @ddt.data('', 'invalid')
+    def test_get_export_location_missing_location_invalid(self, export):
 
         fake_share = fake.NFS_SHARE.copy()
-        fake_share['export_location'] = ''
+        fake_share['export_location'] = export
 
         host_ip, export_path = self.helper._get_export_location(fake_share)
 

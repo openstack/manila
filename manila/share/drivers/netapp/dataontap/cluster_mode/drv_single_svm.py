@@ -83,6 +83,20 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
     def unmanage_snapshot(self, snapshot):
         self.library.unmanage_snapshot(snapshot)
 
+    def manage_existing_with_server(
+            self, share, driver_options, share_server=None):
+        raise NotImplementedError
+
+    def unmanage_with_server(self, share, share_server=None):
+        raise NotImplementedError
+
+    def manage_existing_snapshot_with_server(
+            self, snapshot, driver_options, share_server=None):
+        raise NotImplementedError
+
+    def unmanage_snapshot_with_server(self, snapshot, share_server=None):
+        raise NotImplementedError
+
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, **kwargs):
         self.library.update_access(context, share, access_rules, add_rules,
@@ -256,3 +270,13 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
 
     def ensure_shares(self, context, shares):
         return self.library.ensure_shares(context, shares)
+
+    def get_share_server_network_info(
+            self, context, share_server, identifier, driver_options):
+        raise NotImplementedError
+
+    def manage_server(self, context, share_server, identifier, driver_options):
+        raise NotImplementedError
+
+    def unmanage_server(self, server_details, security_services=None):
+        raise NotImplementedError

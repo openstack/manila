@@ -356,6 +356,7 @@ NETWORK_INFO = {
 NETWORK_INFO_NETMASK = '255.255.255.0'
 
 SHARE_SERVER = {
+    'id': 'fake_id',
     'share_network_id': 'c5b3a865-56d0-4d88-abe5-879965e099c9',
     'backend_details': {
         'vserver_name': VSERVER1
@@ -522,6 +523,8 @@ COLLATED_CGSNAPSHOT_INFO = [
         }
     },
 ]
+
+IDENTIFIER = 'c5b3a865-56d0-4d88-dke5-853465e099c9'
 
 LIF_NAMES = []
 LIF_ADDRESSES = ['10.10.10.10', '10.10.10.20']

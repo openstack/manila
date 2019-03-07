@@ -3067,6 +3067,20 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with(
             'volume-rename', volume_rename_api_args)
 
+    def test_rename_vserver(self):
+
+        vserver_api_args = {
+            'vserver-name': fake.VSERVER_NAME,
+            'new-name': fake.VSERVER_NAME_2,
+        }
+        self.mock_object(self.client, 'send_request')
+
+        self.client.rename_vserver(fake.VSERVER_NAME, fake.VSERVER_NAME_2)
+
+        self.client.send_request.assert_called_once_with(
+            'vserver-rename', vserver_api_args
+        )
+
     def test_modify_volume_no_optional_args(self):
 
         self.mock_object(self.client, 'send_request')

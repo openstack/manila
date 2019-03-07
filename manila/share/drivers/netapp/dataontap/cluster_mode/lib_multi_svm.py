@@ -67,20 +67,22 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             check_for_setup_error())
 
     @na_utils.trace
-    def _get_vserver(self, share_server=None):
+    def _get_vserver(self, share_server=None, vserver_name=None):
 
-        if not share_server:
+        if share_server:
+            backend_details = share_server.get('backend_details')
+            vserver = backend_details.get(
+                'vserver_name') if backend_details else None
+
+            if not vserver:
+                msg = _('Vserver name is absent in backend details. Please '
+                        'check whether Vserver was created properly.')
+                raise exception.VserverNotSpecified(msg)
+        elif vserver_name:
+            vserver = vserver_name
+        else:
             msg = _('Share server not provided')
             raise exception.InvalidInput(reason=msg)
-
-        backend_details = share_server.get('backend_details')
-        vserver = backend_details.get(
-            'vserver_name') if backend_details else None
-
-        if not vserver:
-            msg = _('Vserver name is absent in backend details. Please '
-                    'check whether Vserver was created properly.')
-            raise exception.VserverNotSpecified(msg)
 
         if not self._client.vserver_exists(vserver):
             raise exception.VserverNotFound(vserver=vserver)
@@ -401,3 +403,37 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         if options['ipv6-enabled']:
             versions.append(6)
         return versions
+
+    def manage_server(self, context, share_server, identifier, driver_options):
+        """Manages a vserver by renaming it and returning backend_details."""
+        new_vserver_name = self._get_vserver_name(share_server['id'])
+        old_vserver_name = self._get_correct_vserver_old_name(identifier)
+
+        if new_vserver_name != old_vserver_name:
+            self._client.rename_vserver(old_vserver_name, new_vserver_name)
+
+        backend_details = {'vserver_name': new_vserver_name}
+        return new_vserver_name, backend_details
+
+    def unmanage_server(self, server_details, security_services=None):
+        pass
+
+    def get_share_server_network_info(
+            self, context, share_server, identifier, driver_options):
+        """Returns a list of IPs for each vserver network interface."""
+        vserver_name = self._get_correct_vserver_old_name(identifier)
+
+        vserver, vserver_client = self._get_vserver(vserver_name=vserver_name)
+
+        interfaces = vserver_client.get_network_interfaces()
+        allocations = []
+        for lif in interfaces:
+            allocations.append(lif['address'])
+        return allocations
+
+    def _get_correct_vserver_old_name(self, identifier):
+
+        # In case vserver_name includes the template, we check and add it here
+        if not self._client.vserver_exists(identifier):
+            return self._get_vserver_name(identifier)
+        return identifier

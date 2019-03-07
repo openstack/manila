@@ -1534,13 +1534,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertFalse(vserver_client.split_volume_clone.called)
         self.assertFalse(vserver_client.soft_delete_snapshot.called)
 
-    def test_manage_existing(self):
+    @ddt.data(None, fake.VSERVER1)
+    def test_manage_existing(self, fake_vserver):
 
         vserver_client = mock.Mock()
-        self.mock_object(self.library,
-                         '_get_vserver',
-                         mock.Mock(return_value=(fake.VSERVER1,
-                                                 vserver_client)))
+        mock__get_vserver = self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
         mock_manage_container = self.mock_object(
             self.library,
             '_manage_container',
@@ -1550,24 +1550,29 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             '_create_export',
             mock.Mock(return_value=fake.NFS_EXPORTS))
 
-        result = self.library.manage_existing(fake.SHARE, {})
+        result = self.library.manage_existing(fake.SHARE, {},
+                                              share_server=fake_vserver)
 
         expected = {
             'size': fake.SHARE_SIZE,
             'export_locations': fake.NFS_EXPORTS
         }
+
+        mock__get_vserver.assert_called_once_with(share_server=fake_vserver)
         mock_manage_container.assert_called_once_with(fake.SHARE,
                                                       fake.VSERVER1,
                                                       vserver_client)
+
         mock_create_export.assert_called_once_with(fake.SHARE,
-                                                   None,
+                                                   fake_vserver,
                                                    fake.VSERVER1,
                                                    vserver_client)
         self.assertDictEqual(expected, result)
 
-    def test_unmanage(self):
+    @ddt.data(None, fake.VSERVER1)
+    def test_unmanage(self, fake_vserver):
 
-        result = self.library.unmanage(fake.SHARE)
+        result = self.library.unmanage(fake.SHARE, share_server=fake_vserver)
 
         self.assertIsNone(result)
 
@@ -1782,7 +1787,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           fake.FLEXVOL_TO_MANAGE,
                           vserver_client)
 
-    def test_manage_existing_snapshot(self):
+    @ddt.data(None, fake.VSERVER1)
+    def test_manage_existing_snapshot(self, fake_vserver):
 
         vserver_client = mock.Mock()
         mock_get_vserver = self.mock_object(
@@ -1791,13 +1797,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client.get_volume.return_value = fake.FLEXVOL_TO_MANAGE
         vserver_client.volume_has_snapmirror_relationships.return_value = False
         result = self.library.manage_existing_snapshot(
-            fake.SNAPSHOT_TO_MANAGE, {})
+            fake.SNAPSHOT_TO_MANAGE, {}, share_server=fake_vserver)
 
         share_name = self.library._get_backend_share_name(
             fake.SNAPSHOT['share_id'])
         new_snapshot_name = self.library._get_backend_snapshot_name(
             fake.SNAPSHOT['id'])
-        mock_get_vserver.assert_called_once_with(share_server=None)
+        mock_get_vserver.assert_called_once_with(share_server=fake_vserver)
         (vserver_client.volume_has_snapmirror_relationships.
             assert_called_once_with(fake.FLEXVOL_TO_MANAGE))
         vserver_client.rename_snapshot.assert_called_once_with(
@@ -1870,9 +1876,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           self.library.manage_existing_snapshot,
                           fake.SNAPSHOT_TO_MANAGE, {})
 
-    def test_unmanage_snapshot(self):
+    @ddt.data(None, fake.VSERVER1)
+    def test_unmanage_snapshot(self, fake_vserver):
 
-        result = self.library.unmanage_snapshot(fake.SNAPSHOT)
+        result = self.library.unmanage_snapshot(fake.SNAPSHOT, fake_vserver)
 
         self.assertIsNone(result)
 

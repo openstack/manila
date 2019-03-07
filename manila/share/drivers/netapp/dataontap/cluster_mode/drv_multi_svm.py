@@ -83,6 +83,22 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
     def unmanage_snapshot(self, snapshot):
         raise NotImplementedError
 
+    def manage_existing_with_server(
+            self, share, driver_options, share_server=None):
+        return self.library.manage_existing(
+            share, driver_options, share_server=share_server)
+
+    def unmanage_with_server(self, share, share_server=None):
+        self.library.unmanage(share, share_server=share_server)
+
+    def manage_existing_snapshot_with_server(
+            self, snapshot, driver_options, share_server=None):
+        return self.library.manage_existing_snapshot(
+            snapshot, driver_options, share_server=share_server)
+
+    def unmanage_snapshot_with_server(self, snapshot, share_server=None):
+        self.library.unmanage_snapshot(snapshot, share_server=share_server)
+
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, **kwargs):
         self.library.update_access(context, share, access_rules, add_rules,
@@ -240,3 +256,15 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
 
     def ensure_shares(self, context, shares):
         return self.library.ensure_shares(context, shares)
+
+    def get_share_server_network_info(
+            self, context, share_server, identifier, driver_options):
+        return self.library.get_share_server_network_info(
+            context, share_server, identifier, driver_options)
+
+    def manage_server(self, context, share_server, identifier, driver_options):
+        return self.library.manage_server(
+            context, share_server, identifier, driver_options)
+
+    def unmanage_server(self, server_details, security_services=None):
+        return self.library.unmanage_server(server_details, security_services)
