@@ -136,6 +136,39 @@ class LVMHelperTestCase(test.TestCase):
 
         self.assertTrue(storage_helper.LOG.warning.called)
 
+    @ddt.data(None, exception.ProcessExecutionError)
+    def test_rename_storage(self, side_effect):
+        fake_old_share_name = 'fake_old_name'
+        fake_new_share_name = 'fake_new_name'
+        fake_new_device = "/dev/new_device"
+        fake_old_device = "/dev/old_device"
+
+        mock_get_lv_device = self.mock_object(
+            self.LVMHelper, '_get_lv_device',
+            mock.Mock(side_effect=[fake_old_device, fake_new_device]))
+        mock_try_to_umount = self.mock_object(self.LVMHelper,
+                                              '_try_to_unmount_device')
+
+        mock_execute = self.mock_object(self.LVMHelper, '_execute',
+                                        mock.Mock(side_effect=side_effect))
+
+        if side_effect is None:
+            self.LVMHelper.rename_storage(fake_old_share_name,
+                                          fake_new_share_name)
+        else:
+            self.assertRaises(exception.ProcessExecutionError,
+                              self.LVMHelper.rename_storage,
+                              fake_old_share_name, fake_new_share_name)
+        mock_try_to_umount.assert_called_once_with(fake_old_device)
+        mock_execute.mock_assert_called_once_with(
+            "lvrename", "--autobackup", "n", fake_old_device, fake_new_device,
+            run_as_root=True
+        )
+        mock_get_lv_device.assert_has_calls([
+            mock.call(fake_old_share_name),
+            mock.call(fake_new_share_name)
+        ])
+
     def test_extend_share(self):
         actual_arguments = []
         expected_arguments = [
@@ -152,3 +185,22 @@ class LVMHelperTestCase(test.TestCase):
         self.LVMHelper.extend_share(fake_share_name, 'share', 3)
 
         self.assertEqual(expected_arguments, actual_arguments)
+
+    def test_get_size(self):
+        share_name = 'fakeshareid'
+        fake_old_device = {}
+
+        mock_get_lv_device = self.mock_object(
+            self.LVMHelper, '_get_lv_device',
+            mock.Mock(return_value=fake_old_device))
+        mock_execute = self.mock_object(self.LVMHelper, '_execute',
+                                        mock.Mock(return_value=[1, "args"]))
+
+        result = self.LVMHelper.get_size(share_name)
+
+        mock_execute.assert_called_once_with(
+            "lvs", "-o", "lv_size", "--noheadings", "--nosuffix", "--units",
+            "g", fake_old_device, run_as_root=True
+        )
+        mock_get_lv_device.assert_called_once_with(share_name)
+        self.assertEqual(result, 1)

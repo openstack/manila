@@ -119,7 +119,7 @@ class ContainerShareDriverTestCase(test.TestCase):
             self._driver, '_get_container_name',
             mock.Mock(return_value=fake_container_name))
         mock_create_and_mount = self.mock_object(
-            self._driver, '_create_and_mount_share_links',
+            self._driver, '_create_export_and_mount_storage',
             mock.Mock(return_value='export_location'))
 
         self.assertEqual('export_location',
@@ -135,7 +135,7 @@ class ContainerShareDriverTestCase(test.TestCase):
             share_server['id']
         )
 
-    def test__create_and_mount_share_links(self):
+    def test__create_export_and_mount_storage(self):
         helper = mock.Mock()
         server_id = 'fake_id'
         share_name = 'fake_name'
@@ -149,7 +149,7 @@ class ContainerShareDriverTestCase(test.TestCase):
         mock_execute = self.mock_object(self._driver.container, 'execute')
 
         self.assertEqual('export_location',
-                         self._driver._create_and_mount_share_links(
+                         self._driver._create_export_and_mount_storage(
                              self.share, server_id, share_name))
         mock_create_share.assert_called_once_with(server_id)
         mock__get_helper.assert_called_once_with(self.share)
@@ -160,7 +160,7 @@ class ContainerShareDriverTestCase(test.TestCase):
                                   "/shares/%s" % share_name])
         ])
 
-    def test__delete_and_umount_share_links(self):
+    def test__delete_export_and_umount_storage(self):
         helper = mock.Mock()
         server_id = 'fake_id'
         share_name = 'fake_name'
@@ -168,7 +168,7 @@ class ContainerShareDriverTestCase(test.TestCase):
             self._driver, "_get_helper", mock.Mock(return_value=helper))
         mock_delete_share = self.mock_object(helper, 'delete_share')
         mock_execute = self.mock_object(self._driver.container, 'execute')
-        self._driver._delete_and_umount_share_links(
+        self._driver._delete_export_and_umount_storage(
             self.share, server_id, share_name)
 
         mock__get_helper.assert_called_once_with(self.share)
@@ -194,7 +194,7 @@ class ContainerShareDriverTestCase(test.TestCase):
             mock.Mock(return_value=fake_share_name))
         self.mock_object(self._driver.storage, 'remove_storage')
         mock_delete_and_umount = self.mock_object(
-            self._driver, '_delete_and_umount_share_links')
+            self._driver, '_delete_export_and_umount_storage')
 
         self._driver.delete_share(self._context, self.share, fake_share_server)
 
@@ -391,3 +391,133 @@ class ContainerShareDriverTestCase(test.TestCase):
         self._driver._connect_to_network.assert_called_once_with(server_id,
                                                                  network_info,
                                                                  'veth0')
+
+    def test_manage_existing(self):
+
+        fake_container_name = "manila_fake_container"
+        fake_export_location = 'export_location'
+        expected_result = {
+            'size': 1,
+            'export_locations': [fake_export_location]
+        }
+        fake_share_server = cont_fakes.fake_share()
+        fake_share_name = self._driver._get_share_name(self.share)
+        mock_get_container_name = self.mock_object(
+            self._driver, '_get_container_name',
+            mock.Mock(return_value=fake_container_name))
+        mock_get_share_name = self.mock_object(
+            self._driver, '_get_share_name',
+            mock.Mock(return_value=fake_share_name))
+        mock_rename_storage = self.mock_object(
+            self._driver.storage, 'rename_storage')
+        mock_get_size = self.mock_object(
+            self._driver.storage, 'get_size', mock.Mock(return_value=1))
+        mock_delete_and_umount = self.mock_object(
+            self._driver, '_delete_export_and_umount_storage')
+        mock_create_and_mount = self.mock_object(
+            self._driver, '_create_export_and_mount_storage',
+            mock.Mock(return_value=fake_export_location)
+        )
+
+        result = self._driver.manage_existing_with_server(
+            self.share, {}, fake_share_server)
+
+        mock_rename_storage.assert_called_once_with(
+            fake_share_name, self.share.share_id
+        )
+        mock_get_size.assert_called_once_with(
+            fake_share_name
+        )
+        mock_delete_and_umount.assert_called_once_with(
+            self.share, fake_container_name, fake_share_name
+        )
+        mock_create_and_mount.assert_called_once_with(
+            self.share, fake_container_name, self.share.share_id
+        )
+        mock_get_container_name.assert_called_once_with(
+            fake_share_server['id']
+        )
+        mock_get_share_name.assert_called_with(
+            self.share
+        )
+        self.assertEqual(expected_result, result)
+
+    def test_manage_existing_no_share_server(self):
+
+        self.assertRaises(exception.ShareBackendException,
+                          self._driver.manage_existing_with_server,
+                          self.share, {})
+
+    def test_unmanage(self):
+        self.assertIsNone(self._driver.unmanage_with_server(self.share))
+
+    def test_get_share_server_network_info(self):
+
+        fake_share_server = cont_fakes.fake_share_server()
+        fake_id = cont_fakes.fake_identifier()
+        expected_result = ['veth11b2c34']
+
+        interfaces = [cont_fakes.FAKE_VSCTL_LIST_INTERFACE_1,
+                      cont_fakes.FAKE_VSCTL_LIST_INTERFACE_2,
+                      cont_fakes.FAKE_VSCTL_LIST_INTERFACE_4,
+                      cont_fakes.FAKE_VSCTL_LIST_INTERFACE_3]
+
+        self.mock_object(self._driver.container, 'execute',
+                         mock.Mock(return_value=interfaces))
+
+        result = self._driver.get_share_server_network_info(self._context,
+                                                            fake_share_server,
+                                                            fake_id, {})
+        self.assertEqual(expected_result, result)
+
+    def test_manage_server(self):
+
+        fake_id = cont_fakes.fake_identifier()
+        fake_share_server = cont_fakes.fake_share_server()
+        fake_container_name = "manila_fake_container"
+        fake_container_old_name = "fake_old_name"
+
+        mock_get_container_name = self.mock_object(
+            self._driver, '_get_container_name',
+            mock.Mock(return_value=fake_container_name))
+        mock_get_correct_container_old_name = self.mock_object(
+            self._driver, '_get_correct_container_old_name',
+            mock.Mock(return_value=fake_container_old_name)
+        )
+        mock_rename_container = self.mock_object(self._driver.container,
+                                                 'rename_container')
+        expected_result = {'id': fake_share_server['id']}
+
+        new_identifier, new_backend_details = self._driver.manage_server(
+            self._context, fake_share_server, fake_id, {})
+
+        self.assertEqual(expected_result, new_backend_details)
+        self.assertEqual(fake_container_name, new_identifier)
+        mock_rename_container.assert_called_once_with(
+            fake_container_old_name, fake_container_name)
+        mock_get_container_name.assert_called_with(
+            fake_share_server['id']
+        )
+        mock_get_correct_container_old_name.assert_called_once_with(
+            fake_id
+        )
+
+    @ddt.data(True, False)
+    def test__get_correct_container_old_name(self, container_exists):
+
+        expected_name = 'fake-name'
+        fake_name = 'fake-name'
+
+        mock_container_exists = self.mock_object(
+            self._driver.container, 'container_exists',
+            mock.Mock(return_value=container_exists))
+
+        if not container_exists:
+            expected_name = 'manila_fake_name'
+
+        result = self._driver._get_correct_container_old_name(fake_name)
+
+        self.assertEqual(expected_name, result)
+        mock_container_exists.assert_called_once_with(
+            fake_name
+        )
