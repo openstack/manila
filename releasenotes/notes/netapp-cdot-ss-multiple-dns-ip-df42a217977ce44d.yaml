@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    The NetApp ONTAP driver security service dns_ip parameter also takes a list
+    of comma separated DNS IPs for vserver dns configuration. Allows HA setup,
+    where DNS can be down for maintenance.
