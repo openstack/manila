@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    The Neutron Port IDs and IP addresses of the network allocation when using
+    the NetApp cDOT driver with DHSS=true are made accessible for
+    administrators at share server backend_details of newly created share
+    servers. Those are corresponding to the NetApp lifs of a vserver.
