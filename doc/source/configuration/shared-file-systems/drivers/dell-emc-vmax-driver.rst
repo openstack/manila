@@ -213,6 +213,8 @@ The following parameters need to be configured in the
    vmax_share_data_pools = <Comma separated pool names>
    share_driver = manila.share.drivers.dell_emc.driver.EMCShareDriver
    vmax_ethernet_ports = <Comma separated ports list>
+   emc_ssl_cert_verify = True
+   emc_ssl_cert_path = <path to cert>
 
 - `emc_share_backend`
     The plug-in name. Set it to ``vmax`` for the VMAX driver.
@@ -235,17 +237,103 @@ The following parameters need to be configured in the
 
     Examples: pool_1, pool_*, *
 
-- `vmax_ethernet_ports`
+- `vmax_ethernet_ports (optional)`
     Comma-separated list specifying the ports (devices) of Data Mover
     that can be used for share server interface. Do not set this
     option if all ports on the Data Mover can be used.
     Wild card character is supported.
 
-    Examples: spa_eth1, spa_*, *
+    Examples: fxg-9-0, fxg-_*, *
 
+- `emc_ssl_cert_verify (optional)`
+    By default this is True, setting it to False is not recommended
+
+- `emc_ssl_cert_path (optional)`
+    The path to the This must be set if emc_ssl_cert_verify is True which is
+    the recommended configuration.  See ``SSL Support`` section for more
+    details.
 
 Restart of the ``manila-share`` service is needed for the configuration
 changes to take effect.
+
+SSL Support
+-----------
+
+#. Run the following on eNas Control Station, to display the CA certification
+   for the active CS.
+
+   .. code-block:: console
+
+      $ /nas/sbin/nas_ca_certificate -display
+
+   .. warning::
+
+      This cert will be different for the secondary CS so if there is a failover
+      a different certificate must be used.
+
+#. Copy the contents and create a file with a .pem extention on your manila host.
+
+   .. code-block:: ini
+
+      -----BEGIN CERTIFICATE-----
+      the cert contents are here
+      -----END CERTIFICATE-----
+
+#. To verify the cert by running the following and examining the output:
+
+   .. code-block:: console
+
+      $ openssl x509 -in test.pem -text -noout
+
+   .. code-block:: ini
+
+      Certificate:
+       Data:
+           Version: 3 (0x2)
+           Serial Number: xxxxxx
+       Signature Algorithm: sha1WithRSAEncryption
+           Issuer: O=VNX Certificate Authority, CN=xxx
+           Validity
+               Not Before: Feb 27 16:02:41 2019 GMT
+               Not After : Mar  4 16:02:41 2024 GMT
+           Subject: O=VNX Certificate Authority, CN=xxxxxx
+           Subject Public Key Info:
+               Public Key Algorithm: rsaEncryption
+                   Public-Key: (2048 bit)
+                   Modulus:
+                       xxxxxx
+                   Exponent: xxxxxx
+           X509v3 extensions:
+               X509v3 Subject Key Identifier:
+                   xxxxxx
+               X509v3 Authority Key Identifier:
+                   keyid:xxxxx
+                   DirName:/O=VNX Certificate Authority/CN=xxxxxx
+                   serial:xxxxx
+
+               X509v3 Basic Constraints:
+                   CA:TRUE
+               X509v3 Subject Alternative Name:
+                   DNS:xxxxxx, DNS:xxxxxx.localdomain, DNS:xxxxxxx, DNS:xxxxx
+       Signature Algorithm: sha1WithRSAEncryption
+               xxxxxx
+
+#. As it is the capath and not the cafile that is expected, copy the file to either
+   new directory or an existing directory (where other .pem files exist).
+
+#. Run the following on the directory
+
+   .. code-block:: console
+
+      $ c_rehash $PATH_TO_CERTS
+
+#. Update manila.conf with the directory where the .pem exists.
+
+   .. code-block:: ini
+
+       emc_ssl_cert_path = /path_to_certs/
+
+#. Restart manila services.
 
 
 Restrictions
