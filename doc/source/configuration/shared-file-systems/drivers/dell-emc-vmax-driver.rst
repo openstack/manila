@@ -341,6 +341,49 @@ SSL Support
 #. Restart manila services.
 
 
+Snapshot Support
+~~~~~~~~~~~~~~~~
+
+Snapshot support is disabled by default, so in order to allow shapshots for a
+share type, the ``snapshot_support`` extra spec must be set to True.
+Creating a share from a snapshot is also disabled by default so
+``create_share_from_snapshot_support`` must also be set to True if this
+functionality is required.
+
+For a new share type:
+
+.. code-block:: console
+
+   $ manila type-create --snapshot_support True \
+                        --create_share_from_snapshot_support True \
+                        ${share_type_name} True
+
+For an existing share type:
+
+.. code-block:: console
+
+   $ manila type-key ${share_type_name} \
+                     set snapshot_support=True
+   $ manila type-key ${share_type_name} \
+                     set create_share_from_snapshot_support=True
+
+To create a snapshot from a share where snapshot_support=True:
+
+.. code-block:: console
+
+   $ manila snapshot-create ${source_share_name} --name ${target_snapshot_name}
+
+To create a target share from a shapshot where create_share_from_snapshot_support=True:
+
+.. code-block:: console
+
+   $ manila create cifs 3 --name ${target_share_name} \
+                          --share-network ${share_network} \
+                          --share-type ${share_type_name} \
+                          --metadata source=snapshot \
+                          --snapshot-id ${snapshot_id}
+
+
 IPv6 support
 ~~~~~~~~~~~~
 IPv6 support for VMAX Manila driver is introduced in Rocky release. The feature is
