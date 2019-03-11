@@ -209,6 +209,7 @@ The following parameters need to be configured in the
    emc_nas_server = <IP address>
    emc_nas_password = <password>
    emc_nas_login = <user>
+   driver_handles_share_servers = True
    vmax_server_container = <Data Mover name>
    vmax_share_data_pools = <Comma separated pool names>
    share_driver = manila.share.drivers.dell_emc.driver.EMCShareDriver
@@ -225,6 +226,10 @@ The following parameters need to be configured in the
 - `emc_nas_password` and `emc_nas_login`
     The fields that are used to provide credentials to the
     VMAX system. Only local users of VMAX File is supported.
+
+- `driver_handles_share_servers`
+    VMAX only supports True, where the share driver handles the provisioning
+    and management of the share servers.
 
 - `vmax_server_container`
     Name of the Data Mover to serve the share service.
@@ -340,6 +345,8 @@ Restrictions
 ~~~~~~~~~~~~
 
 The VMAX driver has the following restrictions:
+
+-  Only ``driver_handles_share_servers`` equals True is supported.
 
 -  Only IP access type is supported for NFS.
 
