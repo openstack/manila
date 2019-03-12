@@ -603,8 +603,8 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
             share = db_utils.create_share()
             snapshot = db_utils.create_snapshot(
                 status=constants.STATUS_AVAILABLE, share_id=share['id'])
-        req = fakes.HTTPRequest.blank('/v2/fake/snapshots/%s/action' %
-                                      snapshot['id'], version=version)
+        path = '/v2/fake/snapshots/%s/action' % snapshot['id']
+        req = fakes.HTTPRequest.blank(path, script_name=path, version=version)
         return snapshot, req
 
     def _reset_status(self, ctxt, model, req, db_access_method,

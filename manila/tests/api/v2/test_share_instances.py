@@ -51,9 +51,8 @@ class ShareInstancesAPITest(test.TestCase):
         if instance is None:
             instance = db_utils.create_share(status=constants.STATUS_AVAILABLE,
                                              size='1').instance
-        req = fakes.HTTPRequest.blank(
-            '/v2/fake/share_instances/%s/action' % instance['id'],
-            version=version)
+        path = '/v2/fake/share_instances/%s/action' % instance['id']
+        req = fakes.HTTPRequest.blank(path, script_name=path, version=version)
         return instance, req
 
     def _get_request(self, uri, context=None, version="2.3"):

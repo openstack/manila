@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    When manila API is run behind a proxy webserver, the API service was
+    parsing the major API version requested incorrectly, leading to incorrect
+    responses. This behavior has now been fixed. See `launchpad bug 1815038
+    <https://bugs.launchpad.net/manila/+bug/1818081>`_ for more details.
