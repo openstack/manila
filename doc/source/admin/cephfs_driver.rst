@@ -97,7 +97,7 @@ For CephFS native shares
 - Network connectivity between your Ceph cluster's public network and the
   servers running the :term:`manila-share` service.
 - Network connectivity between your Ceph cluster's public network and guests.
-  See :ref:security_cephfs_native
+  See :ref:`security_cephfs_native`.
 
 For CephFS NFS shares
 ---------------------
