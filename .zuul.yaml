@@ -38,6 +38,7 @@
             voting: false
         - openstack-tox-pylint:
             voting: false
+            timeout: 5400
         - openstack-tox-cover:
             voting: false
     gate:
