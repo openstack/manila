@@ -303,21 +303,62 @@ class DummyDriver(driver.ShareDriver):
     @slow_me_down
     def manage_existing(self, share, driver_options):
         """Brings an existing share under Manila management."""
-        return {"size": 1, "export_locations": self._create_share(share)}
+        new_export = share['export_location']
+        old_share_id = self._get_share_id_from_export(new_export)
+        old_export = self.private_storage.get(
+            old_share_id, key='export_location')
+        if old_export.split(":/")[-1] == new_export.split(":/")[-1]:
+            result = {"size": 1, "export_locations": self._create_share(share)}
+            self.private_storage.delete(old_share_id)
+            return result
+        else:
+            msg = ("Invalid export specified, existing share %s"
+                   " could not be found" % old_share_id)
+            raise exception.ShareBackendException(msg=msg)
+
+    def _get_share_id_from_export(self, export_location):
+        values = export_location.split('share_')
+        if len(values) > 1:
+            return values[1][37:].replace("_", "-")
+        else:
+            return export_location
 
     @slow_me_down
     def unmanage(self, share):
         """Removes the specified share from Manila management."""
+        self.private_storage.update(
+            share['id'], {'export_location': share['export_location']})
 
     @slow_me_down
     def manage_existing_snapshot(self, snapshot, driver_options):
         """Brings an existing snapshot under Manila management."""
-        self._create_snapshot(snapshot)
-        return {"size": 1, "provider_location": snapshot["provider_location"]}
+        old_snap_id = self._get_snap_id_from_provider_location(
+            snapshot['provider_location'])
+        old_provider_location = self.private_storage.get(
+            old_snap_id, key='provider_location')
+        if old_provider_location == snapshot['provider_location']:
+            self._create_snapshot(snapshot)
+            self.private_storage.delete(old_snap_id)
+            return {"size": 1,
+                    "provider_location": snapshot["provider_location"]}
+        else:
+            msg = ("Invalid provider location specified, existing snapshot %s"
+                   " could not be found" % old_snap_id)
+            raise exception.ShareBackendException(msg=msg)
+
+    def _get_snap_id_from_provider_location(self, provider_location):
+        values = provider_location.split('snapshot_')
+        if len(values) > 1:
+            return values[1][37:].replace("_", "-")
+        else:
+            return provider_location
 
     @slow_me_down
     def unmanage_snapshot(self, snapshot):
         """Removes the specified snapshot from Manila management."""
+        self.private_storage.update(
+            snapshot['id'],
+            {'provider_location': snapshot['provider_location']})
 
     @slow_me_down
     def revert_to_snapshot(self, context, snapshot, share_access_rules,
