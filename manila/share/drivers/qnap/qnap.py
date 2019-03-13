@@ -657,8 +657,8 @@ class QnapShareDriver(driver.ShareDriver):
         access_level = access['access_level']
         access_to = access['access_to']
         LOG.debug('share_proto: %(share_proto)s '
-                  'access_type: %(access_type)s'
-                  'access_level: %(access_level)s'
+                  'access_type: %(access_type)s '
+                  'access_level: %(access_level)s '
                   'access_to: %(access_to)s',
                   {'share_proto': share_proto,
                    'access_type': access_type,
@@ -714,8 +714,8 @@ class QnapShareDriver(driver.ShareDriver):
         access_level = access['access_level']
         access_to = access['access_to']
         LOG.debug('share_proto: %(share_proto)s '
-                  'access_type: %(access_type)s'
-                  'access_level: %(access_level)s'
+                  'access_type: %(access_type)s '
+                  'access_level: %(access_level)s '
                   'access_to: %(access_to)s',
                   {'share_proto': share_proto,
                    'access_type': access_type,
