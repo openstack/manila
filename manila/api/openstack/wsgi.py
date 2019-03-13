@@ -54,6 +54,7 @@ API_VERSION_REQUEST_HEADER = 'X-OpenStack-Manila-API-Version'
 EXPERIMENTAL_API_REQUEST_HEADER = 'X-OpenStack-Manila-API-Experimental'
 
 V1_SCRIPT_NAME = '/v1'
+V2_SCRIPT_NAME = '/v2'
 
 
 class Request(webob.Request):
@@ -219,7 +220,9 @@ class Request(webob.Request):
         Microversions starts with /v2, so if a client sends a /v1 URL, then
         ignore the headers and request 1.0 APIs.
         """
-        if not self.script_name:
+        if not self.script_name or not (V1_SCRIPT_NAME in self.script_name or
+                                        V2_SCRIPT_NAME in self.script_name):
+            # The request is on the base URL without a major version specified
             self.api_version_request = api_version.APIVersionRequest()
         elif V1_SCRIPT_NAME in self.script_name:
             self.api_version_request = api_version.APIVersionRequest('1.0')
