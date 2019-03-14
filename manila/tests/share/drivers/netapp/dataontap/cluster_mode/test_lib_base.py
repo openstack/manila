@@ -2921,13 +2921,20 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=mock.Mock()))
         self.mock_object(self.library, '_create_export',
                          mock.Mock(return_value='fake_export_location'))
+        self.mock_object(self.library, '_unmount_orig_active_replica')
         self.mock_object(self.library, '_handle_qos_on_replication_change')
+
+        mock_dm_session = mock.Mock()
+        self.mock_object(data_motion, "DataMotionSession",
+                         mock.Mock(return_value=mock_dm_session))
+        self.mock_object(mock_dm_session, 'get_vserver_from_share',
+                         mock.Mock(return_value=fake.VSERVER1))
 
         replicas = self.library.promote_replica(
             None, [self.fake_replica, self.fake_replica_2],
             self.fake_replica_2, [], share_server=None)
 
-        self.mock_dm_session.change_snapmirror_source.assert_called_once_with(
+        mock_dm_session.change_snapmirror_source.assert_called_once_with(
             self.fake_replica, self.fake_replica, self.fake_replica_2,
             mock.ANY
         )
@@ -2944,6 +2951,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          actual_replica_2['export_locations'])
         self.assertEqual(constants.STATUS_ACTIVE,
                          actual_replica_2['access_rules_status'])
+        self.library._unmount_orig_active_replica.assert_called_once_with(
+            self.fake_replica, fake.VSERVER1)
         self.library._handle_qos_on_replication_change.assert_called_once()
 
     def test_promote_replica_destination_unreachable(self):
@@ -2954,6 +2963,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_get_helper',
                          mock.Mock(return_value=mock.Mock()))
+        self.mock_object(self.library, '_unmount_orig_active_replica')
         self.mock_object(self.library, '_handle_qos_on_replication_change')
 
         self.mock_object(self.library, '_create_export',
@@ -2973,6 +2983,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertEqual(constants.STATUS_ERROR,
                          actual_replica['status'])
         self.assertFalse(
+            self.library._unmount_orig_active_replica.called)
+        self.assertFalse(
             self.library._handle_qos_on_replication_change.called)
 
     def test_promote_replica_more_than_two_replicas(self):
@@ -2983,6 +2995,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  mock.Mock())))
+        self.mock_object(self.library, '_unmount_orig_active_replica')
         self.mock_object(self.library, '_handle_qos_on_replication_change')
         self.mock_object(self.library,
                          '_get_helper',
@@ -2990,12 +3003,17 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.mock_object(self.library, '_create_export',
                          mock.Mock(return_value='fake_export_location'))
+        mock_dm_session = mock.Mock()
+        self.mock_object(data_motion, "DataMotionSession",
+                         mock.Mock(return_value=mock_dm_session))
+        self.mock_object(mock_dm_session, 'get_vserver_from_share',
+                         mock.Mock(return_value=fake.VSERVER1))
 
         replicas = self.library.promote_replica(
             None, [self.fake_replica, self.fake_replica_2, fake_replica_3],
             self.fake_replica_2, [], share_server=None)
 
-        self.mock_dm_session.change_snapmirror_source.assert_has_calls([
+        mock_dm_session.change_snapmirror_source.assert_has_calls([
             mock.call(fake_replica_3, self.fake_replica, self.fake_replica_2,
                       mock.ANY),
             mock.call(self.fake_replica, self.fake_replica,
@@ -3017,6 +3035,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             lambda x: x['id'] == fake_replica_3['id'], replicas))[0]
         self.assertEqual(constants.REPLICA_STATE_OUT_OF_SYNC,
                          actual_replica_3['replica_state'])
+        self.library._unmount_orig_active_replica.assert_called_once_with(
+            self.fake_replica, fake.VSERVER1)
         self.library._handle_qos_on_replication_change.assert_called_once()
 
     def test_promote_replica_with_access_rules(self):
@@ -3024,6 +3044,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  mock.Mock())))
+        self.mock_object(self.library, '_unmount_orig_active_replica')
         self.mock_object(self.library, '_handle_qos_on_replication_change')
         mock_helper = mock.Mock()
         self.mock_object(self.library,
@@ -3032,11 +3053,17 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_create_export',
                          mock.Mock(return_value='fake_export_location'))
 
+        mock_dm_session = mock.Mock()
+        self.mock_object(data_motion, "DataMotionSession",
+                         mock.Mock(return_value=mock_dm_session))
+        self.mock_object(mock_dm_session, 'get_vserver_from_share',
+                         mock.Mock(return_value=fake.VSERVER1))
+
         replicas = self.library.promote_replica(
             None, [self.fake_replica, self.fake_replica_2],
             self.fake_replica_2, [fake.SHARE_ACCESS], share_server=None)
 
-        self.mock_dm_session.change_snapmirror_source.assert_has_calls([
+        mock_dm_session.change_snapmirror_source.assert_has_calls([
             mock.call(self.fake_replica, self.fake_replica,
                       self.fake_replica_2, mock.ANY)
         ], any_order=True)
@@ -3046,7 +3073,19 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_helper.update_access.assert_called_once_with(self.fake_replica_2,
                                                           share_name,
                                                           [fake.SHARE_ACCESS])
+        self.library._unmount_orig_active_replica.assert_called_once_with(
+            self.fake_replica, fake.VSERVER1)
         self.library._handle_qos_on_replication_change.assert_called_once()
+
+    def test_unmount_orig_active_replica(self):
+        self.mock_object(share_utils, 'extract_host', mock.Mock(
+            return_value=fake.MANILA_HOST_NAME))
+        self.mock_object(data_motion, 'get_client_for_backend')
+        self.mock_object(self.library, '_get_backend_share_name', mock.Mock(
+            return_value=fake.SHARE_NAME))
+
+        result = self.library._unmount_orig_active_replica(fake.SHARE)
+        self.assertIsNone(result)
 
     @ddt.data({'extra_specs': {'netapp:snapshot_policy': 'none'},
                'have_cluster_creds': True},

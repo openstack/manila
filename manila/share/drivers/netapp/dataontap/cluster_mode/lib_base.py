@@ -1618,12 +1618,37 @@ class NetAppCmodeFileStorageLibrary(object):
                                                      replica_list)
                 new_replica_list.append(r)
 
+        # Unmount the original active replica.
+        orig_active_vserver = dm_session.get_vserver_from_share(
+            orig_active_replica)
+        self._unmount_orig_active_replica(orig_active_replica,
+                                          orig_active_vserver)
+
         self._handle_qos_on_replication_change(dm_session,
                                                new_active_replica,
                                                orig_active_replica,
                                                share_server=share_server)
 
         return new_replica_list
+
+    def _unmount_orig_active_replica(self, orig_active_replica,
+                                     orig_active_vserver=None):
+        orig_active_replica_backend = (
+            share_utils.extract_host(orig_active_replica['host'],
+                                     level='backend_name'))
+        orig_active_vserver_client = data_motion.get_client_for_backend(
+            orig_active_replica_backend,
+            vserver_name=orig_active_vserver)
+        share_name = self._get_backend_share_name(
+            orig_active_replica['id'])
+        try:
+            orig_active_vserver_client.unmount_volume(share_name,
+                                                      force=True)
+            LOG.info("Unmount of the original active replica %s successful.",
+                     orig_active_replica['id'])
+        except exception.StorageCommunicationException:
+            LOG.exception("Could not unmount the original active replica %s.",
+                          orig_active_replica['id'])
 
     def _handle_qos_on_replication_change(self, dm_session, new_active_replica,
                                           orig_active_replica,
