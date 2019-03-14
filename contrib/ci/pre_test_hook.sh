@@ -93,6 +93,7 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     # Run dummy driver CI job using standalone approach for running
     # manila API service just because we need to test this approach too,
     # that is very useful for development needs.
+    echo "MANILA_USE_UWSGI=False" >> $localconf
     echo "MANILA_USE_MOD_WSGI=False" >> $localconf
 
     echo "SHARE_DRIVER=$driver_path" >> $localconf
