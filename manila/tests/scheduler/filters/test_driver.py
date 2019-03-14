@@ -82,24 +82,6 @@ class HostFiltersTestCase(test.TestCase):
 
         self.assertTrue(self.filter.host_passes(host1, filter_properties))
 
-    def test_extra_specs_wrong_backend(self):
-        host1 = fakes.FakeHostState(
-            'host1', {
-                'capabilities': {
-                    'filter_function': '1 == 1',
-                }
-            })
-
-        filter_properties = {
-            'share_type': {
-                'extra_specs': {
-                    'share_backend_name': 'foo',
-                }
-            }
-        }
-
-        self.assertFalse(self.filter.host_passes(host1, filter_properties))
-
     def test_function_extra_spec_replacement(self):
         host1 = fakes.FakeHostState(
             'host1', {
