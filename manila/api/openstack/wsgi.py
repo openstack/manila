@@ -20,6 +20,7 @@ import time
 
 from oslo_log import log
 from oslo_serialization import jsonutils
+from oslo_utils import encodeutils
 from oslo_utils import strutils
 import six
 from six.moves import http_client
@@ -781,15 +782,21 @@ class Resource(wsgi.Application):
             msg = _("Malformed request body")
             return Fault(webob.exc.HTTPBadRequest(explanation=msg))
 
+        try:
+            method_name = meth.__qualname__
+        except AttributeError:
+            method_name = 'Controller: %s Method: %s' % (
+                six.text_type(self.controller), meth.__name__)
+
         if body:
+            decoded_body = encodeutils.safe_decode(body, errors='ignore')
             msg = ("Action: '%(action)s', calling method: %(meth)s, body: "
                    "%(body)s") % {'action': action,
-                                  'body': six.text_type(body),
-                                  'meth': six.text_type(meth)}
+                                  'body': decoded_body,
+                                  'meth': method_name}
             LOG.debug(strutils.mask_password(msg))
         else:
-            LOG.debug("Calling method '%(meth)s'",
-                      {'meth': six.text_type(meth)})
+            LOG.debug("Calling method '%(meth)s'", {'meth': method_name})
 
         # Now, deserialize the request body...
         try:
@@ -855,7 +862,7 @@ class Resource(wsgi.Application):
 
         try:
             msg_dict = dict(url=request.url, status=response.status_int)
-            msg = _("%(url)s returned with HTTP %(status)d") % msg_dict
+            msg = _("%(url)s returned with HTTP %(status)s") % msg_dict
         except AttributeError as e:
             msg_dict = dict(url=request.url, e=e)
             msg = _("%(url)s returned a fault: %(e)s") % msg_dict
