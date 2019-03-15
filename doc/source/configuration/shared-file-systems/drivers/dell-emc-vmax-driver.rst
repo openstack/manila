@@ -513,6 +513,37 @@ The VMAX driver has the following restrictions:
    site <http://support.emc.com>`_ for the limitations and configure the
    quotas accordingly.
 
+
+Other Remarks
+~~~~~~~~~~~~~
+
+-  eNAS ``nas_quotas`` should not be confused with OpenStack manila quotas.
+   The former edits quotas for mounted file systems, and displays a
+   listing of quotas and disk usage at the file system level (by the user,
+   group, or tree), or at the quota-tree level (by the user or group).
+   ``nas_quotas`` also turns quotas on and off, and clears quotas records
+   for a file system, quota tree, or a Data Mover. Refer to VMAX eNAS CLI
+   Reference guide on `EMC support site <http://support.emc.com>`_ for
+   additional information.
+   ``OpenStack manila quotas`` delimit the number of shares, snapshots etc.
+   a user can create.
+
+   .. code-block:: console
+
+      $ manila quota-show --tenant <project_id> --user <user_id>
+      +-----------------------+-------+
+      | Property              | Value |
+      +-----------------------+-------+
+      | share_groups          | 50    |
+      | gigabytes             | 1000  |
+      | snapshot_gigabytes    | 1000  |
+      | share_group_snapshots | 50    |
+      | snapshots             | 50    |
+      | shares                | 50    |
+      | share_networks        | 10    |
+      +-----------------------+-------+
+
+
 Driver options
 ~~~~~~~~~~~~~~
 
