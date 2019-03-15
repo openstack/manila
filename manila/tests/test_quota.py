@@ -440,14 +440,14 @@ class DbQuotaDriverTestCase(test.TestCase):
 
     def test_destroy_all_by_project_and_share_type(self):
         mock_destroy_all = self.mock_object(
-            quota.db, 'quota_destroy_all_by_project_and_share_type')
+            quota.db, 'quota_destroy_all_by_share_type')
 
         result = self.driver.destroy_all_by_project_and_share_type(
             self.ctxt, self.project_id, self.share_type_id)
 
         self.assertIsNone(result)
         mock_destroy_all.assert_called_once_with(
-            self.ctxt, self.project_id, self.share_type_id)
+            self.ctxt, self.share_type_id, project_id=self.project_id)
 
     def test_expire(self):
         self.mock_object(quota.db, 'reservation_expire')

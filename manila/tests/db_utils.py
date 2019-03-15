@@ -234,6 +234,18 @@ def create_share_type(**kwargs):
     return _create_db_row(db.share_type_create, share_type, kwargs)
 
 
+def create_share_group_type(**kwargs):
+    """Create a share group type object"""
+
+    share_group_type = {
+        'name': 'fake_group_type',
+        'is_public': True,
+    }
+
+    return _create_db_row(db.share_group_type_create, share_group_type,
+                          kwargs)
+
+
 def create_share_network(**kwargs):
     """Create a share network object."""
     net = {
