@@ -548,9 +548,10 @@ class ShareGroupSnapshotAPITest(test.TestCase):
         if share_group_snapshot is None:
             share_group_snapshot = db_utils.create_share_group_snapshot(
                 'fake_id', status=constants.STATUS_AVAILABLE)
-        req = fakes.HTTPRequest.blank(
-            '/v2/fake/share-group-snapshots/%s/action' %
-            share_group_snapshot['id'], version=version)
+
+        path = ('/v2/fake/share-group-snapshots/%s/action' %
+                share_group_snapshot['id'])
+        req = fakes.HTTPRequest.blank(path, script_name=path, version=version)
         req.headers[wsgi.API_VERSION_REQUEST_HEADER] = version
         req.headers[wsgi.EXPERIMENTAL_API_REQUEST_HEADER] = 'True'
         return share_group_snapshot, req
