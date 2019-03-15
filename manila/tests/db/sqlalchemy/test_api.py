@@ -3082,12 +3082,168 @@ class PurgeDeletedTest(test.TestCase):
         self.assertEqual(0, s_row + type_row)
 
 
+@ddt.ddt
 class ShareTypeAPITestCase(test.TestCase):
 
     def setUp(self):
         super(ShareTypeAPITestCase, self).setUp()
         self.ctxt = context.RequestContext(
             user_id='user_id', project_id='project_id', is_admin=True)
+
+    @ddt.data({'used_by_shares': True, 'used_by_groups': False},
+              {'used_by_shares': False, 'used_by_groups': True},
+              {'used_by_shares': True, 'used_by_groups': True})
+    @ddt.unpack
+    def test_share_type_destroy_in_use(self, used_by_shares,
+                                       used_by_groups):
+        share_type_1 = db_utils.create_share_type(
+            name='orange', extra_specs={'somekey': 'someval'})
+        share_type_2 = db_utils.create_share_type(name='regalia')
+        if used_by_shares:
+            share_1 = db_utils.create_share(share_type_id=share_type_1['id'])
+            db_utils.create_share(share_type_id=share_type_2['id'])
+        if used_by_groups:
+            group_type_1 = db_utils.create_share_group_type(
+                name='crimson', share_types=[share_type_1['id']])
+            group_type_2 = db_utils.create_share_group_type(
+                name='tide', share_types=[share_type_2['id']])
+            share_group_1 = db_utils.create_share_group(
+                share_group_type_id=group_type_1['id'],
+                share_types=[share_type_1['id']])
+            db_utils.create_share_group(
+                share_group_type_id=group_type_2['id'],
+                share_types=[share_type_2['id']])
+
+        self.assertRaises(exception.ShareTypeInUse,
+                          db_api.share_type_destroy,
+                          self.ctxt, share_type_1['id'])
+        self.assertRaises(exception.ShareTypeInUse,
+                          db_api.share_type_destroy,
+                          self.ctxt, share_type_2['id'])
+
+        # Let's cleanup share_type_1 and verify it is gone
+        if used_by_shares:
+            db_api.share_instance_delete(self.ctxt, share_1.instance.id)
+        if used_by_groups:
+            db_api.share_group_destroy(self.ctxt, share_group_1['id'])
+            db_api.share_group_type_destroy(self.ctxt,
+                                            group_type_1['id'])
+
+        self.assertIsNone(db_api.share_type_destroy(
+            self.ctxt, share_type_1['id']))
+        self.assertDictMatch(
+            {}, db_api.share_type_extra_specs_get(
+                self.ctxt, share_type_1['id']))
+        self.assertRaises(exception.ShareTypeNotFound,
+                          db_api.share_type_get,
+                          self.ctxt, share_type_1['id'])
+
+        # share_type_2 must still be around
+        self.assertEqual(
+            share_type_2['id'],
+            db_api.share_type_get(self.ctxt, share_type_2['id'])['id'])
+
+    @ddt.data({'usages': False, 'reservations': False},
+              {'usages': False, 'reservations': True},
+              {'usages': True, 'reservations': False})
+    @ddt.unpack
+    def test_share_type_destroy_quotas_and_reservations(self, usages,
+                                                        reservations):
+        share_type = db_utils.create_share_type(name='clemsontigers')
+        shares_quota = db_api.quota_create(
+            self.ctxt, "fake-project-id", 'shares', 10,
+            share_type_id=share_type['id'])
+        snapshots_quota = db_api.quota_create(
+            self.ctxt, "fake-project-id", 'snapshots', 30,
+            share_type_id=share_type['id'])
+
+        if reservations:
+            resources = {
+                'shares': quota.ReservableResource('shares', '_sync_shares'),
+                'snapshots': quota.ReservableResource(
+                    'snapshots', '_sync_snapshots'),
+            }
+            project_quotas = {
+                'shares': shares_quota.hard_limit,
+                'snapshots': snapshots_quota.hard_limit,
+            }
+            user_quotas = {
+                'shares': shares_quota.hard_limit,
+                'snapshots': snapshots_quota.hard_limit,
+            }
+            deltas = {'shares': 1, 'snapshots': 3}
+            expire = timeutils.utcnow() + datetime.timedelta(seconds=86400)
+            reservation_uuids = db_api.quota_reserve(
+                self.ctxt, resources, project_quotas, user_quotas,
+                project_quotas, deltas, expire, False, 30,
+                project_id='fake-project-id', share_type_id=share_type['id'])
+
+            db_session = db_api.get_session()
+            q_reservations = db_api._quota_reservations_query(
+                db_session, self.ctxt, reservation_uuids).all()
+            # There should be 2 "user" reservations and 2 "share-type"
+            # quota reservations
+            self.assertEqual(4, len(q_reservations))
+            q_share_type_reservations = [qr for qr in q_reservations
+                                         if qr['share_type_id'] is not None]
+            # There should be exactly two "share type" quota reservations
+            self.assertEqual(2, len(q_share_type_reservations))
+            for q_reservation in q_share_type_reservations:
+                self.assertEqual(q_reservation['share_type_id'],
+                                 share_type['id'])
+
+        if usages:
+            db_api.quota_usage_create(self.ctxt, 'fake-project-id',
+                                      'fake-user-id', 'shares', 3, 2, False,
+                                      share_type_id=share_type['id'])
+            db_api.quota_usage_create(self.ctxt, 'fake-project-id',
+                                      'fake-user-id', 'snapshots', 2, 2, False,
+                                      share_type_id=share_type['id'])
+            q_usages = db_api.quota_usage_get_all_by_project_and_share_type(
+                self.ctxt, 'fake-project-id', share_type['id'])
+            self.assertEqual(3, q_usages['shares']['in_use'])
+            self.assertEqual(2, q_usages['shares']['reserved'])
+            self.assertEqual(2, q_usages['snapshots']['in_use'])
+            self.assertEqual(2, q_usages['snapshots']['reserved'])
+
+        # Validate that quotas exist
+        share_type_quotas = db_api.quota_get_all_by_project_and_share_type(
+            self.ctxt,  'fake-project-id', share_type['id'])
+        expected_quotas = {
+            'project_id': 'fake-project-id',
+            'share_type_id': share_type['id'],
+            'shares': 10,
+            'snapshots': 30,
+        }
+        self.assertDictMatch(expected_quotas, share_type_quotas)
+
+        db_api.share_type_destroy(self.ctxt, share_type['id'])
+
+        self.assertRaises(exception.ShareTypeNotFound,
+                          db_api.share_type_get,
+                          self.ctxt, share_type['id'])
+        # Quotas must be gone
+        share_type_quotas = db_api.quota_get_all_by_project_and_share_type(
+            self.ctxt, 'fake-project-id', share_type['id'])
+        self.assertEqual({'project_id': 'fake-project-id',
+                          'share_type_id': share_type['id']},
+                         share_type_quotas)
+
+        # Check usages and reservations
+        if usages:
+            q_usages = db_api.quota_usage_get_all_by_project_and_share_type(
+                self.ctxt, 'fake-project-id', share_type['id'])
+            expected_q_usages = {'project_id': 'fake-project-id',
+                                 'share_type_id': share_type['id']}
+            self.assertDictMatch(expected_q_usages, q_usages)
+        if reservations:
+            q_reservations = db_api._quota_reservations_query(
+                db_session, self.ctxt, reservation_uuids).all()
+            # just "user" quota reservations should be left, since we didn't
+            # clean them up.
+            self.assertEqual(2, len(q_reservations))
+            for q_reservation in q_reservations:
+                self.assertIsNone(q_reservation['share_type_id'])
 
     def test_share_type_get_by_name_or_id_found_by_id(self):
         share_type = db_utils.create_share_type()

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Share type quotas, usages and reservations will now be correctly cleaned
+    up if a share type has been deleted. See `launchpad bug #1811680
+    <https://bugs.launchpad.net/manila/+bug/1811680>`_ for details regarding
+    the bug that prevented this cleanup prior.
