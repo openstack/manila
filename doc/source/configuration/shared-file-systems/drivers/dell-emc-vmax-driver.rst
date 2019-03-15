@@ -66,37 +66,45 @@ using the Data Movers on the array.
 Pre-configurations on VMAX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#. Enable Unicode on Data Mover.
+#. Configure a storage pool
 
-   The VMAX driver requires that the Unicode is enabled on Data Mover.
+   There is a one to one relationship between a storage pool in embedded NAS
+   to a storage group on the VMAX. The best way to provision
+   storage for file is from the Unisphere for VMAX UI rather than eNAS UI.
+   Go to :menuselection:`{array} > SYSTEM > FIle` and under
+   :menuselection:`Actions` click :menuselection:`PROVISION STORAGE FOR FILE`
 
-   .. warning::
+   .. note::
 
-      After enabling Unicode, you cannot disable it. If there are some
-      file systems created before Unicode is enabled on the VMAX,
-      consult the storage administrator before enabling Unicode.
+      When creating a new storage group you have the ability to assign a
+      service level e.g. Diamond and disable compression/deduplication
+      which is enabled by default.
 
-   To check the Unicode status on Data Mover, use the following VMAX eNAS File
-   commands on the VMAX control station:
+   To pick up the newly created storage pool in the eNAS UI,
+   go to :menuselection:`{Control Station} > Storage > Storage Configuration > Storage Pools`
+   and under :menuselection:`File Storage` click :menuselection:`Rescan Storage Systems`
 
-   .. code-block:: console
-
-      server_cifs <MOVER_NAME> | head
-      # MOVER_NAME = <name of the Data Mover>
-
-   Check the value of I18N mode field. UNICODE mode is shown as
-   ``I18N mode = UNICODE``.
-
-   To enable the Unicode for Data Mover, use the following command:
+   or on the command line:
 
    .. code-block:: console
 
-      uc_config -on -mover <MOVER_NAME>
-      # MOVER_NAME = <name of the Data Mover>
+      $ nas_diskmark -mark -all -discovery y -monitor y
 
-   Refer to the document Using International Character Sets on VMAX for
-   File on `EMC support site <http://support.emc.com>`_ for more
-   information.
+   The new storage pool should now appear in the eNAS UI
+
+#. Make sure you have the appropriate licenses
+
+   .. code-block:: console
+
+      $ nas_license -l
+      key                 status    value
+      site_key            online    xx xx xx xx
+      nfs                 online
+      cifs                online
+      snapsure            online
+      replicatorV2        online
+      filelevelretention  online
+
 
 #. Enable CIFS service on Data Mover.
 
@@ -107,9 +115,9 @@ Pre-configurations on VMAX
 
    .. code-block:: console
 
-      server_setup <MOVER_NAME> -Protocol cifs -option start [=<n>]
-      # MOVER_NAME = <name of the Data Mover>
-      # n = <number of threads for CIFS users>
+      $ server_setup <movername> -Protocol cifs -option start [=<n>]
+        # movername = name of the Data Mover
+        # n = number of threads for CIFS users
 
    .. note::
 
@@ -121,8 +129,8 @@ Pre-configurations on VMAX
 
    .. code-block:: console
 
-      server_cifs <MOVER_NAME> | head
-      # MOVER_NAME = <name of the Data Mover>
+      $ server_cifs <movername> | head
+        # movername = name of the Data Mover
 
    The command output will show the number of CIFS threads started.
 
@@ -137,7 +145,19 @@ Pre-configurations on VMAX
    a share with this security service. There is a limitation that the
    time of the domains used by security-services, even for different
    tenants and different share networks, should be in sync. Time
-   difference should be less than 10 minutes.
+   difference should be less than 5 minutes.
+
+   .. note::
+
+      If there is a clock skew then you may see the following error
+      "The local machine and the remote machine are not synchronized.
+      Kerberos protocol requires a synchronization of both participants
+      within the same 5 minutes". To fix this error you must make sure
+      the times of the eNas controller host and the Domain Controller
+      or within 5 minutes of each other. You must be root to change the
+      date of the eNas control station.  Check also that your time zones
+      coincide.
+
 
    We recommend setting the NTP server to the same public NTP
    server on both the Data Mover and domains used in security services
@@ -147,16 +167,16 @@ Pre-configurations on VMAX
 
    .. code-block:: console
 
-      server_date <MOVER_NAME>
-      # MOVER_NAME = <name of the Data Mover>
+      $ server_date <movername>
+        # movername = name of the Data Mover
 
    Set the NTP server for Data Mover with the following command:
 
    .. code-block:: console
 
-      server_date <MOVER_NAME> timesvc start ntp <host> [<host> ...]
-      # MOVER_NAME = <name of the Data Mover>
-      # host = <IP address of the time server host>
+      $ server_date <movername> timesvc start ntp <host> [<host> ...]
+        # movername = name of the Data Mover
+        # host = IP address of the time server host
 
    .. note::
 
@@ -174,16 +194,16 @@ Pre-configurations on VMAX
 
    .. code-block:: console
 
-      server_usermapper <movername>
-      # movername = <name of the Data Mover>
+      $ server_usermapper <movername>
+        # movername = name of the Data Mover
 
    If usermapper does not start, use the following command
    to start the usermapper:
 
    .. code-block:: console
 
-      server_usermapper <movername> -enable
-      # movername = <name of the Data Mover>
+      $ server_usermapper <movername> -enable
+        # movername = name of the Data Mover
 
    For a multiple protocol environment, refer to Configuring VMAX eNAS User
    Mapping on `EMC support site <http://support.emc.com>`_ for
@@ -194,8 +214,35 @@ Pre-configurations on VMAX
    Find the network devices (physical port on NIC) of the Data Mover that
    has access to the share network.
 
-   To check the device list, go
-   to :menuselection:`Unisphere > Settings > Network > Device`.
+   To check the device list on the eNAS UI go
+   to :menuselection:`{Control Station} > Settings > Network > Devices`.
+
+   or on the command line:
+
+   .. code-block:: console
+
+      $ server_sysconfig server_2 -pci
+      server_2 : PCI DEVICES:
+
+      On Board:
+        VendorID=0x1120 DeviceID=0x1B00  Controller
+          0:  scsi-0  IRQ: 32
+
+          0:  scsi-16  IRQ: 33
+
+          0:  scsi-32  IRQ: 34
+
+          0:  scsi-48  IRQ: 35
+
+        Broadcom 10 Gigabit Ethernet Controller
+          0:  fxg-3-0  IRQ: 36
+          speed=10000 duplex=full txflowctl=disable rxflowctl=disable
+          Link: Up
+
+           0:  fxg-3-1  IRQ: 38
+          speed=10000 duplex=full txflowctl=disable rxflowctl=disable
+          Link: Down
+
 
 Back-end configurations
 ~~~~~~~~~~~~~~~~~~~~~~~
