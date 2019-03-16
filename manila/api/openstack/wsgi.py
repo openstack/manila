@@ -866,7 +866,7 @@ class Resource(wsgi.Application):
             for hdr, val in response.headers.items():
                 val = utils.convert_str(val)
                 response.headers[hdr] = val
-
+            _set_request_id_header(request, response.headers)
             if not request.api_version_request.is_null():
                 response.headers[API_VERSION_REQUEST_HEADER] = (
                     request.api_version_request.get_string())
