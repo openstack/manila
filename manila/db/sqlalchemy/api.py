@@ -1206,34 +1206,42 @@ def quota_destroy_all_by_project_and_user(context, project_id, user_id):
 
 
 @require_admin_context
-def quota_destroy_all_by_project_and_share_type(context, project_id,
-                                                share_type_id):
+def quota_destroy_all_by_share_type(context, share_type_id, project_id=None):
+    """Soft deletes all quotas, usages and reservations.
+
+    :param context: request context for queries, updates and logging
+    :param share_type_id: ID of the share type to filter the quotas, usages
+        and reservations under.
+    :param project_id: ID of the project to filter the quotas, usages and
+        reservations under. If not provided, share type quotas for all
+        projects will be acted upon.
+    """
     session = get_session()
     with session.begin():
-        model_query(
+        share_type_quotas = model_query(
             context, models.ProjectShareTypeQuota, session=session,
             read_deleted="no",
-        ).filter_by(
-            project_id=project_id,
-        ).filter_by(
-            share_type_id=share_type_id,
-        ).soft_delete(synchronize_session=False)
+        ).filter_by(share_type_id=share_type_id)
 
-        model_query(
+        share_type_quota_usages = model_query(
             context, models.QuotaUsage, session=session, read_deleted="no",
-        ).filter_by(
-            project_id=project_id,
-        ).filter_by(
-            share_type_id=share_type_id,
-        ).soft_delete(synchronize_session=False)
+        ).filter_by(share_type_id=share_type_id)
 
-        model_query(
+        share_type_quota_reservations = model_query(
             context, models.Reservation, session=session, read_deleted="no",
-        ).filter_by(
-            project_id=project_id,
-        ).filter_by(
-            share_type_id=share_type_id,
-        ).soft_delete(synchronize_session=False)
+        ).filter_by(share_type_id=share_type_id)
+
+        if project_id is not None:
+            share_type_quotas = share_type_quotas.filter_by(
+                project_id=project_id)
+            share_type_quota_usages = share_type_quota_usages.filter_by(
+                project_id=project_id)
+            share_type_quota_reservations = (
+                share_type_quota_reservations.filter_by(project_id=project_id))
+
+        share_type_quotas.soft_delete(synchronize_session=False)
+        share_type_quota_usages.soft_delete(synchronize_session=False)
+        share_type_quota_reservations.soft_delete(synchronize_session=False)
 
 
 @require_admin_context
@@ -4069,6 +4077,9 @@ def share_type_destroy(context, id):
             filter_by(share_type_id=id).soft_delete())
         (model_query(context, models.ShareTypes, session=session).
             filter_by(id=id).soft_delete())
+
+    # Destroy any quotas, usages and reservations for the share type:
+    quota_destroy_all_by_share_type(context, id)
 
 
 def _share_type_access_query(context, session=None):
