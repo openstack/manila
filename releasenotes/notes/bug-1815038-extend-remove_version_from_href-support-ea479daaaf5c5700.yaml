@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Launchpad bug 1815038 <https://bugs.launchpad.net/manila/+bug/1815038>`_
+    has been fixed and now we correctly parse the base URL from manila's
+    endpoint url, accounting for proxy URLs.

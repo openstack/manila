@@ -139,20 +139,25 @@ def limited(items, request, max_limit=CONF.osapi_max_limit):
 def remove_version_from_href(href):
     """Removes the first api version from the href.
 
-    Given: 'http://www.manila.com/v1.1/123'
-    Returns: 'http://www.manila.com/123'
+    Given: 'http://manila.example.com/v1.1/123'
+    Returns: 'http://manila.example.com/123'
 
     Given: 'http://www.manila.com/v1.1'
     Returns: 'http://www.manila.com'
 
+    Given: 'http://manila.example.com/share/v1.1/123'
+    Returns: 'http://manila.example.com/share/123'
+
     """
     parsed_url = parse.urlsplit(href)
-    url_parts = parsed_url.path.split('/', 2)
+    url_parts = parsed_url.path.split('/')
 
     # NOTE: this should match vX.X or vX
     expression = re.compile(r'^v([0-9]+|[0-9]+\.[0-9]+)(/.*|$)')
-    if expression.match(url_parts[1]):
-        del url_parts[1]
+    for x in range(len(url_parts)):
+        if expression.match(url_parts[x]):
+            del url_parts[x]
+            break
 
     new_path = '/'.join(url_parts)
 
