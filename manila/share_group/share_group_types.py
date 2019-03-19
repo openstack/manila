@@ -120,7 +120,7 @@ def get_by_name_or_id(context, share_group_type=None):
         share_group_type_ref = get_default(context)
         if not share_group_type_ref:
             msg = _("Default share group type not found.")
-            raise exception.ShareGroupTypeNotFound(reason=msg)
+            raise exception.ShareGroupTypeNotFound(msg)
         return share_group_type_ref
 
     if uuidutils.is_uuid_like(share_group_type):
