@@ -33,6 +33,7 @@ from manila.i18n import _
 from manila import policy
 from manila import quota
 from manila.share import rpcapi as share_rpcapi
+from manila import utils
 
 RESOURCE_NAME = 'share_network'
 RESOURCES_NAME = 'share_networks'
@@ -119,7 +120,7 @@ class ShareNetworkController(wsgi.Controller):
         elif context.is_admin and 'project_id' in search_opts:
             networks = db_api.share_network_get_all_by_project(
                 context, search_opts['project_id'])
-        elif context.is_admin and 'all_tenants' in search_opts:
+        elif context.is_admin and utils.is_all_tenants(search_opts):
             networks = db_api.share_network_get_all(context)
         else:
             networks = db_api.share_network_get_all_by_project(
