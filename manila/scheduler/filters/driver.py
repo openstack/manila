@@ -50,23 +50,9 @@ class DriverFilter(base_host.BaseHostFilter):
            Returns a tuple in the format (filter_passing, filter_invalid).
            Both values are booleans.
         """
-        host_stats = stats['host_stats']
-        extra_specs = stats['extra_specs']
-
-        # Check that the share types match
-        if extra_specs is None or 'share_backend_name' not in extra_specs:
-            LOG.warning("No 'share_backend_name' key in extra_specs. "
-                        "Skipping share backend name check.")
-        elif (extra_specs['share_backend_name'] !=
-                host_stats['share_backend_name']):
-            LOG.warning("Share backend names do not match: '%(target)s'"
-                        "vs '%(current)s' :: Skipping.",
-                        {'target': extra_specs['share_backend_name'],
-                         'current': host_stats['share_backend_name']})
-            return False
 
         if stats['filter_function'] is None:
-            LOG.warning("Filter function not set :: passing host.")
+            LOG.debug("Filter function not set :: passing host.")
             return True
 
         try:
