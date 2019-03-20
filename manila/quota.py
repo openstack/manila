@@ -581,8 +581,8 @@ class DbQuotaDriver(object):
         :param share_type_id: The UUID of the share type.
         """
 
-        db.quota_destroy_all_by_project_and_share_type(
-            context, project_id, share_type_id)
+        db.quota_destroy_all_by_share_type(context, share_type_id,
+                                           project_id=project_id)
 
     def expire(self, context):
         """Expire reservations.

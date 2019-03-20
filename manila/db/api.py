@@ -280,11 +280,10 @@ def quota_destroy_all_by_project_and_user(context, project_id, user_id):
                                                       project_id, user_id)
 
 
-def quota_destroy_all_by_project_and_share_type(context, project_id,
-                                                share_type_id):
-    """Destroy all quotas associated with a given project and user."""
-    return IMPL.quota_destroy_all_by_project_and_share_type(
-        context, project_id, share_type_id)
+def quota_destroy_all_by_share_type(context, share_type_id, project_id=None):
+    """Destroy all quotas associated with a given share type and project."""
+    return IMPL.quota_destroy_all_by_share_type(
+        context, share_type_id, project_id=project_id)
 
 
 def quota_destroy_all_by_project(context, project_id):
