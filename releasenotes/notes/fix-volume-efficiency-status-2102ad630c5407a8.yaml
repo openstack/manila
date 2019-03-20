@@ -1,0 +1,4 @@
+fixes:
+  - |
+    Fixed an issue while getting efficiency status from the NetApp
+    backend while creating or updating volumes.
