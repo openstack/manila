@@ -313,6 +313,25 @@ class ShareApiTest(test.TestCase):
             fake_context, fake_context.project_id
         )
 
+    @mock.patch.object(db, 'security_service_get_all', mock.Mock())
+    def test_security_services_list_all_tenants_with_invalid_value(self):
+        req = fakes.HTTPRequest.blank(
+            '/security-services?all_tenants=nerd',
+            use_admin_context=True)
+        self.assertRaises(exception.InvalidInput, self.controller.index, req)
+
+    @mock.patch.object(db, 'security_service_get_all_by_project', mock.Mock())
+    def test_security_services_list_all_tenants_with_value_zero(self):
+        db.security_service_get_all_by_project.return_value = []
+        req = fakes.HTTPRequest.blank(
+            '/security-services?all_tenants=0',
+            use_admin_context=True)
+        res_dict = self.controller.index(req)
+        self.assertEqual({'security_services': []}, res_dict)
+        db.security_service_get_all_by_project.assert_called_once_with(
+            req.environ['manila.context'],
+            req.environ['manila.context'].project_id)
+
     @mock.patch.object(db, 'security_service_get_all_by_project', mock.Mock())
     def test_security_services_list_admin_context_invalid_opts(self):
         db.security_service_get_all_by_project.return_value = [
