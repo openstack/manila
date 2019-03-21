@@ -139,7 +139,7 @@ def validate_access_rule(supported_access_types, supported_access_levels,
 def fixup_access_rule(access_rule):
     """Adjust access rule as required for ganesha to handle it properly.
 
-    :param access_rule: Access rules to be validated.
+    :param access_rule: Access rules to be fixed up.
     :return: access_rule
     """
     if access_rule['access_to'] == '0.0.0.0/0':

@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Access rule type for shares served via nfs-ganesha is now validated,
+    fixing `launchpad bug #1816420 <https://bugs.launchpad.net/manila/+bug/1811680>`_
+    where ``cephx`` access type was allowed though only ``ip`` access type
+    is effective.  This fix also validates ``access_level`` to ensure that
+    it is set to ``RW`` or ``RO``.
