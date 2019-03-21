@@ -29,6 +29,7 @@ Share drivers
    drivers/maprfs-native-driver.rst
    drivers/netapp-cluster-mode-driver.rst
    drivers/quobyte-driver.rst
+   drivers/windows-smb-driver.rst
 
 
 To use different share drivers for the Shared File Systems service, use the

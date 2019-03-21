@@ -90,6 +90,15 @@ Known restrictions
   effective because generic driver shrinks only filesystem size and doesn't
   shrink the size of Cinder volume.
 
+Using Windows instances
+~~~~~~~~~~~~~~~~~~~~~~~
+
+While the generic driver only supports Linux instances, you may use the
+Windows SMB driver when Windows VMs are preferred.
+
+For more details, please check out the following page:
+:ref:`windows_smb_driver`.
+
 The :mod:`manila.share.drivers.generic` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

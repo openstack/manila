@@ -87,4 +87,4 @@ each back end.
    hitachi_hnas_driver
    hpe_3par_driver
    tegile_driver
-
+   ../configuration/shared-file-systems/drivers/windows-smb-driver

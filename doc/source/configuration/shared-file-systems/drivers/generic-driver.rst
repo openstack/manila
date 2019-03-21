@@ -101,6 +101,16 @@ Known restrictions
    needs and the other 26 are used for attaching block devices that
    are used for shares.
 
+Using Windows instances
+~~~~~~~~~~~~~~~~~~~~~~~
+
+While the generic driver only supports Linux instances, you may use the
+Windows SMB driver when Windows instances are preferred.
+
+For more details, please check out the following page:
+:ref:`windows_smb_driver`.
+
+
 Driver options
 ~~~~~~~~~~~~~~
 
