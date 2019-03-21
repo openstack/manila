@@ -721,5 +721,15 @@ class DummyDriver(driver.ShareDriver):
         return identifier, server_details
 
     def unmanage_server(self, server_details, security_services=None):
+        server_details = server_details or {}
+        if not server_details or 'server_id' not in server_details:
+            # This share server doesn't have any network details. Since it's
+            # just being cleaned up, we'll log a warning and return without
+            # errors.
+            LOG.warning("Share server does not have network information. "
+                        "It is being unmanaged, but cannot be re-managed "
+                        "without first creating network allocations in this "
+                        "driver's private storage.")
+            return
         self.private_storage.update(server_details['server_id'],
                                     server_details)
