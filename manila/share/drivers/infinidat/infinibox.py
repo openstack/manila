@@ -174,6 +174,7 @@ class InfiniboxShareDriver(driver.ShareDriver):
         super(InfiniboxShareDriver, self)._update_share_stats(data)
 
     def _get_available_capacity(self):
+        # pylint: disable=no-member
         pool = self._get_infinidat_pool()
         free_capacity_bytes = (pool.get_free_physical_capacity() /
                                capacity.byte)
@@ -182,6 +183,7 @@ class InfiniboxShareDriver(driver.ShareDriver):
         provisioned_capacity_gb = (
             (pool.get_virtual_capacity() - pool.get_free_virtual_capacity()) /
             capacity.GB)
+        # pylint: enable=no-member
         return (free_capacity_bytes, physical_capacity_bytes,
                 provisioned_capacity_gb)
 
@@ -368,7 +370,9 @@ class InfiniboxShareDriver(driver.ShareDriver):
 
     @infinisdk_to_manila_exceptions
     def _extend_share(self, infinidat_filesystem, share, new_size):
+        # pylint: disable=no-member
         new_size_capacity_units = new_size * capacity.GiB
+        # pylint: enable=no-member
         old_size = infinidat_filesystem.get_size()
         infinidat_filesystem.resize(new_size_capacity_units - old_size)
 
@@ -389,7 +393,7 @@ class InfiniboxShareDriver(driver.ShareDriver):
         self._verify_share_protocol(share)
 
         pool = self._get_infinidat_pool()
-        size = share['size'] * capacity.GiB
+        size = share['size'] * capacity.GiB    # pylint: disable=no-member
         share_name = self._make_share_name(share)
 
         infinidat_filesystem = self._system.filesystems.create(
