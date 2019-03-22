@@ -9,6 +9,8 @@
         "description": "description_of_managed_snapshot",
         "size": 1,
         "share_proto": "NFS",
+        "user_id": "5c7bdb6eb0504d54a619acf8375c08ce",
+        "project_id": "cadd7139bc3148b8973df097c0911016",
         "links": [
             {
                 "href": "http://127.0.0.1:8786/v2/907004508ef4447397ce6741a8f037c1/snapshots/22de7000-3a32-4fe1-bd0c-38d03f93dec3",

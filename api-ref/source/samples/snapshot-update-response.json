@@ -3,6 +3,8 @@
         "status": "available",
         "share_id": "406ea93b-32e9-4907-a117-148b3945749f",
         "name": "snapshot_Share1",
+        "user_id": "5c7bdb6eb0504d54a619acf8375c08ce",
+        "project_id": "cadd7139bc3148b8973df097c0911016",
         "links": [
             {
                 "href": "http://172.18.198.54:8786/v1/16e1ab15c35a457e9c2b2aa189f544e1/snapshots/6d221c1d-0200-461e-8d20-24b4776b9ddb",

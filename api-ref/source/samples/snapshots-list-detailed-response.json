@@ -3,6 +3,7 @@
         {
             "status": "creating",
             "share_id": "d94a8548-2079-4be0-b21c-0a887acd31ca",
+            "user_id": "5c7bdb6eb0504d54a619acf8375c08ce",
             "name": "snapshot_My_share",
             "links": [
                 {
@@ -19,11 +20,13 @@
             "share_proto": "NFS",
             "share_size": 1,
             "id": "086a1aa6-c425-4ecd-9612-391a3b1b9375",
+            "project_id": "cadd7139bc3148b8973df097c0911016",
             "size": 1
         },
         {
             "status": "available",
             "share_id": "406ea93b-32e9-4907-a117-148b3945749f",
+            "user_id": "5c7bdb6eb0504d54a619acf8375c08ce",
             "name": "snapshot_share1",
             "links": [
                 {
@@ -40,6 +43,7 @@
             "share_proto": "NFS",
             "share_size": 1,
             "id": "6d221c1d-0200-461e-8d20-24b4776b9ddb",
+            "project_id": "cadd7139bc3148b8973df097c0911016",
             "size": 1
         }
     ]

@@ -249,20 +249,21 @@ Create snapshot
    .. code-block:: console
 
       $ manila snapshot-create --name mysnapshot --description "My Manila snapshot" myshare
-      +-------------------+--------------------------------------+
-      | Property          | Value                                |
-      +-------------------+--------------------------------------+
-      | status            | creating                             |
-      | share_id          | 8d8b854b-ec32-43f1-acc0-1b2efa7c3400 |
-      | description       | My Manila snapshot                   |
-      | created_at        | 2016-03-24T14:39:58.232844           |
-      | share_proto       | NFS                                  |
-      | provider_location | None                                 |
-      | id                | e744ca47-0931-4e81-9d9f-2ead7d7c1640 |
-      | size              | 1                                    |
-      | share_size        | 1                                    |
-      | name              | mysnapshot                           |
-      +-------------------+--------------------------------------+
+      +-------------+--------------------------------------+
+      | Property    | Value                                |
+      +-------------+--------------------------------------+
+      | status      | creating                             |
+      | share_id    | 8d8b854b-ec32-43f1-acc0-1b2efa7c3400 |
+      | user_id     | 5c7bdb6eb0504d54a619acf8375c08ce     |
+      | description | My Manila snapshot                   |
+      | created_at  | 2016-03-24T14:40:30.000000           |
+      | size        | 1                                    |
+      | share_proto | NFS                                  |
+      | id          | e744ca47-0931-4e81-9d9f-2ead7d7c1640 |
+      | project_id  | 907004508ef4447397ce6741a8f037c1     |
+      | share_size  | 1                                    |
+      | name        | mysnapshot                           |
+      +-------------+--------------------------------------+
 
 #. List snapshots.
 

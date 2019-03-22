@@ -28,13 +28,15 @@ Create a snapshot from the share:
    +-------------+--------------------------------------+
    | status      | creating                             |
    | share_id    | aca648eb-8c03-4394-a5cc-755066b7eb66 |
-   | name        | Snapshot1                            |
-   | created_at  | 2015-09-25T05:27:38.862040           |
+   | user_id     | 5c7bdb6eb0504d54a619acf8375c08ce     |
+   | description | Snapshot of Share1                   |
+   | created_at  | 2015-09-25T05:27:38.000000           |
+   | size        | 1                                    |
    | share_proto | NFS                                  |
    | id          | 962e8126-35c3-47bb-8c00-f0ee37f42ddd |
-   | size        | 1                                    |
+   | project_id  | cadd7139bc3148b8973df097c0911016     |
    | share_size  | 1                                    |
-   | description | Snapshot of Share1                   |
+   | name        | Snapshot1                            |
    +-------------+--------------------------------------+
 
 Update snapshot name or description if needed:
@@ -53,17 +55,19 @@ Check that status of a snapshot is ``available``:
    +-------------+--------------------------------------+
    | status      | available                            |
    | share_id    | aca648eb-8c03-4394-a5cc-755066b7eb66 |
+   | user_id     | 5c7bdb6eb0504d54a619acf8375c08ce     |
    | name        | Snapshot1                            |
    | created_at  | 2015-09-25T05:27:38.000000           |
    | share_proto | NFS                                  |
    | id          | 962e8126-35c3-47bb-8c00-f0ee37f42ddd |
+   | project_id  | cadd7139bc3148b8973df097c0911016     |
    | size        | 1                                    |
    | share_size  | 1                                    |
    | description | Snapshot of Share1                   |
    +-------------+--------------------------------------+
 
-To restore your data from a snapshot, use :command:`manila create` with
-key ``--snapshot-id``. This creates a new share from an
+To create a copy of your data from a snapshot, use :command:`manila create`
+with key ``--snapshot-id``. This creates a new share from an
 existing snapshot. Create a share from a snapshot and check whether
 it is available:
 
