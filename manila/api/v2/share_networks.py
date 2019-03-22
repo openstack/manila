@@ -62,6 +62,10 @@ class ShareNetworkController(wsgi.Controller):
 
         return self._view_builder.build_share_network(req, share_network)
 
+    def _all_share_servers_are_auto_deletable(self, share_network):
+        return all([ss['is_auto_deletable'] for ss
+                    in share_network['share_servers']])
+
     def delete(self, req, id):
         """Delete specified share network."""
         context = req.environ['manila.context']
@@ -88,6 +92,16 @@ class ShareNetworkController(wsgi.Controller):
         if sg_count:
             msg = _("Can not delete share network %(id)s, it has %(len)s "
                     "share group(s).") % {'id': id, 'len': sg_count}
+            LOG.error(msg)
+            raise exc.HTTPConflict(explanation=msg)
+
+        # NOTE(silvacarlose): Do not allow the deletion of any share server
+        # if one of them has the flag is_auto_deletable = False
+        if not self._all_share_servers_are_auto_deletable(share_network):
+            msg = _("The service cannot determine if there are any "
+                    "non-managed shares on the share network %(id)s, so it "
+                    "cannot be deleted. Please contact the cloud "
+                    "administrator to rectify.") % {'id': id}
             LOG.error(msg)
             raise exc.HTTPConflict(explanation=msg)
 

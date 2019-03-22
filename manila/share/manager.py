@@ -2605,6 +2605,17 @@ class ShareManager(manager.SchedulerDependentManager):
         if share_server and share_server['is_auto_deletable']:
             self.db.share_server_update(context, share_server['id'],
                                         {'is_auto_deletable': False})
+            msg = ("Since share %(share)s has been un-managed from share "
+                   "server %(server)s. This share server must be removed "
+                   "manually, either by un-managing or by deleting it. The "
+                   "share network %(network)s cannot be deleted unless this "
+                   "share server has been removed.")
+            msg_args = {
+                'share': share_id,
+                'server': share_server['id'],
+                'network': share_server['share_network_id']
+            }
+            LOG.warning(msg, msg_args)
 
         LOG.info("Share %s: unmanaged successfully.", share_id)
 

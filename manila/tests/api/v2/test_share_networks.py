@@ -211,6 +211,9 @@ class ShareNetworkAPITest(test.TestCase):
         self.mock_object(db_api, 'share_instances_get_all_by_share_network',
                          mock.Mock(return_value=[]))
         self.mock_object(self.controller.share_rpcapi, 'delete_share_server')
+        self.mock_object(self.controller,
+                         '_all_share_servers_are_auto_deletable',
+                         mock.Mock(return_value=True))
         self.mock_object(db_api, 'share_network_delete')
 
         self.controller.delete(self.req, share_nw['id'])
@@ -246,6 +249,9 @@ class ShareNetworkAPITest(test.TestCase):
                          mock.Mock(return_value=share_nw))
         self.mock_object(db_api, 'share_instances_get_all_by_share_network',
                          mock.Mock(return_value=[]))
+        self.mock_object(self.controller,
+                         '_all_share_servers_are_auto_deletable',
+                         mock.Mock(return_value=True))
         self.mock_object(self.controller.share_rpcapi, 'delete_share_server')
         self.mock_object(db_api, 'share_network_delete')
         self.mock_object(share_networks.QUOTAS, 'reserve',
@@ -306,6 +312,37 @@ class ShareNetworkAPITest(test.TestCase):
 
         db_api.share_network_get.assert_called_once_with(
             self.req.environ['manila.context'], share_nw['id'])
+
+    def test_delete_contains_is_auto_deletable_false_servers(self):
+        share_nw = fake_share_network.copy()
+        self.mock_object(db_api, 'share_network_get',
+                         mock.Mock(return_value=share_nw))
+        self.mock_object(db_api, 'count_share_groups_in_share_network')
+        self.mock_object(share_networks.ShareNetworkController,
+                         '_all_share_servers_are_auto_deletable',
+                         mock.Mock(return_value=False))
+
+        self.assertRaises(webob_exc.HTTPConflict,
+                          self.controller.delete,
+                          self.req,
+                          share_nw['id'])
+
+        db_api.share_network_get.assert_called_once_with(
+            self.req.environ['manila.context'], share_nw['id'])
+
+    @ddt.data(
+        ({'share_servers': [{'is_auto_deletable': True},
+                            {'is_auto_deletable': True}]}, True),
+        ({'share_servers': [{'is_auto_deletable': True},
+                            {'is_auto_deletable': False}]}, False),
+    )
+    @ddt.unpack
+    def test__share_servers_are_auto_deletable(self, fake_share_network,
+                                               expected_result):
+        self.assertEqual(
+            expected_result,
+            self.controller._all_share_servers_are_auto_deletable(
+                fake_share_network))
 
     def test_show_nominal(self):
         share_nw = 'fake network id'
