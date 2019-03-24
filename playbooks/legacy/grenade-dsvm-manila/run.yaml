@@ -17,7 +17,7 @@
               dest: devstack-gate
           EOF
           /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
-              git://git.openstack.org \
+              https://git.openstack.org \
               openstack-infra/devstack-gate
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'
@@ -40,7 +40,7 @@
           # Enable manila grenade plugin. Provided repo should be
           # cloned by zuul before devstack run and below provided
           # link should not be used.
-          export GRENADE_PLUGINRC="enable_grenade_plugin manila git://git.openstack.org/openstack/manila"
+          export GRENADE_PLUGINRC="enable_grenade_plugin manila https://git.openstack.org/openstack/manila"
 
           # Keep localrc to be able to set some vars in pre_test_hook
           export KEEP_LOCALRC=1
