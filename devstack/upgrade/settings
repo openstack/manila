@@ -10,7 +10,7 @@ export PYTHON3_VERSION=${PYTHON3_VERSION}
 
 
 devstack_localrc base enable_service manila m-api m-shr m-sch m-dat
-devstack_localrc base enable_plugin manila git://git.openstack.org/openstack/manila stable/rocky
+devstack_localrc base enable_plugin manila https://git.openstack.org/openstack/manila stable/rocky
 devstack_localrc base MANILA_UI_ENABLED=False
 devstack_localrc base OSLO_SERVICE_WORKS=True
 
@@ -19,7 +19,7 @@ devstack_localrc base OSLO_SERVICE_WORKS=True
 devstack_localrc base MANILACLIENT_BRANCH="stable/rocky"
 
 devstack_localrc target enable_service manila m-api m-shr m-sch m-dat
-devstack_localrc target enable_plugin manila git://git.openstack.org/openstack/manila
+devstack_localrc target enable_plugin manila https://git.openstack.org/openstack/manila
 devstack_localrc target MANILA_UI_ENABLED=False
 devstack_localrc target OSLO_SERVICE_WORKS=True
 devstack_localrc target MANILA_USE_DOWNGRADE_MIGRATIONS=False

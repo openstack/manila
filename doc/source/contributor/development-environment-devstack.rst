@@ -148,7 +148,7 @@ Testing branches and changes submitted for review
 
 To test a patch in review::
 
-    enable_plugin manila git://git.openstack.org/openstack/manila <ref>
+    enable_plugin manila https://git.openstack.org/openstack/manila <ref>
 
 If the ref is from review.openstack.org, it is structured as::
 
@@ -157,11 +157,11 @@ If the ref is from review.openstack.org, it is structured as::
 For example, if you want to test patchset 4 of https://review.openstack.org/#/c/614170/,
 you can provide this in your ``local.conf``::
 
-    enable_plugin manila git://git.openstack.org/openstack/manila refs/changes/70/614170/4
+    enable_plugin manila https://git.openstack.org/openstack/manila refs/changes/70/614170/4
 
 ref can also simply be a stable branch name, for example::
 
-    enable_plugin manila git://git.openstack.org/openstack/manila stable/rocky
+    enable_plugin manila https://git.openstack.org/openstack/manila stable/rocky
 
 Limiting the services enabled in your stack
 ````````````````````````````````````````````
