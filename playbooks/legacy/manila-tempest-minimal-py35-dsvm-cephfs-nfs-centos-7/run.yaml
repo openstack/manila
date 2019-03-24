@@ -17,7 +17,7 @@
               dest: devstack-gate
           EOF
           /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
-              git://git.openstack.org \
+              https://git.openstack.org \
               openstack-infra/devstack-gate
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'
@@ -44,9 +44,9 @@
           disable_service s-object
           disable_service s-proxy
 
-          enable_plugin manila git://git.openstack.org/openstack/manila
+          enable_plugin manila https://git.openstack.org/openstack/manila
 
-          enable_plugin devstack-plugin-ceph git://git.openstack.org/openstack/devstack-plugin-ceph
+          enable_plugin devstack-plugin-ceph https://git.openstack.org/openstack/devstack-plugin-ceph
 
           # Enable CephFS as the backend for Manila.
           ENABLE_CEPH_MANILA=True
