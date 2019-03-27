@@ -19,6 +19,8 @@ List export locations
 
 .. rest_method::  GET /v2/{tenant_id}/share_instances/{share_instance_id}/export_locations
 
+.. versionadded:: 2.9
+
 Response codes
 --------------
 
@@ -64,6 +66,7 @@ Show single export location
 
 .. rest_method::  GET /v2/{tenant_id}/share_instances/{share_instance_id}/export_locations/{export_location_id}
 
+.. versionadded:: 2.9
 
 Response codes
 --------------

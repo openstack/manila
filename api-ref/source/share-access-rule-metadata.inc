@@ -1,7 +1,7 @@
 .. -*- rst -*-
 
 ============================================
-Share access rule metadata (Since API v2.45)
+Share access rule metadata (since API v2.45)
 ============================================
 
 Updates, and unsets share access rule metadata.
@@ -10,6 +10,8 @@ Update share access rule metadata
 ==================================
 
 .. rest_method::  PUT /v2/{tenant_id}/share-access-rules/{access_id}/metadata
+
+.. versionadded:: 2.45
 
 Updates the metadata for a share access rule.
 
@@ -60,6 +62,8 @@ Unset share access rule metadata
 ================================
 
 .. rest_method::  DELETE /v2/{tenant_id}/share-access-rules/{access_id}/metadata/{key}
+
+.. versionadded:: 2.45
 
 Un-sets the metadata on a share access rule.
 

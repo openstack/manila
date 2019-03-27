@@ -1,8 +1,8 @@
 .. -*- rst -*-
 
-===================================
-Share replicas (Since version 2.11)
-===================================
+================================
+Share replicas (since API v2.11)
+================================
 
 Share replicas are the replicated copies of the existing share. You can use
 Share Replicas to sync data so that each share replica has an identical copy
@@ -56,6 +56,8 @@ Create share replica
 ====================
 
 .. rest_method::  POST /v2/{tenant_id}/share-replicas
+
+.. versionadded:: 2.11
 
 Create a share replica for the share.
 
@@ -118,6 +120,8 @@ Promote share replica
 
 .. rest_method::  POST /v2/{tenant_id}/share-replicas/{share_replica_id}/action
 
+.. versionadded:: 2.11
+
 Promotes a replica to ``active`` replica state.
 
 Response codes
@@ -148,6 +152,8 @@ Resync share replica
 
 .. rest_method::  POST /v2/{tenant_id}/share-replicas/{share_replica_id}/action
 
+.. versionadded:: 2.11
+
 Resync a replica with its ``active`` mirror.
 
 Response codes
@@ -177,6 +183,8 @@ List share replicas
 ===================
 
 .. rest_method::  GET /v2/{tenant_id}/share-replicas?share_id={share_id}
+
+.. versionadded:: 2.11
 
 Lists share replicas.
 
@@ -223,6 +231,8 @@ List share replicas with details
 ================================
 
 .. rest_method::  GET /v2/{tenant_id}/share-replicas/detail?share_id={share_id}
+
+.. versionadded:: 2.11
 
 Lists share replicas with details.
 
@@ -275,6 +285,8 @@ Show share replica
 ==================
 
 .. rest_method::  GET /v2/{tenant_id}/share-replicas/{share_replica_id}
+
+.. versionadded:: 2.11
 
 Show a share replica.
 
@@ -329,6 +341,8 @@ Reset status of the share replica
 
 .. rest_method::  POST /v2/{tenant_id}/share-replicas/{share_replica_id}/action
 
+.. versionadded:: 2.11
+
 Administrator only. Explicitly updates the ``status`` of a share replica.
 
 Use the ``policy.json`` file to grant permissions for this action
@@ -369,6 +383,8 @@ Reset replica_state of the share replica
 ========================================
 
 .. rest_method::  POST /v2/{tenant_id}/share-replicas/{share_replica_id}/action
+
+.. versionadded:: 2.11
 
 Administrator only. Explicitly updates the ``replica state`` of a share replica.
 
@@ -411,6 +427,8 @@ Delete share replica
 
 .. rest_method::  DELETE /v2/{tenant_id}/share-replicas/{share_replica_id}
 
+.. versionadded:: 2.11
+
 Deletes a share replica.
 
 Response codes
@@ -445,6 +463,8 @@ Force-delete share replica
 ==========================
 
 .. rest_method::  POST /v2/{tenant_id}/share-replicas/{share_replica_id}/action
+
+.. versionadded:: 2.11
 
 Administrator only. Force-deletes a share replica in any state.
 

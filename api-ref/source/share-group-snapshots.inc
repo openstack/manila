@@ -27,6 +27,8 @@ List share group snapshots
 
 .. rest_method::  GET /v2/{tenant_id}/share-group-snapshots
 
+.. versionadded:: 2.31
+
 Lists all share group snapshots.
 
 Response codes
@@ -78,6 +80,8 @@ List share group snapshots with details
 =======================================
 
 .. rest_method::  GET /v2/{tenant_id}/share-group-snapshots/detail
+
+.. versionadded:: 2.31
 
 Lists all share group snapshots with details.
 
@@ -137,6 +141,8 @@ List share group snapshots members
 
 .. rest_method::  GET /v2/{tenant_id}/share-group-snapshots/{group_snapshot_id}/members
 
+.. versionadded:: 2.31
+
 Lists all share group snapshots members.
 
 Response codes
@@ -185,6 +191,8 @@ Show share group snapshot details
 =================================
 
 .. rest_method::  GET /v2/{tenant_id}/share-group-snapshots/{group_snapshot_id}
+
+.. versionadded:: 2.31
 
 Shows details for a share group snapshot.
 
@@ -235,6 +243,8 @@ Create share group snapshot
 ===========================
 
 .. rest_method::  POST /v2/{tenant_id}/share-group-snapshots
+
+.. versionadded:: 2.31
 
 Creates a snapshot from a share.
 
@@ -296,6 +306,8 @@ Reset share group snapshot state
 
 .. rest_method::  POST /v2/{tenant_id}/share-group-snapshots/{group_snapshot_id}/action
 
+.. versionadded:: 2.31
+
 Administrator only. Explicitly updates the state of a share group snapshot.
 
 Use the ``policy.json`` file to grant permissions for this action
@@ -335,6 +347,8 @@ Update share group snapshot
 ===========================
 
 .. rest_method::  PUT /v2/{tenant_id}/share-group-snapshots/{group_snapshot_id}
+
+.. versionadded:: 2.31
 
 Updates a share group snapshot.
 
@@ -395,6 +409,8 @@ Delete share group snapshot
 ===========================
 
 .. rest_method::  DELETE /v2/{tenant_id}/share-group-snapshots/{group_snapshot_id}
+
+.. versionadded:: 2.31
 
 Deletes a share group snapshot.
 

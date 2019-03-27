@@ -415,6 +415,7 @@ share_type_query:
   in: query
   required: false
   type: string
+  min_version: 2.23
 share_types_query:
   description: |
     A list of one or more share type IDs. Allows filtering share groups.
@@ -2832,6 +2833,14 @@ share_id_2:
   in: body
   required: true
   type: string
+share_instance_cast_rules_to_readonly:
+  description: |
+    If the share instance has its ``cast_rules_to_readonly`` attribute set to
+    True, all existing access rules will be cast to read/only.
+  in: body
+  required: true
+  type: string
+  min_version: 2.30
 share_instance_id_1:
   description: |
     The UUID of the share instance.
@@ -2991,11 +3000,12 @@ share_replica_az:
   type: string
 share_replica_cast_rules_to_readonly:
   description: |
-    Since the share instance has its ``cast_rules_to_readonly`` attribute
-    set to True, existing rules will be cast to read/only.
+    If the share replica has its ``cast_rules_to_readonly`` attribute set to
+    True, all existing access rules will be cast to read/only.
   in: body
   required: true
   type: string
+  min_version: 2.30
 share_replica_created_at:
   description: |
     The date and time stamp when the share replica was created.

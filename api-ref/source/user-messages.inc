@@ -22,6 +22,8 @@ List user messages
 
 .. rest_method::  GET /v2/{tenant_id}/messages
 
+.. versionadded:: 2.37
+
 Lists all user messages.
 
 
@@ -83,6 +85,8 @@ Show user message details
 
 .. rest_method::  GET /v2/{tenant_id}/messages/{message_id}
 
+.. versionadded:: 2.37
+
 Shows details for a user message.
 
 Response codes
@@ -133,6 +137,8 @@ Delete message
 ==============
 
 .. rest_method::  DELETE /v2/{tenant_id}/messages/{message_id}
+
+.. versionadded:: 2.37
 
 Deletes a user message.
 

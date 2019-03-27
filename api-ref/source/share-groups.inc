@@ -28,6 +28,8 @@ List share groups
 
 .. rest_method::  GET /v2/{tenant_id}/share_groups
 
+.. versionadded:: 2.31
+
 Lists all share groups.
 
 Response codes
@@ -89,6 +91,8 @@ Show share group details
 
 .. rest_method::  GET /v2/{tenant_id}/share_groups/{share_group_id}
 
+.. versionadded:: 2.31
+
 Shows details for a share group.
 
 
@@ -145,6 +149,8 @@ Create share group
 ==================
 
 .. rest_method::  POST /v2/{tenant_id}/share_groups
+
+.. versionadded:: 2.31
 
 Creates a share group.
 
@@ -216,6 +222,8 @@ Reset share group state
 
 .. rest_method::  POST /v2/{tenant_id}/share-groups/{share_group_id}/action
 
+.. versionadded:: 2.31
+
 Administrator only. Explicitly updates the state of a share group.
 
 Use the ``policy.json`` file to grant permissions for this action
@@ -256,6 +264,8 @@ Update share group
 ==================
 
 .. rest_method::  PUT /v2/{tenant_id}/share-groups/{share_group_id}
+
+.. versionadded:: 2.31
 
 Updates a share group.
 
@@ -321,6 +331,8 @@ Delete share group
 ==================
 
 .. rest_method::  DELETE /v2/{tenant_id}/share-groups/{share_group_id}
+
+.. versionadded:: 2.31
 
 Deletes a share group.
 

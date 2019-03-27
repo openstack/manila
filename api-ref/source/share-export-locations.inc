@@ -17,6 +17,8 @@ List export locations
 
 .. rest_method::  GET /v2/{tenant_id}/shares/{share_id}/export_locations
 
+.. versionadded:: 2.9
+
 Lists all export locations for a share.
 
 Response codes
@@ -63,6 +65,8 @@ Show single export location
 ===========================
 
 .. rest_method::  GET /v2/{tenant_id}/shares/{share_id}/export_locations/​{export_location_id}​
+
+.. versionadded:: 2.9
 
 Show details of an export location belonging to a share.
 

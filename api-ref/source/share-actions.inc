@@ -170,17 +170,20 @@ Request example
    :language: javascript
 
 
-List access rules (versions 1.0 to 2.44)
-========================================
+List access rules (DEPRECATED)
+==============================
+
+.. warning::
+
+   This API is deprecated starting with microversion 2.45 and requests to
+   this API will fail with a 404 starting from microversion 2.45. Use
+   :ref:`List share access rules <get-access-rules-after-2-45>` API
+   instead of this API from version 2.45.
 
 .. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
 
 Lists access rules for a share. The Access ID returned is necessary to deny
 access.
-
-.. note::
-  Use :ref:`List share access rules <get-access-rules-after-2-45>` API
-  instead of this API from version 2.45
 
 Response codes
 --------------
@@ -452,13 +455,15 @@ Response parameters
 There is no body content for the response.
 
 
-Revert share to snapshot
-========================
+Revert share to snapshot (since API v2.27)
+==========================================
 
 .. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
 
+.. versionadded:: 2.27
+
 Reverts a share to the specified snapshot, which must be the most recent one
-known to manila. This API is available in versions later than or equal to 2.27.
+known to manila.
 
 Response codes
 --------------

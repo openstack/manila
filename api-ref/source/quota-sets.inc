@@ -130,10 +130,12 @@ Response example
    :language: javascript
 
 
-Show quota set in detail
-========================
+Show quota set in detail (since API v2.25)
+==========================================
 
 .. rest_method::  GET /v2/{tenant_id}/quota-sets/{tenant_id}/detail?user_id={user_id}
+
+.. versionadded:: 2.25
 
 Shows quotas for a tenant in detail.
 

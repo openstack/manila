@@ -3,7 +3,7 @@
 .. _get-access-rules-after-2-45:
 
 ====================================
-Share access rules (Since API v2.45)
+Share access rules (since API v2.45)
 ====================================
 
 Retrieve details about access rules
@@ -13,6 +13,7 @@ Describe share access rule
 
 .. rest_method::  GET /v2/{tenant_id}/share-access-rules/{access_id}
 
+.. versionadded:: 2.45
 
 Retrieve details about a specified access rule.
 
@@ -65,6 +66,8 @@ List share access rules
 =======================
 
 .. rest_method::  GET /v2/{tenant_id}/share-access-rules?share_id={share-id}
+
+.. versionadded:: 2.45
 
 Lists the share access rules on a share.
 
