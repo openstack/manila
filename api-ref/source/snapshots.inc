@@ -249,12 +249,20 @@ Response example
    :language: javascript
 
 
-Manage share snapshot
-=====================
+Manage share snapshot (since API v2.12)
+=======================================
 
 .. rest_method::  POST /v2/{tenant_id}/snapshots/manage
 
-(Since API v2.12) Configures Shared File Systems to manage a share snapshot.
+.. versionadded:: 2.12
+
+Configures Shared File Systems to manage a share snapshot.
+
+.. note::
+
+   Managing snapshots of shares that are created on top of share servers
+   (i.e. created with share networks) is not supported prior to API version
+   2.49.
 
 Response codes
 --------------
@@ -314,12 +322,20 @@ Response example
    :language: javascript
 
 
-Unmanage share snapshot
-=======================
+Unmanage share snapshot (since API v2.12)
+=========================================
 
 .. rest_method::  POST /v2/{tenant_id}/snapshots/{snapshot_id}/action
 
-(Since API v2.12) Configures Shared File Systems to stop managing a share snapshot.
+.. versionadded:: 2.12
+
+Configures Shared File Systems to stop managing a share snapshot.
+
+.. note::
+
+   Unmanaging snapshots of shares that are created on top of share servers
+   (i.e. created with share networks) is not supported prior to API version
+   2.49.
 
 Response codes
 --------------

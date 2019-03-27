@@ -391,12 +391,30 @@ Request example
    :language: javascript
 
 
-Unmanage share
-==============
+Unmanage share (since API v2.7)
+===============================
 
 .. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
 
-This API is available in versions later than or equal to 2.7
+.. versionadded:: 2.7
+
+
+Use this API to remove a share from the management of the Shared File
+Systems service without deleting the share.
+
+Administrator only. Use the ``policy.json`` file to grant permissions for this
+action to other roles.
+
+
+Preconditions:
+
+- You should remove any snapshots and share replicas before attempting to
+  unmanage a share.
+
+.. note::
+
+   Unmanaging shares that are created on top of share servers (i.e. created
+   with share networks) is not supported prior to API version 2.49.
 
 Response codes
 --------------
@@ -427,6 +445,11 @@ Request example
 
 .. literalinclude:: samples/share-actions-unmanage-request.json
    :language: javascript
+
+
+Response parameters
+-------------------
+There is no body content for the response.
 
 
 Revert share to snapshot

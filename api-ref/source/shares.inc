@@ -401,13 +401,19 @@ Response example
    :language: javascript
 
 
-Manage share
-============
+Manage share (since API v2.7)
+=============================
 
-.. rest_method::  GET /v2/{tenant_id}/shares/manage
+.. rest_method::  POST /v2/{tenant_id}/shares/manage
 
-Configures Shared File Systems to manage a share.
-This API is available for API versions later than or equal to 2.7
+.. versionadded:: 2.7
+
+Use this API to bring a share under the management of the Shared File
+Systems service.
+
+Administrator only. Use the ``policy.json`` file to grant permissions for this
+action to other roles.
+
 
 Response codes
 --------------

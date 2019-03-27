@@ -1,28 +1,29 @@
 .. -*- rst -*-
 
-==========================
-Manage and unmanage shares
-==========================
+=======================================
+Manage and unmanage shares (DEPRECATED)
+=======================================
 
-Configures Shared File Systems to manage or unmanage a share.
+Allows bringing shared file systems under service management.
 
 
-Manage share
-============
+Manage share (DEPRECATED)
+=========================
+
+.. warning::
+
+   This API is deprecated starting with microversion 2.7 and requests to
+   this API will fail with a 404 starting from microversion 2.7. Use
+   `Share Manage API <#manage-share-since-api-v2-7>`_ instead of this API
+   from version 2.7.
 
 .. rest_method::  POST /v2/{tenant_id}/os-share-manage
-
-**Minimum Supported API Version**: 1.0, 2.0
-**Last supported API Version**: 2.6
 
 Use this API to bring a share under the management of the Shared File
 Systems service.
 
 Administrator only. Use the ``policy.json`` file to grant permissions for this
 action to other roles.
-
-This API was removed in API version 2.7; please see share actions for the
-new version of the API to utilize this feature.
 
 Response codes
 --------------
@@ -101,26 +102,32 @@ Response example
    :language: javascript
 
 
-Unmanage share
-==============
+Unmanage share (DEPRECATED)
+===========================
+
+.. warning::
+
+   This API is deprecated starting with microversion 2.7 and requests to
+   this API will fail with a 404 starting from microversion 2.7. Use
+   `Share Unmanage API <#unmanage-share-since-api-v2-7>`_ instead of this
+   API from version 2.7.
 
 .. rest_method::  POST /v2/{tenant_id}/os-share-unmanage/{share_id}/unmanage
 
-**Minimum Supported API Version**: 1.0, 2.0
-**Last supported API Version**: 2.6
-
 Use this API to remove a share from the management of the Shared File
-Systems service.
+Systems service without deleting the share.
 
 Administrator only. Use the ``policy.json`` file to grant permissions for this
 action to other roles.
 
-Share unmanage operation is not supported for shares that are created on top
-of share servers (created with share networks). You should remove any
-snapshots and share replicas before attempting to unmanage a share.
 
-This API was removed in API version 2.7; please see share actions for the
-new version of the API to utilize this feature.
+Preconditions:
+
+- This API does not support unmanaging shares that are created on top
+  of share servers (i.e. created with share networks).
+- You should remove any snapshots and share replicas before attempting to
+  unmanage a share.
+
 
 Response codes
 --------------
@@ -144,3 +151,9 @@ Request
 
    - tenant_id: tenant_id_path
    - share_id: share_id
+
+
+Response parameters
+-------------------
+
+There is no body content for the response.
