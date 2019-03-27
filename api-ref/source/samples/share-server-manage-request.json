@@ -1,0 +1,10 @@
+{
+    "share_server": {
+        "host": "myhost@mybackend",
+        "share_network_id": "78cef6eb-648a-4bbd-9ae1-d2eaaf594cc0",
+        "identifier": "4ef3507e-0513-4140-beda-f619ab30d424",
+        "driver_options": {
+            "opt1": "opt1_value"
+        }
+    }
+}
