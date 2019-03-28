@@ -566,17 +566,36 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
 
         In case of dynamic multi segments the segment is determined while
         binding the port. Therefore this method will return for multi segments
-        network without storing network information.
+        network without storing network information (apart from mtu).
 
         Instead, multi segments network will wait until ports are bound and
         then store network information (see allocate_network()).
         """
         if self._is_neutron_multi_segment(share_network):
             # In case of dynamic multi segment the segment is determined while
-            # binding the port
+            # binding the port, only mtu is known and already needed
+            self._save_neutron_network_mtu(context, share_network)
             return
         super(NeutronBindNetworkPlugin, self)._save_neutron_network_data(
             context, share_network)
+
+    def _save_neutron_network_mtu(self, context, share_network):
+        """Store the Neutron network mtu.
+
+        In case of dynamic multi segments only the mtu needs storing before
+        binding the port.
+        """
+        net_info = self.neutron_api.get_network(
+            share_network['neutron_net_id'])
+
+        mtu_dict = {
+            'mtu':  net_info['mtu'],
+        }
+        share_network.update(mtu_dict)
+
+        if self.label != 'admin':
+            self.db.share_network_update(
+                context, share_network['id'], mtu_dict)
 
     def allocate_network(self, context, share_server, share_network=None,
                          **kwargs):
