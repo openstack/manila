@@ -99,13 +99,13 @@ Response parameters
    - share_id: share_replica_share_id
    - status: share_replica_status
    - cast_rules_to_readonly: share_replica_cast_rules_to_readonly
-   - updated_at: share_replica_updated_at
+   - updated_at: updated_at
    - share_network_id: share_network_id
    - share_server_id: share_server_id
    - host: share_replica_host
    - id: share_replica_id
    - replica_state: share_replica_replica_state
-   - created_at: share_replica_created_at
+   - created_at: created_at
 
 
 Response example
@@ -266,13 +266,13 @@ Response parameters
    - share_id: share_replica_share_id
    - status: share_replica_status
    - cast_rules_to_readonly: share_replica_cast_rules_to_readonly
-   - updated_at: share_replica_updated_at
+   - updated_at: updated_at
    - share_network_id: share_network_id
    - share_server_id: share_server_id
    - host: share_replica_host
    - id: share_replica_id
    - replica_state: share_replica_replica_state
-   - created_at: share_replica_created_at
+   - created_at: created_at
 
 Response example
 ----------------
@@ -321,13 +321,13 @@ Response parameters
    - share_id: share_replica_share_id
    - status: share_replica_status
    - cast_rules_to_readonly: share_replica_cast_rules_to_readonly
-   - updated_at: share_replica_updated_at
+   - updated_at: updated_at
    - share_network_id: share_network_id
    - share_server_id: share_server_id
    - host: share_replica_host
    - id: share_replica_id
    - replica_state: share_replica_replica_state
-   - created_at: share_replica_created_at
+   - created_at: created_at
 
 Response example
 ----------------

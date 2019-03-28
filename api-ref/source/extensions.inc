@@ -43,7 +43,7 @@ Response parameters
    - links: extension_links
    - description: extension_description
    - alias: extension_alias
-   - updated: extension_updated
+   - updated: updated_at_extensions
 
 Response example
 ----------------

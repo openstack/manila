@@ -228,7 +228,7 @@ Response parameters
    - name: name_5
    - has_replicas: has_replicas
    - replication_type: replication_type
-   - created_at: created_at_4
+   - created_at: created_at
    - share_proto: share_proto
    - volume_type: volume_type
    - count: count
@@ -299,7 +299,7 @@ Response parameters
    - name: name_5
    - has_replicas: has_replicas
    - replication_type: replication_type
-   - created_at: created_at_4
+   - created_at: created_at
    - share_proto: share_proto
    - volume_type: volume_type
 
@@ -392,7 +392,7 @@ Response parameters
    - task_state: task_state
    - share_server_id: share_server_id
    - snapshot_support: snapshot_support
-   - created_at: created_at_4
+   - created_at: created_at
 
 Response example
 ----------------
@@ -488,7 +488,7 @@ Response parameters
    - share_group_id: share_group_id
    - snapshot_support: snapshot_support
    - name: name_5
-   - created_at: created_at_4
+   - created_at: created_at
    - share_proto: share_proto
    - volume_type: volume_type
 
@@ -579,7 +579,7 @@ Response parameters
    - name: name_5
    - has_replicas: has_replicas
    - replication_type: replication_type
-   - created_at: created_at_4
+   - created_at: created_at
    - share_proto: share_proto
    - volume_type: volume_type
 

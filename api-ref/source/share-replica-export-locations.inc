@@ -100,8 +100,8 @@ Response parameters
    - preferred: export_location_preferred_replicas
    - availability_zone: export_location_availability_zone
    - replica_state: share_replica_replica_state
-   - created_at: export_location_created_at
-   - updated_at: export_location_updated_at
+   - created_at: created_at
+   - updated_at: updated_at
 
 Response example
 ----------------

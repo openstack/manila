@@ -122,7 +122,7 @@ Response parameters
    - share_id: snapshot_share_id
    - name: snapshot_name
    - description: snapshot_description
-   - created_at: snapshot_created_at
+   - created_at: created_at
    - share_proto: snapshot_share_protocol
    - share_size: snapshot_share_size
    - size: snapshot_size
@@ -174,7 +174,7 @@ Response parameters
    - share_id: snapshot_share_id
    - name: snapshot_name
    - description: snapshot_description
-   - created_at: snapshot_created_at
+   - created_at: created_at
    - share_proto: snapshot_share_protocol
    - share_size: snapshot_share_size
    - size: snapshot_size
@@ -240,7 +240,7 @@ Response parameters
    - status: snapshot_status
    - name: snapshot_name
    - description: snapshot_description
-   - created_at: snapshot_created_at
+   - created_at: created_at
    - share_proto: snapshot_share_protocol
    - share_size: snapshot_share_size
    - provider_location: snapshot_provider_location
@@ -315,7 +315,7 @@ Response parameters
    - status: snapshot_manage_status
    - name: snapshot_name
    - description: snapshot_description
-   - created_at: snapshot_created_at
+   - created_at: created_at
    - share_proto: snapshot_share_protocol
    - share_size: snapshot_share_size
    - provider_location: snapshot_provider_location
@@ -519,7 +519,7 @@ Response parameters
    - share_id: snapshot_share_id
    - name: snapshot_name
    - description: snapshot_description
-   - created_at: snapshot_created_at
+   - created_at: created_at
    - share_proto: snapshot_share_protocol
    - share_size: snapshot_share_size
    - size: snapshot_size

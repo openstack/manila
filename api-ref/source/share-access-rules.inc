@@ -45,8 +45,8 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - share_id: access_share_id
-   - created_at: access_rule_created_at
-   - updated_at: access_rule_updated_at
+   - created_at: created_at
+   - updated_at: updated_at
    - access_type: access_type
    - access_to: access_to
    - access_key: access_key
@@ -112,8 +112,8 @@ Response parameters
    - state: state
    - access_list: access_list
    - id: access_rule_id
-   - created_at: access_rule_created_at
-   - updated_at: access_rule_updated_at
+   - created_at: created_at
+   - updated_at: updated_at
 
 Response example
 ----------------

@@ -91,7 +91,7 @@ Response parameters
    - is_public: is_public
    - snapshot_support: snapshot_support
    - name: name_5
-   - created_at: created_at_4
+   - created_at: created_at
    - share_proto: share_proto
    - volume_type: volume_type
 

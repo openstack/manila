@@ -123,7 +123,7 @@ Response parameters
    - share_group_id: share_group_id
    - name: group_snapshot_name
    - description: group_snapshot_description
-   - created_at: group_snapshot_created_at
+   - created_at: created_at
    - members: group_snapshot_members
    - links: group_snapshot_links
 
@@ -169,7 +169,7 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - id: group_snapshot_id
-   - created_at: snapshot_created_at
+   - created_at: created_at
    - project_id: project_id
    - size: snapshot_size
    - share_protocol: snapshot_share_protocol
@@ -226,7 +226,7 @@ Response parameters
    - share_group_id: share_group_id
    - name: group_snapshot_name
    - description: group_snapshot_description
-   - created_at: group_snapshot_created_at
+   - created_at: created_at
    - members: group_snapshot_members
    - links: group_snapshot_links
 
@@ -288,7 +288,7 @@ Response parameters
    - share_group_id: share_group_id
    - name: group_snapshot_name
    - description: group_snapshot_description
-   - created_at: group_snapshot_created_at
+   - created_at: created_at
    - members: group_snapshot_members
    - links: group_snapshot_links
 
@@ -392,7 +392,7 @@ Response parameters
    - share_group_id: share_group_id
    - name: group_snapshot_name
    - description: group_snapshot_description
-   - created_at: group_snapshot_created_at
+   - created_at: created_at
    - members: group_snapshot_members
    - links: group_snapshot_links
 

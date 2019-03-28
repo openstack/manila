@@ -569,47 +569,9 @@ access_metadata:
   in: body
   required: true
   type: object
-access_rule_created_at:
-  description: |
-    The date and time stamp when the access rule was created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
 access_rule_id:
   description: |
     The access rule ID.
-  in: body
-  required: true
-  type: string
-access_rule_updated_at:
-  description: |
-    The date and time stamp when the access rule was updated.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-
-    If the access rule was never updated, this value is ``null``.
   in: body
   required: true
   type: string
@@ -710,24 +672,6 @@ availability_zone_1:
   in: body
   required: true
   type: string
-availability_zone_created_at:
-  description: |
-    The date and time stamp when the availability zone was created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
 availability_zone_id:
   description: |
     The availability zone ID.
@@ -744,24 +688,6 @@ availability_zone_id_2:
 availability_zone_name:
   description: |
     The name of the availability zone.
-  in: body
-  required: true
-  type: string
-availability_zone_updated_at:
-  description: |
-    The date and time stamp when the availability zone was updated.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
   in: body
   required: true
   type: string
@@ -972,9 +898,10 @@ create_share_from_snapshot_support:
   required: false
   type: boolean
   min_version: 2.24
-created_at_4:
+created_at:
   description: |
-    The date and time stamp when the share was created.
+    The date and time stamp when the resource was created within the service's
+    database.
 
     The date and time stamp format is `ISO 8601
     <https://en.wikipedia.org/wiki/ISO_8601>`_:
@@ -986,62 +913,7 @@ created_at_4:
     The ``±hh:mm`` value, if included, returns the time zone as an
     offset from UTC.
 
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
-created_at_5:
-  description: |
-    The date and time stamp when the share instance export location was
-    created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2016-12-31T13:14:15-05:00``.
-  in: body
-  required: true
-  type: string
-created_at_9:
-  description: |
-    The date and time stamp when the share instance was created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
-created_at_share_server_body:
-  description: |
-    The date and time stamp when the share server was created or managed.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
+    For example, ``2019-03-27T09:49:58-05:00``.
   in: body
   required: true
   type: string
@@ -1221,25 +1093,6 @@ export_location_availability_zone:
   in: body
   required: true
   type: string
-export_location_created_at:
-  description: |
-    The date and time stamp when the share export location was
-    created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2016-12-31T13:14:15-05:00``.
-  in: body
-  required: true
-  type: string
 export_location_id:
   description: |
     The share export location UUID.
@@ -1285,25 +1138,6 @@ export_location_share_instance_id:
     The UUID of the share instance that this
     export location belongs to. This parameter is only available to users
     with an "administrator" role, and cannot be controlled via policy.json.
-  in: body
-  required: true
-  type: string
-export_location_updated_at:
-  description: |
-    The date and time stamp when the share export location was
-    updated.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2016-12-31T13:14:15-05:00``.
   in: body
   required: true
   type: string
@@ -1361,24 +1195,6 @@ extension_name:
   in: body
   required: true
   type: string
-extension_updated:
-  description: |
-    The date and time stamp when the extension was last updated.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
 extra_spec_key:
   description: |
     The extra specification key
@@ -1431,24 +1247,6 @@ free_capacity_gb:
     The amount of free capacity for the back end, in
     GBs. A valid value is a string, such as ``unknown``, or an
     integer.
-  in: body
-  required: true
-  type: string
-group_snapshot_created_at:
-  description: |
-    The date and time stamp when the share group snapshot was created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
   in: body
   required: true
   type: string
@@ -2402,24 +2200,6 @@ revert_to_snapshot_support:
   required: false
   type: boolean
   min_version: 2.27
-security_service_created_at:
-  description: |
-    The date and time stamp when the security service was created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
 security_service_description:
   description: |
     Description of the security service in plain text.
@@ -2527,24 +2307,6 @@ security_service_type_request:
     ``ldap``, ``kerberos``, or ``active_directory``.
   in: body
   required: false
-  type: string
-security_service_updated_at:
-  description: |
-    The date and time stamp when the security service was updated.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
   type: string
 security_service_user:
   description: |
@@ -2688,24 +2450,6 @@ service_status_response:
   in: body
   required: true
   type: string
-service_updated_at:
-  description: |
-    The date and time stamp when the service was updated.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
 service_zone_response:
   description: |
     The service availability zone.
@@ -2735,25 +2479,6 @@ share_force_delete:
     To force-delete a share or share group, set this value to
     ``null``. The force-delete action, unlike the delete action,
     ignores the share or share group status.
-  in: body
-  required: true
-  type: string
-share_group_created_at:
-  description: |
-    The date and time stamp when the share group was
-    created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2016-12-31T13:14:15-05:00``.
   in: body
   required: true
   type: string
@@ -2869,24 +2594,6 @@ share_instance_id_1:
   in: body
   required: true
   type: string
-share_network_created_at:
-  description: |
-    The date and time stamp when the share network was created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
 share_network_description:
   description: |
     The share network description.
@@ -2974,24 +2681,6 @@ share_network_security_service_id:
   in: body
   required: true
   type: string
-share_network_updated_at:
-  description: |
-    The date and time stamp when the share network was updated.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
 share_new_size:
   description: |
     New size of the share, in GBs.
@@ -3028,24 +2717,6 @@ share_replica_cast_rules_to_readonly:
   required: true
   type: string
   min_version: 2.30
-share_replica_created_at:
-  description: |
-    The date and time stamp when the share replica was created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
 share_replica_force_delete:
   description: |
     To force-delete a share replica, set this value to
@@ -3100,24 +2771,6 @@ share_replica_status:
   in: body
   required: true
   type: string
-share_replica_updated_at:
-  description: |
-    The date and time stamp when the share replica was updated.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
 share_server_id:
   description: |
     The UUID of the share server.
@@ -3157,24 +2810,6 @@ share_server_unmanage:
   in: body
   required: true
   type: object
-share_server_updated_at:
-  description: |
-    The date and time stamp when the share server was updated.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
 share_size_1:
   description: |
     The size of a source share, in GBs.
@@ -3286,25 +2921,6 @@ size_2:
   in: body
   required: true
   type: integer
-snapshot_created_at:
-  description: |
-    The date and time stamp when the snapshot or snapshot instance was
-    created.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
 snapshot_description:
   description: |
     The snapshot description.
@@ -3379,25 +2995,6 @@ snapshot_instance_status:
     ``available``, ``error``, ``creating``, ``deleting``, and
     ``error_deleting``, ``restoring``, ``unmanage_starting``,
     ``unmanage_error``, ``manage_starting``, ``manage_error``.
-  in: body
-  required: true
-  type: string
-snapshot_instance_updated_at:
-  description: |
-    The date and time stamp when the snapshot instance was
-    updated.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2016-12-31T13:14:15-05:00``.
   in: body
   required: true
   type: string
@@ -3766,28 +3363,11 @@ unmanage:
   in: body
   required: true
   type: string
-updated:
+updated_at:
   description: |
-    The date and time stamp when the extension was last updated.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
-updated_at_2:
-  description: |
-    The date and time stamp when the share instance export location was
-    updated.
+    The date and time stamp when the resource was last updated within the
+    service's database. If a resource was never updated after it was
+    created, the value of this parameter is set to ``null``.
 
     The date and time stamp format is `ISO 8601
     <https://en.wikipedia.org/wiki/ISO_8601>`_:
@@ -3803,33 +3383,14 @@ updated_at_2:
   in: body
   required: true
   type: string
-updated_at_5:
+updated_at_extensions:
   description: |
-    The date and time stamp when the service was updated.
+    The date and time stamp when the extension API was last updated.
 
     The date and time stamp format is `ISO 8601
     <https://en.wikipedia.org/wiki/ISO_8601>`_:
 
     ::
-
-       CCYY-MM-DDThh:mm:ss±hh:mm
-
-    The ``±hh:mm`` value, if included, returns the time zone as an
-    offset from UTC.
-
-    For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
-updated_at_share_server_body:
-  description: |
-    The date and time stamp when the share server was updated.
-
-    The date and time stamp format is `ISO 8601
-    <https://en.wikipedia.org/wiki/ISO_8601>`_:
-
-    ::
-
        CCYY-MM-DDThh:mm:ss±hh:mm
 
     The ``±hh:mm`` value, if included, returns the time zone as an

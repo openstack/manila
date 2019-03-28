@@ -78,7 +78,7 @@ Response parameters
    - share_network_id: share_network_id
    - share_network_name: share_network_name
    - host: host_share_server_body
-   - updated_at: updated_at_share_server_body
+   - updated_at: updated_at
 
 Response example
 ----------------
@@ -128,8 +128,8 @@ Response parameters
   - share_network_id: share_network_id_share_server_body
   - share_network_name: share_network_name
   - host: host_share_server_body
-  - created_at: created_at_share_server_body
-  - updated_at: updated_at_share_server_body
+  - created_at: created_at
+  - updated_at: updated_at
   - identifier: share_server_show_identifier
   - is_auto_deletable: share_server_show_is_auto_deletable
 
@@ -266,12 +266,12 @@ Response parameters
 
     - id: share_server_id
     - project_id: project_id
-    - updated_at: share_server_updated_at
+    - updated_at: updated_at
     - status: share_server_status
     - host: manage_host
     - share_network_name: share_network_name
     - share_network_id: share_network_id
-    - created_at: created_at_share_server_body
+    - created_at: created_at
     - backend_details: backend_details
     - is_auto_deletable: is_auto_deletable
     - identifier: identifier

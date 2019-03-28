@@ -48,8 +48,8 @@ Response parameters
    - availability_zones: availability_zones
    - id: availability_zone_id
    - name: availability_zone_name
-   - created_at: availability_zone_created_at
-   - updated_at: availability_zone_updated_at
+   - created_at: created_at
+   - updated_at: updated_at
 
 Response example
 ----------------

@@ -124,7 +124,7 @@ Response parameters
 
    - id: share_group_id
    - name: share_group_name_response
-   - created_at: share_group_created_at
+   - created_at: created_at
    - status: share_group_status
    - description: share_group_description_response
    - project_id: project_id
@@ -196,7 +196,7 @@ Response parameters
 
    - id: share_group_id
    - name: share_group_name_response
-   - created_at: share_group_created_at
+   - created_at: created_at
    - status: share_group_status
    - description: share_group_description_response
    - project_id: project_id
@@ -308,7 +308,7 @@ Response parameters
 
    - id: share_group_id
    - name: share_group_name_response
-   - created_at: share_group_created_at
+   - created_at: created_at
    - status: share_group_status
    - description: share_group_description_response
    - project_id: project_id

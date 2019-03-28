@@ -125,8 +125,8 @@ Response parameters
    - domain: security_service_domain
    - ou: security_service_ou
    - server: security_service_server
-   - updated_at: security_service_updated_at
-   - created_at: security_service_created_at
+   - updated_at: updated_at
+   - created_at: created_at
 
 Response example
 ----------------
@@ -181,8 +181,8 @@ Response parameters
    - domain: security_service_domain
    - ou: security_service_ou
    - server: security_service_server
-   - updated_at: security_service_updated_at
-   - created_at: security_service_created_at
+   - updated_at: updated_at
+   - created_at: created_at
 
 Response example
 ----------------
@@ -251,8 +251,8 @@ Response parameters
    - domain: security_service_domain
    - ou: security_service_ou
    - server: security_service_server
-   - updated_at: security_service_updated_at
-   - created_at: security_service_created_at
+   - updated_at: updated_at
+   - created_at: created_at
 
 Response example
 ----------------
@@ -328,8 +328,8 @@ Response parameters
    - domain: security_service_domain
    - ou: security_service_ou
    - server: security_service_server
-   - updated_at: security_service_updated_at
-   - created_at: security_service_created_at
+   - updated_at: updated_at
+   - created_at: created_at
 
 Response example
 ----------------

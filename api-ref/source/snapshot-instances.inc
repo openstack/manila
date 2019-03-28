@@ -99,8 +99,8 @@ Response parameters
 
    - id: snapshot_instance_id_response
    - snapshot_id: snapshot_id
-   - created_at: snapshot_created_at
-   - updated_at: snapshot_instance_updated_at
+   - created_at: created_at
+   - updated_at: updated_at
    - status: snapshot_instance_status
    - share_id: share_id
    - share_instance_id: share_instance_id_1
@@ -152,8 +152,8 @@ Response parameters
 
    - id: snapshot_instance_id_response
    - snapshot_id: snapshot_id
-   - created_at: snapshot_created_at
-   - updated_at: snapshot_instance_updated_at
+   - created_at: created_at
+   - updated_at: updated_at
    - status: snapshot_instance_status
    - share_id: share_id
    - share_instance_id: share_instance_id_1

@@ -128,8 +128,8 @@ Response parameters
    - ip_version: ip_version
    - name: share_network_name
    - description: share_network_description
-   - created_at: share_network_created_at
-   - updated_at: share_network_updated_at
+   - created_at: created_at
+   - updated_at: updated_at
    - gateway: share_network_gateway
    - mtu: share_network_mtu
 
@@ -184,8 +184,8 @@ Response parameters
    - ip_version: ip_version
    - name: share_network_name
    - description: share_network_description
-   - created_at: share_network_created_at
-   - updated_at: share_network_updated_at
+   - created_at: created_at
+   - updated_at: updated_at
    - gateway: share_network_gateway
    - mtu: share_network_mtu
 
@@ -251,8 +251,8 @@ Response parameters
    - ip_version: ip_version_1
    - name: share_network_name
    - description: share_network_description
-   - created_at: share_network_created_at
-   - updated_at: share_network_updated_at
+   - created_at: created_at
+   - updated_at: updated_at
    - gateway: share_network_gateway
    - mtu: share_network_mtu
 
@@ -316,8 +316,8 @@ Response parameters
    - ip_version: ip_version
    - name: share_network_name
    - description: share_network_description
-   - created_at: share_network_created_at
-   - updated_at: share_network_updated_at
+   - created_at: created_at
+   - updated_at: updated_at
    - gateway: share_network_gateway
    - mtu: share_network_mtu
 
@@ -381,8 +381,8 @@ Response parameters
    - ip_version: ip_version
    - name: share_network_name
    - description: share_network_description
-   - created_at: share_network_created_at
-   - updated_at: share_network_updated_at
+   - created_at: created_at
+   - updated_at: updated_at
    - gateway: share_network_gateway
    - mtu: share_network_mtu
 
@@ -451,8 +451,8 @@ Response parameters
    - ip_version: ip_version
    - name: share_network_name
    - description: share_network_description
-   - created_at: share_network_created_at
-   - updated_at: share_network_updated_at
+   - created_at: created_at
+   - updated_at: updated_at
    - gateway: share_network_gateway
    - mtu: share_network_mtu
 

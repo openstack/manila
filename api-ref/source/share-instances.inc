@@ -49,7 +49,7 @@ Response parameters
    - access_rules_status: access_rules_status
    - share_id: share_id_2
    - availability_zone: availability_zone_1
-   - created_at: created_at_5
+   - created_at: created_at
    - replica_state: replica_state
    - export_location: export_location
    - export_locations: export_locations
@@ -106,7 +106,7 @@ Response parameters
    - access_rules_status: access_rules_status
    - share_id: share_id_2
    - availability_zone: availability_zone_1
-   - created_at: created_at_5
+   - created_at: created_at
    - replica_state: replica_state
    - export_location: export_location
    - export_locations: export_locations

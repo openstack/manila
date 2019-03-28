@@ -57,7 +57,7 @@ Response parameters
    - zone: service_zone_response
    - host: service_host_response
    - state: service_state_response
-   - updated_at: service_updated_at
+   - updated_at: updated_at
 
 Response example
 ----------------

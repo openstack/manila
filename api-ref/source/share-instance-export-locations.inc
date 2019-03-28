@@ -101,8 +101,8 @@ Response parameters
    - path: export_location_path
    - is_admin_only: export_location_is_admin_only
    - preferred: export_location_preferred
-   - created_at: export_location_created_at
-   - updated_at: export_location_updated_at
+   - created_at: created_at
+   - updated_at: updated_at
 
 Response example
 ----------------
