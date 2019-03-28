@@ -201,24 +201,24 @@ class API(base.Base):
         """Raise exception if volume in use."""
         if volume['status'] != "in-use":
             msg = _("status must be 'in-use'")
-            raise exception.InvalidVolume(reason=msg)
+            raise exception.InvalidVolume(msg)
 
     def check_attach(self, context, volume, instance=None):
         if volume['status'] != "available":
             msg = _("status must be 'available'")
-            raise exception.InvalidVolume(reason=msg)
+            raise exception.InvalidVolume(msg)
         if volume['attach_status'] == "attached":
             msg = _("already attached")
-            raise exception.InvalidVolume(reason=msg)
+            raise exception.InvalidVolume(msg)
         if instance and not CONF[CINDER_GROUP].cross_az_attach:
             if instance['availability_zone'] != volume['availability_zone']:
                 msg = _("Instance and volume not in same availability_zone")
-                raise exception.InvalidVolume(reason=msg)
+                raise exception.InvalidVolume(msg)
 
     def check_detach(self, context, volume):
         if volume['status'] == "available":
             msg = _("already detached")
-            raise exception.InvalidVolume(reason=msg)
+            raise exception.InvalidVolume(msg)
 
     @translate_volume_exception
     def reserve_volume(self, context, volume_id):

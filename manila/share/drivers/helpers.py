@@ -447,7 +447,7 @@ class CIFSHelperIPAccess(CIFSHelperBase):
             except Exception:
                 msg = _("Could not create CIFS export %s.") % share_name
                 LOG.exception(msg)
-                raise exception.ManilaException(reason=msg)
+                raise exception.ManilaException(msg)
         else:
             # Share exists
             if recreate:
@@ -458,7 +458,7 @@ class CIFSHelperIPAccess(CIFSHelperBase):
                 except Exception:
                     msg = _("Could not create CIFS export %s.") % share_name
                     LOG.exception(msg)
-                    raise exception.ManilaException(reason=msg)
+                    raise exception.ManilaException(msg)
             else:
                 msg = _('Share section %s already defined.') % share_name
                 raise exception.ShareBackendException(msg=msg)

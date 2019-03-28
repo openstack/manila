@@ -881,7 +881,7 @@ class QnapShareDriver(driver.ShareDriver):
         if existing_share is None:
             msg = _("The share id %s was not found on backend.") % volID
             LOG.error(msg)
-            raise exception.ShareNotFound(reason=msg)
+            raise exception.ShareNotFound(msg)
 
         snapshot_id = snapshot.get('provider_location')
         snapshot_id_info = snapshot_id.split('@')
@@ -893,7 +893,7 @@ class QnapShareDriver(driver.ShareDriver):
             msg = _("Incorrect provider_location format. It should have the "
                     "following format: share_name@snapshot_name.")
             LOG.error(msg)
-            raise exception.InvalidParameterValue(reason=msg)
+            raise exception.InvalidParameterValue(msg)
 
         if share_name != existing_share.find('vol_label').text:
             msg = (_("The assigned share %(share_name)s was not matched "
@@ -901,7 +901,7 @@ class QnapShareDriver(driver.ShareDriver):
                    {'share_name': share_name,
                     'vol_label': existing_share.find('vol_label').text})
             LOG.error(msg)
-            raise exception.ShareNotFound(reason=msg)
+            raise exception.ShareNotFound(msg)
 
         check_snapshot = self.api_executor.get_snapshot_info(
             volID=volID, snapshot_name=snapshot_name)
