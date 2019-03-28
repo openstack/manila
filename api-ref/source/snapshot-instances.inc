@@ -21,6 +21,8 @@ List share snapshot instances
 
 .. rest_method::  GET /v2/{tenant_id}/snapshot-instances
 
+.. versionadded:: 2.19
+
 Lists all share snapshot instances.
 
 Response codes
@@ -64,6 +66,8 @@ List share snapshot instances with details
 ==========================================
 
 .. rest_method::  GET /v2/{tenant_id}/snapshot-instances/detail
+
+.. versionadded:: 2.19
 
 Lists all share snapshot instances with details.
 
@@ -115,6 +119,8 @@ Show share snapshot instance details
 
 .. rest_method::  GET /v2/{tenant_id}/snapshot-instances/{snapshot_instance_id}
 
+.. versionadded:: 2.19
+
 Shows details for a share snapshot instance.
 
 Response codes
@@ -165,6 +171,8 @@ Reset share snapshot instance state
 ===================================
 
 .. rest_method::  POST /v2/{tenant_id}/snapshot-instances/{snapshot_instance_id}/action
+
+.. versionadded:: 2.19
 
 Administrator only. Explicitly updates the state of a share snapshot instance.
 

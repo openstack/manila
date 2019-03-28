@@ -271,7 +271,7 @@ user documentation.
   only within specific availability zones. The extra-spec allows using
   comma separated names of one or more availability zones.
 
-2.49
-----
+2.49 (Maximum in Stein)
+-----------------------
   Added Manage/Unmanage Share Server APIs. Updated Manage/Unmanage Shares and
   Snapshots APIs to work in ``driver_handles_shares_servers`` enabled mode.

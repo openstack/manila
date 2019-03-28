@@ -14,6 +14,8 @@ List share instances
 
 .. rest_method::  GET /v2/{tenant_id}/share_instances
 
+.. versionadded:: 2.3
+
 Lists all share instances.
 
 Response codes
@@ -51,6 +53,7 @@ Response parameters
    - replica_state: replica_state
    - export_location: export_location
    - export_locations: export_locations
+   - cast_rules_to_readonly: share_instance_cast_rules_to_readonly
    - share_network_id: share_network_id_4
    - share_server_id: share_server_id
    - host: host_6
@@ -67,6 +70,8 @@ Show share instance details
 ===========================
 
 .. rest_method::  GET /v2/{tenant_id}/share_instances/{share_instance_id}
+
+.. versionadded:: 2.3
 
 Shows details for a share instance.
 
@@ -105,6 +110,7 @@ Response parameters
    - replica_state: replica_state
    - export_location: export_location
    - export_locations: export_locations
+   - cast_rules_to_readonly: share_instance_cast_rules_to_readonly
    - share_network_id: share_network_id_4
    - share_server_id: share_server_id
    - host: host_6
@@ -121,6 +127,8 @@ Reset share instance state
 ==========================
 
 .. rest_method::  POST /v2/{tenant_id}/share_instances/{share_instance_id}/action
+
+.. versionadded:: 2.3
 
 Administrator only. Explicitly updates the state of a share instance.
 
@@ -161,6 +169,8 @@ Force-delete share instance
 ===========================
 
 .. rest_method::  POST /v2/{tenant_id}/share_instances/{share_instance_id}/action
+
+.. versionadded:: 2.3
 
 Administrator only. Force-deletes a share instance.
 

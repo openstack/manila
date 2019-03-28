@@ -39,6 +39,8 @@ List share group types
 
 .. rest_method::  GET /v2/{tenant_id}/share-group-types
 
+.. versionadded:: 2.31
+
 Lists all share group types.
 
 Response codes
@@ -78,6 +80,8 @@ List default share group types
 ==============================
 
 .. rest_method::  GET /v2/{tenant_id}/share-group-types/default
+
+.. versionadded:: 2.31
 
 Lists default share group types.
 
@@ -126,6 +130,8 @@ List share group types extra specs
 
 .. rest_method::  GET /v2/{tenant_id}/share-group-types/{share_group_type_id}/group_specs
 
+.. versionadded:: 2.31
+
 Lists the extra specifications for a share group type.
 
 Response codes
@@ -168,6 +174,8 @@ Create share group type
 =======================
 
 .. rest_method::  POST /v2/{tenant_id}/share-group-types
+
+.. versionadded:: 2.31
 
 Creates a share group type.
 
@@ -227,6 +235,8 @@ Show share group type access details
 
 .. rest_method::  GET /v2/{tenant_id}/share-group-types/{share_group_type_id}/share_type_access
 
+.. versionadded:: 2.31
+
 Shows access details for a share group type.
 
 You can view access details for private share group types only.
@@ -272,6 +282,8 @@ Set extra spec for share group type
 ===================================
 
 .. rest_method::  POST /v2/{tenant_id}/share-group-types/{share_group_type_id}/group_specs
+
+.. versionadded:: 2.31
 
 Sets an extra specification for the share group type.
 
@@ -324,6 +336,8 @@ Unset an group spec
 
 .. rest_method::  DELETE /v2/{tenant_id}/share-group-types/{share_group_type_id}/group-specs/{group_spec_key}
 
+.. versionadded:: 2.31
+
 Unsets an extra specification for the share type.
 
 Response codes
@@ -354,6 +368,8 @@ Add share group type access
 ===========================
 
 .. rest_method::  POST /v2/{tenant_id}/share-group-types/{share_group_type_id}/action
+
+.. versionadded:: 2.31
 
 Adds share group type access for a project.
 
@@ -395,6 +411,8 @@ Remove share group type access
 
 .. rest_method::  POST /v2/{tenant_id}/share-group-types/{share_group_type_id}/action
 
+.. versionadded:: 2.31
+
 Removes share group type access from a project.
 
 You can remove access from private share group types only.
@@ -433,6 +451,8 @@ Delete share group type
 =======================
 
 .. rest_method::  DELETE /v2/{tenant_id}/share-group-types/{share_group_type_id}
+
+.. versionadded:: 2.31
 
 Deletes a share group type.
 

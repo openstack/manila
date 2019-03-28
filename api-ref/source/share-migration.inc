@@ -1,7 +1,7 @@
 .. -*- rst -*-
 
 ================================
-Share Migration (Since API v2.5)
+Share Migration (since API v2.5)
 ================================
 As an administrator, you can migrate a share with its data from one
 location to another in a manner that is transparent to users and workloads.
@@ -20,10 +20,18 @@ Possible use cases for data migration include:
     #experimental-apis>`_ .
 
 
-Migrate share (versions 2.5 to 2.14)
-=========================================
+Migrate share (DEPRECATED)
+==========================
+
+.. warning::
+
+   This API is deprecated starting with microversion 2.15 and requests to
+   this API will fail with a 404 starting from microversion 2.15. Please see
+   the new experimental API below.
 
 .. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
+
+.. versionadded:: 2.5
 
 Migrates a share from one back end to another.
 
@@ -61,10 +69,12 @@ Request
    - force_host_copy: force_host_copy
 
 
-Start Migration (Since version 2.15)
-====================================
+Start Migration (since API v2.15)
+=================================
 
 .. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
+
+.. versionadded:: 2.15
 
 Initiates share migration. This API will initiate the share data copy to the
 new host. The copy operation is non-disruptive.
@@ -97,10 +107,12 @@ Request
    - force_host_copy: force_host_copy
 
 
-Complete Migration (Since version 2.15)
+Complete Migration (since API v2.15)
 =======================================
 
 .. rest_method::  POST /v2/{tenant_id}/shares/{share_id}/action
+
+.. versionadded:: 2.15
 
 Completes share migration. This API will initiate the switch-over from the
 source to destination share. This operation is disruptive.
