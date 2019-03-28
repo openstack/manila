@@ -166,7 +166,7 @@ fake_share_network_multi = {
     'ip_version': None,
     'cidr': 'fake_cidr',
     'gateway': 'fake_gateway',
-    'mtu': fake_neutron_network_multi['mtu'],
+    'mtu': fake_neutron_network_multi['mtu'] - 1,
 }
 
 fake_network_allocation_multi = {
@@ -181,7 +181,7 @@ fake_network_allocation_multi = {
     'ip_version': fake_neutron_subnet['ip_version'],
     'cidr': fake_neutron_subnet['cidr'],
     'gateway': fake_neutron_subnet['gateway_ip'],
-    'mtu': fake_share_network_multi['mtu'],
+    'mtu': fake_neutron_network_multi['mtu'],
 }
 
 fake_binding_profile = {
