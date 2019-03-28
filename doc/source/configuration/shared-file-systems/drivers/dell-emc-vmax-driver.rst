@@ -263,6 +263,8 @@ The following parameters need to be configured in the
    vmax_ethernet_ports = <Comma separated ports list>
    emc_ssl_cert_verify = True
    emc_ssl_cert_path = <path to cert>
+   emc_share_backend = vmax
+   share_backend_name = <Backend>
 
 - `emc_share_backend`
     The plug-in name. Set it to ``vmax`` for the VMAX driver.
@@ -304,6 +306,13 @@ The following parameters need to be configured in the
     The path to the This must be set if emc_ssl_cert_verify is True which is
     the recommended configuration.  See ``SSL Support`` section for more
     details.
+
+- `emc_share_backend`
+    Set to ``vmax`` to enable vmax manila plugin . Other values are
+    ``isilon``, ``vnx`` and ``unity``.
+
+- `share_backend_name`
+    The backend name for a given driver implementation.
 
 Restart of the ``manila-share`` service is needed for the configuration
 changes to take effect.
