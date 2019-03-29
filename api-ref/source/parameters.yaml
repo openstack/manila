@@ -259,12 +259,6 @@ limit_query:
   in: query
   required: false
   type: integer
-media_types:
-  description: |
-      Media types supported by the API.
-  in: query
-  required: false
-  type: object
 message_level:
   in: query
   required: false
@@ -401,13 +395,6 @@ share_server_id_query:
   in: query
   required: false
   type: string
-share_type_id_2:
-  description: |
-    The UUID of the share type.
-  in: query
-  required: false
-  type: string
-  min_version: 2.6
 share_type_query:
   description: |
     The share type name or UUID. Allows filtering back end pools based
@@ -463,20 +450,6 @@ source_share_group_snapshot_id_query:
   required: false
   type: string
   min_version: 2.31
-state_2:
-  description: |
-    The current state of the service. A valid value
-    is ``up`` or ``down``.
-  in: query
-  required: false
-  type: string
-status_17:
-  description: |
-    The service status, which is ``enabled`` or
-    ``disabled``.
-  in: query
-  required: false
-  type: string
 status_6:
   description: |
     Filters by a share status. A valid value is
@@ -503,12 +476,6 @@ with_count:
   required: false
   type: boolean
   min_version: 2.42
-zone_1:
-  description: |
-    The availability zone.
-  in: query
-  required: false
-  type: string
 
 # variables in body
 access:
@@ -630,14 +597,6 @@ add_project_access:
   in: body
   required: true
   type: object
-alias:
-  description: |
-    The alias for the extension. For example,
-    "FOXNSOX," "os- availability-zone," "os-extended-quotas," "os-
-    share-unmanage," or "os-used-limits."
-  in: body
-  required: true
-  type: string
 allow_access:
   description: |
     The object of grant access.
@@ -695,14 +654,6 @@ backend_details:
     example, the generic back- end driver might store the router ID.
   in: body
   required: true
-  type: string
-backend_details_1:
-  description: |
-    The back-end details for a server. Each back end
-    can store any key- value information that it requires. For
-    example, the generic back- end driver might store the router ID.
-  in: body
-  required: true
   type: object
 backend_host:
   description: |
@@ -716,41 +667,6 @@ backend_name:
     ``host@backend#POOL``.  - ``host``. The host name for the back
     end.  - ``backend``. The name of the back end.  - ``POOL``. The
     pool name for the back end.
-  in: body
-  required: true
-  type: string
-binary:
-  description: |
-    The name of the service binary that you want to
-    disable. Typically, this name is the base name of the executable.
-  in: body
-  required: true
-  type: string
-binary_1:
-  description: |
-    The name of the service binary that you want to
-    enable. Typically, this name is the base name of the executable.
-  in: body
-  required: true
-  type: string
-binary_2:
-  description: |
-    The service binary name. Default is the base name
-    of the executable.
-  in: body
-  required: true
-  type: string
-binary_4:
-  description: |
-    The name of the disabled service binary.
-    Typically, this name is the base name of the executable.
-  in: body
-  required: true
-  type: string
-binary_5:
-  description: |
-    The name of the enabled service binary.
-    Typically, this name is the base name of the executable.
   in: body
   required: true
   type: string
@@ -927,12 +843,6 @@ detail_id_body:
   type: string
   description: >
     The ID of the message detail.
-disabled:
-  description: |
-    Indicates whether the service is disabled.
-  in: body
-  required: true
-  type: boolean
 display_description_request:
   description: |
     The user defined description of the resource. This field sets the
@@ -959,26 +869,7 @@ driver_handles_share_servers:
   in: body
   required: true
   type: boolean
-driver_handles_share_servers_1:
-  description: |
-    An extra specification that defines the driver
-    mode for share server, or storage, life cycle management. The
-    Shared File Systems service creates a share server for the export
-    of shares.  Set to ``true`` when the share driver manages, or
-    handles, the share server life cycle.  Set to ``false`` when an
-    administrator rather than a share driver manages the storage life
-    cycle.
-  in: body
-  required: true
-  type: boolean
 driver_options:
-  description: |
-    A set of one or more key and value pairs, as a
-    dictionary of strings, that describe driver options.
-  in: body
-  required: false
-  type: object
-driver_options_1:
   description: |
     A set of one or more key and value pairs, as a
     dictionary of strings, that describe driver options. Details for
@@ -988,12 +879,6 @@ driver_options_1:
   in: body
   required: false
   type: object
-driver_version:
-  description: |
-    The driver version.
-  in: body
-  required: true
-  type: string
 export_location:
   description: |
     The export location.  For newer API versions it is available in
@@ -1159,14 +1044,6 @@ force_snapshot_request:
   in: body
   required: false
   type: boolean
-free_capacity_gb:
-  description: |
-    The amount of free capacity for the back end, in
-    GBs. A valid value is a string, such as ``unknown``, or an
-    integer.
-  in: body
-  required: true
-  type: string
 group_snapshot_id:
   description: |
     The share group snapshot ID.
@@ -1234,39 +1111,6 @@ host_10:
   in: body
   required: true
   type: string
-host_13:
-  description: |
-    The host name of the disabled service.
-  in: body
-  required: true
-  type: string
-host_14:
-  description: |
-    The host name of the enabled service.
-    enable.
-  in: body
-  required: true
-  type: string
-host_2:
-  description: |
-    The host name of the service that you want to
-    disable.
-  in: body
-  required: true
-  type: string
-host_3:
-  description: |
-    The host name of the service that you want to
-    enable.
-  in: body
-  required: true
-  type: string
-host_5:
-  description: |
-    The service host name.
-  in: body
-  required: true
-  type: string
 host_6:
   description: |
     The share instance host name.
@@ -1285,46 +1129,15 @@ host_share_server_body:
   in: body
   required: true
   type: string
-id_12:
-  description: |
-    The service ID.
-  in: body
-  required: true
-  type: integer
 id_13:
   description: |
     The share instance ID.
   in: body
   required: true
   type: string
-id_16:
-  description: |
-    The UUID of the snapshot.
-  in: body
-  required: true
-  type: string
 id_4:
   description: |
     The UUID of the share.
-  in: body
-  required: true
-  type: string
-id_5:
-  description: |
-    The share instance export location UUID.
-  in: body
-  required: true
-  type: string
-id_6:
-  description: |
-    The UUID of the export location that belongs to
-    share instance.
-  in: body
-  required: true
-  type: string
-id_8:
-  description: |
-    The UUID of the access rule.
   in: body
   required: true
   type: string
@@ -1349,15 +1162,6 @@ ip_version_1:
   in: body
   required: true
   type: integer
-is_admin_only:
-  description: |
-    Defines purpose of an export location. If set to
-    ``true``, then it is expected to be used for service needs and by
-    admin only. If it is set to ``false``, then this export location
-    should be used by end users.
-  in: body
-  required: true
-  type: boolean
 is_auto_deletable:
   description: |
     Defines if a share server can be deleted automatically by  the service.
@@ -1394,27 +1198,9 @@ is_public:
   required: false
   type: boolean
   min_version: 2.8
-link_1:
-  description: |
-    The share links
-  in: body
-  required: true
-  type: array
 links:
   description: |
     The share links
-  in: body
-  required: true
-  type: array
-links_1:
-  description: |
-    The share links.
-  in: body
-  required: true
-  type: array
-links_2:
-  description: |
-    The extension links.
   in: body
   required: true
   type: array
@@ -1676,21 +1462,9 @@ notify:
   in: body
   required: true
   type: string
-os-force_delete:
-  description: |
-    The ``force_delete`` object.
-  in: body
-  required: true
-  type: object
 os-migrate_share:
   description: |
     The ``migrate_share`` object.
-  in: body
-  required: true
-  type: object
-os-reset_status:
-  description: |
-    The ``reset_status`` object.
   in: body
   required: true
   type: object
@@ -1702,12 +1476,6 @@ os-share-type-access:is_public:
   required: false
   type: boolean
   max_version: 2.6
-path:
-  description: |
-    The export location path that should be used for mout operation.
-  in: body
-  required: true
-  type: string
 pool:
   description: |
     The pool name for the back end.
@@ -1723,15 +1491,6 @@ pools:
   in: body
   required: true
   type: string
-preferred:
-  description: |
-    Drivers may use this field to identify which export locations
-    are most efficient and should be used preferentially by clients.
-    By default it is set to ``false`` value.
-  in: body
-  required: true
-  type: boolean
-  min_version: 2.14
 progress:
   description: |
     The progress of the snapshot creation.
@@ -1783,12 +1542,6 @@ protocol:
   in: body
   required: true
   type: string
-qos:
-  description: |
-    The quality of service (QoS) support.
-  in: body
-  required: true
-  type: boolean
 quota_class_id:
   description: |
     A ``quota_class_set`` id.
@@ -2014,13 +1767,6 @@ required_extra_specs:
   in: body
   required: true
   type: object
-reserved_percentage:
-  description: |
-    The percentage of the total capacity that is
-    reserved for the internal use by the back end.
-  in: body
-  required: true
-  type: integer
 reset_status:
   description: |
     The ``reset_status`` object.
@@ -2148,12 +1894,6 @@ security_service_user_request:
   in: body
   required: false
   type: string
-security_servie_server_request:
-  description: |
-    The security service host name or IP address.
-  in: body
-  required: false
-  type: string
 segmentation_id:
   description: |
     The segmentation ID.
@@ -2170,12 +1910,6 @@ segmentation_id_1:
   in: body
   required: true
   type: integer
-server_pools_mapping:
-  description: |
-    The mapping between servers and pools.
-  in: body
-  required: true
-  type: object
 service_binary_response:
   description: |
     The service binary name. Default is the base name
@@ -2220,13 +1954,6 @@ service_enable_binary_request:
   description: |
     The name of the service binary that you want to
     enable. Typically, this name is the base name of the executable.
-  in: body
-  required: true
-  type: string
-service_enable_binary_response:
-  description: |
-    The name of the enabled service binary.
-    Typically, this name is the base name of the executable.
   in: body
   required: true
   type: string
@@ -2296,12 +2023,6 @@ share:
   in: body
   required: true
   type: object
-share_backend_name:
-  description: |
-    The name of the share back end.
-  in: body
-  required: true
-  type: string
 share_force_delete:
   description: |
     To force-delete a share or share group, set this value to
@@ -2435,12 +2156,6 @@ share_network_id_2:
   in: body
   required: false
   type: string
-share_network_id_3:
-  description: |
-    The ID of a share network.
-  in: body
-  required: true
-  type: string
 share_network_id_4:
   description: |
     The share network ID.
@@ -2486,14 +2201,6 @@ share_proto:
     The Shared File Systems protocol. A valid value
     is ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, ``CephFS``,
     ``MAPRFS``, ``CephFS`` supported is starting with API v2.13.
-  in: body
-  required: true
-  type: string
-share_protocol:
-  description: |
-    The file system protocol of the member, which is
-    ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, ``CEPHFS`` or
-    ``MAPRFS``.
   in: body
   required: true
   type: string
@@ -2611,12 +2318,6 @@ share_share_type_name:
   required: true
   type: string
   min_version: 2.6
-share_size_1:
-  description: |
-    The size of a source share, in GBs.
-  in: body
-  required: true
-  type: integer
 share_type:
   description: |
     The share type name. If you omit this parameter,
@@ -2712,12 +2413,6 @@ size:
     The share size, in GBs. The requested share size
     cannot be greater than the allowed GB quota. To view the allowed
     quota, issue a get limits request.
-  in: body
-  required: true
-  type: integer
-size_1:
-  description: |
-    The member size, in GBs.
   in: body
   required: true
   type: integer
@@ -2832,15 +2527,6 @@ snapshot_share_protocol:
   in: body
   required: true
   type: string
-snapshot_share_protocol_request:
-  description: |
-    The file system protocol of a share snapshot. A
-    valid value is ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``,
-    ``CephFS`` or ``MAPRFS``, ``CephFS`` is supported starting
-    with API v2.13.
-  in: body
-  required: true
-  type: string
 snapshot_share_size:
   description: |
     The share snapshot size, in GBs.
@@ -2886,16 +2572,6 @@ snapshot_support_1:
   in: body
   required: false
   type: boolean
-snapshot_support_3:
-  description: |
-    An extra specification that filters back ends by
-    whether they do or do not support share snapshots.  Set to
-    ``true`` to show back ends that support share snapshots.  Set to
-    ``false`` to show back ends that do not support share snapshots.
-    Default is ``true``.
-  in: body
-  required: false
-  type: boolean
 snapshot_unmanage:
   description: |
     To unmanage a share snapshot, include this parameter and set its value to
@@ -2936,13 +2612,6 @@ state:
   in: body
   required: true
   type: string
-state_1:
-  description: |
-    The current state of the service. A valid value
-    is ``up`` or ``down``.
-  in: body
-  required: true
-  type: string
 status:
   description: |
     The consistency group snapshot status, which is
@@ -2955,14 +2624,6 @@ status_1:
   description: |
     The consistency group status. A valid value is
     ``creating``, ``available``, ``error``, ``deleting``, or
-    ``error_deleting``.
-  in: body
-  required: true
-  type: string
-status_10:
-  description: |
-    The consistency group status. A valid value is
-    ``creating``, ``error``, ``available``, ``deleting``, or
     ``error_deleting``.
   in: body
   required: true
@@ -2997,25 +2658,11 @@ status_3:
   in: body
   required: true
   type: string
-status_4:
-  description: |
-    The service status, which is ``enabled`` or
-    ``disabled``.
-  in: body
-  required: true
-  type: string
 status_5:
   description: |
     The share instance status. A valid value is
     ``available``, ``error``, ``creating``, ``deleting``, and
     ``error_deleting``.
-  in: body
-  required: true
-  type: string
-status_7:
-  description: |
-    The share server status, which is ``active``,
-    ``error``, ``creating``, or ``deleting``.
   in: body
   required: true
   type: string
@@ -3030,13 +2677,6 @@ status_share_server_body:
   description: |
     The share server status, which is ``active``,
     ``error``, ``creating``, or ``deleting``.
-  in: body
-  required: true
-  type: string
-storage_protocol:
-  description: |
-    The storage protocol for the back end. For
-    example, ``NFS_CIFS``, ``glusterfs``, ``HDFS``, and so on.
   in: body
   required: true
   type: string
@@ -3067,13 +2707,6 @@ timestamp:
     offset from UTC.
 
     For example, ``2015-08-27T09:49:58-05:00``.
-  in: body
-  required: true
-  type: string
-total_capacity_gb:
-  description: |
-    The total capacity for the back end, in GBs. A
-    valid value is a string, such as ``unknown``, or an integer.
   in: body
   required: true
   type: string
@@ -3120,13 +2753,6 @@ unit:
     requests are allowed per minute.
   in: body
   required: false
-  type: string
-unmanage:
-  description: |
-    To unmanage a share snapshot, set this value to
-    ``null``.
-  in: body
-  required: true
   type: string
 updated_at:
   description: |
@@ -3187,12 +2813,6 @@ value:
   in: body
   required: false
   type: integer
-vendor_name:
-  description: |
-    The name of the vendor for the back end.
-  in: body
-  required: true
-  type: string
 verb:
   description: |
     The HTTP method for the API request. For example,
@@ -3271,10 +2891,4 @@ volume_type:
     response shows both ``share_types`` and ``volume_types`` objects.
   in: body
   required: false
-  type: string
-zone:
-  description: |
-    The availability zone.
-  in: body
-  required: true
   type: string

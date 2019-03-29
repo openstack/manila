@@ -60,6 +60,8 @@ Request
    - host: backend_host_query
    - share_network_id: share_network_id_query
    - share_group_type_id: share_group_type_id_query
+   - share_group_snapshot_id: source_share_group_snapshot_id_query
+   - share_types: share_types_query
    - limit: limit_query
    - offset: offset
    - sort_key: sort_key
