@@ -4,9 +4,11 @@
 Shares
 ======
 
-A share is a remote, mountable file system. You can mount a share
-to and access a share from several hosts by several users at a
-time.
+A share is a remote, mountable file system. In the APIs below, a share
+resource is a representation of this remote file system within the Shared
+File Systems service. This resource representation includes useful metadata,
+communicating the characteristics of the remote file system as determined by
+the user and the Shared File Systems service.
 
 You can create a share and associate it with a network, list
 shares, and show information for, update, and delete a share.
@@ -109,7 +111,7 @@ Request
 
    - project_id: project_id_path
    - all_tenants: all_tenants
-   - name: name_5
+   - name: name_request
    - status: status_6
    - share_server_id: share_server_id
    - metadata: metadata
@@ -177,7 +179,6 @@ Request
 
    - project_id: project_id_path
    - all_tenants: all_tenants
-   - name: name_5
    - status: status_6
    - share_server_id: share_server_id
    - metadata: metadata
@@ -187,6 +188,7 @@ Request
    - offset: offset
    - sort_key: sort_key
    - sort_dir: sort_dir
+   - name: name_query
    - snapshot_id: snapshot_id_query
    - host: host_1
    - share_network_id: share_network_id
@@ -218,14 +220,14 @@ Response parameters
    - project_id: project_id
    - metadata: metadata
    - status: status_16
-   - description: description_5
+   - description: description
    - host: host_1
    - access_rules_status: access_rules_status
    - is_public: is_public
    - share_group_id: share_group_id
    - task_state: task_state
    - snapshot_support: snapshot_support
-   - name: name_5
+   - name: name
    - has_replicas: has_replicas
    - replication_type: replication_type
    - created_at: created_at
@@ -289,14 +291,14 @@ Response parameters
    - project_id: project_id
    - metadata: metadata
    - status: status_16
-   - description: description_5
+   - description: description
    - host: host_9
    - access_rules_status: access_rules_status
    - is_public: is_public
    - share_group_id: share_group_id
    - task_state: task_state
    - snapshot_support: snapshot_support
-   - name: name_5
+   - name: name
    - has_replicas: has_replicas
    - replication_type: replication_type
    - created_at: created_at
@@ -341,10 +343,10 @@ Request
    - project_id: project_id_path
    - share_proto: share_proto
    - size: size
-   - name: name_5
-   - description: description_5
-   - display_name: display_name
-   - display_description: display_description
+   - name: name_request
+   - description: description_request
+   - display_name: display_name_request
+   - display_description: display_description_request
    - share_type: share_type
    - volume_type: volume_type
    - snapshot_id: snapshot_id_request
@@ -371,12 +373,10 @@ Response parameters
    - project_id: project_id
    - share_proto: share_proto
    - size: size
-   - name: name_5
-   - description: description_5
-   - display_name: display_name
-   - display_description: display_description
+   - name: name
+   - description: description
    - share_type: share_type_1
-   - share_type_name: share_type_name
+   - share_type_name: share_share_type_name
    - has_replicas: has_replicas
    - replication_type: replication_type
    - volume_type: volume_type
@@ -444,14 +444,14 @@ Request
    - project_id: project_id_path
    - share: share
    - protocol: protocol
-   - name: name_5
+   - name: name_request
    - share_type: share_type_2
    - driver_options: driver_options
    - export_path: export_path
    - service_host: service_host
    - share_server_id: manage_share_server_id
    - is_public: is_public
-   - description: description_5
+   - description: description_request
 
 Request example
 ---------------
@@ -474,7 +474,7 @@ Response parameters
    - id: id_4
    - size: size_2
    - share_type: share_type_1
-   - share_type_name: share_type_name
+   - share_type_name: share_share_type_name
    - has_replicas: has_replicas
    - replication_type: replication_type
    - export_location: export_location
@@ -482,12 +482,12 @@ Response parameters
    - metadata: metadata
    - status: status_8
    - share_server_id: manage_share_server_id
-   - description: description_5
+   - description: description
    - host: host_9
    - is_public: is_public
    - share_group_id: share_group_id
    - snapshot_support: snapshot_support
-   - name: name_5
+   - name: name
    - created_at: created_at
    - share_proto: share_proto
    - volume_type: volume_type
@@ -541,8 +541,8 @@ Request
    - project_id: project_id_path
    - share_id: share_id
    - is_public: is_public
-   - display_name: display_name_3
-   - display_description: display_description_3
+   - display_name: display_name_request
+   - display_description: display_description_request
 
 Request example
 ---------------
@@ -555,7 +555,7 @@ Response parameters
 
 .. rest_parameters:: parameters.yaml
 
-   - share_type_name: share_type_name
+   - share_type_name: share_share_type_name
    - links: links
    - availability_zone: availability_zone_1
    - share_network_id: share_network_id
@@ -569,14 +569,14 @@ Response parameters
    - project_id: project_id
    - metadata: metadata
    - status: status_16
-   - description: description_5
+   - description: description
    - host: host_9
    - access_rules_status: access_rules_status
    - is_public: is_public
    - share_group_id: share_group_id
    - task_state: task_state
    - snapshot_support: snapshot_support
-   - name: name_5
+   - name: name
    - has_replicas: has_replicas
    - replication_type: replication_type
    - created_at: created_at

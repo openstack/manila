@@ -320,7 +320,7 @@ Request
    - driver_handles_share_servers: driver_handles_share_servers
    - snapshot_support: snapshot_support_1
    - os-share-type-access:is_public: os-share-type-access:is_public
-   - name: share_type_name
+   - name: share_type_name_request
    - replication_type: replication_type
    - mount_snapshot_support: mount_snapshot_support
    - revert_to_snapshot_support: revert_to_snapshot_support

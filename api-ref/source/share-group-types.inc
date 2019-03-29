@@ -201,7 +201,7 @@ Request
 
    - project_id: project_id_path
    - share_types: share_types_1
-   - name: share_group_type_name
+   - name: share_group_type_name_request
    - group_specs: group_specs
    - is_public: share_group_type_is_public_request
 

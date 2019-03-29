@@ -20,7 +20,8 @@ Manage share (DEPRECATED)
 .. rest_method::  POST /v2/{project_id}/os-share-manage
 
 Use this API to bring a share under the management of the Shared File
-Systems service.
+Systems service. In the service, the share will be represented as a resource
+in the database. It can have a user defined name and description.
 
 Administrator only. Use the ``policy.json`` file to grant permissions for this
 action to other roles.
@@ -48,15 +49,15 @@ Request
    - project_id: project_id_path
    - share: share
    - protocol: protocol
-   - name: name_5
-   - display_name: display_name
+   - name: name_request
+   - display_name: display_name_request
    - share_type: share_type_2
    - driver_options: driver_options
    - export_path: export_path
    - service_host: service_host
    - is_public: is_public
-   - description: description_5
-   - display_description: display_description
+   - description: description_request
+   - display_description: display_description_request
 
 Request example
 ---------------
@@ -86,11 +87,11 @@ Response parameters
    - project_id: project_id
    - metadata: metadata
    - status: status_8
-   - description: description_5
+   - description: description
    - host: host_7
    - is_public: is_public
    - snapshot_support: snapshot_support
-   - name: name_5
+   - name: name
    - created_at: created_at
    - share_proto: share_proto
    - volume_type: volume_type

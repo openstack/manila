@@ -4,25 +4,20 @@
 Share networks
 ==============
 
-A share network stores network information that share servers can
-use where shares are hosted. You can associate a share with a
-single share network. When you create a share, you can optionally
-specify the ID of a share network through which instances can
-access the share.
+A share network resource stores network information to create and manage
+share servers. Shares created with share networks are exported on these
+networks with the help of share servers.
 
 You can create, update, view, and delete a share network.
 
 When you create a share network, you may optionally specify an associated
-neutron network and subnetwork:
-
-- Neutron network. Specify a network ID and subnet ID.
-
+neutron network and subnetwork.
 
 For more information about supported plug-ins for share networks,
 see `Manila Network Plugins <https://docs.openstack.org/manila/latest/
 admin/shared-file-systems-network-plugins.html>`_.
 
-A share network has these attributes:
+A share network resource has these attributes:
 
 - The IP block in Classless Inter-Domain Routing (CIDR) notation
   from which to allocate the network.
@@ -35,6 +30,7 @@ A share network has these attributes:
 - If the network uses segmentation, a segmentation identifier. For
   example, VLAN, VXLAN, and GRE networks use segmentation.
 
+A share network resource can also have a user defined name and description.
 
 List share networks
 ===================
@@ -73,7 +69,7 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - id: share_network_id
-   - name: share_network_name
+   - name: name
 
 Response example
 ----------------
@@ -126,8 +122,8 @@ Response parameters
    - segmentation_id: segmentation_id
    - cidr: cidr
    - ip_version: ip_version
-   - name: share_network_name
-   - description: share_network_description
+   - name: name
+   - description: description
    - created_at: created_at
    - updated_at: updated_at
    - gateway: share_network_gateway
@@ -182,8 +178,8 @@ Response parameters
    - segmentation_id: segmentation_id
    - cidr: cidr
    - ip_version: ip_version
-   - name: share_network_name
-   - description: share_network_description
+   - name: name
+   - description: description
    - created_at: created_at
    - updated_at: updated_at
    - gateway: share_network_gateway
@@ -227,8 +223,8 @@ Request
    - project_id: project_id_path
    - neutron_net_id: neutron_net_id_request
    - neutron_subnet_id: neutron_subnet_id_request
-   - name: share_network_name_request
-   - description: share_network_description_request
+   - name: name_request
+   - description: description_request
 
 Request example
 ---------------
@@ -249,8 +245,8 @@ Response parameters
    - segmentation_id: segmentation_id_1
    - cidr: cidr_1
    - ip_version: ip_version_1
-   - name: share_network_name
-   - description: share_network_description
+   - name: name
+   - description: description
    - created_at: created_at
    - updated_at: updated_at
    - gateway: share_network_gateway
@@ -314,8 +310,8 @@ Response parameters
    - segmentation_id: segmentation_id
    - cidr: cidr
    - ip_version: ip_version
-   - name: share_network_name
-   - description: share_network_description
+   - name: name
+   - description: description
    - created_at: created_at
    - updated_at: updated_at
    - gateway: share_network_gateway
@@ -379,8 +375,8 @@ Response parameters
    - segmentation_id: segmentation_id
    - cidr: cidr
    - ip_version: ip_version
-   - name: share_network_name
-   - description: share_network_description
+   - name: name
+   - description: description
    - created_at: created_at
    - updated_at: updated_at
    - gateway: share_network_gateway
@@ -425,8 +421,8 @@ Request
 
    - project_id: project_id_path
    - share_network_id: share_network_id_path
-   - name: share_network_name_request
-   - description: share_network_description_request
+   - name: name_request
+   - description: description_request
    - neutron_net_id: neutron_net_id_request
    - neutron_subnet_id: neutron_subnet_id_request
 
@@ -449,8 +445,8 @@ Response parameters
    - segmentation_id: segmentation_id
    - cidr: cidr
    - ip_version: ip_version
-   - name: share_network_name
-   - description: share_network_description
+   - name: name
+   - description: description
    - created_at: created_at
    - updated_at: updated_at
    - gateway: share_network_gateway

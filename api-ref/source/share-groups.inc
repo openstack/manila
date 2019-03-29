@@ -74,9 +74,9 @@ Response parameters
 
    - id: share_group_id
    - links: share_group_links
-   - name: share_group_name_response
+   - name: name
    - status: share_group_status
-   - description: share_group_description_response
+   - description: description
 
 Response example
 ----------------
@@ -123,10 +123,10 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - id: share_group_id
-   - name: share_group_name_response
+   - name: name
    - created_at: created_at
    - status: share_group_status
-   - description: share_group_description_response
+   - description: description
    - project_id: project_id
    - host: backend_host
    - share_group_type_id: share_group_type_id_required
@@ -175,8 +175,8 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - name: share_group_name
-   - description: share_group_description
+   - name: name_request
+   - description: description_request
    - share_types: share_types
    - share_group_type: share_group_type_id
    - share_network: share_network_id_1
@@ -195,10 +195,10 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - id: share_group_id
-   - name: share_group_name_response
+   - name: name
    - created_at: created_at
    - status: share_group_status
-   - description: share_group_description_response
+   - description: description
    - project_id: project_id
    - host: share_group_host
    - share_group_type_id: share_group_type_id_required
@@ -291,8 +291,8 @@ Request
 
    - project_id: project_id_path
    - share_group_id: share_group_id_path
-   - display_name: share_group_name
-   - display_description: share_group_description
+   - name: name_request
+   - description: description_request
 
 
 Request example
@@ -307,10 +307,10 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - id: share_group_id
-   - name: share_group_name_response
+   - name: name
    - created_at: created_at
    - status: share_group_status
-   - description: share_group_description_response
+   - description: description
    - project_id: project_id
    - host: share_group_host
    - share_group_type_id: share_group_type_id_required

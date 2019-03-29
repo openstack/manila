@@ -190,8 +190,7 @@ description_inexact_query:
   min_version: 2.36
 description_query:
   description: |
-    The share group description that can be used to filter
-    share groups.
+    The user defined description text that can be used to filter resources.
   in: query
   required: false
   type: string
@@ -227,20 +226,6 @@ extra_specs_query:
   required: false
   type: string
   min_version: 2.43
-group_snapshot_description_query:
-  description: |
-    The share group snapshot description that can be used to filter
-    share group snapshots.
-  in: query
-  required: false
-  type: string
-group_snapshot_name_query:
-  description: |
-    The share group snapshot name that can be used to filter
-    share group snapshots.
-  in: query
-  required: false
-  type: string
 group_snapshot_status_query:
   description: |
     Filters by a share group snapshot status. A valid value is
@@ -296,7 +281,7 @@ name_inexact_query:
   min_version: 2.36
 name_query:
   description: |
-    The share group name that can be used to filter share groups.
+    The user defined name of the resource to filter resources by.
   in: query
   required: false
   type: string
@@ -923,47 +908,18 @@ deny_access:
   in: body
   required: true
   type: object
-description_10:
+description:
   description: |
-    The snapshot description.
-  in: body
-  required: false
-  type: string
-description_11:
-  description: |
-    The snapshot description.
+    The user defined description of the resource.
   in: body
   required: true
   type: string
-description_3:
+description_request:
   description: |
-    The security service description.
+    The user defined description of the resource. The value of this field is
+    limited to 255 characters.
   in: body
   required: false
-  type: string
-description_4:
-  description: |
-    The share network description.
-  in: body
-  required: false
-  type: string
-description_5:
-  description: |
-    The share description.
-  in: body
-  required: false
-  type: string
-description_8:
-  description: |
-    The extension description.
-  in: body
-  required: true
-  type: string
-description_9:
-  description: |
-    The security service description.
-  in: body
-  required: true
   type: string
 detail_id_body:
   in: body
@@ -977,56 +933,17 @@ disabled:
   in: body
   required: true
   type: boolean
-display_description:
+display_description_request:
   description: |
-    The share description.  The Shared File Systems
-    API supports the use of both ``description`` and
-    ``display_description`` parameters, which are inherited attributes
-    from the Block Storage API.
+    The user defined description of the resource. This field sets the
+    ``description`` parameter.
   in: body
   required: false
   type: string
-display_description_2:
+display_name_request:
   description: |
-    The snapshot description. If you specify this
-    attribute, the snapshot ``description`` is updated.
-  in: body
-  required: false
-  type: string
-display_description_3:
-  description: |
-    The share description. If you specify this
-    parameter, the share description is updated.
-  in: body
-  required: false
-  type: string
-display_name:
-  description: |
-    The share name.  The Shared File Systems API
-    supports the use of both ``name`` and ``display_name`` attributes,
-    which are inherited attributes from the Block Storage API.
-  in: body
-  required: false
-  type: string
-display_name_2:
-  description: |
-    The snapshot name.  The shared file systems API
-    supports the use of both ``name`` and ``display_name`` attributes,
-    which are inherited attributes from the Block Storage API.
-  in: body
-  required: false
-  type: string
-display_name_3:
-  description: |
-    The snapshot name. If you specify this attribute,
-    the snapshot ``name`` is updated.
-  in: body
-  required: false
-  type: string
-display_name_4:
-  description: |
-    The share name. If you specify this parameter,
-    the share name is updated.
+    The user defined name of the resource. This field sets the ``name``
+    parameter.
   in: body
   required: false
   type: string
@@ -1179,7 +1096,7 @@ extension_alias:
   type: string
 extension_description:
   description: |
-    The extension description.
+    The description of the extension API.
   in: body
   required: true
   type: string
@@ -1250,18 +1167,6 @@ free_capacity_gb:
   in: body
   required: true
   type: string
-group_snapshot_description:
-  description: |
-    The share group snapshot description.
-  in: body
-  required: true
-  type: string
-group_snapshot_description_option:
-  description: |
-    The share group snapshot description.
-  in: body
-  required: false
-  type: string
 group_snapshot_id:
   description: |
     The share group snapshot ID.
@@ -1279,18 +1184,6 @@ group_snapshot_members:
     The share group snapshot members.
   in: body
   required: true
-  type: string
-group_snapshot_name:
-  description: |
-    The share group snapshot name.
-  in: body
-  required: true
-  type: string
-group_snapshot_name_option:
-  description: |
-    The share group snapshot name.
-  in: body
-  required: false
   type: string
 group_snapshot_status_required:
   description: |
@@ -1705,60 +1598,14 @@ mount_snapshot_support:
   min_version: 2.32
 name:
   description: |
-    The share network name.
+    The user defined name of the resource.
   in: body
   required: true
   type: string
-name_10:
+name_request:
   description: |
-    The name of the extension. For example, "Fox In
-    Socks."
-  in: body
-  required: true
-  type: string
-name_11:
-  description: |
-    The name of the back end in this format:
-    ``host@backend#POOL``.  - ``host``. The host name for the back
-    end.  - ``backend``. The name of the back end.  - ``POOL``. The
-    pool name for the back end.
-  in: body
-  required: true
-  type: string
-name_14:
-  description: |
-    The snapshot name.
-  in: body
-  required: false
-  type: string
-name_15:
-  description: |
-    The snapshot name.
-  in: body
-  required: true
-  type: string
-name_16:
-  description: |
-    The security service name. If you specify this
-    value, the name is updated.
-  in: body
-  required: false
-  type: string
-name_3:
-  description: |
-    The security service name.
-  in: body
-  required: false
-  type: string
-name_4:
-  description: |
-    The share network name.
-  in: body
-  required: false
-  type: string
-name_5:
-  description: |
-    The share name.
+    The user defined name of the resource. The value of this field is
+    limited to 255 characters.
   in: body
   required: false
   type: string
@@ -2200,19 +2047,6 @@ revert_to_snapshot_support:
   required: false
   type: boolean
   min_version: 2.27
-security_service_description:
-  description: |
-    Description of the security service in plain text.
-  in: body
-  required: true
-  type: string
-security_service_description_request:
-  description: |
-    The security service description. If you specify
-    this value, the description is updated.
-  in: body
-  required: false
-  type: string
 security_service_dns_ip:
   description: |
     The DNS IP address that is used inside the project network.
@@ -2240,12 +2074,6 @@ security_service_domain_request:
 security_service_id:
   description: |
     The security service ID.
-  in: body
-  required: true
-  type: string
-security_service_name:
-  description: |
-    The security service name.
   in: body
   required: true
   type: string
@@ -2482,18 +2310,6 @@ share_force_delete:
   in: body
   required: true
   type: string
-share_group_description:
-  description: |
-    The share group description.
-  in: body
-  required: false
-  type: string
-share_group_description_response:
-  description: |
-    The share group description.
-  in: body
-  required: true
-  type: string
 share_group_host:
   description: |
     The share group host name.
@@ -2504,31 +2320,19 @@ share_group_id:
   description: |
     The UUID of the share group.
   in: body
-  required: True
+  required: true
   type: string
   min_version: 2.31
 share_group_id_request:
   description: |
     The UUID of the share group.
   in: body
-  required: False
+  required: false
   type: string
   min_version: 2.31
 share_group_links:
   description: |
     The share group links.
-  in: body
-  required: true
-  type: string
-share_group_name:
-  description: |
-    The share group name.
-  in: body
-  required: false
-  type: string
-share_group_name_response:
-  description: |
-    The share group name.
   in: body
   required: true
   type: string
@@ -2573,6 +2377,13 @@ share_group_type_name:
   in: body
   required: true
   type: string
+share_group_type_name_request:
+  description: |
+    The name of the share group type resource. The value of this field is
+    limited to 255 characters.
+  in: body
+  required: false
+  type: string
 share_id_2:
   description: |
     The UUID of the share from which the share
@@ -2593,18 +2404,6 @@ share_instance_id_1:
     The UUID of the share instance.
   in: body
   required: true
-  type: string
-share_network_description:
-  description: |
-    The share network description.
-  in: body
-  required: true
-  type: string
-share_network_description_request:
-  description: |
-    The share network description.
-  in: body
-  required: false
   type: string
 share_network_gateway:
   description: |
@@ -2664,15 +2463,10 @@ share_network_mtu:
   min_version: 2.20
 share_network_name:
   description: |
-    The name of a share network.
+    The name of a share network that is associated
+    with the share server.
   in: body
   required: true
-  type: string
-share_network_name_request:
-  description: |
-    The name of a share network.
-  in: body
-  required: false
   type: string
 share_network_security_service_id:
   description: |
@@ -2810,6 +2604,13 @@ share_server_unmanage:
   in: body
   required: true
   type: object
+share_share_type_name:
+  description: |
+    Name of the share type.
+  in: body
+  required: true
+  type: string
+  min_version: 2.6
 share_size_1:
   description: |
     The size of a source share, in GBs.
@@ -2857,7 +2658,8 @@ share_type_description:
   min_version: 2.41
 share_type_description_request:
   description: |
-    The description of the share type.
+    The description of the share type. The value of this field is limited to
+    255 characters.
   in: body
   required: false
   type: string
@@ -2870,13 +2672,17 @@ share_type_id_body:
   type: string
 share_type_name:
   description: |
-    The share type name.  Minor versions support only the
-    ``share_type`` parameter where the share type name is
-    expected.
+    Name of the share type.
   in: body
   required: true
   type: string
-  min_version: 2.6
+share_type_name_request:
+  description: |
+    Name of the share type. The value of this field is limited to 255
+    characters.
+  in: body
+  required: false
+  type: string
 share_types:
   description: |
     A list of one or more share type IDs.
@@ -2921,35 +2727,6 @@ size_2:
   in: body
   required: true
   type: integer
-snapshot_description:
-  description: |
-    The snapshot description.
-  in: body
-  required: true
-  type: string
-snapshot_description_request:
-  description: |
-    The snapshot description.
-  in: body
-  required: false
-  type: string
-snapshot_display_description:
-  description: |
-    The snapshot description.  The shared file
-    systems API supports the use of both ``name`` and ``display_name``
-    attributes, which are inherited attributes from the block storage
-    API.
-  in: body
-  required: false
-  type: string
-snapshot_display_name:
-  description: |
-    The snapshot name.  The Shared File Systems API
-    supports the use of both ``name`` and ``display_name`` attributes,
-    which are inherited attributes from the Block Storage API.
-  in: body
-  required: false
-  type: string
 snapshot_force_delete:
   description: |
     To force-delete a snapshot, include this param and set its value to
@@ -3012,18 +2789,6 @@ snapshot_manage_status:
     ``unmanage_error``.
   in: body
   required: true
-  type: string
-snapshot_name:
-  description: |
-    The snapshot name.
-  in: body
-  required: true
-  type: string
-snapshot_name_request:
-  description: |
-    The snapshot name.
-  in: body
-  required: false
   type: string
 snapshot_project_id:
   description: |

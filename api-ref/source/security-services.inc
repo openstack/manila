@@ -4,14 +4,13 @@
 Security services
 =================
 
-You can create, update, view, and delete a security service. A
-security service stores configuration information for clients for
+You can create, update, view, and delete security services. A
+security service resource represents configuration information for clients for
 authentication and authorization (AuthN/AuthZ). For example, a
-share server will be the client for an existing service such as
+share server will be the client for an existing security service such as
 LDAP, Kerberos, or Microsoft Active Directory.
 
-You can associate a share with from one to three security service
-types:
+The Shared File Systems service supports three security service types:
 
 - ``ldap``. LDAP.
 
@@ -34,6 +33,8 @@ You can configure a security service with these options:
 
 - The password for the user, if you specify a user name.
 
+A security service resource can also be given a user defined name and
+description.
 
 List security services
 ======================
@@ -71,7 +72,7 @@ Response parameters
    - status: security_service_status
    - type: security_service_type
    - id: security_service_id
-   - name: security_service_name
+   - name: name
 
 Response example
 ----------------
@@ -117,8 +118,8 @@ Response parameters
    - id: security_service_id
    - project_id: project_id
    - type: security_service_type
-   - name: security_service_name
-   - description: security_service_description
+   - name: name
+   - description: description
    - dns_ip: security_service_dns_ip
    - user: security_service_user
    - password: security_service_password
@@ -173,8 +174,8 @@ Response parameters
    - id: security_service_id
    - project_id: project_id
    - type: security_service_type
-   - name: security_service_name
-   - description: security_service_description
+   - name: name
+   - description: description
    - dns_ip: security_service_dns_ip
    - user: security_service_user
    - password: security_service_password
@@ -219,8 +220,8 @@ Request
 
    - project_id: project_id_path
    - type: security_service_type
-   - name: security_service_name
-   - description: security_service_description_request
+   - name: name_request
+   - description: description_request
    - dns_ip: security_service_dns_ip_request
    - user: security_service_user_request
    - password: security_service_password_request
@@ -243,8 +244,8 @@ Response parameters
    - id: security_service_id
    - project_id: project_id
    - type: security_service_type
-   - name: security_service_name
-   - description: security_service_description
+   - name: name
+   - description: description
    - dns_ip: security_service_dns_ip
    - user: security_service_user
    - password: security_service_password
@@ -296,8 +297,8 @@ Request
    - project_id: project_id_path
    - security_service_id: security_service_id_path
    - type: security_service_type
-   - name: security_service_name
-   - description: security_service_description_request
+   - name: name_request
+   - description: description_request
    - dns_ip: security_service_dns_ip_request
    - user: security_service_user_request
    - password: security_service_password_request
@@ -320,8 +321,8 @@ Response parameters
    - id: security_service_id
    - project_id: project_id
    - type: security_service_type
-   - name: security_service_name
-   - description: security_service_description
+   - name: name
+   - description: description
    - dns_ip: security_service_dns_ip
    - user: security_service_user
    - password: security_service_password

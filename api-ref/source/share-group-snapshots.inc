@@ -4,7 +4,7 @@
 Share group snapshots (since API v2.31)
 =======================================
 
-Use the shared file service to make snapshots of share groups. A share
+Use the Shared File Systems Service to make snapshots of share groups. A share
 group snapshot is a point-in-time, read-only copy of the data that is
 contained in a share group. You can create, update, and delete
 share group snapshots. After you create a share group snapshot, you
@@ -50,8 +50,8 @@ Request
 
    - project_id: project_id_path
    - all_tenants: all_tenants
-   - name: group_snapshot_name_query
-   - description: group_snapshot_description_query
+   - name: name_query
+   - description: description_query
    - status: group_snapshot_status_query
    - share_group_id: share_group_id_query
    - limit: limit_query
@@ -65,7 +65,7 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - id: group_snapshot_id
-   - name: snapshot_name
+   - name: name
    - links: group_snapshot_links
 
 Response example
@@ -103,8 +103,8 @@ Request
 
    - project_id: project_id_path
    - all_tenants: all_tenants
-   - name: group_snapshot_name_query
-   - description: group_snapshot_description_query
+   - name: name_query
+   - description: description_query
    - status: group_snapshot_status_query
    - share_group_id: share_group_id_query
    - limit: limit_query
@@ -121,8 +121,8 @@ Response parameters
    - project_id: project_id
    - status: group_snapshot_status_required
    - share_group_id: share_group_id
-   - name: group_snapshot_name
-   - description: group_snapshot_description
+   - name: name
+   - description: description
    - created_at: created_at
    - members: group_snapshot_members
    - links: group_snapshot_links
@@ -173,7 +173,7 @@ Response parameters
    - project_id: project_id
    - size: snapshot_size
    - share_protocol: snapshot_share_protocol
-   - name: snapshot_name
+   - name: name
    - share_group_snapshot_id: group_snapshot_id
    - share_id: snapshot_share_id
 
@@ -224,8 +224,8 @@ Response parameters
    - project_id: project_id
    - status: group_snapshot_status_required
    - share_group_id: share_group_id
-   - name: group_snapshot_name
-   - description: group_snapshot_description
+   - name: name
+   - description: description
    - created_at: created_at
    - members: group_snapshot_members
    - links: group_snapshot_links
@@ -267,8 +267,8 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - name: group_snapshot_name_option
-   - description: group_snapshot_description_option
+   - name: name_request
+   - description: description_request
    - share_group_id: share_group_id
 
 Request example
@@ -286,8 +286,8 @@ Response parameters
    - project_id: project_id
    - status: group_snapshot_status_required
    - share_group_id: share_group_id
-   - name: group_snapshot_name
-   - description: group_snapshot_description
+   - name: name
+   - description: description
    - created_at: created_at
    - members: group_snapshot_members
    - links: group_snapshot_links
@@ -372,8 +372,8 @@ Request
 
    - project_id: project_id_path
    - group_snapshot_id: group_snapshot_id_path
-   - name: group_snapshot_name_option
-   - description: group_snapshot_description_option
+   - name: name_request
+   - description: description_request
 
 Request example
 ---------------
@@ -390,8 +390,8 @@ Response parameters
    - project_id: project_id
    - status: group_snapshot_status_required
    - share_group_id: share_group_id
-   - name: group_snapshot_name
-   - description: group_snapshot_description
+   - name: name
+   - description: description
    - created_at: created_at
    - members: group_snapshot_members
    - links: group_snapshot_links

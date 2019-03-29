@@ -4,9 +4,13 @@
 Share snapshots
 ===============
 
-Use the shared file service to make snapshots of shares. A share
+Use the Shared File Systems service to make snapshots of shares. A share
 snapshot is a point-in-time, read-only copy of the data that is
-contained in a share. You can create, manage, update, and delete
+contained in a share. The APIs below allow controlling share snapshots. They
+are represented by a "snapshot" resource in the Shared File Systems service,
+and they can have user-defined metadata such as a name and description.
+
+You can create, manage, update, and delete
 share snapshots. After you create or manage a share snapshot, you
 can create a share from it.  You can also revert a share to its most
 recent snapshot.
@@ -74,7 +78,7 @@ Response parameters
 .. rest_parameters:: parameters.yaml
 
    - id: snapshot_id
-   - name: snapshot_name
+   - name: name
 
 Response example
 ----------------
@@ -120,8 +124,8 @@ Response parameters
    - id: snapshot_id
    - status: snapshot_status
    - share_id: snapshot_share_id
-   - name: snapshot_name
-   - description: snapshot_description
+   - name: name
+   - description: description
    - created_at: created_at
    - share_proto: snapshot_share_protocol
    - share_size: snapshot_share_size
@@ -172,8 +176,8 @@ Response parameters
    - id: snapshot_id
    - status: snapshot_status
    - share_id: snapshot_share_id
-   - name: snapshot_name
-   - description: snapshot_description
+   - name: name
+   - description: description
    - created_at: created_at
    - share_proto: snapshot_share_protocol
    - share_size: snapshot_share_size
@@ -219,10 +223,10 @@ Request
    - project_id: project_id_path
    - share_id: snapshot_share_id_request
    - force: force_snapshot_request
-   - name: snapshot_name_request
-   - display_name: snapshot_display_name
-   - description: snapshot_description_request
-   - display_description: snapshot_display_description
+   - name: name_request
+   - description: description_request
+   - display_name: display_name_request
+   - display_description: display_description_request
 
 Request example
 ---------------
@@ -238,8 +242,8 @@ Response parameters
    - id: snapshot_id
    - share_id: snapshot_share_id
    - status: snapshot_status
-   - name: snapshot_name
-   - description: snapshot_description
+   - name: name
+   - description: description
    - created_at: created_at
    - share_proto: snapshot_share_protocol
    - share_size: snapshot_share_size
@@ -293,10 +297,10 @@ Request
    - project_id: project_id_path
    - share_id: snapshot_manage_share_id
    - provider_location: snapshot_provider_location_request
-   - name: snapshot_name_request
-   - display_name: snapshot_display_name
-   - description: snapshot_description_request
-   - display_description: snapshot_display_description
+   - name: name_request
+   - display_name: display_name_request
+   - description: description_request
+   - display_description: display_description_request
    - driver_options: driver_options
 
 Request example
@@ -313,8 +317,8 @@ Response parameters
    - id: snapshot_id
    - share_id: snapshot_share_id
    - status: snapshot_manage_status
-   - name: snapshot_name
-   - description: snapshot_description
+   - name: name
+   - description: description
    - created_at: created_at
    - share_proto: snapshot_share_protocol
    - share_size: snapshot_share_size
@@ -500,8 +504,8 @@ Request
 
    - project_id: project_id_path
    - snapshot_id: snapshot_id_path
-   - display_name: snapshot_display_name
-   - display_description: snapshot_display_description
+   - display_name: display_name_request
+   - display_description: display_description_request
 
 Request example
 ---------------
@@ -517,8 +521,8 @@ Response parameters
    - id: snapshot_id
    - status: snapshot_status
    - share_id: snapshot_share_id
-   - name: snapshot_name
-   - description: snapshot_description
+   - name: name
+   - description: description
    - created_at: created_at
    - share_proto: snapshot_share_protocol
    - share_size: snapshot_share_size
