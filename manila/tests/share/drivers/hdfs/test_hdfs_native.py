@@ -414,7 +414,7 @@ class HDFSNativeShareDriverTestCase(test.TestCase):
         for key in expected_keys:
             self.assertIn(key, result)
         self.assertTrue(result['ipv4_support'])
-        self.assertFalse(False, result['ipv6_support'])
+        self.assertFalse(result['ipv6_support'])
         self.assertEqual('HDFS', result['storage_protocol'])
         self._driver._get_available_capacity.assert_called_once_with()
 
