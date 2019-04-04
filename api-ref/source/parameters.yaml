@@ -129,7 +129,7 @@ snapshot_instance_id_path:
   type: string
 tenant_id:
   description: |
-    The UUID for the tenant for which you want to
+    The ID for the tenant for which you want to
     show, update, or delete quotas. This ID is different from the
     first tenant ID that you specify in the URI: That ID is for the
     administrative tenant.
@@ -306,20 +306,20 @@ offset:
   type: integer
 project_id_6:
   description: |
-    The UUID of the project in which the share was
+    The ID of the project in which the share was
     created. Useful with ``all_tenants`` parameter.
   in: query
   required: false
   type: string
 project_id_messages:
   description: |
-    The UUID of the project for which the message was created.
+    The ID of the project for which the message was created.
   in: query
   required: false
   type: string
 request_id:
   description: |
-    The UUID of the request during which the message was created.
+    The ID of the request during which the message was created.
   in: query
   required: false
   type: string
@@ -490,7 +490,7 @@ status_6:
   type: string
 user_id_query:
   description: |
-    The UUID of the user. If you specify this query parameter,
+    The ID of the user. If you specify this query parameter,
     you update the quotas for this user in the tenant.
     If you omit this parameter, you update the quotas for the project.
   in: query
@@ -3435,6 +3435,13 @@ snapshot_name_request:
   in: body
   required: false
   type: string
+snapshot_project_id:
+  description: |
+    ID of the project that the snapshot belongs to.
+  in: body
+  required: true
+  type: string
+  min_version: 2.17
 snapshot_provider_location:
   description: |
     Provider location of the snapshot on the backend.
@@ -3541,6 +3548,13 @@ snapshot_unmanage:
   in: body
   required: true
   type: string
+snapshot_user_id:
+  description: |
+    ID of the user that the snapshot was created by.
+  in: body
+  required: true
+  type: string
+  min_version: 2.17
 source_share_group_snapshot_id:
   description: |
     The source share group snapshot ID to create the

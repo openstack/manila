@@ -2,6 +2,7 @@
     "snapshot": {
         "status": "available",
         "share_id": "406ea93b-32e9-4907-a117-148b3945749f",
+        "user_id": "5c7bdb6eb0504d54a619acf8375c08ce",
         "name": "snapshot_share1",
         "links": [
             {
@@ -18,6 +19,7 @@
         "share_proto": "NFS",
         "share_size": 1,
         "id": "6d221c1d-0200-461e-8d20-24b4776b9ddb",
+        "project_id": "cadd7139bc3148b8973df097c0911016",
         "size": 1
     }
 }

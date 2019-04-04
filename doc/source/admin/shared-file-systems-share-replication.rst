@@ -453,11 +453,13 @@ of the share. Specify the share ID or name as a parameter.
    +-------------------+--------------------------------------+
    | status            | creating                             |
    | share_id          | e496ed61-8f2e-436b-b299-32c3e90991cc |
+   | user_id           | 5c7bdb6eb0504d54a619acf8375c08ce     |
    | description       | None                                 |
    | created_at        | 2016-03-29T21:14:03.000000           |
    | share_proto       | NFS                                  |
    | provider_location | None                                 |
    | id                | 06cdccaf-93a0-4e57-9a39-79fb1929c649 |
+   | project_id        | cadd7139bc3148b8973df097c0911016     |
    | size              | 1                                    |
    | share_size        | 1                                    |
    | name              | my_snapshot                          |
@@ -477,11 +479,13 @@ Specify the snapshot ID or name as a parameter.
    +-------------------+--------------------------------------+
    | status            | available                            |
    | share_id          | e496ed61-8f2e-436b-b299-32c3e90991cc |
+   | user_id           | 5c7bdb6eb0504d54a619acf8375c08ce     |
    | description       | None                                 |
    | created_at        | 2016-03-29T21:14:03.000000           |
    | share_proto       | NFS                                  |
    | provider_location | None                                 |
    | id                | 06cdccaf-93a0-4e57-9a39-79fb1929c649 |
+   | project_id        | cadd7139bc3148b8973df097c0911016     |
    | size              | 1                                    |
    | share_size        | 1                                    |
    | name              | my_snapshot                          |

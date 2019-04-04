@@ -126,6 +126,8 @@ Response parameters
    - share_proto: snapshot_share_protocol
    - share_size: snapshot_share_size
    - size: snapshot_size
+   - project_id: snapshot_project_id
+   - user_id: snapshot_user_id
 
 Response example
 ----------------
@@ -176,6 +178,8 @@ Response parameters
    - share_proto: snapshot_share_protocol
    - share_size: snapshot_share_size
    - size: snapshot_size
+   - project_id: snapshot_project_id
+   - user_id: snapshot_user_id
 
 Response example
 ----------------
@@ -241,6 +245,8 @@ Response parameters
    - share_size: snapshot_share_size
    - provider_location: snapshot_provider_location
    - size: snapshot_size
+   - project_id: snapshot_project_id
+   - user_id: snapshot_user_id
 
 Response example
 ----------------
@@ -314,6 +320,8 @@ Response parameters
    - share_size: snapshot_share_size
    - provider_location: snapshot_provider_location
    - size: snapshot_size
+   - project_id: snapshot_project_id
+   - user_id: snapshot_user_id
 
 Response example
 ----------------
@@ -515,6 +523,8 @@ Response parameters
    - share_proto: snapshot_share_protocol
    - share_size: snapshot_share_size
    - size: snapshot_size
+   - project_id: snapshot_project_id
+   - user_id: snapshot_user_id
 
 Response example
 ----------------
