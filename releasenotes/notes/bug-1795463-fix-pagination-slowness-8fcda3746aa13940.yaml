@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    When the OpenStack administrator has a busy environment that contains many
+    shares, the list operation with `--limit` parameter was taking too long to
+    respond. This lag has now been fixed. See the `launchpad bug 1795463
+    <https://bugs.launchpad.net/manila/+bug/1795463>`_ for more details.
