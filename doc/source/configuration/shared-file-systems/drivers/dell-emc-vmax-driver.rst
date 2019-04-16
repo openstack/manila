@@ -247,6 +247,15 @@ Pre-configurations on VMAX
 Back-end configurations
 ~~~~~~~~~~~~~~~~~~~~~~~
 
+.. note::
+
+   The following deprecated tags will be removed in the T release:
+
+   - emc_nas_server_container
+   - emc_nas_pool_names
+   - emc_interface_ports
+
+
 The following parameters need to be configured in the
 ``/etc/manila/manila.conf`` file for the VMAX driver:
 
