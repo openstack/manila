@@ -13,12 +13,12 @@
           set -x
           cat > clonemap.yaml << EOF
           clonemap:
-            - name: openstack-infra/devstack-gate
+            - name: openstack/devstack-gate
               dest: devstack-gate
           EOF
           /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
-              https://git.openstack.org \
-              openstack-infra/devstack-gate
+              https://opendev.org \
+              openstack/devstack-gate
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'
       environment: '{{ zuul | zuul_legacy_vars }}'
@@ -27,7 +27,7 @@
         cmd: |
           set -e
           set -x
-          export PROJECTS="openstack-dev/grenade $PROJECTS"
+          export PROJECTS="openstack/grenade $PROJECTS"
           export PROJECTS="openstack/manila-tempest-plugin $PROJECTS"
           export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
           export PYTHONUNBUFFERED=true
@@ -43,7 +43,7 @@
           # Enable manila grenade plugin. Provided repo should be
           # cloned by zuul before devstack run and below provided
           # link should not be used.
-          export GRENADE_PLUGINRC="enable_grenade_plugin manila https://git.openstack.org/openstack/manila"
+          export GRENADE_PLUGINRC="enable_grenade_plugin manila https://opendev.org/openstack/manila"
 
           # Keep localrc to be able to set some vars in pre_test_hook
           export KEEP_LOCALRC=1
