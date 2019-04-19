@@ -14,12 +14,12 @@
           set -x
           cat > clonemap.yaml << EOF
           clonemap:
-            - name: openstack-infra/devstack-gate
+            - name: openstack/devstack-gate
               dest: devstack-gate
           EOF
           /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
-              https://git.openstack.org \
-              openstack-infra/devstack-gate
+              https://opendev.org \
+              openstack/devstack-gate
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'
       environment: '{{ zuul | zuul_legacy_vars }}'
@@ -38,9 +38,9 @@
           cat << 'EOF' >>"/tmp/dg-local.conf"
           [[local|localrc]]
           SKIP_EPEL_INSTALL=True
-          enable_plugin manila https://git.openstack.org/openstack/manila
-          enable_plugin neutron-dynamic-routing https://git.openstack.org/openstack/neutron-dynamic-routing
-          enable_plugin neutron-tempest-plugin https://git.openstack.org/openstack/neutron-tempest-plugin
+          enable_plugin manila https://opendev.org/openstack/manila
+          enable_plugin neutron-dynamic-routing https://opendev.org/openstack/neutron-dynamic-routing
+          enable_plugin neutron-tempest-plugin https://opendev.org/openstack/neutron-tempest-plugin
           EOF
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'
