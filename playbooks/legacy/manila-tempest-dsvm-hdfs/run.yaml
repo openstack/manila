@@ -13,12 +13,12 @@
           set -x
           cat > clonemap.yaml << EOF
           clonemap:
-            - name: openstack-infra/devstack-gate
+            - name: openstack/devstack-gate
               dest: devstack-gate
           EOF
           /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
-              https://git.openstack.org \
-              openstack-infra/devstack-gate
+              https://opendev.org \
+              openstack/devstack-gate
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'
       environment: '{{ zuul | zuul_legacy_vars }}'
@@ -29,9 +29,9 @@
           set -x
           cat << 'EOF' >>"/tmp/dg-local.conf"
           [[local|localrc]]
-          enable_plugin manila https://git.openstack.org/openstack/manila
+          enable_plugin manila https://opendev.org/openstack/manila
           # Enable devstack-plugin-hdfs plugin, to install and configure HDFS.
-          enable_plugin devstack-plugin-hdfs https://git.openstack.org/openstack/devstack-plugin-hdfs
+          enable_plugin devstack-plugin-hdfs https://opendev.org/x/devstack-plugin-hdfs
 
           EOF
         executable: /bin/bash
@@ -45,7 +45,7 @@
           export PYTHONUNBUFFERED=true
           export DEVSTACK_GATE_NEUTRON=1
           export ENABLED_SERVICES=tempest
-          export PROJECTS="openstack/devstack-plugin-hdfs $PROJECTS"
+          export PROJECTS="x/devstack-plugin-hdfs $PROJECTS"
           export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
 
           # Keep localrc to be able to set some vars in pre_test_hook

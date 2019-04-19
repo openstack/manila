@@ -73,8 +73,8 @@
       - ^tools/.*$
       - ^tox.ini$
     required-projects:
-      - openstack-dev/grenade
-      - openstack-infra/devstack-gate
+      - openstack/grenade
+      - openstack/devstack-gate
       - openstack/manila
       - openstack/python-manilaclient
 
@@ -102,7 +102,7 @@
     post-run: playbooks/legacy/manila-tempest-dsvm-container-scenario-custom-image/post.yaml
     timeout: 5400
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/manila
       - openstack/manila-image-elements
       - openstack/python-manilaclient
@@ -115,7 +115,7 @@
     post-run: playbooks/legacy/manila-tempest-dsvm-generic-no-share-servers/post.yaml
     timeout: 5400
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/manila
       - openstack/manila-image-elements
       - openstack/python-manilaclient
@@ -128,7 +128,7 @@
     post-run: playbooks/legacy/manila-tempest-dsvm-generic-scenario-custom-image/post.yaml
     timeout: 5400
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/manila
       - openstack/manila-image-elements
       - openstack/python-manilaclient
@@ -141,8 +141,8 @@
     post-run: playbooks/legacy/manila-tempest-dsvm-glusterfs-native/post.yaml
     timeout: 4800
     required-projects:
-      - openstack-infra/devstack-gate
-      - openstack/devstack-plugin-glusterfs
+      - openstack/devstack-gate
+      - x/devstack-plugin-glusterfs
       - openstack/manila
       - openstack/python-manilaclient
       - openstack/tempest
@@ -154,8 +154,8 @@
     post-run: playbooks/legacy/manila-tempest-dsvm-glusterfs-native-heketi/post.yaml
     timeout: 4800
     required-projects:
-      - openstack-infra/devstack-gate
-      - openstack/devstack-plugin-glusterfs
+      - openstack/devstack-gate
+      - x/devstack-plugin-glusterfs
       - openstack/manila
       - openstack/python-manilaclient
       - openstack/tempest
@@ -167,8 +167,8 @@
     post-run: playbooks/legacy/manila-tempest-dsvm-glusterfs-nfs/post.yaml
     timeout: 4800
     required-projects:
-      - openstack-infra/devstack-gate
-      - openstack/devstack-plugin-glusterfs
+      - openstack/devstack-gate
+      - x/devstack-plugin-glusterfs
       - openstack/manila
       - openstack/python-manilaclient
       - openstack/tempest
@@ -180,8 +180,8 @@
     post-run: playbooks/legacy/manila-tempest-dsvm-glusterfs-nfs-heketi/post.yaml
     timeout: 4800
     required-projects:
-      - openstack-infra/devstack-gate
-      - openstack/devstack-plugin-glusterfs
+      - openstack/devstack-gate
+      - x/devstack-plugin-glusterfs
       - openstack/manila
       - openstack/python-manilaclient
       - openstack/tempest
@@ -193,8 +193,8 @@
     post-run: playbooks/legacy/manila-tempest-dsvm-hdfs/post.yaml
     timeout: 4800
     required-projects:
-      - openstack-infra/devstack-gate
-      - openstack/devstack-plugin-hdfs
+      - openstack/devstack-gate
+      - x/devstack-plugin-hdfs
       - openstack/manila
       - openstack/python-manilaclient
       - openstack/tempest
@@ -206,7 +206,7 @@
     post-run: playbooks/legacy/manila-tempest-dsvm-mysql-generic/post.yaml
     timeout: 5400
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/manila
       - openstack/manila-image-elements
       - openstack/python-manilaclient
@@ -219,7 +219,7 @@
     post-run: playbooks/legacy/manila-tempest-dsvm-postgres-container/post.yaml
     timeout: 5400
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/manila
       - openstack/manila-image-elements
       - openstack/python-manilaclient
@@ -232,7 +232,7 @@
     post-run: playbooks/legacy/manila-tempest-dsvm-postgres-generic-singlebackend/post.yaml
     timeout: 5400
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/manila
       - openstack/manila-image-elements
       - openstack/python-manilaclient
@@ -245,7 +245,7 @@
     post-run: playbooks/legacy/manila-tempest-dsvm-postgres-zfsonlinux/post.yaml
     timeout: 5400
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/manila
       - openstack/manila-image-elements
       - openstack/python-manilaclient
@@ -258,7 +258,7 @@
     post-run: playbooks/legacy/manila-tempest-dsvm-scenario/post.yaml
     timeout: 5400
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/manila
       - openstack/manila-image-elements
       - openstack/python-manilaclient
@@ -272,7 +272,7 @@
     timeout: 5400
     nodeset: legacy-centos-7
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/devstack-plugin-ceph
       - openstack/manila
       - openstack/python-manilaclient
@@ -286,7 +286,7 @@
     timeout: 5400
     nodeset: legacy-centos-7
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/devstack-plugin-ceph
       - openstack/manila
       - openstack/python-manilaclient
@@ -299,7 +299,7 @@
     post-run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy/post.yaml
     timeout: 5400
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/manila
       - openstack/python-manilaclient
       - openstack/tempest
@@ -312,7 +312,7 @@
     timeout: 5400
     nodeset: legacy-centos-7
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/manila
       - openstack/python-manilaclient
       - openstack/tempest
@@ -325,7 +325,7 @@
     timeout: 5400
     nodeset: legacy-centos-7
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/devstack-plugin-ceph
       - openstack/manila
       - openstack/python-manilaclient
@@ -339,7 +339,7 @@
     timeout: 5400
     nodeset: legacy-centos-7
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/devstack-plugin-ceph
       - openstack/manila
       - openstack/python-manilaclient
@@ -373,7 +373,7 @@
       - ^tools/.*$
       - ^tox.ini$
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/manila
       - openstack/python-manilaclient
       - openstack/rally
@@ -396,7 +396,7 @@
       - ^tools/.*$
       - ^tox.ini$
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/manila
       - openstack/python-manilaclient
       - openstack/rally
