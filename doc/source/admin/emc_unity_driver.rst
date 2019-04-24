@@ -59,6 +59,7 @@ Storage Systems.
 * Modify the user access privilege of a CIFS share.
 * Take/Delete snapshot of a share.
 * Create a new share from snapshot.
+* Revert a share to a snapshot.
 
 
 Supported Network Topologies
@@ -251,6 +252,7 @@ Following driver features are implemented in the plugin.
 * setup_server: Set up and configures share server with given network
   parameters.
 * teardown_server: Tear down the share server.
+* revert_to_snapshot: Revert a share to a snapshot.
 
 
 The :mod:`manila.share.drivers.dell_emc.driver` Module
