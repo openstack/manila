@@ -71,7 +71,7 @@ def find_ports_by_mtu(all_ports, port_ids_conf, mtu):
     managed_port_map, unmatched = match_ports(valid_ports, port_ids_conf)
     if not managed_port_map:
         msg = (_('None of the configured port %(conf)s matches the mtu '
-                 '%{mtu}s.') % {'conf': port_ids_conf, 'mtu': mtu})
+                 '%(mtu)s.') % {'conf': port_ids_conf, 'mtu': mtu})
         raise exception.ShareBackendException(msg=msg)
     return managed_port_map
 
