@@ -56,6 +56,8 @@ The following operations are supported:
 
 -  Shrink a share.
 
+-  Revert a share to a snapshot.
+
 
 Supported network types
 ~~~~~~~~~~~~~~~~~~~~~~~
