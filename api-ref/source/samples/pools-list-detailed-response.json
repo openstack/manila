@@ -1,29 +1,120 @@
 {
-    "pools": [
-        {
-            "host": "LONDON",
-            "capabilities": {
-                "qos": false,
-                "driver_version": "1.0",
-                "snapshot_support": true,
-                "timestamp": "2016-07-05T22:40:32.632330",
-                "share_backend_name": "GENERIC1",
-                "total_capacity_gb": "unknown",
-                "driver_handles_share_servers": true,
-                "server_pools_mapping": {},
-                "share_group_stats": {
-                    "consistent_snapshot_support": null
-                },
-                "pools": null,
-                "vendor_name": "Open Source",
-                "reserved_percentage": 0,
-                "free_capacity_gb": "unknown",
-                "storage_protocol": "NFS_CIFS",
-                "replication_domain": null
-            },
-            "name": "openstack3@generic1#GENERIC1",
-            "pool": "GENERIC1",
-            "backend": "generic1"
-        }
-    ]
+  "pools": [
+    {
+      "name": "opencloud@alpha#ALPHA_pool",
+      "host": "opencloud",
+      "backend": "alpha",
+      "pool": "ALPHA_pool",
+      "capabilities": {
+        "pool_name": "ALPHA_pool",
+        "total_capacity_gb": 1230.0,
+        "free_capacity_gb": 1210.0,
+        "reserved_percentage": 0,
+        "share_backend_name": "ALPHA",
+        "storage_protocol": "NFS_CIFS",
+        "vendor_name": "Open Source",
+        "driver_version": "1.0",
+        "timestamp": "2019-05-07T00:28:02.935569",
+        "driver_handles_share_servers": true,
+        "snapshot_support": true,
+        "create_share_from_snapshot_support": true,
+        "revert_to_snapshot_support": true,
+        "mount_snapshot_support": true,
+        "dedupe": false,
+        "compression": false,
+        "replication_type": null,
+        "replication_domain": null,
+        "sg_consistent_snapshot_support": "pool",
+        "ipv4_support": true,
+        "ipv6_support": false
+      }
+    },
+    {
+      "name": "opencloud@beta#BETA_pool",
+      "host": "opencloud",
+      "backend": "beta",
+      "pool": "BETA_pool",
+      "capabilities": {
+        "pool_name": "BETA_pool",
+        "total_capacity_gb": 1230.0,
+        "free_capacity_gb": 1210.0,
+        "reserved_percentage": 0,
+        "share_backend_name": "BETA",
+        "storage_protocol": "NFS_CIFS",
+        "vendor_name": "Open Source",
+        "driver_version": "1.0",
+        "timestamp": "2019-05-07T00:28:02.817309",
+        "driver_handles_share_servers": true,
+        "snapshot_support": true,
+        "create_share_from_snapshot_support": true,
+        "revert_to_snapshot_support": true,
+        "mount_snapshot_support": true,
+        "dedupe": false,
+        "compression": false,
+        "replication_type": null,
+        "replication_domain": null,
+        "sg_consistent_snapshot_support": "pool",
+        "ipv4_support": true,
+        "ipv6_support": false
+      }
+    },
+    {
+      "name": "opencloud@gamma#GAMMA_pool",
+      "host": "opencloud",
+      "backend": "gamma",
+      "pool": "GAMMA_pool",
+      "capabilities": {
+        "pool_name": "GAMMA_pool",
+        "total_capacity_gb": 1230.0,
+        "free_capacity_gb": 1210.0,
+        "reserved_percentage": 0,
+        "replication_type": "readable",
+        "share_backend_name": "GAMMA",
+        "storage_protocol": "NFS_CIFS",
+        "vendor_name": "Open Source",
+        "driver_version": "1.0",
+        "timestamp": "2019-05-07T00:28:02.899888",
+        "driver_handles_share_servers": false,
+        "snapshot_support": true,
+        "create_share_from_snapshot_support": true,
+        "revert_to_snapshot_support": true,
+        "mount_snapshot_support": true,
+        "dedupe": false,
+        "compression": false,
+        "replication_domain": "replica_domain_store1",
+        "sg_consistent_snapshot_support": "pool",
+        "ipv4_support": true,
+        "ipv6_support": false
+      }
+    },
+    {
+      "name": "opencloud@delta#DELTA_pool",
+      "host": "opencloud",
+      "backend": "delta",
+      "pool": "DELTA_pool",
+      "capabilities": {
+        "pool_name": "DELTA_pool",
+        "total_capacity_gb": 1230.0,
+        "free_capacity_gb": 1210.0,
+        "reserved_percentage": 0,
+        "replication_type": "readable",
+        "share_backend_name": "DELTA",
+        "storage_protocol": "NFS_CIFS",
+        "vendor_name": "Open Source",
+        "driver_version": "1.0",
+        "timestamp": "2019-05-07T00:28:02.963660",
+        "driver_handles_share_servers": false,
+        "snapshot_support": true,
+        "create_share_from_snapshot_support": true,
+        "revert_to_snapshot_support": true,
+        "mount_snapshot_support": true,
+        "dedupe": false,
+        "compression": false,
+        "replication_domain": "replica_domain_store1",
+        "sg_consistent_snapshot_support": "pool",
+        "ipv4_support": true,
+        "ipv6_support": false
+      }
+    }
+  ]
 }
