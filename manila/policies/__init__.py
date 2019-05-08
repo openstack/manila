@@ -34,6 +34,7 @@ from manila.policies import share_group_types_spec
 from manila.policies import share_instance
 from manila.policies import share_instance_export_location
 from manila.policies import share_network
+from manila.policies import share_network_subnet
 from manila.policies import share_replica
 from manila.policies import share_replica_export_location
 from manila.policies import share_server
@@ -70,6 +71,7 @@ def list_rules():
         share_replica.list_rules(),
         share_replica_export_location.list_rules(),
         share_network.list_rules(),
+        share_network_subnet.list_rules(),
         security_service.list_rules(),
         share_export_location.list_rules(),
         share_instance.list_rules(),

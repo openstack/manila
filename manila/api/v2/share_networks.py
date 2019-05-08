@@ -15,6 +15,7 @@
 
 """The shares api."""
 
+import copy
 from oslo_db import exception as db_exception
 from oslo_log import log
 from oslo_utils import timeutils
@@ -66,6 +67,9 @@ class ShareNetworkController(wsgi.Controller):
         return all([ss['is_auto_deletable'] for ss
                     in share_network['share_servers']])
 
+    def _share_network_contains_subnets(self, share_network):
+        return len(share_network['share_network_subnets']) > 1
+
     def delete(self, req, id):
         """Delete specified share network."""
         context = req.environ['manila.context']
@@ -95,18 +99,29 @@ class ShareNetworkController(wsgi.Controller):
             LOG.error(msg)
             raise exc.HTTPConflict(explanation=msg)
 
-        # NOTE(silvacarlose): Do not allow the deletion of any share server
-        # if one of them has the flag is_auto_deletable = False
-        if not self._all_share_servers_are_auto_deletable(share_network):
-            msg = _("The service cannot determine if there are any "
-                    "non-managed shares on the share network %(id)s, so it "
-                    "cannot be deleted. Please contact the cloud "
-                    "administrator to rectify.") % {'id': id}
+        # NOTE(silvacarlose): Do not allow the deletion of share networks
+        # if it still contains two or more subnets
+        if self._share_network_contains_subnets(share_network):
+            msg = _("The share network %(id)s has more than one subnet "
+                    "attached. Please remove the subnets untill you have one "
+                    "or no subnets remaining.") % {'id': id}
             LOG.error(msg)
             raise exc.HTTPConflict(explanation=msg)
 
-        for share_server in share_network['share_servers']:
-            self.share_rpcapi.delete_share_server(context, share_server)
+        for subnet in share_network['share_network_subnets']:
+            if not self._all_share_servers_are_auto_deletable(subnet):
+                msg = _("The service cannot determine if there are any "
+                        "non-managed shares on the share network subnet "
+                        "%(id)s, so it cannot be deleted. Please contact the "
+                        "cloud administrator to rectify.") % {
+                    'id': subnet['id']}
+                LOG.error(msg)
+                raise exc.HTTPConflict(explanation=msg)
+
+        for subnet in share_network['share_network_subnets']:
+            for share_server in subnet['share_servers']:
+                self.share_rpcapi.delete_share_server(context, share_server)
+
         db_api.share_network_delete(context, id)
 
         try:
@@ -121,6 +136,16 @@ class ShareNetworkController(wsgi.Controller):
                           project_id=share_network['project_id'],
                           user_id=share_network['user_id'])
         return webob.Response(status_int=http_client.ACCEPTED)
+
+    def _subnet_has_search_opt(self, key, value, network, exact_value=False):
+        for subnet in network.get('share_network_subnets') or []:
+            if subnet.get(key) == value or (
+                    not exact_value and
+                    value in subnet.get(key.rstrip('~'))
+                    if key.endswith('~') and
+                    subnet.get(key.rstrip('~')) else ()):
+                return True
+        return False
 
     def _get_share_networks(self, req, is_detail=True):
         """Returns a list of share networks."""
@@ -179,18 +204,29 @@ class ShareNetworkController(wsgi.Controller):
                     value = int(value)
                 if (req.api_version_request >=
                         api_version.APIVersionRequest("2.36")):
-                    networks = [network for network in networks
-                                if network.get(key) == value or
-                                (value in network.get(key.rstrip('~'))
-                                 if key.endswith('~') and
-                                 network.get(key.rstrip('~')) else ())]
+                    networks = [
+                        network for network in networks
+                        if network.get(key) == value or
+                        self._subnet_has_search_opt(key, value, network) or
+                        (value in network.get(key.rstrip('~'))
+                            if key.endswith('~') and
+                            network.get(key.rstrip('~')) else ())]
                 else:
-                    networks = [network for network in networks
-                                if network.get(key) == value]
+                    networks = [
+                        network for network in networks
+                        if network.get(key) == value or
+                        self._subnet_has_search_opt(key, value, network,
+                                                    exact_value=True)]
 
         limited_list = common.limited(networks, req)
         return self._view_builder.build_share_networks(
             req, limited_list, is_detail)
+
+    def _share_network_subnets_contain_share_servers(self, share_network):
+        for subnet in share_network['share_network_subnets']:
+            if subnet['share_servers'] and len(subnet['share_servers']) > 0:
+                return True
+        return False
 
     def index(self, req):
         """Returns a summary list of share networks."""
@@ -223,7 +259,7 @@ class ShareNetworkController(wsgi.Controller):
             msg = _("nova networking is not supported starting in Ocata.")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        if share_network['share_servers']:
+        if self._share_network_subnets_contain_share_servers(share_network):
             for value in update_values:
                 if value not in ['name', 'description']:
                     msg = (_("Cannot update share network %s. It is used by "
@@ -231,8 +267,15 @@ class ShareNetworkController(wsgi.Controller):
                              "fields are available for update") %
                            share_network['id'])
                     raise exc.HTTPForbidden(explanation=msg)
-
         try:
+            if ('neutron_net_id' in update_values or
+                    'neutron_subnet_id' in update_values):
+                subnet = db_api.share_network_subnet_get_default_subnet(
+                    context, id)
+                if subnet:
+                    db_api.share_network_subnet_update(context,
+                                                       subnet['id'],
+                                                       update_values)
             share_network = db_api.share_network_update(context,
                                                         id,
                                                         update_values)
@@ -250,13 +293,35 @@ class ShareNetworkController(wsgi.Controller):
         if not body or RESOURCE_NAME not in body:
             raise exc.HTTPUnprocessableEntity()
 
-        values = body[RESOURCE_NAME]
-        values['project_id'] = context.project_id
-        values['user_id'] = context.user_id
+        share_network_values = body[RESOURCE_NAME]
+        share_network_subnet_values = copy.deepcopy(share_network_values)
+        share_network_values['project_id'] = context.project_id
+        share_network_values['user_id'] = context.user_id
 
-        if 'nova_net_id' in values:
+        if 'nova_net_id' in share_network_values:
             msg = _("nova networking is not supported starting in Ocata.")
             raise exc.HTTPBadRequest(explanation=msg)
+
+        share_network_values.pop('availability_zone', None)
+        share_network_values.pop('neutron_net_id', None)
+        share_network_values.pop('neutron_subnet_id', None)
+
+        if req.api_version_request >= api_version.APIVersionRequest("2.51"):
+            if 'availability_zone' in share_network_subnet_values:
+                try:
+                    az = db_api.availability_zone_get(
+                        context,
+                        share_network_subnet_values['availability_zone'])
+                    share_network_subnet_values['availability_zone_id'] = (
+                        az['id'])
+                    share_network_subnet_values.pop('availability_zone')
+                except exception.AvailabilityZoneNotFound:
+                    msg = (_("The provided availability zone %s does not "
+                             "exist.")
+                           % share_network_subnet_values['availability_zone'])
+                    raise exc.HTTPBadRequest(explanation=msg)
+
+        common.check_net_id_and_subnet_id(share_network_subnet_values)
 
         try:
             reservations = QUOTAS.reserve(context, share_networks=1)
@@ -279,13 +344,32 @@ class ShareNetworkController(wsgi.Controller):
                 raise exception.ShareNetworksLimitExceeded(
                     allowed=quotas['share_networks'])
         else:
+            # Tries to create the new share network
             try:
-                share_network = db_api.share_network_create(context, values)
+                share_network = db_api.share_network_create(
+                    context, share_network_values)
+            except db_exception.DBError as e:
+                LOG.exception(e)
+                msg = "Could not create share network."
+                raise exc.HTTPInternalServerError(explanation=msg)
+
+            share_network_subnet_values['share_network_id'] = (
+                share_network['id'])
+            share_network_subnet_values.pop('id', None)
+
+            # Try to create the share network subnet. If it fails, the service
+            # must rollback the share network creation.
+            try:
+                db_api.share_network_subnet_create(
+                    context, share_network_subnet_values)
             except db_exception.DBError:
-                msg = "Could not save supplied data due to database error"
-                raise exc.HTTPBadRequest(explanation=msg)
+                db_api.share_network_delete(context, share_network['id'])
+                msg = _('Could not create share network.')
+                raise exc.HTTPInternalServerError(explanation=msg)
 
             QUOTAS.commit(context, reservations)
+            share_network = db_api.share_network_get(context,
+                                                     share_network['id'])
             return self._view_builder.build_share_network(req, share_network)
 
     def action(self, req, id, body):
@@ -305,7 +389,7 @@ class ShareNetworkController(wsgi.Controller):
         context = req.environ['manila.context']
         policy.check_policy(context, RESOURCE_NAME, 'add_security_service')
         share_network = db_api.share_network_get(context, id)
-        if share_network['share_servers']:
+        if self._share_network_subnets_contain_share_servers(share_network):
             msg = _("Cannot add security services. Share network is used.")
             raise exc.HTTPForbidden(explanation=msg)
         security_service = db_api.security_service_get(
@@ -338,7 +422,8 @@ class ShareNetworkController(wsgi.Controller):
         context = req.environ['manila.context']
         policy.check_policy(context, RESOURCE_NAME, 'remove_security_service')
         share_network = db_api.share_network_get(context, id)
-        if share_network['share_servers']:
+
+        if self._share_network_subnets_contain_share_servers(share_network):
             msg = _("Cannot remove security services. Share network is used.")
             raise exc.HTTPForbidden(explanation=msg)
         try:

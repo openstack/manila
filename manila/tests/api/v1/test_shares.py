@@ -239,6 +239,9 @@ class ShareAPITest(test.TestCase):
         self.mock_object(share_api.API, 'create', create_mock)
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
             return_value={'id': 'fakenetid'}))
+        self.mock_object(
+            db, 'share_network_subnet_get_by_availability_zone_id',
+            mock.Mock(return_value={'id': 'fakesubnetid'}))
 
         body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares')
@@ -249,6 +252,7 @@ class ShareAPITest(test.TestCase):
         expected = self._get_expected_share_detailed_response(shr)
         expected['share'].pop('snapshot_support')
         self.assertEqual(expected, res_dict)
+        # pylint: disable=unsubscriptable-object
         self.assertEqual("fakenetid",
                          create_mock.call_args[1]['share_network_id'])
 
@@ -312,6 +316,8 @@ class ShareAPITest(test.TestCase):
             return_value=parent_share))
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
             return_value={'id': parent_share_net}))
+        self.mock_object(
+            db, 'share_network_subnet_get_by_availability_zone_id')
 
         body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares')
@@ -323,6 +329,7 @@ class ShareAPITest(test.TestCase):
         expected = self._get_expected_share_detailed_response(shr)
         expected['share'].pop('snapshot_support')
         self.assertEqual(expected, res_dict)
+        # pylint: disable=unsubscriptable-object
         self.assertEqual(parent_share_net,
                          create_mock.call_args[1]['share_network_id'])
 
@@ -356,6 +363,8 @@ class ShareAPITest(test.TestCase):
             return_value=parent_share))
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
             return_value={'id': parent_share_net}))
+        self.mock_object(
+            db, 'share_network_subnet_get_by_availability_zone_id')
 
         body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares')
@@ -367,6 +376,7 @@ class ShareAPITest(test.TestCase):
         expected = self._get_expected_share_detailed_response(shr)
         expected['share'].pop('snapshot_support')
         self.assertEqual(expected, res_dict)
+        # pylint: disable=unsubscriptable-object
         self.assertEqual(parent_share_net,
                          create_mock.call_args[1]['share_network_id'])
 
@@ -425,6 +435,8 @@ class ShareAPITest(test.TestCase):
             return_value=parent_share))
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
             return_value={'id': parent_share_net}))
+        self.mock_object(
+            db, 'share_network_subnet_get_by_availability_zone_id')
 
         body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares', version=microversion)
@@ -436,6 +448,7 @@ class ShareAPITest(test.TestCase):
         expected = self._get_expected_share_detailed_response(shr)
         expected['share'].pop('snapshot_support')
         self.assertDictEqual(expected, res_dict)
+        # pylint: disable=unsubscriptable-object
         self.assertEqual(parent_share_net,
                          create_mock.call_args[1]['share_network_id'])
 
@@ -474,6 +487,28 @@ class ShareAPITest(test.TestCase):
 
         req = fakes.HTTPRequest.blank('/shares')
         self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.create,
+                          req,
+                          body)
+
+    @ddt.data((exception.ShareNetworkNotFound(share_network_id='fake'),
+               webob.exc.HTTPNotFound),
+              (mock.Mock(), webob.exc.HTTPBadRequest))
+    @ddt.unpack
+    def test_share_create_invalid_subnet(self, share_network_side_effect,
+                                         exception_to_raise):
+        fake_share_with_sn = copy.deepcopy(self.share)
+        fake_share_with_sn['share_network_id'] = 'fakenetid'
+        self.mock_object(db, 'share_network_get',
+                         mock.Mock(side_effect=share_network_side_effect))
+        self.mock_object(
+            db, 'share_network_subnet_get_by_availability_zone_id',
+            mock.Mock(return_value=None))
+
+        body = {"share": fake_share_with_sn}
+
+        req = fakes.HTTPRequest.blank('/shares')
+        self.assertRaises(exception_to_raise,
                           self.controller.create,
                           req,
                           body)

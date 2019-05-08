@@ -34,12 +34,21 @@ class ViewBuilderTestCase(test.TestCase):
 
     @ddt.data(*itertools.product(
         [
-            {'id': 'fake_sn_id', 'name': 'fake_sn_name'},
             {'id': 'fake_sn_id', 'name': 'fake_sn_name',
+             'share_network_subnets': []},
+            {'id': 'fake_sn_id', 'name': 'fake_sn_name',
+             'share_network_subnets': [], 'fake_extra_key': 'foo'},
+            {'id': 'fake_sn_id', 'name': 'fake_sn_name',
+             'share_network_subnets': [
+                 {'availability_zone_id': None,
+                  'id': 'fake',
+                  'availability_zone': None,
+                  'is_default': False
+                  }],
              'fake_extra_key': 'foo'},
         ],
         ["1.0", "2.0", "2.18", "2.20", "2.25", "2.26",
-         api_version._MAX_API_VERSION])
+         "2.49", api_version._MAX_API_VERSION])
     )
     @ddt.unpack
     def test_build_share_network(self, share_network_data, microversion):
@@ -49,17 +58,28 @@ class ViewBuilderTestCase(test.TestCase):
                        api_version.APIVersionRequest('2.20'))
         nova_net_support = (api_version.APIVersionRequest(microversion) <
                             api_version.APIVersionRequest('2.26'))
+        default_net_info_support = (api_version.APIVersionRequest(microversion)
+                                    <= api_version.APIVersionRequest('2.49'))
+        subnets_support = (api_version.APIVersionRequest(microversion) >
+                           api_version.APIVersionRequest('2.49'))
         req = fakes.HTTPRequest.blank('/share-networks', version=microversion)
         expected_keys = {
             'id', 'name', 'project_id', 'created_at', 'updated_at',
-            'neutron_net_id', 'neutron_subnet_id', 'network_type',
-            'segmentation_id', 'cidr', 'ip_version', 'description'}
-        if gateway_support:
-            expected_keys.add('gateway')
-        if mtu_support:
-            expected_keys.add('mtu')
-        if nova_net_support:
-            expected_keys.add('nova_net_id')
+            'description'}
+        if subnets_support:
+            expected_keys.add('share_network_subnets')
+        else:
+            if default_net_info_support:
+                network_info = {
+                    'neutron_net_id', 'neutron_subnet_id', 'network_type',
+                    'segmentation_id', 'cidr', 'ip_version'}
+                expected_keys.update(network_info)
+            if gateway_support:
+                expected_keys.add('gateway')
+            if mtu_support:
+                expected_keys.add('mtu')
+            if nova_net_support:
+                expected_keys.add('nova_net_id')
 
         result = self.builder.build_share_network(req, share_network_data)
         self.assertEqual(1, len(result))
@@ -93,7 +113,7 @@ class ViewBuilderTestCase(test.TestCase):
              {'id': 'fake_id2',
               'name': 'fake_name2'}],
         ],
-        set(["1.0", "2.0", "2.18", "2.20", "2.25", "2.26",
+        set(["1.0", "2.0", "2.18", "2.20", "2.25", "2.26", "2.49",
              api_version._MAX_API_VERSION]))
     )
     @ddt.unpack
@@ -105,6 +125,10 @@ class ViewBuilderTestCase(test.TestCase):
                        api_version.APIVersionRequest('2.20'))
         nova_net_support = (api_version.APIVersionRequest(microversion) <
                             api_version.APIVersionRequest('2.26'))
+        default_net_info_support = (api_version.APIVersionRequest(microversion)
+                                    <= api_version.APIVersionRequest('2.49'))
+        subnets_support = (api_version.APIVersionRequest(microversion) >
+                           api_version.APIVersionRequest('2.49'))
         req = fakes.HTTPRequest.blank('/share-networks', version=microversion)
         expected_networks_list = []
         for share_network in share_networks:
@@ -114,23 +138,34 @@ class ViewBuilderTestCase(test.TestCase):
                 'project_id': share_network.get('project_id'),
                 'created_at': share_network.get('created_at'),
                 'updated_at': share_network.get('updated_at'),
-                'neutron_net_id': share_network.get('neutron_net_id'),
-                'neutron_subnet_id': share_network.get('neutron_subnet_id'),
-                'network_type': share_network.get('network_type'),
-                'segmentation_id': share_network.get('segmentation_id'),
-                'cidr': share_network.get('cidr'),
-                'ip_version': share_network.get('ip_version'),
                 'description': share_network.get('description'),
             }
-            if gateway_support:
-                share_network.update({'gateway': 'fake_gateway'})
-                expected_data.update({'gateway': share_network.get('gateway')})
-            if mtu_support:
-                share_network.update({'mtu': 1509})
-                expected_data.update({'mtu': share_network.get('mtu')})
-            if nova_net_support:
-                share_network.update({'nova_net_id': 'fake_nova_net_id'})
-                expected_data.update({'nova_net_id': None})
+            if subnets_support:
+                share_network.update({'share_network_subnets': []})
+                expected_data.update({'share_network_subnets': []})
+            else:
+                if default_net_info_support:
+                    network_data = {
+                        'neutron_net_id': share_network.get('neutron_net_id'),
+                        'neutron_subnet_id': share_network.get(
+                            'neutron_subnet_id'),
+                        'network_type': share_network.get('network_type'),
+                        'segmentation_id': share_network.get(
+                            'segmentation_id'),
+                        'cidr': share_network.get('cidr'),
+                        'ip_version': share_network.get('ip_version'),
+                    }
+                    expected_data.update(network_data)
+                if gateway_support:
+                    share_network.update({'gateway': 'fake_gateway'})
+                    expected_data.update({'gateway':
+                                          share_network.get('gateway')})
+                if mtu_support:
+                    share_network.update({'mtu': 1509})
+                    expected_data.update({'mtu': share_network.get('mtu')})
+                if nova_net_support:
+                    share_network.update({'nova_net_id': 'fake_nova_net_id'})
+                    expected_data.update({'nova_net_id': None})
             expected_networks_list.append(expected_data)
         expected = {'share_networks': expected_networks_list}
 
@@ -148,7 +183,7 @@ class ViewBuilderTestCase(test.TestCase):
              {'id': 'id2', 'name': 'name2',
               'fake': 'I should not be returned'}]
         ],
-        set(["1.0", "2.0", "2.18", "2.20", "2.25", "2.26",
+        set(["1.0", "2.0", "2.18", "2.20", "2.25", "2.26", "2.49",
              api_version._MAX_API_VERSION]))
     )
     @ddt.unpack

@@ -85,6 +85,14 @@ class NetworkBaseAPI(db_base.Base):
                     "'%s'.") % share_server_id
             raise exception.NetworkBadConfigurationException(reason=msg)
 
+    def _verify_share_network_subnet(self, share_server_id,
+                                     share_network_subnet):
+        if share_network_subnet is None:
+            msg = _("'Share network subnet' is not provided for setting up "
+                    "network interfaces for 'Share server' "
+                    "'%s'.") % share_server_id
+            raise exception.NetworkBadConfigurationException(reason=msg)
+
     def update_network_allocation(self, context, share_server):
         """Update network allocation.
 
@@ -98,7 +106,7 @@ class NetworkBaseAPI(db_base.Base):
 
     @abc.abstractmethod
     def allocate_network(self, context, share_server, share_network=None,
-                         **kwargs):
+                         share_network_subnet=None, **kwargs):
         pass
 
     @abc.abstractmethod
@@ -106,8 +114,9 @@ class NetworkBaseAPI(db_base.Base):
         pass
 
     @abc.abstractmethod
-    def manage_network_allocations(self, context, allocations, share_server,
-                                   share_network=None):
+    def manage_network_allocations(
+            self, context, allocations, share_server, share_network=None,
+            share_network_subnet=None):
         pass
 
     @abc.abstractmethod

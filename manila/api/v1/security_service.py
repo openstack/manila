@@ -151,9 +151,11 @@ class SecurityServiceController(wsgi.Controller):
                                              security_service_id):
         share_networks = db.share_network_get_all_by_security_service(
             context, security_service_id)
+
         for sn in share_networks:
-            if sn['share_servers']:
-                return True
+            for sns in sn['share_network_subnets']:
+                if 'share_servers' in sns and sns['share_servers']:
+                    return True
         return False
 
     def update(self, req, id, body):

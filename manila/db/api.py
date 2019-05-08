@@ -848,6 +848,55 @@ def count_share_networks(context, project_id, user_id=None,
 ##################
 
 
+def share_network_subnet_create(context, values):
+    """Create a share network subnet DB record."""
+    return IMPL.share_network_subnet_create(context, values)
+
+
+def share_network_subnet_delete(context, network_subnet_id):
+    """Delete a share network subnet DB record."""
+    return IMPL.share_network_subnet_delete(context, network_subnet_id)
+
+
+def share_network_subnet_update(context, network_subnet_id, values):
+    """Update a share network subnet DB record."""
+    return IMPL.share_network_subnet_update(context, network_subnet_id, values)
+
+
+def share_network_subnet_get(context, network_subnet_id, session=None):
+    """Get requested share network subnet DB record."""
+    return IMPL.share_network_subnet_get(context, network_subnet_id,
+                                         session=session)
+
+
+def share_network_subnet_get_all(context):
+    """Get all share network subnet DB record."""
+    return IMPL.share_network_subnet_get_all(context)
+
+
+def share_network_subnet_get_by_availability_zone_id(context, share_network_id,
+                                                     availability_zone_id):
+    """Get a share network subnet DB record.
+
+    This method returns a subnet DB record for a given share network id and
+    an availability zone. If the 'availability_zone_id' is 'None', a record may
+    be returned and it will represent the default share network subnet.
+    Be aware that if there is no subnet for a specific availability zone id,
+    this method will return the default share network subnet, if it exists.
+    """
+    return IMPL.share_network_subnet_get_by_availability_zone_id(
+        context, share_network_id, availability_zone_id)
+
+
+def share_network_subnet_get_default_subnet(context, share_network_id):
+    """Get the default share network subnet DB record."""
+    return IMPL.share_network_subnet_get_default_subnet(context,
+                                                        share_network_id)
+
+
+##################
+
+
 def network_allocation_create(context, values):
     """Create a network allocation DB record."""
     return IMPL.network_allocation_create(context, values)

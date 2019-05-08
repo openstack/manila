@@ -125,19 +125,21 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
                                                 **self._neutron_api_kwargs)
         return self._neutron_api
 
-    def _store_neutron_net_info(self, context, share_network):
-        self._save_neutron_network_data(context, share_network)
-        self._save_neutron_subnet_data(context, share_network)
+    def _store_neutron_net_info(self, context, share_network_subnet):
+        self._save_neutron_network_data(context, share_network_subnet)
+        self._save_neutron_subnet_data(context, share_network_subnet)
 
     def allocate_network(self, context, share_server, share_network=None,
-                         **kwargs):
+                         share_network_subnet=None, **kwargs):
         """Allocate network resources using given network information.
 
         Create neutron ports for a given neutron network and subnet,
         create manila db records for allocated neutron ports.
 
         :param context: RequestContext object
+        :param share_server: share server data
         :param share_network: share network data
+        :param share_network_subnet: share network subnet data
         :param kwargs: allocations parameters given by the back-end
                        driver. Supported params:
                        'count' - how many allocations should be created
@@ -149,32 +151,37 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
             raise exception.NetworkBadConfigurationException(reason=msg)
 
         self._verify_share_network(share_server['id'], share_network)
-        self._store_neutron_net_info(context, share_network)
+        self._verify_share_network_subnet(share_server['id'],
+                                          share_network_subnet)
+        self._store_neutron_net_info(context, share_network_subnet)
 
         allocation_count = kwargs.get('count', 1)
         device_owner = kwargs.get('device_owner', 'share')
 
         ports = []
         for __ in range(0, allocation_count):
-            ports.append(self._create_port(context, share_server,
-                                           share_network, device_owner))
+            ports.append(self._create_port(
+                         context, share_server, share_network,
+                         share_network_subnet, device_owner))
 
         return ports
 
-    def manage_network_allocations(self, context, allocations, share_server,
-                                   share_network=None):
+    def manage_network_allocations(
+            self, context, allocations, share_server, share_network=None,
+            share_network_subnet=None):
 
-        self._verify_share_network(share_server['id'], share_network)
-        self._store_neutron_net_info(context, share_network)
+        self._verify_share_network_subnet(share_server['id'],
+                                          share_network_subnet)
+        self._store_neutron_net_info(context, share_network_subnet)
 
         # We begin matching the allocations to known neutron ports and
         # finally return the non-consumed allocations
         remaining_allocations = list(allocations)
-
-        fixed_ip_filter = 'subnet_id=' + share_network['neutron_subnet_id']
+        fixed_ip_filter = ('subnet_id=' +
+                           share_network_subnet['neutron_subnet_id'])
 
         port_list = self.neutron_api.list_ports(
-            network_id=share_network['neutron_net_id'],
+            network_id=share_network_subnet['neutron_net_id'],
             device_owner='manila:share',
             fixed_ips=fixed_ip_filter)
 
@@ -189,15 +196,15 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
                 'id': selected_port['port']['id'],
                 'share_server_id': share_server['id'],
                 'ip_address': selected_port['allocation'],
-                'gateway': share_network['gateway'],
+                'gateway': share_network_subnet['gateway'],
                 'mac_address': selected_port['port']['mac_address'],
                 'status': constants.STATUS_ACTIVE,
                 'label': self.label,
-                'network_type': share_network.get('network_type'),
-                'segmentation_id': share_network.get('segmentation_id'),
-                'ip_version': share_network['ip_version'],
-                'cidr': share_network['cidr'],
-                'mtu': share_network['mtu'],
+                'network_type': share_network_subnet.get('network_type'),
+                'segmentation_id': share_network_subnet.get('segmentation_id'),
+                'ip_version': share_network_subnet['ip_version'],
+                'cidr': share_network_subnet['cidr'],
+                'mtu': share_network_subnet['mtu'],
             }
 
             # There should not be existing allocations with the same port_id.
@@ -296,37 +303,38 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
         for port in ports:
             self._delete_port(context, port)
 
-    def _get_port_create_args(self, share_server, share_network,
+    def _get_port_create_args(self, share_server, share_network_subnet,
                               device_owner):
         return {
-            "network_id": share_network['neutron_net_id'],
-            "subnet_id": share_network['neutron_subnet_id'],
+            "network_id": share_network_subnet['neutron_net_id'],
+            "subnet_id": share_network_subnet['neutron_subnet_id'],
             "device_owner": 'manila:' + device_owner,
             "device_id": share_server.get('id'),
         }
 
-    def _create_port(self, context, share_server, share_network, device_owner):
-        create_args = self._get_port_create_args(share_server, share_network,
-                                                 device_owner)
+    def _create_port(self, context, share_server, share_network,
+                     share_network_subnet, device_owner):
+        create_args = self._get_port_create_args(
+            share_server, share_network_subnet, device_owner)
 
         port = self.neutron_api.create_port(
             share_network['project_id'], **create_args)
 
-        ip_address = self._get_matched_ip_address(port['fixed_ips'],
-                                                  share_network['ip_version'])
+        ip_address = self._get_matched_ip_address(
+            port['fixed_ips'], share_network_subnet['ip_version'])
         port_dict = {
             'id': port['id'],
             'share_server_id': share_server['id'],
             'ip_address': ip_address,
-            'gateway': share_network['gateway'],
+            'gateway': share_network_subnet['gateway'],
             'mac_address': port['mac_address'],
             'status': constants.STATUS_ACTIVE,
             'label': self.label,
-            'network_type': share_network.get('network_type'),
-            'segmentation_id': share_network.get('segmentation_id'),
-            'ip_version': share_network['ip_version'],
-            'cidr': share_network['cidr'],
-            'mtu': share_network['mtu'],
+            'network_type': share_network_subnet.get('network_type'),
+            'segmentation_id': share_network_subnet.get('segmentation_id'),
+            'ip_version': share_network_subnet['ip_version'],
+            'cidr': share_network_subnet['cidr'],
+            'mtu': share_network_subnet['mtu'],
         }
         return self.db.network_allocation_create(context, port_dict)
 
@@ -344,19 +352,19 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
         extensions = self.neutron_api.list_extensions()
         return neutron_constants.PROVIDER_NW_EXT in extensions
 
-    def _is_neutron_multi_segment(self, share_network, net_info=None):
+    def _is_neutron_multi_segment(self, share_network_subnet, net_info=None):
         if net_info is None:
             net_info = self.neutron_api.get_network(
-                share_network['neutron_net_id'])
+                share_network_subnet['neutron_net_id'])
         return 'segments' in net_info
 
-    def _save_neutron_network_data(self, context, share_network):
+    def _save_neutron_network_data(self, context, share_network_subnet):
         net_info = self.neutron_api.get_network(
-            share_network['neutron_net_id'])
+            share_network_subnet['neutron_net_id'])
         segmentation_id = None
         network_type = None
 
-        if self._is_neutron_multi_segment(share_network, net_info):
+        if self._is_neutron_multi_segment(share_network_subnet, net_info):
             # we have a multi segment network and need to identify the
             # lowest segment used for binding
             phy_nets = []
@@ -383,26 +391,26 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
             'segmentation_id': segmentation_id,
             'mtu':  net_info['mtu'],
         }
-        share_network.update(provider_nw_dict)
+        share_network_subnet.update(provider_nw_dict)
 
         if self.label != 'admin':
-            self.db.share_network_update(
-                context, share_network['id'], provider_nw_dict)
+            self.db.share_network_subnet_update(
+                context, share_network_subnet['id'], provider_nw_dict)
 
-    def _save_neutron_subnet_data(self, context, share_network):
+    def _save_neutron_subnet_data(self, context, share_network_subnet):
         subnet_info = self.neutron_api.get_subnet(
-            share_network['neutron_subnet_id'])
+            share_network_subnet['neutron_subnet_id'])
 
         subnet_values = {
             'cidr': subnet_info['cidr'],
             'gateway': subnet_info['gateway_ip'],
             'ip_version': subnet_info['ip_version']
         }
-        share_network.update(subnet_values)
+        share_network_subnet.update(subnet_values)
 
         if self.label != 'admin':
-            self.db.share_network_update(
-                context, share_network['id'], subnet_values)
+            self.db.share_network_subnet_update(
+                context, share_network_subnet['id'], subnet_values)
 
 
 class NeutronSingleNetworkPlugin(NeutronNetworkPlugin):
@@ -416,36 +424,47 @@ class NeutronSingleNetworkPlugin(NeutronNetworkPlugin):
         self.subnet = self.neutron_api.configuration.neutron_subnet_id
         self._verify_net_and_subnet()
 
-    def _select_proper_share_network(self, context, share_network):
+    def _select_proper_share_network_subnet(self, context,
+                                            share_network_subnet):
         if self.label != 'admin':
-            share_network = self._update_share_network_net_data(
-                context, share_network)
+            share_network_subnet = self._update_share_network_net_data(
+                context, share_network_subnet)
         else:
-            share_network = {
+            share_network_subnet = {
                 'project_id': self.neutron_api.admin_project_id,
                 'neutron_net_id': self.net,
                 'neutron_subnet_id': self.subnet,
             }
-        return share_network
+        return share_network_subnet
 
     def allocate_network(self, context, share_server, share_network=None,
-                         **kwargs):
+                         share_network_subnet=None, **kwargs):
 
-        share_network = self._select_proper_share_network(
-            context, share_network)
+        share_network_subnet = self._select_proper_share_network_subnet(
+            context, share_network_subnet)
+        # Update share network project_id info if needed
+        if share_network_subnet.get('project_id', None) is not None:
+            share_network['project_id'] = share_network_subnet.pop(
+                'project_id')
 
         return super(NeutronSingleNetworkPlugin, self).allocate_network(
-            context, share_server, share_network, **kwargs)
+            context, share_server, share_network, share_network_subnet,
+            **kwargs)
 
-    def manage_network_allocations(self, context, allocations, share_server,
-                                   share_network=None):
-
-        share_network = self._select_proper_share_network(
-            context, share_network)
+    def manage_network_allocations(
+            self, context, allocations, share_server, share_network=None,
+            share_network_subnet=None):
+        share_network_subnet = self._select_proper_share_network_subnet(
+            context, share_network_subnet)
+        # Update share network project_id info if needed
+        if share_network and share_network_subnet.get('project_id', None):
+            share_network['project_id'] = (
+                share_network_subnet.pop('project_id'))
 
         return super(NeutronSingleNetworkPlugin,
                      self).manage_network_allocations(
-            context, allocations, share_server, share_network)
+            context, allocations, share_server, share_network,
+            share_network_subnet)
 
     def _verify_net_and_subnet(self):
         data = dict(net=self.net, subnet=self.subnet)
@@ -460,33 +479,33 @@ class NeutronSingleNetworkPlugin(NeutronNetworkPlugin):
                 "Neutron net and subnet are expected to be both set. "
                 "Got: net=%(net)s and subnet=%(subnet)s." % data)
 
-    def _update_share_network_net_data(self, context, share_network):
+    def _update_share_network_net_data(self, context, share_network_subnet):
         upd = dict()
 
-        if not share_network.get('neutron_net_id') == self.net:
-            if share_network.get('neutron_net_id') is not None:
+        if not share_network_subnet.get('neutron_net_id') == self.net:
+            if share_network_subnet.get('neutron_net_id') is not None:
                 raise exception.NetworkBadConfigurationException(
                     "Using neutron net id different from None or value "
                     "specified in the config is forbidden for "
                     "NeutronSingleNetworkPlugin. Allowed values: (%(net)s, "
                     "None), received value: %(err)s" % {
                         "net": self.net,
-                        "err": share_network.get('neutron_net_id')})
+                        "err": share_network_subnet.get('neutron_net_id')})
             upd['neutron_net_id'] = self.net
-        if not share_network.get('neutron_subnet_id') == self.subnet:
-            if share_network.get('neutron_subnet_id') is not None:
+        if not share_network_subnet.get('neutron_subnet_id') == self.subnet:
+            if share_network_subnet.get('neutron_subnet_id') is not None:
                 raise exception.NetworkBadConfigurationException(
                     "Using neutron subnet id different from None or value "
                     "specified in the config is forbidden for "
                     "NeutronSingleNetworkPlugin. Allowed values: (%(snet)s, "
                     "None), received value: %(err)s" % {
                         "snet": self.subnet,
-                        "err": share_network.get('neutron_subnet_id')})
+                        "err": share_network_subnet.get('neutron_subnet_id')})
             upd['neutron_subnet_id'] = self.subnet
         if upd:
-            share_network = self.db.share_network_update(
-                context, share_network['id'], upd)
-        return share_network
+            share_network_subnet = self.db.share_network_subnet_update(
+                context, share_network_subnet['id'], upd)
+        return share_network_subnet
 
 
 class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
@@ -541,11 +560,11 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
             "ports": inactive_ports}
         raise exception.NetworkBindException(msg)
 
-    def _get_port_create_args(self, share_server, share_network,
+    def _get_port_create_args(self, share_server, share_network_subnet,
                               device_owner):
         arguments = super(
             NeutronBindNetworkPlugin, self)._get_port_create_args(
-                share_network, share_network, device_owner)
+            share_server, share_network_subnet, device_owner)
         arguments['host_id'] = self.config.neutron_host_id
         arguments['binding:vnic_type'] = self.config.neutron_vnic_type
         if self.binding_profiles:
@@ -561,7 +580,7 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
                 "local_link_information": local_links}
         return arguments
 
-    def _save_neutron_network_data(self, context, share_network):
+    def _save_neutron_network_data(self, context, share_network_subnet):
         """Store the Neutron network info.
 
         In case of dynamic multi segments the segment is determined while
@@ -571,36 +590,37 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
         Instead, multi segments network will wait until ports are bound and
         then store network information (see allocate_network()).
         """
-        if self._is_neutron_multi_segment(share_network):
+        if self._is_neutron_multi_segment(share_network_subnet):
             # In case of dynamic multi segment the segment is determined while
             # binding the port, only mtu is known and already needed
-            self._save_neutron_network_mtu(context, share_network)
+            self._save_neutron_network_mtu(context, share_network_subnet)
             return
         super(NeutronBindNetworkPlugin, self)._save_neutron_network_data(
-            context, share_network)
+            context, share_network_subnet)
 
-    def _save_neutron_network_mtu(self, context, share_network):
+    def _save_neutron_network_mtu(self, context, share_network_subnet):
         """Store the Neutron network mtu.
 
         In case of dynamic multi segments only the mtu needs storing before
         binding the port.
         """
         net_info = self.neutron_api.get_network(
-            share_network['neutron_net_id'])
+            share_network_subnet['neutron_net_id'])
 
         mtu_dict = {
             'mtu':  net_info['mtu'],
         }
-        share_network.update(mtu_dict)
+        share_network_subnet.update(mtu_dict)
 
         if self.label != 'admin':
-            self.db.share_network_update(
-                context, share_network['id'], mtu_dict)
+            self.db.share_network_subnet_update(
+                context, share_network_subnet['id'], mtu_dict)
 
     def allocate_network(self, context, share_server, share_network=None,
-                         **kwargs):
+                         share_network_subnet=None, **kwargs):
         ports = super(NeutronBindNetworkPlugin, self).allocate_network(
-            context, share_server, share_network, **kwargs)
+            context, share_server, share_network, share_network_subnet,
+            **kwargs)
         # If vnic type is 'normal' we expect a neutron agent to bind the
         # ports. This action requires a vnic to be spawned by the driver.
         # Therefore we do not wait for the port binding here, but
@@ -609,16 +629,18 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
         # order to update the ports with the correct binding.
         if self.config.neutron_vnic_type != 'normal':
             self._wait_for_ports_bind(ports, share_server)
-            if self._is_neutron_multi_segment(share_network):
+            if self._is_neutron_multi_segment(share_network_subnet):
                 # update segment information after port bind
                 super(NeutronBindNetworkPlugin,
-                      self)._save_neutron_network_data(context, share_network)
+                      self)._save_neutron_network_data(context,
+                                                       share_network_subnet)
                 for num, port in enumerate(ports):
                     port_info = {
-                        'network_type': share_network['network_type'],
-                        'segmentation_id': share_network['segmentation_id'],
-                        'cidr': share_network['cidr'],
-                        'ip_version': share_network['ip_version'],
+                        'network_type': share_network_subnet['network_type'],
+                        'segmentation_id':
+                            share_network_subnet['segmentation_id'],
+                        'cidr': share_network_subnet['cidr'],
+                        'ip_version': share_network_subnet['ip_version'],
                     }
                     ports[num] = self.db.network_allocation_update(
                         context, port['id'], port_info)

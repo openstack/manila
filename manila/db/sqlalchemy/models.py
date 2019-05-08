@@ -916,14 +916,6 @@ class ShareNetwork(BASE, ManilaBase):
     deleted = Column(String(36), default='False')
     project_id = Column(String(255), nullable=False)
     user_id = Column(String(255), nullable=False)
-    neutron_net_id = Column(String(36), nullable=True)
-    neutron_subnet_id = Column(String(36), nullable=True)
-    network_type = Column(String(32), nullable=True)
-    segmentation_id = Column(Integer, nullable=True)
-    cidr = Column(String(64), nullable=True)
-    gateway = Column(String(64), nullable=True)
-    mtu = Column(Integer, nullable=True)
-    ip_version = Column(Integer, nullable=True)
     name = Column(String(255), nullable=True)
     description = Column(String(255), nullable=True)
     security_services = orm.relationship(
@@ -945,10 +937,58 @@ class ShareNetwork(BASE, ManilaBase):
         primaryjoin='and_('
                     'ShareNetwork.id == ShareInstance.share_network_id,'
                     'ShareInstance.deleted == "False")')
+    share_network_subnets = orm.relationship(
+        "ShareNetworkSubnet", backref='share_network', lazy='immediate',
+        primaryjoin='and_'
+                    '(ShareNetwork.id == ShareNetworkSubnet.share_network_id,'
+                    'ShareNetworkSubnet.deleted == "False")')
+
+
+class ShareNetworkSubnet(BASE, ManilaBase):
+    """Represents a share network subnet used by some resources."""
+
+    _extra_keys = ['availability_zone']
+
+    __tablename__ = 'share_network_subnets'
+    id = Column(String(36), primary_key=True, nullable=False)
+    neutron_net_id = Column(String(36), nullable=True)
+    neutron_subnet_id = Column(String(36), nullable=True)
+    network_type = Column(String(32), nullable=True)
+    cidr = Column(String(64), nullable=True)
+    segmentation_id = Column(Integer, nullable=True)
+    gateway = Column(String(64), nullable=True)
+    mtu = Column(Integer, nullable=True)
+    deleted = Column(String(36), default='False')
+    share_network_id = Column(String(36), ForeignKey('share_networks.id'),
+                              nullable=False)
+    ip_version = Column(Integer, nullable=True)
+    availability_zone_id = Column(
+        String(36), ForeignKey('availability_zones.id'), nullable=True)
+
     share_servers = orm.relationship(
-        "ShareServer", backref='share_network',
-        primaryjoin='and_(ShareNetwork.id == ShareServer.share_network_id,'
+        "ShareServer", backref='share_network_subnet',
+        lazy='immediate',
+        primaryjoin='and_(ShareNetworkSubnet.id '
+                    '== ShareServer.share_network_subnet_id,'
                     'ShareServer.deleted == "False")')
+
+    _availability_zone = orm.relationship(
+        "AvailabilityZone",
+        lazy='immediate',
+        foreign_keys=availability_zone_id,
+        primaryjoin=(
+            "and_("
+            "ShareNetworkSubnet.availability_zone_id == AvailabilityZone.id, "
+            "AvailabilityZone.deleted == 'False')"))
+
+    @property
+    def availability_zone(self):
+        if self._availability_zone:
+            return self._availability_zone['name']
+
+    @property
+    def is_default(self):
+        return self.availability_zone_id is None
 
 
 class ShareServer(BASE, ManilaBase):
@@ -956,8 +996,9 @@ class ShareServer(BASE, ManilaBase):
     __tablename__ = 'share_servers'
     id = Column(String(36), primary_key=True, nullable=False)
     deleted = Column(String(36), default='False')
-    share_network_id = Column(String(36), ForeignKey('share_networks.id'),
-                              nullable=True)
+    share_network_subnet_id = Column(
+        String(36), ForeignKey('share_network_subnets.id'),
+        nullable=True)
     host = Column(String(255), nullable=False)
     is_auto_deletable = Column(Boolean, default=True)
     identifier = Column(String(255), nullable=True)

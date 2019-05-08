@@ -302,7 +302,7 @@ def fake_share_server_get():
         'status': constants.STATUS_ACTIVE,
         'updated_at': None,
         'host': 'fake_host',
-        'share_network_id': 'fake_sn_id',
+        'share_network_subnet_id': 'fake_sn_id',
         'share_network_name': 'fake_sn_name',
         'project_id': 'fake_project_id',
         'id': 'fake_share_server_id',

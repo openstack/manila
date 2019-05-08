@@ -577,7 +577,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
         db_utils.create_share_replica(share_id=share_2['id'])
         expected_ss_keys = {
             'backend_details', 'host', 'id',
-            'share_network_id', 'status',
+            'share_network_subnet_id', 'status',
         }
         expected_share_keys = {
             'project_id', 'share_type_id', 'display_name',
@@ -625,7 +625,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
             share_server_id=share_server['id'])
         expected_ss_keys = {
             'backend_details', 'host', 'id',
-            'share_network_id', 'status',
+            'share_network_subnet_id', 'status',
         }
         expected_share_keys = {
             'project_id', 'share_type_id', 'display_name',
@@ -690,7 +690,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
         session = db_api.get_session()
         expected_ss_keys = {
             'backend_details', 'host', 'id',
-            'share_network_id', 'status',
+            'share_network_subnet_id', 'status',
         }
         expected_share_keys = {
             'project_id', 'share_type_id', 'display_name',
@@ -778,7 +778,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
         )
         expected_extra_keys = {
             'backend_details', 'host', 'id',
-            'share_network_id', 'status',
+            'share_network_subnet_id', 'status',
         }
         with session.begin():
             share_replica = db_api.share_replica_get(
@@ -1941,14 +1941,8 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
     def setUp(self):
         super(ShareNetworkDatabaseAPITestCase, self).setUp()
         self.share_nw_dict = {'id': 'fake network id',
-                              'neutron_net_id': 'fake net id',
-                              'neutron_subnet_id': 'fake subnet id',
                               'project_id': self.fake_context.project_id,
                               'user_id': 'fake_user_id',
-                              'network_type': 'vlan',
-                              'segmentation_id': 1000,
-                              'cidr': '10.0.0.0/24',
-                              'ip_version': 4,
                               'name': 'whatever',
                               'description': 'fake description'}
 
@@ -2042,6 +2036,26 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
             self._check_fields(expected=service,
                                actual=result['security_services'][index])
 
+    @ddt.data([{'id': 'fake_id_1', 'availability_zone_id': 'None'}],
+              [{'id': 'fake_id_2', 'availability_zone_id': 'None'},
+               {'id': 'fake_id_3', 'availability_zone_id': 'fake_az_id'}])
+    def test_get_with_subnets(self, subnets):
+        db_api.share_network_create(self.fake_context, self.share_nw_dict)
+
+        for subnet in subnets:
+            subnet['share_network_id'] = self.share_nw_dict['id']
+            db_api.share_network_subnet_create(self.fake_context, subnet)
+
+        result = db_api.share_network_get(self.fake_context,
+                                          self.share_nw_dict['id'])
+
+        self.assertEqual(len(subnets),
+                         len(result['share_network_subnets']))
+
+        for index, subnet in enumerate(subnets):
+            self._check_fields(expected=subnet,
+                               actual=result['share_network_subnets'][index])
+
     def test_get_not_found(self):
         self.assertRaises(exception.ShareNetworkNotFound,
                           db_api.share_network_get,
@@ -2092,7 +2106,7 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
             share_network_dict = dict(self.share_nw_dict)
             fake_id = 'fake_id%s' % index
             share_network_dict.update({'id': fake_id,
-                                       'neutron_subnet_id': fake_id})
+                                       'project_id': fake_id})
             share_networks.append(share_network_dict)
             db_api.share_network_create(self.fake_context, share_network_dict)
             index += 1
@@ -2107,7 +2121,6 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
         share_nw_dict2 = dict(self.share_nw_dict)
         share_nw_dict2['id'] = 'fake share nw id2'
         share_nw_dict2['project_id'] = 'fake project 2'
-        share_nw_dict2['neutron_subnet_id'] = 'fake subnet id2'
         db_api.share_network_create(self.fake_context, self.share_nw_dict)
         db_api.share_network_create(self.fake_context, share_nw_dict2)
 
@@ -2267,6 +2280,155 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
                                           self.share_nw_dict['id'])
 
         self.assertEqual(0, len(result['share_instances']))
+
+
+@ddt.ddt
+class ShareNetworkSubnetDatabaseAPITestCase(BaseDatabaseAPITestCase):
+
+    def __init__(self, *args, **kwargs):
+        super(ShareNetworkSubnetDatabaseAPITestCase, self).__init__(
+            *args, **kwargs)
+        self.fake_context = context.RequestContext(user_id='fake user',
+                                                   project_id='fake project',
+                                                   is_admin=False)
+
+    def setUp(self):
+        super(ShareNetworkSubnetDatabaseAPITestCase, self).setUp()
+        self.subnet_dict = {'id': 'fake network id',
+                            'neutron_net_id': 'fake net id',
+                            'neutron_subnet_id': 'fake subnet id',
+                            'network_type': 'vlan',
+                            'segmentation_id': 1000,
+                            'share_network_id': 'fake_id',
+                            'cidr': '10.0.0.0/24',
+                            'ip_version': 4,
+                            'availability_zone_id': None}
+
+    def test_create(self):
+        result = db_api.share_network_subnet_create(
+            self.fake_context, self.subnet_dict)
+        self._check_fields(expected=self.subnet_dict, actual=result)
+
+    def test_create_duplicated_id(self):
+        db_api.share_network_subnet_create(self.fake_context, self.subnet_dict)
+
+        self.assertRaises(db_exception.DBDuplicateEntry,
+                          db_api.share_network_subnet_create,
+                          self.fake_context,
+                          self.subnet_dict)
+
+    def test_get(self):
+        db_api.share_network_subnet_create(self.fake_context, self.subnet_dict)
+
+        result = db_api.share_network_subnet_get(self.fake_context,
+                                                 self.subnet_dict['id'])
+        self._check_fields(expected=self.subnet_dict, actual=result)
+
+    @ddt.data([{'id': 'fake_id_1', 'identifier': 'fake_identifier',
+                'host': 'fake_host'}],
+              [{'id': 'fake_id_2', 'identifier': 'fake_identifier',
+                'host': 'fake_host'},
+               {'id': 'fake_id_3', 'identifier': 'fake_identifier',
+                'host': 'fake_host'}])
+    def test_get_with_share_servers(self, share_servers):
+        db_api.share_network_subnet_create(self.fake_context,
+                                           self.subnet_dict)
+
+        for share_server in share_servers:
+            share_server['share_network_subnet_id'] = self.subnet_dict['id']
+            db_api.share_server_create(self.fake_context, share_server)
+
+        result = db_api.share_network_subnet_get(self.fake_context,
+                                                 self.subnet_dict['id'])
+
+        self.assertEqual(len(share_servers),
+                         len(result['share_servers']))
+
+        for index, share_server in enumerate(share_servers):
+            self._check_fields(expected=share_server,
+                               actual=result['share_servers'][index])
+
+    def test_get_not_found(self):
+        db_api.share_network_subnet_create(self.fake_context, self.subnet_dict)
+
+        self.assertRaises(exception.ShareNetworkSubnetNotFound,
+                          db_api.share_network_subnet_get,
+                          self.fake_context,
+                          'fake_id')
+
+    def test_delete(self):
+        db_api.share_network_subnet_create(self.fake_context, self.subnet_dict)
+        db_api.share_network_subnet_delete(self.fake_context,
+                                           self.subnet_dict['id'])
+
+        self.assertRaises(exception.ShareNetworkSubnetNotFound,
+                          db_api.share_network_subnet_delete,
+                          self.fake_context,
+                          self.subnet_dict['id'])
+
+    def test_delete_not_found(self):
+        self.assertRaises(exception.ShareNetworkSubnetNotFound,
+                          db_api.share_network_subnet_delete,
+                          self.fake_context,
+                          'fake_id')
+
+    def test_update(self):
+        update_dict = {
+            'gateway': 'fake_gateway',
+            'ip_version': 6,
+            'mtu': ''
+        }
+
+        db_api.share_network_subnet_create(self.fake_context, self.subnet_dict)
+        db_api.share_network_subnet_update(
+            self.fake_context, self.subnet_dict['id'], update_dict)
+
+        result = db_api.share_network_subnet_get(self.fake_context,
+                                                 self.subnet_dict['id'])
+        self._check_fields(expected=update_dict, actual=result)
+
+    def test_update_not_found(self):
+        self.assertRaises(exception.ShareNetworkSubnetNotFound,
+                          db_api.share_network_subnet_update,
+                          self.fake_context,
+                          self.subnet_dict['id'],
+                          {})
+
+    @ddt.data([{'id': 'sn_id1', 'project_id': 'fake', 'user_id': 'fake'}],
+              [{'id': 'fake_id', 'project_id': 'fake', 'user_id': 'fake'},
+               {'id': 'sn_id2', 'project_id': 'fake', 'user_id': 'fake'}])
+    def test_get_all_by_share_network(self, share_networks):
+
+        for idx, share_network in enumerate(share_networks):
+            self.subnet_dict['share_network_id'] = share_network['id']
+            self.subnet_dict['id'] = 'fake_id%s' % idx
+
+            db_api.share_network_create(self.fake_context, share_network)
+            db_api.share_network_subnet_create(self.fake_context,
+                                               self.subnet_dict)
+        for share_network in share_networks:
+            subnets = db_api.share_network_subnet_get_all_by_share_network(
+                self.fake_context, share_network['id'])
+            self.assertEqual(1, len(subnets))
+
+    def test_get_by_availability_zone_id(self):
+        az = db_api.availability_zone_create_if_not_exist(self.fake_context,
+                                                          'fake_zone_id')
+        self.subnet_dict['availability_zone_id'] = az['id']
+        db_api.share_network_subnet_create(self.fake_context, self.subnet_dict)
+
+        result = db_api.share_network_subnet_get_by_availability_zone_id(
+            self.fake_context, self.subnet_dict['share_network_id'], az['id'])
+
+        self._check_fields(expected=self.subnet_dict, actual=result)
+
+    def test_get_default_subnet(self):
+        db_api.share_network_subnet_create(self.fake_context, self.subnet_dict)
+
+        result = db_api.share_network_subnet_get_default_subnet(
+            self.fake_context, self.subnet_dict['share_network_id'])
+
+        self._check_fields(expected=self.subnet_dict, actual=result)
 
 
 @ddt.ddt
@@ -2437,7 +2599,8 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         expected = db_utils.create_share_server()
         server = db_api.share_server_get(self.ctxt, expected['id'])
         self.assertEqual(expected['id'], server['id'])
-        self.assertEqual(expected.share_network_id, server.share_network_id)
+        self.assertEqual(expected.share_network_subnet_id,
+                         server.share_network_subnet_id)
         self.assertEqual(expected.host, server.host)
         self.assertEqual(expected.status, server.status)
 
@@ -2449,7 +2612,8 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
     def test_create(self):
         server = db_utils.create_share_server()
         self.assertTrue(server['id'])
-        self.assertEqual(server.share_network_id, server['share_network_id'])
+        self.assertEqual(server.share_network_subnet_id,
+                         server['share_network_subnet_id'])
         self.assertEqual(server.host, server['host'])
         self.assertEqual(server.status, server['status'])
 
@@ -2488,21 +2652,31 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
                           self.ctxt, fake_id, {})
 
     def test_get_all_by_host_and_share_net_valid(self):
-        valid = {
+        subnet_1 = {
+            'id': '1',
             'share_network_id': '1',
+        }
+        subnet_2 = {
+            'id': '2',
+            'share_network_id': '2',
+        }
+        valid = {
+            'share_network_subnet_id': '1',
             'host': 'host1',
             'status': constants.STATUS_ACTIVE,
         }
         invalid = {
-            'share_network_id': '1',
+            'share_network_subnet_id': '2',
             'host': 'host1',
             'status': constants.STATUS_ERROR,
         }
         other = {
-            'share_network_id': '2',
+            'share_network_subnet_id': '1',
             'host': 'host2',
             'status': constants.STATUS_ACTIVE,
         }
+        db_utils.create_share_network_subnet(**subnet_1)
+        db_utils.create_share_network_subnet(**subnet_2)
         valid = db_utils.create_share_server(**valid)
         db_utils.create_share_server(**invalid)
         db_utils.create_share_server(**other)
@@ -2572,7 +2746,7 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
 
     def test_get_with_details(self):
         values = {
-            'share_network_id': 'fake-share-net-id',
+            'share_network_subnet_id': 'fake-share-net-id',
             'host': 'hostname',
             'status': constants.STATUS_ACTIVE,
         }
@@ -2584,7 +2758,8 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         db_api.share_server_backend_details_set(self.ctxt, srv_id, details)
         server = db_api.share_server_get(self.ctxt, srv_id)
         self.assertEqual(srv_id, server['id'])
-        self.assertEqual(values['share_network_id'], server.share_network_id)
+        self.assertEqual(values['share_network_subnet_id'],
+                         server.share_network_subnet_id)
         self.assertEqual(values['host'], server.host)
         self.assertEqual(values['status'], server.status)
         self.assertDictMatch(server['backend_details'], details)

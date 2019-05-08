@@ -23,6 +23,7 @@ import copy
 import datetime
 import functools
 import hashlib
+from operator import xor
 
 from oslo_config import cfg
 from oslo_log import log
@@ -45,7 +46,7 @@ from manila.message import message_field
 from manila import quota
 from manila.share import access
 from manila.share import api
-import manila.share.configuration
+from manila.share import configuration
 from manila.share import drivers_private_data
 from manila.share import migration
 from manila.share import rpcapi as share_rpcapi
@@ -213,7 +214,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
-        self.configuration = manila.share.configuration.Configuration(
+        self.configuration = configuration.Configuration(
             share_manager_opts,
             config_group=service_name)
         super(ShareManager, self).__init__(service_name='share',
@@ -525,13 +526,11 @@ class ShareManager(manager.SchedulerDependentManager):
                     " should be provided. ")
             raise ValueError(msg)
 
-        parent_share_server = None
-
         def error(msg, *args):
             LOG.error(msg, *args)
             self.db.share_instance_update(context, share_instance['id'],
                                           {'status': constants.STATUS_ERROR})
-
+        parent_share_server = None
         if snapshot:
             parent_share_server_id = (
                 snapshot['share']['instance']['share_server_id'])
@@ -553,9 +552,23 @@ class ShareManager(manager.SchedulerDependentManager):
                 raise exception.InvalidShareServer(
                     share_server_id=parent_share_server
                 )
-
-        if parent_share_server and not share_network_id:
-            share_network_id = parent_share_server['share_network_id']
+        share_network_subnet_id = None
+        if share_network_id:
+            share_network_subnet = (
+                self.db.share_network_subnet_get_by_availability_zone_id(
+                    context, share_network_id,
+                    availability_zone_id=share_instance.get(
+                        'availability_zone_id')))
+            if not share_network_subnet:
+                raise exception.ShareNetworkSubnetNotFound(
+                    share_network_subnet_id=None)
+            share_network_subnet_id = share_network_subnet['id']
+        elif parent_share_server:
+            share_network_subnet_id = (
+                parent_share_server['share_network_subnet_id'])
+            share_network_subnet = self.db.share_network_subnet_get(
+                context, share_network_subnet_id)
+            share_network_id = share_network_subnet['share_network_id']
 
         def get_available_share_servers():
             if parent_share_server:
@@ -566,7 +579,7 @@ class ShareManager(manager.SchedulerDependentManager):
                         context, self.host, share_network_id)
                 )
 
-        @utils.synchronized("share_manager_%s" % share_network_id,
+        @utils.synchronized("share_manager_%s" % share_network_subnet_id,
                             external=True)
         def _wrapped_provide_share_server_for_share():
             try:
@@ -595,7 +608,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     context,
                     {
                         'host': self.host,
-                        'share_network_id': share_network_id,
+                        'share_network_subnet_id': share_network_subnet_id,
                         'status': constants.STATUS_CREATING,
                     }
                 )
@@ -689,7 +702,9 @@ class ShareManager(manager.SchedulerDependentManager):
 
         return share_server['id']
 
-    def _provide_share_server_for_share_group(self, context, share_network_id,
+    def _provide_share_server_for_share_group(self, context,
+                                              share_network_id,
+                                              share_network_subnet_id,
                                               share_group_ref,
                                               share_group_snapshot=None):
         """Gets or creates share_server and updates share group with its id.
@@ -707,6 +722,10 @@ class ShareManager(manager.SchedulerDependentManager):
         :param context: Current context
         :param share_network_id: Share network where existing share server
                                  should be found or created.
+        :param share_network_subnet_id: Share network subnet where
+                                        existing share server should be found
+                                        or created. If not specified, the
+                                        default subnet will be used.
         :param share_group_ref: Share Group model
         :param share_group_snapshot: Optional -- ShareGroupSnapshot model.  If
                                      supplied, driver will use it to choose
@@ -757,7 +776,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     context,
                     {
                         'host': self.host,
-                        'share_network_id': share_network_id,
+                        'share_network_subnet_id': share_network_subnet_id,
                         'status': constants.STATUS_CREATING
                     }
                 )
@@ -1831,7 +1850,6 @@ class ShareManager(manager.SchedulerDependentManager):
                              request_spec=None, filter_properties=None):
         """Create a share replica."""
         context = context.elevated()
-
         share_replica = self.db.share_replica_get(
             context, share_replica_id, with_share_data=True,
             with_share_server=True)
@@ -1847,7 +1865,6 @@ class ShareManager(manager.SchedulerDependentManager):
             self.db.share_replicas_get_available_active_replica(
                 context, share_replica['share_id'], with_share_data=True,
                 with_share_server=True))
-
         if not _active_replica:
             self.db.share_replica_update(
                 context, share_replica['id'],
@@ -1868,9 +1885,8 @@ class ShareManager(manager.SchedulerDependentManager):
         # We need the share_network_id in case of
         # driver_handles_share_server=True
         share_network_id = share_replica.get('share_network_id', None)
-
-        if (share_network_id and
-                not self.driver.driver_handles_share_servers):
+        if xor(bool(share_network_id),
+               self.driver.driver_handles_share_servers):
             self.db.share_replica_update(
                 context, share_replica['id'],
                 {'status': constants.STATUS_ERROR,
@@ -1883,8 +1899,8 @@ class ShareManager(manager.SchedulerDependentManager):
                 resource_id=share_replica['id'],
                 detail=message_field.Detail.UNEXPECTED_NETWORK)
             raise exception.InvalidDriverMode(
-                "Driver does not expect share-network to be provided "
-                "with current configuration.")
+                "The share-network value provided does not match with the "
+                "current driver configuration.")
 
         if share_network_id:
             try:
@@ -2608,12 +2624,14 @@ class ShareManager(manager.SchedulerDependentManager):
             msg = ("Since share %(share)s has been un-managed from share "
                    "server %(server)s. This share server must be removed "
                    "manually, either by un-managing or by deleting it. The "
-                   "share network %(network)s cannot be deleted unless this "
-                   "share server has been removed.")
+                   "share network subnet %(subnet)s and share network "
+                   "%(network) cannot be deleted unless this share server has "
+                   "been removed.")
             msg_args = {
                 'share': share_id,
                 'server': share_server['id'],
-                'network': share_server['share_network_id']
+                'subnet': share_server['share_network_subnet_id'],
+                'network': share_instance['share_network_id']
             }
             LOG.warning(msg, msg_args)
 
@@ -2698,10 +2716,11 @@ class ShareManager(manager.SchedulerDependentManager):
 
         server = self.db.share_server_get(context, share_server_id)
 
-        share_network = self.db.share_network_get(
-            context, server['share_network_id'])
-
         try:
+            share_network_subnet = self.db.share_network_subnet_get(
+                context, server['share_network_subnet_id'])
+            share_network = self.db.share_network_get(
+                context, share_network_subnet['share_network_id'])
 
             number_allocations = (
                 self.driver.get_network_allocations_number())
@@ -2733,7 +2752,7 @@ class ShareManager(manager.SchedulerDependentManager):
                         self.driver.network_api.
                         manage_network_allocations(
                             context, remaining_allocations, server,
-                            share_network))
+                            share_network, share_network_subnet))
 
                     # We require that all allocations are managed, else we
                     # may have problems deleting this share server
@@ -3578,7 +3597,8 @@ class ShareManager(manager.SchedulerDependentManager):
         self._report_driver_status(context)
         self._publish_service_capabilities(context)
 
-    def _form_server_setup_info(self, context, share_server, share_network):
+    def _form_server_setup_info(self, context, share_server, share_network,
+                                share_network_subnet):
         # Network info is used by driver for setting up share server
         # and getting server info on share creation.
         network_allocations = self.db.network_allocations_get_for_share_server(
@@ -3592,30 +3612,34 @@ class ShareManager(manager.SchedulerDependentManager):
         # They should be removed right after no one uses them.
         network_info = {
             'server_id': share_server['id'],
-            'segmentation_id': share_network['segmentation_id'],
-            'cidr': share_network['cidr'],
-            'neutron_net_id': share_network['neutron_net_id'],
-            'neutron_subnet_id': share_network['neutron_subnet_id'],
+            'segmentation_id': share_network_subnet['segmentation_id'],
+            'cidr': share_network_subnet['cidr'],
+            'neutron_net_id': share_network_subnet['neutron_net_id'],
+            'neutron_subnet_id': share_network_subnet['neutron_subnet_id'],
             'security_services': share_network['security_services'],
             'network_allocations': network_allocations,
             'admin_network_allocations': admin_network_allocations,
             'backend_details': share_server.get('backend_details'),
-            'network_type': share_network['network_type'],
+            'network_type': share_network_subnet['network_type'],
         }
         return network_info
 
     def _setup_server(self, context, share_server, metadata=None):
         try:
+            share_network_subnet = share_server['share_network_subnet']
+            share_network_subnet_id = share_network_subnet['id']
+            share_network_id = share_network_subnet['share_network_id']
             share_network = self.db.share_network_get(
-                context, share_server['share_network_id'])
-            self.driver.allocate_network(context, share_server, share_network)
+                context, share_network_id)
+            self.driver.allocate_network(context, share_server, share_network,
+                                         share_network_subnet)
             self.driver.allocate_admin_network(context, share_server)
 
-            # Get share_network again in case it was updated.
-            share_network = self.db.share_network_get(
-                context, share_server['share_network_id'])
+            # Get share_network_subnet in case it was updated.
+            share_network_subnet = self.db.share_network_subnet_get(
+                context, share_network_subnet_id)
             network_info = self._form_server_setup_info(
-                context, share_server, share_network)
+                context, share_server, share_network, share_network_subnet)
             self._validate_segmentation_id(network_info)
 
             # NOTE(vponomaryov): Save security services data to share server
@@ -3735,7 +3759,7 @@ class ShareManager(manager.SchedulerDependentManager):
     def delete_share_server(self, context, share_server):
 
         @utils.synchronized(
-            "share_manager_%s" % share_server['share_network_id'])
+            "share_manager_%s" % share_server['share_network_subnet_id'])
         def _wrapped_delete_share_server():
             # NOTE(vponomaryov): Verify that there are no dependent shares.
             # Without this verification we can get here exception in next case:
@@ -3944,7 +3968,8 @@ class ShareManager(manager.SchedulerDependentManager):
         if parent_share_server_id and self.driver.driver_handles_share_servers:
             share_server = self.db.share_server_get(context,
                                                     parent_share_server_id)
-            share_network_id = share_server['share_network_id']
+            share_network_subnet = share_server['share_network_subnet']
+            share_network_id = share_network_subnet['share_network_id']
 
         if share_network_id and not self.driver.driver_handles_share_servers:
             self.db.share_group_update(
@@ -3954,10 +3979,17 @@ class ShareManager(manager.SchedulerDependentManager):
             raise exception.InvalidInput(reason=msg)
 
         if not share_server and share_network_id:
+
+            availability_zone_id = self._get_az_for_share_group(
+                context, share_group_ref)
+            subnet = self.db.share_network_subnet_get_by_availability_zone_id(
+                context, share_network_id, availability_zone_id)
+
             try:
                 share_server, share_group_ref = (
                     self._provide_share_server_for_share_group(
-                        context, share_network_id, share_group_ref,
+                        context, share_network_id, subnet.get('id'),
+                        share_group_ref,
                         share_group_snapshot=snap_ref,
                     )
                 )

@@ -843,14 +843,15 @@ class ShareDriver(object):
                                                              share_server)
 
     def allocate_network(self, context, share_server, share_network,
-                         count=None, **kwargs):
+                         share_network_subnet, count=None, **kwargs):
         """Allocate network resources using given network information."""
         if count is None:
             count = self.get_network_allocations_number()
         if count:
             kwargs.update(count=count)
             self.network_api.allocate_network(
-                context, share_server, share_network, **kwargs)
+                context, share_server, share_network=share_network,
+                share_network_subnet=share_network_subnet, **kwargs)
 
     def allocate_admin_network(self, context, share_server, count=None,
                                **kwargs):

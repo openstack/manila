@@ -341,8 +341,15 @@ class ShareMixin(object):
                     context,
                     share_network_id)
             except exception.ShareNetworkNotFound as e:
-                raise exc.HTTPNotFound(explanation=six.text_type(e))
+                raise exc.HTTPNotFound(explanation=e.msg)
             kwargs['share_network_id'] = share_network_id
+            if availability_zone_id:
+                if not db.share_network_subnet_get_by_availability_zone_id(
+                        context, share_network_id,
+                        availability_zone_id=availability_zone_id):
+                    msg = _("A share network subnet was not found for the "
+                            "requested availability zone.")
+                    raise exc.HTTPBadRequest(explanation=msg)
 
         display_name = share.get('display_name')
         display_description = share.get('display_description')

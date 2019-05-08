@@ -47,21 +47,34 @@ class ShareServerController(wsgi.Controller):
 
         search_opts = {}
         search_opts.update(req.GET)
-
         share_servers = db_api.share_server_get_all(context)
         for s in share_servers:
-            s.project_id = s.share_network['project_id']
-            if s.share_network['name']:
-                s.share_network_name = s.share_network['name']
-            else:
-                s.share_network_name = s.share_network_id
+            try:
+                s.share_network_id = s.share_network_subnet['share_network_id']
+                share_network = db_api.share_network_get(
+                    context, s.share_network_id)
+                s.project_id = share_network['project_id']
+                if share_network['name']:
+                    s.share_network_name = share_network['name']
+                else:
+                    s.share_network_name = share_network['id']
+            except exception.ShareNetworkNotFound:
+                # NOTE(dviroel): The share-network may already be deleted while
+                # the share-server is in 'deleting' state. In this scenario,
+                # we will return some empty values.
+                LOG.debug("Unable to retrieve share network details for share "
+                          "server %(server)s, the network %(network)s was "
+                          "not found.",
+                          {'server': s.id, 'network': s.share_network_id})
+                s.project_id = ''
+                s.share_network_name = ''
         if search_opts:
             for k, v in search_opts.items():
                 share_servers = [s for s in share_servers if
                                  (hasattr(s, k) and
                                   s[k] == v or k == 'share_network' and
-                                  v in [s.share_network['name'],
-                                        s.share_network['id']])]
+                                  v in [s.share_network_name,
+                                        s.share_network_id])]
         return self._view_builder.build_share_servers(req, share_servers)
 
     @wsgi.Controller.authorize
@@ -70,13 +83,21 @@ class ShareServerController(wsgi.Controller):
         context = req.environ['manila.context']
         try:
             server = db_api.share_server_get(context, id)
-            server.project_id = server.share_network["project_id"]
-            if server.share_network['name']:
-                server.share_network_name = server.share_network['name']
+            share_network = db_api.share_network_get(
+                context, server.share_network_subnet['share_network_id'])
+            server.share_network_id = share_network['id']
+            server.project_id = share_network['project_id']
+            if share_network['name']:
+                server.share_network_name = share_network['name']
             else:
-                server.share_network_name = server.share_network_id
+                server.share_network_name = share_network['id']
         except exception.ShareServerNotFound as e:
-            raise exc.HTTPNotFound(explanation=e)
+            raise exc.HTTPNotFound(explanation=e.msg)
+        except exception.ShareNetworkNotFound as e:
+            msg = _("Share server %s could not be found. Its associated "
+                    "share network does not "
+                    "exist.") % server.share_network_subnet['share_network_id']
+            raise exc.HTTPNotFound(explanation=msg)
         return self._view_builder.build_share_server(req, server)
 
     @wsgi.Controller.authorize
@@ -86,7 +107,7 @@ class ShareServerController(wsgi.Controller):
         try:
             share_server = db_api.share_server_get(context, id)
         except exception.ShareServerNotFound as e:
-            raise exc.HTTPNotFound(explanation=e)
+            raise exc.HTTPNotFound(explanation=e.msg)
 
         return self._view_builder.build_share_server_details(
             share_server['backend_details'])
@@ -98,7 +119,7 @@ class ShareServerController(wsgi.Controller):
         try:
             share_server = db_api.share_server_get(context, id)
         except exception.ShareServerNotFound as e:
-            raise exc.HTTPNotFound(explanation=e)
+            raise exc.HTTPNotFound(explanation=e.msg)
         allowed_statuses = [constants.STATUS_ERROR, constants.STATUS_ACTIVE]
         if share_server['status'] not in allowed_statuses:
             data = {
@@ -112,7 +133,7 @@ class ShareServerController(wsgi.Controller):
         try:
             self.share_api.delete_share_server(context, share_server)
         except exception.ShareServerInUse as e:
-            raise exc.HTTPConflict(explanation=e)
+            raise exc.HTTPConflict(explanation=e.msg)
         return webob.Response(status_int=http_client.ACCEPTED)
 
 

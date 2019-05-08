@@ -328,6 +328,21 @@ class MiscFunctionsTest(test.TestCase):
         policy.check_policy.assert_called_once_with(
             'fake_context', 'share', 'set_public_share', do_raise=False)
 
+    @ddt.data(({}, True),
+              ({'neutron_net_id': 'fake_nn_id'}, False),
+              ({'neutron_subnet_id': 'fake_sn_id'}, False),
+              ({'neutron_net_id': 'fake_nn_id',
+                'neutron_subnet_id': 'fake_sn_id'}, True))
+    @ddt.unpack
+    def test__check_net_id_and_subnet_id(self, body, expected):
+        if not expected:
+            self.assertRaises(webob.exc.HTTPBadRequest,
+                              common.check_net_id_and_subnet_id,
+                              body)
+        else:
+            result = common.check_net_id_and_subnet_id(body)
+            self.assertIsNone(result)
+
 
 @ddt.ddt
 class ViewBuilderTest(test.TestCase):
