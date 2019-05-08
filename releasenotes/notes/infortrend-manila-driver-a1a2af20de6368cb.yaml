@@ -1,0 +1,5 @@
+---
+prelude: >
+    Added Manila share driver for Infortrend storage systems.
+features:
+  - The new Infortrend driver supports GS/GSe Family storage systems.

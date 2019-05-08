@@ -967,3 +967,13 @@ class LockingFailed(ManilaException):
 # Ganesha library
 class GaneshaException(ManilaException):
     message = _("Unknown NFS-Ganesha library exception.")
+
+
+# Infortrend Storage driver
+class InfortrendCLIException(ShareBackendException):
+    message = _("Infortrend CLI exception: %(err)s "
+                "Return Code: %(rc)s, Output: %(out)s")
+
+
+class InfortrendNASException(ShareBackendException):
+    message = _("Infortrend NAS exception: %(err)s")
