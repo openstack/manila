@@ -212,8 +212,11 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error("Failed to configure Vserver.")
+                # NOTE(dviroel): At this point, the lock was already acquired
+                # by the caller of _create_vserver.
                 self._delete_vserver(vserver_name,
-                                     security_services=security_services)
+                                     security_services=security_services,
+                                     needs_lock=False)
 
     def _get_valid_ipspace_name(self, network_id):
         """Get IPspace name according to network id."""
@@ -357,7 +360,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         self._delete_vserver(vserver, security_services=security_services)
 
     @na_utils.trace
-    def _delete_vserver(self, vserver, security_services=None):
+    def _delete_vserver(self, vserver, security_services=None,
+                        needs_lock=True):
         """Delete a Vserver plus IPspace and security services as needed."""
 
         ipspace_name = self._client.get_vserver_ipspace(vserver)
@@ -378,8 +382,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         else:
             vlan_id = None
 
-        @utils.synchronized('netapp-VLAN-%s' % vlan_id, external=True)
-        def _delete_vserver_with_lock():
+        def _delete_vserver_without_lock():
             self._client.delete_vserver(vserver,
                                         vserver_client,
                                         security_services=security_services)
@@ -390,7 +393,14 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
             self._delete_vserver_vlans(interfaces_on_vlans)
 
-        return _delete_vserver_with_lock()
+        @utils.synchronized('netapp-VLAN-%s' % vlan_id, external=True)
+        def _delete_vserver_with_lock():
+            _delete_vserver_without_lock()
+
+        if needs_lock:
+            return _delete_vserver_with_lock()
+        else:
+            return _delete_vserver_without_lock()
 
     @na_utils.trace
     def _delete_vserver_vlans(self, network_interfaces_on_vlans):
