@@ -522,6 +522,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.IPSPACE)
         self.library._delete_vserver.assert_called_once_with(
             vserver_name,
+            needs_lock=False,
             security_services=None)
         self.assertFalse(vserver_client.enable_nfs.called)
         self.assertEqual(1, lib_multi_svm.LOG.error.call_count)
