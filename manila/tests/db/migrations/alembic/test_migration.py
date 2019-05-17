@@ -139,13 +139,13 @@ class ManilaMigrationsCheckers(test_migrations.WalkVersionsMixin,
                                         'exception': e})
             raise
 
-    # NOTE(vponomaryov): set 7 minutes timeout for case of running it on
+    # NOTE(vponomaryov): set 10 minutes timeout for case of running it on
     # very slow nodes/VMs. Note, that this test becomes slower with each
     # addition of new DB migration. On fast nodes it can take about 5-10 secs
     # having Mitaka set of migrations.
     # 'pymysql' works much slower on slow nodes than 'psycopg2'. And such
     # timeout mostly required for testing of 'mysql' backend.
-    @test_utils.set_timeout(420)
+    @test_utils.set_timeout(600)
     def test_walk_versions(self):
         """Walks all version scripts for each tested database.
 
