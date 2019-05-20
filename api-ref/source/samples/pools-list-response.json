@@ -1,22 +1,28 @@
 {
-    "pools": [
-        {
-            "host": "manila2",
-            "name": "manila2@generic1#GENERIC1",
-            "pool": "GENERIC1",
-            "backend": "generic1"
-        },
-        {
-            "host": "manila2",
-            "name": "manila2@unmanage1#UNMANAGE1",
-            "pool": "UNMANAGE1",
-            "backend": "unmanage1"
-        },
-        {
-            "host": "manila2",
-            "name": "manila2@ams_backend#AMS_BACKEND",
-            "pool": "AMS_BACKEND",
-            "backend": "ams_backend"
-        }
-    ]
+  "pools": [
+    {
+      "name": "opencloud@alpha#ALPHA_pool",
+      "host": "opencloud",
+      "backend": "alpha",
+      "pool": "ALPHA_pool"
+    },
+    {
+      "name": "opencloud@beta#BETA_pool",
+      "host": "opencloud",
+      "backend": "beta",
+      "pool": "BETA_pool"
+    },
+    {
+      "name": "opencloud@gamma#GAMMA_pool",
+      "host": "opencloud",
+      "backend": "gamma",
+      "pool": "GAMMA_pool"
+    },
+    {
+      "name": "opencloud@delta#DELTA_pool",
+      "host": "opencloud",
+      "backend": "delta",
+      "pool": "DELTA_pool"
+    }
+  ]
 }
