@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Dell Inc. or its subsidiaries.
+# Copyright (c) 2019 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -12,7 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""VMAX backend for the EMC Manila driver."""
+"""PowerMax backend for the Dell EMC Manila driver."""
 
 import copy
 import random
@@ -29,7 +29,7 @@ from manila.i18n import _
 from manila.share.drivers.dell_emc.common.enas import constants
 from manila.share.drivers.dell_emc.common.enas import utils as enas_utils
 from manila.share.drivers.dell_emc.plugins import base as driver
-from manila.share.drivers.dell_emc.plugins.vmax import (
+from manila.share.drivers.dell_emc.plugins.powermax import (
     object_manager as manager)
 from manila.share import utils as share_utils
 from manila import utils
@@ -37,40 +37,42 @@ from manila import utils
 """Version history:
     1.0.0 - Initial version
     2.0.0 - Implement IPv6 support
+    3.0.0 - Rebranding to PowerMax
 """
-VERSION = "2.0.0"
+VERSION = "3.0.0"
 
 LOG = log.getLogger(__name__)
 
-VMAX_OPTS = [
-    cfg.StrOpt('vmax_server_container',
-               deprecated_name='emc_nas_server_container',
+POWERMAX_OPTS = [
+    cfg.StrOpt('powermax_server_container',
+               deprecated_name='vmax_server_container',
                help='Data mover to host the NAS server.'),
-    cfg.ListOpt('vmax_share_data_pools',
-                deprecated_name='emc_nas_pool_names',
+    cfg.ListOpt('powermax_share_data_pools',
+                deprecated_name='vmax_share_data_pools',
                 help='Comma separated list of pools that can be used to '
                      'persist share data.'),
-    cfg.ListOpt('vmax_ethernet_ports',
-                deprecated_name='emc_interface_ports',
+    cfg.ListOpt('powermax_ethernet_ports',
+                deprecated_name='vmax_ethernet_ports',
                 help='Comma separated list of ports that can be used for '
                      'share server interfaces. Members of the list '
                      'can be Unix-style glob expressions.')
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(VMAX_OPTS)
+CONF.register_opts(POWERMAX_OPTS)
 
 
 @enas_utils.decorate_all_methods(enas_utils.log_enter_exit,
                                  debug_only=True)
-class VMAXStorageConnection(driver.StorageConnection):
-    """Implements vmax specific functionality for EMC Manila driver."""
+class PowerMaxStorageConnection(driver.StorageConnection):
+    """Implements powermax specific functionality for Dell EMC Manila driver.
 
+    """
     @enas_utils.log_enter_exit
     def __init__(self, *args, **kwargs):
-        super(VMAXStorageConnection, self).__init__(*args, **kwargs)
+        super(PowerMaxStorageConnection, self).__init__(*args, **kwargs)
         if 'configuration' in kwargs:
-            kwargs['configuration'].append_config_values(VMAX_OPTS)
+            kwargs['configuration'].append_config_values(POWERMAX_OPTS)
 
         self.mover_name = None
         self.pools = None
@@ -114,7 +116,7 @@ class VMAXStorageConnection(driver.StorageConnection):
             if status != constants.STATUS_OK:
                 message = (_("CIFS server %s not found.") % server_name)
                 LOG.error(message)
-                raise exception.EMCVmaxXMLAPIError(err=message)
+                raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         self._allocate_container(share_name, size, share_server, pool_name)
 
@@ -138,7 +140,7 @@ class VMAXStorageConnection(driver.StorageConnection):
         if vdm is None:
             message = _("No share server found.")
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
     def _allocate_container(self, share_name, size, share_server, pool_name):
         """Allocate file system for share."""
@@ -178,7 +180,7 @@ class VMAXStorageConnection(driver.StorageConnection):
                          "so the share is inaccessible.")
                        % server['compName'])
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         interface = enas_utils.export_unc_path(server['interfaces'][0])
 
@@ -254,7 +256,7 @@ class VMAXStorageConnection(driver.StorageConnection):
         if status != constants.STATUS_OK:
             message = (_("File System %s not found.") % share_name)
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         pool_id = filesystem['pools_id'][0]
 
@@ -309,7 +311,7 @@ class VMAXStorageConnection(driver.StorageConnection):
         try:
             # Delete mount point
             self._get_context('MountPoint').delete(path, vdm_name)
-        except exception.EMCVmaxXMLAPIError as e:
+        except exception.EMCPowerMaxXMLAPIError as e:
             LOG.exception("CIFS server %(name)s on mover %(mover_name)s "
                           "not found due to error %(err)s. Skip the "
                           "deletion.",
@@ -319,7 +321,7 @@ class VMAXStorageConnection(driver.StorageConnection):
         try:
             # Delete file system
             self._get_context('FileSystem').delete(share_name)
-        except exception.EMCVmaxXMLAPIError as e:
+        except exception.EMCPowerMaxXMLAPIError as e:
             LOG.exception("File system  %(share_name)s not found due to "
                           "error %(err)s. Skip the deletion.",
                           {'share_name': share_name,
@@ -387,7 +389,7 @@ class VMAXStorageConnection(driver.StorageConnection):
         if status != constants.STATUS_OK:
             message = (_("CIFS server %s not found.") % server_name)
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         self._get_context('CIFSShare').allow_share_access(
             vdm_name,
@@ -453,7 +455,7 @@ class VMAXStorageConnection(driver.StorageConnection):
             message = (_("CIFS server %(server_name)s has issue. "
                          "Detail: %(status)s") %
                        {'server_name': server_name, 'status': status})
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         self._get_context('CIFSShare').clear_share_access(
             share_name=share_name,
@@ -506,7 +508,7 @@ class VMAXStorageConnection(driver.StorageConnection):
         if status != constants.STATUS_OK:
             message = (_("CIFS server %s not found.") % server_name)
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         self._get_context('CIFSShare').deny_share_access(
             vdm_name,
@@ -552,7 +554,7 @@ class VMAXStorageConnection(driver.StorageConnection):
                 message = (_("Failed to get storage pool information. "
                              "Reason: %s") % backend_pools)
                 LOG.error(message)
-                raise exception.EMCVmaxXMLAPIError(err=message)
+                raise exception.EMCPowerMaxXMLAPIError(err=message)
 
             real_pools = set([item for item in backend_pools])
             conf_pools = set([item.strip() for item in pools])
@@ -575,19 +577,19 @@ class VMAXStorageConnection(driver.StorageConnection):
         return matched_pools
 
     def connect(self, emc_share_driver, context):
-        """Connect to VMAX NAS server."""
+        """Connect to PowerMax NAS server."""
         config = emc_share_driver.configuration
-        config.append_config_values(VMAX_OPTS)
-        self.mover_name = config.vmax_server_container
+        config.append_config_values(POWERMAX_OPTS)
+        self.mover_name = config.safe_get('powermax_server_container')
 
-        self.pool_conf = config.safe_get('vmax_share_data_pools')
+        self.pool_conf = config.safe_get('powermax_share_data_pools')
 
         self.reserved_percentage = config.safe_get('reserved_share_percentage')
         if self.reserved_percentage is None:
             self.reserved_percentage = 0
 
         self.manager = manager.StorageObjectManager(config)
-        self.port_conf = config.safe_get('vmax_ethernet_ports')
+        self.port_conf = config.safe_get('powermax_ethernet_ports')
 
     def get_managed_ports(self):
         # Get the real ports(devices) list from the backend storage
@@ -603,7 +605,7 @@ class VMAXStorageConnection(driver.StorageConnection):
 
         if not matched_ports:
             msg = (_("None of the specified network ports exist. "
-                     "Please check your configuration vmax_ethernet_ports "
+                     "Please check your configuration powermax_ethernet_ports "
                      "in manila.conf. The available ports on the Data Mover "
                      "are %s.") %
                    ",".join(real_ports))
@@ -643,7 +645,7 @@ class VMAXStorageConnection(driver.StorageConnection):
         if not stats_dict['pools']:
             message = _("Failed to update storage pool.")
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
     def get_pool(self, share):
         """Get the pool name of the share."""
@@ -654,7 +656,7 @@ class VMAXStorageConnection(driver.StorageConnection):
                          "Reason: %(err)s") %
                        {'name': share_name, 'err': filesystem})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         pool_id = filesystem['pools_id'][0]
 
@@ -664,7 +666,7 @@ class VMAXStorageConnection(driver.StorageConnection):
             message = (_("Failed to get storage pool information. "
                          "Reason: %s") % backend_pools)
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         for name, pool_info in backend_pools.items():
             if pool_info['id'] == pool_id:
@@ -674,7 +676,7 @@ class VMAXStorageConnection(driver.StorageConnection):
         message = (_("No matched pool name for share: %(share)s. "
                      "Available pools: %(pools)s") %
                    {'share': share_name, 'pools': available_pools})
-        raise exception.EMCVmaxXMLAPIError(err=message)
+        raise exception.EMCPowerMaxXMLAPIError(err=message)
 
     def get_network_allocations_number(self):
         """Returns number of network allocations for creating VIFs."""
@@ -696,7 +698,7 @@ class VMAXStorageConnection(driver.StorageConnection):
                 network_info['security_services'])
 
             if not is_valid:
-                raise exception.EMCVmaxXMLAPIError(err=active_directory)
+                raise exception.EMCPowerMaxXMLAPIError(err=active_directory)
 
         try:
             if not self._vdm_exist(vdm_name):
@@ -778,7 +780,7 @@ class VMAXStorageConnection(driver.StorageConnection):
             message = (_("Could not get physical device port on mover %s.") %
                        self.mover_name)
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         return devices
 
@@ -852,7 +854,7 @@ class VMAXStorageConnection(driver.StorageConnection):
                         try:
                             self._get_context('CIFSServer').modify(
                                 cifs_server_args)
-                        except exception.EMCVmaxXMLAPIError as expt:
+                        except exception.EMCPowerMaxXMLAPIError as expt:
                             LOG.debug("Failed to modify CIFS server "
                                       "%(server)s. Reason: %(err)s.",
                                       {'server': server, 'err': expt})

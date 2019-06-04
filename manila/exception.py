@@ -751,15 +751,15 @@ class VserverNotSpecified(NetAppException):
     message = _("Vserver not specified.")
 
 
-class EMCVmaxXMLAPIError(Invalid):
+class EMCPowerMaxXMLAPIError(Invalid):
     message = _("%(err)s")
 
 
-class EMCVmaxLockRequiredException(ManilaException):
+class EMCPowerMaxLockRequiredException(ManilaException):
     message = _("Unable to acquire lock(s).")
 
 
-class EMCVmaxInvalidMoverID(ManilaException):
+class EMCPowerMaxInvalidMoverID(ManilaException):
     message = _("Invalid mover or vdm %(id)s.")
 
 

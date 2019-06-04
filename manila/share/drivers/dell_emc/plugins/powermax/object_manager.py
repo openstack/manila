@@ -27,15 +27,15 @@ from manila import exception
 from manila.i18n import _
 from manila.share.drivers.dell_emc.common.enas import connector
 from manila.share.drivers.dell_emc.common.enas import constants
-from manila.share.drivers.dell_emc.common.enas import utils as vmax_utils
+from manila.share.drivers.dell_emc.common.enas import utils as powermax_utils
 from manila.share.drivers.dell_emc.common.enas import xml_api_parser as parser
 from manila import utils
 
 LOG = log.getLogger(__name__)
 
 
-@vmax_utils.decorate_all_methods(vmax_utils.log_enter_exit,
-                                 debug_only=True)
+@powermax_utils.decorate_all_methods(powermax_utils.log_enter_exit,
+                                     debug_only=True)
 class StorageObjectManager(object):
     def __init__(self, configuration):
         self.context = {}
@@ -61,7 +61,7 @@ class StorageObjectManager(object):
         else:
             message = (_("Invalid storage object type %s.") % type)
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
 
 class StorageObject(object):
@@ -74,7 +74,7 @@ class StorageObject(object):
         self.ssh_retry_patterns = [
             (
                 constants.SSH_DEFAULT_RETRY_PATTERN,
-                exception.EMCVmaxLockRequiredException()
+                exception.EMCPowerMaxLockRequiredException()
             ),
         ]
 
@@ -144,7 +144,7 @@ class StorageObject(object):
             )
         )
 
-    @utils.retry(exception.EMCVmaxLockRequiredException)
+    @utils.retry(exception.EMCPowerMaxLockRequiredException)
     def _send_request(self, req):
         req_xml = constants.XML_HEADER + ET.tostring(req).decode('utf-8')
 
@@ -157,11 +157,11 @@ class StorageObject(object):
         if (response['maxSeverity'] != constants.STATUS_OK and
                 self._response_validation(response,
                                           constants.MSG_CODE_RETRY)):
-            raise exception.EMCVmaxLockRequiredException
+            raise exception.EMCPowerMaxLockRequiredException
 
         return response
 
-    @utils.retry(exception.EMCVmaxLockRequiredException)
+    @utils.retry(exception.EMCPowerMaxLockRequiredException)
     def _execute_cmd(self, cmd, retry_patterns=None, check_exit_code=False):
         """Execute NAS command via SSH.
 
@@ -211,14 +211,14 @@ class StorageObject(object):
         return self.manager.getStorageContext(type)
 
 
-@vmax_utils.decorate_all_methods(vmax_utils.log_enter_exit,
-                                 debug_only=True)
+@powermax_utils.decorate_all_methods(powermax_utils.log_enter_exit,
+                                     debug_only=True)
 class FileSystem(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(FileSystem, self).__init__(conn, elt_maker, xml_parser, manager)
         self.filesystem_map = {}
 
-    @utils.retry(exception.EMCVmaxInvalidMoverID)
+    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
     def create(self, name, size, pool_name, mover_name, is_vdm=True):
         pool_id = self.get_context('StoragePool').get_id(pool_name)
 
@@ -249,7 +249,7 @@ class FileSystem(StorageObject):
                                       constants.MSG_INVALID_MOVER_ID) and
                 not self.xml_retry):
             self.xml_retry = True
-            raise exception.EMCVmaxInvalidMoverID(id=mover_id)
+            raise exception.EMCPowerMaxInvalidMoverID(id=mover_id)
         elif self._response_validation(
                 response, constants.MSG_FILESYSTEM_EXIST):
             LOG.warning("File system %s already exists. "
@@ -260,7 +260,7 @@ class FileSystem(StorageObject):
                          "Reason: %(err)s.") %
                        {'name': name, 'err': response['problems']})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
     def get(self, name):
         if name not in self.filesystem_map:
@@ -314,7 +314,7 @@ class FileSystem(StorageObject):
                          "Reason: %(err)s.") %
                        {'name': name, 'err': out})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         enas_id = self.filesystem_map[name]['id']
 
@@ -329,7 +329,7 @@ class FileSystem(StorageObject):
                          "Reason: %(err)s.") %
                        {'name': name, 'err': response['problems']})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         self.filesystem_map.pop(name)
 
@@ -340,7 +340,7 @@ class FileSystem(StorageObject):
                          "Reason: %(err)s.") %
                        {'name': name, 'err': out})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         enas_id = out['id']
         size = int(out['size'])
@@ -350,7 +350,7 @@ class FileSystem(StorageObject):
                          "%(size)d.") %
                        {'name': name, 'new_size': new_size, 'size': size})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
         elif new_size == size:
             return
 
@@ -375,7 +375,7 @@ class FileSystem(StorageObject):
                         'new_size': new_size,
                         'err': response['problems']})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
     def get_id(self, name):
         status, out = self.get(name)
@@ -384,7 +384,7 @@ class FileSystem(StorageObject):
                          "Reason: %(err)s.") %
                        {'name': name, 'err': out})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         return self.filesystem_map[name]['id']
 
@@ -480,8 +480,8 @@ class FileSystem(StorageObject):
         self._execute_cmd(rw_mount_cmd)
 
 
-@vmax_utils.decorate_all_methods(vmax_utils.log_enter_exit,
-                                 debug_only=True)
+@powermax_utils.decorate_all_methods(powermax_utils.log_enter_exit,
+                                     debug_only=True)
 class StoragePool(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(StoragePool, self).__init__(conn, elt_maker, xml_parser, manager)
@@ -537,18 +537,18 @@ class StoragePool(StorageObject):
                          "Reason: %(err)s.") %
                        {'name': name, 'err': out})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         return out['id']
 
 
-@vmax_utils.decorate_all_methods(vmax_utils.log_enter_exit,
-                                 debug_only=True)
+@powermax_utils.decorate_all_methods(powermax_utils.log_enter_exit,
+                                     debug_only=True)
 class MountPoint(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(MountPoint, self).__init__(conn, elt_maker, xml_parser, manager)
 
-    @utils.retry(exception.EMCVmaxInvalidMoverID)
+    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
     def create(self, mount_path, fs_name, mover_name, is_vdm=True):
         fs_id = self.get_context('FileSystem').get_id(fs_name)
 
@@ -574,7 +574,7 @@ class MountPoint(StorageObject):
                                       constants.MSG_INVALID_MOVER_ID) and
                 not self.xml_retry):
             self.xml_retry = True
-            raise exception.EMCVmaxInvalidMoverID(id=mover_id)
+            raise exception.EMCPowerMaxInvalidMoverID(id=mover_id)
         elif self._is_mount_point_already_existent(response):
             LOG.warning("Mount Point %(mount)s already exists. "
                         "Skip the creation.", {'mount': mount_path})
@@ -586,9 +586,9 @@ class MountPoint(StorageObject):
                         'fs_name': fs_name,
                         'err': response['problems']})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
-    @utils.retry(exception.EMCVmaxInvalidMoverID)
+    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
     def get(self, mover_name, is_vdm=True):
         mover_id = self._get_mover_id(mover_name, is_vdm)
 
@@ -610,7 +610,7 @@ class MountPoint(StorageObject):
                                       constants.MSG_INVALID_MOVER_ID) and
                 not self.xml_retry):
             self.xml_retry = True
-            raise exception.EMCVmaxInvalidMoverID(id=mover_id)
+            raise exception.EMCPowerMaxInvalidMoverID(id=mover_id)
         elif constants.STATUS_OK != response['maxSeverity']:
             return response['maxSeverity'], response['objects']
 
@@ -619,7 +619,7 @@ class MountPoint(StorageObject):
         else:
             return constants.STATUS_OK, response['objects']
 
-    @utils.retry(exception.EMCVmaxInvalidMoverID)
+    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
     def delete(self, mount_path, mover_name, is_vdm=True):
         mover_id = self._get_mover_id(mover_name, is_vdm)
 
@@ -640,7 +640,7 @@ class MountPoint(StorageObject):
                                       constants.MSG_INVALID_MOVER_ID) and
                 not self.xml_retry):
             self.xml_retry = True
-            raise exception.EMCVmaxInvalidMoverID(id=mover_id)
+            raise exception.EMCPowerMaxInvalidMoverID(id=mover_id)
         elif self._is_mount_point_nonexistent(response):
             LOG.warning('Mount point %(mount)s on mover %(mover_name)s '
                         'not found.',
@@ -654,7 +654,7 @@ class MountPoint(StorageObject):
                         'mover_name': mover_name,
                         'err': response})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
     def _is_mount_point_nonexistent(self, response):
         """Translate different status to ok/error status."""
@@ -683,8 +683,8 @@ class MountPoint(StorageObject):
         return False
 
 
-@vmax_utils.decorate_all_methods(vmax_utils.log_enter_exit,
-                                 debug_only=True)
+@powermax_utils.decorate_all_methods(powermax_utils.log_enter_exit,
+                                     debug_only=True)
 class Mover(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(Mover, self).__init__(conn, elt_maker, xml_parser, manager)
@@ -787,7 +787,7 @@ class Mover(StorageObject):
             message = (_("Failed to get mover by name %(name)s.") %
                        {'name': name})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         return mover_ref['id']
 
@@ -848,14 +848,14 @@ class Mover(StorageObject):
         return physical_network_devices
 
 
-@vmax_utils.decorate_all_methods(vmax_utils.log_enter_exit,
-                                 debug_only=True)
+@powermax_utils.decorate_all_methods(powermax_utils.log_enter_exit,
+                                     debug_only=True)
 class VDM(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(VDM, self).__init__(conn, elt_maker, xml_parser, manager)
         self.vdm_map = {}
 
-    @utils.retry(exception.EMCVmaxInvalidMoverID)
+    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
     def create(self, name, mover_name):
         mover_id = self._get_mover_id(mover_name, False)
 
@@ -872,7 +872,7 @@ class VDM(StorageObject):
                                       constants.MSG_INVALID_MOVER_ID) and
                 not self.xml_retry):
             self.xml_retry = True
-            raise exception.EMCVmaxInvalidMoverID(id=mover_id)
+            raise exception.EMCPowerMaxInvalidMoverID(id=mover_id)
         elif self._response_validation(response, constants.MSG_VDM_EXIST):
             LOG.warning("VDM %(name)s already exists. Skip the creation.",
                         {'name': name})
@@ -883,7 +883,7 @@ class VDM(StorageObject):
                         'mover_name': mover_name,
                         'err': response['problems']})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
     def get(self, name):
         if name not in self.vdm_map:
@@ -926,7 +926,7 @@ class VDM(StorageObject):
                          "Reason: %(err)s.") %
                        {'name': name, 'err': out})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         vdm_id = self.vdm_map[name]['id']
 
@@ -941,7 +941,7 @@ class VDM(StorageObject):
                          "Reason: %(err)s.") %
                        {'name': name, 'err': response['problems']})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         self.vdm_map.pop(name)
 
@@ -951,7 +951,7 @@ class VDM(StorageObject):
             message = (_("Failed to get VDM by name %(name)s.") %
                        {'name': name})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         return vdm['id']
 
@@ -987,7 +987,7 @@ class VDM(StorageObject):
                              "from mover %(mover_name)s.") %
                            {'interface': if_name, 'mover_name': vdm_name})
                 LOG.exception(message)
-                raise exception.EMCVmaxXMLAPIError(err=message)
+                raise exception.EMCPowerMaxXMLAPIError(err=message)
 
     def get_interfaces(self, vdm_name):
         interfaces = {
@@ -1023,8 +1023,8 @@ class VDM(StorageObject):
         return interfaces
 
 
-@vmax_utils.decorate_all_methods(vmax_utils.log_enter_exit,
-                                 debug_only=True)
+@powermax_utils.decorate_all_methods(powermax_utils.log_enter_exit,
+                                     debug_only=True)
 class Snapshot(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(Snapshot, self).__init__(conn, elt_maker, xml_parser, manager)
@@ -1064,7 +1064,7 @@ class Snapshot(StorageObject):
                         'fs_name': fs_name,
                         'err': response['problems']})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
     def get(self, name):
         if name not in self.snap_map:
@@ -1107,7 +1107,7 @@ class Snapshot(StorageObject):
                          "Reason: %(err)s.") %
                        {'name': name, 'err': out})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         chpt_id = self.snap_map[name]['id']
 
@@ -1121,7 +1121,7 @@ class Snapshot(StorageObject):
                          "Reason: %(err)s.") %
                        {'name': name, 'err': response['problems']})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         self.snap_map.pop(name)
 
@@ -1133,19 +1133,19 @@ class Snapshot(StorageObject):
                          "Reason: %(err)s.") %
                        {'name': name, 'err': out})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         return self.snap_map[name]['id']
 
 
-@vmax_utils.decorate_all_methods(vmax_utils.log_enter_exit,
-                                 debug_only=True)
+@powermax_utils.decorate_all_methods(powermax_utils.log_enter_exit,
+                                     debug_only=True)
 class MoverInterface(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(MoverInterface, self).__init__(conn, elt_maker, xml_parser,
                                              manager)
 
-    @utils.retry(exception.EMCVmaxInvalidMoverID)
+    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
     def create(self, interface):
         # Maximum of 32 characters for mover interface name
         name = interface['name']
@@ -1182,7 +1182,7 @@ class MoverInterface(StorageObject):
                                       constants.MSG_INVALID_MOVER_ID) and
                 not self.xml_retry):
             self.xml_retry = True
-            raise exception.EMCVmaxInvalidMoverID(id=mover_id)
+            raise exception.EMCPowerMaxInvalidMoverID(id=mover_id)
         elif self._response_validation(
                 response, constants.MSG_INTERFACE_NAME_EXIST):
             LOG.warning("Mover interface name %s already exists. "
@@ -1194,23 +1194,23 @@ class MoverInterface(StorageObject):
         elif self._response_validation(
                 response, constants.MSG_INTERFACE_INVALID_VLAN_ID):
             # When fail to create a mover interface with the specified
-            # vlan id, VMAX will leave an interface with vlan id 0 in the
+            # vlan id, PowerMax will leave an interface with vlan id 0 in the
             # backend. So we should explicitly remove the interface.
             try:
                 self.delete(six.text_type(ip_addr), mover_name)
-            except exception.EMCVmaxXMLAPIError:
+            except exception.EMCPowerMaxXMLAPIError:
                 pass
             message = (_("Invalid vlan id %s. Other interfaces on this "
                          "subnet are in a different vlan.") % vlan_id)
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
         elif constants.STATUS_OK != response['maxSeverity']:
             message = (_("Failed to create mover interface %(interface)s. "
                          "Reason: %(err)s.") %
                        {'interface': interface,
                         'err': response['problems']})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
     def get(self, name, mover_name):
         # Maximum of 32 characters for mover interface name
@@ -1226,7 +1226,7 @@ class MoverInterface(StorageObject):
 
         return constants.STATUS_NOT_FOUND, None
 
-    @utils.retry(exception.EMCVmaxInvalidMoverID)
+    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
     def delete(self, ip_addr, mover_name):
         mover_id = self._get_mover_id(mover_name, False)
 
@@ -1246,7 +1246,7 @@ class MoverInterface(StorageObject):
                                       constants.MSG_INVALID_MOVER_ID) and
                 not self.xml_retry):
             self.xml_retry = True
-            raise exception.EMCVmaxInvalidMoverID(id=mover_id)
+            raise exception.EMCPowerMaxInvalidMoverID(id=mover_id)
         elif self._response_validation(
                 response, constants.MSG_INTERFACE_NON_EXISTENT):
             LOG.warning("Mover interface %s not found. "
@@ -1259,16 +1259,16 @@ class MoverInterface(StorageObject):
                         'mover': mover_name,
                         'err': response['problems']})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
 
-@vmax_utils.decorate_all_methods(vmax_utils.log_enter_exit,
-                                 debug_only=True)
+@powermax_utils.decorate_all_methods(powermax_utils.log_enter_exit,
+                                     debug_only=True)
 class DNSDomain(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(DNSDomain, self).__init__(conn, elt_maker, xml_parser, manager)
 
-    @utils.retry(exception.EMCVmaxInvalidMoverID)
+    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
     def create(self, mover_name, name, servers, protocol='udp'):
         mover_id = self._get_mover_id(mover_name, False)
 
@@ -1290,15 +1290,15 @@ class DNSDomain(StorageObject):
                                       constants.MSG_INVALID_MOVER_ID) and
                 not self.xml_retry):
             self.xml_retry = True
-            raise exception.EMCVmaxInvalidMoverID(id=mover_id)
+            raise exception.EMCPowerMaxInvalidMoverID(id=mover_id)
         elif constants.STATUS_OK != response['maxSeverity']:
             message = (_("Failed to create DNS domain %(name)s. "
                          "Reason: %(err)s.") %
                        {'name': name, 'err': response['problems']})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
-    @utils.retry(exception.EMCVmaxInvalidMoverID)
+    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
     def delete(self, mover_name, name):
         mover_id = self._get_mover_id(mover_name, False)
 
@@ -1317,21 +1317,21 @@ class DNSDomain(StorageObject):
                                       constants.MSG_INVALID_MOVER_ID) and
                 not self.xml_retry):
             self.xml_retry = True
-            raise exception.EMCVmaxInvalidMoverID(id=mover_id)
+            raise exception.EMCPowerMaxInvalidMoverID(id=mover_id)
         elif constants.STATUS_OK != response['maxSeverity']:
             LOG.warning("Failed to delete DNS domain %(name)s. "
                         "Reason: %(err)s.",
                         {'name': name, 'err': response['problems']})
 
 
-@vmax_utils.decorate_all_methods(vmax_utils.log_enter_exit,
-                                 debug_only=True)
+@powermax_utils.decorate_all_methods(powermax_utils.log_enter_exit,
+                                     debug_only=True)
 class CIFSServer(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(CIFSServer, self).__init__(conn, elt_maker, xml_parser, manager)
         self.cifs_server_map = {}
 
-    @utils.retry(exception.EMCVmaxInvalidMoverID)
+    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
     def create(self, server_args):
         compName = server_args['name']
         # Maximum of 14 characters for netBIOS name
@@ -1374,7 +1374,7 @@ class CIFSServer(StorageObject):
                                       constants.MSG_INVALID_MOVER_ID) and
                 not self.xml_retry):
             self.xml_retry = True
-            raise exception.EMCVmaxInvalidMoverID(id=mover_id)
+            raise exception.EMCPowerMaxInvalidMoverID(id=mover_id)
         if constants.STATUS_OK != response['maxSeverity']:
             status, out = self.get(compName, mover_name, is_vdm)
             if constants.STATUS_OK == status and out['domainJoined'] == 'true':
@@ -1385,9 +1385,9 @@ class CIFSServer(StorageObject):
                            {'name': name,
                             'err': response['problems']})
                 LOG.error(message)
-                raise exception.EMCVmaxXMLAPIError(err=message)
+                raise exception.EMCPowerMaxXMLAPIError(err=message)
 
-    @utils.retry(exception.EMCVmaxInvalidMoverID)
+    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
     def get_all(self, mover_name, is_vdm=True):
         mover_id = self._get_mover_id(mover_name, is_vdm)
 
@@ -1408,7 +1408,7 @@ class CIFSServer(StorageObject):
                                       constants.MSG_INVALID_MOVER_ID) and
                 not self.xml_retry):
             self.xml_retry = True
-            raise exception.EMCVmaxInvalidMoverID(id=mover_id)
+            raise exception.EMCPowerMaxInvalidMoverID(id=mover_id)
         elif constants.STATUS_OK != response['maxSeverity']:
             return response['maxSeverity'], response['objects']
 
@@ -1439,7 +1439,7 @@ class CIFSServer(StorageObject):
 
         return constants.STATUS_NOT_FOUND, None
 
-    @utils.retry(exception.EMCVmaxInvalidMoverID)
+    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
     def modify(self, server_args):
         """Make CIFS server join or un-join the domain.
 
@@ -1450,7 +1450,7 @@ class CIFSServer(StorageObject):
             password: Password associated with the user name
             mover_name: mover or VDM name
             is_vdm: Boolean to indicate mover or VDM
-        :raises exception.EMCVmaxXMLAPIError: if modification fails.
+        :raises exception.EMCPowerMaxXMLAPIError: if modification fails.
         """
         name = server_args['name']
         join_domain = server_args['join_domain']
@@ -1487,7 +1487,7 @@ class CIFSServer(StorageObject):
                                       constants.MSG_INVALID_MOVER_ID) and
                 not self.xml_retry):
             self.xml_retry = True
-            raise exception.EMCVmaxInvalidMoverID(id=mover_id)
+            raise exception.EMCPowerMaxInvalidMoverID(id=mover_id)
         elif self._ignore_modification_error(response, join_domain):
             return
         elif constants.STATUS_OK != response['maxSeverity']:
@@ -1496,7 +1496,7 @@ class CIFSServer(StorageObject):
                        {'name': name,
                         'err': response['problems']})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
     def _ignore_modification_error(self, response, join_domain):
         if self._response_validation(response, constants.MSG_JOIN_DOMAIN):
@@ -1515,7 +1515,7 @@ class CIFSServer(StorageObject):
                             "not found. Skip the deletion.",
                             {'name': computer_name, 'mover_name': mover_name})
                 return
-        except exception.EMCVmaxXMLAPIError:
+        except exception.EMCPowerMaxXMLAPIError:
             LOG.warning("CIFS server %(name)s on mover %(mover_name)s "
                         "not found. Skip the deletion.",
                         {'name': computer_name, 'mover_name': mover_name})
@@ -1540,19 +1540,19 @@ class CIFSServer(StorageObject):
                          "Reason: %(err)s.") %
                        {'name': computer_name, 'err': response['problems']})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         self.cifs_server_map[mover_name].pop(computer_name)
 
 
-@vmax_utils.decorate_all_methods(vmax_utils.log_enter_exit,
-                                 debug_only=True)
+@powermax_utils.decorate_all_methods(powermax_utils.log_enter_exit,
+                                     debug_only=True)
 class CIFSShare(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(CIFSShare, self).__init__(conn, elt_maker, xml_parser, manager)
         self.cifs_share_map = {}
 
-    @utils.retry(exception.EMCVmaxInvalidMoverID)
+    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
     def create(self, name, server_name, mover_name, is_vdm=True):
         mover_id = self._get_mover_id(mover_name, is_vdm)
 
@@ -1579,13 +1579,13 @@ class CIFSShare(StorageObject):
                                       constants.MSG_INVALID_MOVER_ID) and
                 not self.xml_retry):
             self.xml_retry = True
-            raise exception.EMCVmaxInvalidMoverID(id=mover_id)
+            raise exception.EMCPowerMaxInvalidMoverID(id=mover_id)
         elif constants.STATUS_OK != response['maxSeverity']:
             message = (_("Failed to create file share %(name)s. "
                          "Reason: %(err)s.") %
                        {'name': name, 'err': response['problems']})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
     def get(self, name):
         if name not in self.cifs_share_map:
@@ -1605,7 +1605,7 @@ class CIFSShare(StorageObject):
 
         return constants.STATUS_OK, self.cifs_share_map[name]
 
-    @utils.retry(exception.EMCVmaxInvalidMoverID)
+    @utils.retry(exception.EMCPowerMaxInvalidMoverID)
     def delete(self, name, mover_name, is_vdm=True):
         status, out = self.get(name)
         if constants.STATUS_NOT_FOUND == status:
@@ -1617,7 +1617,7 @@ class CIFSShare(StorageObject):
                          "Reason: %(err)s.") %
                        {'name': name, 'err': out})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         mover_id = self._get_mover_id(mover_name, is_vdm)
 
@@ -1642,13 +1642,13 @@ class CIFSShare(StorageObject):
                                       constants.MSG_INVALID_MOVER_ID) and
                 not self.xml_retry):
             self.xml_retry = True
-            raise exception.EMCVmaxInvalidMoverID(id=mover_id)
+            raise exception.EMCPowerMaxInvalidMoverID(id=mover_id)
         elif constants.STATUS_OK != response['maxSeverity']:
             message = (_("Failed to delete file system %(name)s. "
                          "Reason: %(err)s.") %
                        {'name': name, 'err': response['problems']})
             LOG.error(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         self.cifs_share_map.pop(name)
 
@@ -1666,7 +1666,7 @@ class CIFSShare(StorageObject):
                          '%(name)s.') %
                        {'name': share_name})
             LOG.exception(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
     def allow_share_access(self, mover_name, share_name, user_name, domain,
                            access=constants.CIFS_ACL_FULLCONTROL):
@@ -1694,7 +1694,7 @@ class CIFSShare(StorageObject):
                              'CIFS share %(name)s. Reason: %(err)s.') %
                            {'access': access, 'name': share_name, 'err': expt})
                 LOG.error(message)
-                raise exception.EMCVmaxXMLAPIError(err=message)
+                raise exception.EMCPowerMaxXMLAPIError(err=message)
 
     def deny_share_access(self, mover_name, share_name, user_name, domain,
                           access=constants.CIFS_ACL_FULLCONTROL):
@@ -1728,7 +1728,7 @@ class CIFSShare(StorageObject):
                              'CIFS share %(name)s. Reason: %(err)s.') %
                            {'access': access, 'name': share_name, 'err': expt})
                 LOG.exception(message)
-                raise exception.EMCVmaxXMLAPIError(err=message)
+                raise exception.EMCPowerMaxXMLAPIError(err=message)
 
     def get_share_access(self, mover_name, share_name):
         get_str = 'sharesd %s dump' % share_name
@@ -1742,7 +1742,7 @@ class CIFSShare(StorageObject):
         except processutils.ProcessExecutionError:
             msg = _('Failed to get access list of CIFS share %s.') % share_name
             LOG.exception(msg)
-            raise exception.EMCVmaxXMLAPIError(err=msg)
+            raise exception.EMCPowerMaxXMLAPIError(err=msg)
 
         ret = {}
         name_pattern = re.compile(r"Unix user '(.+?)'")
@@ -1772,8 +1772,8 @@ class CIFSShare(StorageObject):
         return users_to_remove
 
 
-@vmax_utils.decorate_all_methods(vmax_utils.log_enter_exit,
-                                 debug_only=True)
+@powermax_utils.decorate_all_methods(powermax_utils.log_enter_exit,
+                                     debug_only=True)
 class NFSShare(StorageObject):
     def __init__(self, conn, elt_maker, xml_parser, manager):
         super(NFSShare, self).__init__(conn, elt_maker, xml_parser, manager)
@@ -1794,7 +1794,7 @@ class NFSShare(StorageObject):
                          '%(mover_name)s. Reason: %(err)s.') %
                        {'name': name, 'mover_name': mover_name, 'err': expt})
             LOG.exception(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
     def delete(self, name, mover_name):
         path = '/' + name
@@ -1819,7 +1819,7 @@ class NFSShare(StorageObject):
                          '%(mover_name)s. Reason: %(err)s.') %
                        {'name': name, 'mover_name': mover_name, 'err': expt})
             LOG.exception(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         self.nfs_share_map.pop(name)
 
@@ -1861,7 +1861,7 @@ class NFSShare(StorageObject):
                             'mover_name': mover_name,
                             'err': expt})
                 LOG.exception(message)
-                raise exception.EMCVmaxXMLAPIError(err=message)
+                raise exception.EMCPowerMaxXMLAPIError(err=message)
 
         re_exports = '%s\s*:\s*\nexport\s*(.*)\n' % mover_name
         m = re.search(re_exports, out)
@@ -1873,14 +1873,17 @@ class NFSShare(StorageObject):
             for field in fields:
                 field = field.strip()
                 if field.startswith('rw='):
-                    nfs_share['RwHosts'] = vmax_utils.parse_ipaddr(field[3:])
+                    nfs_share['RwHosts'] = powermax_utils.parse_ipaddr(
+                        field[3:])
                 elif field.startswith('access='):
-                    nfs_share['AccessHosts'] = vmax_utils.parse_ipaddr(
+                    nfs_share['AccessHosts'] = powermax_utils.parse_ipaddr(
                         field[7:])
                 elif field.startswith('root='):
-                    nfs_share['RootHosts'] = vmax_utils.parse_ipaddr(field[5:])
+                    nfs_share['RootHosts'] = powermax_utils.parse_ipaddr(
+                        field[5:])
                 elif field.startswith('ro='):
-                    nfs_share['RoHosts'] = vmax_utils.parse_ipaddr(field[3:])
+                    nfs_share['RoHosts'] = powermax_utils.parse_ipaddr(
+                        field[3:])
 
             self.nfs_share_map[name] = nfs_share
         else:
@@ -1896,13 +1899,13 @@ class NFSShare(StorageObject):
             if constants.STATUS_NOT_FOUND == status:
                 message = (_('NFS share %s not found.') % share_name)
                 LOG.error(message)
-                raise exception.EMCVmaxXMLAPIError(err=message)
+                raise exception.EMCPowerMaxXMLAPIError(err=message)
 
             changed = False
             rwhosts = share['RwHosts']
             rohosts = share['RoHosts']
 
-            host_ip = vmax_utils.convert_ipv6_format_if_needed(host_ip)
+            host_ip = powermax_utils.convert_ipv6_format_if_needed(host_ip)
 
             if access_level == const.ACCESS_LEVEL_RW:
                 if host_ip not in rwhosts:
@@ -1956,7 +1959,7 @@ class NFSShare(StorageObject):
                              'Reason %(err)s.') %
                            {'path': share_name, 'err': share})
                 LOG.error(message)
-                raise exception.EMCVmaxXMLAPIError(err=message)
+                raise exception.EMCPowerMaxXMLAPIError(err=message)
 
             changed = False
             rwhosts = set(share['RwHosts'])
@@ -2008,7 +2011,7 @@ class NFSShare(StorageObject):
                 message = (_('Query nfs share %(path)s failed. '
                              'Reason %(err)s.') %
                            {'path': share_name, 'err': status})
-                raise exception.EMCVmaxXMLAPIError(err=message)
+                raise exception.EMCPowerMaxXMLAPIError(err=message)
 
             self._set_share_access('/' + share_name,
                                    mover_name,
@@ -2056,4 +2059,4 @@ class NFSShare(StorageObject):
                         'mover_name': mover_name,
                         'err': expt})
             LOG.exception(message)
-            raise exception.EMCVmaxXMLAPIError(err=message)
+            raise exception.EMCPowerMaxXMLAPIError(err=message)

@@ -26,7 +26,7 @@ from manila.common import constants as const
 from manila.share.drivers.dell_emc.common.enas import connector
 from manila.share.drivers.dell_emc.common.enas import constants
 from manila.share.drivers.dell_emc.common.enas import xml_api_parser as parser
-from manila.share.drivers.dell_emc.plugins.vmax import (
+from manila.share.drivers.dell_emc.plugins.powermax import (
     object_manager as manager)
 from manila import test
 from manila.tests.share.drivers.dell_emc.common.enas import fakes
@@ -39,7 +39,7 @@ class StorageObjectManagerTestCase(test.TestCase):
     def setUp(self):
         super(StorageObjectManagerTestCase, self).setUp()
 
-        emd_share_driver = fakes.FakeEMCShareDriver('vmax')
+        emd_share_driver = fakes.FakeEMCShareDriver('powermax')
 
         self.manager = manager.StorageObjectManager(
             emd_share_driver.configuration)
@@ -70,7 +70,7 @@ class StorageObjectManagerTestCase(test.TestCase):
 
         fake_type = 'fake_type'
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           self.manager.getStorageContext,
                           fake_type)
 
@@ -81,7 +81,7 @@ class StorageObjectTestCaseBase(test.TestCase):
     def setUp(self):
         super(StorageObjectTestCaseBase, self).setUp()
 
-        emd_share_driver = fakes.FakeEMCShareDriver('vmax')
+        emd_share_driver = fakes.FakeEMCShareDriver('powermax')
 
         self.manager = manager.StorageObjectManager(
             emd_share_driver.configuration)
@@ -227,7 +227,7 @@ class FileSystemTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('FileSystem')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.create,
                           name=self.fs.filesystem_name,
                           size=self.fs.filesystem_size,
@@ -287,7 +287,7 @@ class FileSystemTestCase(StorageObjectTestCaseBase):
         status, out = context.get(self.fs.filesystem_name)
         self.assertEqual(constants.STATUS_ERROR, status)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.get_id,
                           self.fs.filesystem_name)
 
@@ -363,7 +363,7 @@ class FileSystemTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('FileSystem')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.delete,
                           self.fs.filesystem_name)
 
@@ -377,7 +377,7 @@ class FileSystemTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('FileSystem')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.delete,
                           self.fs.filesystem_name)
 
@@ -414,7 +414,7 @@ class FileSystemTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('FileSystem')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.extend,
                           name=self.fs.filesystem_name,
                           pool_name=self.fs.pool_name,
@@ -429,7 +429,7 @@ class FileSystemTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('FileSystem')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.extend,
                           name=self.fs.filesystem_name,
                           pool_name=self.pool.pool_name,
@@ -459,7 +459,7 @@ class FileSystemTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('FileSystem')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.extend,
                           name=self.fs.filesystem_name,
                           pool_name=self.pool.pool_name,
@@ -635,7 +635,7 @@ class MountPointTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('MountPoint')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.create,
                           mount_path=self.mount.path,
                           fs_name=self.fs.filesystem_name,
@@ -731,7 +731,7 @@ class MountPointTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('MountPoint')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.delete,
                           mount_path=self.mount.path,
                           mover_name=self.vdm.vdm_name,
@@ -920,7 +920,7 @@ class VDMTestCase(StorageObjectTestCaseBase):
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
         # Create VDM with invalid mover ID
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.create,
                           name=self.vdm.vdm_name,
                           mover_name=self.mover.mover_name)
@@ -992,7 +992,7 @@ class VDMTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('VDM')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.get_id,
                           self.vdm.vdm_name)
 
@@ -1031,7 +1031,7 @@ class VDMTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('VDM')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.delete,
                           self.vdm.vdm_name)
 
@@ -1045,7 +1045,7 @@ class VDMTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('VDM')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.delete,
                           self.vdm.vdm_name)
 
@@ -1086,7 +1086,7 @@ class VDMTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('VDM')
         context.conn['SSH'].run_ssh = mock.Mock(side_effect=self.ssh_hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.detach_nfs_interface,
                           self.vdm.vdm_name,
                           self.mover.interface_name2)
@@ -1175,7 +1175,7 @@ class StoragePoolTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('StoragePool')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.get_id,
                           self.pool.pool_name)
 
@@ -1295,7 +1295,7 @@ class MoverTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('Mover')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.get,
                           self.mover.mover_name)
 
@@ -1407,7 +1407,7 @@ class SnapshotTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('Snapshot')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.create,
                           name=self.snap.snapshot_name,
                           fs_name=self.fs.filesystem_name,
@@ -1487,7 +1487,7 @@ class SnapshotTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('Snapshot')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.delete,
                           self.snap.snapshot_name)
 
@@ -1513,7 +1513,7 @@ class SnapshotTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('Snapshot')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.delete,
                           self.snap.snapshot_name)
 
@@ -1541,7 +1541,7 @@ class SnapshotTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('Snapshot')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.get_id,
                           self.snap.snapshot_name)
 
@@ -1651,7 +1651,7 @@ class MoverInterfaceTestCase(StorageObjectTestCaseBase):
             'net_mask': self.mover.net_mask,
             'vlan_id': self.mover.vlan_id,
         }
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.create,
                           interface)
 
@@ -1707,7 +1707,7 @@ class MoverInterfaceTestCase(StorageObjectTestCaseBase):
             'net_mask': self.mover.net_mask,
             'vlan_id': self.mover.vlan_id,
         }
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.create,
                           interface)
 
@@ -1831,7 +1831,7 @@ class MoverInterfaceTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('MoverInterface')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.delete,
                           ip_addr=self.mover.ip_address1,
                           mover_name=self.mover.mover_name)
@@ -1896,7 +1896,7 @@ class DNSDomainTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('DNSDomain')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.create,
                           mover_name=self.mover.mover_name,
                           name=self.mover.domain_name,
@@ -2075,7 +2075,7 @@ class CIFSServerTestCase(StorageObjectTestCaseBase):
             'mover_name': self.vdm.vdm_name,
             'is_vdm': True,
         }
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.create,
                           cifs_server_args)
 
@@ -2304,7 +2304,7 @@ class CIFSServerTestCase(StorageObjectTestCaseBase):
             'password': self.cifs_server.domain_password,
             'mover_name': self.vdm.vdm_name,
         }
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.modify,
                           cifs_server_args)
 
@@ -2377,7 +2377,7 @@ class CIFSServerTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('CIFSServer')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.delete,
                           computer_name=self.cifs_server.cifs_server_name,
                           mover_name=self.mover.mover_name,
@@ -2456,7 +2456,7 @@ class CIFSShareTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('CIFSShare')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.create,
                           name=self.cifs_share.share_name,
                           server_name=self.cifs_share.cifs_server_name[-14:],
@@ -2506,7 +2506,7 @@ class CIFSShareTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('CIFSShare')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.delete,
                           name=self.cifs_share.share_name,
                           mover_name=self.vdm.vdm_name,
@@ -2557,7 +2557,7 @@ class CIFSShareTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('CIFSShare')
         context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.delete,
                           name=self.cifs_share.share_name,
                           mover_name=self.vdm.vdm_name,
@@ -2600,7 +2600,7 @@ class CIFSShareTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('CIFSShare')
         context.conn['SSH'].run_ssh = mock.Mock(side_effect=self.ssh_hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.disable_share_access,
                           share_name=self.cifs_share.share_name,
                           mover_name=self.vdm.vdm_name)
@@ -2648,7 +2648,7 @@ class CIFSShareTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('CIFSShare')
         context.conn['SSH'].run_ssh = mock.Mock(side_effect=self.ssh_hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.allow_share_access,
                           mover_name=self.vdm.vdm_name,
                           share_name=self.cifs_share.share_name,
@@ -2725,7 +2725,7 @@ class CIFSShareTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('CIFSShare')
         context.conn['SSH'].run_ssh = mock.Mock(side_effect=self.ssh_hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.deny_share_access,
                           mover_name=self.vdm.vdm_name,
                           share_name=self.cifs_share.share_name,
@@ -2765,7 +2765,7 @@ class CIFSShareTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('CIFSShare')
         context.conn['SSH'].run_ssh = mock.Mock(side_effect=self.ssh_hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.get_share_access,
                           mover_name=self.vdm.vdm_name,
                           share_name=self.cifs_share.share_name)
@@ -2822,7 +2822,7 @@ class NFSShareTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('NFSShare')
         context.conn['SSH'].run_ssh = mock.Mock(side_effect=self.ssh_hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.create,
                           name=self.nfs_share.share_name,
                           mover_name=self.vdm.vdm_name)
@@ -2898,7 +2898,7 @@ class NFSShareTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('NFSShare')
         context.conn['SSH'].run_ssh = mock.Mock(side_effect=self.ssh_hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.delete,
                           name=self.nfs_share.share_name,
                           mover_name=self.vdm.vdm_name)
@@ -2956,7 +2956,7 @@ class NFSShareTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('NFSShare')
         context.conn['SSH'].run_ssh = mock.Mock(side_effect=self.ssh_hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.get,
                           name=self.nfs_share.share_name,
                           mover_name=self.vdm.vdm_name)
@@ -3031,7 +3031,7 @@ class NFSShareTestCase(StorageObjectTestCaseBase):
         context.conn['SSH'].run_ssh = utils.EMCNFSShareMock(
             side_effect=self.ssh_hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.allow_share_access,
                           share_name=self.nfs_share.share_name,
                           host_ip=self.nfs_share.nfs_host_ip,
@@ -3134,7 +3134,7 @@ class NFSShareTestCase(StorageObjectTestCaseBase):
         context.conn['SSH'].run_ssh = utils.EMCNFSShareMock(
             side_effect=self.ssh_hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.deny_share_access,
                           share_name=self.nfs_share.share_name,
                           host_ip=self.nfs_share.nfs_host_ip,
@@ -3157,7 +3157,7 @@ class NFSShareTestCase(StorageObjectTestCaseBase):
         context.conn['SSH'].run_ssh = utils.EMCNFSShareMock(
             side_effect=self.ssh_hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.deny_share_access,
                           share_name=self.nfs_share.share_name,
                           host_ip=self.nfs_share.nfs_host_ip,
@@ -3176,7 +3176,7 @@ class NFSShareTestCase(StorageObjectTestCaseBase):
         context = self.manager.getStorageContext('NFSShare')
         context.conn['SSH'].run_ssh = mock.Mock(side_effect=self.ssh_hook)
 
-        self.assertRaises(exception.EMCVmaxXMLAPIError,
+        self.assertRaises(exception.EMCPowerMaxXMLAPIError,
                           context.clear_share_access,
                           share_name=self.nfs_share.share_name,
                           mover_name=self.vdm.vdm_name,

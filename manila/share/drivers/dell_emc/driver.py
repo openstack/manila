@@ -1,4 +1,4 @@
-# Copyright (c) 2014 EMC Corporation.
+# Copyright (c) 2019 EMC Corporation.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -21,6 +21,7 @@ to specify, which backend plugins to use.
 """
 
 from oslo_config import cfg
+from oslo_log import log
 
 from manila.share import driver
 from manila.share.drivers.dell_emc import plugin_manager as manager
@@ -40,7 +41,7 @@ EMC_NAS_OPTS = [
                 help='Use secure connection to server.'),
     cfg.StrOpt('emc_share_backend',
                ignore_case=True,
-               choices=['isilon', 'vnx', 'unity', 'vmax'],
+               choices=['isilon', 'vnx', 'unity', 'vmax', 'powermax'],
                help='Share backend.'),
     cfg.StrOpt('emc_nas_root_dir',
                help='The root directory where shares will be located.'),
@@ -53,6 +54,8 @@ EMC_NAS_OPTS = [
                     'CA_BUNDLE file or directory with certificates of trusted '
                     'CAs, which will be used to validate the backend.')
 ]
+
+LOG = log.getLogger(__name__)
 
 CONF = cfg.CONF
 CONF.register_opts(EMC_NAS_OPTS)
@@ -72,6 +75,12 @@ class EMCShareDriver(driver.ShareDriver):
         self.backend_name = self.backend_name or 'EMC_NAS_Storage'
         self.plugin_manager = manager.EMCPluginManager(
             namespace='manila.share.drivers.dell_emc.plugins')
+        if self.backend_name == 'vmax':
+            LOG.warning("Configuration option 'emc_share_backend=vmax' will "
+                        "remain a valid option until the V release of "
+                        "OpenStack. After that, only "
+                        "'emc_share_backend=powermax' will be excepted.")
+            self.backend_name = 'powermax'
         self.plugin = self.plugin_manager.load_plugin(
             self.backend_name,
             configuration=self.configuration)

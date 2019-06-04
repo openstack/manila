@@ -147,7 +147,7 @@ class FakeData(object):
     fake_error_msg = 'fake error message'
 
     emc_share_backend = 'vnx'
-    vmax_share_backend = 'vmax'
+    powermax_share_backend = 'powermax'
     emc_nas_server = '192.168.1.20'
     emc_nas_login = 'fakename'
     emc_nas_password = 'fakepassword'
@@ -1564,8 +1564,9 @@ class FakeEMCShareDriver(object):
         self.configuration.append_config_values = mock.Mock(return_value=0)
         self.configuration.emc_share_backend = FakeData.emc_share_backend
         self.configuration.vnx_server_container = FakeData.mover_name
-        if enas_type == 'vmax':
-            self.configuration.emc_share_backend = FakeData.vmax_share_backend
+        if enas_type == 'powermax':
+            self.configuration.emc_share_backend = (
+                FakeData.powermax_share_backend)
             self.configuration.vmax_server_container = FakeData.mover_name
         self.configuration.emc_nas_server = FakeData.emc_nas_server
         self.configuration.emc_nas_login = FakeData.emc_nas_login

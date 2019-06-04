@@ -8,9 +8,9 @@
     autogenerate-config-doc tool from the openstack-doc-tools repository, or
     ask for help on the documentation mailing list, IRC channel or meeting.
 
-.. _manila-vmax:
+.. _manila-powermax:
 
-.. list-table:: Description of Dell EMC VMAX share driver configuration options
+.. list-table:: Description of Dell EMC PowerMax share driver configuration options
    :header-rows: 1
    :class: config-ref-table
 
@@ -18,9 +18,9 @@
      - Description
    * - **[DEFAULT]**
      -
-   * - ``vmax_ethernet_ports`` = ``None``
+   * - ``powermax_ethernet_ports`` = ``None``
      - (List) Comma separated list of ports that can be used for share server interfaces. Members of the list can be Unix-style glob expressions.
-   * - ``vmax_server_container`` = ``None``
+   * - ``powermax_server_container`` = ``None``
      - (String) Data mover to host the NAS server.
-   * - ``vmax_share_data_pools`` = ``None``
+   * - ``powermax_share_data_pools`` = ``None``
      - (List) Comma separated list of pools that can be used to persist share data.
