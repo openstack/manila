@@ -30,6 +30,7 @@ Share drivers
    drivers/netapp-cluster-mode-driver.rst
    drivers/quobyte-driver.rst
    drivers/windows-smb-driver.rst
+   drivers/nexentastor5-driver.rst
 
 
 To use different share drivers for the Shared File Systems service, use the

@@ -1,4 +1,4 @@
-# Copyright 2016 Nexenta Systems, Inc.
+# Copyright 2019 Nexenta by DDN, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import posixpath
+
 from oslo_log import log
 from oslo_utils import units
 
@@ -24,9 +26,9 @@ from manila.share.drivers.nexenta.ns5 import jsonrpc
 from manila.share.drivers.nexenta import options
 from manila.share.drivers.nexenta import utils
 
-PATH_DELIMITER = '%2F'
-VERSION = '1.0'
+VERSION = '1.1'
 LOG = log.getLogger(__name__)
+ZFS_MULTIPLIER = 1.1  # ZFS quotas do not take metadata into account.
 
 
 class NexentaNasDriver(driver.ShareDriver):
@@ -35,6 +37,12 @@ class NexentaNasDriver(driver.ShareDriver):
     Executes commands relating to Shares.
     API version history:
         1.0 - Initial version.
+        1.1 - Failover support.
+            - Unshare filesystem completely after last securityContext
+              is removed.
+            - Moved all http/url code to jsonrpc.
+            - Manage existing support.
+            - Revert to snapshot support.
     """
 
     driver_prefix = 'nexenta'
@@ -56,20 +64,33 @@ class NexentaNasDriver(driver.ShareDriver):
                 reason=_('Nexenta configuration missing.'))
 
         self.nef = None
-        self.nef_protocol = self.configuration.nexenta_rest_protocol
-        self.nef_host = self.configuration.nexenta_host
+        self.verify_ssl = self.configuration.nexenta_ssl_cert_verify
+        self.nas_host = self.configuration.nexenta_nas_host
         self.nef_port = self.configuration.nexenta_rest_port
         self.nef_user = self.configuration.nexenta_user
         self.nef_password = self.configuration.nexenta_password
 
         self.pool_name = self.configuration.nexenta_pool
-        self.fs_prefix = self.configuration.nexenta_nfs_share
+        self.parent_fs = self.configuration.nexenta_folder
 
-        self.storage_protocol = 'NFS'
         self.nfs_mount_point_base = self.configuration.nexenta_mount_point_base
         self.dataset_compression = (
             self.configuration.nexenta_dataset_compression)
         self.provisioned_capacity = 0
+
+    @property
+    def storage_protocol(self):
+        protocol = ''
+        if self.configuration.nexenta_nfs:
+            protocol = 'NFS'
+        else:
+            msg = _('At least 1 storage protocol must be enabled.')
+            raise exception.NexentaException(msg)
+        return protocol
+
+    @property
+    def root_path(self):
+        return posixpath.join(self.pool_name, self.parent_fs)
 
     @property
     def share_backend_name(self):
@@ -83,196 +104,292 @@ class NexentaNasDriver(driver.ShareDriver):
         return self._share_backend_name
 
     def do_setup(self, context):
-        """Any initialization the nexenta nas driver does while starting."""
-        if self.nef_protocol == 'auto':
-            protocol = 'https'
-        else:
-            protocol = self.nef_protocol
-        self.nef = jsonrpc.NexentaJSONProxy(
-            protocol, self.nef_host, self.nef_port, self.nef_user,
-            self.nef_password)
+        self.nef = jsonrpc.NefProxy(self.storage_protocol,
+                                    self.root_path,
+                                    self.configuration)
 
     def check_for_setup_error(self):
-        """Verify that the volume for our folder exists.
-
-        :raise: :py:exc:`LookupError`
-        """
-        url = 'storage/pools/{}'.format(self.pool_name)
-        if not self.nef.get(url):
-            raise LookupError(
-                _("Pool {} does not exist in Nexenta Store appliance").format(
-                    self.pool_name))
-        url = 'storage/pools/{}/filesystems/{}'.format(self.pool_name,
-                                                       self.fs_prefix)
-        if not self.nef.get(url):
-            raise LookupError(
-                _("filesystem {} does not exist in Nexenta Store "
-                  "appliance").format(self.fs_prefix))
-
-        path = '/'.join((self.pool_name, self.fs_prefix))
-        shared = False
-        response = self.nef.get('nas/nfs')
-        for share in response['data']:
-            if share.get('filesystem') == path:
-                shared = True
-                break
-        if not shared:
-            raise LookupError(_(
-                "Dataset {} is not shared in Nexenta Store appliance").format(
-                path))
+        """Check root filesystem, NFS service and NFS share."""
+        filesystem = self.nef.filesystems.get(self.root_path)
+        if filesystem['mountPoint'] == 'none':
+            message = (_('NFS root filesystem %(path)s is not writable')
+                       % {'path': filesystem['mountPoint']})
+            raise jsonrpc.NefException(code='ENOENT', message=message)
+        if not filesystem['isMounted']:
+            message = (_('NFS root filesystem %(path)s is not mounted')
+                       % {'path': filesystem['mountPoint']})
+            raise jsonrpc.NefException(code='ENOTDIR', message=message)
+        payload = {}
+        if filesystem['nonBlockingMandatoryMode']:
+            payload['nonBlockingMandatoryMode'] = False
+        if filesystem['smartCompression']:
+            payload['smartCompression'] = False
+        if payload:
+            self.nef.filesystems.set(self.root_path, payload)
+        service = self.nef.services.get('nfs')
+        if service['state'] != 'online':
+            message = (_('NFS server service is not online: %(state)s')
+                       % {'state': service['state']})
+            raise jsonrpc.NefException(code='ESRCH', message=message)
         self._get_provisioned_capacity()
 
     def _get_provisioned_capacity(self):
-        path = '%(pool)s/%(fs)s' % {
-            'pool': self.pool_name, 'fs': self.fs_prefix}
-        url = 'storage/filesystems?parent=%s' % path
-        fs_list = self.nef.get(url)['data']
-        for fs in fs_list:
-            if fs['path'] != path:
-                self.provisioned_capacity += fs['quotaSize'] / units.Gi
+        payload = {'fields': 'referencedQuotaSize'}
+        self.provisioned_capacity += self.nef.filesystems.get(
+            self.root_path, payload)['referencedQuotaSize']
+
+    def ensure_share(self, context, share, share_server=None):
+        pass
 
     def create_share(self, context, share, share_server=None):
         """Create a share."""
-        LOG.debug('Creating share: %s.', share['name'])
-        data = {
-            'recordSize': 4 * units.Ki,
+        LOG.debug('Creating share: %s.', self._get_share_name(share))
+        dataset_path = self._get_dataset_path(share)
+        size = int(share['size'] * units.Gi * ZFS_MULTIPLIER)
+        payload = {
+            'recordSize': self.configuration.nexenta_dataset_record_size,
             'compressionMode': self.dataset_compression,
-            'name': '/'.join((self.fs_prefix, share['name'])),
-            'quotaSize': share['size'] * units.Gi,
+            'path': dataset_path,
+            'referencedQuotaSize': size,
+            'nonBlockingMandatoryMode': False
         }
         if not self.configuration.nexenta_thin_provisioning:
-            data['reservationSize'] = share['size'] * units.Gi
-
-        url = 'storage/pools/{}/filesystems'.format(self.pool_name)
-        self.nef.post(url, data)
-        location = {
-            'path': '{}:/{}/{}/{}'.format(self.nef_host, self.pool_name,
-                                          self.fs_prefix, share['name'])
-        }
+            payload['referencedReservationSize'] = size
+        self.nef.filesystems.create(payload)
 
         try:
-            self._add_permission(share['name'])
-        except exception.NexentaException:
+            mount_path = self._mount_filesystem(share)
+        except jsonrpc.NefException as create_error:
             try:
-                self.delete_share(None, share)
-            except exception.NexentaException as exc:
-                LOG.warning(
-                    "Cannot destroy created filesystem: %(vol)s/%(folder)s, "
-                    "exception: %(exc)s",
-                    {'vol': self.pool_name, 'folder': '/'.join(
-                        (self.fs_prefix, share['name'])), 'exc': exc})
-            raise
+                payload = {'force': True}
+                self.nef.filesystems.delete(dataset_path, payload)
+            except jsonrpc.NefException as delete_error:
+                LOG.debug('Failed to delete share %(path)s: %(error)s',
+                          {'path': dataset_path, 'error': delete_error})
+            raise create_error
+
         self.provisioned_capacity += share['size']
+        location = {
+            'path': mount_path,
+            'id': self._get_share_name(share)
+        }
         return [location]
+
+    def _mount_filesystem(self, share):
+        """Ensure that filesystem is activated and mounted on the host."""
+        dataset_path = self._get_dataset_path(share)
+        payload = {'fields': 'mountPoint,isMounted'}
+        filesystem = self.nef.filesystems.get(dataset_path, payload)
+        if filesystem['mountPoint'] == 'none':
+            payload = {'datasetName': dataset_path}
+            self.nef.hpr.activate(payload)
+            filesystem = self.nef.filesystems.get(dataset_path, payload)
+        elif not filesystem['isMounted']:
+            self.nef.filesystems.mount(dataset_path)
+        return '%s:%s' % (self.nas_host, filesystem['mountPoint'])
 
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None):
         """Is called to create share from snapshot."""
-        LOG.debug('Creating share from snapshot %s.', snapshot['name'])
-        url = ('storage/pools/%(pool)s/'
-               'filesystems/%(fs)s/snapshots/%(snap)s/clone') % {
-            'pool': self.pool_name,
-            'fs': PATH_DELIMITER.join(
-                (self.fs_prefix, snapshot['share_name'])),
-            'snap': snapshot['name']}
-        location = {
-            'path': '{}:/{}/{}/{}'.format(self.nef_host, self.pool_name,
-                                          self.fs_prefix, share['name'])
-        }
-        path = '/'.join((self.pool_name, self.fs_prefix, share['name']))
-        data = {
-            'targetPath': path,
-            'quotaSize': share['size'] * units.Gi,
-            'recordSize': 4 * units.Ki,
+        snapshot_path = self._get_snapshot_path(snapshot)
+        LOG.debug('Creating share from snapshot %s.', snapshot_path)
+        clone_path = self._get_dataset_path(share)
+        size = int(share['size'] * units.Gi * ZFS_MULTIPLIER)
+        payload = {
+            'targetPath': clone_path,
+            'referencedQuotaSize': size,
+            'recordSize': self.configuration.nexenta_dataset_record_size,
             'compressionMode': self.dataset_compression,
+            'nonBlockingMandatoryMode': False
         }
         if not self.configuration.nexenta_thin_provisioning:
-            data['reservationSize'] = share['size'] * units.Gi
-        self.nef.post(url, data)
-
-        try:
-            self._add_permission(share['name'])
-        except exception.NexentaException:
-            LOG.exception(
-                ('Failed to add permissions for %s'), share['name'])
-            try:
-                self.delete_share(None, share)
-            except exception.NexentaException:
-                LOG.warning("Cannot destroy cloned filesystem: "
-                            "%(vol)s/%(filesystem)s",
-                            {'vol': self.pool_name,
-                             'filesystem': '/'.join(
-                                 (self.fs_prefix, share['name']))})
-            raise
-
+            payload['referencedReservationSize'] = size
+        self.nef.snapshots.clone(snapshot_path, payload)
+        self._remount_filesystem(clone_path)
         self.provisioned_capacity += share['size']
+        try:
+            mount_path = self._mount_filesystem(share)
+        except jsonrpc.NefException as create_error:
+            try:
+                payload = {'force': True}
+                self.nef.filesystems.delete(clone_path, payload)
+            except jsonrpc.NefException as delete_error:
+                LOG.debug('Failed to delete share %(path)s: %(error)s',
+                          {'path': clone_path, 'error': delete_error})
+            raise create_error
+
+        location = {
+            'path': mount_path,
+            'id': self._get_share_name(share)
+        }
         return [location]
+
+    def _remount_filesystem(self, clone_path):
+        """Workaround for NEF bug: cloned share has offline NFS status"""
+        self.nef.filesystems.unmount(clone_path)
+        self.nef.filesystems.mount(clone_path)
+
+    def _get_dataset_path(self, share):
+        share_name = self._get_share_name(share)
+        return posixpath.join(self.root_path, share_name)
+
+    def _get_share_name(self, share):
+        """Get share name with share name prefix."""
+        return ('%(prefix)s%(share_id)s' % {
+                'prefix': self.configuration.nexenta_share_name_prefix,
+                'share_id': share['share_id']})
+
+    def _get_snapshot_path(self, snapshot):
+        """Return ZFS snapshot path for the snapshot."""
+        snapshot_id = (
+            snapshot['snapshot_id'] or snapshot['share_group_snapshot_id'])
+        share = snapshot.get('share') or snapshot.get('share_instance')
+        fs_path = self._get_dataset_path(share)
+        return '%s@snapshot-%s' % (fs_path, snapshot_id)
 
     def delete_share(self, context, share, share_server=None):
         """Delete a share."""
-        LOG.debug('Deleting share: %s.', share['name'])
-
-        url = 'storage/pools/%(pool)s/filesystems/%(fs)s' % {
-            'pool': self.pool_name,
-            'fs': PATH_DELIMITER.join([self.fs_prefix, share['name']]),
-        }
-        self.nef.delete(url)
+        LOG.debug('Deleting share: %s.', self._get_share_name(share))
+        share_path = self._get_dataset_path(share)
+        delete_payload = {'force': True, 'snapshots': True}
+        try:
+            self.nef.filesystems.delete(share_path, delete_payload)
+        except jsonrpc.NefException as error:
+            if error.code != 'EEXIST':
+                raise error
+            snapshots_tree = {}
+            snapshots_payload = {'parent': share_path, 'fields': 'path'}
+            snapshots = self.nef.snapshots.list(snapshots_payload)
+            for snapshot in snapshots:
+                clones_payload = {'fields': 'clones,creationTxg'}
+                data = self.nef.snapshots.get(snapshot['path'], clones_payload)
+                if data['clones']:
+                    snapshots_tree[data['creationTxg']] = data['clones'][0]
+            if snapshots_tree:
+                clone_path = snapshots_tree[max(snapshots_tree)]
+                self.nef.filesystems.promote(clone_path)
+            self.nef.filesystems.delete(share_path, delete_payload)
         self.provisioned_capacity -= share['size']
 
     def extend_share(self, share, new_size, share_server=None):
         """Extends a share."""
         LOG.debug(
             'Extending share: %(name)s to %(size)sG.', (
-                {'name': share['name'], 'size': new_size}))
-        self._set_quota(share['name'], new_size)
+                {'name': self._get_share_name(share), 'size': new_size}))
+        self._set_quota(share, new_size)
+        if not self.configuration.nexenta_thin_provisioning:
+            self._set_reservation(share, new_size)
         self.provisioned_capacity += (new_size - share['size'])
 
     def shrink_share(self, share, new_size, share_server=None):
         """Shrinks size of existing share."""
         LOG.debug(
             'Shrinking share: %(name)s to %(size)sG.', {
-                'name': share['name'], 'size': new_size})
-        url = 'storage/pools/{}/filesystems/{}%2F{}'.format(self.pool_name,
-                                                            self.fs_prefix,
-                                                            share['name'])
-        used = self.nef.get(url)['bytesUsed'] / units.Gi
+                'name': self._get_share_name(share), 'size': new_size})
+        share_path = self._get_dataset_path(share)
+        share_data = self.nef.filesystems.get(share_path)
+        used = share_data['bytesUsedBySelf'] / units.Gi
         if used > new_size:
             raise exception.ShareShrinkingPossibleDataLoss(
-                share_id=share['id'])
-        self._set_quota(share['name'], new_size)
+                share_id=self._get_share_name(share))
+        if not self.configuration.nexenta_thin_provisioning:
+            self._set_reservation(share, new_size)
+        self._set_quota(share, new_size)
         self.provisioned_capacity += (share['size'] - new_size)
 
     def create_snapshot(self, context, snapshot, share_server=None):
         """Create a snapshot."""
-        LOG.debug('Creating a snapshot of share: %s.', snapshot['share_name'])
-        url = 'storage/pools/%(pool)s/filesystems/%(fs)s/snapshots' % {
-            'pool': self.pool_name,
-            'fs': PATH_DELIMITER.join(
-                (self.fs_prefix, snapshot['share_name'])),
-        }
-        data = {'name': snapshot['name']}
-        self.nef.post(url, data)
+        snapshot_path = self._get_snapshot_path(snapshot)
+        LOG.debug('Creating snapshot: %s.', snapshot_path)
+        payload = {'path': snapshot_path}
+        self.nef.snapshots.create(payload)
 
     def delete_snapshot(self, context, snapshot, share_server=None):
-        """Delete a snapshot."""
-        LOG.debug('Deleting a snapshot: %(shr_name)s@%(snap_name)s.', {
-            'shr_name': snapshot['share_name'],
-            'snap_name': snapshot['name']})
+        """Deletes a snapshot.
 
-        url = ('storage/pools/%(pool)s/filesystems/%(fs)s/snapshots/'
-               '%(snap)s') % {'pool': self.pool_name,
-                              'fs': PATH_DELIMITER.join(
-                                  (self.fs_prefix, snapshot['share_name'])),
-                              'snap': snapshot['name']}
-        try:
-            self.nef.delete(url)
-        except exception.NexentaException as e:
-            if e.kwargs['code'] == 'ENOENT':
-                LOG.warning(
-                    'snapshot %(name)s not found, response: %(msg)s', {
-                        'name': snapshot['name'], 'msg': e.msg})
-            else:
-                raise
+        :param snapshot: snapshot reference
+        """
+        snapshot_path = self._get_snapshot_path(snapshot)
+        LOG.debug('Deleting snapshot: %s.', snapshot_path)
+        payload = {'defer': True}
+        self.nef.snapshots.delete(snapshot_path, payload)
+
+    def revert_to_snapshot(self, context, snapshot, share_access_rules,
+                           snapshot_access_rules, share_server=None):
+        """Reverts a share (in place) to the specified snapshot.
+
+        Does not delete the share snapshot.  The share and snapshot must both
+        be 'available' for the restore to be attempted.  The snapshot must be
+        the most recent one taken by Manila; the API layer performs this check
+        so the driver doesn't have to.
+
+        The share must be reverted in place to the contents of the snapshot.
+        Application admins should quiesce or otherwise prepare the application
+        for the shared file system contents to change suddenly.
+
+        :param context: Current context
+        :param snapshot: The snapshot to be restored
+        :param share_access_rules: List of all access rules for the affected
+            share
+        :param snapshot_access_rules: List of all access rules for the affected
+            snapshot
+        :param share_server: Optional -- Share server model or None
+        """
+        snapshot_path = self._get_snapshot_path(snapshot).split('@')[1]
+        LOG.debug('Reverting to snapshot: %s.', snapshot_path)
+        share_path = self._get_dataset_path(snapshot['share'])
+        payload = {'snapshot': snapshot_path}
+        self.nef.filesystems.rollback(share_path, payload)
+
+    def manage_existing(self, share, driver_options):
+        """Brings an existing share under Manila management.
+
+        If the provided share is not valid, then raise a
+        ManageInvalidShare exception, specifying a reason for the failure.
+
+        If the provided share is not in a state that can be managed, such as
+        being replicated on the backend, the driver *MUST* raise
+        ManageInvalidShare exception with an appropriate message.
+
+        The share has a share_type, and the driver can inspect that and
+        compare against the properties of the referenced backend share.
+        If they are incompatible, raise a
+        ManageExistingShareTypeMismatch, specifying a reason for the failure.
+
+        :param share: Share model
+        :param driver_options: Driver-specific options provided by admin.
+        :return: share_update dictionary with required key 'size',
+                 which should contain size of the share.
+        """
+        LOG.debug('Manage share %s.', self._get_share_name(share))
+        export_path = share['export_locations'][0]['path']
+
+        # check that filesystem with provided export exists.
+        fs_path = export_path.split(':/')[1]
+        fs_data = self.nef.filesystems.get(fs_path)
+
+        if not fs_data:
+            # wrong export path, raise exception.
+            msg = _('Share %s does not exist on Nexenta Store appliance, '
+                    'cannot manage.') % export_path
+            raise exception.NexentaException(msg)
+
+        # get dataset properties.
+        if fs_data['referencedQuotaSize']:
+            size = (fs_data['referencedQuotaSize'] / units.Gi) + 1
+        else:
+            size = fs_data['bytesReferenced'] / units.Gi + 1
+        # rename filesystem on appliance to correlate with manila ID.
+        new_path = '%s/%s' % (self.root_path, self._get_share_name(share))
+        self.nef.filesystems.rename(fs_path, {'newPath': new_path})
+        # make sure quotas and reservations are correct.
+        if not self.configuration.nexenta_thin_provisioning:
+            self._set_reservation(share, size)
+        self._set_quota(share, size)
+
+        return {'size': size, 'export_locations': [{
+            'path': '%s:/%s' % (self.nas_host, new_path)
+        }]}
 
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, share_server=None):
@@ -292,68 +409,112 @@ class NexentaNasDriver(driver.ShareDriver):
         :param share_server: Data structure with share server information.
         Not used by this driver.
         """
-        LOG.debug('Updating access to share %s.', share)
+        LOG.debug('Updating access to share %(id)s with following access '
+                  'rules: %(rules)s', {
+                      'id': self._get_share_name(share),
+                      'rules': [(
+                          rule.get('access_type'), rule.get('access_level'),
+                          rule.get('access_to')) for rule in access_rules]})
         rw_list = []
         ro_list = []
-        security_contexts = []
-        for rule in access_rules:
-            if rule['access_type'].lower() != 'ip':
-                msg = _('Only IP access type is supported.')
-                raise exception.InvalidShareAccess(reason=msg)
-            else:
+        update_dict = {}
+        if share['share_proto'] == 'NFS':
+            for rule in access_rules:
+                if rule['access_type'].lower() != 'ip':
+                    msg = _(
+                        'Only IP access control type is supported for NFS.')
+                    LOG.warning(msg)
+                    update_dict[rule['access_id']] = {
+                        'state': 'error',
+                    }
+                else:
+                    update_dict[rule['access_id']] = {
+                        'state': 'active',
+                    }
                 if rule['access_level'] == common.ACCESS_LEVEL_RW:
                     rw_list.append(rule['access_to'])
                 else:
                     ro_list.append(rule['access_to'])
+            self._update_nfs_access(share, rw_list, ro_list)
+        return update_dict
 
-        def append_sc(addr_list, sc_type):
+    def _update_nfs_access(self, share, rw_list, ro_list):
+        # Define allowed security context types to be able to tell whether
+        # the 'security_contexts' dict contains any rules at all
+        context_types = {'none', 'root', 'readOnlyList', 'readWriteList'}
+
+        security_contexts = {'securityModes': ['sys']}
+
+        def add_sc(addr_list, sc_type):
+            if sc_type not in context_types:
+                return
+
+            rule_list = []
+
             for addr in addr_list:
                 address_mask = addr.strip().split('/', 1)
                 address = address_mask[0]
-                ls = [{"allow": True, "etype": "network", "entity": address}]
+                ls = {"allow": True, "etype": "fqdn", "entity": address}
                 if len(address_mask) == 2:
-                    try:
-                        mask = int(address_mask[1])
-                        if mask != 32:
-                            ls[0]['mask'] = mask
-                    except Exception:
-                        raise exception.InvalidInput(
-                            reason=_(
-                                '<{}> is not a valid access parameter').format(
-                                    addr))
-                new_sc = {"securityModes": ["sys"]}
-                new_sc[sc_type] = ls
-                security_contexts.append(new_sc)
+                    mask = int(address_mask[1])
+                    if 0 <= mask < 31:
+                        ls['mask'] = mask
+                        ls['etype'] = 'network'
+                rule_list.append(ls)
 
-        append_sc(rw_list, 'readWriteList')
-        append_sc(ro_list, 'readOnlyList')
-        data = {"securityContexts": security_contexts}
-        url = 'nas/nfs/' + PATH_DELIMITER.join(
-            (self.pool_name, self.fs_prefix, share['name']))
-        self.nef.put(url, data)
+            # Context type with no addresses will result in an API error
+            if rule_list:
+                security_contexts[sc_type] = rule_list
 
-    def _set_quota(self, share_name, new_size):
-        quota = new_size * units.Gi
-        data = {'quotaSize': quota}
-        if not self.configuration.nexenta_thin_provisioning:
-            data['reservationSize'] = quota
-        url = 'storage/pools/{}/filesystems/{}%2F{}'.format(self.pool_name,
-                                                            self.fs_prefix,
-                                                            share_name)
-        self.nef.put(url, data)
+        add_sc(rw_list, 'readWriteList')
+        add_sc(ro_list, 'readOnlyList')
+        payload = {'securityContexts': [security_contexts]}
+        share_path = self._get_dataset_path(share)
+        if self.nef.nfs.list({'filesystem': share_path}):
+            if not set(security_contexts.keys()) & context_types:
+                self.nef.nfs.delete(share_path)
+            else:
+                self.nef.nfs.set(share_path, payload)
+        else:
+            payload['filesystem'] = share_path
+            self.nef.nfs.create(payload)
+        payload = {
+            'flags': ['file_inherit', 'dir_inherit'],
+            'permissions': ['full_set'],
+            'principal': 'everyone@',
+            'type': 'allow'
+        }
+        self.nef.filesystems.acl(share_path, payload)
+
+    def _set_quota(self, share, new_size):
+        quota = int(new_size * units.Gi * ZFS_MULTIPLIER)
+        share_path = self._get_dataset_path(share)
+        payload = {'referencedQuotaSize': quota}
+        LOG.debug('Setting quota for dataset %s.', share_path)
+        self.nef.filesystems.set(share_path, payload)
+
+    def _set_reservation(self, share, new_size):
+        res_size = int(new_size * units.Gi * ZFS_MULTIPLIER)
+        share_path = self._get_dataset_path(share)
+        payload = {'referencedReservationSize': res_size}
+        self.nef.filesystems.set(share_path, payload)
 
     def _update_share_stats(self, data=None):
         super(NexentaNasDriver, self)._update_share_stats()
         total, free, allocated = self._get_capacity_info()
-
+        compression = not self.dataset_compression == 'off'
         data = {
             'vendor_name': 'Nexenta',
             'storage_protocol': self.storage_protocol,
             'share_backend_name': self.share_backend_name,
             'nfs_mount_point_base': self.nfs_mount_point_base,
             'driver_version': VERSION,
+            'snapshot_support': True,
+            'create_share_from_snapshot_support': True,
+            'revert_to_snapshot_support': True,
             'pools': [{
                 'pool_name': self.pool_name,
+                'compression': compression,
                 'total_capacity_gb': total,
                 'free_capacity_gb': free,
                 'reserved_percentage': (
@@ -370,53 +531,8 @@ class NexentaNasDriver(driver.ShareDriver):
 
     def _get_capacity_info(self):
         """Calculate available space on the NFS share."""
-        url = 'storage/pools/{}/filesystems/{}'.format(self.pool_name,
-                                                       self.fs_prefix)
-        data = self.nef.get(url)
-        total = utils.bytes_to_gb(data['bytesAvailable'])
-        allocated = utils.bytes_to_gb(data['bytesUsed'])
-        free = total - allocated
+        data = self.nef.filesystems.get(self.root_path)
+        free = int(utils.bytes_to_gb(data['bytesAvailable']))
+        allocated = int(utils.bytes_to_gb(data['bytesUsed']))
+        total = free + allocated
         return total, free, allocated
-
-    def _add_permission(self, share_name):
-        """Share NFS filesystem on NexentaStor Appliance.
-
-        :param share_name: relative filesystem name to be shared
-        """
-        LOG.debug(
-            'Creating RW ACE for filesystem everyone on Nexenta Store '
-            'for <%s> filesystem.', share_name)
-        url = 'storage/pools/{}/filesystems/{}/acl'.format(
-            self.pool_name, PATH_DELIMITER.join((self.fs_prefix, share_name)))
-        data = {
-            "type": "allow",
-            "principal": "everyone@",
-            "permissions": [
-                "list_directory",
-                "read_data",
-                "add_file",
-                "write_data",
-                "add_subdirectory",
-                "append_data",
-                "read_xattr",
-                "write_xattr",
-                "execute",
-                "delete_child",
-                "read_attributes",
-                "write_attributes",
-                "delete",
-                "read_acl",
-                "write_acl",
-                "write_owner",
-                "synchronize",
-            ],
-            "flags": [
-                "file_inherit",
-                "dir_inherit",
-            ],
-        }
-        self.nef.post(url, data)
-
-        LOG.debug(
-            'RW ACE for filesystem <%s> on Nexenta Store has been '
-            'successfully created.', share_name)

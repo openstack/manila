@@ -1,0 +1,23 @@
+---
+features:
+  - Added revert to snapshot support for NexentaStor5 driver.
+  - Added manage existing support for NexentaStor5 driver.
+upgrade:
+  - Added a new config option ``nexenta_ssl_cert_verify``.
+    This option defines whether the NexentaStor5 driver should check
+    ssl certificate.
+  - Added a new config option ``nexenta_rest_connect_timeout``. This option
+    specifies the time limit (in seconds), within which the connection to
+    NexentaStor management REST API server must be established.
+  - Added a new config option ``nexenta_rest_read_timeout``. This option
+    specifies the time limit (in seconds), within which NexentaStor
+    management REST API server must send a response.
+  - Added a new config option ``nexenta_rest_backoff_factor``. This option
+    specifies the backoff factor to apply between connection attempts to
+    NexentaStor management REST API server.
+  - Added a new config option ``nexenta_rest_retry_count``. This option
+    specifies the number of times to repeat NexentaStor management REST
+    API call in case of connection errors and NexentaStor appliance EBUSY
+    or ENOENT errors.
+  - Added a new config option ``nexenta_dataset_record_size``. This option
+    specifies a suggested block size in for files in a filesystem'
