@@ -1,0 +1,4 @@
+---
+fixes:
+  - The NetApp cDOT driver is now fixed to honour the
+    standard extra_specs during migration and manage/unmanage.
