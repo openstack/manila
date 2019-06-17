@@ -2229,6 +2229,17 @@ class NetAppCmodeFileStorageLibrary(object):
             destination_share, extra_specs, vserver, vserver_client)
         if qos_policy_group_name:
             provisioning_options['qos_policy_group'] = qos_policy_group_name
+        else:
+            # Removing the QOS Policy on the migrated share as the
+            # new extra-spec for which this share is being migrated to
+            # does not specify any QOS settings.
+            provisioning_options['qos_policy_group'] = "none"
+
+            qos_policy_of_src_share = self._get_backend_qos_policy_group_name(
+                source_share['id'])
+            self._client.mark_qos_policy_group_for_deletion(
+                qos_policy_of_src_share)
+
         destination_aggregate = share_utils.extract_host(
             destination_share['host'], level='pool')
 
