@@ -899,7 +899,7 @@ List NAS shares with filters.
   OPTIONAL: Default=None.
 
 ``--snapshot <snapshot>``
-  Filer results by snapshot name or id, that was used
+  Filter results by snapshot name or id, that was used
   for share.
 
 ``--host <host>``
