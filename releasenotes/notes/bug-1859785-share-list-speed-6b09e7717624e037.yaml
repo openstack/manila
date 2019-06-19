@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Improved share list speed using lazy='subquery'. The sqlalchemy models of
+    Share and Share Instance relationships previously had lazy='immediate'.
+    This resulted in at least three extra queries when we queried for all share
+    details.
