@@ -1098,7 +1098,7 @@ class ShareAPITestCase(test.TestCase):
         share = fakes.fake_share(
             id=uuidutils.generate_uuid(), size=1, project_id='fake_project',
             user_id='fake_user', has_replicas=False, status='available')
-        usages = {'gigabytes': {'reserved': 10, 'in_use': 0}}
+        usages = {'snapshot_gigabytes': {'reserved': 10, 'in_use': 0}}
         quotas = {'snapshot_gigabytes': 10}
         side_effect = exception.OverQuota(
             overs='snapshot_gigabytes', usages=usages, quotas=quotas)

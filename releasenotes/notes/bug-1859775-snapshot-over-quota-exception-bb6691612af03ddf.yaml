@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed Quota exceeded exception for snapshot creation. Consumed gigabytes
+    now reports the snapshot gigabytes instead of share gigabytes usage.
