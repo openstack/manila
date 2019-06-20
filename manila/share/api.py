@@ -1106,10 +1106,11 @@ class API(base.Base):
                 msg = ("Quota exceeded for %(s_pid)s, tried to create "
                        "%(s_size)sG snapshot (%(d_consumed)dG of "
                        "%(d_quota)dG already consumed).")
-                LOG.warning(msg, {'s_pid': context.project_id,
-                                  's_size': size,
-                                  'd_consumed': _consumed('gigabytes'),
-                                  'd_quota': quotas['snapshot_gigabytes']})
+                LOG.warning(msg, {
+                    's_pid': context.project_id,
+                    's_size': size,
+                    'd_consumed': _consumed('snapshot_gigabytes'),
+                    'd_quota': quotas['snapshot_gigabytes']})
                 raise exception.SnapshotSizeExceedsAvailableQuota()
             elif 'snapshots' in overs:
                 msg = ("Quota exceeded for %(s_pid)s, tried to create "
