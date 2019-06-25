@@ -19,16 +19,25 @@ status if needed.
 Unmanage a share
 ----------------
 
-The ``unmanage`` operation is not supported for shares that were
-created on top of share servers and created with share networks.
-The Share service should have the
-option ``driver_handles_share_servers = False``
-set in the ``manila.conf`` file. You can unmanage a share that has
-no dependent snapshots.
+.. note::
 
-To unmanage managed share, run the :command:`manila unmanage <share>`
-command. Then try to print the information about the share. The
-returned result should indicate that Shared File Systems service won't
+    The ``unmanage`` operation is not supported for shares that were created on
+    top of share servers and created with share networks until Shared File
+    Systems API version ``2.49`` (Stein/Manila 8.0.0 release).
+
+.. important::
+
+    Shares that have dependent snapshots or share replicas cannot be removed
+    from the Shared File Systems service unless the snapshots have been removed
+    or unmanaged and the share replicas have been removed.
+
+Unmanaging a share removes it from the management of the Shared File Systems
+service without deleting the share. It is a non-disruptive operation and
+existing clients are not disconnected, and the functionality is aimed at aiding
+infrastructure operations and maintenance workflows. To unmanage a share,
+run the :command:`manila unmanage <share>` command. Then try to print
+the information about the share. The returned result should indicate that
+Shared File Systems service won't
 find the share:
 
 .. code-block:: console
@@ -41,6 +50,11 @@ find the share:
 
 Manage a share
 --------------
+.. note::
+    The ``manage`` operation is not supported for shares that are exported on
+    share servers via share networks until Shared File Systems API version
+    ``2.49`` (Stein/Manila 8.0.0 release).
+
 To register the non-managed share in the File System service, run the
 :command:`manila manage` command:
 
@@ -48,6 +62,7 @@ To register the non-managed share in the File System service, run the
 
    manila manage [--name <name>] [--description <description>]
                  [--share_type <share-type>]
+                 [--share-server-id <share_server_id>]
                  [--driver_options [<key=value> [<key=value> ...]]]
                  <service_host> <protocol> <export_path>
 
@@ -74,10 +89,21 @@ The positional arguments are:
 
   - MAPRFS. maprfs:///share-0 -C  -Z  -N foo.
 
-The ``driver_options`` is an optional set of one or more key and value pairs
-that describe driver options. Note that the share type must have the
-``driver_handles_share_servers = False`` option. As a result, a special share
-type named ``for_managing`` was used in example.
+The optional arguments are:
+
+- name. The name of the share that is being managed.
+
+- share_type. The share type of the share that is being managed. If not
+  specified, the service will try to manage the share with the configured
+  default share type.
+
+- share_server_id. must be provided to manage shares within share networks.
+  This argument can only be used with File Systems API version ``2.49``
+  (Stein/Manila 8.0.0 release) and beyond.
+
+- driver_options. An optional set of one or more key and value pairs that
+  describe driver options. As a result, a special share type named
+  ``for_managing`` was used in example.
 
 To manage share, run:
 
