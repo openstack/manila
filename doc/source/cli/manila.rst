@@ -110,6 +110,15 @@ manila usage
 ``manage``
   Manage share not handled by Manila (Admin only).
 
+``message-delete``
+  Remove one or more messages.
+
+``message-list``
+  Lists all messages.
+
+``message-show``
+  Show message's details.
+
 ``metadata``
   Set or delete metadata on a share.
 
@@ -981,6 +990,97 @@ Manage share not handled by Manila (Admin only).
   Level of visibility for share. Defines whether other
   tenants are able to see it or not. Available only for
   microversion >= 2.8.
+
+.. _manila_message-delete:
+
+manila message-delete
+----------------------
+
+.. code-block:: console
+
+   usage: manila message-delete <message> [<message> ...]
+
+Remove one or more messages.
+
+**Positional arguments:**
+
+``<message>``
+  ID of the message(s).
+
+.. _manila_message-list:
+
+manila message-list
+----------------------
+
+.. code-block:: console
+
+   usage: manila message-list [--resource_id <resource_id>]
+                           [--resource_type <type>] [--action_id <id>]
+                           [--detail_id <id>] [--request_id <request_id>]
+                           [--level <level>] [--limit <limit>]
+                           [--offset <offset>] [--sort-key <sort_key>]
+                           [--sort-dir <sort_dir>] [--columns <columns>]
+
+Lists all messages.
+
+**Optional arguments:**
+
+``--resource_id <resource_id>, --resource-id <resource_id>, --resource <resource_id>``
+  Filters results by a resource uuid. (Default=None).
+
+``--resource_type <type>, --resource-type <type>``
+  Filters results by a resource type. (Default=None).
+  Example: "manila message-list --resource_type share"
+
+``--action_id <id>, --action-id <id>, --action <id>``
+  Filters results by action id. (Default=None).
+
+``--detail_id <id>, --detail-id <id>, --detail <id>``
+  Filters results by detail id. (Default=None).
+
+``--request_id <request_id>, --request-id <request_id>, --request <request_id>``
+  Filters results by request id. (Default=None).
+
+``--level <level>, --message_level <level>, --message-level <level>``
+  Filters results by the message level. (Default=None).
+  Example: "manila message-list --level ERROR".
+
+``--limit <limit>``
+  Maximum number of messages to return. (Default=None)
+
+``--offset <offset>``
+  Start position of message listing.
+
+``--sort-key <sort_key>, --sort_key <sort_key>``
+  Key to be sorted, available keys are ('id',
+  'project_id', 'request_id', 'resource_type',
+  'action_id', 'detail_id', 'resource_id',
+  'message_level', 'expires_at', 'request_id',
+  'created_at'). (Default=desc).
+
+``--sort-dir <sort_dir>, --sort_dir <sort_dir>``
+  Sort direction, available values are ('asc', 'desc').
+  OPTIONAL: Default=None.
+
+``--columns <columns>``
+  Comma separated list of columns to be displayed
+  example --columns "resource_id, user_message".
+
+.. _manila_message-show:
+
+manila message-show
+----------------------
+
+.. code-block:: console
+
+   usage: manila message-show <message>
+
+Show details about a message.
+
+**Positional arguments:**
+
+``<message>``
+  ID of the message.
 
 .. _manila_metadata:
 
