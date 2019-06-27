@@ -6820,7 +6820,7 @@ class ShareManagerTestCase(test.TestCase):
 
         self.assertIsNone(return_value)
         if force:
-            self.assertTrue(2, mock_db_delete_call.call_count)
+            self.assertEqual(2, mock_db_delete_call.call_count)
             self.assertFalse(mock_db_update_call.called)
         else:
             mock_db_delete_call.assert_called_once_with(
