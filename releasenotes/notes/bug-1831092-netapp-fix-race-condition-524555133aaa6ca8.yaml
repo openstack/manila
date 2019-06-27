@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed an issue with the NetApp driver failing during a rollback operation
+    in the share server creation.
