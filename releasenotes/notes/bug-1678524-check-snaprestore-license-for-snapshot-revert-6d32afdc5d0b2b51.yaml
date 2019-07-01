@@ -1,0 +1,5 @@
+---
+fixes:
+  - The NetApp ONTAP driver is now fixed to set
+    revert_to_snapshot_support to True or False
+    depending upon SnapRestore License.
