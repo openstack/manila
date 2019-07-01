@@ -25,9 +25,8 @@
 import eventlet
 import sys
 import os
-import warnings
 
-import openstackdocstheme
+import warnings
 
 # NOTE(dims): monkey patch subprocess to prevent failures in latest eventlet
 # See https://github.com/eventlet/eventlet/issues/398
@@ -71,7 +70,6 @@ sample_policy_basename = '_static/manila'
 repository_name = 'openstack/manila'
 bug_project = 'manila'
 bug_tag = 'docs'
-html_last_updated_fmt = '%Y-%m-%d %H:%M'
 
 todo_include_todos = True
 
@@ -88,19 +86,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'manila'
 copyright = u'2010-present, Manila contributors'
-
-# The version info for the project you're documenting, acts as replacement for
-# |version| and |release|, also used in various other places throughout the
-# built documents.
-#
-from manila.version import version_info
-# The full version, including alpha/beta/rc tags.
-release = version_info.release_string()
-# The short X.Y version.
-version = version_info.version_string()
-
 
 # A few variables have to be set for the log-a-bug feature.
 # gitsha: The SHA checksum of the bug description. Automatically extracted
@@ -179,14 +165,12 @@ man_pages = [
 # a list of builtin themes.
 html_theme = 'openstackdocs'
 
-# Add any paths that contain custom themes here, relative to this directory.
-html_theme_path = [openstackdocstheme.get_html_theme_path()]
-
-
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-html_theme_options = {}
+html_theme_options = {
+    "show_other_versions": "True",
+}
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
