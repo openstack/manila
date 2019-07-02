@@ -1,0 +1,6 @@
+---
+prelude: >
+    Add Inspur InStorage driver.
+features:
+  - Add new Inspur InStorage driver, support share create, delete, extend,
+    and access through NFS and CIFS protocol.

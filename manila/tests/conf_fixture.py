@@ -60,6 +60,11 @@ def set_defaults(conf):
     _safe_set_of_opts(conf, 'as13000_nas_password', 'password')
     _safe_set_of_opts(conf, 'as13000_share_pools', 'pool0')
 
+    _safe_set_of_opts(conf, 'instorage_nas_ip', '1.1.1.1')
+    _safe_set_of_opts(conf, 'instorage_nas_login', 'admin')
+    _safe_set_of_opts(conf, 'instorage_nas_password', 'password')
+    _safe_set_of_opts(conf, 'instorage_nas_pools', 'pool0')
+
     _safe_set_of_opts(conf, 'qnap_management_url', 'http://1.2.3.4:8080')
     _safe_set_of_opts(conf, 'qnap_share_ip', '1.2.3.4')
     _safe_set_of_opts(conf, 'qnap_nas_login', 'admin')
