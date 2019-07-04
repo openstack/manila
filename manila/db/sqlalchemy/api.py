@@ -1681,11 +1681,15 @@ def share_instances_get_all_by_host(context, host, with_share_data=False,
     )
     if status is not None:
         instances = instances.filter(models.ShareInstance.status == status)
-    # Returns list of all instances that satisfy filters.
-    instances = instances.all()
 
     if with_share_data:
-        instances = _set_instances_share_data(context, instances, session)
+        instances = instances.options(joinedload('share')).all()
+        instances = [s for s in instances if s.share]
+        for s in instances:
+            s.set_share_data(s.share)
+    else:
+        # Returns list of all instances that satisfy filters.
+        instances = instances.all()
     return instances
 
 

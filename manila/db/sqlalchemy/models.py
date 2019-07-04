@@ -420,6 +420,11 @@ class ShareInstance(BASE, ManilaBase):
         primaryjoin='and_('
                     'ShareInstance.share_type_id == ShareTypes.id, '
                     'ShareTypes.deleted == "False")')
+    share = orm.relationship(
+        'Share',
+        foreign_keys=share_id,
+        primaryjoin='ShareInstance.share_id == Share.id'
+    )
 
 
 class ShareInstanceExportLocations(BASE, ManilaBase):

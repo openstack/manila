@@ -463,6 +463,8 @@ class ShareDatabaseAPITestCase(test.TestCase):
             self.assertNotIn('share_proto', instance)
 
     def test_share_instance_get_all_by_host_not_found_exception(self):
+        self.skipTest('ccloud: invalid test due to pull request '
+                      'https://github.com/sapcc/manila/pull/6')
         db_utils.create_share()
         self.mock_object(db_api, 'share_get', mock.Mock(
                          side_effect=exception.NotFound))
