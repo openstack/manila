@@ -476,6 +476,56 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
             self.fake_dest_vol_name
         )
 
+    def test_change_snapmirror_source_dhss_true(self):
+        fake_new_src_share = copy.deepcopy(self.fake_src_share)
+        fake_new_src_share['id'] = 'd02d497a-236c-4852-812a-0d39373e312a'
+        fake_new_src_share_name = 'share_d02d497a_236c_4852_812a_0d39373e312a'
+        fake_new_src_share_server = fake_new_src_share['share_server']
+        fake_new_src_ss_name = (
+            fake_new_src_share_server['backend_details']['vserver_name'])
+        self.mock_object(self.dm_session, 'delete_snapmirror')
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(side_effect=[self.mock_dest_client,
+                                                self.mock_src_client]))
+        mock_backend_config = na_fakes.create_configuration()
+        mock_backend_config.driver_handles_share_servers = True
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=mock_backend_config))
+        self.mock_object(self.mock_dest_client, 'get_vserver_peers',
+                         mock.Mock(return_value=[]))
+        peer_cluster_name = 'new_src_cluster_name'
+        self.mock_object(self.mock_src_client, 'get_cluster_name',
+                         mock.Mock(return_value=peer_cluster_name))
+
+        self.dm_session.change_snapmirror_source(
+            self.fake_dest_share, self.fake_src_share, fake_new_src_share,
+            [self.fake_dest_share, self.fake_src_share, fake_new_src_share])
+
+        self.assertEqual(4, self.dm_session.delete_snapmirror.call_count)
+
+        self.mock_dest_client.get_vserver_peers.assert_called_once_with(
+            self.dest_vserver, fake_new_src_ss_name
+        )
+        self.assertTrue(self.mock_src_client.get_cluster_name.called)
+        self.mock_dest_client.create_vserver_peer.assert_called_once_with(
+            self.dest_vserver, fake_new_src_ss_name,
+            peer_cluster_name=peer_cluster_name
+        )
+        self.mock_src_client.accept_vserver_peer.assert_called_once_with(
+            fake_new_src_ss_name, self.dest_vserver
+        )
+        self.dm_session.delete_snapmirror.assert_called_with(
+            mock.ANY, mock.ANY, release=False
+        )
+        self.mock_dest_client.create_snapmirror.assert_called_once_with(
+            mock.ANY, fake_new_src_share_name, mock.ANY,
+            self.fake_dest_vol_name, schedule='hourly'
+        )
+        self.mock_dest_client.resync_snapmirror.assert_called_once_with(
+            mock.ANY, fake_new_src_share_name, mock.ANY,
+            self.fake_dest_vol_name
+        )
+
     def test_get_snapmirrors(self):
         self.mock_object(self.mock_dest_client, 'get_snapmirrors')
 

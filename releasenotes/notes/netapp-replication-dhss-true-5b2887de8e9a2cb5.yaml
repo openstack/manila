@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    The NetApp driver now supports replication with
+    ``driver_handles_share_servers`` set to True, in addition to the mode where
+    the driver does not handle the creation and management of share servers.
+    For replication to work across ONTAP clusters, clusters must be peered in
+    advance.

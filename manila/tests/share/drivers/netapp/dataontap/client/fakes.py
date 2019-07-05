@@ -39,6 +39,7 @@ NODE_NAME = 'fake_node1'
 NODE_NAMES = ('fake_node1', 'fake_node2')
 VSERVER_NAME = 'fake_vserver'
 VSERVER_NAME_2 = 'fake_vserver_2'
+VSERVER_PEER_NAME = 'fake_vserver_peer'
 ADMIN_VSERVER_NAME = 'fake_admin_vserver'
 NODE_VSERVER_NAME = 'fake_node_vserver'
 NFS_VERSIONS = ['nfs3', 'nfs4.0']
@@ -2248,6 +2249,23 @@ CLUSTER_PEER_POLICY_GET_RESPONSE = etree.XML("""
     </attributes>
   </results>
 """)
+
+CLUSTER_GET_CLUSTER_NAME = etree.XML("""
+  <results status="passed">
+    <attributes>
+      <cluster-identity-info>
+        <cluster-contact />
+        <cluster-location>-</cluster-location>
+        <cluster-name>%(cluster_name)s</cluster-name>
+        <cluster-serial-number>1-80-000000</cluster-serial-number>
+        <cluster-uuid>fake_uuid</cluster-uuid>
+        <rdb-uuid>fake_rdb</rdb-uuid>
+      </cluster-identity-info>
+    </attributes>
+  </results>
+""" % {
+    'cluster_name': CLUSTER_NAME,
+})
 
 VSERVER_PEER_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">

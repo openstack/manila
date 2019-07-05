@@ -29,10 +29,11 @@ from oslo_utils import excutils
 from manila import exception
 from manila.i18n import _
 from manila.share.drivers.netapp.dataontap.client import client_cmode
+from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp import utils as na_utils
+from manila.share import utils as share_utils
 from manila import utils
-
 
 LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
@@ -383,6 +384,10 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             vlan_id = None
 
         def _delete_vserver_without_lock():
+            # NOTE(dviroel): Attempt to delete all vserver peering
+            # created by replication
+            self._delete_vserver_peers(vserver)
+
             self._client.delete_vserver(vserver,
                                         vserver_client,
                                         security_services=security_services)
@@ -414,12 +419,83 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             except exception.NetAppException:
                 LOG.exception("Deleting Vserver VLAN failed.")
 
+    @na_utils.trace
+    def _delete_vserver_peers(self, vserver):
+        vserver_peers = self._get_vserver_peers(vserver=vserver)
+        for peer in vserver_peers:
+            self._delete_vserver_peer(peer.get('vserver'),
+                                      peer.get('peer-vserver'))
+
     def get_configured_ip_versions(self):
         versions = [4]
         options = self._client.get_net_options()
         if options['ipv6-enabled']:
             versions.append(6)
         return versions
+
+    @na_utils.trace
+    def create_replica(self, context, replica_list, new_replica,
+                       access_rules, share_snapshots, share_server=None):
+        """Creates the new replica on this backend and sets up SnapMirror.
+
+        It creates the peering between the associated vservers before creating
+        the share replica and setting up the SnapMirror.
+        """
+        # 1. Retrieve source and destination vservers from both replicas,
+        # active and and new_replica
+        src_vserver, dst_vserver = self._get_vservers_from_replicas(
+            context, replica_list, new_replica)
+
+        # 2. Retrieve the active replica host's client and cluster name
+        src_replica = self.find_active_replica(replica_list)
+
+        src_replica_host = share_utils.extract_host(
+            src_replica['host'], level='backend_name')
+        src_replica_client = data_motion.get_client_for_backend(
+            src_replica_host, vserver_name=src_vserver)
+        # Cluster name is needed for setting up the vserver peering
+        src_replica_cluster_name = src_replica_client.get_cluster_name()
+
+        # 3. Retrieve new replica host's client
+        new_replica_host = share_utils.extract_host(
+            new_replica['host'], level='backend_name')
+        new_replica_client = data_motion.get_client_for_backend(
+            new_replica_host, vserver_name=dst_vserver)
+
+        if not self._get_vserver_peers(dst_vserver, src_vserver):
+            # 3.1. Request vserver peer creation from new_replica's host
+            # to active replica's host
+            new_replica_client.create_vserver_peer(
+                dst_vserver, src_vserver,
+                peer_cluster_name=src_replica_cluster_name)
+
+            # 3.2. Accepts the vserver peering using active replica host's
+            # client
+            src_replica_client.accept_vserver_peer(src_vserver, dst_vserver)
+
+        return (super(NetAppCmodeMultiSVMFileStorageLibrary, self).
+                create_replica(context, replica_list, new_replica,
+                               access_rules, share_snapshots))
+
+    def delete_replica(self, context, replica_list, replica, share_snapshots,
+                       share_server=None):
+        """Removes the replica on this backend and destroys SnapMirror.
+
+        Removes the replica, destroys the SnapMirror and delete the vserver
+        peering if needed.
+        """
+        vserver, peer_vserver = self._get_vservers_from_replicas(
+            context, replica_list, replica)
+        super(NetAppCmodeMultiSVMFileStorageLibrary, self).delete_replica(
+            context, replica_list, replica, share_snapshots)
+
+        # Check if there are no remaining SnapMirror connections and if a
+        # vserver peering exists and delete it.
+        snapmirrors = self._get_snapmirrors(vserver, peer_vserver)
+        snapmirrors_from_peer = self._get_snapmirrors(peer_vserver, vserver)
+        peers = self._get_vserver_peers(peer_vserver, vserver)
+        if not (snapmirrors or snapmirrors_from_peer) and peers:
+            self._delete_vserver_peer(peer_vserver, vserver)
 
     def manage_server(self, context, share_server, identifier, driver_options):
         """Manages a vserver by renaming it and returning backend_details."""
@@ -454,3 +530,26 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         if not self._client.vserver_exists(identifier):
             return self._get_vserver_name(identifier)
         return identifier
+
+    def _get_snapmirrors(self, vserver, peer_vserver):
+        return self._client.get_snapmirrors(
+            source_vserver=vserver, source_volume=None,
+            destination_vserver=peer_vserver, destination_volume=None)
+
+    def _get_vservers_from_replicas(self, context, replica_list, new_replica):
+        active_replica = self.find_active_replica(replica_list)
+
+        dm_session = data_motion.DataMotionSession()
+        vserver = dm_session.get_vserver_from_share(active_replica)
+        peer_vserver = dm_session.get_vserver_from_share(new_replica)
+
+        return vserver, peer_vserver
+
+    def _get_vserver_peers(self, vserver=None, peer_vserver=None):
+        return self._client.get_vserver_peers(vserver, peer_vserver)
+
+    def _create_vserver_peer(self, context, vserver, peer_vserver):
+        self._client.create_vserver_peer(vserver, peer_vserver)
+
+    def _delete_vserver_peer(self, vserver, peer_vserver):
+        self._client.delete_vserver_peer(vserver, peer_vserver)

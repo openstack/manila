@@ -22,12 +22,15 @@ import mock
 from oslo_log import log
 from oslo_serialization import jsonutils
 
+from manila.common import constants
 from manila import context
 from manila import exception
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
+from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_multi_svm
 from manila.share.drivers.netapp import utils as na_utils
+from manila.share import utils as share_utils
 from manila import test
 from manila.tests.share.drivers.netapp.dataontap.client import fakes as c_fake
 from manila.tests.share.drivers.netapp.dataontap import fakes as fake
@@ -61,6 +64,26 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._client = mock.Mock()
         self.library._client.get_ontapi_version.return_value = (1, 21)
         self.client = self.library._client
+        self.fake_new_replica = copy.deepcopy(fake.SHARE)
+        self.fake_new_ss = copy.deepcopy(fake.SHARE_SERVER)
+        self.fake_new_vserver_name = 'fake_new_vserver'
+        self.fake_new_ss['backend_details']['vserver_name'] = (
+            self.fake_new_vserver_name
+        )
+        self.fake_new_replica['share_server'] = self.fake_new_ss
+        self.fake_new_replica_host = 'fake_new_host'
+        self.fake_replica = copy.deepcopy(fake.SHARE)
+        self.fake_replica['id'] = fake.SHARE_ID2
+        fake_ss = copy.deepcopy(fake.SHARE_SERVER)
+        self.fake_vserver = 'fake_vserver'
+        fake_ss['backend_details']['vserver_name'] = (
+            self.fake_vserver
+        )
+        self.fake_replica['share_server'] = fake_ss
+        self.fake_replica_host = 'fake_host'
+
+        self.fake_new_client = mock.Mock()
+        self.fake_client = mock.Mock()
 
     def test_check_for_setup_error_cluster_creds_no_vserver(self):
         self.library._have_cluster_creds = True
@@ -793,7 +816,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertFalse(mock_delete_vserver.called)
         self.assertTrue(lib_multi_svm.LOG.warning.called)
 
-    def test_delete_vserver_no_ipspace(self):
+    @ddt.data(True, False)
+    def test_delete_vserver_no_ipspace(self, lock):
 
         self.mock_object(self.library._client,
                          'get_vserver_ipspace',
@@ -812,11 +836,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          'get_network_interfaces',
                          mock.Mock(return_value=net_interfaces))
         security_services = fake.NETWORK_INFO['security_services']
+        self.mock_object(self.library, '_delete_vserver_peers')
 
         self.library._delete_vserver(fake.VSERVER1,
-                                     security_services=security_services)
+                                     security_services=security_services,
+                                     needs_lock=lock)
 
         self.library._client.get_vserver_ipspace.assert_called_once_with(
+            fake.VSERVER1)
+        self.library._delete_vserver_peers.assert_called_once_with(
             fake.VSERVER1)
         self.library._client.delete_vserver.assert_called_once_with(
             fake.VSERVER1, vserver_client, security_services=security_services)
@@ -824,7 +852,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_delete_vserver_vlans.assert_called_once_with(
             net_interfaces_with_vlans)
 
-    def test_delete_vserver_ipspace_has_data_vservers(self):
+    @ddt.data(True, False)
+    def test_delete_vserver_ipspace_has_data_vservers(self, lock):
 
         self.mock_object(self.library._client,
                          'get_vserver_ipspace',
@@ -838,18 +867,22 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=True))
         mock_delete_vserver_vlans = self.mock_object(self.library,
                                                      '_delete_vserver_vlans')
+        self.mock_object(self.library, '_delete_vserver_peers')
         self.mock_object(
             vserver_client, 'get_network_interfaces',
             mock.Mock(return_value=c_fake.NETWORK_INTERFACES_MULTIPLE))
         security_services = fake.NETWORK_INFO['security_services']
 
         self.library._delete_vserver(fake.VSERVER1,
-                                     security_services=security_services)
+                                     security_services=security_services,
+                                     needs_lock=lock)
 
         self.library._client.get_vserver_ipspace.assert_called_once_with(
             fake.VSERVER1)
         self.library._client.delete_vserver.assert_called_once_with(
             fake.VSERVER1, vserver_client, security_services=security_services)
+        self.library._delete_vserver_peers.assert_called_once_with(
+            fake.VSERVER1)
         self.assertFalse(self.library._client.delete_ipspace.called)
         mock_delete_vserver_vlans.assert_called_once_with(
             [c_fake.NETWORK_INTERFACES_MULTIPLE[0]])
@@ -869,6 +902,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=False))
         mock_delete_vserver_vlans = self.mock_object(self.library,
                                                      '_delete_vserver_vlans')
+        self.mock_object(self.library, '_delete_vserver_peers')
         self.mock_object(vserver_client,
                          'get_network_interfaces',
                          mock.Mock(return_value=interfaces))
@@ -877,7 +911,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.library._delete_vserver(fake.VSERVER1,
                                      security_services=security_services)
-
+        self.library._delete_vserver_peers.assert_called_once_with(
+            fake.VSERVER1
+        )
         self.library._client.get_vserver_ipspace.assert_called_once_with(
             fake.VSERVER1)
         self.library._client.delete_vserver.assert_called_once_with(
@@ -885,6 +921,23 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._client.delete_ipspace.assert_called_once_with(
             fake.IPSPACE)
         mock_delete_vserver_vlans.assert_called_once_with(interfaces)
+
+    def test__delete_vserver_peers(self):
+
+        self.mock_object(self.library,
+                         '_get_vserver_peers',
+                         mock.Mock(return_value=fake.VSERVER_PEER))
+        self.mock_object(self.library, '_delete_vserver_peer')
+
+        self.library._delete_vserver_peers(fake.VSERVER1)
+
+        self.library._get_vserver_peers.assert_called_once_with(
+            vserver=fake.VSERVER1
+        )
+        self.library._delete_vserver_peer.asser_called_once_with(
+            fake.VSERVER_PEER[0]['vserver'],
+            fake.VSERVER_PEER[0]['peer-vserver']
+        )
 
     def test_delete_vserver_vlans(self):
 
@@ -912,3 +965,146 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library._client.delete_vlan.assert_called_once_with(
                 node, port, vlan)
             self.assertEqual(1, mock_exception_log.call_count)
+
+    @ddt.data([], [{'vserver': c_fake.VSERVER_NAME,
+                    'peer-vserver': c_fake.VSERVER_PEER_NAME,
+                    'applications': [
+                        {'vserver-peer-application': 'snapmirror'}]
+                    }])
+    def test_create_replica(self, vserver_peers):
+        fake_cluster_name = 'fake_cluster'
+        self.mock_object(self.library, '_get_vservers_from_replicas',
+                         mock.Mock(return_value=(self.fake_vserver,
+                                                 self.fake_new_vserver_name)))
+        self.mock_object(self.library, 'find_active_replica',
+                         mock.Mock(return_value=self.fake_replica))
+        self.mock_object(share_utils, 'extract_host',
+                         mock.Mock(side_effect=[self.fake_new_replica_host,
+                                                self.fake_replica_host]))
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(side_effect=[self.fake_new_client,
+                                                self.fake_client]))
+        self.mock_object(self.library, '_get_vserver_peers',
+                         mock.Mock(return_value=vserver_peers))
+        self.mock_object(self.fake_new_client, 'get_cluster_name',
+                         mock.Mock(return_value=fake_cluster_name))
+        self.mock_object(self.fake_client, 'create_vserver_peer')
+        self.mock_object(self.fake_new_client, 'accept_vserver_peer')
+        lib_base_model_update = {
+            'export_locations': [],
+            'replica_state': constants.REPLICA_STATE_OUT_OF_SYNC,
+            'access_rules_status': constants.STATUS_ACTIVE,
+        }
+        self.mock_object(lib_base.NetAppCmodeFileStorageLibrary,
+                         'create_replica',
+                         mock.Mock(return_value=lib_base_model_update))
+
+        model_update = self.library.create_replica(
+            None, [self.fake_replica], self.fake_new_replica, [], [],
+            share_server=None)
+
+        self.assertDictMatch(lib_base_model_update, model_update)
+        self.library._get_vservers_from_replicas.assert_called_once_with(
+            None, [self.fake_replica], self.fake_new_replica
+        )
+        self.library.find_active_replica.assert_called_once_with(
+            [self.fake_replica]
+        )
+        self.assertEqual(2, share_utils.extract_host.call_count)
+        self.assertEqual(2, data_motion.get_client_for_backend.call_count)
+        self.library._get_vserver_peers.assert_called_once_with(
+            self.fake_new_vserver_name, self.fake_vserver
+        )
+        self.fake_new_client.get_cluster_name.assert_called_once_with()
+        if not vserver_peers:
+            self.fake_client.create_vserver_peer.assert_called_once_with(
+                self.fake_new_vserver_name, self.fake_vserver,
+                peer_cluster_name=fake_cluster_name
+            )
+            self.fake_new_client.accept_vserver_peer.assert_called_once_with(
+                self.fake_vserver, self.fake_new_vserver_name
+            )
+        base_class = lib_base.NetAppCmodeFileStorageLibrary
+        base_class.create_replica.assert_called_once_with(
+            None, [self.fake_replica], self.fake_new_replica, [], []
+        )
+
+    def test_delete_replica(self):
+        base_class = lib_base.NetAppCmodeFileStorageLibrary
+        vserver_peers = copy.deepcopy(fake.VSERVER_PEER)
+        vserver_peers[0]['vserver'] = self.fake_vserver
+        vserver_peers[0]['peer-vserver'] = self.fake_new_vserver_name
+        self.mock_object(self.library, '_get_vservers_from_replicas',
+                         mock.Mock(return_value=(self.fake_vserver,
+                                                 self.fake_new_vserver_name)))
+        self.mock_object(base_class, 'delete_replica')
+        self.mock_object(self.library, '_get_snapmirrors',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.library, '_get_vserver_peers',
+                         mock.Mock(return_value=vserver_peers))
+        self.mock_object(self.library, '_delete_vserver_peer')
+
+        self.library.delete_replica(None, [self.fake_replica],
+                                    self.fake_new_replica, [],
+                                    share_server=None)
+
+        self.library._get_vservers_from_replicas.assert_called_once_with(
+            None, [self.fake_replica], self.fake_new_replica
+        )
+        base_class.delete_replica.assert_called_once_with(
+            None, [self.fake_replica], self.fake_new_replica, []
+        )
+        self.library._get_snapmirrors.assert_has_calls(
+            [mock.call(self.fake_vserver, self.fake_new_vserver_name),
+             mock.call(self.fake_new_vserver_name, self.fake_vserver)]
+        )
+        self.library._get_vserver_peers.assert_called_once_with(
+            self.fake_new_vserver_name, self.fake_vserver
+        )
+        self.library._delete_vserver_peer.assert_called_once_with(
+            self.fake_new_vserver_name, self.fake_vserver
+        )
+
+    def test_get_vservers_from_replicas(self):
+        self.mock_object(self.library, 'find_active_replica',
+                         mock.Mock(return_value=self.fake_replica))
+
+        vserver, peer_vserver = self.library._get_vservers_from_replicas(
+            None, [self.fake_replica], self.fake_new_replica)
+
+        self.library.find_active_replica.assert_called_once_with(
+            [self.fake_replica]
+        )
+        self.assertEqual(self.fake_vserver, vserver)
+        self.assertEqual(self.fake_new_vserver_name, peer_vserver)
+
+    def test_get_vserver_peers(self):
+        self.mock_object(self.library._client, 'get_vserver_peers')
+
+        self.library._get_vserver_peers(
+            vserver=self.fake_vserver, peer_vserver=self.fake_new_vserver_name)
+
+        self.library._client.get_vserver_peers.assert_called_once_with(
+            self.fake_vserver, self.fake_new_vserver_name
+        )
+
+    def test_create_vserver_peer(self):
+        self.mock_object(self.library._client, 'create_vserver_peer')
+
+        self.library._create_vserver_peer(
+            None, vserver=self.fake_vserver,
+            peer_vserver=self.fake_new_vserver_name)
+
+        self.library._client.create_vserver_peer.assert_called_once_with(
+            self.fake_vserver, self.fake_new_vserver_name
+        )
+
+    def test_delete_vserver_peer(self):
+        self.mock_object(self.library._client, 'delete_vserver_peer')
+
+        self.library._delete_vserver_peer(
+            vserver=self.fake_vserver, peer_vserver=self.fake_new_vserver_name)
+
+        self.library._client.delete_vserver_peer.assert_called_once_with(
+            self.fake_vserver, self.fake_new_vserver_name
+        )

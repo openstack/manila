@@ -5451,7 +5451,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'passphrase': 'fake_passphrase',
         }
         self.client.send_request.assert_has_calls([
-            mock.call('cluster-peer-create', cluster_peer_create_args)])
+            mock.call('cluster-peer-create', cluster_peer_create_args,
+                      enable_tunneling=False)])
 
     def test_get_cluster_peers(self):
 
@@ -5524,7 +5525,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         cluster_peer_delete_args = {'cluster-name': fake.CLUSTER_NAME}
         self.client.send_request.assert_has_calls([
-            mock.call('cluster-peer-delete', cluster_peer_delete_args)])
+            mock.call('cluster-peer-delete', cluster_peer_delete_args,
+                      enable_tunneling=False)])
 
     def test_get_cluster_peer_policy(self):
 
@@ -5585,21 +5587,28 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call('cluster-peer-policy-modify',
                       cluster_peer_policy_modify_args)])
 
-    def test_create_vserver_peer(self):
+    @ddt.data(None, 'cluster_name')
+    def test_create_vserver_peer(self, cluster_name):
 
         self.mock_object(self.client, 'send_request')
 
-        self.client.create_vserver_peer('fake_vserver', 'fake_vserver_peer')
+        self.client.create_vserver_peer(fake.VSERVER_NAME,
+                                        fake.VSERVER_PEER_NAME,
+                                        peer_cluster_name=cluster_name)
 
         vserver_peer_create_args = {
-            'vserver': 'fake_vserver',
-            'peer-vserver': 'fake_vserver_peer',
+            'vserver': fake.VSERVER_NAME,
+            'peer-vserver': fake.VSERVER_PEER_NAME,
             'applications': [
                 {'vserver-peer-application': 'snapmirror'},
             ],
         }
+        if cluster_name:
+            vserver_peer_create_args['peer-cluster'] = cluster_name
+
         self.client.send_request.assert_has_calls([
-            mock.call('vserver-peer-create', vserver_peer_create_args)])
+            mock.call('vserver-peer-create', vserver_peer_create_args,
+                      enable_tunneling=False)])
 
     def test_delete_vserver_peer(self):
 
@@ -5612,7 +5621,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'peer-vserver': 'fake_vserver_peer',
         }
         self.client.send_request.assert_has_calls([
-            mock.call('vserver-peer-delete', vserver_peer_delete_args)])
+            mock.call('vserver-peer-delete', vserver_peer_delete_args,
+                      enable_tunneling=False)])
 
     def test_accept_vserver_peer(self):
 
@@ -5625,7 +5635,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'peer-vserver': 'fake_vserver_peer',
         }
         self.client.send_request.assert_has_calls([
-            mock.call('vserver-peer-accept', vserver_peer_accept_args)])
+            mock.call('vserver-peer-accept', vserver_peer_accept_args,
+                      enable_tunneling=False)])
 
     def test_get_vserver_peers(self):
 
@@ -6637,3 +6648,22 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'qos-policy-group-delete-iter',
             qos_policy_group_delete_iter_args, False)
         self.assertIs(failed, client_cmode.LOG.debug.called)
+
+    def test_get_cluster_name(self):
+        api_response = netapp_api.NaElement(
+            fake.CLUSTER_GET_CLUSTER_NAME)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+        api_args = {
+            'desired-attributes': {
+                'cluster-identity-info': {
+                    'cluster-name': None,
+                }
+            }
+        }
+        result = self.client.get_cluster_name()
+
+        self.assertEqual(fake.CLUSTER_NAME, result)
+        self.client.send_request.assert_called_once_with(
+            'cluster-identity-get', api_args, enable_tunneling=False)
