@@ -134,13 +134,16 @@ REST_API_VERSION_HISTORY = """
     * 2.49 - Added Manage/Unmanage Share Server APIs. Updated Manage/Unmanage
              Shares and Snapshots APIs to work in
              ``driver_handles_shares_servers`` enabled mode.
+    * 2.50 - Added update share type API to Share Type APIs. Through this API
+             we can update the ``name``, ``description`` and/or
+             ``share_type_access:is_public`` fields of the share type.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.49"
+_MAX_API_VERSION = "2.50"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

@@ -275,3 +275,9 @@ user documentation.
 -----------------------
   Added Manage/Unmanage Share Server APIs. Updated Manage/Unmanage Shares and
   Snapshots APIs to work in ``driver_handles_shares_servers`` enabled mode.
+
+2.50
+----
+  Added update share type API to Share Type APIs. We can update the ``name``,
+  ``description`` and/or ``share_type_access:is_public`` fields of the share
+  type by the update share type API.

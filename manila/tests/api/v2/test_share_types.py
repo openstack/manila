@@ -19,6 +19,7 @@ import ddt
 import mock
 from oslo_config import cfg
 from oslo_utils import timeutils
+import random
 import webob
 
 from manila.api.v2 import share_types as types
@@ -45,15 +46,25 @@ def stub_share_type(id):
         "key5": "value5",
         constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: "true",
     }
-    return dict(
-        id=id,
-        name='share_type_%s' % str(id),
-        description='description_%s' % str(id),
-        extra_specs=specs,
-        required_extra_specs={
+    if id == 4:
+        name = 'update_share_type_%s' % str(id)
+        description = 'update_description_%s' % str(id)
+        is_public = False
+    else:
+        name = 'share_type_%s' % str(id)
+        description = 'description_%s' % str(id)
+        is_public = True
+    share_type = {
+        'id': id,
+        'name': name,
+        'description': description,
+        'is_public': is_public,
+        'extra_specs': specs,
+        'required_extra_specs': {
             constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: "true",
         }
-    )
+    }
+    return share_type
 
 
 def return_share_types_get_all_types(context, search_opts=None):
@@ -102,6 +113,20 @@ def return_share_types_get_share_type(context, id=1):
     return stub_share_type(int(id))
 
 
+def return_share_type_update(context, id=4, name=None, description=None,
+                             is_public=None):
+    if id == 888:
+        raise exception.ShareTypeUpdateFailed(id=id)
+    if id == 999:
+        raise exception.ShareTypeNotFound(share_type_id=id)
+    pre_share_type = stub_share_type(int(id))
+    new_name = name
+    new_description = description
+    return pre_share_type.update({"name": new_name,
+                                  "description": new_description,
+                                  "is_public": is_public})
+
+
 def return_share_types_get_by_name(context, name):
     if name == "777":
         raise exception.ShareTypeNotFoundByName(share_type_name=name)
@@ -146,6 +171,28 @@ def make_create_body(name="test_share_1", extra_specs=None,
     return body
 
 
+def generate_long_description(des_length=256):
+    random_str = ''
+    base_str = 'ABCDEFGHIGKLMNOPQRSTUVWXYZabcdefghigklmnopqrstuvwxyz'
+    length = len(base_str) - 1
+    for i in range(des_length):
+        random_str += base_str[random.randint(0, length)]
+    return random_str
+
+
+def make_update_body(name=None, description=None, is_public=None):
+    body = {"share_type": {}}
+    if name:
+        body["share_type"].update({"name": name})
+    if description:
+        body["share_type"].update({"description": description})
+    if is_public is not None:
+        body["share_type"].update(
+            {"share_type_access:is_public": is_public})
+
+    return body
+
+
 @ddt.ddt
 class ShareTypesAPITest(test.TestCase):
 
@@ -167,6 +214,9 @@ class ShareTypesAPITest(test.TestCase):
         self.mock_object(
             share_types, 'get_share_type',
             mock.Mock(side_effect=return_share_types_get_share_type))
+        self.mock_object(
+            share_types, 'update',
+            mock.Mock(side_effect=return_share_type_update))
         self.mock_object(
             share_types, 'destroy',
             mock.Mock(side_effect=return_share_types_destroy))
@@ -389,6 +439,92 @@ class ShareTypesAPITest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._parse_is_public,
                           'fakefakefake')
+
+    @ddt.data(
+        ("new_name", "new_description", "wrong_bool"),
+        (" ", "new_description", "true"),
+        (" ", generate_long_description(256), "true"),
+        (None, None, None),
+    )
+    @ddt.unpack
+    def test_share_types_update_with_invalid_parameter(
+            self, name, description, is_public):
+        req = fakes.HTTPRequest.blank('/v2/fake/types/4',
+                                      version='2.50')
+        body = make_update_body(name, description, is_public)
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.update,
+                          req, 4, body)
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+
+    def test_share_types_update_with_invalid_body(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/types/4',
+                                      version='2.50')
+        body = {'share_type': 'i_am_invalid_body'}
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.update,
+                          req, 4, body)
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+
+    def test_share_types_update(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/types/4',
+                                      version='2.50')
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        body = make_update_body("update_share_type_4",
+                                "update_description_4",
+                                is_public=False)
+        res_dict = self.controller.update(req, 4, body)
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(2, len(res_dict))
+
+        self.assertEqual('update_share_type_4', res_dict['share_type']['name'])
+        self.assertEqual('update_share_type_4',
+                         res_dict['volume_type']['name'])
+        self.assertIs(False,
+                      res_dict['share_type']['share_type_access:is_public'])
+
+        self.assertEqual('update_description_4',
+                         res_dict['share_type']['description'])
+        self.assertEqual('update_description_4',
+                         res_dict['volume_type']['description'])
+
+    def test_share_types_update_pre_v250(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/types/4',
+                                      version='2.49')
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        body = make_update_body("update_share_type_4",
+                                "update_description_4",
+                                is_public=False)
+        self.assertRaises(exception.VersionNotFoundForAPIMethod,
+                          self.controller.update,
+                          req, 4, body)
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+
+    def test_share_types_update_failed(self):
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        req = fakes.HTTPRequest.blank('/v2/fake/types/888',
+                                      version='2.50')
+        body = make_update_body("update_share_type_888",
+                                "update_description_888",
+                                is_public=False)
+        self.assertRaises(webob.exc.HTTPInternalServerError,
+                          self.controller.update,
+                          req, 888, body)
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+
+    def test_share_types_update_not_found(self):
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        req = fakes.HTTPRequest.blank('/v2/fake/types/999',
+                                      version='2.50')
+
+        body = make_update_body("update_share_type_999",
+                                "update_description_999",
+                                is_public=False)
+
+        self.assertRaises(exception.ShareTypeNotFound,
+                          self.controller.update,
+                          req, 999, body)
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
 
     def test_share_types_delete(self):
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')

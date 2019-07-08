@@ -1,0 +1,5 @@
+---
+features:
+  - The ``name``, ``description`` and/or ``share_type_access:is_public``
+    attributes of share types can be updated with API version ``2.50``
+    and beyond.

@@ -3275,6 +3275,40 @@ class ShareTypeAPITestCase(test.TestCase):
         self.assertRaises(exception.DefaultShareTypeNotConfigured,
                           db_api.share_type_get, self.ctxt, None)
 
+    @ddt.data(
+        {'name': 'st_1', 'description': 'des_1', 'is_public': True},
+        {'name': 'st_2', 'description': 'des_2', 'is_public': None},
+        {'name': 'st_3', 'description': None, 'is_public': False},
+        {'name': None, 'description': 'des_4', 'is_public': True},
+    )
+    @ddt.unpack
+    def test_share_type_update(self, name, description, is_public):
+        values = {}
+        if name:
+            values.update({'name': name})
+        if description:
+            values.update({'description': description})
+        if is_public is not None:
+            values.update({'is_public': is_public})
+        share_type = db_utils.create_share_type(name='st_name')
+        db_api.share_type_update(self.ctxt, share_type['id'], values)
+        updated_st = db_api.share_type_get_by_name_or_id(self.ctxt,
+                                                         share_type['id'])
+        if name:
+            self.assertEqual(name, updated_st['name'])
+        if description:
+            self.assertEqual(description, updated_st['description'])
+        if is_public is not None:
+            self.assertEqual(is_public, updated_st['is_public'])
+
+    def test_share_type_update_not_found(self):
+        share_type = db_utils.create_share_type(name='st_update_test')
+        db_api.share_type_destroy(self.ctxt, share_type['id'])
+        values = {"name": "not_exist"}
+        self.assertRaises(exception.ShareTypeNotFound,
+                          db_api.share_type_update,
+                          self.ctxt, share_type['id'], values)
+
 
 class MessagesDatabaseAPITestCase(test.TestCase):
 

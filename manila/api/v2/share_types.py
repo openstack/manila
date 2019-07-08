@@ -52,6 +52,10 @@ class ShareTypesController(wsgi.Controller):
     def _notify_share_type_error(self, context, method, payload):
         rpc.get_notifier('shareType').error(context, method, payload)
 
+    def _notify_share_type_info(self, context, method, share_type):
+        payload = dict(share_types=share_type)
+        rpc.get_notifier('shareType').info(context, method, payload)
+
     def _check_body(self, body, action_name):
         if not self.is_valid_body(body, action_name):
             raise webob.exc.HTTPBadRequest()
@@ -221,9 +225,8 @@ class ShareTypesController(wsgi.Controller):
             share_type = share_types.get_share_type_by_name(context, name)
             share_type['required_extra_specs'] = required_extra_specs
             req.cache_db_share_type(share_type)
-            notifier_info = dict(share_types=share_type)
-            rpc.get_notifier('shareType').info(
-                context, 'share_type.create', notifier_info)
+            self._notify_share_type_info(
+                context, 'share_type.create', share_type)
 
         except exception.InvalidExtraSpec as e:
             raise webob.exc.HTTPBadRequest(explanation=six.text_type(e))
@@ -252,9 +255,8 @@ class ShareTypesController(wsgi.Controller):
         try:
             share_type = share_types.get_share_type(context, id)
             share_types.destroy(context, share_type['id'])
-            notifier_info = dict(share_types=share_type)
-            rpc.get_notifier('shareType').info(
-                context, 'share_type.delete', notifier_info)
+            self._notify_share_type_info(
+                context, 'share_type.delete', share_type)
         except exception.ShareTypeInUse as err:
             notifier_err = dict(id=id, error_message=six.text_type(err))
             self._notify_share_type_error(context, 'share_type.delete',
@@ -269,6 +271,85 @@ class ShareTypesController(wsgi.Controller):
             raise webob.exc.HTTPNotFound()
 
         return webob.Response(status_int=http_client.ACCEPTED)
+
+    @wsgi.Controller.api_version("2.50")
+    @wsgi.action("update")
+    @wsgi.Controller.authorize
+    def update(self, req, id, body):
+        """Update name description is_public for a given share type."""
+        context = req.environ['manila.context']
+
+        if (not self.is_valid_body(body, 'share_type') and
+                not self.is_valid_body(body, 'volume_type')):
+            raise webob.exc.HTTPBadRequest()
+
+        elif self.is_valid_body(body, 'share_type'):
+            sha_type = body['share_type']
+        else:
+            sha_type = body['volume_type']
+        name = sha_type.get('name')
+        description = sha_type.get('description')
+        is_public = sha_type.get('share_type_access:is_public', None)
+
+        if is_public is not None:
+            try:
+                is_public = strutils.bool_from_string(is_public, strict=True)
+            except ValueError:
+                msg = _("share_type_access:is_public has a non-boolean"
+                        " value.")
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        # If name specified, name can not be empty or greater than 255.
+        if name is not None:
+            if len(name.strip()) == 0:
+                msg = _("Share type name cannot be empty.")
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+            if len(name) > 255:
+                msg = _("Share type name cannot be greater than 255 "
+                        "characters in length.")
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        # If description specified, length can not greater than 255.
+        if description and len(description) > 255:
+            msg = _("Share type description cannot be greater than 255 "
+                    "characters in length.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        # Name, description and is_public can not be None.
+        # Specify one of them, or a combination thereof.
+        if name is None and description is None and is_public is None:
+            msg = _("Specify share type name, description, "
+                    "share_type_access:is_public or a combination thereof.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        try:
+            share_types.update(context, id, name, description,
+                               is_public=is_public)
+            # Get the updated
+            sha_type = self._show_share_type_details(context, id)
+            req.cache_resource(sha_type, name='types')
+            self._notify_share_type_info(
+                context, 'share_type.update', sha_type)
+
+        except exception.ShareTypeNotFound as err:
+            notifier_err = {"id": id, "error_message": err}
+            self._notify_share_type_error(
+                context, 'share_type.update', notifier_err)
+            # Not found exception will be handled at the wsgi level
+            raise
+        except exception.ShareTypeExists as err:
+            notifier_err = {"share_type": sha_type, "error_message": err}
+            self._notify_share_type_error(
+                context, 'share_type.update', notifier_err)
+            raise webob.exc.HTTPConflict(explanation=err.msg)
+        except exception.ShareTypeUpdateFailed as err:
+            notifier_err = {"share_type": sha_type, "error_message": err}
+            self._notify_share_type_error(
+                context, 'share_type.update', notifier_err)
+            raise webob.exc.HTTPInternalServerError(
+                explanation=err.msg)
+
+        return self._view_builder.show(req, sha_type)
 
     @wsgi.Controller.authorize('list_project_access')
     def share_type_access(self, req, id):
