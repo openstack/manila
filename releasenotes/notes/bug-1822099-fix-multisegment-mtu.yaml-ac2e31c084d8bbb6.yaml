@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Update share networks with MTU before creating network allocations so that
+    the first allocation in a share network is correct.
