@@ -31,6 +31,7 @@
           [[local|localrc]]
           SKIP_EPEL_INSTALL=True
           enable_plugin manila https://opendev.org/openstack/manila
+          enable_plugin manila-tempest-plugin https://opendev.org/openstack/manila-tempest-plugin
           enable_plugin neutron-dynamic-routing https://opendev.org/openstack/neutron-dynamic-routing
           enable_plugin neutron-tempest-plugin https://opendev.org/openstack/neutron-tempest-plugin
           EOF
@@ -71,6 +72,8 @@
           export PROJECTS="openstack/manila-tempest-plugin $PROJECTS"
           export PROJECTS="openstack/neutron-dynamic-routing $PROJECTS"
           export PROJECTS="openstack/neutron-tempest-plugin $PROJECTS"
+
+          export DEVSTACK_GATE_USE_PYTHON3=True
 
           function pre_test_hook {
               # 'dhss' - acronym for 'Driver Handles Share Servers',

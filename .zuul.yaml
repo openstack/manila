@@ -28,6 +28,8 @@
         - manila-tempest-minimal-dsvm-cephfs-nfs:
             voting: false
         - manila-tempest-minimal-dsvm-dummy
+        # Through the Train release we need to keep some python2 coverage.
+        - manila-tempest-minimal-dsvm-dummy-py2
         - manila-tempest-minimal-dsvm-lvm
         - manila-grenade:
             voting: false
@@ -314,6 +316,18 @@
     parent: manila-tempest-base
     run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy/run.yaml
     post-run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy/post.yaml
+    required-projects:
+      - openstack/devstack-gate
+      - openstack/manila
+      - openstack/manila-tempest-plugin
+      - openstack/python-manilaclient
+      - openstack/tempest
+
+- job:
+    name: manila-tempest-minimal-dsvm-dummy-py2
+    parent: manila-tempest-base
+    run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy-py2/run.yaml
+    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy-py2/post.yaml
     required-projects:
       - openstack/devstack-gate
       - openstack/manila

@@ -1,5 +1,5 @@
 - hosts: all
-  name: Autoconverted job manila-tempest-dsvm-postgres-zfsonlinux from old job gate-manila-tempest-dsvm-postgres-zfsonlinux-ubuntu-xenial-nv
+  name: Autoconverted job manila-tempest-minimal-dsvm-dummy-py2 from old job gate-manila-tempest-minimal-dsvm-dummy-ubuntu-xenial
   tasks:
 
     - name: Ensure legacy workspace directory
@@ -42,16 +42,13 @@
           set -x
           export PYTHONUNBUFFERED=true
           export DEVSTACK_GATE_NEUTRON=1
-          export DEVSTACK_GATE_POSTGRES=1
           export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
-
-          export ENABLED_SERVICES=tempest
+          # Basic services needed for minimal job
+          export OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit,tempest,tls-proxy
 
           # Keep localrc to be able to set some vars in pre_test_hook
           export KEEP_LOCALRC=1
           export PROJECTS="openstack/manila-tempest-plugin $PROJECTS"
-
-          export DEVSTACK_GATE_USE_PYTHON3=True
 
           function pre_test_hook {
               # 'dhss' - acronym for 'Driver Handles Share Servers',
@@ -59,10 +56,7 @@
               # 'driver' - codename of a share driver to configure.
               # 'back_end_type' - defines which installation Manila should
               # have - either 'singlebackend' or 'multibackend'.
-              source $BASE/new/manila/contrib/ci/pre_test_hook.sh \
-                  0 \
-                  zfsonlinux \
-                  multibackend
+              source $BASE/new/manila/contrib/ci/pre_test_hook.sh False dummy multibackend
           }
           export -f pre_test_hook
 
@@ -76,11 +70,7 @@
               # can have 'api' and 'scenario' values.
               # 'postgres_enabled' - set of test suites depends on DB backend
               # in some cases, so it is provided explicitely. Boolean-like.
-              source $BASE/new/manila/contrib/ci/post_test_hook.sh \
-                  multibackend \
-                  zfsonlinux \
-                  api \
-                  1
+              source $BASE/new/manila/contrib/ci/post_test_hook.sh multibackend dummy api False
           }
           export -f post_test_hook
 
