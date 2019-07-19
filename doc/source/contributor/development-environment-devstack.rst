@@ -16,21 +16,28 @@ Setting up a development environment with devstack
 ==================================================
 
 This page describes how to setup a working development
-environment that can be used in deploying manila on latest releases
-of Ubuntu, Fedora or CentOS. These instructions assume you are already familiar
-with git.
+environment that can be used in deploying ``manila`` and ``manila-ui`` on
+latest releases of Ubuntu, Fedora or CentOS. These instructions assume you
+are already familiar with git.
 
-We recommend using devstack to develop and test code changes to
-manila or to simply evaluate the manila project. Devstack is a shell script
-to build complete OpenStack development environments on a virtual machine.
-If you are not familar with devstack, these pages can give you context:
+We recommend using devstack to develop and test code changes to ``manila``
+and/or ``manila-ui``, in order to simply evaluate the manila and/or project.
+Devstack is a shell script to build complete OpenStack development
+environments on a virtual machine. If you are not familar with devstack,
+these pages can give you context:
 
 * `Testing Changes with DevStack <https://docs.openstack.org/contributors/code-and-documentation/devstack.html>`_
 * `Devstack project documentation <https://docs.openstack.org/devstack/latest>`_
 
-Be aware that manila is not enabled in devstack by default; you will need to
-add a few lines to the devstack ``local.conf`` file to let devstack deploy and
-configure manila on your virtual machine.
+Be aware that ``manila`` and ``manila-ui`` are not enabled in devstack by
+default; you will need to add a few lines to the devstack ``local.conf``
+file to let devstack deploy and configure ``manila`` and ``manila-ui`` on
+your virtual machine.
+
+.. note::
+
+    If you do not intend to deploy with the OpenStack Dashboard (horizon)
+    service, you can ignore instructions about enabling ``manila-ui``.
 
 Getting devstack
 ----------------
@@ -89,8 +96,8 @@ machine, baremetal, containers) that is able to reach the share network you
 indicated.
 
 Typically, new contributors take a while to understand OpenStack networking,
-and we recommend that you familiarize yourself with the DHSS=False mode
-setup before attempting DHSS=True.
+and we recommend that you familiarize yourself with the ``DHSS=False`` mode
+setup before attempting ``DHSS=True``.
 
 * :download:`Generic driver <samples/generic_local.conf>`
 * :download:`Container driver <samples/container_local.conf>`
@@ -104,7 +111,7 @@ Building your devstack
 * Make sure to read inline comments and customize values where necessary
 * If you would like to run minimal services in your stack, or allow devstack
   to bootstrap tempest testing framework for you, see :ref:`more-customization`
-* Finally, run the stack.sh script from within the devstack directory. We
+* Finally, run the ``stack.sh`` script from within the devstack directory. We
   recommend that your run this inside a screen or tmux session because it
   could take a while::
 
@@ -136,6 +143,9 @@ Building your devstack
 * If running behind apache, the manila-api logs will be in
   ``/var/log/httpd/manila_api.log`` (Red Hat) or
   in ``/var/log/apache2/manila_api.log`` (Debian).
+
+* Manila UI will now be available through OpenStack Horizon; look for the
+  Shares tab under Project > Share.
 
 
 .. _more-customization:
