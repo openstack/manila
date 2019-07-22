@@ -19,7 +19,7 @@ share groups, and show information for delete a share group.
 .. note::
 
     Share Group APIs are part of the `experimental APIs
-    <http://developer.openstack.org/api-ref/shared-file-systems/#experimental-apis>`_.
+    <https://docs.openstack.org/api-ref/shared-file-system/#experimental-apis>`_.
     The ``availability_zone_id`` and ``consistent_snapshot_support`` fields were added
     to ``share_group`` object introduced in version 2.34.
 

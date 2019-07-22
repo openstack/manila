@@ -17,7 +17,7 @@ different projects. You can add access, remove access, and get
 information about access for a private share group type.
 
 Administrators can specifies which `share type(s)
-<http://developer.openstack.org/api-ref/shared-file-systems/#experimental-apis>`_
+<https://docs.openstack.org/api-ref/shared-file-system/#experimental-apis>`_
 a given group type may contain. If Administrators does not specify it, then
 manila will use ``default`` share type. The scheduler then creates the group on
 one of the back ends that match the specified share type(s) and share group type.
@@ -32,7 +32,7 @@ share group type for the following purposes:
 .. note::
 
     Share Group Types APIs are part of the `experimental APIs
-    <http://developer.openstack.org/api-ref/shared-file-systems/#experimental-apis>`_.
+    <https://docs.openstack.org/api-ref/shared-file-system/#experimental-apis>`_.
 
 List share group types
 ======================

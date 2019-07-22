@@ -81,7 +81,7 @@ OpenStack API Reference
 - Since the Newton release, manila's API reference is maintained
   in-tree in custom YAML/JSON format files.
 - **Link**: `REST API reference of the Shared File Systems Project v2.0
-  <https://developer.openstack.org/api-ref/shared-file-system/>`_
+  <https://docs.openstack.org/api-ref/shared-file-system/>`_
 
 Manila Developer Reference
 --------------------------

@@ -38,7 +38,7 @@ As an end user of Manila, you'll use Manila to create a remote file system with
 either tools or the API directly:
 `python-manilaclient <https://docs.openstack.org/python-manilaclient/latest/>`_,
 or by directly using the
-`REST API <https://developer.openstack.org/api-ref/shared-file-system/>`_.
+`REST API <https://docs.openstack.org/api-ref/shared-file-system/>`_.
 
 Tools for using Manila
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -58,7 +58,7 @@ more complicated logic or automation with Manila. This can be consumed directly
 or via various SDKs. The following resources can help you get started consuming
 the API directly:
 
-* `Manila API <https://developer.openstack.org/api-ref/shared-file-system/>`_
+* `Manila API <https://docs.openstack.org/api-ref/shared-file-system/>`_
 * :doc:`Manila microversion history </contributor/api_microversion_history>`
 
 For operators

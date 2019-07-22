@@ -65,7 +65,7 @@ API Reference
 .. toctree::
    :maxdepth: 3
 
-   Manila API v2 Reference <https://developer.openstack.org/api-ref/shared-file-system/>
+   Manila API v2 Reference <https://docs.openstack.org/api-ref/shared-file-system/>
    api_microversion_dev
    api_microversion_history
    experimental_apis
