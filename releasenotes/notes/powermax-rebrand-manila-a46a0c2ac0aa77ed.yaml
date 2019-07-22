@@ -1,0 +1,20 @@
+---
+features:
+  - |
+    Rebrand from VMAX to PowerMax includes changing of tag names, directory
+    structure, file names and documentation.
+deprecations:
+  - |
+    The following have been deprecated but will remain until the V release
+    ``vmax_server_container`` is now ``powermax_server_container``
+    ``vmax_share_data_pools`` is now ``powermax_share_data_pools``
+    ``vmax_ethernet_ports`` is now ``powermax_ethernet_ports``
+upgrade:
+  - |
+    - ``emc_share_backend`` configuration option must be switched from ``vmax``
+      to ``powermax`` if using a newly rebranded PowerMax storage backend.
+    - If using a PowerMax storage backend, deprecated options
+      ``emc_nas_server_container``, ``emc_nas_pool_names`` and
+      ``emc_interface_ports`` can no longer be used. They must be replaced by
+      ``powermax_server_container``, ``powermax_share_data_pools`` and
+      ``powermax_ethernet_ports`` respectively. 

@@ -1,29 +1,29 @@
-====================
-Dell EMC VMAX driver
-====================
+========================
+Dell EMC PowerMax Plugin
+========================
 
 The Dell EMC Shared File Systems service driver framework (EMCShareDriver)
 utilizes the Dell EMC storage products to provide the shared file systems
 to OpenStack. The Dell EMC driver is a plug-in based driver which is designed
 to use different plug-ins to manage different Dell EMC storage products.
 
-The VMAX plug-in manages the VMAX to provide shared file systems. The EMC
-driver framework with the VMAX plug-in is referred to as the VMAX driver
-in this document.
+The PowerMax plug-in manages the PowerMax to provide shared file systems.
+The Dell EMC driver framework with the PowerMax plug-in is referred to as the
+PowerMax driver in this document.
 
-This driver performs the operations on VMAX eNAS by XMLAPI and the file
-command line. Each back end manages one Data Mover of VMAX. Multiple
+This driver performs the operations on PowerMax eNAS by XMLAPI and the file
+command line. Each back end manages one Data Mover of PowerMax. Multiple
 Shared File Systems service back ends need to be configured to manage
 multiple Data Movers.
 
 Requirements
 ~~~~~~~~~~~~
 
--  VMAX eNAS OE for File version 8.1 or higher
+-  PowerMax eNAS OE for File version 8.1 or higher
 
--  VMAX Unified or File only
+-  PowerMax Unified or File only
 
--  The following licenses should be activated on VMAX for File:
+-  The following licenses should be activated on PowerMax for File:
 
    -  CIFS
 
@@ -60,17 +60,17 @@ The following operations are supported:
 -  Create a share from a snapshot.
 
 While the generic driver creates shared file systems based on cinder
-volumes attached to nova VMs, the VMAX driver performs similar operations
+volumes attached to nova VMs, the PowerMax driver performs similar operations
 using the Data Movers on the array.
 
-Pre-configurations on VMAX
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Pre-configurations on PowerMax
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #. Configure a storage pool
 
    There is a one to one relationship between a storage pool in embedded NAS
-   to a storage group on the VMAX. The best way to provision
-   storage for file is from the Unisphere for VMAX UI rather than eNAS UI.
+   to a storage group on the PowerMax. The best way to provision
+   storage for file is from the Unisphere for PowerMax UI rather than eNAS UI.
    Go to :menuselection:`{array} > SYSTEM > FIle` and under
    :menuselection:`Actions` click :menuselection:`PROVISION STORAGE FOR FILE`
 
@@ -109,7 +109,7 @@ Pre-configurations on VMAX
 #. Enable CIFS service on Data Mover.
 
    Ensure the CIFS service is enabled on the Data Mover which is going
-   to be managed by VMAX driver.
+   to be managed by PowerMax driver.
 
    To start the CIFS service, use the following command:
 
@@ -136,7 +136,7 @@ Pre-configurations on VMAX
 
 #. NTP settings on Data Mover.
 
-   VMAX driver only supports CIFS share creation with share network
+   PowerMax driver only supports CIFS share creation with share network
    which has an Active Directory security-service associated.
 
    Creating CIFS share requires that the time on the Data Mover is in
@@ -185,10 +185,10 @@ Pre-configurations on VMAX
 
 #. Configure User Mapping on the Data Mover.
 
-   Before creating CIFS share using VMAX driver, you must select a
+   Before creating CIFS share using PowerMax driver, you must select a
    method of mapping Windows SIDs to UIDs and GIDs. DELL EMC recommends
    using usermapper in single protocol (CIFS) environment which is
-   enabled on VMAX eNAS by default.
+   enabled on PowerMax eNAS by default.
 
    To check usermapper status, use the following command syntax:
 
@@ -205,7 +205,7 @@ Pre-configurations on VMAX
       $ server_usermapper <movername> -enable
         # movername = name of the Data Mover
 
-   For a multiple protocol environment, refer to Configuring VMAX eNAS User
+   For a multiple protocol environment, refer to Configuring PowerMax eNAS User
    Mapping on `EMC support site <http://support.emc.com>`_ for
    additional information.
 
@@ -257,42 +257,42 @@ Back-end configurations
 
 
 The following parameters need to be configured in the
-``/etc/manila/manila.conf`` file for the VMAX driver:
+``/etc/manila/manila.conf`` file for the PowerMax driver:
 
 .. code-block:: ini
 
-   emc_share_backend = vmax
+   emc_share_backend = powermax
    emc_nas_server = <IP address>
    emc_nas_password = <password>
    emc_nas_login = <user>
    driver_handles_share_servers = True
-   vmax_server_container = <Data Mover name>
-   vmax_share_data_pools = <Comma separated pool names>
+   powermax_server_container = <Data Mover name>
+   powermax_share_data_pools = <Comma separated pool names>
    share_driver = manila.share.drivers.dell_emc.driver.EMCShareDriver
-   vmax_ethernet_ports = <Comma separated ports list>
+   powermax_ethernet_ports = <Comma separated ports list>
    emc_ssl_cert_verify = True
    emc_ssl_cert_path = <path to cert>
-   emc_share_backend = vmax
    share_backend_name = <Backend>
 
 - `emc_share_backend`
-    The plug-in name. Set it to ``vmax`` for the VMAX driver.
+    The plug-in name. Set it to ``powermax`` for the PowerMax driver.
+    Other values are ``isilon``, ``vnx`` and ``unity``.
 
 - `emc_nas_server`
-    The control station IP address of the VMAX system to be managed.
+    The control station IP address of the PowerMax system to be managed.
 
 - `emc_nas_password` and `emc_nas_login`
     The fields that are used to provide credentials to the
-    VMAX system. Only local users of VMAX File is supported.
+    PowerMax system. Only local users of PowerMax File is supported.
 
 - `driver_handles_share_servers`
-    VMAX only supports True, where the share driver handles the provisioning
+    PowerMax only supports True, where the share driver handles the provisioning
     and management of the share servers.
 
-- `vmax_server_container`
+- `powermax_server_container`
     Name of the Data Mover to serve the share service.
 
-- `vmax_share_data_pools`
+- `powermax_share_data_pools`
     Comma separated list specifying the name of the pools to be used
     by this back end. Do not set this option if all storage pools
     on the system can be used.
@@ -300,7 +300,7 @@ The following parameters need to be configured in the
 
     Examples: pool_1, pool_*, *
 
-- `vmax_ethernet_ports (optional)`
+- `powermax_ethernet_ports (optional)`
     Comma-separated list specifying the ports (devices) of Data Mover
     that can be used for share server interface. Do not set this
     option if all ports on the Data Mover can be used.
@@ -315,10 +315,6 @@ The following parameters need to be configured in the
     The path to the This must be set if emc_ssl_cert_verify is True which is
     the recommended configuration.  See ``SSL Support`` section for more
     details.
-
-- `emc_share_backend`
-    Set to ``vmax`` to enable vmax manila plugin . Other values are
-    ``isilon``, ``vnx`` and ``unity``.
 
 - `share_backend_name`
     The backend name for a given driver implementation.
@@ -451,18 +447,18 @@ To create a target share from a shapshot where create_share_from_snapshot_suppor
 
 IPv6 support
 ~~~~~~~~~~~~
-IPv6 support for VMAX Manila driver is introduced in Rocky release. The feature is
-divided into two parts:
+IPv6 support for PowerMax Manila driver was introduced in Rocky release.
+The feature is divided into two parts:
 
 #. The driver is able to manage share or snapshot in the Neutron IPv6 network.
-#. The driver is able to connect VMAX management interface using its IPv6
+#. The driver is able to connect PowerMax management interface using its IPv6
    address.
 
 Pre-Configurations for IPv6 support
 -----------------------------------
 
 The following parameters need to be configured in ``/etc/manila/manila.conf``
-for the VMAX driver:
+for the PowerMax driver:
 
 .. code-block:: ini
 
@@ -479,7 +475,7 @@ address in ``/etc/manila/manila.conf``:
 Restrictions
 ~~~~~~~~~~~~
 
-The VMAX driver has the following restrictions:
+The PowerMax driver has the following restrictions:
 
 -  Only ``driver_handles_share_servers`` equals True is supported.
 
@@ -491,7 +487,7 @@ The VMAX driver has the following restrictions:
 
 -  VLAN network is supported with limitations. The neutron subnets in
    different VLANs that are used to create share networks cannot have
-   overlapped address spaces. Otherwise, VMAX may have a problem to
+   overlapped address spaces. Otherwise, PowerMax may have a problem to
    communicate with the hosts in the VLANs. To create shares for
    different VLANs with same subnet address, use different Data Movers.
 
@@ -540,7 +536,7 @@ Other Remarks
    listing of quotas and disk usage at the file system level (by the user,
    group, or tree), or at the quota-tree level (by the user or group).
    ``nas_quotas`` also turns quotas on and off, and clears quotas records
-   for a file system, quota tree, or a Data Mover. Refer to VMAX eNAS CLI
+   for a file system, quota tree, or a Data Mover. Refer to PowerMax eNAS CLI
    Reference guide on `EMC support site <http://support.emc.com>`_ for
    additional information.
    ``OpenStack manila quotas`` delimit the number of shares, snapshots etc.
@@ -567,4 +563,4 @@ Driver options
 
 Configuration options specific to this driver:
 
-.. include:: ../../tables/manila-vmax.inc
+.. include:: ../../tables/manila-powermax.inc

@@ -167,7 +167,8 @@ def patch_get_managed_ports_vnx(*arg, **kwargs):
                       mock.Mock(*arg, **kwargs))
 
 
-def patch_get_managed_ports_vmax(*arg, **kwargs):
-    return mock.patch('manila.share.drivers.dell_emc.plugins.vmax.connection.'
-                      'VMAXStorageConnection.get_managed_ports',
-                      mock.Mock(*arg, **kwargs))
+def patch_get_managed_ports_powermax(*arg, **kwargs):
+    return mock.patch(
+        'manila.share.drivers.dell_emc.plugins.powermax.connection.'
+        'PowerMaxStorageConnection.get_managed_ports',
+        mock.Mock(*arg, **kwargs))
