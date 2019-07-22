@@ -15,9 +15,7 @@ Possible use cases for data migration include:
 
 .. note::
 
-    Share Migration APIs are part of the `experimental APIs
-    <https://docs.openstack.org/api-ref/shared-file-system/
-    #experimental-apis>`_ .
+    Share Migration APIs are `experimental APIs <#experimental-apis>`_ .
 
 
 Migrate share (DEPRECATED)
