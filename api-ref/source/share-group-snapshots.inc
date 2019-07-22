@@ -19,8 +19,7 @@ roles.
 
 .. note::
 
-    Share Group Snapshot APIs are part of the `experimental APIs
-    <https://docs.openstack.org/api-ref/shared-file-system/#experimental-apis>`_.
+    Share Group Snapshot APIs are `experimental APIs <#experimental-apis>`_.
 
 List share group snapshots
 ==========================

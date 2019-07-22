@@ -9,18 +9,20 @@ create a share group.
 
 You can set share group types as either public or private. By default a
 share group type is created as publicly accessible. Set
-``share_group_type_access:is_public`` to ``False`` to make the share group
+``share_group_type_access:is_public`` to ``False`` to make a share group
 type private.
 
-You can manage the access to the private share group types for the
-different projects. You can add access, remove access, and get
-information about access for a private share group type.
+You can manage access to the private share group types for different
+projects. You can add access, remove access, and get information about
+access for a private share group type.
 
-Administrators can specifies which `share type(s)
-<https://docs.openstack.org/api-ref/shared-file-system/#experimental-apis>`_
-a given group type may contain. If Administrators does not specify it, then
-manila will use ``default`` share type. The scheduler then creates the group on
-one of the back ends that match the specified share type(s) and share group type.
+Administrators can specify which `share type(s) <#experimental-apis>`_
+a given group type may contain. If Administrators do not explicitly
+associate share types with a given share group type, the service will associate
+the share type configured as the ``default_share_type`` with the share group
+type. When creating a share group, the scheduler picks one of the
+back ends that match a combination of the extra specs in the specified share
+type(s) and share group type.
 
 Administrators can also set additional group extra specifications for a
 share group type for the following purposes:
@@ -31,8 +33,7 @@ share group type for the following purposes:
 
 .. note::
 
-    Share Group Types APIs are part of the `experimental APIs
-    <https://docs.openstack.org/api-ref/shared-file-system/#experimental-apis>`_.
+    Share Group Types APIs are `experimental APIs <#experimental-apis>`_.
 
 List share group types
 ======================
