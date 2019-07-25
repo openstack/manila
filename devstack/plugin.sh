@@ -1061,6 +1061,13 @@ function setup_ipv6 {
         iniset $MANILA_CONF DEFAULT data_node_access_ip $public_gateway_ipv4
     fi
 
+    if [ "$SHARE_DRIVER" == "manila.share.drivers.cephfs.driver.CephFSDriver" ]; then
+        for backend_name in ${MANILA_ENABLED_BACKENDS//,/ }; do
+            iniset $MANILA_CONF $backend_name cephfs_ganesha_export_ips $public_gateway_ipv4,$public_gateway_ipv6
+        done
+        iniset $MANILA_CONF DEFAULT data_node_access_ip $public_gateway_ipv4
+    fi
+
     # install Quagga for setting up the host routes dynamically
     install_package quagga
 

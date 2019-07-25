@@ -1,0 +1,4 @@
+---
+features:
+  - IPv6 support for CephFS Manila driver with NFS gateway.
+

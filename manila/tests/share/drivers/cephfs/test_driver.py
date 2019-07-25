@@ -136,6 +136,16 @@ class CephFSDriverTestCase(test.TestCase):
 
         self.assertEqual(DEFAULT_VOLUME_MODE, self._driver._cephfs_volume_mode)
 
+    @ddt.data('cephfs', 'nfs')
+    def test_check_for_setup_error(self, protocol_helper):
+        self._driver.configuration.cephfs_protocol_helper_type = (
+            protocol_helper)
+
+        self._driver.check_for_setup_error()
+
+        (self._driver.protocol_helper.check_for_setup_error.
+            assert_called_once_with())
+
     def test_create_share(self):
         cephfs_volume = {"mount_path": "/foo/bar"}
 
@@ -342,6 +352,7 @@ class CephFSDriverTestCase(test.TestCase):
         vc.connect.assert_called_once_with(premount_evict=None)
 
     def test_update_share_stats(self):
+        self._driver.get_configured_ip_versions = mock.Mock(return_value=[4])
         self._driver._volume_client
         self._driver._update_share_stats()
         result = self._driver._stats
@@ -358,6 +369,16 @@ class CephFSDriverTestCase(test.TestCase):
                           self._driver.create_share,
                           self._context,
                           self._share)
+
+    @ddt.data('cephfs', 'nfs')
+    def test_get_configured_ip_versions(self, protocol_helper):
+        self._driver.configuration.cephfs_protocol_helper_type = (
+            protocol_helper)
+
+        self._driver.get_configured_ip_versions()
+
+        (self._driver.protocol_helper.get_configured_ip_versions.
+            assert_called_once_with())
 
 
 @ddt.ddt
@@ -378,6 +399,13 @@ class NativeProtocolHelperTestCase(test.TestCase):
             self.fake_conf,
             ceph_vol_client=MockVolumeClientModule.CephFSVolumeClient()
         )
+
+    def test_check_for_setup_error(self):
+        expected = None
+
+        result = self._native_protocol_helper.check_for_setup_error()
+
+        self.assertEqual(expected, result)
 
     def test_get_export_locations(self):
         vc = self._native_protocol_helper.volume_client
@@ -534,6 +562,13 @@ class NativeProtocolHelperTestCase(test.TestCase):
             vc.authorize.assert_called_once_with(
                 driver.cephfs_share_path(self._share), "alice")
 
+    def test_get_configured_ip_versions(self):
+        expected = [4]
+
+        result = self._native_protocol_helper.get_configured_ip_versions()
+
+        self.assertEqual(expected, result)
+
 
 @ddt.ddt
 class NFSProtocolHelperTestCase(test.TestCase):
@@ -557,6 +592,38 @@ class NFSProtocolHelperTestCase(test.TestCase):
             self._execute,
             self.fake_conf,
             ceph_vol_client=self._volume_client)
+
+    @ddt.data(
+        (['fakehost', 'some.host.name', 'some.host.name.', '1.1.1.0'], False),
+        (['fakehost', 'some.host.name', 'some.host.name.', '1.1..1.0'], True),
+        (['fakehost', 'some.host.name', 'some.host.name', '1.1.1.256'], True),
+        (['fakehost..', 'some.host.name', 'some.host.name', '1.1.1.0'], True),
+        (['fakehost', 'some.host.name..', 'some.host.name', '1.1.1.0'], True),
+        (['fakehost', 'some.host.name', 'some.host.name.', '1.1..1.0'], True),
+        (['fakehost', 'some.host.name', '1.1.1.0/24'], True),
+        (['fakehost', 'some.host.name', '1.1.1.0', '1001::1001'], False),
+        (['fakehost', 'some.host.name', '1.1.1.0', '1001:1001'], True),
+        (['fakehost', 'some.host.name', '1.1.1.0', '1001::1001:'], True),
+        (['fakehost', 'some.host.name', '1.1.1.0', '1001::1001.'], True),
+        (['fakehost', 'some.host.name', '1.1.1.0', '1001::1001/129.'], True),
+    )
+    @ddt.unpack
+    def test_check_for_setup_error(self, cephfs_ganesha_export_ips, raises):
+        fake_conf = configuration.Configuration(None)
+        fake_conf.set_default('cephfs_ganesha_export_ips',
+                              cephfs_ganesha_export_ips)
+
+        helper = driver.NFSProtocolHelper(
+            self._execute,
+            fake_conf,
+            ceph_vol_client=MockVolumeClientModule.CephFSVolumeClient()
+        )
+
+        if raises:
+            self.assertRaises(exception.InvalidParameterValue,
+                              helper.check_for_setup_error)
+        else:
+            self.assertIsNone(helper.check_for_setup_error())
 
     @ddt.data(False, True)
     def test_init_executor_type(self, ganesha_server_is_remote):
@@ -612,17 +679,104 @@ class NFSProtocolHelperTestCase(test.TestCase):
             driver.socket.gethostname.assert_called_once_with()
             driver.LOG.info.assert_called_once()
 
-    def test_get_export_locations(self):
+    def test_get_export_locations_no_export_ips_configured(self):
         cephfs_volume = {"mount_path": "/foo/bar"}
+        fake_conf = configuration.Configuration(None)
+        fake_conf.set_default('cephfs_ganesha_server_ip', '1.2.3.4')
 
-        ret = self._nfs_helper.get_export_locations(self._share,
-                                                    cephfs_volume)
+        helper = driver.NFSProtocolHelper(
+            self._execute,
+            fake_conf,
+            ceph_vol_client=MockVolumeClientModule.CephFSVolumeClient()
+        )
+
+        ret = helper.get_export_locations(self._share,
+                                          cephfs_volume)
         self.assertEqual(
-            {
-                'path': 'fakeip:/foo/bar',
+            [{
+                'path': '1.2.3.4:/foo/bar',
                 'is_admin_only': False,
                 'metadata': {}
-            }, ret)
+            }], ret)
+
+    def test_get_export_locations_with_export_ips_configured(self):
+        fake_conf = configuration.Configuration(None)
+        conf_args_list = [
+            ('cephfs_ganesha_server_ip', '1.2.3.4'),
+            ('cephfs_ganesha_export_ips', '127.0.0.1,fd3f:c057:1192:1::1,::1')]
+        for args in conf_args_list:
+            fake_conf.set_default(*args)
+
+        helper = driver.NFSProtocolHelper(
+            self._execute,
+            fake_conf,
+            ceph_vol_client=MockVolumeClientModule.CephFSVolumeClient()
+        )
+
+        cephfs_volume = {"mount_path": "/foo/bar"}
+
+        ret = helper.get_export_locations(self._share, cephfs_volume)
+
+        self.assertEqual(
+            [
+                {
+                    'path': '127.0.0.1:/foo/bar',
+                    'is_admin_only': False,
+                    'metadata': {},
+                },
+                {
+                    'path': '[fd3f:c057:1192:1::1]:/foo/bar',
+                    'is_admin_only': False,
+                    'metadata': {},
+                },
+                {
+                    'path': '[::1]:/foo/bar',
+                    'is_admin_only': False,
+                    'metadata': {},
+                },
+            ], ret)
+
+    @ddt.data(('some.host.name', None, [4, 6]), ('host.', None, [4, 6]),
+              ('1001::1001', None, [6]), ('1.1.1.0', None, [4]),
+              (None, ['1001::1001', '1.1.1.0'], [6, 4]),
+              (None, ['1001::1001'], [6]), (None, ['1.1.1.0'], [4]),
+              (None, ['1001::1001/129', '1.1.1.0'], [4, 6]))
+    @ddt.unpack
+    def test_get_configured_ip_versions(
+            self, cephfs_ganesha_server_ip, cephfs_ganesha_export_ips,
+            configured_ip_version):
+        fake_conf = configuration.Configuration(None)
+        conf_args_list = [
+            ('cephfs_ganesha_server_ip', cephfs_ganesha_server_ip),
+            ('cephfs_ganesha_export_ips', cephfs_ganesha_export_ips)]
+
+        for args in conf_args_list:
+            fake_conf.set_default(*args)
+
+        helper = driver.NFSProtocolHelper(
+            self._execute,
+            fake_conf,
+            ceph_vol_client=MockVolumeClientModule.CephFSVolumeClient()
+        )
+
+        self.assertEqual(set(configured_ip_version),
+                         set(helper.get_configured_ip_versions()))
+
+    def test_get_configured_ip_versions_already_set(self):
+        fake_conf = configuration.Configuration(None)
+        helper = driver.NFSProtocolHelper(
+            self._execute,
+            fake_conf,
+            ceph_vol_client=MockVolumeClientModule.CephFSVolumeClient()
+        )
+
+        ip_versions = ['foo', 'bar']
+
+        helper.configured_ip_versions = ip_versions
+
+        result = helper.get_configured_ip_versions()
+
+        self.assertEqual(ip_versions, result)
 
     def test_default_config_hook(self):
         fake_conf_dict = {'key': 'value1'}

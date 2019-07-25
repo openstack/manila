@@ -181,6 +181,14 @@ def nfs_synchronized(f):
     return wrapped_func
 
 
+def escaped_address(address):
+    addr = ipaddress.ip_address(six.text_type(address))
+    if addr.version == 4:
+        return six.text_type(addr)
+    else:
+        return '[%s]' % six.text_type(addr)
+
+
 class NFSHelper(NASHelperBase):
     """Interface to work with share."""
 
@@ -191,23 +199,15 @@ class NFSHelper(NASHelperBase):
         if 'public_addresses' in server_copy:
             for address in server_copy['public_addresses']:
                 public_addresses.append(
-                    self._escaped_address(address))
+                    escaped_address(address))
             server_copy['public_addresses'] = public_addresses
 
         for t in ['public_address', 'admin_ip', 'ip']:
             address = server_copy.get(t)
             if address is not None:
-                server_copy[t] = self._escaped_address(address)
+                server_copy[t] = escaped_address(address)
 
         return self.get_exports_for_share(server_copy, path)
-
-    @staticmethod
-    def _escaped_address(address):
-        addr = ipaddress.ip_address(six.text_type(address))
-        if addr.version == 4:
-            return six.text_type(addr)
-        else:
-            return '[%s]' % six.text_type(addr)
 
     def init_helper(self, server):
         try:

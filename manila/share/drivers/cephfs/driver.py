@@ -14,12 +14,15 @@
 #    under the License.
 
 
+import ipaddress
 import socket
 import sys
 
 from oslo_config import cfg
+from oslo_config import types
 from oslo_log import log
 from oslo_utils import units
+import six
 
 from manila.common import constants
 from manila import exception
@@ -27,6 +30,7 @@ from manila.i18n import _
 from manila.share import driver
 from manila.share.drivers import ganesha
 from manila.share.drivers.ganesha import utils as ganesha_utils
+from manila.share.drivers import helpers as driver_helpers
 from manila.share import share_types
 
 try:
@@ -78,8 +82,8 @@ cephfs_opts = [
                 default=False,
                 help="Whether the NFS-Ganesha server is remote to the driver."
                 ),
-    cfg.StrOpt('cephfs_ganesha_server_ip',
-               help="The IP address of the NFS-Ganesha server."),
+    cfg.HostAddressOpt('cephfs_ganesha_server_ip',
+                       help="The IP address of the NFS-Ganesha server."),
     cfg.StrOpt('cephfs_ganesha_server_username',
                default='root',
                help="The username to authenticate as in the remote "
@@ -91,6 +95,11 @@ cephfs_opts = [
                help="The password to authenticate as the user in the remote "
                     "Ganesha server host. This is not required if "
                     "'cephfs_ganesha_path_to_private_key' is configured."),
+    cfg.ListOpt('cephfs_ganesha_export_ips',
+                default='',
+                help="List of IPs to export shares. If not supplied, "
+                     "then the value of 'cephfs_ganesha_server_ip' "
+                     "will be used to construct share export locations."),
     cfg.StrOpt('cephfs_volume_mode',
                default=DEFAULT_VOLUME_MODE,
                help="The read/write/execute permissions mode for CephFS "
@@ -110,7 +119,7 @@ def cephfs_share_path(share):
 
 
 class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
-                   driver.ShareDriver,):
+                   driver.ShareDriver):
     """Driver for the Ceph Filesystem."""
 
     def __init__(self, *args, **kwargs):
@@ -130,6 +139,8 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             raise exception.BadConfigurationException(
                 msg % self.configuration.cephfs_volume_mode)
 
+        self.ipv6_implemented = True
+
     def do_setup(self, context):
         if self.configuration.cephfs_protocol_helper_type.upper() == "CEPHFS":
             protocol_helper_class = getattr(
@@ -144,6 +155,10 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             ceph_vol_client=self.volume_client)
 
         self.protocol_helper.init_helper()
+
+    def check_for_setup_error(self):
+        """Returns an error if prerequisites aren't met."""
+        self.protocol_helper.check_for_setup_error()
 
     def _update_share_stats(self):
         stats = self.volume_client.rados.get_cluster_stats()
@@ -174,7 +189,8 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             'snapshot_support': self.configuration.safe_get(
                 'cephfs_enable_snapshots'),
         }
-        super(CephFSDriver, self)._update_share_stats(data)
+        super(    # pylint: disable=no-member
+            CephFSDriver, self)._update_share_stats(data)
 
     def _to_bytes(self, gigs):
         """Convert a Manila size into bytes.
@@ -337,6 +353,9 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             self._volume_client.disconnect()
             self._volume_client = None
 
+    def get_configured_ip_versions(self):
+        return self.protocol_helper.get_configured_ip_versions()
+
 
 class NativeProtocolHelper(ganesha.NASHelperBase):
     """Helper class for native CephFS protocol"""
@@ -352,6 +371,10 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
 
     def _init_helper(self):
         pass
+
+    def check_for_setup_error(self):
+        """Returns an error if prerequisites aren't met."""
+        return
 
     def get_export_locations(self, share, cephfs_volume):
         # To mount this you need to know the mon IPs and the path to the volume
@@ -460,6 +483,9 @@ class NativeProtocolHelper(ganesha.NASHelperBase):
 
         return access_keys
 
+    def get_configured_ip_versions(self):
+        return [4]
+
 
 class NFSProtocolHelper(ganesha.GaneshaNASHelper2):
 
@@ -487,20 +513,40 @@ class NFSProtocolHelper(ganesha.GaneshaNASHelper2):
 
         if not hasattr(self, 'ceph_vol_client'):
             self.ceph_vol_client = kwargs.pop('ceph_vol_client')
+        self.export_ips = config_object.cephfs_ganesha_export_ips
+        if not self.export_ips:
+            self.export_ips = [self.ganesha_host]
+        self.configured_ip_versions = set()
+        self.config = config_object
+
+    def check_for_setup_error(self):
+        """Returns an error if prerequisites aren't met."""
+        host_address_obj = types.HostAddress()
+        for export_ip in self.config.cephfs_ganesha_export_ips:
+            try:
+                host_address_obj(export_ip)
+            except ValueError:
+                msg = (_("Invalid list member of 'cephfs_ganesha_export_ips' "
+                         "option supplied %s -- not a valid IP address or "
+                         "hostname.") % export_ip)
+                raise exception.InvalidParameterValue(err=msg)
 
     def get_export_locations(self, share, cephfs_volume):
-        export_location = "{server_address}:{path}".format(
-            server_address=self.ganesha_host,
-            path=cephfs_volume['mount_path'])
+        export_locations = []
+        for export_ip in self.export_ips:
+            export_path = "{server_address}:{mount_path}".format(
+                server_address=driver_helpers.escaped_address(export_ip),
+                mount_path=cephfs_volume['mount_path'])
 
-        LOG.info("Calculated export location for share %(id)s: %(loc)s",
-                 {"id": share['id'], "loc": export_location})
-
-        return {
-            'path': export_location,
-            'is_admin_only': False,
-            'metadata': {},
-        }
+            LOG.info("Calculated export path for share %(id)s: %(epath)s",
+                     {"id": share['id'], "epath": export_path})
+            export_location = {
+                'path': export_path,
+                'is_admin_only': False,
+                'metadata': {},
+            }
+            export_locations.append(export_location)
+        return export_locations
 
     def _default_config_hook(self):
         """Callback to provide default export block."""
@@ -540,3 +586,19 @@ class NFSProtocolHelper(ganesha.GaneshaNASHelper2):
         """Callback to provide pseudo path."""
         volume_path = cephfs_share_path(share)
         return self.ceph_vol_client._get_path(volume_path)
+
+    def get_configured_ip_versions(self):
+        if not self.configured_ip_versions:
+            try:
+                for export_ip in self.export_ips:
+                    self.configured_ip_versions.add(
+                        ipaddress.ip_address(six.text_type(export_ip)).version)
+            except Exception:
+                # export_ips contained a hostname, safest thing is to
+                # claim support for IPv4 and IPv6 address families
+                LOG.warning("Setting configured IP versions to [4, 6] since "
+                            "a hostname (rather than IP address) was supplied "
+                            "in 'cephfs_ganesha_server_ip' or "
+                            "in 'cephfs_ganesha_export_ips'.")
+                return [4, 6]
+        return list(self.configured_ip_versions)
