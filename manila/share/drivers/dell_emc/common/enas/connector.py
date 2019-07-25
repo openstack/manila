@@ -58,7 +58,7 @@ class XMLAPIConnector(object):
         credential = ('user=' + self.username
                       + '&password=' + self.password
                       + '&Login=Login')
-        req = url_request.Request(self.auth_url, credential,
+        req = url_request.Request(self.auth_url, credential.encode(),
                                   constants.CONTENT_TYPE_URLENCODE)
         resp = self.url_opener.open(req)
         resp_body = resp.read()
@@ -98,7 +98,7 @@ class XMLAPIConnector(object):
 
     def _request(self, req_body=None, method=None,
                  header=constants.CONTENT_TYPE_URLENCODE):
-        req = url_request.Request(self._url, req_body, header)
+        req = url_request.Request(self._url, req_body.encode(), header)
         if method not in (None, 'GET', 'POST'):
             req.get_method = lambda: method
         self._http_log_req(req)
