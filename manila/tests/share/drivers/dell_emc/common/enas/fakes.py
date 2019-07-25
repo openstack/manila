@@ -55,7 +55,7 @@ def response(func):
             'xml_api"><Response>'
             + func(*args, **kwargs)
             + '</Response></ResponsePacket>'
-        )
+        ).encode()
 
     return inner
 
