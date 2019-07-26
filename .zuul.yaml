@@ -26,11 +26,7 @@
         - manila-tempest-minimal-dsvm-cephfs-nfs-centos-7:
             voting: false
         - manila-tempest-minimal-dsvm-dummy
-# TODO(gouthamr): make lvm job voting again
-# after https://bugs.launchpad.net/devstack/+bug/1833696
-# is fixed.
-        - manila-tempest-minimal-dsvm-lvm-centos-7:
-            voting: false
+        - manila-tempest-minimal-dsvm-lvm-centos-7
         - grenade-dsvm-manila:
             voting: false
         - rally-dsvm-manila-multibackend:
@@ -46,10 +42,7 @@
       jobs:
         - manila-tox-genconfig
         - manila-tempest-minimal-dsvm-dummy
-# TODO(gouthamr): make lvm job voting again
-# after https://bugs.launchpad.net/devstack/+bug/1833696
-# is fixed.
-#       - manila-tempest-minimal-dsvm-lvm-centos-7
+        - manila-tempest-minimal-dsvm-lvm-centos-7
     experimental:
       jobs:
         - manila-tempest-dsvm-glusterfs-nfs
