@@ -1363,13 +1363,19 @@ metadata_3:
   in: body
   required: true
   type: object
+metadata_item:
+  description: |
+    A single metadata key and value pair.
+  in: body
+  required: true
+  type: object
 metadata_key_request:
   description: |
     The key of a metadata item. For example, if the metadata on an existing
     share or access rule is as follows: ``"project": "my_test",
     "aim": "testing"``, the keys are "project" and "aim".
   in: body
-  required: false
+  required: true
   type: object
 migrate-start:
   description: |
