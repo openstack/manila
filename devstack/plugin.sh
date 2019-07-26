@@ -1013,8 +1013,12 @@ function install_libraries {
 
 function setup_ipv6 {
 
-    # save IPv6 default route to add back later after enabling forwarding
-    local default_route=$(ip -6 route | grep default | cut -d ' ' -f1,2,3,4,5)
+    # This will fail with multiple default routes and is not needed in CI
+    # but may be useful when developing with devstack locally
+    if [ $(trueorfalse False MANILA_RESTORE_IPV6_DEFAULT_ROUTE) == True ]; then
+        # save IPv6 default route to add back later after enabling forwarding
+        local default_route=$(ip -6 route | grep default | cut -d ' ' -f1,2,3,4,5)
+    fi
 
     # make sure those system values are set
     sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=0
@@ -1137,11 +1141,15 @@ function setup_ipv6 {
     # log the systemd status
     sudo systemctl status $QUAGGA_SERVICES
 
-    # add default IPv6 route back
-    if ! [[ -z $default_route ]]; then
-        # "replace" should ignore "RTNETLINK answers: File exists"
-        # error if the route wasn't flushed by the bgp setup we did earlier.
-        sudo ip -6 route replace $default_route
+    # This will fail with mutltiple default routes and is not needed in CI
+    # but may be useful when developing with devstack locally
+    if [ $(trueorfalse False MANILA_RESTORE_IPV6_DEFAULT_ROUTE) == True ]; then
+        # add default IPv6 route back
+        if ! [[ -z $default_route ]]; then
+            # "replace" should ignore "RTNETLINK answers: File exists"
+            # error if the route wasn't flushed by the bgp setup we did earlier.
+            sudo ip -6 route replace $default_route
+        fi
     fi
 
 }
