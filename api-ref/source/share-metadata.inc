@@ -7,12 +7,12 @@ Share metadata
 Shows, sets, updates, and unsets share metadata.
 
 
-Show share metadata
-===================
+Show all share metadata
+=======================
 
 .. rest_method::  GET /v2/{project_id}/shares/{share_id}/metadata
 
-Shows the metadata for a share.
+Shows all the metadata for a share, as key and value pairs.
 
 Response codes
 --------------
@@ -50,12 +50,61 @@ Response example
    :language: javascript
 
 
+Show share metadata item
+=========================
+
+.. rest_method::  GET /v2/{project_id}/shares/{share_id}/metadata/{key}
+
+Retrieves a specific metadata item from a share's metadata by its key. If
+the specified key does not represent a valid metadata item, the API will
+respond with HTTP 404.
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - share_id: share_id
+   - key: metadata_key_request
+
+Response parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - metadata: metadata_item
+
+Response example
+----------------
+
+.. literalinclude:: samples/share-show-metadata-item-response.json
+   :language: javascript
+
+
 Set share metadata
 ==================
 
 .. rest_method::  POST /v2/{project_id}/shares/{share_id}/metadata
 
-Sets the metadata on a share.
+Allows adding new metadata items as key-value pairs. This API will not delete
+pre-existing metadata items. If the request object contains metadata items
+that already exist, they will be updated with new values as specified in the
+request object.
 
 Response codes
 --------------
@@ -107,7 +156,9 @@ Update share metadata
 
 .. rest_method::  PUT /v2/{project_id}/shares/{share_id}/metadata
 
-Updates the metadata for a share.
+Replaces the metadata for a given share with the metadata (specified as
+key-value pairs) in the request object. All pre-existing metadata of the
+share will be deleted and replaced with the new metadata supplied.
 
 Response codes
 --------------
@@ -153,15 +204,30 @@ Response example
    :language: javascript
 
 
-Unset share metadata
-====================
+To delete all existing metadata items on a given share, the request object
+needs to specify an empty metadata object:
+
+Request example
+---------------
+
+.. literalinclude:: samples/share-update-null-metadata-request.json
+   :language: javascript
+
+Response example
+----------------
+
+.. literalinclude:: samples/share-update-null-metadata-response.json
+   :language: javascript
+
+
+Delete share metadata item
+==========================
 
 .. rest_method::  DELETE /v2/{project_id}/shares/{share_id}/metadata/{key}
 
-Un-sets the metadata on a share.
-
-To unset a metadata key value, specify only the key name in the
-URI.
+Deletes a single metadata item on a share, idetified by its key. If
+the specified key does not represent a valid metadata item, the API will
+respond with HTTP 404.
 
 Response codes
 --------------
