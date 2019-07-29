@@ -27,6 +27,8 @@
             voting: false
         - manila-tempest-minimal-dsvm-cephfs-nfs:
             voting: false
+        - manila-tempest-dsvm-glusterfs-nfs:
+            voting: false
         - manila-tempest-minimal-dsvm-dummy
         # Through the Train release we need to keep some python2 coverage.
         - manila-tempest-minimal-dsvm-dummy-py2
@@ -50,7 +52,6 @@
         - manila-tempest-minimal-dsvm-lvm
     experimental:
       jobs:
-        - manila-tempest-dsvm-glusterfs-nfs
         - manila-tempest-dsvm-glusterfs-native
         - manila-tempest-dsvm-glusterfs-nfs-heketi
         - manila-tempest-dsvm-glusterfs-native-heketi

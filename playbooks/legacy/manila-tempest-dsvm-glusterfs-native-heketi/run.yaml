@@ -69,7 +69,10 @@
 
           function post_test_hook {
               # Configure and run tempest on singlebackend manila installation
-              source $BASE/new/devstack-plugin-glusterfs/manila/post_test_hook.sh singlebackend
+              source $BASE/new/devstack-plugin-glusterfs/manila/post_test_hook.sh \
+                  singlebackend \
+                  glusterfs-heketi \
+                  api
           }
           export -f post_test_hook
 
