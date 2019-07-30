@@ -31,6 +31,7 @@
           [[local|localrc]]
           enable_plugin manila https://opendev.org/openstack/manila
           enable_plugin manila-tempest-plugin https://opendev.org/openstack/manila-tempest-plugin
+
           EOF
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'
@@ -52,6 +53,8 @@
           export PROJECTS="openstack/manila-tempest-plugin $PROJECTS"
 
           export DEVSTACK_GATE_USE_PYTHON3=True
+
+          export MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE=False
 
           function pre_test_hook {
               # 'dhss' - acronym for 'Driver Handles Share Servers',

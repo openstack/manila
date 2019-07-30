@@ -49,6 +49,7 @@
 
           export MANILA_SETUP_IPV6=True
           export RUN_MANILA_IPV6_TESTS=True
+          export MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE=False
 
           # Basic services needed for minimal job
           OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit,tempest
