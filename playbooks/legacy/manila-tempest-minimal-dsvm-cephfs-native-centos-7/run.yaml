@@ -64,7 +64,7 @@
           [[local|localrc]]
           SKIP_EPEL_INSTALL=True
           enable_plugin manila https://opendev.org/openstack/manila
-
+          enable_plugin manila-tempest-plugin https://opendev.org/openstack/manila-tempest-plugin
           enable_plugin devstack-plugin-ceph https://opendev.org/openstack/devstack-plugin-ceph
 
           # Enable CephFS as the backend for Manila.
@@ -101,6 +101,7 @@
           export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
           export KEEP_LOCALRC=1
           export PROJECTS="openstack/manila-tempest-plugin $PROJECTS"
+          export MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE=False
           OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit,tempest
           export OVERRIDE_ENABLED_SERVICES
 

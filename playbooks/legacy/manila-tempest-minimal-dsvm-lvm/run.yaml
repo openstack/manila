@@ -31,6 +31,7 @@
           [[local|localrc]]
           SKIP_EPEL_INSTALL=True
           enable_plugin manila https://opendev.org/openstack/manila
+          enable_plugin manila-tempest-plugin https://opendev.org/openstack/manila-tempest-plugin
           enable_plugin neutron-dynamic-routing https://opendev.org/openstack/neutron-dynamic-routing
           enable_plugin neutron-tempest-plugin https://opendev.org/openstack/neutron-tempest-plugin
           EOF
@@ -48,6 +49,7 @@
 
           export MANILA_SETUP_IPV6=True
           export RUN_MANILA_IPV6_TESTS=True
+          export MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE=False
 
           # Basic services needed for minimal job
           OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit,tempest
