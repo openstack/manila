@@ -405,10 +405,10 @@ function configure_data_service_generic_driver {
     if [[ $share_driver == $generic_driver ]]; then
         driver_handles_share_servers=$(iniget $MANILA_CONF ${enabled_backends[0]} driver_handles_share_servers)
         if [[ $(trueorfalse False driver_handles_share_servers) == False ]]; then
-            iniset $MANILA_CONF DEFAULT data_node_access_ip $PUBLIC_NETWORK_GATEWAY
+            iniset $MANILA_CONF DEFAULT data_node_access_ips $PUBLIC_NETWORK_GATEWAY
         else
             if ! [[ -z $MANILA_DATA_NODE_IP ]]; then
-                iniset $MANILA_CONF DEFAULT data_node_access_ip $MANILA_DATA_NODE_IP
+                iniset $MANILA_CONF DEFAULT data_node_access_ips $MANILA_DATA_NODE_IP
             fi
         fi
     fi
@@ -658,7 +658,7 @@ function init_manila {
                 cat $STACK_HOME/.ssh/*.pub >> $SSH_USER_HOME/.ssh/authorized_keys
                 # Give ssh user sudo access
                 echo "$MANILA_ZFSONLINUX_SSH_USERNAME ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers > /dev/null
-                iniset $MANILA_CONF DEFAULT data_node_access_ip $MANILA_ZFSONLINUX_SERVICE_IP
+                iniset $MANILA_CONF DEFAULT data_node_access_ips $MANILA_ZFSONLINUX_SERVICE_IP
             fi
         fi
     fi
@@ -815,7 +815,7 @@ function configure_samba {
             iniset $MANILA_CONF $backend_name driver_handles_share_servers False
             iniset $MANILA_CONF $backend_name lvm_share_export_ips $MANILA_LVM_SHARE_EXPORT_IPS
         done
-        iniset $MANILA_CONF DEFAULT data_node_access_ip $HOST_IP
+        iniset $MANILA_CONF DEFAULT data_node_access_ips $HOST_IP
     fi
 }
 
@@ -1062,14 +1062,14 @@ function setup_ipv6 {
         for backend_name in ${MANILA_ENABLED_BACKENDS//,/ }; do
             iniset $MANILA_CONF $backend_name lvm_share_export_ips $public_gateway_ipv4,$public_gateway_ipv6
         done
-        iniset $MANILA_CONF DEFAULT data_node_access_ip $public_gateway_ipv4
+        iniset $MANILA_CONF DEFAULT data_node_access_ips $public_gateway_ipv4
     fi
 
     if [ "$SHARE_DRIVER" == "manila.share.drivers.cephfs.driver.CephFSDriver" ]; then
         for backend_name in ${MANILA_ENABLED_BACKENDS//,/ }; do
             iniset $MANILA_CONF $backend_name cephfs_ganesha_export_ips $public_gateway_ipv4,$public_gateway_ipv6
         done
-        iniset $MANILA_CONF DEFAULT data_node_access_ip $public_gateway_ipv4
+        iniset $MANILA_CONF DEFAULT data_node_access_ips $public_gateway_ipv4
     fi
 
     # install Quagga for setting up the host routes dynamically

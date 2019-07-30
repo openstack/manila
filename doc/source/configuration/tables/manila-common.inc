@@ -32,8 +32,8 @@
      - (String) The admin user name registered in the security service in order to allow access to user authentication-based shares.
    * - ``data_node_access_cert`` = ``None``
      - (String) The certificate installed in the data node in order to allow access to certificate authentication-based shares.
-   * - ``data_node_access_ip`` = ``None``
-     - (String) The IP of the node interface connected to the admin network. Used for allowing access to the mounting shares.
+   * - ``data_node_access_ips`` = ``None``
+     - (String) A list of the IPs of the node interface connected to the admin network. Used for allowing access to the mounting shares. Default is [].
    * - ``data_node_mount_options`` = ``{}``
      - (Dict) Mount options to be included in the mount command for share protocols. Use dictionary format, example: {'nfs': '-o nfsvers=3', 'cifs': '-o user=foo,pass=bar'}
    * - ``data_topic`` = ``manila-data``

@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    The configuration option for the manila-data service,
+    ``data_node_access_ip`` from the [DEFAULT] section is no longer
+    supported. It was deprecated in favor of ``data_node_access_ips`` in the
+    OpenStack Shared File Systems (manila) service release 6.0.0 (Queens).

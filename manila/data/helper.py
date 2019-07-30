@@ -40,14 +40,6 @@ data_helper_opts = [
                      "the admin network. Used for allowing access to the "
                      "mounting shares. Default is []."),
     cfg.StrOpt(
-        'data_node_access_ip',
-        help="The IP of the node interface connected to the admin network. "
-             "Used for allowing access to the mounting shares.",
-        deprecated_for_removal=True,
-        deprecated_reason="New config option 'data_node_access_ips' added "
-                          "to support multiple IPs, including IPv6 addresses "
-                          "alongside IPv4."),
-    cfg.StrOpt(
         'data_node_access_cert',
         help="The certificate installed in the data node in order to "
              "allow access to certificate authentication-based shares."),
@@ -217,7 +209,7 @@ class DataServiceHelper(object):
             if access_type.lower() == 'cert' and CONF.data_node_access_cert:
                 access_to_list.append(CONF.data_node_access_cert)
             elif access_type.lower() == 'ip':
-                ips = CONF.data_node_access_ips or CONF.data_node_access_ip
+                ips = CONF.data_node_access_ips
                 if ips:
                     if not isinstance(ips, list):
                         ips = [ips]
