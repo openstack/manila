@@ -202,6 +202,11 @@ MANILA_DATA_COPY_CHECK_HASH=${MANILA_DATA_COPY_CHECK_HASH:=True}
 # Manila IPv6 Setup flag
 MANILA_SETUP_IPV6=${MANILA_SETUP_IPV6:=False}
 
+# Install manila-tempest-plugin system-wide
+# This operation has been deprecated. manila-tempest-plugin has a devstack
+# plugin that must be preferred over this approach.
+MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE=${MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE:=True}
+
 # Enable manila services
 # ----------------------
 # We have to add Manila to enabled services for screen_it to work
