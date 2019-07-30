@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    The LVM driver configuration option ``lvm_share_export_ip`` is no longer
+    supported. This option has been replaced by ``lvm_share_export_ips``
+    which accepts a comma-separated string of IP addresses of the host
+    exporting the LVM shares (NFS/CIFS share server).

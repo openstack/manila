@@ -41,12 +41,9 @@ share_opts = [
     cfg.StrOpt('lvm_share_export_root',
                default='$state_path/mnt',
                help='Base folder where exported shares are located.'),
-    cfg.StrOpt('lvm_share_export_ip',
-               deprecated_for_removal=True,
-               deprecated_reason='Use lvm_share_export_ips instead.',
-               help='IP to be added to export string.'),
     cfg.ListOpt('lvm_share_export_ips',
-                help='List of IPs to export shares.'),
+                help='List of IPs to export shares belonging to the LVM '
+                     'storage driver.'),
     cfg.IntOpt('lvm_share_mirrors',
                default=0,
                help='If set, create LVMs with multiple mirrors. Note that '
@@ -78,15 +75,8 @@ class LVMMixin(driver.ExecuteMixin):
                    % self.configuration.lvm_share_volume_group)
             raise exception.InvalidParameterValue(err=msg)
 
-        if (self.configuration.lvm_share_export_ip and
-                self.configuration.lvm_share_export_ips):
-            msg = (_("Only one of lvm_share_export_ip or lvm_share_export_ips"
-                     " may be specified."))
-            raise exception.InvalidParameterValue(err=msg)
-        if not (self.configuration.lvm_share_export_ip or
-                self.configuration.lvm_share_export_ips):
-            msg = (_("Neither lvm_share_export_ip nor lvm_share_export_ips is"
-                     " specified."))
+        if not self.configuration.lvm_share_export_ips:
+            msg = _("The option lvm_share_export_ips must be specified.")
             raise exception.InvalidParameterValue(err=msg)
 
     def _allocate_container(self, share):
@@ -176,12 +166,9 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
             'instance_id': self.backend_name,
             'lock_name': 'manila_lvm',
         }
-        if self.configuration.lvm_share_export_ip:
-            self.share_server['public_addresses'] = [
-                self.configuration.lvm_share_export_ip]
-        else:
-            self.share_server['public_addresses'] = (
-                self.configuration.lvm_share_export_ips)
+        self.share_server['public_addresses'] = (
+            self.configuration.lvm_share_export_ips
+        )
         self.ipv6_implemented = True
 
     def _ssh_exec_as_root(self, server, command, check_exit_code=True):
@@ -452,23 +439,12 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         if self.configured_ip_version is None:
             try:
                 self.configured_ip_version = []
-                if self.configuration.lvm_share_export_ip:
-                    self.configured_ip_version.append(ipaddress.ip_address(
-                        six.text_type(
-                            self.configuration.lvm_share_export_ip)).version)
-                else:
-                    for ip in self.configuration.lvm_share_export_ips:
-                        self.configured_ip_version.append(
-                            ipaddress.ip_address(six.text_type(ip)).version)
+                for ip in self.configuration.lvm_share_export_ips:
+                    self.configured_ip_version.append(
+                        ipaddress.ip_address(six.text_type(ip)).version)
             except Exception:
-                if self.configuration.lvm_share_export_ip:
-                    message = (_("Invalid 'lvm_share_export_ip' option "
-                                 "supplied %s.") %
-                               self.configuration.lvm_share_export_ip)
-                else:
-                    message = (_("Invalid 'lvm_share_export_ips' option "
-                                 "supplied %s.") %
-                               self.configuration.lvm_share_export_ips)
+                message = (_("Invalid 'lvm_share_export_ips' option supplied "
+                             "%s.") % self.configuration.lvm_share_export_ips)
                 raise exception.InvalidInput(reason=message)
         return self.configured_ip_version
 

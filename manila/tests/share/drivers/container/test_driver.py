@@ -31,7 +31,7 @@ from manila.tests.share.drivers.container import fakes as cont_fakes
 
 
 CONF = cfg.CONF
-CONF.import_opt('lvm_share_export_ip', 'manila.share.drivers.lvm')
+CONF.import_opt('lvm_share_export_ips', 'manila.share.drivers.lvm')
 
 
 @ddt.ddt
@@ -53,7 +53,7 @@ class ContainerShareDriverTestCase(test.TestCase):
         self.share = cont_fakes.fake_share()
         self.access = cont_fakes.fake_access()
         self.server = {
-            'public_address': self.fake_conf.lvm_share_export_ip,
+            'public_address': self.fake_conf.lvm_share_export_ips,
             'instance_id': 'LVM',
         }
 

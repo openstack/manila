@@ -18,8 +18,8 @@
      - Description
    * - **[DEFAULT]**
      -
-   * - ``lvm_share_export_ip`` = ``None``
-     - (String) IP to be added to export string.
+   * - ``lvm_share_export_ips`` = ``None``
+     - (String) List of IPs to export shares belonging to the LVM storage driver.
    * - ``lvm_share_export_root`` = ``$state_path/mnt``
      - (String) Base folder where exported shares are located.
    * - ``lvm_share_helpers`` = ``CIFS=manila.share.drivers.helpers.CIFSHelperUserAccess, NFS=manila.share.drivers.helpers.NFSHelper``

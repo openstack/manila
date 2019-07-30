@@ -150,16 +150,6 @@ class LVMShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidParameterValue,
                           self._driver.check_for_setup_error)
 
-    def test_check_for_setup_error_deprecated_export_ip(self):
-        def exec_runner(*ignore_args, **ignore_kwargs):
-            return '\n   fake1\n   fakevg\n   fake2\n', ''
-
-        fake_utils.fake_execute_set_repliers([('vgs --noheadings -o name',
-                                               exec_runner)])
-        CONF.set_default('lvm_share_export_ip', CONF.lvm_share_export_ips[0])
-        CONF.set_default('lvm_share_export_ips', None)
-        self.assertIsNone(self._driver.check_for_setup_error())
-
     def test_check_for_setup_error_no_export_ips(self):
         def exec_runner(*ignore_args, **ignore_kwargs):
             return '\n   fake1\n   fakevg\n   fake2\n', ''
@@ -167,16 +157,6 @@ class LVMShareDriverTestCase(test.TestCase):
         fake_utils.fake_execute_set_repliers([('vgs --noheadings -o name',
                                                exec_runner)])
         CONF.set_default('lvm_share_export_ips', None)
-        self.assertRaises(exception.InvalidParameterValue,
-                          self._driver.check_for_setup_error)
-
-    def test_check_for_setup_error_both_export_ip_and_ips(self):
-        def exec_runner(*ignore_args, **ignore_kwargs):
-            return '\n   fake1\n   fakevg\n   fake2\n', ''
-
-        fake_utils.fake_execute_set_repliers([('vgs --noheadings -o name',
-                                               exec_runner)])
-        CONF.set_default('lvm_share_export_ip', CONF.lvm_share_export_ips[0])
         self.assertRaises(exception.InvalidParameterValue,
                           self._driver.check_for_setup_error)
 
@@ -403,15 +383,15 @@ class LVMShareDriverTestCase(test.TestCase):
                 self.server, self.share['name'],
                 access_rules, add_rules=add_rules, delete_rules=delete_rules))
 
-    @ddt.data(('1001::1001/129', None, False), ('1.1.1.256', None, False),
-              ('1001::1001', None, [6]), ('1.1.1.0', None, [4]),
-              (None, ['1001::1001', '1.1.1.0'], [6, 4]),
-              (None, ['1001::1001'], [6]), (None, ['1.1.1.0'], [4]),
-              (None, ['1001::1001/129', '1.1.1.0'], False))
+    @ddt.data((['1001::1001/129'], False),
+              (['1.1.1.256'], False),
+              (['1001::1001'], [6]),
+              ('1.1.1.0', [4]),
+              (['1001::1001', '1.1.1.0'], [6, 4]),
+              (['1001::1001/129', '1.1.1.0'], False))
     @ddt.unpack
-    def test_get_configured_ip_versions(
-            self, configured_ip, configured_ips, configured_ip_version):
-        CONF.set_default('lvm_share_export_ip', configured_ip)
+    def test_get_configured_ip_versions(self, configured_ips,
+                                        configured_ip_version):
         CONF.set_default('lvm_share_export_ips', configured_ips)
         if configured_ip_version:
             self.assertEqual(configured_ip_version,
@@ -547,10 +527,10 @@ class LVMShareDriverTestCase(test.TestCase):
                                               'count=1024', 'bs=1M',
                                               run_as_root=True)
 
-    @ddt.data(('1.1.1.1', 4), ('1001::1001', 6))
+    @ddt.data((['1.1.1.1'], 4), (['1001::1001'], 6))
     @ddt.unpack
     def test_update_share_stats(self, configured_ip, version):
-        CONF.set_default('lvm_share_export_ip', configured_ip)
+        CONF.set_default('lvm_share_export_ips', configured_ip)
         self.mock_object(self._driver, 'get_share_server_pools',
                          mock.Mock(return_value='test-pool'))
 
