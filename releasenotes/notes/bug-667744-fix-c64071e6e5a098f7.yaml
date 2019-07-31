@@ -1,0 +1,4 @@
+fixes:
+   - Launchpad bug `1822815 <https://bugs.launchpad.net/manila/+bug/1822815>`_
+    has been fixed. The user no longer gets an error if the list command has
+    no rows when executing `manila list --count True`.

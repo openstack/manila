@@ -178,7 +178,7 @@ class ViewBuilder(common.ViewBuilder):
                                                   self._collection_name)
         shares_dict = dict(shares=shares_list)
 
-        if count:
+        if count is not None:
             shares_dict['count'] = count
         if shares_links:
             shares_dict['shares_links'] = shares_links
