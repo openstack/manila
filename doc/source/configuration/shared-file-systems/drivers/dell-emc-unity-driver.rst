@@ -30,6 +30,10 @@ Requirements
 
   - Thin Provisioning
 
+  - Fiber Channel (FC)
+
+  - Internet Small Computer System Interface (iSCSI)
+
 
 Supported shared filesystems and operations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -96,6 +100,109 @@ change the above mtu size from Unity Unisphere:
 The Unity driver will select the port where mtu is equal to the mtu
 of share network during share server creation.
 
+IPv6 support
+------------
+
+IPv6 support for Unity driver is introduced in Queens release. The feature is divided
+into two parts:
+
+#. The driver is able to manage share or snapshot in the Neutron IPv6 network.
+#. The driver is able to connect Unity management interface using its IPv6 address.
+
+Pre-Configurations for IPv6 support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following parameters need to be configured in `/etc/manila/manila.conf`
+for the Unity driver:
+
+    network_plugin_ipv6_enabled = True
+
+- `network_plugin_ipv6_enabled` indicates IPv6 is enabled.
+
+If you want to connect Unity using IPv6 address, you should configure IPv6 address
+by `/net/if/mgmt` uemcli command, `mgmtInterfaceSettings` RESTful api or the system
+settings of Unity GUI for Unity and specify the address in `/etc/manila/manila.conf`:
+
+    emc_nas_server = <IPv6 address>
+
+Supported share creation in mode that driver does not create and destroy share servers (DHSS=False)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To create a file share in this mode, you need to:
+
+#. Create NAS server with network interface in Unity system.
+#. Set 'driver_handles_share_servers=False' and 'unity_share_server' in ``/etc/manila/manila.conf``:
+
+    .. code-block:: ini
+
+        driver_handles_share_servers = False
+        unity_share_server = <name of NAS server in Unity system>
+
+#. Specify the share type with driver_handles_share_servers = False extra specification:
+
+    .. code-block:: console
+
+        $ manila type-create <share_type_name> False
+
+#. Create share.
+
+    .. code-block:: console
+
+        $ manila create <share_protocol> <size> --name <share_name> --share-type <share_type_name>
+
+.. note::
+
+    Do not specify the share network in share creation command because no share servers will be created.
+    Driver will use the unity_share_server specified for share creation.
+
+Snapshot support
+----------------
+
+In the Mitaka and Newton release of OpenStack, Snapshot support is enabled by default for a newly created share type.
+Starting with the Ocata release, the snapshot_support extra spec must be set to True in order to allow snapshots for
+a share type. If the 'snapshot_support' extra_spec is omitted or if it is set to False, users would not be able to
+create snapshots on shares of this share type. The feature is divided into two parts:
+
+1. The driver is able to create/delete snapshot of share.
+2. The driver is able to create share from snapshot.
+
+Pre-Configurations for Snapshot support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following extra specifications need to be configured with share type.
+
+- snapshot_support = True
+- create_share_from_snapshot_support = True
+
+For new share type, these extra specifications can be set directly when creating share type:
+
+.. code-block:: console
+
+    manila type-create --snapshot_support True --create_share_from_snapshot_support True ${share_type_name} True
+
+Or you can update already existing share type with command:
+
+.. code-block:: console
+
+    manila type-key ${share_type_name} set snapshot_support=True
+    manila type-key ${share_type_name} set create_share_from_snapshot_support=True
+
+To snapshot a share and create share from the snapshot
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Firstly, you need create a share from share type that has extra specifications(snapshot_support=True, create_share_from_snapshot_support=True).
+Then snapshot the share with command:
+
+.. code-block:: console
+
+    manila snapshot-create ${source_share_name} --name ${target_snapshot_name} --description " "
+
+After creating the snapshot from previous step, you can create share from that snapshot.
+Use command:
+
+.. code-block:: console
+
+    manila create nfs 1 --name ${target_share_name} --metadata source=snapshot --description " " --snapshot-id ${source_snapshot_id}
 
 Supported security services
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -164,7 +271,8 @@ for the Unity driver.
     unity_server_meta_pool = <pool name>
     unity_share_data_pools = <comma separated pool names>
     unity_ethernet_ports = <comma separated ports list>
-    driver_handles_share_servers = True
+    driver_handles_share_servers = True/False
+    unity_share_server = <name of NAS server in Unity system>
 
 - ``emc_share_backend``
     The plugin name. Set it to `unity` for the Unity driver.
@@ -227,8 +335,12 @@ for the Unity driver.
       impact.
 
 - ``driver_handles_share_servers``
-    Unity driver requires this option to be as ``True``.
+    Unity driver requires this option to be as ``True`` or ``False``.
+    Need to set ``unity_share_server`` when the value is ``False``.
 
+- ``unity_share_server``
+    One of NAS server names in Unity, it is used for share creation when
+    the driver is in ``DHSS=False`` mode.
 
 Restart of ``manila-share`` service is needed for the configuration
 changes to take effect.

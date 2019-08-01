@@ -37,7 +37,11 @@ from manila.share.drivers.dell_emc.plugins.unity import utils as unity_utils
 from manila.share import utils as share_utils
 from manila import utils
 
-VERSION = "6.1.0"
+"""Version history:
+     7.0.0 - Supports DHSS=False mode
+"""
+
+VERSION = "7.0.0"
 
 LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
@@ -61,6 +65,10 @@ UNITY_OPTS = [
                deprecated_reason='Unity driver supports nas server auto load '
                                  'balance.',
                help='Storage processor to host the NAS server. Obsolete.'),
+    cfg.StrOpt('unity_share_server',
+               help='NAS server used for creating share when driver '
+                    'is in DHSS=False mode. It is required when '
+                    'driver_handles_share_servers=False in manila.conf.'),
 ]
 
 CONF = cfg.CONF
@@ -86,12 +94,13 @@ class UnityStorageConnection(driver.StorageConnection):
         self.reserved_percentage = None
         self.max_over_subscription_ratio = None
         self.port_ids_conf = None
+        self.unity_share_server = None
         self.ipv6_implemented = True
         self.revert_to_snap_support = True
         self.shrink_share_support = True
 
         # props from super class.
-        self.driver_handles_share_servers = True
+        self.driver_handles_share_servers = (True, False)
 
     def connect(self, emc_share_driver, context):
         """Connect to Unity storage."""
@@ -112,9 +121,24 @@ class UnityStorageConnection(driver.StorageConnection):
         self.max_over_subscription_ratio = config.safe_get(
             'max_over_subscription_ratio')
         self.port_ids_conf = config.safe_get('unity_ethernet_ports')
+        self.unity_share_server = config.safe_get('unity_share_server')
+        self.driver_handles_share_servers = config.safe_get(
+            'driver_handles_share_servers')
+        if (not self.driver_handles_share_servers) and (
+                not self.unity_share_server):
+            msg = ("Make sure there is NAS server name "
+                   "configured for share creation when driver "
+                   "is in DHSS=False mode.")
+            raise exception.BadConfigurationException(reason=msg)
         self.validate_port_configuration(self.port_ids_conf)
         pool_name = config.unity_server_meta_pool
         self._config_pool(pool_name)
+
+    def get_server_name(self, share_server=None):
+        if not self.driver_handles_share_servers:
+            return self.unity_share_server
+        else:
+            return self._get_server_name(share_server)
 
     def validate_port_configuration(self, port_ids_conf):
         """Initializes the SP and ports based on the port option."""
@@ -165,9 +189,8 @@ class UnityStorageConnection(driver.StorageConnection):
 
         # Get pool name from share host field
         pool_name = self._get_pool_name_from_host(share['host'])
-        # Get share server name from share server
-        server_name = self._get_server_name(share_server)
-
+        # Get share server name from share server or manila.conf.
+        server_name = self.get_server_name(share_server)
         pool = self.client.get_pool(pool_name)
         try:
             nas_server = self.client.get_nas_server(server_name)
@@ -207,7 +230,7 @@ class UnityStorageConnection(driver.StorageConnection):
         self._validate_share_protocol(share_proto)
 
         # Get share server name from share server
-        server_name = self._get_server_name(share_server)
+        server_name = self.get_server_name(share_server)
 
         try:
             nas_server = self.client.get_nas_server(server_name)

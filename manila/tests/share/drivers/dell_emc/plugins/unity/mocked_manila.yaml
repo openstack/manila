@@ -188,6 +188,42 @@ nfs_share:
     export_locations: []
     is_public: False
 
+dhss_false_cifs_share:
+  _type: 'share'
+  _properties: &dhss_false_cifs_share_prop
+    share_id: '708e753c-aacb-411f-9c8a-8b8175da4e73'
+    availability_zone_id: 'de628fb6-1c99-41f6-a06a-adb61ff693b5'
+    share_network_id: '232d8218-2743-41d1-832b-4194626e691e'
+    share_server_id: 'test-dhss-false-427f-b4de-0ad83el5j8'
+    id: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    size: 1
+    user_id: '19bbda71b578471a93363653dcb4c61d'
+    status: 'creating'
+    share_type_id: '57679eab-3e67-4052-b180-62b609670e93'
+    host: 'openstack@VNX#Pool_2'
+    display_name: 'cifs_share'
+    share_proto: 'CIFS'
+    export_locations: []
+    is_public: False
+
+dhss_false_nfs_share:
+  _type: 'share'
+  _properties: &dhss_false_nfs_share_prop
+    share_id: '12eb3777-7008-4721-8243-422507db8f9d'
+    availability_zone_id: 'de628fb6-1c99-41f6-a06a-adb61ff693b5'
+    share_network_id: '232d8218-2743-41d1-832b-4194626e691e'
+    share_server_id: 'test-dhss-false-427f-b4de-0ad83el5j8'
+    id: 'cb532599-8dc6-4c3e-bb21-74ea54be566c'
+    size: 1
+    user_id: '19bbda71b578471a93363653dcb4c61d'
+    status: 'creating'
+    share_type_id: '57679eab-3e67-4052-b180-62b609670e93'
+    host: 'openstack@VNX#Pool_2'
+    display_name: 'nfs_share'
+    share_proto: 'NFS'
+    export_locations: []
+    is_public: False
+
 shrink_cifs_share:
   _type: 'share'
   _properties: &shrink_cifs_share_prop

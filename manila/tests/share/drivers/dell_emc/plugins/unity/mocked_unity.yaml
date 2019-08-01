@@ -190,6 +190,9 @@ unity_base: &unity_base
 test_connect: &test_connect
   unity: *unity_base
 
+test_dhss_false_connect: &test_dhss_false_connect
+  unity: *unity_base
+
 test_connect__invalid_sp_configuration:
   unity:
     _methods:
@@ -245,6 +248,55 @@ test_create_cifs_share:
       <<: *unity_base_method
       get_pool:
         _side_effect: [*pool__test_create_cifs_share]
+      get_nas_server: *nas_server
+
+test_dhss_false_create_nfs_share:
+  nfs_share: &nfs_share__test_dhss_false_create_nfs_share
+    _properties:
+      <<: *nfs_share_base_prop
+      name: 'cb532599-8dc6-4c3e-bb21-74ea54be566c'
+
+  pool: &pool__test_dhss_false_create_nfs_share
+    _properties:
+      <<: *pool_base_prop
+      name: 'Pool_2'
+    _methods:
+      create_nfs_share: None
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_pool:
+        _side_effect: [*pool__test_dhss_false_create_nfs_share]
+      get_nas_server: *nas_server
+
+test_dhss_false_create_cifs_share:
+  cifs_share: &cifs_share__test_dhss_false_create_cifs_share
+    _properties:
+      <<: *cifs_share_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    _methods:
+      enable_ace:
+
+  filesystem: &filesystem__test_dhss_false_create_cifs_share
+    _properties: &filesystem_prop__test_dhss_false_create_cifs_share
+      <<: *filesystem_base_prop
+      name: '716100cc-e0b4-416b-ac27-d38dd4587340'
+    _methods:
+      create_cifs_share: *cifs_share__test_dhss_false_create_cifs_share
+
+  pool: &pool__test_dhss_false_create_cifs_share
+    _properties:
+      <<: *pool_base_prop
+      name: 'Pool_2'
+    _methods:
+      create_filesystem: *filesystem__test_dhss_false_create_cifs_share
+
+  unity:
+    _methods:
+      <<: *unity_base_method
+      get_pool:
+        _side_effect: [*pool__test_dhss_false_create_cifs_share]
       get_nas_server: *nas_server
 
 test_create_share_with_invalid_share_server:
