@@ -77,7 +77,7 @@ IP networks in CIDR notation.
 Security Services
 ~~~~~~~~~~~~~~~~~
 
-``Security services``allow granular client access rules for
+``Security services`` allow granular client access rules for
 administrators. They can declare rules for authentication or
 authorization to access ``share`` content. External services including LDAP,
 Active Directory, and Kerberos can be declared as resources. Examine and
