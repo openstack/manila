@@ -1,0 +1,3 @@
+---
+features:
+  - For glusterfs_nfs driver, added share extend/shrink support.

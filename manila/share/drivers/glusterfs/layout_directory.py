@@ -15,16 +15,19 @@
 
 """GlusterFS directory mapped share layout."""
 
+import math
 import os
 
 from oslo_config import cfg
 from oslo_log import log
 import six
+import xml.etree.cElementTree as etree
 
 from manila import exception
 from manila.i18n import _
 from manila.share.drivers.glusterfs import common
 from manila.share.drivers.glusterfs import layout
+from manila import utils
 
 LOG = log.getLogger(__name__)
 
@@ -137,16 +140,12 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
         """Create a sub-directory/share in the GlusterFS volume."""
         # probe into getting a NAS protocol helper for the share in order
         # to facilitate early detection of unsupported protocol type
-        sizestr = six.text_type(share['size']) + 'GB'
-        share_dir = '/' + share['name']
         local_share_path = self._get_local_share_path(share)
         cmd = ['mkdir', local_share_path]
-        # set hard limit quota on the sub-directory/share
-        args = ('volume', 'quota', self.gluster_manager.volume,
-                'limit-usage', share_dir, sizestr)
+
         try:
             self.driver._execute(*cmd, run_as_root=True)
-            self.gluster_manager.gluster_call(*args)
+            self._set_directory_quota(share, share['size'])
         except Exception as exc:
             if isinstance(exc, exception.ProcessExecutionError):
                 exc = exception.GlusterfsException(exc)
@@ -205,7 +204,46 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
         raise NotImplementedError
 
     def extend_share(self, share, new_size, share_server=None):
-        raise NotImplementedError
+        """Extend a sub-directory/share in the GlusterFS volume."""
+        self._set_directory_quota(share, new_size)
 
     def shrink_share(self, share, new_size, share_server=None):
-        raise NotImplementedError
+        """Shrink a sub-directory/share in the GlusterFS volume."""
+        usage = self._get_directory_usage(share)
+        consumed_limit = int(math.ceil(usage))
+        if consumed_limit > new_size:
+            raise exception.ShareShrinkingPossibleDataLoss(
+                share_id=share['id'])
+
+        self._set_directory_quota(share, new_size)
+
+    def _set_directory_quota(self, share, new_size):
+        sizestr = six.text_type(new_size) + 'GB'
+        share_dir = '/' + share['name']
+
+        args = ('volume', 'quota', self.gluster_manager.volume,
+                'limit-usage', share_dir, sizestr)
+
+        try:
+            self.gluster_manager.gluster_call(*args)
+        except exception.GlusterfsException:
+            LOG.error('Unable to set quota share %s', share['name'])
+            raise
+
+    def _get_directory_usage(self, share):
+        share_dir = '/' + share['name']
+
+        args = ('--xml', 'volume', 'quota', self.gluster_manager.volume,
+                'list', share_dir)
+
+        try:
+            out, err = self.gluster_manager.gluster_call(*args)
+        except exception.GlusterfsException:
+            LOG.error('Unable to get quota share %s', share['name'])
+            raise
+
+        volxml = etree.fromstring(out)
+        usage_byte = volxml.find('./volQuota/limit/used_space').text
+        usage = utils.translate_string_size_to_float(usage_byte)
+
+        return usage
