@@ -716,8 +716,10 @@ function install_manila {
 
     if is_service_enabled m-shr; then
 
-        if [[ ! $(systemctl is-active nfs-ganesha.service) == 'active' ]]; then
-            _install_nfs_and_samba
+        if [[ ! $(systemctl is-active nfs-ganesha.service) == 'active' ]] ; then
+            if [ "$SHARE_DRIVER" != "manila.share.drivers.cephfs.driver.CephFSDriver" ] ; then
+                _install_nfs_and_samba
+            fi
         fi
 
         if [ "$SHARE_DRIVER" == "manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver" ]; then
