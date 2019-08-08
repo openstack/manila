@@ -322,7 +322,7 @@ more details) related options are set in the driver backend section above:
   its metadata pool.
 
 Edit ``enabled_share_backends`` to point to the driver's backend section
-using the section name, ``cephfnfs1``.
+using the section name, ``cephfsnfs1``.
 
 .. code-block:: ini
 
