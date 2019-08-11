@@ -253,6 +253,7 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     RUN_MANILA_REVERT_TO_SNAPSHOT_TESTS=True
     RUN_MANILA_MOUNT_SNAPSHOT_TESTS=True
     RUN_MANILA_MIGRATION_WITH_PRESERVE_SNAPSHOTS_TESTS=True
+    RUN_MANILA_REPLICATION_TESTS=True
     iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
     iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
     iniset $TEMPEST_CONFIG share enable_cert_rules_for_protocols ''
@@ -266,6 +267,7 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     iniset $TEMPEST_CONFIG share multitenancy_enabled True
     iniset $TEMPEST_CONFIG share create_networks_when_multitenancy_enabled False
     iniset $TEMPEST_CONFIG share multi_backend True
+    iniset $TEMPEST_CONFIG share backend_replication_type 'readable'
 elif [[ "$DRIVER" == "container"* ]]; then
     if [[ "$DRIVER" == "container_with_custom_image" ]]; then
         # TODO(vponomaryov): set scenario tests for run when
