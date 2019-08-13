@@ -38,6 +38,6 @@
         "name": "share_London",
         "created_at": "2015-09-18T10:25:24.000000",
         "share_proto": "NFS",
-        "volume_type": "default",
+        "volume_type": "default"
     }
 }
