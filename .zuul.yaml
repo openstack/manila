@@ -35,9 +35,9 @@
         - manila-tempest-minimal-dsvm-lvm
         - manila-grenade:
             voting: false
-        - manila-rally-multibackend:
+        - manila-rally-no-ss:
             voting: false
-        - manila-rally-multibackend-no-ss:
+        - manila-rally-ss:
             voting: false
         - openstack-tox-pylint:
             voting: false
@@ -63,7 +63,7 @@
     name: manila-tempest-base
     parent: legacy-dsvm-base
     timeout: 7200
-    irrelevant-files:
+    irrelevant-files: &tempest-irrelevant-files
       - ^(test-|)requirements.txt$
       - ^.*\.rst$
       - ^api-ref/.*$
@@ -395,45 +395,23 @@
       tox_envlist: genconfig
 
 - job:
-    name: manila-rally-multibackend
-    parent: legacy-dsvm-base
-    run: playbooks/legacy/rally-dsvm-manila-multibackend/run.yaml
-    post-run: playbooks/legacy/rally-dsvm-manila-multibackend/post.yaml
-    timeout: 4200
-    irrelevant-files:
-      - ^.*\.rst$
-      - ^api-ref/.*$
-      - ^doc/.*$
-      - ^manila/hacking/.*$
-      - ^manila/tests/.*$
-      - ^releasenotes/.*$
-      - ^tools/.*$
-      - ^tox.ini$
+    name: manila-rally-no-ss
+    parent: rally-task-manila-no-ss
+    irrelevant-files: *tempest-irrelevant-files
+    vars:
+      rally_task: rally-jobs/rally-manila-no-ss.yaml
+      devstack_plugins:
+        rally-openstack: https://opendev.org/openstack/rally-openstack
     required-projects:
-      - openstack/devstack-gate
-      - openstack/manila
-      - openstack/python-manilaclient
-      - openstack/rally
-      - openstack/manila-tempest-plugin
+      - openstack/rally-openstack
 
 - job:
-    name: manila-rally-multibackend-no-ss
-    parent: legacy-dsvm-base
-    run: playbooks/legacy/rally-dsvm-manila-multibackend-no-ss/run.yaml
-    post-run: playbooks/legacy/rally-dsvm-manila-multibackend-no-ss/post.yaml
-    timeout: 4200
-    irrelevant-files:
-      - ^.*\.rst$
-      - ^api-ref/.*$
-      - ^doc/.*$
-      - ^manila/hacking/.*$
-      - ^manila/tests/.*$
-      - ^releasenotes/.*$
-      - ^tools/.*$
-      - ^tox.ini$
+    name: manila-rally-ss
+    parent: rally-task-manila-ss
+    irrelevant-files: *tempest-irrelevant-files
+    vars:
+      rally_task: rally-jobs/rally-manila.yaml
+      devstack_plugins:
+        rally-openstack: https://opendev.org/openstack/rally-openstack
     required-projects:
-      - openstack/devstack-gate
-      - openstack/manila
-      - openstack/python-manilaclient
-      - openstack/rally
-      - openstack/manila-tempest-plugin
+      - openstack/rally-openstack
