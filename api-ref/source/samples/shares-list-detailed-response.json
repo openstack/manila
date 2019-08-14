@@ -36,7 +36,7 @@
             "replication_type": null,
             "created_at": "2015-09-16T18:19:50.000000",
             "share_proto": "NFS",
-            "volume_type": "default",
+            "volume_type": "default"
         },
         {
             "links": [
@@ -75,8 +75,8 @@
             "replication_type": null,
             "created_at": "2015-09-16T17:26:28.000000",
             "share_proto": "NFS",
-            "volume_type": "default",
+            "volume_type": "default"
         }
-    ]
+    ],
     "count": 10
 }

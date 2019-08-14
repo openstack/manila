@@ -4,7 +4,8 @@
             {
                 "href": "http://192.168.122.180:8786/v2/2e3de76b49b444fd9dc7ca9f7048ce6b/messages/4b319d29-d5b7-4b6e-8e7c-8d6e53f3c3d5",
                 "rel": "self"
-            }, {
+            },
+            {
                 "href": "http://192.168.122.180:8786/2e3de76b49b444fd9dc7ca9f7048ce6b/messages/4b319d29-d5b7-4b6e-8e7c-8d6e53f3c3d5",
                 "rel": "bookmark"
             }
