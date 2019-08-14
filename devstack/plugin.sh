@@ -213,7 +213,7 @@ function configure_manila {
     # Remove old conf file if exists
     rm -f $MANILA_CONF
 
-    configure_auth_token_middleware $MANILA_CONF manila  $MANILA_AUTH_CACHE_DIR
+    configure_keystone_authtoken_middleware $MANILA_CONF manila
 
     iniset $MANILA_CONF DEFAULT auth_strategy keystone
     iniset $MANILA_CONF DEFAULT debug True
@@ -253,13 +253,13 @@ function configure_manila {
     iniset $MANILA_CONF DEFAULT replica_state_update_interval $MANILA_REPLICA_STATE_UPDATE_INTERVAL
 
     if is_service_enabled neutron; then
-        configure_auth_token_middleware $MANILA_CONF neutron $MANILA_AUTH_CACHE_DIR neutron
+        configure_keystone_authtoken_middleware $MANILA_CONF neutron neutron
     fi
     if is_service_enabled nova; then
-        configure_auth_token_middleware $MANILA_CONF nova $MANILA_AUTH_CACHE_DIR nova
+        configure_keystone_authtoken_middleware $MANILA_CONF nova nova
     fi
     if is_service_enabled cinder; then
-        configure_auth_token_middleware $MANILA_CONF cinder $MANILA_AUTH_CACHE_DIR cinder
+        configure_keystone_authtoken_middleware $MANILA_CONF cinder cinder
     fi
 
     # Note: set up config group does not mean that this backend will be enabled.
@@ -662,11 +662,6 @@ function init_manila {
             fi
         fi
     fi
-
-    # Create cache dir
-    sudo mkdir -p $MANILA_AUTH_CACHE_DIR
-    sudo chown $STACK_USER $MANILA_AUTH_CACHE_DIR
-    rm -f $MANILA_AUTH_CACHE_DIR/*
 }
 
 # check_nfs_kernel_service_state_ubuntu- Make sure nfsd is running
