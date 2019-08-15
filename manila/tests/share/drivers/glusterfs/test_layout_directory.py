@@ -378,15 +378,91 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
     def test_ensure_share(self):
         self.assertIsNone(self._layout.ensure_share(self._context, self.share))
 
+    def test_extend_share(self):
+        self._layout.extend_share(self.share, 3)
+
+        self._layout.gluster_manager.gluster_call.assert_called_once_with(
+            'volume', 'quota', 'testvol', 'limit-usage', '/fakename', '3GB')
+
+    def test_shrink_share(self):
+        self.mock_object(self._layout, '_get_directory_usage',
+                         mock.Mock(return_value=10.0))
+
+        self._layout.shrink_share(self.share, 11)
+        self._layout.gluster_manager.gluster_call.assert_called_once_with(
+            'volume', 'quota', 'testvol', 'limit-usage', '/fakename', '11GB')
+
+    def test_shrink_share_data_loss(self):
+        self.mock_object(self._layout, '_get_directory_usage',
+                         mock.Mock(return_value=10.0))
+        shrink_on_gluster = self.mock_object(self._layout,
+                                             '_set_directory_quota')
+
+        self.assertRaises(exception.ShareShrinkingPossibleDataLoss,
+                          self._layout.shrink_share, self.share, 9)
+        shrink_on_gluster.assert_not_called()
+
+    def test_set_directory_quota(self):
+        self._layout._set_directory_quota(self.share, 3)
+
+        self._layout.gluster_manager.gluster_call.assert_called_once_with(
+            'volume', 'quota', 'testvol', 'limit-usage', '/fakename', '3GB')
+
+    def test_set_directory_quota_unable_to_set(self):
+        self.mock_object(self._layout.gluster_manager, 'gluster_call',
+                         mock.Mock(side_effect=exception.GlusterfsException))
+
+        self.assertRaises(exception.GlusterfsException,
+                          self._layout._set_directory_quota, self.share, 3)
+
+        self._layout.gluster_manager.gluster_call.assert_called_once_with(
+            'volume', 'quota', 'testvol', 'limit-usage', '/fakename', '3GB')
+
+    def test_get_directory_usage(self):
+
+        def xml_output(*ignore_args, **ignore_kwargs):
+            return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cliOutput>
+  <opRet>0</opRet>
+  <opErrno>0</opErrno>
+  <opErrstr/>
+  <volQuota>
+    <limit>
+      <used_space>10737418240</used_space>
+    </limit>
+  </volQuota>
+</cliOutput>""", ''
+
+        self.mock_object(self._layout.gluster_manager, 'gluster_call',
+                         mock.Mock(side_effect=xml_output))
+
+        ret = self._layout._get_directory_usage(self.share)
+
+        self.assertEqual(10.0, ret)
+        share_dir = '/' + self.share['name']
+        self._layout.gluster_manager.gluster_call.assert_called_once_with(
+            '--xml', 'volume', 'quota', self._layout.gluster_manager.volume,
+            'list', share_dir)
+
+    def test_get_directory_usage_unable_to_get(self):
+        self.mock_object(self._layout.gluster_manager, 'gluster_call',
+                         mock.Mock(side_effect=exception.GlusterfsException))
+
+        self.assertRaises(exception.GlusterfsException,
+                          self._layout._get_directory_usage, self.share)
+
+        share_dir = '/' + self.share['name']
+        self._layout.gluster_manager.gluster_call.assert_called_once_with(
+            '--xml', 'volume', 'quota', self._layout.gluster_manager.volume,
+            'list', share_dir)
+
     @ddt.data(
         ('create_share_from_snapshot', ('context', 'share', 'snapshot'),
          {'share_server': None}),
         ('create_snapshot', ('context', 'snapshot'), {'share_server': None}),
         ('delete_snapshot', ('context', 'snapshot'), {'share_server': None}),
         ('manage_existing', ('share', 'driver_options'), {}),
-        ('unmanage', ('share',), {}),
-        ('extend_share', ('share', 'new_size'), {'share_server': None}),
-        ('shrink_share', ('share', 'new_size'), {'share_server': None}))
+        ('unmanage', ('share',), {}))
     def test_nonimplemented_methods(self, method_invocation):
         method, args, kwargs = method_invocation
         self.assertRaises(NotImplementedError, getattr(self._layout, method),
