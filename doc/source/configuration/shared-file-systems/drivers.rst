@@ -26,6 +26,7 @@ Share drivers
    drivers/huawei-nas-driver.rst
    drivers/ibm-spectrumscale-driver.rst
    drivers/infinidat-share-driver.rst
+   drivers/infortrend-nas-driver.rst
    drivers/maprfs-native-driver.rst
    drivers/netapp-cluster-mode-driver.rst
    drivers/quobyte-driver.rst
