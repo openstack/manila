@@ -104,7 +104,7 @@ Host and backend configuration
 
 - SSL/TLS should be enabled on the I/O path for GlusterFS servers and
   volumes involved (ie. ones specified in ``glusterfs_servers``),
-  as described in http://www.gluster.org/community/documentation/index.php/SSL.
+  as described in https://docs.gluster.org/en/latest/Administrator%20Guide/SSL/.
   (Enabling SSL/TLS for the management path is also possible but not
   recommended currently.)
 - The manila host should be also configured for GlusterFS SSL/TLS (ie.
