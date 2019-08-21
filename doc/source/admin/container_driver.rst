@@ -53,7 +53,7 @@ Known problems
   other than building lightweight development and testing environments.
 
 Setting up container driver with devstack
-=========================================
+-----------------------------------------
 
 The driver could be set up via devstack. This requires the following update to
 local.conf:
@@ -75,7 +75,7 @@ where <ref> is change reference, which could be copied from gerrit web-interface
 
 
 Setting Container Driver Up Manually
-====================================
+------------------------------------
 
 This section describes steps needed to be performed to set the driver up
 manually. The driver has been tested on Ubuntu 14.04, thus in case of
