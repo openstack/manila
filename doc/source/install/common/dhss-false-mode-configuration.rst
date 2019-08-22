@@ -85,12 +85,12 @@ Configure components
         share_driver = manila.share.drivers.lvm.LVMShareDriver
         driver_handles_share_servers = False
         lvm_share_volume_group = manila-volumes
-        lvm_share_export_ip = MANAGEMENT_INTERFACE_IP_ADDRESS
+        lvm_share_export_ips = MANAGEMENT_INTERFACE_IP_ADDRESS
 
      Replace ``MANAGEMENT_INTERFACE_IP_ADDRESS`` with the IP address
-     of the management network interface on your storage node,
-     typically 10.0.0.41 for the first node in the example architecture
-     shown below:
+     of the management network interface on your storage node. The value of
+     this option can be a comma separated string of one or more IP addresses.
+     In the example architecture shown below, the address would be 10.0.0.41:
 
      .. figure:: figures/hwreqs.png
         :alt: Hardware requirements
