@@ -139,10 +139,12 @@ Contents:
 
    reference/index
 
-Additional reference
-~~~~~~~~~~~~~~~~~~~~
+.. only:: html
 
-Contents:
+   Additional reference
+   ~~~~~~~~~~~~~~~~~~~~
 
-* :ref:`genindex`
+   Contents:
+
+   * :ref:`genindex`
 

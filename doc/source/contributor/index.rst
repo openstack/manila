@@ -88,9 +88,11 @@ Module Reference
    driver_filter_goodness_weigher
    share_migration
 
-Indices and tables
-------------------
+.. only:: html
 
-* :ref:`genindex`
-* :ref:`search`
+   Indices and tables
+   ------------------
+
+   * :ref:`genindex`
+   * :ref:`search`
 

@@ -9,5 +9,12 @@ in the ``manila.conf`` file are set to default values.
 The ``manila.conf`` file contains most of the options needed to configure
 the Shared File Systems service.
 
-.. literalinclude:: ../../../_static/manila.conf.sample
-   :language: ini
+.. only:: html
+
+   .. literalinclude:: ../../../_static/manila.conf.sample
+      :language: ini
+
+.. only:: latex
+
+   See the online version of this documentation for the full config
+   file example.

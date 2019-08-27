@@ -244,7 +244,7 @@ htmlhelp_basename = 'maniladoc'
 # (source start file, target name, title, author, documentclass
 # [howto/manual]).
 latex_documents = [
-    ('index', 'Manila.tex', u'Manila Developer Documentation',
+    ('index', 'manila.tex', u'Manila Developer Documentation',
      u'Manila contributors', 'manual'),
 ]
 
@@ -264,3 +264,12 @@ latex_documents = [
 
 # If false, no module index is generated.
 # latex_use_modindex = True
+
+latex_domain_indices = False
+
+latex_elements = {
+    'makeindex': '',
+    'printindex': '',
+    'preamble': r'\setcounter{tocdepth}{3}',
+    'maxlistdepth': 10,
+}
