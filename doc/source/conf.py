@@ -244,7 +244,7 @@ htmlhelp_basename = 'maniladoc'
 # (source start file, target name, title, author, documentclass
 # [howto/manual]).
 latex_documents = [
-    ('index', 'manila.tex', u'Manila Developer Documentation',
+    ('index', 'doc-manila.tex', u'Manila Developer Documentation',
      u'Manila contributors', 'manual'),
 ]
 
