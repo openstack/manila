@@ -681,6 +681,10 @@ class ShareTypeCreateFailed(ManilaException):
                 "name %(name)s and specs %(extra_specs)s.")
 
 
+class ShareTypeUpdateFailed(ManilaException):
+    message = _("Cannot update share_type %(id)s.")
+
+
 class ShareGroupTypeCreateFailed(ManilaException):
     message = _("Cannot create share group type with "
                 "name %(name)s and specs %(group_specs)s.")

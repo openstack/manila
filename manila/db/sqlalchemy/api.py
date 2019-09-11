@@ -210,6 +210,18 @@ def apply_sorting(model, query, sort_key, sort_dir):
     return query.order_by(sort_method())
 
 
+def handle_db_data_error(f):
+    def wrapper(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except db_exc.DBDataError:
+            msg = _('Error writing field to database.')
+            LOG.exception(msg)
+            raise exception.Invalid(msg)
+
+    return wrapper
+
+
 def model_query(context, model, *args, **kwargs):
     """Query helper that accounts for context's `read_deleted` field.
 
@@ -3942,6 +3954,45 @@ def _share_type_get_query(context, session=None, read_deleted=None,
         query = query.filter(or_(*the_filter))
 
     return query
+
+
+@handle_db_data_error
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+def _type_update(context, type_id, values, is_group):
+
+    if values.get('name') is None:
+        values.pop('name', None)
+
+    if is_group:
+        model = models.ShareGroupTypes
+        exists_exc = exception.ShareGroupTypeExists
+        exists_args = {'type_id': values.get('name')}
+    else:
+        model = models.ShareTypes
+        exists_exc = exception.ShareTypeExists
+        exists_args = {'id': values.get('name')}
+
+    session = get_session()
+    with session.begin():
+        query = model_query(context, model, session=session)
+
+        try:
+            result = query.filter_by(id=type_id).update(values)
+        except db_exception.DBDuplicateEntry:
+            # This exception only occurs if there's a non-deleted
+            # share/group type which has the same name as the name being
+            # updated.
+            raise exists_exc(**exists_args)
+
+        if not result:
+            if is_group:
+                raise exception.ShareGroupTypeNotFound(type_id=type_id)
+            else:
+                raise exception.ShareTypeNotFound(share_type_id=type_id)
+
+
+def share_type_update(context, share_type_id, values):
+    _type_update(context, share_type_id, values, is_group=False)
 
 
 @require_context

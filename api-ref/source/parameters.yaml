@@ -814,6 +814,13 @@ create_share_from_snapshot_support:
   required: false
   type: boolean
   min_version: 2.24
+create_share_from_snapshot_support_body:
+  description: |
+    Boolean extra spec used for filtering of back ends by
+    their capability to create shares from snapshots.
+  in: body
+  required: false
+  type: boolean
 created_at:
   description: |
     The date and time stamp when the resource was created within the service's
@@ -1195,6 +1202,14 @@ is_default_type:
   required: true
   type: boolean
   min_version: 2.46
+is_default_type_body:
+  description: |
+    Defines the share type created is default or not. If the returning
+    value is true, then it is the default share type, otherwise, it is
+    not default.
+  in: body
+  required: true
+  type: boolean
 is_group_type_default:
   description: |
     Defines the share group type created is default or not. If the
@@ -1403,6 +1418,13 @@ mount_snapshot_support:
   required: false
   type: boolean
   min_version: 2.32
+mount_snapshot_support_body:
+  description: |
+    Boolean extra spec used for filtering of back ends
+    by their capability to mount share snapshots.
+  in: body
+  required: false
+  type: boolean
 name:
   description: |
     The user defined name of the resource.
@@ -1775,6 +1797,12 @@ replication_type:
   required: false
   type: string
   min_version: 2.11
+replication_type_body:
+  description: |
+    The share replication type.
+  in: body
+  required: false
+  type: string
 request_id_body:
   description: |
     The UUID of the request during which the message was created.
@@ -1814,6 +1842,13 @@ revert_to_snapshot_support:
   required: false
   type: boolean
   min_version: 2.27
+revert_to_snapshot_support_body:
+  description: |
+    Boolean extra spec used for filtering of back ends by their
+    capability to revert shares to snapshots.
+  in: body
+  required: false
+  type: boolean
 security_service_dns_ip:
   description: |
     The DNS IP address that is used inside the project network.
@@ -2371,6 +2406,21 @@ share_type_access:is_public:
   required: false
   type: boolean
   min_version: 2.7
+share_type_access:is_public_body:
+  description: |
+    Indicates whether a share type is accessible by all projects (tenants)
+    in the cloud.
+  in: body
+  required: true
+  type: boolean
+share_type_access:is_public_update_request:
+  description: |
+    Indicates whether the share type should be accessible by all projects
+    (tenants) in the cloud. If not specified, the visibility of the share
+    type is not altered.
+  in: body
+  required: false
+  type: boolean
 share_type_description:
   description: |
     The description of the share type.
@@ -2378,6 +2428,12 @@ share_type_description:
   required: true
   type: string
   min_version: 2.41
+share_type_description_body:
+  description: |
+    The description of the share type.
+  in: body
+  required: true
+  type: string
 share_type_description_request:
   description: |
     The description of the share type. The value of this field is limited to
@@ -2386,6 +2442,12 @@ share_type_description_request:
   required: false
   type: string
   min_version: 2.41
+share_type_description_update_request:
+  description: |
+    New description for the share type.
+  in: body
+  required: false
+  type: string
 share_type_id_body:
   description: |
     The UUID of the share type.

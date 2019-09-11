@@ -949,6 +949,11 @@ def share_type_create(context, values, projects=None):
     return IMPL.share_type_create(context, values, projects)
 
 
+def share_type_update(context, share_type_id, values):
+    """Update an exist share type."""
+    return IMPL.share_type_update(context, share_type_id, values)
+
+
 def share_type_get_all(context, inactive=False, filters=None):
     """Get all share types.
 

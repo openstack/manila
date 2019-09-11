@@ -1,0 +1,8 @@
+{
+  "share_type":
+  {
+    "share_type_access:is_public": true,
+    "name": "testing",
+    "description": "share type description"
+  }
+}

@@ -602,3 +602,73 @@ Request
 
    - project_id: project_id_path
    - share_type_id: share_type_id
+
+
+Update share type (since API v2.50)
+===================================
+
+.. rest_method::  PUT /v2/{project_id}/types/{share_type_id}
+
+.. versionadded:: 2.50
+
+Update a share type. Share type extra-specs cannot be updated
+with this API. Please use the respective APIs to `set extra specs
+<#set-extra-spec-for-share-type>`_ or `unset extra specs
+<#unset-an-extra-spec>`_.
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - project_id: project_id_path
+   - share_type_id: share_type_id
+   - name: share_type_name_request
+   - share_type_access:is_public: share_type_access:is_public_update_request
+   - description: share_type_description_update_request
+
+Request example
+---------------
+
+.. literalinclude:: samples/share-type-update-request.json
+   :language: javascript
+
+Response parameters
+-------------------
+
+.. rest_parameters:: parameters.yaml
+
+   - id: share_type_id_body
+   - required_extra_specs: required_extra_specs
+   - extra_specs: extra_specs
+   - driver_handles_share_servers: driver_handles_share_servers
+   - snapshot_support: snapshot_support_1
+   - share_type_access:is_public: share_type_access:is_public_body
+   - name: share_type_name
+   - replication_type: replication_type_body
+   - mount_snapshot_support: mount_snapshot_support_body
+   - revert_to_snapshot_support: revert_to_snapshot_support_body
+   - create_share_from_snapshot_support: create_share_from_snapshot_support_body
+   - description: share_type_description_body
+   - is_default: is_default_type_body
+
+Response example
+----------------
+
+.. literalinclude:: samples/share-type-update-response.json
+   :language: javascript

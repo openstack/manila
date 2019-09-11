@@ -70,6 +70,24 @@ def sanitize_extra_specs(extra_specs):
     return extra_specs
 
 
+def update(context, id, name, description, is_public=None):
+    """Update share type by id."""
+    values = {}
+    if name:
+        values.update({'name': name})
+    if description == "":
+        values.update({'description': None})
+    elif description:
+        values.update({'description': description})
+    if is_public is not None:
+        values.update({'is_public': is_public})
+    try:
+        db.share_type_update(context, id, values)
+    except db_exception.DBError:
+        LOG.exception('DB error.')
+        raise exception.ShareTypeUpdateFailed(id=id)
+
+
 def destroy(context, id):
     """Marks share types as deleted."""
     if id is None:

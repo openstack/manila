@@ -41,6 +41,28 @@ def create_share_type_dict(extra_specs=None):
     }
 
 
+def return_share_type_update(context, id, values):
+    name = values.get('name')
+    description = values.get('description')
+    is_public = values.get('is_public')
+    if id == '444':
+        raise exception.ShareTypeUpdateFailed(id=id)
+    else:
+        st_update = {
+            'created_at': datetime.datetime(2019, 9, 9, 14, 40, 31),
+            'deleted': '0',
+            'deleted_at': None,
+            'extra_specs': {u'gold': u'True'},
+            'required_extra_specs': {},
+            'id': id,
+            'name': name,
+            'is_public': is_public,
+            'description': description,
+            'updated_at': None
+        }
+        return st_update
+
+
 @ddt.ddt
 class ShareTypesTestCase(test.TestCase):
 
@@ -67,6 +89,21 @@ class ShareTypesTestCase(test.TestCase):
             'required_extra_specs': {},
             'id': fake_share_type_id,
             'name': u'test_with_extra',
+            'updated_at': None
+        }
+    }
+
+    fake_type_update = {
+        'test_type_update': {
+            'created_at': datetime.datetime(2019, 9, 9, 14, 40, 31),
+            'deleted': '0',
+            'deleted_at': None,
+            'extra_specs': {u'gold': u'True'},
+            'required_extra_specs': {},
+            'id': '888',
+            'name': 'new_name',
+            'is_public': True,
+            'description': 'new_description',
             'updated_at': None
         }
     }
@@ -253,6 +290,27 @@ class ShareTypesTestCase(test.TestCase):
         self.assertEqual(expected, spec_value)
         share_types.get_share_type_extra_specs.assert_called_once_with(
             self.fake_share_type_id)
+
+    def test_update_share_type(self):
+        expected = self.fake_type_update['test_type_update']
+        self.mock_object(db,
+                         'share_type_update',
+                         mock.Mock(side_effect=return_share_type_update))
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=expected))
+        new_name = "new_name"
+        new_description = "new_description"
+        is_public = True
+        self.assertRaises(exception.ShareTypeUpdateFailed, share_types.update,
+                          self.context, id='444', name=new_name,
+                          description=new_description, is_public=is_public)
+        share_types.update(self.context, '888', new_name,
+                           new_description, is_public)
+        st_update = share_types.get_share_type(self.context, '888')
+        self.assertEqual(new_name, st_update['name'])
+        self.assertEqual(new_description, st_update['description'])
+        self.assertEqual(is_public, st_update['is_public'])
 
     @ddt.data({}, {"fake": "fake"})
     def test_create_without_required_extra_spec(self, optional_specs):

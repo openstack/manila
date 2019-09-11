@@ -32,6 +32,16 @@ share_type_policies = [
             }
         ]),
     policy.DocumentedRuleDefault(
+        name=BASE_POLICY_NAME % 'update',
+        check_str=base.RULE_ADMIN_API,
+        description='Update share type.',
+        operations=[
+            {
+                'method': 'PUT',
+                'path': '/types/{share_type_id}',
+            }
+        ]),
+    policy.DocumentedRuleDefault(
         name=BASE_POLICY_NAME % 'show',
         check_str=base.RULE_DEFAULT,
         description='Get share type.',
