@@ -67,7 +67,6 @@
       - ^.*\.rst$
       - ^api-ref/.*$
       - ^doc/.*$
-      - ^manila/hacking/.*$
       - ^manila/tests/.*$
       - ^releasenotes/.*$
       - ^setup.cfg$

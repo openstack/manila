@@ -20,19 +20,20 @@ from unittest import mock
 import ddt
 import pycodestyle
 
-from manila.hacking import checks
 from manila import test
+from manila.tests.hacking import checks
 
 
 @ddt.ddt
 class HackingTestCase(test.TestCase):
     """Hacking test cases
 
-    This class tests the hacking checks in manila.hacking.checks by passing
-    strings to the check methods like the pep8/flake8 parser would. The parser
-    loops over each line in the file and then passes the parameters to the
-    check method. The parameter names in the check method dictate what type of
-    object is passed to the check method. The parameter types are::
+    This class tests the hacking checks in manila.tests.hacking.checks by
+    passing strings to the check methods like the pep8/flake8 parser would.
+    The parser loops over each line in the file and then passes the
+    parameters to the check method. The parameter names in the check method
+    dictate what type of object is passed to the check method. The
+    parameter types are::
 
         logical_line: A processed line with the following modifications:
             - Multi-line statements converted to a single line.
