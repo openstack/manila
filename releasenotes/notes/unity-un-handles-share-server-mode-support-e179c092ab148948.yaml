@@ -1,0 +1,4 @@
+---
+features:
+  - Dell EMC Unity Manila driver now supports the mode in which it does
+    not itself create and destroy share servers (DHSS=False).

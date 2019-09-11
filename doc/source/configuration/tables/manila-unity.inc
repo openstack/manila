@@ -24,3 +24,5 @@
      - (String) Pool to persist the meta-data of NAS server.
    * - ``unity_share_data_pools`` = ``None``
      - (List) Comma separated list of pools that can be used to persist share data.
+   * - ``unity_share_server`` = ``None``
+     - One of NAS server names in Unity, it is used for share creation when the driver is in ``DHSS=False`` mode..

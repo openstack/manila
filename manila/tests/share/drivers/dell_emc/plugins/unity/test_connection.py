@@ -36,7 +36,7 @@ class TestConnection(test.TestCase):
 
     @res_mock.patch_connection_init
     def test_connect(self, connection):
-        connection.connect(res_mock.FakeEMCShareDriver(), None)
+        connection.connect(res_mock.FakeEMCShareDriver(dhss=True), None)
 
     @res_mock.patch_connection
     def test_connect__invalid_pool_configuration(self, connection):
@@ -692,3 +692,45 @@ class TestConnection(test.TestCase):
 
         connection.revert_to_snapshot(context, snapshot, share_access_rules,
                                       snapshot_access_rules)
+
+    @res_mock.patch_connection_init
+    def test_dhss_false_connect_without_nas_server(self, connection):
+        self.assertRaises(exception.BadConfigurationException,
+                          connection.connect,
+                          res_mock.FakeEMCShareDriver(dhss=False), None)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_dhss_false_create_nfs_share(self, connection, mocked_input):
+        connection.driver_handles_share_servers = False
+        connection.unity_share_server = 'test-dhss-false-427f-b4de-0ad83el5j8'
+        share = mocked_input['dhss_false_nfs_share']
+        share_server = mocked_input['share_server']
+
+        location = connection.create_share(None, share, share_server)
+
+        exp_location = [
+            {'path': 'fake_ip_addr_1:/cb532599-8dc6-4c3e-bb21-74ea54be566c'},
+            {'path': 'fake_ip_addr_2:/cb532599-8dc6-4c3e-bb21-74ea54be566c'},
+        ]
+        exp_location = sorted(exp_location, key=lambda x: sorted(x['path']))
+        location = sorted(location, key=lambda x: sorted(x['path']))
+        self.assertEqual(exp_location, location)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_dhss_false_create_cifs_share(self, connection, mocked_input):
+        connection.driver_handles_share_servers = False
+        connection.unity_share_server = 'test-dhss-false-427f-b4de-0ad83el5j8'
+        share = mocked_input['dhss_false_cifs_share']
+        share_server = mocked_input['share_server']
+
+        location = connection.create_share(None, share, share_server)
+
+        exp_location = [
+            {'path': r'\\fake_ip_addr_1\716100cc-e0b4-416b-ac27-d38dd019330d'},
+            {'path': r'\\fake_ip_addr_2\716100cc-e0b4-416b-ac27-d38dd019330d'},
+        ]
+        exp_location = sorted(exp_location, key=lambda x: sorted(x['path']))
+        location = sorted(location, key=lambda x: sorted(x['path']))
+        self.assertEqual(exp_location, location)

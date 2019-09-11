@@ -14,6 +14,7 @@
 #    under the License.
 
 import mock
+from oslo_config import cfg
 from oslo_log import log
 
 from manila.share import configuration as conf
@@ -34,6 +35,7 @@ SYMBOL_PROPERTIES = '_properties'
 SYMBOL_METHODS = '_methods'
 SYMBOL_SIDE_EFFECT = '_side_effect'
 SYMBOL_RAISE = '_raise'
+CONF = cfg.CONF
 
 
 def _has_side_effect(node):
@@ -84,7 +86,9 @@ def fake_access(**kwargs):
 
 
 class FakeEMCShareDriver(object):
-    def __init__(self):
+    def __init__(self, dhss=None):
+        if dhss in (True, False):
+            CONF.set_default('driver_handles_share_servers', dhss)
         self.configuration = conf.Configuration(None)
         self.configuration.emc_share_backend = 'unity'
         self.configuration.emc_nas_server = '192.168.1.1'
@@ -258,6 +262,7 @@ unity_res = StorageResourceMock('mocked_unity.yaml')
 STORAGE_RES_MAPPING = {
     'TestClient': unity_res,
     'TestConnection': unity_res,
+    'TestConnectionDHSSFalse': unity_res,
 }
 
 

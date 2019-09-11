@@ -121,21 +121,67 @@ for the Unity driver.
     emc_nas_server = <management IP address of the Unity system>
     emc_nas_login = <user with administrator privilege>
     emc_nas_password = <password>
-    emc_nas_server_container = [SPA|SPB]
-    emc_nas_pool_names = <Comma separated pool names>
-    emc_interface_ports = <Comma separated ports list>
+    unity_server_meta_pool = <pool name>
+    unity_share_data_pools = <comma separated pool names>
+    unity_ethernet_ports = <comma separated ports list>
+    driver_handles_share_servers = True/False
+    unity_share_server = <name of NAS server in Unity system>
 
-- `emc_share_backend` is the plugin name. Set it to `unity` for the Unity
-  driver.
-- `emc_nas_server` is the management IP for Unity.
-- `emc_nas_server_container` is the SP that will be used as share server.
-- `emc_nas_pool_names` is the name of the pools to be used by this backend.
-  If no name is specified, all storage pools on the system will be managed.
-  Wild card character is supported.
-  Examples: pool_1, pool_*, *
-- `emc_interface_ports` is the white list of the ports to be used for
-  connection. Wild card character is supported.
-  Examples: spa_eth1, spa_*, *
+- `emc_share_backend`
+    The plugin name. Set it to `unity` for the Unity driver.
+
+- `emc_nas_server`
+    The management IP for Unity.
+
+- `unity_server_meta_pool`
+    The name of the pool to persist the meta-data of NAS server.
+    This option is required.
+
+- `unity_share_data_pools`
+    Comma separated list specifying the name of the pools to be used
+    by this backend. Do not set this option if all storage pools
+    on the system can be used.
+    Wild card character is supported.
+
+    Examples:
+
+    .. code-block:: ini
+
+       # Only use pool_1
+       unity_share_data_pools = pool_1
+       # Only use pools whose name stars from pool_
+       unity_share_data_pools = pool_*
+       # Use all pools on Unity
+       unity_share_data_pools = *
+
+- `unity_ethernet_ports`
+    Comma separated list specifying the ethernet ports of Unity system
+    that can be used for share. Do not set this option if all ethernet ports
+    can be used.
+    Wild card character is supported. Both the normal ethernet port and link
+    aggregation port can be used by Unity share driver.
+
+
+    Examples:
+
+    .. code-block:: ini
+
+       # Only use spa_eth1
+       unity_ethernet_ports = spa_eth1
+       # Use port whose name stars from spa_
+       unity_ethernet_ports = spa_*
+       # Use all Link Aggregation ports
+       unity_ethernet_ports = sp*_la_*
+       # Use all available ports
+       unity_ethernet_ports = *
+
+- `driver_handles_share_servers`
+    Unity driver requires this option to be as `True` or `False`.
+    Need to set `unity_share_server` when the value is `False`.
+
+- `unity_share_server`
+    One of NAS server names in Unity, it is used for share creation when
+    the driver is in `DHSS=False` mode.
 
 Restart of :term:`manila-share` service is needed for the configuration changes to take
 effect.
@@ -149,22 +195,6 @@ into two parts:
 1. The driver is able to manage share or snapshot in the Neutron IPv6 network.
 2. The driver is able to connect Unity management interface using its IPv6 address.
 
-Pre-Configurations for IPv6 support
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The following parameters need to be configured in `/etc/manila/manila.conf`
-for the Unity driver:
-
-    network_plugin_ipv6_enabled = True
-
-- `network_plugin_ipv6_enabled` indicates IPv6 is enabled.
-
-If you want to connect Unity using IPv6 address, you should configure IPv6 address
-by `/net/if/mgmt` uemcli command, `mgmtInterfaceSettings` RESTful api or the system
-settings of Unity GUI for Unity and specify the address in `/etc/manila/manila.conf`:
-
-    emc_nas_server = <IPv6 address>
-
 Snapshot support
 ----------------
 
@@ -175,44 +205,6 @@ create snapshots on shares of this share type. The feature is divided into two p
 
 1. The driver is able to create/delete snapshot of share.
 2. The driver is able to create share from snapshot.
-
-Pre-Configurations for Snapshot support
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The following extra specifications need to be configured with share type.
-
-- snapshot_support = True
-- create_share_from_snapshot_support = True
-
-For new share type, these extra specifications can be set directly when creating share type:
-
-.. code-block:: console
-
-    manila type-create --snapshot_support True --create_share_from_snapshot_support True ${share_type_name} True
-
-Or you can update already existing share type with command:
-
-.. code-block:: console
-
-    manila type-key ${share_type_name} set snapshot_support=True
-    manila type-key ${share_type_name} set create_share_from_snapshot_support=True
-
-To snapshot a share and create share from the snapshot
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Firstly, you need create a share from share type that has extra specifications(snapshot_support=True, create_share_from_snapshot_support=True).
-Then snapshot the share with command:
-
-.. code-block:: console
-
-    manila snapshot-create ${source_share_name} --name ${target_snapshot_name} --description " "
-
-After creating the snapshot from previous step, you can create share from that snapshot.
-Use command:
-
-.. code-block:: console
-
-    manila create nfs 1 --name ${target_share_name} --metadata source=snapshot --description " " --snapshot-id ${source_snapshot_id}
 
 Restrictions
 ------------
