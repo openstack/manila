@@ -28,7 +28,6 @@ process_options() {
 run_pylint() {
 
     local target="${scriptargs:-HEAD~1}"
-    local concurrency=$(python -c 'import multiprocessing as mp; print(mp.cpu_count())')
     CODE_OKAY=0
 
     if [[ "$target" = *"all"* ]]; then
@@ -46,14 +45,14 @@ run_pylint() {
         echo "Running pylint against manila code modules:"
         printf "\t%s\n" "${files[@]}"
         pylint --rcfile=.pylintrc --output-format=colorized ${files} \
-            -E -j $concurrency || CODE_OKAY=1
+            -E -j 0 || CODE_OKAY=1
     fi
     if [[ -n "${test_files}" ]]; then
         echo "Running pylint against manila test modules:"
         printf "\t%s\n" "${test_files[@]}"
         pylint --rcfile=.pylintrc --output-format=colorized ${test_files} \
             -E -d "no-member,assignment-from-no-return,assignment-from-none" \
-            -j $concurrency || CODE_OKAY=1
+            -j 0 || CODE_OKAY=1
     fi
     exit $CODE_OKAY
 }
