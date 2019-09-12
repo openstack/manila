@@ -156,7 +156,9 @@ modindex_common_prefix = ['manila.']
 
 man_pages = [
     ('cli/manila-manage', 'manila-manage', u'Cloud controller fabric',
-     [u'OpenStack'], 1)
+     [u'OpenStack'], 1),
+    ('cli/manila-status', 'manila-status', u'Cloud controller fabric',
+     [u'OpenStack'], 1),
 ]
 
 # -- Options for HTML output --------------------------------------------------
