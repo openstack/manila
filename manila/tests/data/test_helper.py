@@ -124,7 +124,7 @@ class DataServiceHelperTestCase(test.TestCase):
     def test__get_access_entries_according_to_mapping(self, mapping):
 
         data_copy_helper.CONF.data_node_access_cert = 'fake'
-        data_copy_helper.CONF.data_node_access_ip = 'fake'
+        data_copy_helper.CONF.data_node_access_ips = 'fake'
         data_copy_helper.CONF.data_node_access_admin_user = 'fake'
         expected = [{
             'access_type': list(mapping.keys())[0],
@@ -145,7 +145,7 @@ class DataServiceHelperTestCase(test.TestCase):
 
     def test__get_access_entries_according_to_mapping_exception_not_set(self):
 
-        data_copy_helper.CONF.data_node_access_ip = None
+        data_copy_helper.CONF.data_node_access_ips = None
 
         self.assertRaises(
             exception.ShareDataCopyFailed,
@@ -155,7 +155,6 @@ class DataServiceHelperTestCase(test.TestCase):
 
         ips = ['fake1', 'fake2']
         data_copy_helper.CONF.data_node_access_ips = ips
-        data_copy_helper.CONF.data_node_access_ip = None
 
         expected = [{
             'access_type': 'ip',

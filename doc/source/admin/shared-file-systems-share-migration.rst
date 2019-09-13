@@ -186,9 +186,10 @@ must use manila share access APIs to grant access to mount the instances.
 The access rule type varies according to the share protocol, so there are a few
 config options to set the access value for each type:
 
-* ``data_node_access_ip``: For IP-based access type, provide the value of the
-  IP of the Data Service node in the administrator network. For NFS shares,
-  drivers should always add rules with the "no_root_squash" property.
+* ``data_node_access_ips``: For IP-based access type, provide one or more
+  administrator network IP addresses of the host running the Data Service.
+  For NFS shares, drivers should always add rules with the "no_root_squash"
+  property.
 
 * ``data_node_access_cert``: For certificate-based access type, provide the
   value of the certificate name that grants access to the Data Service.

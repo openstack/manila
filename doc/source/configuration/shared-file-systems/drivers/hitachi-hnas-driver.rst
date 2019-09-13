@@ -331,7 +331,7 @@ Extra configuration is needed for allowing shares to be migrated from or to
 HNAS. In the OpenStack deployment, the manila-share node needs an additional
 connection to the EVS data interface. Furthermore, make sure to add
 ``hitachi_hnas_admin_network_ip`` to the configuration. This should match the
-value of ``data_node_access_ip``. For more in-depth documentation,
+value of ``data_node_access_ips``. For more in-depth documentation,
 refer to the `share migration documents
 <https://docs.openstack.org/manila/latest/admin/shared-file-systems-share-migration.html>`_
 
