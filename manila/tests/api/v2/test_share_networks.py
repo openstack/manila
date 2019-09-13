@@ -13,7 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import ddt
+from manila.api import common
 import mock
 from oslo_db import exception as db_exception
 from oslo_utils import timeutils
@@ -29,22 +31,31 @@ from manila import test
 from manila.tests.api import fakes
 
 
-fake_share_network = {
-    'id': 'fake network id',
-    'project_id': 'fake project',
-    'created_at': timeutils.parse_strtime('2002-02-02', fmt="%Y-%m-%d"),
-    'updated_at': None,
+fake_share_network_subnet = {
+    'id': 'fake subnet id',
     'neutron_net_id': 'fake net id',
     'neutron_subnet_id': 'fake subnet id',
     'network_type': 'vlan',
     'segmentation_id': 1000,
     'cidr': '10.0.0.0/24',
     'ip_version': 4,
+    'share_network_id': 'fake network id',
+    'availability_zone_id': None,
+    'share_servers': [],
+    'availability_zone': []
+}
+
+fake_share_network = {
+    'id': 'fake network id',
+    'project_id': 'fake project',
+    'created_at': timeutils.parse_strtime('2002-02-02', fmt="%Y-%m-%d"),
+    'updated_at': None,
     'name': 'fake name',
     'description': 'fake description',
-    'share_servers': [],
-    'security_services': []
+    'security_services': [],
+    'share_network_subnets': []
 }
+
 
 fake_share_network_shortened = {
     'id': 'fake network id',
@@ -56,15 +67,9 @@ fake_share_network_with_ss = {
     'project_id': 'fake',
     'created_at': timeutils.parse_strtime('2001-01-01', fmt="%Y-%m-%d"),
     'updated_at': None,
-    'neutron_net_id': '1111',
-    'neutron_subnet_id': '2222',
-    'network_type': 'local',
-    'segmentation_id': 2000,
-    'cidr': '8.0.0.0/12',
-    'ip_version': 6,
     'name': 'test-sn',
     'description': 'fake description',
-    'share_servers': [],
+    'share_network_subnets': [],
     'security_services': [{'id': 'fake-ss-id'}]
 }
 
@@ -95,42 +100,63 @@ class ShareNetworkAPITest(test.TestCase):
         self.assertEqual(share_nw['project_id'], view['project_id'])
         self.assertEqual(share_nw['created_at'], view['created_at'])
         self.assertEqual(share_nw['updated_at'], view['updated_at'])
-        self.assertEqual(share_nw['neutron_net_id'],
-                         view['neutron_net_id'])
-        self.assertEqual(share_nw['neutron_subnet_id'],
-                         view['neutron_subnet_id'])
-        self.assertEqual(share_nw['network_type'], view['network_type'])
-        self.assertEqual(share_nw['segmentation_id'],
-                         view['segmentation_id'])
-        self.assertEqual(share_nw['cidr'], view['cidr'])
-        self.assertEqual(share_nw['ip_version'], view['ip_version'])
         self.assertEqual(share_nw['name'], view['name'])
         self.assertEqual(share_nw['description'], view['description'])
-
-        self.assertEqual(share_nw['created_at'], view['created_at'])
-        self.assertEqual(share_nw['updated_at'], view['updated_at'])
         self.assertNotIn('shares', view)
         self.assertNotIn('network_allocations', view)
         self.assertNotIn('security_services', view)
 
-    @ddt.data(
-        {'neutron_net_id': 'fake_neutron_net_id'},
-        {'neutron_subnet_id': 'fake_neutron_subnet_id'},
-        {'neutron_net_id': 'fake', 'neutron_subnet_id': 'fake'})
-    def test_create_valid_cases(self, data):
+    def _setup_body_for_create_test(self, data):
         data.update({'user_id': 'fake_user_id'})
         body = {share_networks.RESOURCE_NAME: data}
+        return body
+
+    @ddt.data(
+        {'neutron_net_id': 'fake', 'neutron_subnet_id': 'fake'})
+    def test_create_valid_cases(self, data):
+        body = self._setup_body_for_create_test(data)
         result = self.controller.create(self.req, body)
         data.pop('user_id', None)
         for k, v in data.items():
             self.assertIn(data[k], result['share_network'][k])
 
     @ddt.data(
+        {'neutron_net_id': 'fake', 'neutron_subnet_id': 'fake',
+         'availability_zone': 'fake'})
+    def test_create_valid_cases_upper_2_50(self, data):
+        req = fakes.HTTPRequest.blank('/share-networks', version="2.51")
+        context = req.environ['manila.context']
+        body = self._setup_body_for_create_test(data)
+        fake_az = {
+            'name': 'fake',
+            'id': 'fake_id'
+        }
+        self.mock_object(db_api, 'availability_zone_get',
+                         mock.Mock(return_value=fake_az))
+
+        result = self.controller.create(req, body)
+        result_subnet = result['share_network']['share_network_subnets'][0]
+        data.pop('user_id', None)
+        data.pop('project_id', None)
+        data.pop('availability_zone_id', None)
+        data.pop('id', None)
+        data['availability_zone'] = result_subnet['availability_zone']
+
+        for k, v in data.items():
+            self.assertIn(k, result_subnet.keys())
+
+        db_api.availability_zone_get.assert_called_once_with(
+            context, fake_az['name']
+        )
+
+    @ddt.data(
         {'nova_net_id': 'foo', 'neutron_net_id': 'bar'},
         {'nova_net_id': 'foo', 'neutron_subnet_id': 'quuz'},
         {'nova_net_id': 'foo', 'neutron_net_id': 'bar',
          'neutron_subnet_id': 'quuz'},
-        {'nova_net_id': 'fake_nova_net_id'})
+        {'nova_net_id': 'fake_nova_net_id'},
+        {'neutron_net_id': 'bar'},
+        {'neutron_subnet_id': 'quuz'})
     def test_create_invalid_cases(self, data):
         data.update({'user_id': 'fake_user_id'})
         body = {share_networks.RESOURCE_NAME: data}
@@ -138,9 +164,9 @@ class ShareNetworkAPITest(test.TestCase):
             webob_exc.HTTPBadRequest, self.controller.create, self.req, body)
 
     @ddt.data(
-        {'neutron_net_id': 'fake_neutron_net_id'},
-        {'neutron_subnet_id': 'fake_neutron_subnet_id'},
-        {'neutron_net_id': 'fake', 'neutron_subnet_id': 'fake'})
+        {'name': 'new fake name'},
+        {'description': 'new fake description'},
+        {'name': 'new fake name', 'description': 'new fake description'})
     def test_update_valid_cases(self, data):
         body = {share_networks.RESOURCE_NAME: {'user_id': 'fake_user'}}
         created = self.controller.create(self.req, body)
@@ -172,7 +198,29 @@ class ShareNetworkAPITest(test.TestCase):
             self.controller.update,
             self.req, created['share_network']['id'], body)
 
+    @ddt.data(
+        ({'share_network_subnets': [
+            {'share_network_id': fake_share_network['id']}]}, True),
+        ({'share_network_subnets': []}, False))
+    @ddt.unpack
+    def test__subnet_has_search_opt(self, network, has_search_opt):
+        search_opts = {
+            'share_network_id': fake_share_network['id']
+        }
+
+        result = None
+
+        for key, value in search_opts.items():
+            result = self.controller._subnet_has_search_opt(
+                key, value, network)
+
+        self.assertEqual(has_search_opt, result)
+
     def test_create_nominal(self):
+        self.mock_object(db_api, 'share_network_subnet_create')
+        self.mock_object(db_api, 'share_network_get',
+                         mock.Mock(return_value=fake_share_network))
+        self.mock_object(common, 'check_net_id_and_subnet_id')
         with mock.patch.object(db_api,
                                'share_network_create',
                                mock.Mock(return_value=fake_share_network)):
@@ -191,7 +239,7 @@ class ShareNetworkAPITest(test.TestCase):
         with mock.patch.object(db_api,
                                'share_network_create',
                                mock.Mock(side_effect=db_exception.DBError)):
-            self.assertRaises(webob_exc.HTTPBadRequest,
+            self.assertRaises(webob_exc.HTTPInternalServerError,
                               self.controller.create,
                               self.req,
                               self.body)
@@ -203,9 +251,55 @@ class ShareNetworkAPITest(test.TestCase):
                           self.req,
                           body)
 
+    @ddt.data(
+        {'availability_zone': 'fake-zone'})
+    def test_create_az_not_found(self, data):
+        req = fakes.HTTPRequest.blank('/share-networks', version="2.51")
+
+        self.mock_object(
+            db_api, 'availability_zone_get',
+            mock.Mock(
+                side_effect=exception.AvailabilityZoneNotFound(id='fake')))
+
+        body = {share_networks.RESOURCE_NAME: data}
+
+        self.assertRaises(webob_exc.HTTPBadRequest,
+                          self.controller.create,
+                          req,
+                          body)
+
+    def test_create_error_on_subnet_creation(self):
+        data = {
+            'neutron_net_id': 'fake',
+            'neutron_subnet_id': 'fake',
+            'id': fake_share_network['id']
+        }
+        subnet_data = copy.deepcopy(data)
+        self.mock_object(db_api, 'share_network_create',
+                         mock.Mock(return_value=fake_share_network))
+        self.mock_object(db_api, 'share_network_subnet_create',
+                         mock.Mock(side_effect=db_exception.DBError()))
+        self.mock_object(db_api, 'share_network_delete')
+        body = {share_networks.RESOURCE_NAME: data}
+
+        self.assertRaises(webob_exc.HTTPInternalServerError,
+                          self.controller.create,
+                          self.req,
+                          body)
+
+        db_api.share_network_create.assert_called_once_with(self.context, data)
+        subnet_data['share_network_id'] = data['id']
+        subnet_data.pop('id')
+        db_api.share_network_subnet_create.assert_called_once_with(
+            self.context, subnet_data)
+        db_api.share_network_delete.assert_called_once_with(
+            self.context, fake_share_network['id'])
+
     def test_delete_nominal(self):
         share_nw = fake_share_network.copy()
-        share_nw['share_servers'] = ['foo', 'bar']
+        subnet = fake_share_network_subnet.copy()
+        subnet['share_servers'] = ['foo', 'bar']
+        share_nw['share_network_subnets'] = [subnet]
         self.mock_object(db_api, 'share_network_get',
                          mock.Mock(return_value=share_nw))
         self.mock_object(db_api, 'share_instances_get_all_by_share_network',
@@ -242,7 +336,9 @@ class ShareNetworkAPITest(test.TestCase):
 
     def test_quota_delete_reservation_failed(self):
         share_nw = fake_share_network.copy()
-        share_nw['share_servers'] = ['foo', 'bar']
+        subnet = fake_share_network_subnet.copy()
+        subnet['share_servers'] = ['foo', 'bar']
+        share_nw['share_network_subnets'] = [subnet]
         share_nw['user_id'] = 'fake_user_id'
 
         self.mock_object(db_api, 'share_network_get',
@@ -330,6 +426,53 @@ class ShareNetworkAPITest(test.TestCase):
         db_api.share_network_get.assert_called_once_with(
             self.req.environ['manila.context'], share_nw['id'])
 
+    def test_delete_contains_more_than_one_subnet(self):
+        share_nw = fake_share_network.copy()
+        self.mock_object(db_api, 'share_network_get',
+                         mock.Mock(return_value=share_nw))
+        self.mock_object(db_api, 'share_instances_get_all_by_share_network',
+                         mock.Mock(return_value=None))
+        self.mock_object(db_api, 'count_share_groups_in_share_network',
+                         mock.Mock(return_value=None))
+        self.mock_object(self.controller, '_share_network_contains_subnets',
+                         mock.Mock(return_value=True))
+
+        self.assertRaises(webob_exc.HTTPConflict,
+                          self.controller.delete,
+                          self.req,
+                          share_nw['id'])
+
+        db_api.share_network_get.assert_called_once_with(
+            self.context, share_nw['id'])
+        (db_api.share_instances_get_all_by_share_network
+            .assert_called_once_with(self.context, share_nw['id']))
+        db_api.count_share_groups_in_share_network.assert_called_once_with(
+            self.context, share_nw['id']
+        )
+        (self.controller._share_network_contains_subnets
+            .assert_called_once_with(share_nw))
+
+    def test_delete_subnet_contains_share_server(self):
+        share_nw = fake_share_network.copy()
+        share_nw['share_network_subnets'].append({
+            'id': 'fake_sns_id',
+            'share_servers': [{'id': 'fake_share_server_id'}]
+        })
+        self.mock_object(db_api, 'share_network_get',
+                         mock.Mock(return_value=share_nw))
+        self.mock_object(db_api, 'count_share_groups_in_share_network',
+                         mock.Mock(return_value=0))
+        self.mock_object(self.controller, '_share_network_contains_subnets',
+                         mock.Mock(return_value=False))
+        self.mock_object(
+            self.controller, '_all_share_servers_are_auto_deletable',
+            mock.Mock(return_value=False))
+
+        self.assertRaises(webob_exc.HTTPConflict,
+                          self.controller.delete,
+                          self.req,
+                          share_nw['id'])
+
     @ddt.data(
         ({'share_servers': [{'is_auto_deletable': True},
                             {'is_auto_deletable': True}]}, True),
@@ -343,6 +486,18 @@ class ShareNetworkAPITest(test.TestCase):
             expected_result,
             self.controller._all_share_servers_are_auto_deletable(
                 fake_share_network))
+
+    @ddt.data(
+        ({'share_network_subnets': [{'share_servers': [{}, {}]}]}, True),
+        ({'share_network_subnets': [{'share_servers': []}]}, False),
+    )
+    @ddt.unpack
+    def test__share_network_subnets_contain_share_servers(self, share_network,
+                                                          expected_result):
+        self.assertEqual(
+            expected_result,
+            self.controller._share_network_subnets_contain_share_servers(
+                share_network))
 
     def test_show_nominal(self):
         share_nw = 'fake network id'
@@ -552,12 +707,6 @@ class ShareNetworkAPITest(test.TestCase):
         valid_filter_opts = {
             'created_before': '2001-02-02',
             'created_since': '1999-01-01',
-            'neutron_net_id': '1111',
-            'neutron_subnet_id': '2222',
-            'network_type': 'local',
-            'segmentation_id': 2000,
-            'cidr': '8.0.0.0/12',
-            'ip_version': 6,
             'name': 'test-sn'
         }
         db_api.share_network_get_all_by_project.return_value = [
@@ -614,7 +763,9 @@ class ShareNetworkAPITest(test.TestCase):
     @mock.patch.object(db_api, 'share_network_get', mock.Mock())
     def test_update_invalid_key_in_use(self):
         share_nw = fake_share_network.copy()
-        share_nw['share_servers'] = [{'id': 1}]
+        subnet = fake_share_network_subnet.copy()
+        subnet['share_servers'] = [{'id': 1}]
+        share_nw['share_network_subnets'] = [subnet]
 
         db_api.share_network_get.return_value = share_nw
         body = {
@@ -633,12 +784,15 @@ class ShareNetworkAPITest(test.TestCase):
     @mock.patch.object(db_api, 'share_network_update', mock.Mock())
     def test_update_valid_keys_in_use(self):
         share_nw = fake_share_network.copy()
-        share_nw['share_servers'] = [{'id': 1}]
+        subnet = fake_share_network_subnet.copy()
+        subnet['share_servers'] = [{'id': 1}]
+        share_nw['share_network_subnets'] = [subnet]
         updated_share_nw = share_nw.copy()
         updated_share_nw['name'] = 'new name'
         updated_share_nw['description'] = 'new description'
 
         db_api.share_network_get.return_value = share_nw
+        db_api.share_network_update.return_value = updated_share_nw
         body = {
             share_networks.RESOURCE_NAME: {
                 'name': updated_share_nw['name'],
@@ -656,6 +810,10 @@ class ShareNetworkAPITest(test.TestCase):
         share_nw = 'fake network id'
         db_api.share_network_get.return_value = fake_share_network
 
+        self.mock_object(
+            self.controller, '_share_network_subnets_contain_share_servers',
+            mock.Mock(return_value=False))
+
         body = {share_networks.RESOURCE_NAME: {'neutron_subnet_id':
                                                'new subnet'}}
 
@@ -672,6 +830,9 @@ class ShareNetworkAPITest(test.TestCase):
     def test_action_add_security_service(self, microversion):
         share_network_id = 'fake network id'
         security_service_id = 'fake ss id'
+        self.mock_object(
+            self.controller, '_share_network_subnets_contain_share_servers')
+
         body = {'add_security_service': {'security_service_id':
                                          security_service_id}}
 
@@ -692,6 +853,9 @@ class ShareNetworkAPITest(test.TestCase):
                             'type': 'ldap'}
         body = {'add_security_service': {'security_service_id':
                                          security_service['id']}}
+        self.mock_object(
+            self.controller, '_share_network_subnets_contain_share_servers',
+            mock.Mock(return_value=False))
 
         db_api.security_service_get.return_value = security_service
         db_api.share_network_get.return_value = share_network
@@ -716,6 +880,8 @@ class ShareNetworkAPITest(test.TestCase):
     def test_action_remove_security_service(self, microversion):
         share_network_id = 'fake network id'
         security_service_id = 'fake ss id'
+        self.mock_object(
+            self.controller, '_share_network_subnets_contain_share_servers')
         body = {'remove_security_service': {'security_service_id':
                                             security_service_id}}
 
@@ -730,8 +896,13 @@ class ShareNetworkAPITest(test.TestCase):
     @mock.patch.object(share_networks.policy, 'check_policy', mock.Mock())
     def test_action_remove_security_service_forbidden(self):
         share_network = fake_share_network.copy()
-        share_network['share_servers'] = 'fake share server'
+        subnet = fake_share_network_subnet.copy()
+        subnet['share_servers'] = ['foo']
+        share_network['share_network_subnets'] = [subnet]
         db_api.share_network_get.return_value = share_network
+        self.mock_object(
+            self.controller, '_share_network_subnets_contain_share_servers',
+            mock.Mock(return_value=True))
         body = {
             'remove_security_service': {
                 'security_service_id': 'fake id',
@@ -758,3 +929,31 @@ class ShareNetworkAPITest(test.TestCase):
                           self.req,
                           share_network_id,
                           body)
+
+    @ddt.data('add_security_service', 'remove_security_service')
+    def test_action_security_service_contains_share_servers(self, action):
+        share_network = fake_share_network.copy()
+        security_service = {'id': ' security_service_2',
+                            'type': 'ldap'}
+        body = {
+            action: {
+                'security_service_id': security_service['id']
+            }
+        }
+        self.mock_object(share_networks.policy, 'check_policy')
+        self.mock_object(db_api, 'share_network_get',
+                         mock.Mock(return_value=share_network))
+        self.mock_object(
+            self.controller, '_share_network_subnets_contain_share_servers',
+            mock.Mock(return_value=True))
+
+        self.assertRaises(webob_exc.HTTPForbidden,
+                          self.controller.action,
+                          self.req,
+                          share_network['id'],
+                          body)
+        db_api.share_network_get.assert_called_once_with(
+            self.req.environ['manila.context'], share_network['id'])
+        share_networks.policy.check_policy.assert_called_once_with(
+            self.req.environ['manila.context'],
+            share_networks.RESOURCE_NAME, action)

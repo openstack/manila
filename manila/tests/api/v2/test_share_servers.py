@@ -46,7 +46,8 @@ class ShareServerControllerTest(test.TestCase):
               constants.STATUS_UNMANAGE_ERROR, constants.STATUS_MANAGE_ERROR)
     def test_share_server_reset_status(self, status):
         req = fakes.HTTPRequest.blank('/v2/share-servers/fake-share-server/',
-                                      use_admin_context=True)
+                                      use_admin_context=True,
+                                      version="2.49")
         body = {'reset_status': {'status': status}}
 
         context = req.environ['manila.context']
@@ -62,7 +63,8 @@ class ShareServerControllerTest(test.TestCase):
             context, 'fake_server_id', {'status': status})
 
     def test_share_reset_server_status_invalid(self):
-        req = fakes.HTTPRequest.blank('/reset_status', use_admin_context=True)
+        req = fakes.HTTPRequest.blank('/reset_status', use_admin_context=True,
+                                      version="2.49")
         body = {'reset_status': {'status': constants.STATUS_EXTENDING}}
         context = req.environ['manila.context']
 
@@ -74,7 +76,8 @@ class ShareServerControllerTest(test.TestCase):
             context, self.resource_name, 'reset_status')
 
     def test_share_server_reset_status_no_body(self):
-        req = fakes.HTTPRequest.blank('/reset_status', use_admin_context=True)
+        req = fakes.HTTPRequest.blank('/reset_status', use_admin_context=True,
+                                      version="2.49")
         context = req.environ['manila.context']
 
         self.assertRaises(
@@ -85,7 +88,8 @@ class ShareServerControllerTest(test.TestCase):
             context, self.resource_name, 'reset_status')
 
     def test_share_server_reset_status_no_status(self):
-        req = fakes.HTTPRequest.blank('/reset_status', use_admin_context=True)
+        req = fakes.HTTPRequest.blank('/reset_status', use_admin_context=True,
+                                      version="2.49")
         context = req.environ['manila.context']
 
         self.assertRaises(
@@ -98,6 +102,7 @@ class ShareServerControllerTest(test.TestCase):
     def _setup_manage_test_request_body(self):
         body = {
             'share_network_id': 'fake_net_id',
+            'share_network_subnet_id': 'fake_subnet_id',
             'host': 'fake_host',
             'identifier': 'fake_identifier',
             'driver_options': {'opt1': 'fake_opt1', 'opt2': 'fake_opt2'},
@@ -112,14 +117,18 @@ class ShareServerControllerTest(test.TestCase):
                                       version="2.49")
         context = req.environ['manila.context']
         share_network = db_utils.create_share_network(name=share_net_name)
+        share_net_subnet = db_utils.create_share_network_subnet(
+            share_network_id=share_network['id'])
         share_server = db_utils.create_share_server(
-            share_network_id=share_network['id'],
+            share_network_subnet_id=share_net_subnet['id'],
             host='fake_host',
             identifier='fake_identifier',
             is_auto_deletable=False)
 
         self.mock_object(db_api, 'share_network_get', mock.Mock(
             return_value=share_network))
+        self.mock_object(db_api, 'share_network_subnet_get_default_subnet',
+                         mock.Mock(return_value=share_net_subnet))
         self.mock_object(utils, 'validate_service_host')
 
         body = {
@@ -138,7 +147,8 @@ class ShareServerControllerTest(test.TestCase):
                 'updated_at': None,
                 'status': constants.STATUS_ACTIVE,
                 'host': 'fake_host',
-                'share_network_id': share_server['share_network_id'],
+                'share_network_id':
+                    share_server['share_network_subnet']['share_network_id'],
                 'created_at': share_server['created_at'],
                 'backend_details': {},
                 'identifier': share_server['identifier'],
@@ -150,12 +160,12 @@ class ShareServerControllerTest(test.TestCase):
                 'fake_net_name')
         else:
             expected_result['share_server']['share_network_name'] = (
-                share_server['share_network_id'])
+                share_net_subnet['share_network_id'])
 
         req_params = body['share_server']
         manage_share_server_mock.assert_called_once_with(
             context, req_params['identifier'], req_params['host'],
-            share_network, req_params['driver_options'])
+            share_net_subnet, req_params['driver_options'])
 
         self.assertEqual(expected_result, result)
 
@@ -164,9 +174,11 @@ class ShareServerControllerTest(test.TestCase):
 
     def test_manage_invalid(self):
         req = fakes.HTTPRequest.blank('/manage_share_server',
-                                      use_admin_context=True)
+                                      use_admin_context=True, version="2.49")
         context = req.environ['manila.context']
         share_network = db_utils.create_share_network()
+        share_net_subnet = db_utils.create_share_network_subnet(
+            share_network_id=share_network['id'])
 
         body = {
             'share_server': self._setup_manage_test_request_body()
@@ -174,6 +186,8 @@ class ShareServerControllerTest(test.TestCase):
         self.mock_object(utils, 'validate_service_host')
         self.mock_object(db_api, 'share_network_get',
                          mock.Mock(return_value=share_network))
+        self.mock_object(db_api, 'share_network_subnet_get_default_subnet',
+                         mock.Mock(return_value=share_net_subnet))
 
         manage_share_server_mock = self.mock_object(
             share_api.API, 'manage_share_server',
@@ -185,14 +199,23 @@ class ShareServerControllerTest(test.TestCase):
         req_params = body['share_server']
         manage_share_server_mock.assert_called_once_with(
             context, req_params['identifier'], req_params['host'],
-            share_network, req_params['driver_options'])
+            share_net_subnet, req_params['driver_options'])
 
     def test_manage_forbidden(self):
         """Tests share server manage without admin privileges"""
-        req = fakes.HTTPRequest.blank('/manage_share_server')
-        self.mock_object(share_api.API, 'manage_share_server', mock.Mock())
+        req = fakes.HTTPRequest.blank('/manage_share_server', version="2.49")
         error = mock.Mock(side_effect=exception.PolicyNotAuthorized(action=''))
         self.mock_object(share_api.API, 'manage_share_server', error)
+
+        share_network = db_utils.create_share_network()
+        share_net_subnet = db_utils.create_share_network_subnet(
+            share_network_id=share_network['id'])
+
+        self.mock_object(db_api, 'share_network_get', mock.Mock(
+            return_value=share_network))
+        self.mock_object(db_api, 'share_network_subnet_get_default_subnet',
+                         mock.Mock(return_value=share_net_subnet))
+        self.mock_object(utils, 'validate_service_host')
 
         body = {
             'share_server': self._setup_manage_test_request_body()
@@ -205,7 +228,7 @@ class ShareServerControllerTest(test.TestCase):
 
     def test__validate_manage_share_server_validate_no_body(self):
         """Tests share server manage"""
-        req = fakes.HTTPRequest.blank('/manage')
+        req = fakes.HTTPRequest.blank('/manage', version="2.49")
         body = {}
 
         self.assertRaises(webob.exc.HTTPUnprocessableEntity,
@@ -223,7 +246,7 @@ class ShareServerControllerTest(test.TestCase):
     def test__validate_manage_share_server_validate_without_parameters(
             self, empty, key):
         """Tests share server manage without some parameters"""
-        req = fakes.HTTPRequest.blank('/manage_share_server')
+        req = fakes.HTTPRequest.blank('/manage_share_server', version="2.49")
         self.mock_object(share_api.API, 'manage_share_server', mock.Mock())
 
         body = {
@@ -249,10 +272,19 @@ class ShareServerControllerTest(test.TestCase):
     @ddt.unpack
     def test__validate_manage_share_server_validate_service_host(
             self, exception_to_raise, side_effect_exception):
-        req = fakes.HTTPRequest.blank('/manage')
+        req = fakes.HTTPRequest.blank('/manage', version="2.49")
         context = req.environ['manila.context']
         error = mock.Mock(side_effect=side_effect_exception)
         self.mock_object(utils, 'validate_service_host', error)
+
+        share_network = db_utils.create_share_network()
+        share_net_subnet = db_utils.create_share_network_subnet(
+            share_network_id=share_network['id'])
+
+        self.mock_object(db_api, 'share_network_get', mock.Mock(
+            return_value=share_network))
+        self.mock_object(db_api, 'share_network_subnet_get_default_subnet',
+                         mock.Mock(return_value=share_net_subnet))
 
         self.assertRaises(
             exception_to_raise, self.controller.manage, req,
@@ -262,7 +294,7 @@ class ShareServerControllerTest(test.TestCase):
             context, self.resource_name, 'manage_share_server')
 
     def test__validate_manage_share_server_share_network_not_found(self):
-        req = fakes.HTTPRequest.blank('/manage')
+        req = fakes.HTTPRequest.blank('/manage', version="2.49")
         context = req.environ['manila.context']
         self.mock_object(utils, 'validate_service_host')
         error = mock.Mock(
@@ -279,7 +311,7 @@ class ShareServerControllerTest(test.TestCase):
             context, self.resource_name, 'manage_share_server')
 
     def test__validate_manage_share_server_driver_opts_not_instance_dict(self):
-        req = fakes.HTTPRequest.blank('/manage')
+        req = fakes.HTTPRequest.blank('/manage', version="2.49")
         context = req.environ['manila.context']
         self.mock_object(utils, 'validate_service_host')
         self.mock_object(db_api, 'share_network_get')
@@ -294,7 +326,7 @@ class ShareServerControllerTest(test.TestCase):
             context, self.resource_name, 'manage_share_server')
 
     def test__validate_manage_share_server_error_extract_host(self):
-        req = fakes.HTTPRequest.blank('/manage')
+        req = fakes.HTTPRequest.blank('/manage', version="2.49")
         context = req.environ['manila.context']
         body = self._setup_manage_test_request_body()
         body['host'] = 'fake@backend#pool'
@@ -307,9 +339,43 @@ class ShareServerControllerTest(test.TestCase):
             context, self.resource_name, 'manage_share_server')
 
     @ddt.data(True, False)
+    def test__validate_manage_share_server_error_subnet_not_found(
+            self, body_contains_subnet):
+        req = fakes.HTTPRequest.blank('/manage', version="2.51")
+        context = req.environ['manila.context']
+        share_network = db_utils.create_share_network()
+        body = {'share_server': self._setup_manage_test_request_body()}
+        share_net_subnet = db_utils.create_share_network_subnet(
+            share_network_id=share_network['id'])
+        body['share_server']['share_network_subnet_id'] = (
+            share_net_subnet['id'] if body_contains_subnet else None)
+
+        self.mock_object(
+            db_api, 'share_network_subnet_get',
+            mock.Mock(side_effect=exception.ShareNetworkSubnetNotFound(
+                share_network_subnet_id='fake')))
+        self.mock_object(db_api, 'share_network_subnet_get_default_subnet',
+                         mock.Mock(return_value=None))
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.manage,
+                          req,
+                          body)
+
+        policy.check_policy.assert_called_once_with(
+            context, self.resource_name, 'manage_share_server')
+        if body_contains_subnet:
+            db_api.share_network_subnet_get.assert_called_once_with(
+                context, share_net_subnet['id'])
+        else:
+            (db_api.share_network_subnet_get_default_subnet
+                .assert_called_once_with(
+                    context, body['share_server']['share_network_id']))
+
+    @ddt.data(True, False)
     def test_unmanage(self, force):
         server = self._setup_unmanage_tests()
-        req = fakes.HTTPRequest.blank('/unmanage')
+        req = fakes.HTTPRequest.blank('/unmanage', version="2.49")
         context = req.environ['manila.context']
         mock_get = self.mock_object(
             db_api, 'share_server_get', mock.Mock(return_value=server))
@@ -326,7 +392,8 @@ class ShareServerControllerTest(test.TestCase):
 
     def test_unmanage_share_server_not_found(self):
         """Tests unmanaging share servers"""
-        req = fakes.HTTPRequest.blank('/v2/share-servers/fake_server_id/')
+        req = fakes.HTTPRequest.blank('/v2/share-servers/fake_server_id/',
+                                      version="2.49")
         context = req.environ['manila.context']
         share_server_error = mock.Mock(
             side_effect=exception.ShareServerNotFound(
@@ -350,7 +417,7 @@ class ShareServerControllerTest(test.TestCase):
         server = self._setup_unmanage_tests(status=status)
         get_mock = self.mock_object(db_api, 'share_server_get',
                                     mock.Mock(return_value=server))
-        req = fakes.HTTPRequest.blank('/unmanage_share_server')
+        req = fakes.HTTPRequest.blank('/unmanage_share_server', version="2.49")
         context = req.environ['manila.context']
         body = {'unmanage': {'force': True}}
 
@@ -371,7 +438,7 @@ class ShareServerControllerTest(test.TestCase):
 
     @ddt.data(exception.ShareServerInUse, exception.PolicyNotAuthorized)
     def test_unmanage_share_server_badrequest(self, exc):
-        req = fakes.HTTPRequest.blank('/unmanage')
+        req = fakes.HTTPRequest.blank('/unmanage', version="2.49")
         server = self._setup_unmanage_tests()
         context = req.environ['manila.context']
         error = mock.Mock(side_effect=exc('foobar'))

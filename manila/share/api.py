@@ -66,6 +66,16 @@ class API(base.Base):
         self.share_rpcapi = share_rpcapi.ShareAPI()
         self.access_helper = access.ShareInstanceAccess(self.db, None)
 
+    def _get_all_availability_zones_with_subnets(self, context,
+                                                 share_network_id):
+        compatible_azs = []
+        for az in self.db.availability_zone_get_all(context):
+            if self.db.share_network_subnet_get_by_availability_zone_id(
+                    context, share_network_id=share_network_id,
+                    availability_zone_id=az['id']):
+                compatible_azs.append(az['name'])
+        return compatible_azs
+
     def create(self, context, share_proto, size, name, description,
                snapshot_id=None, availability_zone=None, metadata=None,
                share_network_id=None, share_type=None, is_public=False,
@@ -226,6 +236,25 @@ class API(base.Base):
         if share_group_snapshot_member:
             options['source_share_group_snapshot_member_id'] = (
                 share_group_snapshot_member['id'])
+
+        # NOTE(dviroel): If a target availability zone was not provided, the
+        # scheduler will receive a list with all availability zones that
+        # contains a subnet within the selected share network.
+        if share_network_id and not availability_zone:
+            azs_with_subnet = self._get_all_availability_zones_with_subnets(
+                context, share_network_id)
+            if not availability_zones:
+                availability_zones = azs_with_subnet
+            else:
+                availability_zones = (
+                    [az for az in availability_zones if az in azs_with_subnet])
+            if not availability_zones:
+                msg = _(
+                    "The share network is not supported within any requested "
+                    "availability zone. Check the share type's "
+                    "'availability_zones' extra-spec and the availability "
+                    "zones of the share network subnets")
+                raise exception.InvalidInput(message=msg)
 
         try:
             share = self.db.share_create(context, options,
@@ -484,11 +513,45 @@ class API(base.Base):
                        'az': availability_zone}
             raise exception.InvalidShare(message=msg % payload)
 
+        if share_network_id:
+            if availability_zone:
+                try:
+                    az = self.db.availability_zone_get(context,
+                                                       availability_zone)
+                except exception.AvailabilityZoneNotFound:
+                    msg = _("Share replica cannot be created because the "
+                            "specified availability zone does not exist.")
+                    raise exception.InvalidInput(message=msg)
+                if self.db.share_network_subnet_get_by_availability_zone_id(
+                        context, share_network_id, az.get('id')) is None:
+                    msg = _("Share replica cannot be created because the "
+                            "share network is not available within the "
+                            "specified availability zone.")
+                    raise exception.InvalidShare(message=msg)
+            else:
+                # NOTE(dviroel): If a target availability zone was not
+                # provided, the scheduler will receive a list with all
+                # availability zones that contains subnets within the
+                # selected share network.
+                azs_subnet = self._get_all_availability_zones_with_subnets(
+                    context, share_network_id)
+                if not type_azs:
+                    type_azs = azs_subnet
+                else:
+                    type_azs = (
+                        [az for az in type_azs if az in azs_subnet])
+                if not type_azs:
+                    msg = _(
+                        "The share network is not supported within any "
+                        "requested  availability zone. Check the share type's "
+                        "'availability_zones' extra-spec and the availability "
+                        "zones of the share network subnets")
+                    raise exception.InvalidInput(message=msg)
+
         if share['replication_type'] == constants.REPLICATION_TYPE_READABLE:
             cast_rules_to_readonly = True
         else:
             cast_rules_to_readonly = False
-
         request_spec, share_replica = (
             self.create_share_instance_and_get_request_spec(
                 context, share, availability_zone=availability_zone,
@@ -641,7 +704,9 @@ class API(base.Base):
             if share_server['status'] != constants.STATUS_ACTIVE:
                 msg = _("Share Server specified is not active.")
                 raise exception.InvalidShareServer(message=msg)
-            share_data['share_network_id'] = share_server['share_network_id']
+            subnet = self.db.share_network_subnet_get(
+                context, share_server['share_network_subnet_id'])
+            share_data['share_network_id'] = subnet['share_network_id']
 
         share_data.update({
             'user_id': context.user_id,
@@ -1019,7 +1084,7 @@ class API(base.Base):
         self.share_rpcapi.delete_share_server(context, server)
 
     def manage_share_server(
-            self, context, identifier, host, share_network, driver_opts):
+            self, context, identifier, host, share_net_subnet, driver_opts):
         """Manage a share server."""
 
         try:
@@ -1037,7 +1102,7 @@ class API(base.Base):
 
         values = {
             'host': host,
-            'share_network_id': share_network['id'],
+            'share_network_subnet_id': share_net_subnet['id'],
             'status': constants.STATUS_MANAGING,
             'is_auto_deletable': False,
             'identifier': identifier,

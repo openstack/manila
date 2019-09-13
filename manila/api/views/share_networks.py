@@ -20,7 +20,8 @@ class ViewBuilder(common.ViewBuilder):
     """Model a server API response as a python dictionary."""
 
     _collection_name = 'share_networks'
-    _detail_version_modifiers = ["add_gateway", "add_mtu", "add_nova_net_id"]
+    _detail_version_modifiers = ["add_gateway", "add_mtu", "add_nova_net_id",
+                                 "add_subnets"]
 
     def build_share_network(self, request, share_network):
         """View of a share network."""
@@ -34,6 +35,20 @@ class ViewBuilder(common.ViewBuilder):
                     request, share_network, is_detail)
                  for share_network in share_networks]}
 
+    def _update_share_network_info(self, request, share_network):
+        for sns in share_network.get('share_network_subnets') or []:
+            if sns.get('is_default') and sns.get('is_default') is True:
+                share_network.update({
+                    'neutron_net_id': sns.get('neutron_net_id'),
+                    'neutron_subnet_id': sns.get('neutron_subnet_id'),
+                    'network_type': sns.get('network_type'),
+                    'segmentation_id': sns.get('segmentation_id'),
+                    'cidr': sns.get('cidr'),
+                    'ip_version': sns.get('ip_version'),
+                    'gateway': sns.get('gateway'),
+                    'mtu': sns.get('mtu'),
+                })
+
     def _build_share_network_view(self, request, share_network,
                                   is_detail=True):
         sn = {
@@ -41,6 +56,7 @@ class ViewBuilder(common.ViewBuilder):
             'name': share_network.get('name'),
         }
         if is_detail:
+            self._update_share_network_info(request, share_network)
             sn.update({
                 'project_id': share_network.get('project_id'),
                 'created_at': share_network.get('created_at'),
@@ -56,6 +72,30 @@ class ViewBuilder(common.ViewBuilder):
 
             self.update_versioned_resource_dict(request, sn, share_network)
         return sn
+
+    @common.ViewBuilder.versioned_method("2.51")
+    def add_subnets(self, context, network_dict, network):
+        subnets = [{
+            'id': sns.get('id'),
+            'availability_zone': sns.get('availability_zone'),
+            'created_at': sns.get('created_at'),
+            'updated_at': sns.get('updated_at'),
+            'segmentation_id': sns.get('segmentation_id'),
+            'neutron_net_id': sns.get('neutron_net_id'),
+            'neutron_subnet_id': sns.get('neutron_subnet_id'),
+            'ip_version': sns.get('ip_version'),
+            'cidr': sns.get('cidr'),
+            'network_type': sns.get('network_type'),
+            'mtu': sns.get('mtu'),
+            'gateway': sns.get('gateway'),
+        } for sns in network.get('share_network_subnets')]
+
+        network_dict['share_network_subnets'] = subnets
+        attr_to_remove = [
+            'neutron_net_id', 'neutron_subnet_id', 'network_type',
+            'segmentation_id', 'cidr', 'ip_version', 'gateway', 'mtu']
+        for attr in attr_to_remove:
+            network_dict.pop(attr)
 
     @common.ViewBuilder.versioned_method("2.18")
     def add_gateway(self, context, network_dict, network):

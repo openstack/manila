@@ -34,6 +34,7 @@ See BaseMigrationChecks class for more information.
 """
 
 import abc
+import copy
 import datetime
 
 from oslo_db import exception as oslo_db_exc
@@ -2803,3 +2804,116 @@ class ShareServerIsAutoDeletableAndIdentifierChecks(BaseMigrationChecks):
         for ss in engine.execute(ss_table.select()):
             self.test_case.assertFalse(hasattr(ss, 'is_auto_deletable'))
             self.test_case.assertFalse(hasattr(ss, 'identifier'))
+
+
+@map_to_migration('805685098bd2')
+class ShareNetworkSubnetMigrationChecks(BaseMigrationChecks):
+
+    user_id = '6VFQ87wnV24lg1c2q1q0lJkTbQBPFZ1m4968'
+    project_id = '19HAW8w58yeUPBy8zGex4EGulWZHd8zZGtHk'
+    share_network = {
+        'id': uuidutils.generate_uuid(),
+        'user_id': user_id,
+        'project_id': project_id,
+        'neutron_net_id': uuidutils.generate_uuid(),
+        'neutron_subnet_id': uuidutils.generate_uuid(),
+        'cidr': '203.0.113.0/24',
+        'ip_version': 4,
+        'network_type': 'vxlan',
+        'segmentation_id': 100,
+        'gateway': 'fake_gateway',
+        'mtu': 1500,
+    }
+
+    share_networks = [share_network]
+
+    sns_table_name = 'share_network_subnets'
+    sn_table_name = 'share_networks'
+    ss_table_name = 'share_servers'
+
+    expected_keys = ['neutron_net_id', 'neutron_subnet_id', 'cidr',
+                     'ip_version', 'network_type', 'segmentation_id',
+                     'gateway', 'mtu']
+
+    def _setup_data_for_empty_neutron_net_and_subnet_id_test(self, network):
+        network['id'] = uuidutils.generate_uuid()
+        for key in self.expected_keys:
+            network[key] = None
+        return network
+
+    def setup_upgrade_data(self, engine):
+        share_network_data_without_net_info = (
+            self._setup_data_for_empty_neutron_net_and_subnet_id_test(
+                copy.deepcopy(self.share_network)))
+        self.share_networks.append(share_network_data_without_net_info)
+        # Load the table to be used below
+        sn_table = utils.load_table(self.sn_table_name, engine)
+        ss_table = utils.load_table(self.ss_table_name, engine)
+
+        # Share server data
+        share_server_data = {
+            'host': 'acme@controller-ostk-0',
+            'status': 'active',
+        }
+
+        # Create share share networks and one share server for each of them
+        for network in self.share_networks:
+            share_server_data['share_network_id'] = network['id']
+            share_server_data['id'] = uuidutils.generate_uuid()
+            engine.execute(sn_table.insert(network))
+            engine.execute(ss_table.insert(share_server_data))
+
+    def check_upgrade(self, engine, data):
+        # Load the necessary tables
+        sn_table = utils.load_table(self.sn_table_name, engine)
+        sns_table = utils.load_table(self.sns_table_name, engine)
+        ss_table = utils.load_table(self.ss_table_name, engine)
+
+        for network in self.share_networks:
+            sn_record = engine.execute(sn_table.select().where(
+                sn_table.c.id == network['id'])).first()
+
+            for key in self.expected_keys:
+                self.test_case.assertFalse(hasattr(sn_record, key))
+
+            sns_record = engine.execute(sns_table.select().where(
+                sns_table.c.share_network_id == network['id'])).first()
+
+            for key in self.expected_keys:
+                self.test_case.assertTrue(hasattr(sns_record, key))
+                self.test_case.assertEqual(network[key], sns_record[key])
+
+            ss_record = (
+                engine.execute(
+                    ss_table.select().where(
+                        ss_table.c.share_network_subnet_id == sns_record['id'])
+                ).first())
+
+            self.test_case.assertIs(
+                True, hasattr(ss_record, 'share_network_subnet_id'))
+            self.test_case.assertEqual(
+                ss_record['share_network_subnet_id'], sns_record['id'])
+            self.test_case.assertIs(
+                False, hasattr(ss_record, 'share_network_id'))
+
+    def check_downgrade(self, engine):
+        sn_table = utils.load_table(self.sn_table_name, engine)
+
+        # Check if the share network table contains the expected keys
+        for sn in engine.execute(sn_table.select()):
+            for key in self.expected_keys:
+                self.test_case.assertTrue(hasattr(sn, key))
+
+        ss_table = utils.load_table(self.ss_table_name, engine)
+        for network in self.share_networks:
+            for ss in engine.execute(ss_table.select().where(
+                    ss_table.c.share_network_id == network['id'])):
+                self.test_case.assertFalse(hasattr(ss,
+                                                   'share_network_subnet_id'))
+                self.test_case.assertTrue(hasattr(ss, 'share_network_id'))
+                self.test_case.assertEqual(network['id'], ss['id'])
+
+        # Check if the created table doesn't exists anymore
+        self.test_case.assertRaises(
+            sa_exc.NoSuchTableError,
+            utils.load_table, self.sns_table_name, engine)

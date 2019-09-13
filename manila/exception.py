@@ -228,6 +228,11 @@ class ShareNetworkNotFound(NotFound):
     message = _("Share network %(share_network_id)s could not be found.")
 
 
+class ShareNetworkSubnetNotFound(NotFound):
+    message = _("Share network subnet %(share_network_subnet_id)s could not be"
+                " found.")
+
+
 class ShareServerNotFound(NotFound):
     message = _("Share server %(share_server_id)s could not be found.")
 

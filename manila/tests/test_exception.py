@@ -303,6 +303,14 @@ class ManilaExceptionResponseCode404(test.TestCase):
         self.assertEqual(404, e.code)
         self.assertIn(share_network_id, e.msg)
 
+    def test_share_network_subnet_not_found(self):
+        # Verify response code for exception.ShareNetworkSubnetNotFound
+        share_network_subnet_id = "fake_share_network_subnet_id"
+        e = exception.ShareNetworkSubnetNotFound(
+            share_network_subnet_id=share_network_subnet_id)
+        self.assertEqual(404, e.code)
+        self.assertIn(share_network_subnet_id, e.msg)
+
     def test_share_server_not_found(self):
         # Verify response code for exception.ShareServerNotFound
         share_server_id = "fake_share_server_id"

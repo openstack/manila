@@ -22,6 +22,7 @@ class ViewBuilder(common.ViewBuilder):
     _collection_name = 'share_servers'
     _detail_version_modifiers = [
         "add_is_auto_deletable_and_identifier_fields",
+        "add_share_network_subnet_id_field"
     ]
 
     def build_share_server(self, request, share_server):
@@ -56,10 +57,16 @@ class ViewBuilder(common.ViewBuilder):
             share_server_dict['created_at'] = share_server.created_at
             share_server_dict['backend_details'] = share_server.backend_details
 
-            self.update_versioned_resource_dict(
-                request, share_server_dict, share_server)
+        self.update_versioned_resource_dict(
+            request, share_server_dict, share_server)
 
         return share_server_dict
+
+    @common.ViewBuilder.versioned_method("2.51")
+    def add_share_network_subnet_id_field(
+            self, context, share_server_dict, share_server):
+        share_server_dict['share_network_subnet_id'] = (
+            share_server['share_network_subnet_id'])
 
     @common.ViewBuilder.versioned_method("2.49")
     def add_is_auto_deletable_and_identifier_fields(

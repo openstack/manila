@@ -150,14 +150,14 @@ class RequestTest(test.TestCase):
                          mock.Mock(return_value=max_version))
         self.mock_object(api_version, 'min_api_version',
                          mock.Mock(return_value=min_version))
-        headers = {'X-OpenStack-Manila-API-Version': '2.50'}
+        headers = {'X-OpenStack-Manila-API-Version': '2.51'}
         request = wsgi.Request.blank(
             'https://openstack.acme.com/v2/shares', method='GET',
             headers=headers, script_name='/v2/shares')
 
         self.assertRaises(exception.InvalidGlobalAPIVersion,
                           request.set_api_version_request)
-        self.assertEqual(api_version.APIVersionRequest('2.50'),
+        self.assertEqual(api_version.APIVersionRequest('2.51'),
                          request.api_version_request)
 
     @ddt.data('', '/share', '/v1', '/v2/shares', '/v1.1/', '/share/v1',

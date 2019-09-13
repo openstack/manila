@@ -19,6 +19,7 @@ import re
 import six
 import string
 
+from operator import xor
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import encodeutils
@@ -182,6 +183,14 @@ def dict_to_query_str(params):
         param_str = param_str + '='.join([str(key), str(val)]) + '&'
 
     return param_str.rstrip('&')
+
+
+def check_net_id_and_subnet_id(body):
+    if xor('neutron_net_id' in body, 'neutron_subnet_id' in body):
+        msg = _("When creating a new share network subnet you need to "
+                "specify both neutron_net_id and neutron_subnet_id or "
+                "none of them.")
+        raise webob.exc.HTTPBadRequest(explanation=msg)
 
 
 class ViewBuilder(object):

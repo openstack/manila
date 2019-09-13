@@ -212,7 +212,7 @@ def create_share_server(**kwargs):
     backend_details = kwargs.pop('backend_details', {})
     srv = {
         'host': 'host1',
-        'share_network_id': 'fake_srv_id',
+        'share_network_subnet_id': 'fake_srv_id',
         'status': constants.STATUS_ACTIVE
     }
     share_srv = _create_db_row(db.share_server_create, srv, kwargs)
@@ -251,17 +251,29 @@ def create_share_network(**kwargs):
     net = {
         'user_id': 'fake',
         'project_id': 'fake',
-        'neutron_net_id': 'fake-neutron-net',
-        'neutron_subnet_id': 'fake-neutron-subnet',
         'status': 'new',
-        'network_type': 'vlan',
-        'segmentation_id': 1000,
-        'cidr': '10.0.0.0/24',
-        'ip_version': 4,
         'name': 'whatever',
         'description': 'fake description',
     }
     return _create_db_row(db.share_network_create, net, kwargs)
+
+
+def create_share_network_subnet(**kwargs):
+    """Create a share network subnet object."""
+    subnet = {
+        'id': 'fake_sns_id',
+        'neutron_net_id': 'fake-neutron-net',
+        'neutron_subnet_id': 'fake-neutron-subnet',
+        'network_type': 'vlan',
+        'segmentation_id': 1000,
+        'cidr': '10.0.0.0/24',
+        'ip_version': 4,
+        'availability_zone_id': 'fake_zone_id',
+        'share_network_id': 'fake_sn_id',
+        'gateway': None,
+        'mtu': None
+    }
+    return _create_db_row(db.share_network_subnet_create, subnet, kwargs)
 
 
 def create_security_service(**kwargs):

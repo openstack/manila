@@ -713,8 +713,10 @@ class ShareManagerTestCase(test.TestCase):
     def test_create_share_instance_from_snapshot_with_server(self):
         """Test share can be created from snapshot if server exists."""
         network = db_utils.create_share_network()
+        subnet = db_utils.create_share_network_subnet(
+            share_network_id=network['id'])
         server = db_utils.create_share_server(
-            share_network_id=network['id'], host='fake_host',
+            share_network_subnet_id=subnet['id'], host='fake_host',
             backend_details=dict(fake='fake'))
         parent_share = db_utils.create_share(share_network_id='net-id',
                                              share_server_id=server['id'])
@@ -843,6 +845,9 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_create_share_replica_with_share_server_exception(self):
         replica = fake_replica()
+        share_network_subnet = db_utils.create_share_network_subnet(
+            share_network_id=replica['share_network_id'],
+            availability_zone_id=replica['availability_zone_id'])
         manager.CONF.set_default('driver_handles_share_servers', True)
         self.mock_object(db, 'share_instance_access_copy',
                          mock.Mock(return_value=[]))
@@ -850,6 +855,9 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(return_value=fake_replica(id='fake2')))
         self.mock_object(db, 'share_replica_get',
                          mock.Mock(return_value=replica))
+        self.mock_object(db,
+                         'share_network_subnet_get_by_availability_zone_id',
+                         mock.Mock(return_value=share_network_subnet))
         mock_replica_update_call = self.mock_object(db, 'share_replica_update')
         mock_driver_replica_call = self.mock_object(
             self.share_manager.driver, 'create_replica')
@@ -871,7 +879,7 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_create_share_replica_driver_error_on_creation(self):
         fake_access_rules = [{'id': '1'}, {'id': '2'}, {'id': '3'}]
-        replica = fake_replica(share_network_id='')
+        replica = fake_replica()
         replica_2 = fake_replica(id='fake2')
         self.mock_object(db, 'share_replica_get',
                          mock.Mock(return_value=replica))
@@ -2038,13 +2046,16 @@ class ShareManagerTestCase(test.TestCase):
         """Test share can be created without share server."""
 
         share_net = db_utils.create_share_network()
+        share_net_subnet = db_utils.create_share_network_subnet(
+            share_network_id=share_net['id'],
+            availability_zone_id=None,
+        )
         share = db_utils.create_share(share_network_id=share_net['id'])
-
         share_id = share['id']
 
         def fake_setup_server(context, share_network, *args, **kwargs):
             return db_utils.create_share_server(
-                share_network_id=share_network['id'],
+                share_network_subnet_id=share_net_subnet['id'],
                 host='fake_host')
 
         self.mock_object(manager.LOG, 'info')
@@ -2058,18 +2069,23 @@ class ShareManagerTestCase(test.TestCase):
         manager.LOG.info.assert_called_with(mock.ANY, share.instance['id'])
 
     def test_create_share_instance_with_share_network_server_fail(self):
-        fake_share = db_utils.create_share(share_network_id='fake_sn_id',
-                                           size=1)
-        fake_server = {
-            'id': 'fake_srv_id',
-            'status': constants.STATUS_CREATING,
-        }
+        share_network = db_utils.create_share_network(id='fake_sn_id')
+        share_net_subnet = db_utils.create_share_network_subnet(
+            id='fake_sns_id', share_network_id=share_network['id']
+        )
+        fake_share = db_utils.create_share(
+            share_network_id=share_network['id'], size=1)
+        fake_server = db_utils.create_share_server(
+            id='fake_srv_id', status=constants.STATUS_CREATING)
         self.mock_object(db, 'share_server_create',
                          mock.Mock(return_value=fake_server))
         self.mock_object(db, 'share_instance_update',
                          mock.Mock(return_value=fake_share.instance))
         self.mock_object(db, 'share_instance_get',
                          mock.Mock(return_value=fake_share.instance))
+        self.mock_object(db,
+                         'share_network_subnet_get_by_availability_zone_id',
+                         mock.Mock(return_value=share_net_subnet))
         self.mock_object(manager.LOG, 'error')
 
         def raise_share_server_not_found(*args, **kwargs):
@@ -2119,7 +2135,7 @@ class ShareManagerTestCase(test.TestCase):
             resource_id=fake_share['id'],
             detail=message_field.Detail.NO_SHARE_SERVER)
 
-    def test_create_share_instance_with_share_network_not_found(self):
+    def test_create_share_instance_with_share_network_subnet_not_found(self):
         """Test creation fails if share network not found."""
 
         self.mock_object(manager.LOG, 'error')
@@ -2127,7 +2143,7 @@ class ShareManagerTestCase(test.TestCase):
         share = db_utils.create_share(share_network_id='fake-net-id')
         share_id = share['id']
         self.assertRaises(
-            exception.ShareNetworkNotFound,
+            exception.ShareNetworkSubnetNotFound,
             self.share_manager.create_share_instance,
             self.context,
             share.instance['id']
@@ -2146,9 +2162,14 @@ class ShareManagerTestCase(test.TestCase):
     def test_create_share_instance_with_share_network_server_exists(self):
         """Test share can be created with existing share server."""
         share_net = db_utils.create_share_network()
+        share_net_subnet = db_utils.create_share_network_subnet(
+            share_network_id=share_net['id'],
+            availability_zone_id=None,
+        )
         share = db_utils.create_share(share_network_id=share_net['id'])
         share_srv = db_utils.create_share_server(
-            share_network_id=share_net['id'], host=self.share_manager.host)
+            share_network_subnet_id=share_net_subnet['id'],
+            host=self.share_manager.host)
 
         share_id = share['id']
 
@@ -2201,9 +2222,14 @@ class ShareManagerTestCase(test.TestCase):
     def test_create_share_instance_with_server_created(self):
         """Test share can be created and share server is created."""
         share_net = db_utils.create_share_network()
-        share = db_utils.create_share(share_network_id=share_net['id'])
+        share_net_subnet = db_utils.create_share_network_subnet(
+            share_network_id=share_net['id'],
+            availability_zone_id=None)
+        share = db_utils.create_share(share_network_id=share_net['id'],
+                                      availability_zone=None)
         db_utils.create_share_server(
-            share_network_id=share_net['id'], host=self.share_manager.host,
+            share_network_subnet_id=share_net_subnet['id'],
+            host=self.share_manager.host,
             status=constants.STATUS_ERROR)
         share_id = share['id']
         fake_server = {
@@ -2231,11 +2257,16 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_create_share_instance_update_replica_state(self):
         share_net = db_utils.create_share_network()
+        share_net_subnet = db_utils.create_share_network_subnet(
+            share_network_id=share_net['id'],
+            availability_zone_id=None
+        )
         share = db_utils.create_share(share_network_id=share_net['id'],
-                                      replication_type='dr')
+                                      replication_type='dr',
+                                      availability_zone=None)
         db_utils.create_share_server(
-            share_network_id=share_net['id'], host=self.share_manager.host,
-            status=constants.STATUS_ERROR)
+            share_network_subnet_id=share_net_subnet['id'],
+            host=self.share_manager.host, status=constants.STATUS_ERROR)
         share_id = share['id']
         fake_server = {
             'id': 'fake_srv_id',
@@ -2344,9 +2375,16 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_provide_share_server_for_share_incompatible_servers(self):
         fake_exception = exception.ManilaException("fake")
-        fake_share_server = {'id': 'fake'}
+        fake_share_network = db_utils.create_share_network(id='fake_sn_id')
+        fake_share_net_subnet = db_utils.create_share_network_subnet(
+            id='fake_sns_id', share_network_id=fake_share_network['id']
+        )
+        fake_share_server = db_utils.create_share_server(id='fake')
         share = db_utils.create_share()
 
+        db_method_mock = self.mock_object(
+            db, 'share_network_subnet_get_by_availability_zone_id',
+            mock.Mock(return_value=fake_share_net_subnet))
         self.mock_object(db,
                          'share_server_get_all_by_host_and_share_net_valid',
                          mock.Mock(return_value=[fake_share_server]))
@@ -2358,7 +2396,13 @@ class ShareManagerTestCase(test.TestCase):
 
         self.assertRaises(exception.ManilaException,
                           self.share_manager._provide_share_server_for_share,
-                          self.context, "fake_id", share.instance)
+                          self.context, fake_share_network['id'],
+                          share.instance)
+
+        db_method_mock.assert_called_once_with(
+            self.context, fake_share_network['id'],
+            availability_zone_id=share.instance.get('availability_zone_id')
+        )
         driver_mock = self.share_manager.driver
         driver_method_mock = (
             driver_mock.choose_share_server_compatible_with_share
@@ -2374,6 +2418,7 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_provide_share_server_for_share_parent_ss_not_found(self):
         fake_parent_id = "fake_server_id"
+        fake_share_network = db_utils.create_share_network(id='fake_sn_id')
         fake_exception = exception.ShareServerNotFound("fake")
         share = db_utils.create_share()
         fake_snapshot = {
@@ -2388,14 +2433,15 @@ class ShareManagerTestCase(test.TestCase):
 
         self.assertRaises(exception.ShareServerNotFound,
                           self.share_manager._provide_share_server_for_share,
-                          self.context, "fake_id", share.instance,
-                          snapshot=fake_snapshot)
+                          self.context, fake_share_network['id'],
+                          share.instance, snapshot=fake_snapshot)
 
         db.share_server_get.assert_called_once_with(
             self.context, fake_parent_id)
 
     def test_provide_share_server_for_share_parent_ss_invalid(self):
         fake_parent_id = "fake_server_id"
+        fake_share_network = db_utils.create_share_network(id='fake_sn_id')
         share = db_utils.create_share()
         fake_snapshot = {
             'share': {
@@ -2410,8 +2456,8 @@ class ShareManagerTestCase(test.TestCase):
 
         self.assertRaises(exception.InvalidShareServer,
                           self.share_manager._provide_share_server_for_share,
-                          self.context, "fake_id", share.instance,
-                          snapshot=fake_snapshot)
+                          self.context, fake_share_network['id'],
+                          share.instance, snapshot=fake_snapshot)
 
         db.share_server_get.assert_called_once_with(
             self.context, fake_parent_id)
@@ -2433,7 +2479,7 @@ class ShareManagerTestCase(test.TestCase):
         self.assertRaises(
             exception.ManilaException,
             self.share_manager._provide_share_server_for_share_group,
-            self.context, "fake_id", sg)
+            self.context, "fake_sn_id", "fake_sns_id", sg)
 
         driver_mock = self.share_manager.driver
         driver_method_mock = (
@@ -2445,7 +2491,7 @@ class ShareManagerTestCase(test.TestCase):
         self.assertRaises(
             exception.InvalidInput,
             self.share_manager._provide_share_server_for_share_group,
-            self.context, None, None)
+            self.context, None, None, None)
 
     def test_manage_share_driver_exception(self):
         self.mock_object(self.share_manager, 'driver')
@@ -2951,12 +2997,13 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_setup_server(self):
         # Setup required test data
-        share_server = {
-            'id': 'fake_id',
-            'share_network_id': 'fake_sn_id',
-        }
         metadata = {'fake_metadata_key': 'fake_metadata_value'}
-        share_network = {'id': 'fake_sn_id'}
+        share_network = db_utils.create_share_network(id='fake_sn_id')
+        share_net_subnet = db_utils.create_share_network_subnet(
+            id='fake_sns_id', share_network_id=share_network['id']
+        )
+        share_server = db_utils.create_share_server(
+            id='fake_id', share_network_subnet_id=share_net_subnet['id'])
         network_info = {'security_services': []}
         for ss_type in constants.SECURITY_SERVICES_ALLOWED_TYPES:
             network_info['security_services'].append({
@@ -2974,6 +3021,8 @@ class ShareManagerTestCase(test.TestCase):
         network_info['network_type'] = 'fake_network_type'
 
         # mock required stuff
+        self.mock_object(self.share_manager.db, 'share_network_subnet_get',
+                         mock.Mock(return_value=share_net_subnet))
         self.mock_object(self.share_manager.db, 'share_network_get',
                          mock.Mock(return_value=share_network))
         self.mock_object(self.share_manager.driver, 'allocate_network')
@@ -2993,14 +3042,15 @@ class ShareManagerTestCase(test.TestCase):
 
         # verify results
         self.assertEqual(share_server, result)
-        self.share_manager.db.share_network_get.assert_has_calls([
-            mock.call(self.context, share_server['share_network_id']),
-            mock.call(self.context, share_server['share_network_id']),
-        ])
+        self.share_manager.db.share_network_get.assert_called_once_with(
+            self.context, share_net_subnet['share_network_id'])
+        self.share_manager.db.share_network_subnet_get.assert_called_once_with(
+            self.context, share_server['share_network_subnet']['id'])
         self.share_manager.driver.allocate_network.assert_called_once_with(
-            self.context, share_server, share_network)
+            self.context, share_server, share_network,
+            share_server['share_network_subnet'])
         self.share_manager._form_server_setup_info.assert_called_once_with(
-            self.context, share_server, share_network)
+            self.context, share_server, share_network, share_net_subnet)
         self.share_manager._validate_segmentation_id.assert_called_once_with(
             network_info)
         self.share_manager.driver.setup_server.assert_called_once_with(
@@ -3025,12 +3075,14 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_setup_server_server_info_not_present(self):
         # Setup required test data
-        share_server = {
-            'id': 'fake_id',
-            'share_network_id': 'fake_sn_id',
-        }
         metadata = {'fake_metadata_key': 'fake_metadata_value'}
         share_network = {'id': 'fake_sn_id'}
+        share_net_subnet = {'id': 'fake_sns_id',
+                            'share_network_id': share_network['id']}
+        share_server = {
+            'id': 'fake_id',
+            'share_network_subnet': share_net_subnet,
+        }
         network_info = {
             'fake_network_info_key': 'fake_network_info_value',
             'security_services': [],
@@ -3039,6 +3091,8 @@ class ShareManagerTestCase(test.TestCase):
         server_info = {}
 
         # mock required stuff
+        self.mock_object(self.share_manager.db, 'share_network_subnet_get',
+                         mock.Mock(return_value=share_net_subnet))
         self.mock_object(self.share_manager.db, 'share_network_get',
                          mock.Mock(return_value=share_network))
         self.mock_object(self.share_manager, '_form_server_setup_info',
@@ -3055,11 +3109,12 @@ class ShareManagerTestCase(test.TestCase):
 
         # verify results
         self.assertEqual(share_server, result)
-        self.share_manager.db.share_network_get.assert_has_calls([
-            mock.call(self.context, share_server['share_network_id']),
-            mock.call(self.context, share_server['share_network_id'])])
+        self.share_manager.db.share_network_get.assert_called_once_with(
+            self.context, share_net_subnet['share_network_id'])
+        self.share_manager.db.share_network_subnet_get.assert_called_once_with(
+            self.context, share_server['share_network_subnet']['id'])
         self.share_manager._form_server_setup_info.assert_called_once_with(
-            self.context, share_server, share_network)
+            self.context, share_server, share_network, share_net_subnet)
         self.share_manager.driver.setup_server.assert_called_once_with(
             network_info, metadata=metadata)
         self.share_manager.db.share_server_update.assert_called_once_with(
@@ -3067,16 +3122,18 @@ class ShareManagerTestCase(test.TestCase):
             {'status': constants.STATUS_ACTIVE,
              'identifier': share_server['id']})
         self.share_manager.driver.allocate_network.assert_called_once_with(
-            self.context, share_server, share_network)
+            self.context, share_server, share_network, share_net_subnet)
 
     def setup_server_raise_exception(self, detail_data_proper):
         # Setup required test data
-        share_server = {
-            'id': 'fake_id',
-            'share_network_id': 'fake_sn_id',
-        }
         server_info = {'details_key': 'value'}
         share_network = {'id': 'fake_sn_id'}
+        share_net_subnet = {'id': 'fake_sns_id',
+                            'share_network_id': share_network['id']}
+        share_server = {
+            'id': 'fake_id',
+            'share_network_subnet': share_net_subnet
+        }
         network_info = {
             'fake_network_info_key': 'fake_network_info_value',
             'security_services': [],
@@ -3092,6 +3149,8 @@ class ShareManagerTestCase(test.TestCase):
         # Mock required parameters
         self.mock_object(self.share_manager.db, 'share_network_get',
                          mock.Mock(return_value=share_network))
+        self.mock_object(self.share_manager.db, 'share_network_subnet_get',
+                         mock.Mock(return_value=share_net_subnet))
         self.mock_object(self.share_manager.db, 'share_server_update')
         for m in ['deallocate_network', 'allocate_network']:
             self.mock_object(self.share_manager.driver, m)
@@ -3117,15 +3176,17 @@ class ShareManagerTestCase(test.TestCase):
                 assert_called_once_with(
                     self.context, share_server['id'], server_info))
         self.share_manager._form_server_setup_info.assert_called_once_with(
-            self.context, share_server, share_network)
+            self.context, share_server, share_network, share_net_subnet)
         self.share_manager.db.share_server_update.assert_called_once_with(
             self.context, share_server['id'],
             {'status': constants.STATUS_ERROR})
-        self.share_manager.db.share_network_get.assert_has_calls([
-            mock.call(self.context, share_server['share_network_id']),
-            mock.call(self.context, share_server['share_network_id'])])
+        self.share_manager.db.share_network_get.assert_called_once_with(
+            self.context, share_net_subnet['share_network_id'])
+        self.share_manager.db.share_network_subnet_get.assert_called_once_with(
+            self.context, share_server['share_network_subnet']['id'])
         self.share_manager.driver.allocate_network.assert_has_calls([
-            mock.call(self.context, share_server, share_network)])
+            mock.call(self.context, share_server, share_network,
+                      share_net_subnet)])
         self.share_manager.driver.deallocate_network.assert_has_calls([
             mock.call(self.context, share_server['id'])])
 
@@ -3151,13 +3212,17 @@ class ShareManagerTestCase(test.TestCase):
             if not isinstance(d, dict):
                 return {}
             return d
-
-        share_server = {'id': 'fake', 'share_network_id': 'fake'}
+        share_net_subnet = db_utils.create_share_network_subnet(
+            id='fake_subnet_id', share_network_id='fake_share_net_id'
+        )
+        share_server = db_utils.create_share_server(
+            id='fake', share_network_subnet_id=share_net_subnet['id'])
         details = get_server_details_from_data(data)
 
         exc_mock = mock.Mock(side_effect=exception.ManilaException(**data))
         details_mock = mock.Mock(side_effect=exception.ManilaException())
-        self.mock_object(self.share_manager.db, 'share_network_get', exc_mock)
+        self.mock_object(self.share_manager.db, 'share_network_get',
+                         exc_mock)
         self.mock_object(self.share_manager.db,
                          'share_server_backend_details_set', details_mock)
         self.mock_object(self.share_manager.db, 'share_server_update')
@@ -3242,28 +3307,31 @@ class ShareManagerTestCase(test.TestCase):
         fake_share_server = dict(
             id='fake_share_server_id', backend_details=dict(foo='bar'))
         fake_share_network = dict(
+            security_services='fake_security_services'
+        )
+        fake_share_network_subnet = dict(
             segmentation_id='fake_segmentation_id',
             cidr='fake_cidr',
             neutron_net_id='fake_neutron_net_id',
             neutron_subnet_id='fake_neutron_subnet_id',
-            security_services='fake_security_services',
             network_type='fake_network_type')
         expected = dict(
             server_id=fake_share_server['id'],
-            segmentation_id=fake_share_network['segmentation_id'],
-            cidr=fake_share_network['cidr'],
-            neutron_net_id=fake_share_network['neutron_net_id'],
-            neutron_subnet_id=fake_share_network['neutron_subnet_id'],
+            segmentation_id=fake_share_network_subnet['segmentation_id'],
+            cidr=fake_share_network_subnet['cidr'],
+            neutron_net_id=fake_share_network_subnet['neutron_net_id'],
+            neutron_subnet_id=fake_share_network_subnet['neutron_subnet_id'],
             security_services=fake_share_network['security_services'],
             network_allocations=(
                 fake_network_allocations_get_for_share_server()),
             admin_network_allocations=(
                 fake_network_allocations_get_for_share_server(label='admin')),
             backend_details=fake_share_server['backend_details'],
-            network_type=fake_share_network['network_type'])
+            network_type=fake_share_network_subnet['network_type'])
 
         network_info = self.share_manager._form_server_setup_info(
-            self.context, fake_share_server, fake_share_network)
+            self.context, fake_share_server, fake_share_network,
+            fake_share_network_subnet)
 
         self.assertEqual(expected, network_info)
         (self.share_manager.db.network_allocations_get_for_share_server.
@@ -3674,12 +3742,20 @@ class ShareManagerTestCase(test.TestCase):
             'host': "fake_host",
             'availability_zone_id': 'fake_az',
         }
+        fake_subnet = {
+            'id': 'fake_subnet_id'
+        }
         self.mock_object(
             self.share_manager.db, 'share_group_get',
             mock.Mock(return_value=fake_group))
         self.mock_object(
             self.share_manager.db, 'share_group_update',
             mock.Mock(return_value=fake_group))
+        self.mock_object(
+            self.share_manager.db,
+            'share_network_subnet_get_by_availability_zone_id',
+            mock.Mock(return_value=fake_subnet)
+        )
         self.mock_object(
             self.share_manager, '_provide_share_server_for_share_group',
             mock.Mock(return_value=({}, fake_group)))
@@ -3757,7 +3833,9 @@ class ShareManagerTestCase(test.TestCase):
             'share_server_id': 'fake_ss_id',
             'availability_zone_id': 'fake_az',
         }
-        fake_ss = {'id': 'fake_ss_id', 'share_network_id': 'fake_sn'}
+        fake_sn = {'id': 'fake_sn_id'}
+        fake_sns = {'id': 'fake_sns_id', 'share_network_id': fake_sn['id']}
+        fake_ss = {'id': 'fake_ss_id', 'share_network_subnet': fake_sns}
         fake_snap = {'id': 'fake_snap_id', 'share_group_snapshot_members': [],
                      'share_group': {'share_server_id': fake_ss['id']}}
         self.mock_object(self.share_manager.db, 'share_group_get',
@@ -3823,6 +3901,9 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.driver.configuration, 'safe_get',
                          mock.Mock(return_value=True))
         share_network_id = 'fake_sn'
+        share_network_subnet = {
+            'id': 'fake_subnet_id'
+        }
         fake_group = {
             'id': 'fake_id',
             'source_share_group_snapshot_id': 'fake_snap_id',
@@ -3837,6 +3918,9 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(return_value=fake_snap))
         self.mock_object(self.share_manager.db, 'share_group_update',
                          mock.Mock(return_value=fake_group))
+        self.mock_object(self.share_manager.db,
+                         'share_network_subnet_get_by_availability_zone_id',
+                         mock.Mock(return_value=share_network_subnet))
         self.mock_object(
             self.share_manager, '_provide_share_server_for_share_group',
             mock.Mock(return_value=({}, fake_group)))
@@ -5564,6 +5648,8 @@ class ShareManagerTestCase(test.TestCase):
         share_server = db_utils.create_share_server(**fake_share_server)
         security_service = db_utils.create_security_service(**ss_data)
         share_network = db_utils.create_share_network()
+        share_net_subnet = db_utils.create_share_network_subnet(
+            share_network_id=share_network['id'])
         db.share_network_add_security_service(context.get_admin_context(),
                                               share_network['id'],
                                               security_service['id'])
@@ -5577,6 +5663,10 @@ class ShareManagerTestCase(test.TestCase):
             db, 'share_server_get', mock.Mock(return_value=share_server))
         mock_share_network_get = self.mock_object(
             db, 'share_network_get', mock.Mock(return_value=share_network))
+        mock_share_net_subnet_get = self.mock_object(
+            db, 'share_network_subnet_get', mock.Mock(
+                return_value=share_net_subnet)
+        )
         mock_network_allocations_get = self.mock_object(
             self.share_manager.driver, 'get_network_allocations_number',
             mock.Mock(return_value=1))
@@ -5627,7 +5717,11 @@ class ShareManagerTestCase(test.TestCase):
         )
         mock_share_network_get.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
-            fake_share_server['share_network_id']
+            share_net_subnet['share_network_id']
+        )
+        mock_share_net_subnet_get.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            fake_share_server['share_network_subnet_id']
         )
         mock_network_allocations_get.assert_called_once_with()
         mock_share_server_net_info.assert_called_once_with(
@@ -5636,7 +5730,8 @@ class ShareManagerTestCase(test.TestCase):
         )
         mock_manage_network_allocations.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
-            fake_list_network_info, share_server, share_network
+            fake_list_network_info, share_server, share_network,
+            share_net_subnet
         )
         mock_manage_server.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), share_server, identifier,
@@ -5673,12 +5768,19 @@ class ShareManagerTestCase(test.TestCase):
         identifier = 'fake_id'
         share_server = db_utils.create_share_server(**fake_share_server)
         share_network = db_utils.create_share_network()
+        share_network_subnet = db_utils.create_share_network_subnet(
+            share_network_id=share_network['id']
+        )
+        share_server['share_network_subnet_id'] = share_network_subnet['id']
         self.share_manager.driver._admin_network_api = mock.Mock()
 
         mock_share_server_get = self.mock_object(
             db, 'share_server_get', mock.Mock(return_value=share_server))
         mock_share_network_get = self.mock_object(
             db, 'share_network_get', mock.Mock(return_value=share_network))
+        mock_share_net_subnet_get = self.mock_object(
+            db, 'share_network_subnet_get', mock.Mock(
+                return_value=share_network_subnet))
         mock_network_allocations_get = self.mock_object(
             self.share_manager.driver, 'get_network_allocations_number',
             mock.Mock(return_value=1))
@@ -5697,7 +5799,11 @@ class ShareManagerTestCase(test.TestCase):
         )
         mock_share_network_get.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
-            fake_share_server['share_network_id']
+            share_network_subnet['share_network_id']
+        )
+        mock_share_net_subnet_get.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            share_server['share_network_subnet_id']
         )
         mock_network_allocations_get.assert_called_once_with()
         mock_get_share_network_info.assert_called_once_with(
@@ -5712,12 +5818,19 @@ class ShareManagerTestCase(test.TestCase):
         identifier = 'fake_id'
         share_server = db_utils.create_share_server(**fake_share_server)
         share_network = db_utils.create_share_network()
+        share_network_subnet = db_utils.create_share_network_subnet(
+            share_network_id=share_network['id']
+        )
+        share_server['share_network_subnet_id'] = share_network_subnet['id']
         self.share_manager.driver._admin_network_api = mock.Mock()
 
         mock_share_server_get = self.mock_object(
             db, 'share_server_get', mock.Mock(return_value=share_server))
         mock_share_network_get = self.mock_object(
             db, 'share_network_get', mock.Mock(return_value=share_network))
+        mock_share_net_subnet_get = self.mock_object(
+            db, 'share_network_subnet_get', mock.Mock(
+                return_value=share_network_subnet))
         mock_network_allocations_get = self.mock_object(
             self.share_manager.driver, 'get_network_allocations_number',
             mock.Mock(return_value=1))
@@ -5744,7 +5857,11 @@ class ShareManagerTestCase(test.TestCase):
         )
         mock_share_network_get.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
-            fake_share_server['share_network_id']
+            share_network_subnet['share_network_id']
+        )
+        mock_share_net_subnet_get.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            share_server['share_network_subnet_id']
         )
         mock_network_allocations_get.assert_called_once_with()
         mock_get_share_network_info.assert_called_once_with(
@@ -5757,7 +5874,8 @@ class ShareManagerTestCase(test.TestCase):
         )
         mock_manage_network_allocations.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
-            fake_list_network_info, share_server, share_network
+            fake_list_network_info, share_server, share_network,
+            share_network_subnet
         )
 
     def test_manage_snapshot_driver_exception(self):

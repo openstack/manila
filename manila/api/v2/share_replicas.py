@@ -116,7 +116,6 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
 
         share_id = body.get('share_replica').get('share_id')
         availability_zone = body.get('share_replica').get('availability_zone')
-        share_network_id = body.get('share_replica').get('share_network_id')
 
         if not share_id:
             msg = _("Must provide Share ID to add replica.")
@@ -127,6 +126,8 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
         except exception.NotFound:
             msg = _("No share exists with ID %s.")
             raise exc.HTTPNotFound(explanation=msg % share_id)
+
+        share_network_id = share_ref.get('share_network_id', None)
 
         try:
             new_replica = self.share_api.create_share_replica(

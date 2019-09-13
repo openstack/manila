@@ -32,6 +32,7 @@ fake_context = context.RequestContext(
     user_id='fake user', project_id='fake project', is_admin=False)
 fake_share_server = dict(id='fake_share_server_id')
 fake_share_network = dict(id='fake_share_network_id')
+fake_share_network_subnet = dict(id='fake_share_network_subnet_id')
 
 
 @ddt.ddt
@@ -305,14 +306,15 @@ class StandaloneNetworkPluginTest(test.TestCase):
         }
         with test_utils.create_temp_config_with_opts(data):
             instance = plugin.StandaloneNetworkPlugin()
-        self.mock_object(instance.db, 'share_network_update')
+        self.mock_object(instance.db, 'share_network_subnet_update')
 
         allocations = instance.allocate_network(
-            fake_context, fake_share_server, fake_share_network, count=0)
+            fake_context, fake_share_server, fake_share_network,
+            fake_share_network_subnet, count=0)
 
         self.assertEqual([], allocations)
-        instance.db.share_network_update.assert_called_once_with(
-            fake_context, fake_share_network['id'],
+        instance.db.share_network_subnet_update.assert_called_once_with(
+            fake_context, fake_share_network_subnet['id'],
             dict(network_type=None, segmentation_id=None,
                  cidr=six.text_type(instance.net.cidr),
                  gateway=six.text_type(instance.gateway),
@@ -329,14 +331,15 @@ class StandaloneNetworkPluginTest(test.TestCase):
         }
         with test_utils.create_temp_config_with_opts(data):
             instance = plugin.StandaloneNetworkPlugin()
-        self.mock_object(instance.db, 'share_network_update')
+        self.mock_object(instance.db, 'share_network_subnet_update')
 
         allocations = instance.allocate_network(
-            fake_context, fake_share_server, fake_share_network, count=0)
+            fake_context, fake_share_server, fake_share_network,
+            fake_share_network_subnet, count=0)
 
         self.assertEqual([], allocations)
-        instance.db.share_network_update.assert_called_once_with(
-            fake_context, fake_share_network['id'],
+        instance.db.share_network_subnet_update.assert_called_once_with(
+            fake_context, fake_share_network_subnet['id'],
             dict(network_type=None, segmentation_id=None,
                  cidr=six.text_type(instance.net.cidr),
                  gateway=six.text_type(instance.gateway),
@@ -354,14 +357,15 @@ class StandaloneNetworkPluginTest(test.TestCase):
         }
         with test_utils.create_temp_config_with_opts(data):
             instance = plugin.StandaloneNetworkPlugin()
-        self.mock_object(instance.db, 'share_network_update')
+        self.mock_object(instance.db, 'share_network_subnet_update')
         self.mock_object(instance.db, 'network_allocation_create')
         self.mock_object(
             instance.db, 'network_allocations_get_by_ip_address',
             mock.Mock(return_value=[]))
 
         allocations = instance.allocate_network(
-            fake_context, fake_share_server, fake_share_network)
+            fake_context, fake_share_server, fake_share_network,
+            fake_share_network_subnet)
 
         self.assertEqual(1, len(allocations))
         na_data = {
@@ -372,8 +376,8 @@ class StandaloneNetworkPluginTest(test.TestCase):
             'ip_version': 4,
             'mtu': 1500,
         }
-        instance.db.share_network_update.assert_called_once_with(
-            fake_context, fake_share_network['id'], na_data)
+        instance.db.share_network_subnet_update.assert_called_once_with(
+            fake_context, fake_share_network_subnet['id'], na_data)
         instance.db.network_allocations_get_by_ip_address.assert_has_calls(
             [mock.call(fake_context, '10.0.0.2')])
         instance.db.network_allocation_create.assert_called_once_with(
@@ -400,14 +404,15 @@ class StandaloneNetworkPluginTest(test.TestCase):
         }
         with test_utils.create_temp_config_with_opts(data):
             instance = plugin.StandaloneNetworkPlugin()
-        self.mock_object(instance.db, 'share_network_update')
+        self.mock_object(instance.db, 'share_network_subnet_update')
         self.mock_object(instance.db, 'network_allocation_create')
         self.mock_object(
             instance.db, 'network_allocations_get_by_ip_address',
             mock.Mock(side_effect=fake_get_allocations_by_ip_address))
 
         allocations = instance.allocate_network(
-            ctxt, fake_share_server, fake_share_network, count=2)
+            ctxt, fake_share_server, fake_share_network,
+            fake_share_network_subnet, count=2)
 
         self.assertEqual(2, len(allocations))
         na_data = {
@@ -418,8 +423,8 @@ class StandaloneNetworkPluginTest(test.TestCase):
             'ip_version': 4,
             'mtu': 1500,
         }
-        instance.db.share_network_update.assert_called_once_with(
-            ctxt, fake_share_network['id'], dict(**na_data))
+        instance.db.share_network_subnet_update.assert_called_once_with(
+            ctxt, fake_share_network_subnet['id'], dict(**na_data))
         instance.db.network_allocations_get_by_ip_address.assert_has_calls(
             [mock.call(ctxt, '10.0.0.2'), mock.call(ctxt, '10.0.0.3'),
              mock.call(ctxt, '10.0.0.4'), mock.call(ctxt, '10.0.0.5')])
@@ -445,7 +450,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
         }
         with test_utils.create_temp_config_with_opts(data):
             instance = plugin.StandaloneNetworkPlugin()
-        self.mock_object(instance.db, 'share_network_update')
+        self.mock_object(instance.db, 'share_network_subnet_update')
         self.mock_object(instance.db, 'network_allocation_create')
         self.mock_object(
             instance.db, 'network_allocations_get_by_ip_address',
@@ -454,10 +459,11 @@ class StandaloneNetworkPluginTest(test.TestCase):
         self.assertRaises(
             exception.NetworkBadConfigurationException,
             instance.allocate_network,
-            fake_context, fake_share_server, fake_share_network)
+            fake_context, fake_share_server, fake_share_network,
+            fake_share_network_subnet)
 
-        instance.db.share_network_update.assert_called_once_with(
-            fake_context, fake_share_network['id'],
+        instance.db.share_network_subnet_update.assert_called_once_with(
+            fake_context, fake_share_network_subnet['id'],
             dict(network_type=None, segmentation_id=None,
                  cidr=six.text_type(instance.net.cidr),
                  gateway=six.text_type(instance.gateway),
@@ -484,12 +490,13 @@ class StandaloneNetworkPluginTest(test.TestCase):
 
         instance = self._setup_manage_network_allocations(label=label)
         if not label:
-            self.mock_object(instance, '_verify_share_network')
-            self.mock_object(instance.db, 'share_network_update')
+            self.mock_object(instance, '_verify_share_network_subnet')
+            self.mock_object(instance.db, 'share_network_subnet_update')
         self.mock_object(instance.db, 'network_allocation_create')
 
         result = instance.manage_network_allocations(
-            fake_context, allocations, fake_share_server, fake_share_network)
+            fake_context, allocations, fake_share_server,
+            fake_share_network, fake_share_network_subnet)
 
         self.assertEqual(['fd12::2000'], result)
 
@@ -513,10 +520,10 @@ class StandaloneNetworkPluginTest(test.TestCase):
         data_list[1].update(network_data)
 
         if not label:
-            instance.db.share_network_update.assert_called_once_with(
-                fake_context, fake_share_network['id'], network_data)
-            instance._verify_share_network.assert_called_once_with(
-                fake_share_server['id'], fake_share_network)
+            instance.db.share_network_subnet_update.assert_called_once_with(
+                fake_context, fake_share_network_subnet['id'], network_data)
+            instance._verify_share_network_subnet.assert_called_once_with(
+                fake_share_server['id'], fake_share_network_subnet)
 
         instance.db.network_allocation_create.assert_has_calls([
             mock.call(fake_context, data_list[0]),

@@ -270,20 +270,6 @@ fixture_valid_reset_status_body = (
     ({'reset_status': {'status': 'migrating_to'}}, '2.7'),
 )
 
-share_network_id = '5dfe0898-e2a1-4740-9177-81c7d26713b0'
-share_network = {
-    'name': 'share-net-fake',
-    'share_network_id': '5dfe0898-e2a1-4740-9177-81c7d26713b0',
-    'project_id': '5dfe0898-e2a1-4740-9177-81c7d26713b0'
-}
-SHARE_SERVER = {
-    'share_network': share_network,
-    'share_network_id': 'c5b3a865-56d0-4d88-abe5-879965e099c9',
-    'host': host,
-    'id': 'c39bb9ae-16a5-40f2-a24f-1cf3f549d3d3',
-    'status': constants.STATUS_ACTIVE
-}
-
 
 def mock_fake_admin_check(context, resource_name, action, *args, **kwargs):
     if context.is_admin:

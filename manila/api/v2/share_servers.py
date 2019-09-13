@@ -31,6 +31,7 @@ LOG = log.getLogger(__name__)
 
 
 class ShareServerController(share_servers.ShareServerController,
+                            wsgi.Controller,
                             wsgi.AdminActionsMixin):
     """The Share Server API V2 controller for the OpenStack API."""
 
@@ -55,27 +56,41 @@ class ShareServerController(share_servers.ShareServerController,
     def share_server_reset_status(self, req, id, body):
         return self._reset_status(req, id, body)
 
-    @wsgi.Controller.api_version("2.49")
     @wsgi.Controller.authorize('manage_share_server')
-    @wsgi.response(202)
-    def manage(self, req, body):
+    def _manage(self, req, body):
         """Manage a share server."""
+        LOG.debug("Manage Share Server with id: %s", id)
+
         context = req.environ['manila.context']
-        identifier, host, share_network, driver_opts = (
+        identifier, host, share_network, driver_opts, network_subnet = (
             self._validate_manage_share_server_parameters(context, body))
 
         try:
             result = self.share_api.manage_share_server(
-                context, identifier, host, share_network, driver_opts)
+                context, identifier, host, network_subnet, driver_opts)
         except exception.InvalidInput as e:
-            raise exc.HTTPBadRequest(explanation=e)
+            raise exc.HTTPBadRequest(explanation=e.msg)
+        except exception.PolicyNotAuthorized as e:
+            raise exc.HTTPForbidden(explanation=e.msg)
 
         result.project_id = share_network["project_id"]
-        if result.share_network['name']:
-            result.share_network_name = result.share_network['name']
+        result.share_network_id = share_network["id"]
+        if share_network['name']:
+            result.share_network_name = share_network['name']
         else:
-            result.share_network_name = result.share_network_id
+            result.share_network_name = share_network['id']
         return self._view_builder.build_share_server(req, result)
+
+    @wsgi.Controller.api_version('2.51')
+    @wsgi.response(202)
+    def manage(self, req, body):
+        return self._manage(req, body)
+
+    @wsgi.Controller.api_version('2.49')  # noqa
+    @wsgi.response(202)
+    def manage(self, req, body):  # pylint: disable=function-redefined
+        body.get('share_server', {}).pop('share_network_subnet_id', None)
+        return self._manage(req, body)
 
     @wsgi.Controller.authorize('unmanage_share_server')
     def _unmanage(self, req, id, body=None):
@@ -91,7 +106,7 @@ class ShareServerController(share_servers.ShareServerController,
             share_server = db_api.share_server_get(
                 context, id)
         except exception.ShareServerNotFound as e:
-            raise exc.HTTPNotFound(explanation=e)
+            raise exc.HTTPNotFound(explanation=e.msg)
 
         allowed_statuses = [constants.STATUS_ERROR, constants.STATUS_ACTIVE,
                             constants.STATUS_MANAGE_ERROR,
@@ -111,7 +126,7 @@ class ShareServerController(share_servers.ShareServerController,
                 context, share_server, force=force)
         except (exception.ShareServerInUse,
                 exception.PolicyNotAuthorized) as e:
-            raise exc.HTTPBadRequest(explanation=e)
+            raise exc.HTTPBadRequest(explanation=e.msg)
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
@@ -141,6 +156,25 @@ class ShareServerController(share_servers.ShareServerController,
         identifier = data['identifier']
         host, share_network_id = data['host'], data['share_network_id']
 
+        network_subnet_id = data.get('share_network_subnet_id')
+        if network_subnet_id:
+            try:
+                network_subnet = db_api.share_network_subnet_get(
+                    context, network_subnet_id)
+            except exception.ShareNetworkSubnetNotFound:
+                msg = _("The share network subnet %s does not "
+                        "exist.") % network_subnet_id
+                raise exc.HTTPBadRequest(explanation=msg)
+        else:
+            network_subnet = db_api.share_network_subnet_get_default_subnet(
+                context, share_network_id)
+
+        if network_subnet is None:
+            msg = _("The share network %s does have a default subnet. Create "
+                    "one or use a specific subnet to manage this share server "
+                    "with API version >= 2.51.") % share_network_id
+            raise exc.HTTPBadRequest(explanation=msg)
+
         if share_utils.extract_host(host, 'pool'):
             msg = _("Host parameter should not contain pool.")
             raise exc.HTTPBadRequest(explanation=msg)
@@ -168,7 +202,7 @@ class ShareServerController(share_servers.ShareServerController,
             msg = _("Driver options must be in dictionary format.")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        return identifier, host, share_network, driver_opts
+        return identifier, host, share_network, driver_opts, network_subnet
 
 
 def create_resource():

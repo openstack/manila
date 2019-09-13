@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 from six.moves.urllib import parse
 import webob
@@ -25,6 +26,7 @@ from manila import test
 from manila.tests.api import fakes
 
 
+@ddt.ddt
 class ShareApiTest(test.TestCase):
     """Share Api Test."""
     def setUp(self):
@@ -80,6 +82,21 @@ class ShareApiTest(test.TestCase):
                 'status': self.ss_active_directory['status']
             }, ]
         }
+
+        self.fake_share_network_list_with_share_servers = [{
+            'id': 'fake_sn_id',
+            'share_network_subnets': [{
+                'id': 'fake_sns_id',
+                'share_servers': [{'id': 'fake_ss_id'}]
+            }]
+        }]
+        self.fake_share_network_list_without_share_servers = [{
+            'id': 'fake_sn_id',
+            'share_network_subnets': [{
+                'id': 'fake_sns_id',
+                'share_servers': []
+            }]
+        }]
 
     def _stop_started_patcher(self, patcher):
         if hasattr(patcher, 'is_local'):
@@ -163,10 +180,11 @@ class ShareApiTest(test.TestCase):
         self.mock_object(security_service.policy, 'check_policy')
         db.security_service_get = mock.Mock(return_value=new)
         db.security_service_update = mock.Mock(return_value=updated)
+        fake_sns = {'id': 'fake_sns_id', 'share_servers': ['fake_ss']}
         db.share_network_get_all_by_security_service = mock.Mock(
             return_value=[{
                 'id': 'fake_id',
-                'share_servers': 'fake_share_server'
+                'share_network_subnets': [fake_sns]
             }])
         body = {"security_service": {"name": "new"}}
         req = fakes.HTTPRequest.blank('/security_service/1')
@@ -187,10 +205,11 @@ class ShareApiTest(test.TestCase):
         self.mock_object(security_service.policy, 'check_policy')
         db.security_service_get = mock.Mock(return_value=new)
         db.security_service_update = mock.Mock(return_value=updated)
+        fake_sns = {'id': 'fake_sns_id', 'share_servers': ['fake_ss']}
         db.share_network_get_all_by_security_service = mock.Mock(
             return_value=[{
                 'id': 'fake_id',
-                'share_servers': 'fake_share_server'
+                'share_network_subnets': [fake_sns]
             }])
         body = {"security_service": {"description": "new"}}
         req = fakes.HTTPRequest.blank('/security_service/1')
@@ -209,8 +228,9 @@ class ShareApiTest(test.TestCase):
                        mock.Mock())
     def test_security_service_update_invalid_keys_sh_server_exists(self):
         self.mock_object(security_service.policy, 'check_policy')
+        fake_sns = {'id': 'fake_sns_id', 'share_servers': ['fake_ss']}
         db.share_network_get_all_by_security_service.return_value = [
-            {'id': 'fake_id', 'share_servers': 'fake_share_servers'},
+            {'id': 'fake_id', 'share_network_subnets': [fake_sns]},
         ]
         db.security_service_get.return_value = self.ss_active_directory.copy()
         body = {'security_service': {'user_id': 'new_user'}}
@@ -234,8 +254,9 @@ class ShareApiTest(test.TestCase):
                        mock.Mock())
     def test_security_service_update_valid_keys_sh_server_exists(self):
         self.mock_object(security_service.policy, 'check_policy')
+        fake_sns = {'id': 'fake_sns_id', 'share_servers': ['fake_ss']}
         db.share_network_get_all_by_security_service.return_value = [
-            {'id': 'fake_id', 'share_servers': 'fake_share_servers'},
+            {'id': 'fake_id', 'share_network_subnets': [fake_sns]},
         ]
         old = self.ss_active_directory.copy()
         updated = self.ss_active_directory.copy()
@@ -264,6 +285,36 @@ class ShareApiTest(test.TestCase):
             mock.call(req.environ['manila.context'],
                       security_service.RESOURCE_NAME, 'update', old)
         ])
+
+    @mock.patch.object(db, 'security_service_get', mock.Mock())
+    def test_security_service_update_has_share_servers(self):
+        db.security_service_get = mock.Mock()
+        self.mock_object(
+            self.controller, '_share_servers_dependent_on_sn_exist',
+            mock.Mock(return_value=True))
+        body = {"security_service": {"type": "ldap"}}
+
+        req = fakes.HTTPRequest.blank('/security_services/1')
+        self.assertRaises(webob.exc.HTTPForbidden,
+                          self.controller.update,
+                          req,
+                          1,
+                          body)
+
+    @ddt.data(True, False)
+    def test_security_service_update_share_server_dependent_exists(self,
+                                                                   expected):
+        req = fakes.HTTPRequest.blank('/security_services/1')
+        context = req.environ['manila.context']
+        db.security_service_get = mock.Mock()
+        network = (self.fake_share_network_list_with_share_servers if expected
+                   else self.fake_share_network_list_without_share_servers)
+        db.share_network_get_all_by_security_service = mock.Mock(
+            return_value=network)
+
+        result = self.controller._share_servers_dependent_on_sn_exist(
+            context, 'fake_id')
+        self.assertEqual(expected, result)
 
     def test_security_service_list(self):
         db.security_service_get_all_by_project = mock.Mock(

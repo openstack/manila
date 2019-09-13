@@ -264,8 +264,8 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
                     'available': len(ips)}
         raise exception.NetworkBadConfigurationException(reason=msg)
 
-    def _save_network_info(self, context, share_network):
-        """Update share-network with plugin specific data."""
+    def _save_network_info(self, context, share_network_subnet):
+        """Update share-network-subnet with plugin specific data."""
         data = {
             'network_type': self.network_type,
             'segmentation_id': self.segmentation_id,
@@ -274,14 +274,15 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
             'ip_version': self.ip_version,
             'mtu': self.mtu,
         }
-        share_network.update(data)
+        share_network_subnet.update(data)
         if self.label != 'admin':
-            self.db.share_network_update(context, share_network['id'], data)
+            self.db.share_network_subnet_update(
+                context, share_network_subnet['id'], data)
 
     @utils.synchronized(
         "allocate_network_for_standalone_network_plugin", external=True)
     def allocate_network(self, context, share_server, share_network=None,
-                         **kwargs):
+                         share_network_subnet=None, **kwargs):
         """Allocate network resources using one dedicated network.
 
         This one has interprocess lock to avoid concurrency in creation of
@@ -289,10 +290,11 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
         """
         allocation_count = kwargs.get('count', 1)
         if self.label != 'admin':
-            self._verify_share_network(share_server['id'], share_network)
+            self._verify_share_network(share_server['id'],
+                                       share_network_subnet)
         else:
-            share_network = share_network or {}
-        self._save_network_info(context, share_network)
+            share_network_subnet = share_network_subnet or {}
+        self._save_network_info(context, share_network_subnet)
         allocations = []
         ip_addresses = self._get_available_ips(context, allocation_count)
         for ip_address in ip_addresses:
@@ -301,12 +303,12 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
                 'ip_address': ip_address,
                 'status': constants.STATUS_ACTIVE,
                 'label': self.label,
-                'network_type': share_network['network_type'],
-                'segmentation_id': share_network['segmentation_id'],
-                'cidr': share_network['cidr'],
-                'gateway': share_network['gateway'],
-                'ip_version': share_network['ip_version'],
-                'mtu': share_network['mtu'],
+                'network_type': share_network_subnet['network_type'],
+                'segmentation_id': share_network_subnet['segmentation_id'],
+                'cidr': share_network_subnet['cidr'],
+                'gateway': share_network_subnet['gateway'],
+                'ip_version': share_network_subnet['ip_version'],
+                'mtu': share_network_subnet['mtu'],
             }
             allocations.append(
                 self.db.network_allocation_create(context, data))
@@ -323,12 +325,14 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
         self.deallocate_network(context, share_server_id)
 
     def manage_network_allocations(self, context, allocations, share_server,
-                                   share_network=None):
+                                   share_network=None,
+                                   share_network_subnet=None):
         if self.label != 'admin':
-            self._verify_share_network(share_server['id'], share_network)
+            self._verify_share_network_subnet(share_server['id'],
+                                              share_network_subnet)
         else:
-            share_network = share_network or {}
-        self._save_network_info(context, share_network)
+            share_network_subnet = share_network_subnet or {}
+        self._save_network_info(context, share_network_subnet)
 
         # We begin matching the allocations to known neutron ports and
         # finally return the non-consumed allocations
@@ -350,12 +354,12 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
                 'ip_address': allocation,
                 'status': constants.STATUS_ACTIVE,
                 'label': self.label,
-                'network_type': share_network['network_type'],
-                'segmentation_id': share_network['segmentation_id'],
-                'cidr': share_network['cidr'],
-                'gateway': share_network['gateway'],
-                'ip_version': share_network['ip_version'],
-                'mtu': share_network['mtu'],
+                'network_type': share_network_subnet['network_type'],
+                'segmentation_id': share_network_subnet['segmentation_id'],
+                'cidr': share_network_subnet['cidr'],
+                'gateway': share_network_subnet['gateway'],
+                'ip_version': share_network_subnet['ip_version'],
+                'mtu': share_network_subnet['mtu'],
             }
             self.db.network_allocation_create(context, data)
             remaining_allocations.remove(allocation)

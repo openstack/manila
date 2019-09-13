@@ -43,6 +43,7 @@ from manila.api.v2 import share_group_types
 from manila.api.v2 import share_groups
 from manila.api.v2 import share_instance_export_locations
 from manila.api.v2 import share_instances
+from manila.api.v2 import share_network_subnets
 from manila.api.v2 import share_networks
 from manila.api.v2 import share_replica_export_locations
 from manila.api.v2 import share_replicas
@@ -295,6 +296,33 @@ class APIRouter(manila.api.openstack.APIRouter):
                         controller=self.resources["share_networks"],
                         collection={"detail": "GET"},
                         member={"action": "POST"})
+
+        self.resources["share_network_subnets"] = (
+            share_network_subnets.create_resource())
+        mapper.connect("share-networks",
+                       "/{project_id}/share-networks/{share_network_id}/"
+                       "subnets",
+                       controller=self.resources["share_network_subnets"],
+                       action="create",
+                       conditions={"method": ["POST"]})
+        mapper.connect("share-networks",
+                       "/{project_id}/share-networks/{share_network_id}/"
+                       "subnets/{share_network_subnet_id}",
+                       controller=self.resources["share_network_subnets"],
+                       action="delete",
+                       conditions={"method": ["DELETE"]})
+        mapper.connect("share-networks",
+                       "/{project_id}/share-networks/{share_network_id}/"
+                       "subnets/{share_network_subnet_id}",
+                       controller=self.resources["share_network_subnets"],
+                       action="show",
+                       conditions={"method": ["GET"]})
+        mapper.connect("share-networks",
+                       "/{project_id}/share-networks/{share_network_id}/"
+                       "subnets",
+                       controller=self.resources["share_network_subnets"],
+                       action="index",
+                       conditions={"method": ["GET"]})
 
         self.resources["share_servers"] = share_servers.create_resource()
         mapper.resource("share_server",

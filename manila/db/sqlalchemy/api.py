@@ -42,7 +42,7 @@ from oslo_utils import uuidutils
 import six
 from sqlalchemy import MetaData
 from sqlalchemy import or_
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, load_only
 from sqlalchemy.sql.expression import literal
 from sqlalchemy.sql.expression import true
 from sqlalchemy.sql import func
@@ -3396,7 +3396,7 @@ def _network_get_query(context, session=None):
     return (model_query(context, models.ShareNetwork, session=session).
             options(joinedload('share_instances'),
                     joinedload('security_services'),
-                    joinedload('share_servers')))
+                    joinedload('share_network_subnets')))
 
 
 @require_context
@@ -3454,8 +3454,8 @@ def share_network_get_all_by_security_service(context, security_service_id):
             join(models.ShareNetworkSecurityServiceAssociation,
             models.ShareNetwork.id ==
             models.ShareNetworkSecurityServiceAssociation.share_network_id).
-            filter_by(security_service_id=security_service_id, deleted=0).
-            options(joinedload('share_servers')).all())
+            filter_by(security_service_id=security_service_id, deleted=0)
+            .all())
 
 
 @require_context
@@ -3534,13 +3534,103 @@ def count_share_networks(context, project_id, user_id=None,
 ###################
 
 
+@require_context
+def _network_subnet_get_query(context, session=None):
+    if session is None:
+        session = get_session()
+    return (model_query(context, models.ShareNetworkSubnet, session=session).
+            options(joinedload('share_servers')))
+
+
+@require_context
+def share_network_subnet_create(context, values):
+    values = ensure_model_dict_has_id(values)
+
+    network_subnet_ref = models.ShareNetworkSubnet()
+    network_subnet_ref.update(values)
+    session = get_session()
+    with session.begin():
+        network_subnet_ref.save(session=session)
+        return share_network_subnet_get(
+            context, network_subnet_ref['id'], session=session)
+
+
+@require_context
+def share_network_subnet_delete(context, network_subnet_id):
+
+    session = get_session()
+    with session.begin():
+        network_subnet_ref = share_network_subnet_get(context,
+                                                      network_subnet_id,
+                                                      session=session)
+        network_subnet_ref.soft_delete(session=session, update_status=True)
+
+
+@require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+def share_network_subnet_update(context, network_subnet_id, values):
+    session = get_session()
+    with session.begin():
+        network_subnet_ref = share_network_subnet_get(context,
+                                                      network_subnet_id,
+                                                      session=session)
+        network_subnet_ref.update(values)
+        network_subnet_ref.save(session=session)
+        return network_subnet_ref
+
+
+@require_context
+def share_network_subnet_get(context, network_subnet_id, session=None):
+    result = (_network_subnet_get_query(context, session)
+              .filter_by(id=network_subnet_id)
+              .first())
+    if result is None:
+        raise exception.ShareNetworkSubnetNotFound(
+            share_network_subnet_id=network_subnet_id)
+    return result
+
+
+@require_context
+def share_network_subnet_get_all(context):
+    return _network_subnet_get_query(context).all()
+
+
+@require_context
+def share_network_subnet_get_all_by_share_network(context, network_id):
+    return _network_subnet_get_query(context).filter_by(
+        share_network_id=network_id).all()
+
+
+@require_context
+def share_network_subnet_get_by_availability_zone_id(
+        context, share_network_id, availability_zone_id):
+    result = (_network_subnet_get_query(context).filter_by(
+        share_network_id=share_network_id,
+        availability_zone_id=availability_zone_id).first())
+    # If a specific subnet wasn't found, try get the default one
+    if availability_zone_id and not result:
+        return (_network_subnet_get_query(context).filter_by(
+            share_network_id=share_network_id,
+            availability_zone_id=None).first())
+    return result
+
+
+@require_context
+def share_network_subnet_get_default_subnet(context, share_network_id):
+    return share_network_subnet_get_by_availability_zone_id(
+        context, share_network_id, availability_zone_id=None)
+
+
+###################
+
+
 def _server_get_query(context, session=None):
     if session is None:
         session = get_session()
     return (model_query(context, models.ShareServer, session=session).
             options(joinedload('share_instances'),
                     joinedload('network_allocations'),
-                    joinedload('share_network')))
+                    joinedload('share_network_subnet')))
 
 
 @require_context
@@ -3632,11 +3722,22 @@ def share_server_search_by_identifier(context, identifier, session=None):
 def share_server_get_all_by_host_and_share_net_valid(context, host,
                                                      share_net_id,
                                                      session=None):
-    result = (_server_get_query(context, session).filter_by(host=host)
-              .filter_by(share_network_id=share_net_id)
+    # Get subnets by share_net_id
+    subnets = (_network_subnet_get_query(context, session)
+               .filter_by(share_network_id=share_net_id)
+               .options(load_only("id"))
+               .all())
+    subnet_ids = [s.id for s in subnets]
+
+    # Retrieve servers by the retrieved subnet ids
+    result = (_server_get_query(context, session)
+              .filter_by(host=host)
+              .filter(models.ShareServer.share_network_subnet_id.in_(
+                      subnet_ids))
               .filter(models.ShareServer.status.in_(
-                      (constants.STATUS_CREATING,
-                       constants.STATUS_ACTIVE))).all())
+                     (constants.STATUS_CREATING,
+                      constants.STATUS_ACTIVE))).all())
+
     if not result:
         filters_description = ('share_network_id is "%(share_net_id)s",'
                                ' host is "%(host)s" and status in'

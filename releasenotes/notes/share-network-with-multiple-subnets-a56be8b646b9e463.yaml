@@ -1,0 +1,21 @@
+---
+features:
+  - Added APIs with default policy set to 'rule:default' that allow the
+    creation of share networks with multiple subnets. This gives the users
+    the ability to create multiple subnets in a share network for different
+    availability zones. Also, users will be able to delete and show
+    existing subnets.
+  - Updated the share server API to make possible to manage share servers
+    in a specific subnet when the driver is operating in
+    ``driver_handles_share_servers`` enabled mode.
+  - Share servers are now associated with a single share network subnet, which
+    pertain to a share network.
+upgrade:
+  - On upgrading to this release, all existing share networks will be updated
+    to accommodate an availability zone assignment. Existing share networks
+    will have their availability zone set to "empty" indicating that they are
+    available across all storage availability zones known to manila.
+fixes:
+  - A share network cannot be provided while creating a share replica. Replicas
+    will inherit the share's share network if one exists.
+
