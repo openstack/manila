@@ -353,8 +353,10 @@ class DataMotionSession(object):
 
         1. Delete all snapmirrors involving the replica, but maintain
         snapmirror metadata and snapshots for efficiency
-        2. Ensure a new source -> replica snapmirror exists
-        3. Resync new source -> replica snapmirror relationship
+        2. For DHSS=True scenarios, creates a new vserver peer relationship if
+        it does not exists
+        3. Ensure a new source -> replica snapmirror exists
+        4. Resync new source -> replica snapmirror relationship
         """
 
         replica_volume_name, replica_vserver, replica_backend = (
@@ -362,7 +364,7 @@ class DataMotionSession(object):
         replica_client = get_client_for_backend(replica_backend,
                                                 vserver_name=replica_vserver)
 
-        new_src_volume_name, new_src_vserver, __ = (
+        new_src_volume_name, new_src_vserver, new_src_backend = (
             self.get_backend_info_for_share(new_source_replica))
 
         # 1. delete
@@ -376,14 +378,31 @@ class DataMotionSession(object):
             self.delete_snapmirror(other_replica, replica, release=False)
             self.delete_snapmirror(replica, other_replica, release=False)
 
-        # 2. create
+        # 2. vserver operations when driver handles share servers
+        replica_config = get_backend_configuration(replica_backend)
+        if replica_config.driver_handles_share_servers:
+            # create vserver peering if does not exists
+            if not replica_client.get_vserver_peers(replica_vserver,
+                                                    new_src_vserver):
+                new_src_client = get_client_for_backend(
+                    new_src_backend, vserver_name=new_src_vserver)
+                # Cluster name is needed for setting up the vserver peering
+                new_src_cluster_name = new_src_client.get_cluster_name()
+
+                replica_client.create_vserver_peer(
+                    replica_vserver, new_src_vserver,
+                    peer_cluster_name=new_src_cluster_name)
+                new_src_client.accept_vserver_peer(new_src_vserver,
+                                                   replica_vserver)
+
+        # 3. create
         # TODO(ameade): Update the schedule if needed.
         replica_client.create_snapmirror(new_src_vserver,
                                          new_src_volume_name,
                                          replica_vserver,
                                          replica_volume_name,
                                          schedule='hourly')
-        # 3. resync
+        # 4. resync
         replica_client.resync_snapmirror(new_src_vserver,
                                          new_src_volume_name,
                                          replica_vserver,

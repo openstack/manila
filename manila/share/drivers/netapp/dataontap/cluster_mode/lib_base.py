@@ -294,8 +294,7 @@ class NetAppCmodeFileStorageLibrary(object):
             },
         }
 
-        if (self.configuration.replication_domain and
-                not self.configuration.driver_handles_share_servers):
+        if self.configuration.replication_domain:
             data['replication_type'] = 'dr'
             data['replication_domain'] = self.configuration.replication_domain
 
@@ -1463,7 +1462,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 'netapp_disk_type': disk_types,
             })
 
-    def _find_active_replica(self, replica_list):
+    def find_active_replica(self, replica_list):
         # NOTE(ameade): Find current active replica. There can only be one
         # active replica (SnapMirror source volume) at a time in cDOT.
         for r in replica_list:
@@ -1478,7 +1477,7 @@ class NetAppCmodeFileStorageLibrary(object):
     def create_replica(self, context, replica_list, new_replica,
                        access_rules, share_snapshots, share_server=None):
         """Creates the new replica on this backend and sets up SnapMirror."""
-        active_replica = self._find_active_replica(replica_list)
+        active_replica = self.find_active_replica(replica_list)
         dm_session = data_motion.DataMotionSession()
 
         # 1. Create the destination share
@@ -1532,7 +1531,7 @@ class NetAppCmodeFileStorageLibrary(object):
     def update_replica_state(self, context, replica_list, replica,
                              access_rules, share_snapshots, share_server=None):
         """Returns the status of the given replica on this backend."""
-        active_replica = self._find_active_replica(replica_list)
+        active_replica = self.find_active_replica(replica_list)
 
         share_name = self._get_backend_share_name(replica['id'])
         vserver, vserver_client = self._get_vserver(share_server=share_server)
@@ -1624,7 +1623,7 @@ class NetAppCmodeFileStorageLibrary(object):
         :param share_server: ShareServer class instance of replica
         :return: Updated replica_list
         """
-        orig_active_replica = self._find_active_replica(replica_list)
+        orig_active_replica = self.find_active_replica(replica_list)
 
         dm_session = data_motion.DataMotionSession()
 
@@ -1640,7 +1639,7 @@ class NetAppCmodeFileStorageLibrary(object):
             LOG.exception("Could not communicate with the backend "
                           "for replica %s during promotion.",
                           replica['id'])
-            new_active_replica = copy.deepcopy(replica)
+            new_active_replica = replica.copy()
             new_active_replica['replica_state'] = (
                 constants.STATUS_ERROR)
             new_active_replica['status'] = constants.STATUS_ERROR
@@ -1760,7 +1759,7 @@ class NetAppCmodeFileStorageLibrary(object):
         dm_session.break_snapmirror(orig_active_replica, replica)
 
         # 3. Setup access rules
-        new_active_replica = copy.deepcopy(replica)
+        new_active_replica = replica.copy()
         helper = self._get_helper(replica)
         helper.set_client(vserver_client)
         try:
@@ -1817,7 +1816,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
     def create_replicated_snapshot(self, context, replica_list,
                                    snapshot_instances, share_server=None):
-        active_replica = self._find_active_replica(replica_list)
+        active_replica = self.find_active_replica(replica_list)
         active_snapshot = [x for x in snapshot_instances
                            if x['share_id'] == active_replica['id']][0]
         snapshot_name = self._get_backend_snapshot_name(active_snapshot['id'])
@@ -1849,7 +1848,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
     def delete_replicated_snapshot(self, context, replica_list,
                                    snapshot_instances, share_server=None):
-        active_replica = self._find_active_replica(replica_list)
+        active_replica = self.find_active_replica(replica_list)
         active_snapshot = [x for x in snapshot_instances
                            if x['share_id'] == active_replica['id']][0]
 
@@ -1878,7 +1877,7 @@ class NetAppCmodeFileStorageLibrary(object):
     def update_replicated_snapshot(self, replica_list, share_replica,
                                    snapshot_instances, snapshot_instance,
                                    share_server=None):
-        active_replica = self._find_active_replica(replica_list)
+        active_replica = self.find_active_replica(replica_list)
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_name = self._get_backend_share_name(
             snapshot_instance['share_id'])

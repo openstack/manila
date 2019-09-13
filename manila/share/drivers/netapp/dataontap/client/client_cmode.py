@@ -3086,6 +3086,23 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 raise
 
     @na_utils.trace
+    def get_cluster_name(self):
+        """Gets cluster name."""
+        api_args = {
+            'desired-attributes': {
+                'cluster-identity-info': {
+                    'cluster-name': None,
+                }
+            }
+        }
+        result = self.send_request('cluster-identity-get', api_args,
+                                   enable_tunneling=False)
+        attributes = result.get_child_by_name('attributes')
+        cluster_identity = attributes.get_child_by_name(
+            'cluster-identity-info')
+        return cluster_identity.get_child_content('cluster-name')
+
+    @na_utils.trace
     def create_cluster_peer(self, addresses, username=None, password=None,
                             passphrase=None):
         """Creates a cluster peer relationship."""
@@ -3102,7 +3119,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         if passphrase:
             api_args['passphrase'] = passphrase
 
-        self.send_request('cluster-peer-create', api_args)
+        self.send_request('cluster-peer-create', api_args,
+                          enable_tunneling=False)
 
     @na_utils.trace
     def get_cluster_peers(self, remote_cluster_name=None):
@@ -3162,7 +3180,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         """Deletes a cluster peer relationship."""
 
         api_args = {'cluster-name': cluster_name}
-        self.send_request('cluster-peer-delete', api_args)
+        self.send_request('cluster-peer-delete', api_args,
+                          enable_tunneling=False)
 
     @na_utils.trace
     def get_cluster_peer_policy(self):
@@ -3221,7 +3240,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('cluster-peer-policy-modify', api_args)
 
     @na_utils.trace
-    def create_vserver_peer(self, vserver_name, peer_vserver_name):
+    def create_vserver_peer(self, vserver_name, peer_vserver_name,
+                            peer_cluster_name=None):
         """Creates a Vserver peer relationship for SnapMirrors."""
         api_args = {
             'vserver': vserver_name,
@@ -3230,21 +3250,26 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 {'vserver-peer-application': 'snapmirror'},
             ],
         }
-        self.send_request('vserver-peer-create', api_args)
+        if peer_cluster_name:
+            api_args['peer-cluster'] = peer_cluster_name
+        self.send_request('vserver-peer-create', api_args,
+                          enable_tunneling=False)
 
     @na_utils.trace
     def delete_vserver_peer(self, vserver_name, peer_vserver_name):
         """Deletes a Vserver peer relationship."""
 
         api_args = {'vserver': vserver_name, 'peer-vserver': peer_vserver_name}
-        self.send_request('vserver-peer-delete', api_args)
+        self.send_request('vserver-peer-delete', api_args,
+                          enable_tunneling=False)
 
     @na_utils.trace
     def accept_vserver_peer(self, vserver_name, peer_vserver_name):
         """Accepts a pending Vserver peer relationship."""
 
         api_args = {'vserver': vserver_name, 'peer-vserver': peer_vserver_name}
-        self.send_request('vserver-peer-accept', api_args)
+        self.send_request('vserver-peer-accept', api_args,
+                          enable_tunneling=False)
 
     @na_utils.trace
     def get_vserver_peers(self, vserver_name=None, peer_vserver_name=None):

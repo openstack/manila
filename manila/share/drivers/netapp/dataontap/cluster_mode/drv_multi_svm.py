@@ -133,42 +133,57 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
     def _teardown_server(self, server_details, **kwargs):
         self.library.teardown_server(server_details, **kwargs)
 
-    def create_replica(self, context, replica_list, replica, access_rules,
+    def create_replica(self, context, replica_list, new_replica, access_rules,
                        replica_snapshots, **kwargs):
-        raise NotImplementedError()
+        return self.library.create_replica(context, replica_list, new_replica,
+                                           access_rules, replica_snapshots)
 
     def delete_replica(self, context, replica_list, replica_snapshots,
                        replica, **kwargs):
-        raise NotImplementedError()
+        self.library.delete_replica(context, replica_list, replica,
+                                    replica_snapshots)
 
     def promote_replica(self, context, replica_list, replica, access_rules,
                         share_server=None):
-        raise NotImplementedError()
+        return self.library.promote_replica(context, replica_list, replica,
+                                            access_rules,
+                                            share_server=share_server)
 
     def update_replica_state(self, context, replica_list, replica,
                              access_rules, replica_snapshots,
                              share_server=None):
-        raise NotImplementedError()
+        return self.library.update_replica_state(context, replica_list,
+                                                 replica, access_rules,
+                                                 replica_snapshots,
+                                                 share_server)
 
     def create_replicated_snapshot(self, context, replica_list,
                                    replica_snapshots, share_server=None):
-        raise NotImplementedError()
+        return self.library.create_replicated_snapshot(
+            context, replica_list, replica_snapshots,
+            share_server=share_server)
 
     def delete_replicated_snapshot(self, context, replica_list,
                                    replica_snapshots, share_server=None):
-        raise NotImplementedError()
+        return self.library.delete_replicated_snapshot(
+            context, replica_list, replica_snapshots,
+            share_server=share_server)
 
     def update_replicated_snapshot(self, context, replica_list,
                                    share_replica, replica_snapshots,
                                    replica_snapshot, share_server=None):
-        raise NotImplementedError()
+        return self.library.update_replicated_snapshot(
+            replica_list, share_replica, replica_snapshots, replica_snapshot,
+            share_server=share_server)
 
     def revert_to_replicated_snapshot(self, context, active_replica,
                                       replica_list, active_replica_snapshot,
                                       replica_snapshots, share_access_rules,
                                       snapshot_access_rules,
-                                      share_server=None):
-        raise NotImplementedError()
+                                      **kwargs):
+        return self.library.revert_to_replicated_snapshot(
+            context, active_replica, replica_list, active_replica_snapshot,
+            replica_snapshots, **kwargs)
 
     def migration_check_compatibility(self, context, source_share,
                                       destination_share, share_server=None,

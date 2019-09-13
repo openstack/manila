@@ -365,6 +365,13 @@ SHARE_SERVER = {
                             ADMIN_NETWORK_ALLOCATIONS),
 }
 
+VSERVER_PEER = [{
+    'vserver': VSERVER1,
+    'peer-vserver': VSERVER2,
+    'peer-state': 'peered',
+    'peer-cluster': 'fake_cluster'
+}]
+
 SNAPSHOT = {
     'id': SNAPSHOT_ID,
     'project_id': TENANT_ID,
