@@ -1,0 +1,112 @@
+- hosts: all
+  name: IPv6 version of manila-tempest-minimal-dsvm-lvm
+  tasks:
+
+    - name: Ensure legacy workspace directory
+      file:
+        path: '{{ ansible_user_dir }}/workspace'
+        state: directory
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          cat > clonemap.yaml << EOF
+          clonemap:
+            - name: openstack/devstack-gate
+              dest: devstack-gate
+          EOF
+          /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
+              https://opendev.org \
+              openstack/devstack-gate
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          cat << 'EOF' >>"/tmp/dg-local.conf"
+          [[local|localrc]]
+          SKIP_EPEL_INSTALL=True
+          enable_plugin manila https://opendev.org/openstack/manila
+          enable_plugin manila-tempest-plugin https://opendev.org/openstack/manila-tempest-plugin
+          enable_plugin neutron-dynamic-routing https://opendev.org/openstack/neutron-dynamic-routing
+          enable_plugin neutron-tempest-plugin https://opendev.org/openstack/neutron-tempest-plugin
+          SERVICE_IP_VERSION=6
+          SERVICE_HOST=""
+          EOF
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          export PYTHONUNBUFFERED=true
+          export DEVSTACK_GATE_NEUTRON=1
+          export DEVSTACK_PROJECT_FROM_GIT="python-manilaclient"
+
+          export MANILA_SETUP_IPV6=True
+          export RUN_MANILA_IPV6_TESTS=True
+          export MANILA_INSTALL_TEMPEST_PLUGIN_SYSTEMWIDE=False
+
+          # Basic services needed for minimal job
+          OVERRIDE_ENABLED_SERVICES=key,mysql,rabbit,tempest
+          # Enable glance for scenario tests
+          OVERRIDE_ENABLED_SERVICES+=,g-api,g-reg
+          # Enable nova for scenario tests
+          OVERRIDE_ENABLED_SERVICES+=,n-api,n-cpu,n-cond,n-sch,n-crt,n-cauth,n-obj
+          # Enable neutron for scenario tests
+          OVERRIDE_ENABLED_SERVICES+=,q-svc,q-dhcp,q-meta,q-l3,q-agt
+          # Enable tls-proxy
+          OVERRIDE_ENABLED_SERVICES+=,tls-proxy
+
+          # Enable mandatory placement services for nova starting with ocata
+          if [[ "stable/newton" != $ZUUL_BRANCH ]]; then
+               OVERRIDE_ENABLED_SERVICES+=,placement-api,placement-client
+          fi
+          export OVERRIDE_ENABLED_SERVICES
+
+          # Keep localrc to be able to set some vars in pre_test_hook
+          export KEEP_LOCALRC=1
+          export PROJECTS="openstack/manila-tempest-plugin $PROJECTS"
+          export PROJECTS="openstack/neutron-dynamic-routing $PROJECTS"
+          export PROJECTS="openstack/neutron-tempest-plugin $PROJECTS"
+
+          export DEVSTACK_GATE_USE_PYTHON3=True
+
+          function pre_test_hook {
+              # 'dhss' - acronym for 'Driver Handles Share Servers',
+              # defines mode of a share driver. Boolean-like.
+              # 'driver' - codename of a share driver to configure.
+              # 'back_end_type' - defines which installation Manila should
+              # have - either 'singlebackend' or 'multibackend'.
+              source $BASE/new/manila/contrib/ci/pre_test_hook.sh False lvm multibackend
+          }
+          export -f pre_test_hook
+
+          function post_test_hook {
+              cd $BASE/new/tempest/tools
+              ./verify-ipv6-only-deployments.sh
+
+              # 'back_end_type' - defines which installation Manila is
+              # configured to - either 'singlebackend' or 'multibackend'.
+              # 'driver' - codename of a share driver that is configured in
+              # Manila. It is used for enabling/disabling tests that are not
+              # supported by share driver that is used.
+              # 'test_type' - defines which set of test suites should be used,
+              # can have 'api' and 'scenario' values.
+              # 'postgres_enabled' - set of test suites depends on DB backend
+              # in some cases, so it is provided explicitely. Boolean-like.
+              source $BASE/new/manila/contrib/ci/post_test_hook.sh multibackend lvm api False
+          }
+          export -f post_test_hook
+
+          cp devstack-gate/devstack-vm-gate-wrap.sh ./safe-devstack-vm-gate-wrap.sh
+          ./safe-devstack-vm-gate-wrap.sh
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'

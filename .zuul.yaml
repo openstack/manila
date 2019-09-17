@@ -33,6 +33,7 @@
         # Through the Train release we need to keep some python2 coverage.
         - manila-tempest-minimal-dsvm-dummy-py2
         - manila-tempest-minimal-dsvm-lvm
+        - manila-tempest-minimal-lvm-ipv6-only
         - manila-grenade:
             voting: false
         - manila-rally-no-ss:
@@ -50,6 +51,7 @@
         - manila-tox-genconfig
         - manila-tempest-minimal-dsvm-dummy
         - manila-tempest-minimal-dsvm-lvm
+        - manila-tempest-minimal-lvm-ipv6-only
     experimental:
       jobs:
         - manila-tempest-dsvm-glusterfs-native
@@ -353,6 +355,13 @@
       # separates its tempest plugin from its tree
       - openstack/neutron-tempest-plugin
       - openstack/python-manilaclient
+      - openstack/tempest
+
+- job:
+    name: manila-tempest-minimal-lvm-ipv6-only
+    parent: manila-tempest-minimal-dsvm-lvm
+    run: playbooks/legacy/manila-tempest-minimal-dsvm-lvm/run-ipv6.yaml
+    required-projects:
       - openstack/tempest
 
 - job:
