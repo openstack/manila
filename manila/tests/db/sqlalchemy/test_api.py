@@ -980,7 +980,7 @@ class ShareGroupDatabaseAPITestCase(test.TestCase):
         self.assertEqual(group_number, len(groups))
         if group_number == 1:
             self.assertDictMatch(dict(expected_group1), dict(groups[0]))
-        elif group_number == 1:
+        elif group_number == 2:
             self.assertDictMatch(dict(expected_group1), dict(groups[1]))
             self.assertDictMatch(dict(expected_group2), dict(groups[0]))
 
