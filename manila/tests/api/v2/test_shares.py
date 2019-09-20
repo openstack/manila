@@ -1643,6 +1643,45 @@ class ShareAPITest(test.TestCase):
                 api_version.APIVersionRequest('2.42')):
             self.assertEqual(3, result['count'])
 
+    @ddt.data({'use_admin_context': True, 'version': '2.42'},
+              {'use_admin_context': False, 'version': '2.42'})
+    @ddt.unpack
+    def test_share_list_summary_with_search_opt_count_0(self,
+                                                        use_admin_context,
+                                                        version):
+        search_opts = {
+            'sort_key': 'fake_sort_key',
+            'sort_dir': 'fake_sort_dir',
+            'with_count': 'true'
+        }
+        if use_admin_context:
+            search_opts['host'] = 'fake_host'
+        # fake_key should be filtered
+        url = '/shares?fake_key=fake_value'
+        for k, v in search_opts.items():
+            url = url + '&' + k + '=' + v
+        req = fakes.HTTPRequest.blank(url, version=version,
+                                      use_admin_context=use_admin_context)
+
+        self.mock_object(share_api.API, 'get_all',
+                         mock.Mock(return_value=[]))
+
+        result = self.controller.index(req)
+
+        search_opts_expected = {}
+
+        if use_admin_context:
+            search_opts_expected.update({'fake_key': 'fake_value'})
+            search_opts_expected['host'] = search_opts['host']
+        share_api.API.get_all.assert_called_once_with(
+            req.environ['manila.context'],
+            sort_key=search_opts['sort_key'],
+            sort_dir=search_opts['sort_dir'],
+            search_opts=search_opts_expected,
+        )
+        self.assertEqual(0, len(result['shares']))
+        self.assertEqual(0, result['count'])
+
     def test_share_list_summary(self):
         self.mock_object(share_api.API, 'get_all',
                          stubs.stub_share_get_all_by_project)
