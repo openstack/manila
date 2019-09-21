@@ -109,12 +109,14 @@ elif [[ "$DRIVER" == "dummy" ]]; then
     echo "MANILA_OPTGROUP_alpha_share_backend_name=ALPHA" >> $localconf
     echo "MANILA_OPTGROUP_alpha_network_config_group=membernet" >> $localconf
     echo "MANILA_OPTGROUP_alpha_admin_network_config_group=adminnet" >> $localconf
+    echo "MANILA_OPTGROUP_alpha_replication_domain=DUMMY_DOMAIN_2" >> $localconf
 
     echo "MANILA_OPTGROUP_beta_share_driver=$driver_path" >> $localconf
     echo "MANILA_OPTGROUP_beta_driver_handles_share_servers=True" >> $localconf
     echo "MANILA_OPTGROUP_beta_share_backend_name=BETA" >> $localconf
     echo "MANILA_OPTGROUP_beta_network_config_group=membernet" >> $localconf
     echo "MANILA_OPTGROUP_beta_admin_network_config_group=adminnet" >> $localconf
+    echo "MANILA_OPTGROUP_beta_replication_domain=DUMMY_DOMAIN_2" >> $localconf
 
     echo "MANILA_OPTGROUP_gamma_share_driver=$driver_path" >> $localconf
     echo "MANILA_OPTGROUP_gamma_driver_handles_share_servers=False" >> $localconf
