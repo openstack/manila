@@ -821,8 +821,10 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         def fake_sleep(time):
             self.fake_time += 1
 
+        server_details = {'instance_id': 'fake_inst_id', 'status': 'ACTIVE'}
         self.mock_object(self._manager.compute_api, 'server_delete')
-        self.mock_object(self._manager.compute_api, 'server_get')
+        self.mock_object(self._manager.compute_api, 'server_get',
+                         mock.Mock(return_value=server_details))
         self.mock_object(service_instance, 'time')
         self.mock_object(
             service_instance.time, 'time', mock.Mock(side_effect=fake_time))
@@ -843,6 +845,22 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self._manager.compute_api.server_get.assert_has_calls(
             [mock.call(self._manager.admin_context,
                        self.instance_id) for i in range(3)])
+
+    def test_delete_server_soft_deleted(self):
+        server_details = {'instance_id': 'fake_inst_id',
+                          'status': 'SOFT_DELETED'}
+        self.mock_object(self._manager.compute_api, 'server_delete')
+        self.mock_object(self._manager.compute_api, 'server_get',
+                         mock.Mock(return_value=server_details))
+
+        self._manager._delete_server(
+            self._manager.admin_context, self.instance_id)
+
+        self._manager.compute_api.server_delete.assert_called_once_with(
+            self._manager.admin_context, self.instance_id)
+        self._manager.compute_api.server_get.assert_has_calls([
+            mock.call(self._manager.admin_context, self.instance_id),
+            mock.call(self._manager.admin_context, self.instance_id)])
 
     def test_delete_service_instance(self):
         fake_server_details = dict(

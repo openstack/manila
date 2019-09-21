@@ -414,7 +414,11 @@ class ServiceInstanceManager(object):
         t = time.time()
         while time.time() - t < self.max_time_to_build_instance:
             try:
-                self.compute_api.server_get(context, server_id)
+                inst = self.compute_api.server_get(context, server_id)
+                if inst.get("status").lower() == "soft_deleted":
+                    LOG.debug("Service instance '%s' was soft-deleted "
+                              "successfully.", server_id)
+                    break
             except exception.InstanceNotFound:
                 LOG.debug("Service instance '%s' was deleted "
                           "successfully.", server_id)
