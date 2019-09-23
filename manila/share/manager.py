@@ -2625,8 +2625,8 @@ class ShareManager(manager.SchedulerDependentManager):
                    "server %(server)s. This share server must be removed "
                    "manually, either by un-managing or by deleting it. The "
                    "share network subnet %(subnet)s and share network "
-                   "%(network) cannot be deleted unless this share server has "
-                   "been removed.")
+                   "%(network)s cannot be deleted unless this share server "
+                   "has been removed.")
             msg_args = {
                 'share': share_id,
                 'server': share_server['id'],
