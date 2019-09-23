@@ -2681,17 +2681,17 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         db_utils.create_share_server(**invalid)
         db_utils.create_share_server(**other)
 
-        servers = db_api.share_server_get_all_by_host_and_share_net_valid(
+        servers = db_api.share_server_get_all_by_host_and_share_subnet_valid(
             self.ctxt,
             host='host1',
-            share_net_id='1')
+            share_subnet_id='1')
         self.assertEqual(valid['id'], servers[0]['id'])
 
     def test_get_all_by_host_and_share_net_not_found(self):
         self.assertRaises(
             exception.ShareServerNotFound,
-            db_api.share_server_get_all_by_host_and_share_net_valid,
-            self.ctxt, host='fake', share_net_id='fake'
+            db_api.share_server_get_all_by_host_and_share_subnet_valid,
+            self.ctxt, host='fake', share_subnet_id='fake'
         )
 
     def test_get_all(self):

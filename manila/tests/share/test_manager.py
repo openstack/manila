@@ -2096,7 +2096,7 @@ class ShareManagerTestCase(test.TestCase):
             raise exception.ManilaException()
 
         self.mock_object(db,
-                         'share_server_get_all_by_host_and_share_net_valid',
+                         'share_server_get_all_by_host_and_share_subnet_valid',
                          mock.Mock(side_effect=raise_share_server_not_found))
         self.mock_object(self.share_manager, '_setup_server',
                          mock.Mock(side_effect=raise_manila_exception))
@@ -2107,11 +2107,11 @@ class ShareManagerTestCase(test.TestCase):
             self.context,
             fake_share.instance['id'],
         )
-        (db.share_server_get_all_by_host_and_share_net_valid.
+        (db.share_server_get_all_by_host_and_share_subnet_valid.
             assert_called_once_with(
                 utils.IsAMatcher(context.RequestContext),
                 self.share_manager.host,
-                fake_share['share_network_id'],
+                share_net_subnet['id'],
             ))
         db.share_server_create.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), mock.ANY)
@@ -2386,7 +2386,7 @@ class ShareManagerTestCase(test.TestCase):
             db, 'share_network_subnet_get_by_availability_zone_id',
             mock.Mock(return_value=fake_share_net_subnet))
         self.mock_object(db,
-                         'share_server_get_all_by_host_and_share_net_valid',
+                         'share_server_get_all_by_host_and_share_subnet_valid',
                          mock.Mock(return_value=[fake_share_server]))
         self.mock_object(
             self.share_manager.driver,
@@ -2468,7 +2468,7 @@ class ShareManagerTestCase(test.TestCase):
         sg = db_utils.create_share_group()
 
         self.mock_object(db,
-                         'share_server_get_all_by_host_and_share_net_valid',
+                         'share_server_get_all_by_host_and_share_subnet_valid',
                          mock.Mock(return_value=[fake_share_server]))
         self.mock_object(
             self.share_manager.driver,
