@@ -37,7 +37,12 @@ from manila.share.drivers.dell_emc.plugins.unity import utils as unity_utils
 from manila.share import utils as share_utils
 from manila import utils
 
-VERSION = "6.1.0"
+VERSION = "6.1.1"
+"""Version history:
+     6.1.1 - Fix parsing management IPv6 address
+"""
+
+VERSION = "6.1.1"
 
 LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
@@ -96,7 +101,8 @@ class UnityStorageConnection(driver.StorageConnection):
     def connect(self, emc_share_driver, context):
         """Connect to Unity storage."""
         config = emc_share_driver.configuration
-        storage_ip = config.emc_nas_server
+        storage_ip = enas_utils.convert_ipv6_format_if_needed(
+            config.emc_nas_server)
         username = config.emc_nas_login
         password = config.emc_nas_password
         self.client = client.UnityClient(storage_ip, username, password)
