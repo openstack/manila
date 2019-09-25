@@ -25,10 +25,10 @@
       environment: '{{ zuul | zuul_legacy_vars }}'
 
     # Install centos-release-openstack-* needed for rabbitmq-server
-    - name: Add centos-release-openstack-pike support
+    - name: Add centos-release-openstack-queens support
       become: yes
       yum:
-        name: centos-release-openstack-pike
+        name: centos-release-openstack-queens
         state: present
 
     - shell:
