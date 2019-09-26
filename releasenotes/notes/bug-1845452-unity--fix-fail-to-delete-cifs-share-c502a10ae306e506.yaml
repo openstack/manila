@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed an issue with Unity driver fails to delete CIFS share if wrong
+    access was set.

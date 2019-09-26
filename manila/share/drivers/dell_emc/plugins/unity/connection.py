@@ -37,12 +37,12 @@ from manila.share.drivers.dell_emc.plugins.unity import utils as unity_utils
 from manila.share import utils as share_utils
 from manila import utils
 
-VERSION = "6.1.1"
 """Version history:
      6.1.1 - Fix parsing management IPv6 address
+     6.1.2 - Bugfix: failed to delete CIFS share if wrong access was set
 """
 
-VERSION = "6.1.1"
+VERSION = "6.1.2"
 
 LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
