@@ -274,7 +274,11 @@ class UnityClient(object):
     def cifs_deny_access(self, share_name, user_name):
         share = self.system.get_cifs_share(name=share_name)
 
-        share.delete_ace(user=user_name)
+        try:
+            share.delete_ace(user=user_name)
+        except storops_ex.UnityAclUserNotFoundError:
+            LOG.debug('ACL User "%(user)s" does not exist.',
+                      {'user': user_name})
 
     def nfs_deny_access(self, share_name, host_ip):
         share = self.system.get_nfs_share(name=share_name)
