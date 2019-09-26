@@ -1599,7 +1599,7 @@ class ShareAPITest(test.TestCase):
             {'id': 'id3', 'display_name': 'n3'},
         ]
         self.mock_object(share_api.API, 'get_all',
-                         mock.Mock(return_value=shares))
+                         mock.Mock(return_value=[shares[1]]))
 
         result = self.controller.index(req)
 
@@ -1613,6 +1613,8 @@ class ShareAPITest(test.TestCase):
             'metadata': {'k1': 'v1'},
             'extra_specs': {'k2': 'v2'},
             'is_public': 'False',
+            'limit': '1',
+            'offset': '1'
         }
         if (api_version.APIVersionRequest(version) >=
                 api_version.APIVersionRequest('2.35')):
@@ -1641,7 +1643,7 @@ class ShareAPITest(test.TestCase):
             shares[1]['display_name'], result['shares'][0]['name'])
         if (api_version.APIVersionRequest(version) >=
                 api_version.APIVersionRequest('2.42')):
-            self.assertEqual(3, result['count'])
+            self.assertEqual(1, result['count'])
 
     @ddt.data({'use_admin_context': True, 'version': '2.42'},
               {'use_admin_context': False, 'version': '2.42'})
@@ -1763,7 +1765,7 @@ class ShareAPITest(test.TestCase):
         ]
 
         self.mock_object(share_api.API, 'get_all',
-                         mock.Mock(return_value=shares))
+                         mock.Mock(return_value=[shares[1]]))
 
         result = self.controller.detail(req)
 
@@ -1777,7 +1779,10 @@ class ShareAPITest(test.TestCase):
             'metadata': {'k1': 'v1'},
             'extra_specs': {'k2': 'v2'},
             'is_public': 'False',
+            'limit': '1',
+            'offset': '1'
         }
+
         if (api_version.APIVersionRequest(version) >=
                 api_version.APIVersionRequest('2.35')):
             search_opts_expected['export_location_id'] = (
@@ -1815,7 +1820,7 @@ class ShareAPITest(test.TestCase):
             result['shares'][0]['share_network_id'])
         if (api_version.APIVersionRequest(version) >=
                 api_version.APIVersionRequest('2.42')):
-            self.assertEqual(3, result['count'])
+            self.assertEqual(1, result['count'])
 
     def _list_detail_common_expected(self, admin=False):
         share_dict = {
