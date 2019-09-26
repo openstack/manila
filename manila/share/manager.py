@@ -566,17 +566,15 @@ class ShareManager(manager.SchedulerDependentManager):
         elif parent_share_server:
             share_network_subnet_id = (
                 parent_share_server['share_network_subnet_id'])
-            share_network_subnet = self.db.share_network_subnet_get(
-                context, share_network_subnet_id)
-            share_network_id = share_network_subnet['share_network_id']
 
         def get_available_share_servers():
             if parent_share_server:
                 return [parent_share_server]
             else:
                 return (
-                    self.db.share_server_get_all_by_host_and_share_net_valid(
-                        context, self.host, share_network_id)
+                    self.db
+                        .share_server_get_all_by_host_and_share_subnet_valid(
+                            context, self.host, share_network_subnet_id)
                 )
 
         @utils.synchronized("share_manager_%s" % share_network_subnet_id,
@@ -751,8 +749,9 @@ class ShareManager(manager.SchedulerDependentManager):
         def _wrapped_provide_share_server_for_share_group():
             try:
                 available_share_servers = (
-                    self.db.share_server_get_all_by_host_and_share_net_valid(
-                        context, self.host, share_network_id))
+                    self.db
+                        .share_server_get_all_by_host_and_share_subnet_valid(
+                            context, self.host, share_network_subnet_id))
             except exception.ShareServerNotFound:
                 available_share_servers = None
 
