@@ -101,6 +101,9 @@ class API(object):
     def image_list(self, *args, **kwargs):
         pass
 
+    def image_get(self, *args, **kwargs):
+        pass
+
     def security_group_create(self, *args, **kwargs):
         pass
 

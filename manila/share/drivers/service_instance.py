@@ -519,19 +519,12 @@ class ServiceInstanceManager(object):
     def _get_service_image(self, context):
         """Returns ID of service image for service vm creating."""
         service_image_name = self.get_config_option("service_image_name")
-        images = [image.id for image in self.compute_api.image_list(context)
-                  if image.name == service_image_name
-                  and image.status == 'active']
-        if len(images) == 1:
-            return images[0]
-        elif not images:
+        image = self.compute_api.image_get(context, service_image_name)
+        if image.status != 'active':
             raise exception.ServiceInstanceException(
-                _("Image with name '%s' was not found or is not in "
-                  "'active' state.") % service_image_name)
-        else:
-            raise exception.ServiceInstanceException(
-                _("Found more than one image by name '%s'.") %
+                _("Image with name '%s' is not in 'active' state.") %
                 service_image_name)
+        return image
 
     def _create_service_instance(self, context, instance_name, network_info):
         """Creates service vm and sets up networking for it."""
