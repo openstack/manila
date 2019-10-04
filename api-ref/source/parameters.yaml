@@ -105,6 +105,12 @@ share_network_id_path:
   in: path
   required: true
   type: string
+share_network_subnet_id_path:
+  description: |
+    The UUID of the share network subnet.
+  in: path
+  required: true
+  type: string
 share_replica_id_path:
   description: |
     The UUID of the share replica.
@@ -650,6 +656,12 @@ availability_zone_name:
   in: body
   required: true
   type: string
+availability_zone_request:
+  description: |
+    The UUID or name of an availability zone for the share network subnet.
+  in: body
+  required: false
+  type: string
 availability_zones:
   description: |
     Top level response body element.
@@ -779,12 +791,6 @@ capability_vendor_name:
   type: string
 cidr:
   description: |
-    The CIDR.
-  in: body
-  required: true
-  type: string
-cidr_1:
-  description: |
     The IP block from which to allocate the network,
     in CIDR notation. For example, ``172.16.0.0/24`` or
     ``2001:DB8::/64``. This parameter is automatically set to a value
@@ -792,6 +798,7 @@ cidr_1:
   in: body
   required: true
   type: string
+  max_version: 2.50
 consistent_snapshot_support:
   description: |
     The consistency snapshot support.
@@ -1172,18 +1179,12 @@ identifier:
 ip_version:
   description: |
     The IP version of the network. A valid value is
-    ``4`` or ``6``.
-  in: body
-  required: true
-  type: integer
-ip_version_1:
-  description: |
-    The IP version of the network. A valid value is
     ``4`` or ``6``. This parameter is automatically set to a value
     determined by the network provider.
   in: body
   required: true
   type: integer
+  max_version: 2.50
 is_auto_deletable:
   description: |
     Defines if a share server can be deleted automatically by  the service.
@@ -1473,28 +1474,23 @@ name_request:
 network_type:
   description: |
     The network type. A valid value is ``VLAN``,
-    ``VXLAN``, ``GRE``, or ``flat``.
-  in: body
-  required: true
-  type: string
-network_type_1:
-  description: |
-    The network type. A valid value is ``VLAN``,
     ``VXLAN``, ``GRE``, or ``flat``. This parameter is automatically
     set to a value determined by the network provider.
   in: body
   required: true
   type: string
+  max_version: 2.50
 neutron_net_id:
   description: |
     The neutron network ID.
   in: body
   required: true
   type: string
+  max_version: 2.50
 neutron_net_id_request:
   description: |
     The UUID of a neutron network when setting up or updating a share
-    network with neutron.  Specify both a neutron network and a neutron
+    network subnet with neutron. Specify both a neutron network and a neutron
     subnet that belongs to that neutron network.
   in: body
   required: false
@@ -1505,10 +1501,11 @@ neutron_subnet_id:
   in: body
   required: true
   type: string
+  max_version: 2.50
 neutron_subnet_id_request:
   description: |
     The UUID of the neutron subnet when setting up or updating a share
-    network with neutron.  Specify both a neutron network and a neutron
+    network subnet with neutron. Specify both a neutron network and a neutron
     subnet that belongs to that neutron network.
   in: body
   required: false
@@ -2033,12 +2030,6 @@ security_service_user_request:
   type: string
 segmentation_id:
   description: |
-    The segmentation ID.
-  in: body
-  required: true
-  type: integer
-segmentation_id_1:
-  description: |
     The segmentation ID. This parameter is
     automatically set to a value determined by the network provider.
     For VLAN, this value is an integer from 1 to 4094.  For VXLAN,
@@ -2047,6 +2038,7 @@ segmentation_id_1:
   in: body
   required: true
   type: integer
+  max_version: 2.50
 service_binary_response:
   description: |
     The service binary name. Default is the base name
@@ -2263,6 +2255,13 @@ share_instance_id_1:
   in: body
   required: true
   type: string
+share_network_availability_zone_request:
+  description: |
+    The UUID or name of an availability zone for the share network subnet.
+  in: body
+  required: false
+  type: string
+  min_version: 2.51
 share_network_gateway:
   description: |
     The gateway of a share network.
@@ -2270,6 +2269,7 @@ share_network_gateway:
   required: true
   type: string
   min_version: 2.18
+  max_version: 2.50
 share_network_id:
   description: |
     The share network ID.
@@ -2313,6 +2313,7 @@ share_network_mtu:
   required: true
   type: integer
   min_version: 2.20
+  max_version: 2.50
 share_network_name:
   description: |
     The name of a share network that is associated
@@ -2324,6 +2325,118 @@ share_network_security_service_id:
   description: |
     The UUID of the security service to remove from
     the share network. For details, see the security service section.
+  in: body
+  required: true
+  type: string
+share_network_share_network_subnets:
+  description: |
+    A list of share network subnets that pertain to the related share network.
+  in: body
+  required: true
+  type: array
+  min_version: 2.51
+share_network_subnet_availability_zone:
+  description: |
+    The name of the availability zone that the share network subnet belongs to.
+  in: body
+  required: true
+  type: string
+share_network_subnet_cidr:
+  description: |
+    The IP block from which to allocate the network,
+    in CIDR notation. For example, ``172.16.0.0/24`` or
+    ``2001:DB8::/64``. This parameter is automatically set to a value
+    determined by the network provider.
+  in: body
+  required: true
+  type: string
+share_network_subnet_gateway:
+  description: |
+    The gateway of a share network subnet.
+  in: body
+  required: true
+  type: string
+share_network_subnet_id:
+  description: |
+    The UUID of the share network subnet.
+  in: body
+  required: true
+  type: string
+share_network_subnet_id_manage_server_body:
+  description: |
+    The UUID of the share network subnet that the share server pertain to.
+  in: body
+  required: true
+  type: string
+  min_version: 2.51
+share_network_subnet_id_manage_server_request:
+  description: |
+    The UUID of the share network subnet that the share server will pertain to.
+    If not specified, the share network's default subnet UUID will be used.
+  in: body
+  required: false
+  type: string
+  min_version: 2.51
+share_network_subnet_id_share_server_body:
+  description: |
+    The UUID of the share network subnet that the share server pertains to.
+  in: body
+  required: true
+  type: string
+  min_version: 2.51
+share_network_subnet_ip_version:
+  description: |
+    The IP version of the network. A valid value is
+    ``4`` or ``6``. This parameter is automatically set to a value
+    determined by the network provider.
+  in: body
+  required: true
+  type: integer
+share_network_subnet_mtu:
+  description: |
+    The MTU of a share network subnet.
+  in: body
+  required: true
+  type: string
+share_network_subnet_network_type:
+  description: |
+    The network type. A valid value is ``VLAN``,
+    ``VXLAN``, ``GRE``, or ``flat``. This parameter is automatically
+    set to a value determined by the network provider.
+  in: body
+  required: true
+  type: string
+share_network_subnet_neutron_net_id:
+  description: |
+    The neutron network ID.
+  in: body
+  required: true
+  type: string
+share_network_subnet_neutron_subnet_id:
+  description: |
+    The neutron subnet ID.
+  in: body
+  required: true
+  type: string
+share_network_subnet_segmentation_id:
+  description: |
+    The segmentation ID. This parameter is
+    automatically set to a value determined by the network provider.
+    For VLAN, this value is an integer from 1 to 4094.  For VXLAN,
+    this value is an integer from 1 to 16777215.  For GRE, this value
+    is an integer from 1 to 4294967295.
+  in: body
+  required: true
+  type: integer
+share_network_subnet_share_network_id:
+  description: |
+    The UUID of the share network that the share network subnet belongs to.
+  in: body
+  required: true
+  type: string
+share_network_subnet_share_network_name:
+  description: |
+    The name of the share network that the share network subnet belongs to.
   in: body
   required: true
   type: string

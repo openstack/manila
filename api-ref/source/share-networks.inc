@@ -32,6 +32,14 @@ A share network resource has these attributes:
 
 A share network resource can also have a user defined name and description.
 
+.. note::
+   Since API version 2.51, a share network is allowed to span multiple subnets
+   and the fields ``neutron_net_id``, ``neutron_subnet_id``, ``network_type``,
+   ``cidr``, ``ip_version``, ``gateway``, ``segmentation_id`` and ``mtu`` were
+   moved from the share network to the subnet. The share network subnet also
+   contains a an attribute called ``availability_zone``.
+
+
 List share networks
 ===================
 
@@ -128,11 +136,17 @@ Response parameters
    - updated_at: updated_at
    - gateway: share_network_gateway
    - mtu: share_network_mtu
+   - share_network_subnets: share_network_share_network_subnets
 
 Response example
 ----------------
 
 .. literalinclude:: samples/share-networks-list-detailed-response.json
+   :language: javascript
+
+.. include:: common/share-network-span-multiple-subnets-note.rst
+
+.. literalinclude:: samples/share-networks-list-detailed-response-with-subnets.json
    :language: javascript
 
 
@@ -184,11 +198,17 @@ Response parameters
    - updated_at: updated_at
    - gateway: share_network_gateway
    - mtu: share_network_mtu
+   - share_network_subnets: share_network_share_network_subnets
 
 Response example
 ----------------
 
 .. literalinclude:: samples/share-network-show-response.json
+   :language: javascript
+
+.. include:: common/share-network-span-multiple-subnets-note.rst
+
+.. literalinclude:: samples/share-network-show-response-with-subnets.json
    :language: javascript
 
 
@@ -214,6 +234,7 @@ Response codes
    - 403
    - 413
    - 422
+   - 500
 
 Request
 -------
@@ -225,12 +246,22 @@ Request
    - neutron_subnet_id: neutron_subnet_id_request
    - name: name_request
    - description: description_request
+   - availability_zone: share_network_availability_zone_request
 
 Request example
 ---------------
 
 .. literalinclude:: samples/share-network-create-request.json
    :language: javascript
+
+.. note::
+   Since API version 2.51, an ``availability_zone`` can be specified with the
+   share network creation request. In case you do not specify an avaiability
+   zone, this field will be set to null and the subnet created will be
+   considered a ``default`` subnet by the Shared File Systems service. You can
+   have only one default subnet per share network. If you attempt to create
+   another default subnet in a share network that already has a default one,
+   the Shared File Systems Service will deny the operation.
 
 Response parameters
 -------------------
@@ -241,21 +272,30 @@ Response parameters
    - project_id: project_id
    - neutron_net_id: neutron_net_id
    - neutron_subnet_id: neutron_subnet_id
-   - network_type: network_type_1
-   - segmentation_id: segmentation_id_1
-   - cidr: cidr_1
-   - ip_version: ip_version_1
+   - network_type: network_type
+   - segmentation_id: segmentation_id
+   - cidr: cidr
+   - ip_version: ip_version
    - name: name
    - description: description
    - created_at: created_at
    - updated_at: updated_at
    - gateway: share_network_gateway
    - mtu: share_network_mtu
+   - share_network_subnets: share_network_share_network_subnets
 
 Response example
 ----------------
 
 .. literalinclude:: samples/share-network-create-response.json
+   :language: javascript
+
+.. note::
+   Since API version 2.51, share networks are able to span multiple subnets, so
+   when creating a share network, a new subnet will automatically be created by
+   the Shared File Systems service and attached into the share network.
+
+.. literalinclude:: samples/share-network-create-response-with-subnets.json
    :language: javascript
 
 
@@ -316,11 +356,17 @@ Response parameters
    - updated_at: updated_at
    - gateway: share_network_gateway
    - mtu: share_network_mtu
+   - share_network_subnets: share_network_share_network_subnets
 
 Response example
 ----------------
 
 .. literalinclude:: samples/share-network-add-security-service-response.json
+   :language: javascript
+
+.. include:: common/share-network-span-multiple-subnets-note.rst
+
+.. literalinclude:: samples/share-network-add-security-service-response-with-subnets.json
    :language: javascript
 
 
@@ -388,6 +434,11 @@ Response example
 .. literalinclude:: samples/share-network-remove-security-service-response.json
    :language: javascript
 
+.. include:: common/share-network-span-multiple-subnets-note.rst
+
+.. literalinclude:: samples/share-network-remove-security-service-response-with-subnets.json
+   :language: javascript
+
 
 Update share network
 ====================
@@ -398,6 +449,10 @@ Updates a share network.
 
 Note that if the share network is used by any share server, you can
 update only the ``name`` and ``description`` attributes.
+
+.. note::
+   Since API version 2.51, can only able to update the ``neutron_net_id``
+   and ``neutron_subnet_id`` of the default subnet.
 
 Response codes
 --------------
@@ -458,6 +513,11 @@ Response example
 .. literalinclude:: samples/share-network-update-response.json
    :language: javascript
 
+.. include:: common/share-network-span-multiple-subnets-note.rst
+
+.. literalinclude:: samples/share-network-update-response-with-subnets.json
+   :language: javascript
+
 
 Delete share network
 ====================
@@ -471,6 +531,9 @@ Preconditions
 - You cannot delete a share network if it has shares created/exported on it.
 
 - You cannot delete a share network if it has share groups created on it.
+
+- You cannot delete a share network if it has more than one share network
+  subnet on it (since API version 2.51).
 
 Response codes
 --------------
