@@ -35,7 +35,22 @@ Python client
 
 https://opendev.org/openstack/python-manilaclient.git
 
+* Documentation for the project can be found at:
+
+https://docs.openstack.org/manila/latest/
+
 * Release notes for the project can be found at:
 
 https://docs.openstack.org/releasenotes/manila/
 
+* Source for the project:
+
+https://opendev.org/openstack/manila
+
+* Bugs:
+
+https://bugs.launchpad.net/manila
+
+* Blueprints:
+
+https://blueprints.launchpad.net/manila
