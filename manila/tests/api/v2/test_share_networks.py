@@ -813,6 +813,9 @@ class ShareNetworkAPITest(test.TestCase):
         self.mock_object(
             self.controller, '_share_network_subnets_contain_share_servers',
             mock.Mock(return_value=False))
+        self.mock_object(db_api, 'share_network_subnet_get_default_subnet',
+                         mock.Mock(return_value=fake_share_network_subnet))
+        self.mock_object(db_api, 'share_network_subnet_update')
 
         body = {share_networks.RESOURCE_NAME: {'neutron_subnet_id':
                                                'new subnet'}}
@@ -825,6 +828,49 @@ class ShareNetworkAPITest(test.TestCase):
                               self.req,
                               share_nw,
                               body)
+        db_api.share_network_subnet_get_default_subnet.assert_called_once_with(
+            self.context, share_nw)
+        db_api.share_network_subnet_update.assert_called_once_with(
+            self.context, fake_share_network_subnet['id'],
+            body['share_network'])
+
+    @ddt.data((webob_exc.HTTPBadRequest, fake_share_network_subnet, None,
+               'new subnet'),
+              (webob_exc.HTTPBadRequest, None, 'neutron net', None))
+    @ddt.unpack
+    def test_update_default_subnet_errors(self, exception_to_raise,
+                                          get_default_subnet_return,
+                                          neutron_net_id, neutron_subnet_id):
+        share_nw = 'fake network id'
+        self.mock_object(db_api, 'share_network_get',
+                         mock.Mock(return_value=fake_share_network))
+        self.mock_object(
+            self.controller, '_share_network_subnets_contain_share_servers',
+            mock.Mock(return_value=False))
+        self.mock_object(db_api, 'share_network_subnet_get_default_subnet',
+                         mock.Mock(return_value=get_default_subnet_return))
+
+        if get_default_subnet_return:
+            fake_subnet = copy.deepcopy(fake_share_network_subnet)
+            fake_subnet['neutron_net_id'] = None
+            fake_subnet['neutron_subnet_id'] = None
+            db_api.share_network_subnet_get_default_subnet.return_value = (
+                fake_subnet)
+        body = {
+            share_networks.RESOURCE_NAME: {
+                'neutron_net_id': neutron_net_id,
+                'neutron_subnet_id': neutron_subnet_id
+            }
+        }
+
+        self.assertRaises(exception_to_raise,
+                          self.controller.update,
+                          self.req,
+                          share_nw,
+                          body)
+
+        db_api.share_network_subnet_get_default_subnet.assert_called_once_with(
+            self.context, share_nw)
 
     @ddt.data(*set(("1.0", "2.25", "2.26", api_version._MAX_API_VERSION)))
     def test_action_add_security_service(self, microversion):

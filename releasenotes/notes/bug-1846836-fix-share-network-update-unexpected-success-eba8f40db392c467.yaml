@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed unexpected behavior when updating a share network's `neutron_net_id`
+    or `neutron_subnet_id`. Now, Manila does not allow updating a share
+    network that does not contain a default subnet.
