@@ -77,7 +77,7 @@ each back end.
    netapp_cluster_mode_driver
    emc_isilon_driver
    emc_vnx_driver
-   emc_unity_driver
+   ../configuration/shared-file-systems/drivers/dell-emc-unity-driver
    generic_driver
    glusterfs_driver
    glusterfs_native_driver
