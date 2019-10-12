@@ -1,0 +1,4 @@
+---
+features:
+  - Dell EMC Unity Manila driver now supports manage/unmange share server,
+    share instance and share snapshot.

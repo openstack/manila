@@ -138,6 +138,7 @@ share_server:
       share_server_name: '78fd845f-8e7d-487f-bfde-051d83e78103'
     network_allocations: *network_allocations_prop
     id: '78fd845f-8e7d-487f-bfde-051d83e78103'
+    identifier: 'c2e48947-98ed-4eae-999b-fa0b83731dfd'
 
 share_server__no_share_server_name:
   _type: 'share_server'
@@ -170,6 +171,25 @@ cifs_share:
     export_locations: []
     is_public: False
 
+managed_cifs_share:
+  _type: 'share'
+  _properties: &managed_cifs_share_share_prop
+    share_id: '708e753c-aacb-411f-9c8a-8b8175da4e73'
+    availability_zone_id: 'de628fb6-1c99-41f6-a06a-adb61ff693b5'
+    share_network_id: '232d8218-2743-41d1-832b-4194626e691e'
+    share_server_id: '78fd845f-8e7d-487f-bfde-051d83e78103'
+    id: '716100cc-e0b4-416b-ac27-d38dd019330d'
+    size: 10
+    user_id: '19bbda71b578471a93363653dcb4c61d'
+    status: 'creating'
+    share_type_id: '57679eab-3e67-4052-b180-62b609670e93'
+    host: 'openstack@VNX#Pool_2'
+    display_name: 'cifs_share'
+    share_proto: 'CIFS'
+    export_locations: [path: '\\10.0.0.1\bd23121f-hg4e-432c-12cd2c5-bb93dfghe212']
+    is_public: False
+    snapshot_support: False
+
 nfs_share:
   _type: 'share'
   _properties: &nfs_share_prop
@@ -185,8 +205,27 @@ nfs_share:
     host: 'openstack@VNX#Pool_2'
     display_name: 'nfs_share'
     share_proto: 'NFS'
-    export_locations: []
+    export_locations: null
     is_public: False
+
+managed_nfs_share:
+  _type: 'share'
+  _properties: &managed_nfs_share_prop
+    share_id: '12eb3777-7008-4721-8243-422507db8f9d'
+    availability_zone_id: 'de628fb6-1c99-41f6-a06a-adb61ff693b5'
+    share_network_id: '232d8218-2743-41d1-832b-4194626e691e'
+    share_server_id: '78fd845f-8e7d-487f-bfde-051d83e78103'
+    id: 'cb532599-8dc6-4c3e-bb21-74ea54be566c'
+    size: 9
+    user_id: '19bbda71b578471a93363653dcb4c61d'
+    status: 'creating'
+    share_type_id: '57679eab-3e67-4052-b180-62b609670e93'
+    host: 'openstack@VNX#Pool_2'
+    display_name: 'nfs_share'
+    share_proto: 'NFS'
+    export_locations: [path: '172.168.201.201:/ad1caddf-097e-462c-8ac6-5592ed6fe22f']
+    is_public: False
+    snapshot_support: False
 
 dhss_false_cifs_share:
   _type: 'share'
@@ -285,10 +324,12 @@ snapshot:
     share_instance_id: '27e4625e-c336-4749-85bc-634216755fbc'
     share:
       share_proto: 'CIFS'
+      id: 's24r-3fgw2-g039ef-j029f0-nrver'
     snapshot_id: '345476cc-32ab-4565-ba88-e4733b7ffa0e'
     progress: '0%'
     id: 'ab411797-b1cf-4035-bf14-8771a7bf1805'
     share_id: '27e4625e-c336-4749-85bc-634216755fbc'
+    provider_location: '23047-ef2344-4563cvw-r4323cwed'
 
 cifs_rw_access:
   _type: 'access'

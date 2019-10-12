@@ -145,3 +145,59 @@ class EMCShareFrameworkTestCase(test.TestCase):
         elif value == 'driver_handles_share_servers':
             return True
         return None
+
+    def test_support_manage(self):
+        share = mock.Mock()
+        driver_options = mock.Mock()
+        share_server = mock.Mock()
+        snapshot = mock.Mock()
+        context = mock.Mock()
+        identifier = mock.Mock()
+        self.driver.plugin = mock.Mock()
+        self.driver.manage_existing_support = True
+        self.driver.manage_existing_with_server_support = True
+        self.driver.manage_existing_snapshot_support = True
+        self.driver.manage_snapshot_with_server_support = True
+        self.driver.manage_server_support = True
+        self.driver.manage_existing(share, driver_options)
+        self.driver.manage_existing_with_server(share, driver_options,
+                                                share_server)
+        self.driver.manage_existing_snapshot(snapshot, driver_options)
+        self.driver.manage_existing_snapshot_with_server(snapshot,
+                                                         driver_options,
+                                                         share_server)
+        self.driver.manage_server(context, share_server, identifier,
+                                  driver_options)
+
+    def test_not_support_manage(self):
+        share = mock.Mock()
+        driver_options = {}
+        share_server = mock.Mock()
+        snapshot = mock.Mock()
+        identifier = mock.Mock()
+        self.driver.plugin = mock.Mock()
+        result = self.driver.manage_existing(share, driver_options)
+        self.assertIsInstance(result, NotImplementedError)
+        result = self.driver.manage_existing_with_server(
+            share, driver_options, share_server)
+        self.assertIsInstance(result, NotImplementedError)
+        result = self.driver.manage_existing_snapshot(snapshot, driver_options)
+        self.assertIsInstance(result, NotImplementedError)
+        result = self.driver.manage_existing_snapshot_with_server(
+            snapshot, driver_options, share_server)
+        self.assertIsInstance(result, NotImplementedError)
+        result = self.driver.manage_server(None, share_server, identifier,
+                                           driver_options)
+        self.assertIsInstance(result, NotImplementedError)
+
+    def unmanage_manage(self):
+        share = mock.Mock()
+        server_details = {}
+        share_server = mock.Mock()
+        snapshot = mock.Mock()
+        self.driver.plugin = mock.Mock(share)
+        self.driver.unmanage(share)
+        self.driver.unmanage_with_server(share, share_server)
+        self.driver.unmanage_snapshot(snapshot)
+        self.driver.unmanage_snapshot_with_server(snapshot, share_server)
+        self.driver.unmanage_server(server_details)

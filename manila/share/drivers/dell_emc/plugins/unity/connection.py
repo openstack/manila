@@ -41,9 +41,10 @@ from manila import utils
      7.0.0 - Supports DHSS=False mode
      7.0.1 - Fix parsing management IPv6 address
      7.0.2 - Bugfix: failed to delete CIFS share if wrong access was set
+     8.0.0 - Supports manage/unmanage share server/share/snapshot
 """
 
-VERSION = "7.0.2"
+VERSION = "8.0.0"
 
 LOG = log.getLogger(__name__)
 SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
@@ -100,6 +101,12 @@ class UnityStorageConnection(driver.StorageConnection):
         self.ipv6_implemented = True
         self.revert_to_snap_support = True
         self.shrink_share_support = True
+        self.manage_existing_support = True
+        self.manage_existing_with_server_support = True
+        self.manage_existing_snapshot_support = True
+        self.manage_snapshot_with_server_support = True
+        self.manage_server_support = True
+        self.get_share_server_network_info_support = True
 
         # props from super class.
         self.driver_handles_share_servers = (True, False)
@@ -180,6 +187,151 @@ class UnityStorageConnection(driver.StorageConnection):
     def check_for_setup_error(self):
         """Check for setup error."""
 
+    def manage_existing(self, share, driver_options, share_server=None):
+        """Manages a share that exists on backend.
+
+        :param share: Share that will be managed.
+        :param driver_options: Driver-specific options provided by admin.
+        :param share_server: Share server name provided by admin in DHSS=True.
+        :returns: Returns a dict with share size and export location.
+        """
+        export_locations = share['export_locations']
+        if not export_locations:
+            message = ("Failed to manage existing share: %s, missing "
+                       "export locations." % share['id'])
+            raise exception.ManageInvalidShare(reason=message)
+
+        try:
+            share_size = int(driver_options.get("size", 0))
+        except (ValueError, TypeError):
+            msg = _("The driver options' size to manage the share "
+                    "%(share_id)s, should be an integer, in format "
+                    "driver-options size=<SIZE>. Value specified: "
+                    "%(size)s.") % {'share_id': share['id'],
+                                    'size': driver_options.get("size")}
+            raise exception.ManageInvalidShare(reason=msg)
+
+        if not share_size:
+            msg = _("Share %(share_id)s has no specified size. "
+                    "Using default value 1, set size in driver options if you "
+                    "want.") % {'share_id': share['id']}
+            LOG.warning(msg)
+            share_size = 1
+
+        share_id = unity_utils.get_share_backend_id(share)
+        backend_share = self.client.get_share(share_id,
+                                              share['share_proto'])
+        if not backend_share:
+            message = ("Could not find the share in backend, please make sure "
+                       "the export location is right.")
+            raise exception.ManageInvalidShare(reason=message)
+
+        # Check the share server when in DHSS=true mode
+        if share_server:
+            backend_share_server = self._get_server_name(share_server)
+            if not backend_share_server:
+                message = ("Could not find the backend share server: %s, "
+                           "please make sure that share server with the "
+                           "specified name exists in the backend.",
+                           share_server)
+                raise exception.BadConfigurationException(message)
+        LOG.info("Share %(shr_path)s is being managed with ID "
+                 "%(shr_id)s.",
+                 {'shr_path': share['export_locations'][0]['path'],
+                  'shr_id': share['id']})
+        # export_locations was not changed, return original value
+        return {"size": share_size, 'export_locations': {
+            'path': share['export_locations'][0]['path']}}
+
+    def manage_existing_with_server(self, share, driver_options, share_server):
+        return self.manage_existing(share, driver_options, share_server)
+
+    def manage_existing_snapshot(self, snapshot, driver_options,
+                                 share_server=None):
+        """Brings an existing snapshot under Manila management."""
+        try:
+            snapshot_size = int(driver_options.get("size", 0))
+        except (ValueError, TypeError):
+            msg = _("The size in driver options to manage snapshot "
+                    "%(snap_id)s should be an integer, in format "
+                    "driver-options size=<SIZE>. Value passed: "
+                    "%(size)s.") % {'snap_id': snapshot['id'],
+                                    'size': driver_options.get("size")}
+            raise exception.ManageInvalidShareSnapshot(reason=msg)
+
+        if not snapshot_size:
+            msg = _("Snapshot %(snap_id)s has no specified size. "
+                    "Use default value 1, set size in driver options if you "
+                    "want.") % {'snap_id': snapshot['id']}
+            LOG.info(msg)
+            snapshot_size = 1
+        provider_location = snapshot.get('provider_location')
+        snap = self.client.get_snapshot(provider_location)
+        if not snap:
+            message = ("Could not find a snapshot in the backend with "
+                       "provider_location: %s, please make sure "
+                       "the snapshot exists in the backend."
+                       % provider_location)
+            raise exception.ManageInvalidShareSnapshot(reason=message)
+
+        LOG.info("Snapshot %(provider_location)s in Unity will be managed "
+                 "with ID %(snapshot_id)s.",
+                 {'provider_location': snapshot.get('provider_location'),
+                  'snapshot_id': snapshot['id']})
+        return {"size": snapshot_size, "provider_location": provider_location}
+
+    def manage_existing_snapshot_with_server(self, snapshot, driver_options,
+                                             share_server):
+        return self.manage_existing_snapshot(snapshot, driver_options,
+                                             share_server)
+
+    def manage_server(self, context, share_server, identifier, driver_options):
+        """Manage the share server and return compiled back end details.
+
+        :param context: Current context.
+        :param share_server: Share server model.
+        :param identifier: A driver-specific share server identifier
+        :param driver_options: Dictionary of driver options to assist managing
+            the share server
+        :return: Identifier and dictionary with back end details to be saved
+            in the database.
+
+        Example::
+
+            'my_new_server_identifier',{'server_name': 'my_old_server'}
+
+        """
+        nas_server = self.client.get_nas_server(identifier)
+        if not nas_server:
+            message = ("Could not find the backend share server by server "
+                       "name: %s, please make sure  the share server is "
+                       "existing in the backend." % identifier)
+            raise exception.ManageInvalidShare(reason=message)
+        return identifier, driver_options
+
+    def get_share_server_network_info(
+            self, context, share_server, identifier, driver_options):
+        """Obtain network allocations used by share server.
+
+        :param context: Current context.
+        :param share_server: Share server model.
+        :param identifier: A driver-specific share server identifier
+        :param driver_options: Dictionary of driver options to assist managing
+            the share server
+        :return: The containing IP address allocated in the backend, Unity
+            only supports single IP address
+        Example::
+
+            ['10.10.10.10'] or ['fd11::2000']
+
+        """
+        containing_ips = []
+        nas_server = self.client.get_nas_server(identifier)
+        if nas_server:
+            for file_interface in nas_server.file_interface:
+                containing_ips.append(file_interface.ip_address)
+        return containing_ips
+
     def create_share(self, context, share, share_server=None):
         """Create a share and export it based on protocol used."""
         share_name = share['id']
@@ -243,8 +395,8 @@ class UnityStorageConnection(driver.StorageConnection):
                        {'server': server_name, 'share': share_name})
             LOG.exception(message)
             raise exception.EMCUnityError(err=message)
-
-        backend_snap = self.client.create_snap_of_snap(snapshot['id'],
+        snapshot_id = unity_utils.get_snapshot_id(snapshot)
+        backend_snap = self.client.create_snap_of_snap(snapshot_id,
                                                        share_name)
 
         locations = None
@@ -263,7 +415,7 @@ class UnityStorageConnection(driver.StorageConnection):
 
     def delete_share(self, context, share, share_server=None):
         """Delete a share."""
-        share_name = share['id']
+        share_name = unity_utils.get_share_backend_id(share)
         try:
             backend_share = self.client.get_share(share_name,
                                                   share['share_proto'])
@@ -284,7 +436,8 @@ class UnityStorageConnection(driver.StorageConnection):
             self.client.delete_filesystem(filesystem)
 
     def extend_share(self, share, new_size, share_server=None):
-        backend_share = self.client.get_share(share['id'],
+        share_id = unity_utils.get_share_backend_id(share)
+        backend_share = self.client.get_share(share_id,
                                               share['share_proto'])
 
         if not self._is_share_from_snapshot(backend_share):
@@ -305,7 +458,7 @@ class UnityStorageConnection(driver.StorageConnection):
         :param share_server: Data structure with share server information.
             Not used by this driver.
         """
-        share_id = share['id']
+        share_id = unity_utils.get_share_backend_id(share)
         backend_share = self.client.get_share(share_id,
                                               share['share_proto'])
         if self._is_share_from_snapshot(backend_share):
@@ -322,7 +475,9 @@ class UnityStorageConnection(driver.StorageConnection):
 
     def create_snapshot(self, context, snapshot, share_server=None):
         """Create snapshot from share."""
-        share_name = snapshot['share_id']
+        share = snapshot['share']
+        share_name = unity_utils.get_share_backend_id(
+            share) if share else snapshot['share_id']
         share_proto = snapshot['share']['share_proto']
         backend_share = self.client.get_share(share_name, share_proto)
 
@@ -332,10 +487,12 @@ class UnityStorageConnection(driver.StorageConnection):
         else:
             self.client.create_snapshot(backend_share.filesystem,
                                         snapshot_name)
+        return {'provider_location': snapshot_name}
 
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Delete a snapshot."""
-        snap = self.client.get_snapshot(snapshot['id'])
+        snapshot_id = unity_utils.get_snapshot_id(snapshot)
+        snap = self.client.get_snapshot(snapshot_id)
         self.client.delete_snapshot(snap)
 
     def update_access(self, context, share, access_rules, add_rules,
@@ -360,7 +517,7 @@ class UnityStorageConnection(driver.StorageConnection):
 
     def clear_access(self, share, white_list=None):
         share_proto = share['share_proto'].upper()
-        share_name = share['id']
+        share_name = unity_utils.get_share_backend_id(share)
         if share_proto == 'CIFS':
             self.client.cifs_clear_access(share_name, white_list)
         elif share_proto == 'NFS':
@@ -396,7 +553,7 @@ class UnityStorageConnection(driver.StorageConnection):
 
     def ensure_share(self, context, share, share_server):
         """Ensure that the share is exported."""
-        share_name = share['id']
+        share_name = unity_utils.get_share_backend_id(share)
         share_proto = share['share_proto']
 
         backend_share = self.client.get_share(share_name, share_proto)
@@ -641,8 +798,9 @@ class UnityStorageConnection(driver.StorageConnection):
         if not share_server:
             msg = _('Share server not provided.')
             raise exception.InvalidInput(reason=msg)
-
-        server_name = share_server.get(
+        # Try to get share server name from property 'identifier' first in
+        # case this is managed share server.
+        server_name = share_server.get('identifier') or share_server.get(
             'backend_details', {}).get('share_server_name')
 
         if server_name is None:
@@ -734,4 +892,5 @@ class UnityStorageConnection(driver.StorageConnection):
     def revert_to_snapshot(self, context, snapshot, share_access_rules,
                            snapshot_access_rules, share_server=None):
         """Reverts a share (in place) to the specified snapshot."""
-        return self.client.restore_snapshot(snapshot['id'])
+        snapshot_id = unity_utils.get_snapshot_id(snapshot)
+        return self.client.restore_snapshot(snapshot_id)
