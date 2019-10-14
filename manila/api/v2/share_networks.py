@@ -272,10 +272,35 @@ class ShareNetworkController(wsgi.Controller):
                     'neutron_subnet_id' in update_values):
                 subnet = db_api.share_network_subnet_get_default_subnet(
                     context, id)
-                if subnet:
-                    db_api.share_network_subnet_update(context,
-                                                       subnet['id'],
-                                                       update_values)
+                if not subnet:
+                    msg = _("The share network %(id)s does not have a "
+                            "'default' subnet that serves all availability "
+                            "zones, so subnet details "
+                            "('neutron_net_id', 'neutron_subnet_id') cannot "
+                            "be updated.") % {'id': id}
+                    raise exc.HTTPBadRequest(explanation=msg)
+
+                # NOTE(silvacarlose): If the default share network subnet have
+                # the fields neutron_net_id and neutron_subnet_id set as None,
+                # we need to make sure that in the update request the user is
+                # passing both parameter since a share network subnet must
+                # have both fields filled or empty.
+                subnet_neutron_net_and_subnet_id_are_empty = (
+                    subnet['neutron_net_id'] is None
+                    and subnet['neutron_subnet_id'] is None)
+                update_values_without_neutron_net_or_subnet = (
+                    update_values.get('neutron_net_id') is None or
+                    update_values.get('neutron_subnet_id') is None)
+                if (subnet_neutron_net_and_subnet_id_are_empty
+                        and update_values_without_neutron_net_or_subnet):
+                    msg = _(
+                        "To update the share network %(id)s you need to "
+                        "specify both 'neutron_net_id' and "
+                        "'neutron_subnet_id'.") % {'id': id}
+                    raise webob.exc.HTTPBadRequest(explanation=msg)
+                db_api.share_network_subnet_update(context,
+                                                   subnet['id'],
+                                                   update_values)
             share_network = db_api.share_network_update(context,
                                                         id,
                                                         update_values)
