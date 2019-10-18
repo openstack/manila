@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed an issue in NetApp driver share replica periodic check that
+    erroneously set a replica state to 'error'. In this routine, a SnapMirror
+    resync operation was being triggered while the replica data transfering is
+    still in progress, receiving an error from the storage side. The driver now
+    skips resync operation for all in progress SnapMirror relationship status.
+
