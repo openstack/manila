@@ -934,7 +934,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._get_vserver_peers.assert_called_once_with(
             vserver=fake.VSERVER1
         )
-        self.library._delete_vserver_peer.asser_called_once_with(
+        self.library._delete_vserver_peer.assert_called_once_with(
             fake.VSERVER_PEER[0]['vserver'],
             fake.VSERVER_PEER[0]['peer-vserver']
         )
