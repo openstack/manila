@@ -190,6 +190,9 @@ unity_base: &unity_base
 test_connect: &test_connect
   unity: *unity_base
 
+test_connect_with_ipv6: &test_connect_with_ipv6
+  unity: *unity_base
+
 test_dhss_false_connect: &test_dhss_false_connect
   unity: *unity_base
 

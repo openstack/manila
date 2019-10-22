@@ -38,6 +38,11 @@ class TestConnection(test.TestCase):
     def test_connect(self, connection):
         connection.connect(res_mock.FakeEMCShareDriver(dhss=True), None)
 
+    @res_mock.patch_connection_init
+    def test_connect_with_ipv6(self, connection):
+        connection.connect(res_mock.FakeEMCShareDriverIPv6(
+            dhss=True), None)
+
     @res_mock.patch_connection
     def test_connect__invalid_pool_configuration(self, connection):
         f = connection.client.system.get_pool
