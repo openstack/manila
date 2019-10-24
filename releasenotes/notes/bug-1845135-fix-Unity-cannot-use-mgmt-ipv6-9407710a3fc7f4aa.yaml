@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed an issue with the Dell EMC Unity driver to work with
+    a management IP configured in IPv6 format.
