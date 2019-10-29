@@ -38,8 +38,10 @@ from manila import utils
     1.0.0 - Initial version
     2.0.0 - Implement IPv6 support
     3.0.0 - Rebranding to PowerMax
+    3.1.0 - Access Host details prevents a read-only share mounts
+            (bug #1845147)
 """
-VERSION = "3.0.0"
+VERSION = "3.1.0"
 
 LOG = log.getLogger(__name__)
 

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Manila VNX fix ensuring that hosts that are given access to a share
+    i.e read only, will always precede '-0.0.0.0/0.0.0.0'.  Any host after
+    this string will be denied access.
