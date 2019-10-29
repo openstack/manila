@@ -882,3 +882,20 @@ class TestConnection(test.TestCase):
         self.assertRaises(exception.ManageInvalidShare,
                           connection.manage_existing_with_server,
                           share, driver_options, share_server)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_get_default_filter_function_disable_report(self, connection,
+                                                        mocked_input):
+        expected = None
+        actual = connection.get_default_filter_function()
+        self.assertEqual(expected, actual)
+
+    @res_mock.mock_manila_input
+    @res_mock.patch_connection
+    def test_get_default_filter_function_enable_report(self, connection,
+                                                       mocked_input):
+        expected = "share.size >= 3"
+        connection.report_default_filter_function = True
+        actual = connection.get_default_filter_function()
+        self.assertEqual(expected, actual)

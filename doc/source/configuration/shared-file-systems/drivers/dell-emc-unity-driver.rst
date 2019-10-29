@@ -135,6 +135,7 @@ for the Unity driver.
     unity_ethernet_ports = <comma separated ports list>
     driver_handles_share_servers = True/False
     unity_share_server = <name of NAS server in Unity system>
+    report_default_filter_function = True/False
 
 - `emc_share_backend`
     The plugin name. Set it to `unity` for the Unity driver.
@@ -191,6 +192,13 @@ for the Unity driver.
 - `unity_share_server`
     One of NAS server names in Unity, it is used for share creation when
     the driver is in `DHSS=False` mode.
+
+- `report_default_filter_function`
+    Whether or not report default filter function. Default value is False.
+    However, this value will be changed to True in a future release to ensure
+    compliance with design expectations in Manila. So we recommend always
+    setting this option in your deployment to True or False per your desired
+    behavior.
 
 Restart of :term:`manila-share` service is needed for the configuration
 changes to take effect.
@@ -444,6 +452,22 @@ balanced ports per storage processor. For example:
    # Use eth2 from both SPs
    unity_ethernet_ports = spa_eth2, spb_eth2
 
+
+Default filter function
+-----------------------
+
+Unity does not support the file system creation with size smaller than 3GB, if
+the size of share user create is smaller than 3GB, Unity driver will supplement
+the size to 3GB in Unity.
+
+Unity driver implemented the get_default_filter_function API to report the
+default filter function, if the share size is smaller than 3GB, Manila will
+not schedule the share creation to Unity backend.
+
+Unity driver provides an option ``report_default_filter_function`` to disable
+or enable the filter function reporting, the default value is disabled.
+
+
 Restrictions
 ------------
 
@@ -483,6 +507,7 @@ Following driver features are implemented in the plugin.
   parameters.
 * teardown_server: Tear down the share server.
 * revert_to_snapshot: Revert a share to a snapshot.
+* get_default_filter_function: Report a default filter function.
 
 
 Driver options
