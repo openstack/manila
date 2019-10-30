@@ -31,13 +31,15 @@ class Action(object):
     UPDATE = ('005', _('update'))
     REVERT_TO_SNAPSHOT = ('006', _('revert to snapshot'))
     DELETE = ('007', _('delete'))
+    EXTEND = ('008', _('extend'))
     ALL = (ALLOCATE_HOST,
            CREATE,
            DELETE_ACCESS_RULES,
            PROMOTE,
            UPDATE,
            REVERT_TO_SNAPSHOT,
-           DELETE)
+           DELETE,
+           EXTEND)
 
 
 class Detail(object):
@@ -72,6 +74,12 @@ class Detail(object):
     FILTER_JSON = ('012', FILTER_MSG % 'Json')
     FILTER_RETRY = ('013', FILTER_MSG % 'Retry')
     FILTER_REPLICATION = ('014', FILTER_MSG % 'ShareReplication')
+    DRIVER_FAILED_EXTEND = (
+        '015',
+        _("Share Driver failed to extend share, The share status has been "
+          "set to extending_error. This action cannot be re-attempted until "
+          "the status has been rectified. Contact your administrator to "
+          "determine the cause of this failure."))
 
     ALL = (UNKNOWN_ERROR,
            NO_VALID_HOST,
@@ -86,7 +94,8 @@ class Detail(object):
            FILTER_IGNORE,
            FILTER_JSON,
            FILTER_RETRY,
-           FILTER_REPLICATION)
+           FILTER_REPLICATION,
+           DRIVER_FAILED_EXTEND)
 
     # Exception and detail mappings
     EXCEPTION_DETAIL_MAPPINGS = {
