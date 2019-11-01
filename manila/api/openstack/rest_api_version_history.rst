@@ -282,8 +282,8 @@ user documentation.
   ``description`` and/or ``share_type_access:is_public`` fields of the share
   type by the update share type API.
 
-2.51
-----
+2.51 (Maximum in Train)
+-----------------------
   Added to the service the possibility to have multiple subnets per share
   network, each of them associated to a different AZ. It is also possible to
   configure a default subnet that spans all availability zones.
