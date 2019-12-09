@@ -245,6 +245,14 @@ class Service(service.Service):
 
     def report_state(self):
         """Update the state of this service in the datastore."""
+        if not self.manager.is_service_ready():
+            # NOTE(haixin): If the service is still initializing or failed to
+            #               intialize.
+            LOG.error('Manager for service %s is not ready yet, skipping state'
+                      ' update routine. Service will appear "down".',
+                      self.binary)
+            return
+
         ctxt = context.get_admin_context()
         state_catalog = {}
         try:

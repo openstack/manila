@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    This bug fix avoids request failures while drivers are still initializing
+    or when they fail to initialize by reporting the share service as down
+    until the driver has been initialized.
