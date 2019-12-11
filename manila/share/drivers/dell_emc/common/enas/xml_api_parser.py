@@ -56,7 +56,7 @@ class XMLAPIParser(object):
 
         events = ("start", "end")
 
-        context = etree.iterparse(six.BytesIO(xml.encode('utf-8')),
+        context = etree.iterparse(six.BytesIO(xml),
                                   events=events)
         for action, elem in context:
             self.tag = self._remove_ns(elem.tag)

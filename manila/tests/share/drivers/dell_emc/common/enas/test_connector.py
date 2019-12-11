@@ -46,7 +46,7 @@ class XMLAPIConnectorTestData(object):
             'user=' + fakes.FakeData.emc_nas_login
             + '&password=' + fakes.FakeData.emc_nas_password
             + '&Login=Login'
-        )
+        ).encode()
 
     @staticmethod
     def req_url_encode():
