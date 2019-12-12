@@ -134,7 +134,6 @@ Run the unit tests with::
 
 Example::
 
-    tox -epy27
     tox -epy36
 
 See :doc:`unit_tests` for more details.
@@ -146,20 +145,12 @@ Manually installing and using the virtualenv
 
 You can also manually install the virtual environment::
 
-  tox -epy27 --notest
-
-or::
-
   tox -epy36 --notest
 
 This will install all of the Python packages listed in the
 ``requirements.txt`` file into your virtualenv.
 
 To activate the Manila virtualenv you can run::
-
-     $ source .tox/py27/bin/activate
-
-or::
 
      $ source .tox/py36/bin/activate
 

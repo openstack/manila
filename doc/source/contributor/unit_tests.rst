@@ -17,9 +17,9 @@ This will create a virtual environment, load all the packages from
 test-requirements.txt and run all unit tests as well as run flake8 and hacking
 checks against the code.
 
-You may run individual test targets, for example only py27 tests, by running::
+You may run individual test targets, for example only unit tests, by running::
 
-    tox -e py27
+    tox -e py3
 
 Note that you can inspect the tox.ini file to get more details on the available
 options and what the test run does by default.
@@ -31,17 +31,17 @@ class, or method that contains test code.
 
 To run the tests in the ``manila/tests/scheduler`` directory::
 
-    tox -epy27 -- manila.tests.scheduler
+    tox -epy3 -- manila.tests.scheduler
 
 To run the tests in the `ShareManagerTestCase` class in
 ``manila/tests/share/test_manager.py``::
 
-    tox -epy27 -- manila.tests.share.test_manager.ShareManagerTestCase
+    tox -epy3 -- manila.tests.share.test_manager.ShareManagerTestCase
 
 To run the `ShareManagerTestCase::test_share_manager_instance` test method in
 ``manila/tests/share/test_manager.py``::
 
-  tox -epy27 -- manila.tests.share.test_manager.ShareManagerTestCase.test_share_manager_instance
+  tox -epy3 -- manila.tests.share.test_manager.ShareManagerTestCase.test_share_manager_instance
 
 For more information on these options and details about stestr, please see the
 `stestr documentation <http://stestr.readthedocs.io/en/latest/MANUAL.html>`_.

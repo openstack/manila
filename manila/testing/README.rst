@@ -44,7 +44,6 @@ so the only package you install is ``tox`` itself::
 Run the unit tests by doing::
 
     tox -e py3
-    tox -e py27
 
 Tests and assertRaises
 ----------------------

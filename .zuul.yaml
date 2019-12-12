@@ -3,8 +3,7 @@
       - publish-openstack-docs-pti
       - openstack-cover-jobs
       - openstack-lower-constraints-jobs
-      - openstack-python-jobs
-      - openstack-python3-train-jobs
+      - openstack-python3-ussuri-jobs
       - check-requirements
       - release-notes-jobs-python3
       - periodic-stable-jobs
@@ -32,8 +31,6 @@
         - manila-tempest-dsvm-glusterfs-native:
             voting: false
         - manila-tempest-minimal-dsvm-dummy
-        # Through the Train release we need to keep some python2 coverage.
-        - manila-tempest-minimal-dsvm-dummy-py2
         - manila-tempest-minimal-dsvm-lvm
         - manila-tempest-minimal-lvm-ipv6-only
         - manila-grenade:
@@ -323,18 +320,6 @@
     parent: manila-tempest-base
     run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy/run.yaml
     post-run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy/post.yaml
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/manila
-      - openstack/manila-tempest-plugin
-      - openstack/python-manilaclient
-      - openstack/tempest
-
-- job:
-    name: manila-tempest-minimal-dsvm-dummy-py2
-    parent: manila-tempest-base
-    run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy-py2/run.yaml
-    post-run: playbooks/legacy/manila-tempest-minimal-dsvm-dummy-py2/post.yaml
     required-projects:
       - openstack/devstack-gate
       - openstack/manila

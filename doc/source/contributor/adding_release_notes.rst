@@ -70,7 +70,7 @@ of your manila's tox. Prior to running the above command, run:
 
 .. code-block:: console
 
-    $ source .tox/py27/bin/activate
+    $ source .tox/py3/bin/activate
 
 Or directly as a one-liner, with:
 
