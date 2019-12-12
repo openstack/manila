@@ -1,0 +1,4 @@
+---
+upgrade:
+  - The values of share type extra-specs will be considered case
+    insensitive for comparison in the scheduler's capabilities filter.

@@ -52,6 +52,7 @@ class ExtraSpecsOpsTestCase(test.TestCase):
         ('12311321', '<in> 12311321 <in>', True),
         ('12310321', '<in> 11', False),
         ('12310321', '<in> 11 <in>', False),
+        ('abc', '<in> ABC', True),
         (True, 'True', True),
         (True, '<is> True', True),
         (True, '<is> False', False),
@@ -65,10 +66,14 @@ class ExtraSpecsOpsTestCase(test.TestCase):
         ('12', '<or> 11 <or> 12', True),
         ('13', '<or> 11 <or> 12', False),
         ('13', '<or> 11 <or> 12 <or>', False),
+        ('abc', '<or> ABC <or> def', True),
         ('2', '<= 10', True),
         ('3', '<= 2', False),
         ('3', '>= 1', True),
         ('2', '>= 3', False),
+        ('nfs', 'NFS', True),
+        ('NFS', 'nfs', True),
+        ('cifs', 'nfs', False),
     )
     def test_extra_specs_matches_simple(self, value, req, matches):
         self._do_extra_specs_ops_test(
