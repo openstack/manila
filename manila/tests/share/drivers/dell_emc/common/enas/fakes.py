@@ -1477,7 +1477,7 @@ class NFSShareTestData(StorageObjectTestData):
         if rw_hosts and ro_hosts:
             return (
                 '%(mover_name)s :\nexport "%(path)s" '
-                'access=-0.0.0.0/0.0.0.0:%(host)s root=%(host)s '
+                'access=%(host)s:-0.0.0.0/0.0.0.0 root=%(host)s '
                 'rw=%(rw_host)s ro=%(ro_host)s\n'
                 % {'mover_name': self.vdm_name,
                    'path': self.path,
@@ -1488,7 +1488,7 @@ class NFSShareTestData(StorageObjectTestData):
         elif rw_hosts:
             return (
                 '%(mover_name)s :\nexport "%(path)s" '
-                'access=-0.0.0.0/0.0.0.0:%(host)s root=%(host)s '
+                'access=%(host)s:-0.0.0.0/0.0.0.0 root=%(host)s '
                 'rw=%(rw_host)s\n'
                 % {'mover_name': self.vdm_name,
                    'host': ":".join(rw_hosts),
@@ -1498,7 +1498,7 @@ class NFSShareTestData(StorageObjectTestData):
         elif ro_hosts:
             return (
                 '%(mover_name)s :\nexport "%(path)s" '
-                'access=-0.0.0.0/0.0.0.0:%(host)s root=%(host)s '
+                'access=%(host)s:-0.0.0.0/0.0.0.0 root=%(host)s '
                 'ro=%(ro_host)s\n'
                 % {'mover_name': self.vdm_name,
                    'host': ":".join(ro_hosts),
@@ -1540,7 +1540,7 @@ class NFSShareTestData(StorageObjectTestData):
         ro_hosts = [utils.convert_ipv6_format_if_needed(ip_addr) for ip_addr in
                     ro_hosts]
 
-        access_str = ("access=-0.0.0.0/0.0.0.0:%(access_hosts)s,"
+        access_str = ("access=%(access_hosts)s:-0.0.0.0/0.0.0.0,"
                       "root=%(root_hosts)s,rw=%(rw_hosts)s,ro=%(ro_hosts)s" %
                       {'rw_hosts': ":".join(rw_hosts),
                        'ro_hosts': ":".join(ro_hosts),

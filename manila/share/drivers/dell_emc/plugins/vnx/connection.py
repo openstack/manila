@@ -39,8 +39,9 @@ from manila import utils
     3.0.0 - Bumped the version for Ocata
     4.0.0 - Bumped the version for Pike
     5.0.0 - Bumped the version for Queens
+    9.0.0 - Bumped the version for Ussuri
 """
-VERSION = "5.0.0"
+VERSION = "9.0.0"
 
 LOG = log.getLogger(__name__)
 

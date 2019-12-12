@@ -2029,12 +2029,14 @@ class NFSShare(StorageObject):
 
         if access_hosts is None:
             access_hosts = set()
+        try:
+            access_hosts.remove('-0.0.0.0/0.0.0.0')
+        except (ValueError, KeyError):
+            pass
 
-        if '-0.0.0.0/0.0.0.0' not in access_hosts:
-            access_hosts.add('-0.0.0.0/0.0.0.0')
+        access_str = ('access=%(access)s' % {'access': ':'.join(
+            list(access_hosts) + ['-0.0.0.0/0.0.0.0'])})
 
-        access_str = ('access=%(access)s'
-                      % {'access': ':'.join(access_hosts)})
         if root_hosts:
             access_str += (',root=%(root)s' % {'root': ':'.join(root_hosts)})
         if rw_hosts:
