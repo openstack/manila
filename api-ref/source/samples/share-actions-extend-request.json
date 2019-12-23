@@ -1,5 +1,6 @@
 {
     "extend": {
-        "new_size": 2
+        "new_size": 2,
+        "force": "true"
     }
 }

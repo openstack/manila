@@ -1112,7 +1112,7 @@ class ShareActionsTest(test.TestCase):
 
         share_api.API.get.assert_called_once_with(mock.ANY, id)
         share_api.API.extend.assert_called_once_with(
-            mock.ANY, share, int(size))
+            mock.ANY, share, int(size), force=False)
         self.assertEqual(202, actual_response.status_int)
 
     @ddt.data({"os-extend": ""},

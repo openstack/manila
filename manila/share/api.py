@@ -2127,8 +2127,11 @@ class API(base.Base):
     def get_share_network(self, context, share_net_id):
         return self.db.share_network_get(context, share_net_id)
 
-    def extend(self, context, share, new_size):
-        policy.check_policy(context, 'share', 'extend')
+    def extend(self, context, share, new_size, force=False):
+        if force:
+            policy.check_policy(context, 'share', 'force_extend')
+        else:
+            policy.check_policy(context, 'share', 'extend')
 
         if share['status'] != constants.STATUS_AVAILABLE:
             msg_params = {
@@ -2222,7 +2225,15 @@ class API(base.Base):
                         message=msg)
 
         self.update(context, share, {'status': constants.STATUS_EXTENDING})
-        self.share_rpcapi.extend_share(context, share, new_size, reservations)
+        if force:
+            self.share_rpcapi.extend_share(context, share,
+                                           new_size, reservations)
+        else:
+            share_type = share_types.get_share_type(
+                context, share['instance']['share_type_id'])
+            request_spec = self._get_request_spec_dict(share, share_type)
+            self.scheduler_rpcapi.extend_share(context, share['id'], new_size,
+                                               reservations, request_spec)
         LOG.info("Extend share request issued successfully.",
                  resource=share)
 

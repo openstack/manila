@@ -2948,9 +2948,19 @@ class ShareAPITestCase(test.TestCase):
             project_id='fake',
             is_admin=False
         )
+        fake_type = {
+            'id': 'fake_type_id',
+            'extra_specs': {
+                'snapshot_support': False,
+                'create_share_from_snapshot_support': False,
+                'driver_handles_share_servers': False,
+            },
+        }
         new_size = 123
         size_increase = int(new_size) - share['size']
         self.mock_object(quota.QUOTAS, 'reserve')
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=fake_type))
 
         self.api.extend(diff_user_context, share, new_size)
 
@@ -2982,15 +2992,19 @@ class ShareAPITestCase(test.TestCase):
             new_replica_size = size_increase * replica_amount
             expected_deltas.update({'replica_gigabytes': new_replica_size})
         self.mock_object(self.api, 'update')
-        self.mock_object(self.api.share_rpcapi, 'extend_share')
+        self.mock_object(self.api.scheduler_rpcapi, 'extend_share')
         self.mock_object(quota.QUOTAS, 'reserve')
+        self.mock_object(share_types, 'get_share_type')
+        self.mock_object(share_types, 'provision_filter_on_size')
+        self.mock_object(self.api, '_get_request_spec_dict')
 
         self.api.extend(self.context, share, new_size)
 
         self.api.update.assert_called_once_with(
             self.context, share, {'status': constants.STATUS_EXTENDING})
-        self.api.share_rpcapi.extend_share.assert_called_once_with(
-            self.context, share, new_size, mock.ANY
+
+        self.api.scheduler_rpcapi.extend_share.assert_called_once_with(
+            self.context, share['id'], new_size, mock.ANY, mock.ANY
         )
         quota.QUOTAS.reserve.assert_called_once_with(
             self.context, **expected_deltas)

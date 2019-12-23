@@ -391,11 +391,19 @@ class ShareController(shares.ShareMixin,
     @wsgi.action('os-extend')
     def extend_legacy(self, req, id, body):
         """Extend size of a share."""
+        body.get('os-extend', {}).pop('force', None)
         return self._extend(req, id, body)
 
-    @wsgi.Controller.api_version('2.7')
+    @wsgi.Controller.api_version('2.7', '2.63')
     @wsgi.action('extend')
     def extend(self, req, id, body):
+        """Extend size of a share."""
+        body.get('extend', {}).pop('force', None)
+        return self._extend(req, id, body)
+
+    @wsgi.Controller.api_version('2.64')  # noqa
+    @wsgi.action('extend')
+    def extend(self, req, id, body):  # pylint: disable=function-redefined  # noqa F811
         """Extend size of a share."""
         return self._extend(req, id, body)
 
