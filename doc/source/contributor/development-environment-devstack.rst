@@ -23,7 +23,7 @@ are already familiar with git.
 We recommend using devstack to develop and test code changes to ``manila``
 and/or ``manila-ui``, in order to simply evaluate the manila and/or project.
 Devstack is a shell script to build complete OpenStack development
-environments on a virtual machine. If you are not familar with devstack,
+environments on a virtual machine. If you are not familiar with devstack,
 these pages can give you context:
 
 * `Testing Changes with DevStack <https://docs.openstack.org/contributors/code-and-documentation/devstack.html>`_
