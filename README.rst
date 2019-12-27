@@ -54,3 +54,7 @@ https://bugs.launchpad.net/manila
 * Blueprints:
 
 https://blueprints.launchpad.net/manila
+
+* Design specifications are tracked at:
+
+https://specs.openstack.org/openstack/manila-specs/
