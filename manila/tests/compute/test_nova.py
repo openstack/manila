@@ -222,6 +222,48 @@ class NovaApiTestCase(test.TestCase):
 
         self.assertEqual(image_list1, result)
 
+    def test_image_get_novaclient_has_no_proxy(self):
+        image = 'fake-image'
+
+        class FakeGlanceClient(object):
+            def find_image(self, name):
+                return image
+
+        self.novaclient.glance = FakeGlanceClient()
+        result = self.api.image_get(self.ctx, 'fake-image')
+
+        self.assertEqual(image, result)
+
+    def test_image_get_novaclient_not_found(self):
+        image = 'fake-image'
+
+        class FakeGlanceClient(object):
+            def find_image(self, image):
+                return image
+
+        self.novaclient.glance = FakeGlanceClient()
+
+        self.mock_object(self.novaclient.glance, 'find_image',
+                         mock.Mock(return_value=image,
+                                   side_effect=nova_exception.NotFound(404)))
+        self.assertRaises(exception.ServiceInstanceException,
+                          self.api.image_get, self.ctx, image)
+
+    def test_image_get_novaclient_multi_match(self):
+        image = 'fake-image'
+
+        class FakeGlanceClient(object):
+            def find_image(self, image):
+                return image
+
+        self.novaclient.glance = FakeGlanceClient()
+
+        self.mock_object(self.novaclient.glance, 'find_image',
+                         mock.Mock(return_value=image,
+                                   side_effect=nova_exception.NoUniqueMatch))
+        self.assertRaises(exception.ServiceInstanceException,
+                          self.api.image_get, self.ctx, image)
+
     def test_server_create(self):
         result = self.api.server_create(self.ctx, 'server_name', 'fake_image',
                                         'fake_flavor', None, None, None)

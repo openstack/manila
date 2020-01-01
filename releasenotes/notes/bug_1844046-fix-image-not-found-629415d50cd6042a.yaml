@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    The Generic driver has been fixed to invoke compute image
+    retrieval by ID rather than list all images and implement a filter.
+    This prevents failures in case there are a lot of images available
+    and the image service returns a paginated response.
