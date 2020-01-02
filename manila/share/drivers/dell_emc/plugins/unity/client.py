@@ -151,7 +151,7 @@ class UnityClient(object):
     @staticmethod
     def _delete_tenant(tenant):
         if tenant.nas_servers:
-            LOG.debug('There are NAS servers belonging to the tenant %s. ',
+            LOG.debug('There are NAS servers belonging to the tenant %s. '
                       'Do not delete it.',
                       tenant.get_id())
             return
