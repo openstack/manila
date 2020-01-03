@@ -280,8 +280,8 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
                     return ip['ip_address']
             except ValueError:
                 LOG.error("%(address)s isn't a valid ip "
-                          "address, omitted."), {'address':
-                                                 ip['ip_address']}
+                          "address, omitted.", {'address':
+                                                ip['ip_address']})
         msg = _("Can not find any IP address with configured IP "
                 "version %(version)s in share-network.") % {'version':
                                                             ip_version}
