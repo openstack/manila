@@ -16,14 +16,14 @@
 """Add is_auto_deletable and identifier fields for share servers
 
 Revision ID: 6a3fd2984bc31
-Revises: 11ee96se625f3
+Revises: fbdfabcba377
 Create Date: 2018-10-29 11:27:44.194732
 
 """
 
 # revision identifiers, used by Alembic.
 revision = '6a3fd2984bc31'
-down_revision = '11ee96se625f3'
+down_revision = 'fbdfabcba377'
 
 from alembic import op
 from oslo_log import log
