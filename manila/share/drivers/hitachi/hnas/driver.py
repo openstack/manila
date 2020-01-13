@@ -448,7 +448,7 @@ class HitachiHNASDriver(driver.ShareDriver):
                  {'id': snapshot['id']})
 
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         r"""Creates a new share from snapshot.
 
         :param context: The `context.RequestContext` object for the request

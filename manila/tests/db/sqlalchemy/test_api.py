@@ -441,11 +441,15 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
         self.assertEqual('share-%s' % instance['id'], instance['name'])
 
-    @ddt.data(True, False)
-    def test_share_instance_get_all_by_host(self, with_share_data):
-        db_utils.create_share()
+    @ddt.data({'with_share_data': True, 'status': constants.STATUS_AVAILABLE},
+              {'with_share_data': False, 'status': None})
+    @ddt.unpack
+    def test_share_instance_get_all_by_host(self, with_share_data, status):
+        kwargs = {'status': status} if status else {}
+        db_utils.create_share(**kwargs)
         instances = db_api.share_instances_get_all_by_host(
-            self.ctxt, 'fake_host', with_share_data)
+            self.ctxt, 'fake_host', with_share_data=with_share_data,
+            status=status)
 
         self.assertEqual(1, len(instances))
         instance = instances[0]

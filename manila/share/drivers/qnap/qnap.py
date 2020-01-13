@@ -519,7 +519,7 @@ class QnapShareDriver(driver.ShareDriver):
                  retries=5)
     @utils.synchronized('qnap-create_share_from_snapshot')
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         """Create a share from a snapshot."""
         LOG.debug('Entering create_share_from_snapshot. The source '
                   'snapshot=%(snap)s. The created share=%(share)s',

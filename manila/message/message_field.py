@@ -80,6 +80,12 @@ class Detail(object):
           "set to extending_error. This action cannot be re-attempted until "
           "the status has been rectified. Contact your administrator to "
           "determine the cause of this failure."))
+    FILTER_CREATE_FROM_SNAPSHOT = ('016', FILTER_MSG % 'CreateFromSnapshot')
+    DRIVER_FAILED_CREATING_FROM_SNAP = (
+        '017',
+        _("Share Driver has failed to create the share from snapshot. This "
+          "operation can be re-attempted by creating a new share. Contact "
+          "your administrator to determine the cause of this failure."))
 
     ALL = (UNKNOWN_ERROR,
            NO_VALID_HOST,
@@ -95,7 +101,9 @@ class Detail(object):
            FILTER_JSON,
            FILTER_RETRY,
            FILTER_REPLICATION,
-           DRIVER_FAILED_EXTEND)
+           DRIVER_FAILED_EXTEND,
+           FILTER_CREATE_FROM_SNAPSHOT,
+           DRIVER_FAILED_CREATING_FROM_SNAP)
 
     # Exception and detail mappings
     EXCEPTION_DETAIL_MAPPINGS = {
@@ -113,6 +121,7 @@ class Detail(object):
         'JsonFilter': FILTER_JSON,
         'RetryFilter': FILTER_RETRY,
         'ShareReplicationFilter': FILTER_REPLICATION,
+        'CreateFromSnapshotFilter': FILTER_CREATE_FROM_SNAPSHOT,
     }
 
 

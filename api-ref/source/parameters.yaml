@@ -468,8 +468,8 @@ source_share_group_snapshot_id_query:
 status_query:
   description: |
     Filters by a share status. A valid value is
-    ``creating``, ``error``, ``available``, ``deleting``,
-    ``error_deleting``, ``manage_starting``, ``manage_error``,
+    ``creating``, ``creating_from_snapshot``, ``error``, ``available``,
+    ``deleting``, ``error_deleting``,  ``manage_starting``, ``manage_error``,
     ``unmanage_starting``, ``unmanage_error``, ``migrating``,
     ``extending``, ``extending_error``, ``shrinking``,
     ``shrinking_error``, or ``shrinking_possible_data_loss_error``.
@@ -1538,6 +1538,13 @@ progress:
   description: |
     The progress of the snapshot creation.
   in: body
+  required: true
+  type: string
+progress_share_instance:
+  description: |
+    The progress of the share creation.
+  in: body
+  min_version: 2.54
   required: true
   type: string
 project:
@@ -2713,7 +2720,7 @@ status_1:
   type: string
 status_16:
   description: |
-    The share status, which is ``creating``,
+    The share status, which is ``creating``, ``creating_from_snapshot``,
     ``error``, ``available``, ``deleting``, ``error_deleting``,
     ``manage_starting``, ``manage_error``, ``unmanage_starting``,
     ``unmanage_error``, ``unmanaged``, ``extend``,
@@ -2737,15 +2744,16 @@ status_3:
     ``extending_error``. Extend share failed.  - ``shrinking``. Share
     is being shrunk.  - ``shrinking_error``. Failed to update quota on
     share shrinking.  - ``shrinking_possible_data_loss_error``. Shrink
-    share failed due to   possible data loss.
+    share failed due to   possible data loss. - ``creating_from_snapshot``.
+    The share is being created from a parent snapshot.
   in: body
   required: true
   type: string
 status_5:
   description: |
     The share instance status. A valid value is
-    ``available``, ``error``, ``creating``, ``deleting``, and
-    ``error_deleting``.
+    ``available``, ``error``, ``creating``, ``deleting``,
+    ``creating_from_snapshot``, or ``error_deleting``.
   in: body
   required: true
   type: string

@@ -493,7 +493,7 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         return location
 
     def create_share_from_snapshot(self, ctx, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         """Is called to create share from a snapshot."""
         share_path = self._get_share_path(share)
         self._create_share_from_snapshot(share, snapshot, share_path)

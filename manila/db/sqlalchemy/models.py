@@ -258,6 +258,11 @@ class Share(BASE, ManilaBase):
         return False
 
     @property
+    def progress(self):
+        if len(self.instances) > 0:
+            return self.instance.progress
+
+    @property
     def instance(self):
         # NOTE(gouthamr): The order of preference: status 'replication_change',
         # followed  by 'available' and 'error'. If replicated share and
@@ -364,6 +369,7 @@ class ShareInstance(BASE, ManilaBase):
     deleted = Column(String(36), default='False')
     host = Column(String(255))
     status = Column(String(255))
+    progress = Column(String(32))
 
     ACCESS_STATUS_PRIORITIES = {
         constants.STATUS_ACTIVE: 0,

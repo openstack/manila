@@ -24,6 +24,7 @@ import time
 from oslo_config import cfg
 from oslo_log import log
 
+from manila.common import constants
 from manila import exception
 from manila.i18n import _
 from manila import network
@@ -649,8 +650,46 @@ class ShareDriver(object):
         raise NotImplementedError()
 
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
-        """Is called to create share from snapshot."""
+                                   share_server=None, parent_share=None):
+        """Is called to create share from snapshot.
+
+        Creating a share from snapshot can take longer than a simple clone
+        operation if data copy is required from one host to another. For this
+        reason driver will be able complete this creation asynchronously, by
+        providing a 'creating_from_snapshot' status in the model update.
+
+        When answering asynchronously, drivers must implement the call
+        'get_share_status' in order to provide updates for shares with
+        'creating_from_snapshot' status.
+
+        It is expected that the driver returns a model update to the share
+        manager that contains: share status and a list of export_locations.
+        A list of 'export_locations' is mandatory only for share in 'available'
+        status.
+        The current supported status are 'available' and
+        'creating_from_snapshot'.
+
+        :param context: Current context
+        :param share: Share instance model with share data.
+        :param snapshot: Snapshot instance model .
+        :param share_server: Share server model or None.
+        :param parent_share: Share model from parent snapshot with share data
+            and share server model.
+
+        :returns: a dictionary of updates containing current share status and
+            its export_location (if available).
+
+            Example::
+
+                {
+                    'status': 'available',
+                    'export_locations': [{...}, {...}],
+                }
+
+        :raises: ShareBackendException.
+            A ShareBackendException in this method will set the instance to
+            'error' and the operation will end.
+        """
         raise NotImplementedError()
 
     def create_snapshot(self, context, snapshot, share_server=None):
@@ -1311,6 +1350,15 @@ class ShareDriver(object):
             share_server=None):
         """Create a share group from a share group snapshot.
 
+        When creating a share from snapshot operation takes longer than a
+        simple clone operation, drivers will be able to complete this creation
+        asynchronously, by providing a 'creating_from_snapshot' status in the
+        returned model update. The current supported status are 'available' and
+        'creating_from_snapshot'.
+
+        In order to provide updates for shares with 'creating_from_snapshot'
+        status, drivers must implement the call 'get_share_status'.
+
         :param context:
         :param share_group_dict: The share group details
             EXAMPLE:
@@ -1372,12 +1420,27 @@ class ShareDriver(object):
 
             share_update_list - a list of dictionaries containing dicts for
             every share created in the share group. Any share dicts should at a
-            minimum contain the 'id' key and 'export_locations'.
+            minimum contain the 'id' key and, for synchronous creation, the
+            'export_locations'. For asynchronous share creation this dict
+            must also contain the key 'status' with the value set to
+            'creating_from_snapshot'. The current supported status are
+            'available' and 'creating_from_snapshot'.
             Export locations should be in the same format as returned by
             a share_create. This list may be empty or None. EXAMPLE:
             .. code::
 
-                [{'id': 'uuid', 'export_locations': [{...}, {...}]}]
+                [
+                    {
+                    'id': 'uuid',
+                    'export_locations': [{...}, {...}],
+                    },
+                    {
+                    'id': 'uuid',
+                    'export_locations': [],
+                    'status': 'creating_from_snapshot',
+                    },
+                ]
+
         """
         # Ensure that the share group snapshot has members
         if not share_group_snapshot_dict['share_group_snapshot_members']:
@@ -1389,18 +1452,38 @@ class ShareDriver(object):
 
         LOG.debug('Creating share group from group snapshot %s.',
                   share_group_snapshot_dict['id'])
-
         for clone in clone_list:
             kwargs = {}
+            share_update_info = {}
             if self.driver_handles_share_servers:
                 kwargs['share_server'] = share_server
-            export_locations = (
+            model_update = (
                 self.create_share_from_snapshot(
                     context, clone['share'], clone['snapshot'], **kwargs))
-            share_update_list.append({
+            if isinstance(model_update, dict):
+                status = model_update.get('status')
+                # NOTE(dviroel): share status is mandatory when answering
+                # a model update. If not provided, won't be possible to
+                # determine if was successfully created.
+                if status is None:
+                    msg = _("Driver didn't provide a share status.")
+                    raise exception.InvalidShareInstance(reason=msg)
+                if status not in [constants.STATUS_AVAILABLE,
+                                  constants.STATUS_CREATING_FROM_SNAPSHOT]:
+                    msg = _('Driver returned an invalid status: %s') % status
+                    raise exception.InvalidShareInstance(reason=msg)
+                share_update_info.update({'status': status})
+                export_locations = model_update.get('export_locations', [])
+            else:
+                # NOTE(dviroel): the driver that doesn't implement the new
+                # model_update will return only the export locations
+                export_locations = model_update
+
+            share_update_info.update({
                 'id': clone['share']['id'],
                 'export_locations': export_locations,
             })
+            share_update_list.append(share_update_info)
         return None, share_update_list
 
     def delete_share_group(self, context, share_group_dict, share_server=None):
@@ -2740,5 +2823,33 @@ class ShareDriver(object):
         :param server_details: share server backend details.
         :param security_services: list of security services configured with
             this share server.
+        """
+        raise NotImplementedError()
+
+    def get_share_status(self, share, share_server=None):
+        """Invoked periodically to get the current status of a given share.
+
+        Driver can use this method to update the status of a share that is
+        still pending from other operations.
+        This method is expected to be called in a periodic interval set by the
+        'periodic_interval' configuration in seconds.
+
+        :param share: share to get updated status from.
+        :param share_server: share server model or None.
+        :returns: a dictionary of updates with the current share status, that
+            must be 'available', 'creating_from_snapshot' or 'error', a list of
+            export locations, if available, and a progress field which
+            indicates the completion of the share creation operation.
+            EXAMPLE::
+
+                {
+                    'status': 'available',
+                    'export_locations': [{...}, {...}],
+                    'progress': '50%'
+                }
+
+        :raises: ShareBackendException.
+            A ShareBackendException in this method will set the instance status
+            to 'error'.
         """
         raise NotImplementedError()

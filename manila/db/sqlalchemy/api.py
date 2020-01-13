@@ -1579,7 +1579,7 @@ def _set_instances_share_data(context, instances, session):
 
 @require_admin_context
 def share_instances_get_all_by_host(context, host, with_share_data=False,
-                                    session=None):
+                                    status=None, session=None):
     """Retrieves all share instances hosted on a host."""
     session = session or get_session()
     instances = (
@@ -1588,8 +1588,12 @@ def share_instances_get_all_by_host(context, host, with_share_data=False,
                 models.ShareInstance.host == host,
                 models.ShareInstance.host.like("{0}#%".format(host))
             )
-        ).all()
+        )
     )
+    if status is not None:
+        instances = instances.filter(models.ShareInstance.status == status)
+    # Returns list of all instances that satisfy filters.
+    instances = instances.all()
 
     if with_share_data:
         instances = _set_instances_share_data(context, instances, session)

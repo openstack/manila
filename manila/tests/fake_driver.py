@@ -16,6 +16,7 @@
 from oslo_log import log
 import six
 
+from manila.common import constants
 from manila.share import driver
 from manila.tests import fake_service_instance
 
@@ -74,8 +75,11 @@ class FakeShareDriver(driver.ShareDriver):
         return ['/fake/path', '/fake/path2']
 
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
-        return ['/fake/path', '/fake/path2']
+                                   share_server=None, parent_share=None):
+        return {
+            'export_locations': ['/fake/path', '/fake/path2'],
+            'status': constants.STATUS_AVAILABLE,
+        }
 
     def delete_share(self, context, share, share_server=None):
         pass
@@ -115,3 +119,9 @@ class FakeShareDriver(driver.ShareDriver):
 
     def delete_share_group(self, context, group_id, share_server=None):
         pass
+
+    def get_share_status(self, share, share_server=None):
+        return {
+            'export_locations': ['/fake/path', '/fake/path2'],
+            'status': constants.STATUS_AVAILABLE,
+        }

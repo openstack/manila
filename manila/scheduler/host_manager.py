@@ -48,6 +48,7 @@ host_manager_opts = [
                     'CapabilitiesFilter',
                     'DriverFilter',
                     'ShareReplicationFilter',
+                    'CreateFromSnapshotFilter',
                 ],
                 help='Which filter class names to use for filtering hosts '
                      'when not specified in the request.'),
@@ -55,6 +56,7 @@ host_manager_opts = [
                 default=[
                     'CapacityWeigher',
                     'GoodnessWeigher',
+                    'HostAffinityWeigher',
                 ],
                 help='Which weigher class names to use for weighing hosts.'),
     cfg.ListOpt(

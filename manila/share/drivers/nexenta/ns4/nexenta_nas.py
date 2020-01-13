@@ -77,7 +77,7 @@ class NexentaNasDriver(driver.ShareDriver):
         return self.helper.create_filesystem(share)
 
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         """Is called to create share from snapshot."""
         LOG.debug('Creating share from snapshot %s.', snapshot['name'])
         return self.helper.create_share_from_snapshot(share, snapshot)

@@ -281,7 +281,7 @@ class TegileShareDriver(driver.ShareDriver):
 
     @debugger
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         """Create a share from a snapshot - clone a snapshot."""
         pool, project, share_name = self._get_pool_project_share_name(share)
 

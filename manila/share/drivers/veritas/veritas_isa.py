@@ -524,7 +524,7 @@ class ACCESSShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                   json.dumps(data2), 'DELETE')
 
     def create_share_from_snapshot(self, ctx, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         """create share from a snapshot."""
         sharename = snapshot['share_name']
         va_sharename = self._get_va_share_name(sharename)

@@ -226,9 +226,13 @@ class DummyDriver(driver.ShareDriver):
 
     @slow_me_down
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         """Is called to create share from snapshot."""
-        return self._create_share(share, share_server=share_server)
+        export_locations = self._create_share(share, share_server=share_server)
+        return {
+            'export_locations': export_locations,
+            'status': constants.STATUS_AVAILABLE
+        }
 
     def _create_snapshot(self, snapshot, share_server=None):
         snapshot_name = self._get_snapshot_name(snapshot)
@@ -733,3 +737,10 @@ class DummyDriver(driver.ShareDriver):
             return
         self.private_storage.update(server_details['server_id'],
                                     server_details)
+
+    def get_share_status(self, share, share_server=None):
+        return {
+            'status': constants.STATUS_AVAILABLE,
+            'export_locations': self.private_storage.get(share['id'],
+                                                         key='export_location')
+        }

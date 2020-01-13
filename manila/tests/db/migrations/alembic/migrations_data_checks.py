@@ -2916,3 +2916,33 @@ class ShareNetworkSubnetMigrationChecks(BaseMigrationChecks):
         self.test_case.assertRaises(
             sa_exc.NoSuchTableError,
             utils.load_table, self.sns_table_name, engine)
+
+
+@map_to_migration('e6d88547b381')
+class ShareInstanceProgressFieldChecks(BaseMigrationChecks):
+
+    si_table_name = 'share_instances'
+    progress_field_name = 'progress'
+
+    def setup_upgrade_data(self, engine):
+        pass
+
+    def check_upgrade(self, engine, data):
+        si_table = utils.load_table(self.si_table_name, engine)
+
+        for si_record in engine.execute(si_table.select()):
+            self.test_case.assertTrue(hasattr(si_record,
+                                              self.progress_field_name))
+            if si_record['status'] == constants.STATUS_AVAILABLE:
+                self.test_case.assertEqual('100%',
+                                           si_record[self.progress_field_name])
+            else:
+                self.test_case.assertIsNone(
+                    si_record[self.progress_field_name])
+
+    def check_downgrade(self, engine):
+        si_table = utils.load_table(self.si_table_name, engine)
+
+        for si_record in engine.execute(si_table.select()):
+            self.test_case.assertFalse(hasattr(si_record,
+                                               self.progress_field_name))

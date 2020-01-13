@@ -463,7 +463,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         return backend_snapshot_name
 
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         old_gmgr = self._share_manager(snapshot['share_instance'])
 
         # Snapshot clone feature in GlusterFS server essential to support this

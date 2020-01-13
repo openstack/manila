@@ -188,7 +188,7 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
         pass
 
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         raise NotImplementedError
 
     def create_snapshot(self, context, snapshot, share_server=None):

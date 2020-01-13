@@ -39,6 +39,8 @@ A share has one of these status values:
 +----------------------------------------+--------------------------------------------------------+
 | ``creating``                           | The share is being created.                            |
 +----------------------------------------+--------------------------------------------------------+
+| ``creating_from_snapshot``             | The share is being created from a parent snapshot.     |
++----------------------------------------+--------------------------------------------------------+
 | ``deleting``                           | The share is being deleted.                            |
 +----------------------------------------+--------------------------------------------------------+
 | ``deleted``                            | The share was deleted.                                 |
@@ -220,6 +222,7 @@ Response parameters
    - project_id: project_id
    - metadata: metadata
    - status: status_16
+   - progress: progress_share_instance
    - description: description
    - host: host_1
    - access_rules_status: access_rules_status
@@ -291,6 +294,7 @@ Response parameters
    - project_id: project_id
    - metadata: metadata
    - status: status_16
+   - progress: progress_share_instance
    - description: description
    - host: host_9
    - access_rules_status: access_rules_status
@@ -369,6 +373,7 @@ Response parameters
 
    - id: id_4
    - status: status_3
+   - progress: progress_share_instance
    - links: links
    - project_id: project_id
    - share_proto: share_proto

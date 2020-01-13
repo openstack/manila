@@ -296,3 +296,8 @@ user documentation.
 2.53
 ----
   Added quota control for share replicas and replica gigabytes.
+
+2.54
+----
+  Share and share instance objects include a new field called "progress" which
+  indicates the completion of a share creation operation as a percentage.

@@ -223,7 +223,7 @@ class UnityStorageConnection(driver.StorageConnection):
         return locations
 
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         """Create a share from a snapshot - clone a snapshot."""
         share_name = share['id']
 

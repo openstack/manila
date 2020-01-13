@@ -206,7 +206,7 @@ class MapRFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             raise exception.ShareResourceNotFound(share_id=share['share_id'])
 
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
+                                   share_server=None, parent_share=None):
         """Creates a share from snapshot."""
         metadata = self.api.get_share_metadata(context,
                                                {'id': share['share_id']})

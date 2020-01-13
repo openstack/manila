@@ -34,6 +34,8 @@ class ViewBuilder(common.ViewBuilder):
         "translate_access_rules_status",
         "add_share_group_fields",
         "add_mount_snapshot_support_field",
+        "add_progress_field",
+        "translate_creating_from_snapshot_status",
     ]
 
     def summary_list(self, request, shares, count=None):
@@ -92,6 +94,7 @@ class ViewBuilder(common.ViewBuilder):
             'is_public': share.get('is_public'),
             'export_locations': export_locations,
         }
+
         self.update_versioned_resource_dict(request, share_dict, share)
 
         if context.is_admin:
@@ -184,3 +187,13 @@ class ViewBuilder(common.ViewBuilder):
             shares_dict['shares_links'] = shares_links
 
         return shares_dict
+
+    @common.ViewBuilder.versioned_method("1.0", "2.53")
+    def translate_creating_from_snapshot_status(self, context, share_dict,
+                                                share):
+        if share.get('status') == constants.STATUS_CREATING_FROM_SNAPSHOT:
+            share_dict['status'] = constants.STATUS_CREATING
+
+    @common.ViewBuilder.versioned_method("2.54")
+    def add_progress_field(self, context, share_dict, share):
+        share_dict['progress'] = share.get('progress')

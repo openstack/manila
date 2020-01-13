@@ -287,6 +287,9 @@ class ShareManagerTestCase(test.TestCase):
                 status=constants.STATUS_MIGRATING,
                 task_state=constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS,
                 display_name='fake_name_6').instance,
+            db_utils.create_share(
+                id='fake_id_7', status=constants.STATUS_CREATING_FROM_SNAPSHOT,
+                display_name='fake_name_7').instance,
         ]
 
         instances[4]['access_rules_status'] = (
@@ -320,7 +323,7 @@ class ShareManagerTestCase(test.TestCase):
             sorted(new_backend_info.items())).encode('utf-8')).hexdigest() if
             new_backend_info else None)
         old_backend_info = {'info_hash': old_backend_info_hash}
-        share_server = 'fake_share_server_does_not_matter'
+        share_server = fakes.fake_share_server_get()
         instances, rules = self._setup_init_mocks()
         fake_export_locations = ['fake/path/1', 'fake/path']
         fake_update_instances = {
@@ -350,6 +353,8 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager, '_ensure_share_instance_has_pool')
         self.mock_object(self.share_manager, '_get_share_server',
                          mock.Mock(return_value=share_server))
+        self.mock_object(self.share_manager, '_get_share_server_dict',
+                         mock.Mock(return_value=share_server))
         self.mock_object(self.share_manager, 'publish_service_capabilities',
                          mock.Mock())
         self.mock_object(self.share_manager.db,
@@ -361,7 +366,7 @@ class ShareManagerTestCase(test.TestCase):
             mock.Mock(side_effect=raise_share_access_exists)
         )
 
-        dict_instances = [self._get_share_replica_dict(
+        dict_instances = [self._get_share_instance_dict(
             instance, share_server=share_server) for instance in instances]
 
         # call of 'init_host' method
@@ -472,7 +477,7 @@ class ShareManagerTestCase(test.TestCase):
             raise NotImplementedError
 
         instances = self._setup_init_mocks(setup_access_rules=False)
-        share_server = 'fake_share_server_does_not_matter'
+        share_server = fakes.fake_share_server_get()
         self.mock_object(self.share_manager.db,
                          'share_instances_get_all_by_host',
                          mock.Mock(return_value=instances))
@@ -488,11 +493,13 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager, '_ensure_share_instance_has_pool')
         self.mock_object(self.share_manager, '_get_share_server',
                          mock.Mock(return_value=share_server))
+        self.mock_object(self.share_manager, '_get_share_server_dict',
+                         mock.Mock(return_value=share_server))
         self.mock_object(self.share_manager, 'publish_service_capabilities')
         self.mock_object(manager.LOG, 'error')
         self.mock_object(manager.LOG, 'info')
 
-        dict_instances = [self._get_share_replica_dict(
+        dict_instances = [self._get_share_instance_dict(
             instance, share_server=share_server) for instance in instances]
 
         # call of 'init_host' method
@@ -537,44 +544,44 @@ class ShareManagerTestCase(test.TestCase):
             {'id': instances[1]['id'], 'status': instances[1]['status']},
         )
 
-    def _get_share_replica_dict(self, share_replica, **kwargs):
+    def _get_share_instance_dict(self, share_instance, **kwargs):
         # TODO(gouthamr): remove method when the db layer returns primitives
-        share_replica_ref = {
-            'id': share_replica.get('id'),
-            'name': share_replica.get('name'),
-            'share_id': share_replica.get('share_id'),
-            'host': share_replica.get('host'),
-            'status': share_replica.get('status'),
-            'replica_state': share_replica.get('replica_state'),
-            'availability_zone_id': share_replica.get('availability_zone_id'),
-            'export_locations': share_replica.get('export_locations') or [],
-            'share_network_id': share_replica.get('share_network_id'),
-            'share_server_id': share_replica.get('share_server_id'),
-            'deleted': share_replica.get('deleted'),
-            'terminated_at': share_replica.get('terminated_at'),
-            'launched_at': share_replica.get('launched_at'),
-            'scheduled_at': share_replica.get('scheduled_at'),
-            'updated_at': share_replica.get('updated_at'),
-            'deleted_at': share_replica.get('deleted_at'),
-            'created_at': share_replica.get('created_at'),
+        share_instance_ref = {
+            'id': share_instance.get('id'),
+            'name': share_instance.get('name'),
+            'share_id': share_instance.get('share_id'),
+            'host': share_instance.get('host'),
+            'status': share_instance.get('status'),
+            'replica_state': share_instance.get('replica_state'),
+            'availability_zone_id': share_instance.get('availability_zone_id'),
+            'share_network_id': share_instance.get('share_network_id'),
+            'share_server_id': share_instance.get('share_server_id'),
+            'deleted': share_instance.get('deleted'),
+            'terminated_at': share_instance.get('terminated_at'),
+            'launched_at': share_instance.get('launched_at'),
+            'scheduled_at': share_instance.get('scheduled_at'),
+            'updated_at': share_instance.get('updated_at'),
+            'deleted_at': share_instance.get('deleted_at'),
+            'created_at': share_instance.get('created_at'),
             'share_server': kwargs.get('share_server'),
-            'access_rules_status': share_replica.get('access_rules_status'),
+            'access_rules_status': share_instance.get('access_rules_status'),
             # Share details
-            'user_id': share_replica.get('user_id'),
-            'project_id': share_replica.get('project_id'),
-            'size': share_replica.get('size'),
-            'display_name': share_replica.get('display_name'),
-            'display_description': share_replica.get('display_description'),
-            'snapshot_id': share_replica.get('snapshot_id'),
-            'share_proto': share_replica.get('share_proto'),
-            'share_type_id': share_replica.get('share_type_id'),
-            'is_public': share_replica.get('is_public'),
-            'share_group_id': share_replica.get('share_group_id'),
-            'source_share_group_snapshot_member_id': share_replica.get(
+            'user_id': share_instance.get('user_id'),
+            'project_id': share_instance.get('project_id'),
+            'size': share_instance.get('size'),
+            'display_name': share_instance.get('display_name'),
+            'display_description': share_instance.get('display_description'),
+            'snapshot_id': share_instance.get('snapshot_id'),
+            'share_proto': share_instance.get('share_proto'),
+            'share_type_id': share_instance.get('share_type_id'),
+            'is_public': share_instance.get('is_public'),
+            'share_group_id': share_instance.get('share_group_id'),
+            'source_share_group_snapshot_member_id': share_instance.get(
                 'source_share_group_snapshot_member_id'),
-            'availability_zone': share_replica.get('availability_zone'),
+            'availability_zone': share_instance.get('availability_zone'),
+            'export_locations': share_instance.get('export_locations') or [],
         }
-        return share_replica_ref
+        return share_instance_ref
 
     def test_init_host_with_exception_on_ensure_shares(self):
         def raise_exception(*args, **kwargs):
@@ -594,8 +601,10 @@ class ShareManagerTestCase(test.TestCase):
             mock.Mock(side_effect=raise_exception))
         self.mock_object(
             self.share_manager, '_ensure_share_instance_has_pool')
+        self.mock_object(db, 'share_server_get',
+                         mock.Mock(return_value=fakes.fake_share_server_get()))
 
-        dict_instances = [self._get_share_replica_dict(instance)
+        dict_instances = [self._get_share_instance_dict(instance)
                           for instance in instances]
 
         # call of 'init_host' method
@@ -651,7 +660,7 @@ class ShareManagerTestCase(test.TestCase):
             raise exception.ManilaException(message="Fake raise")
 
         instances, rules = self._setup_init_mocks()
-        share_server = 'fake_share_server_does_not_matter'
+        share_server = fakes.fake_share_server_get()
         fake_update_instances = {
             instances[0]['id']: {'status': 'available'},
             instances[2]['id']: {'status': 'available'},
@@ -677,8 +686,10 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(return_value=rules))
         self.mock_object(smanager.access_helper, 'update_access_rules',
                          mock.Mock(side_effect=raise_exception))
+        self.mock_object(smanager, '_get_share_server_dict',
+                         mock.Mock(return_value=share_server))
 
-        dict_instances = [self._get_share_replica_dict(
+        dict_instances = [self._get_share_instance_dict(
             instance, share_server=share_server) for instance in instances]
 
         # call of 'init_host' method
@@ -760,6 +771,73 @@ class ShareManagerTestCase(test.TestCase):
 
         shr = db.share_get(self.context, share_id)
         self.assertEqual(constants.STATUS_ERROR, shr['status'])
+
+    def test_create_share_instance_from_snapshot_status_creating(self):
+        """Test share can be created from snapshot in asynchronous mode."""
+        share = db_utils.create_share()
+        share_id = share['id']
+        snapshot = db_utils.create_snapshot(share_id=share_id)
+        snapshot_id = snapshot['id']
+        create_from_snap_ret = {
+            'status': constants.STATUS_CREATING_FROM_SNAPSHOT,
+        }
+        driver_call = self.mock_object(
+            self.share_manager.driver, 'create_share_from_snapshot',
+            mock.Mock(return_value=create_from_snap_ret))
+        self.share_manager.create_share_instance(
+            self.context, share.instance['id'], snapshot_id=snapshot_id)
+        self.assertTrue(driver_call.called)
+        self.assertEqual(share_id, db.share_get(context.get_admin_context(),
+                         share_id).id)
+
+        shr = db.share_get(self.context, share_id)
+        self.assertTrue(driver_call.called)
+        self.assertEqual(constants.STATUS_CREATING_FROM_SNAPSHOT,
+                         shr['status'])
+        self.assertEqual(0, len(shr['export_locations']))
+
+    def test_create_share_instance_from_snapshot_invalid_status(self):
+        """Test share can't be created from snapshot with 'creating' status."""
+        share = db_utils.create_share()
+        share_id = share['id']
+        snapshot = db_utils.create_snapshot(share_id=share_id)
+        snapshot_id = snapshot['id']
+        create_from_snap_ret = {
+            'status': constants.STATUS_CREATING,
+        }
+        driver_call = self.mock_object(
+            self.share_manager.driver, 'create_share_from_snapshot',
+            mock.Mock(return_value=create_from_snap_ret))
+
+        self.assertRaises(exception.InvalidShareInstance,
+                          self.share_manager.create_share_instance,
+                          self.context,
+                          share.instance['id'],
+                          snapshot_id=snapshot_id)
+        self.assertTrue(driver_call.called)
+        shr = db.share_get(self.context, share_id)
+        self.assertEqual(constants.STATUS_ERROR, shr['status'])
+
+    def test_create_share_instance_from_snapshot_export_locations_only(self):
+        """Test share can be created from snapshot on old driver interface."""
+        share = db_utils.create_share()
+        share_id = share['id']
+        snapshot = db_utils.create_snapshot(share_id=share_id)
+        snapshot_id = snapshot['id']
+        create_from_snap_ret = ['/path/fake', '/path/fake2', '/path/fake3']
+
+        driver_call = self.mock_object(
+            self.share_manager.driver, 'create_share_from_snapshot',
+            mock.Mock(return_value=create_from_snap_ret))
+        self.share_manager.create_share_instance(
+            self.context, share.instance['id'], snapshot_id=snapshot_id)
+        self.assertTrue(driver_call.called)
+        self.assertEqual(share_id, db.share_get(context.get_admin_context(),
+                         share_id).id)
+
+        shr = db.share_get(self.context, share_id)
+        self.assertEqual(constants.STATUS_AVAILABLE, shr['status'])
+        self.assertEqual(3, len(shr['export_locations']))
 
     def test_create_share_instance_from_snapshot(self):
         """Test share can be created from snapshot."""
@@ -1027,7 +1105,8 @@ class ShareManagerTestCase(test.TestCase):
                       {'availability_zone': 'fake_az'}, with_share_data=True),
             mock.call(mock.ANY, replica['id'],
                       {'status': constants.STATUS_AVAILABLE,
-                       'replica_state': constants.REPLICA_STATE_OUT_OF_SYNC}),
+                       'replica_state': constants.REPLICA_STATE_OUT_OF_SYNC,
+                       'progress': '100%'}),
         ]
         mock_export_locs_update_call = self.mock_object(
             db, 'share_export_locations_update')
@@ -1104,7 +1183,8 @@ class ShareManagerTestCase(test.TestCase):
         mock_replica_update_call.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), replica['id'],
             {'status': constants.STATUS_AVAILABLE,
-             'replica_state': constants.REPLICA_STATE_IN_SYNC})
+             'replica_state': constants.REPLICA_STATE_IN_SYNC,
+             'progress': '100%'})
         mock_share_replica_access_update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             share_instance_id=replica['id'],
@@ -1557,7 +1637,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.db, 'share_replica_get',
                          mock.Mock(return_value=replica))
         self.mock_object(db, 'share_server_get',
-                         mock.Mock(return_value='fake_share_server'))
+                         mock.Mock(return_value=fakes.fake_share_server_get()))
         self.mock_object(self.share_manager.driver, 'update_replica_state',
                          mock.Mock(side_effect=exception.ManilaException))
         mock_db_update_call = self.mock_object(
@@ -1589,7 +1669,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.db, 'share_replica_get',
                          mock.Mock(return_value=replica))
         self.mock_object(db, 'share_server_get',
-                         mock.Mock(return_value='fake_share_server'))
+                         mock.Mock(return_value={}))
         self.share_manager.host = replica['host']
         self.mock_object(self.share_manager.driver, 'update_replica_state',
                          mock.Mock(side_effect=exception.ManilaException))
@@ -1658,7 +1738,7 @@ class ShareManagerTestCase(test.TestCase):
         replica_states = [constants.REPLICA_STATE_IN_SYNC,
                           constants.REPLICA_STATE_OUT_OF_SYNC]
         replica = fake_replica(replica_state=random.choice(replica_states),
-                               share_server='fake_share_server')
+                               share_server=fakes.fake_share_server_get())
         active_replica = fake_replica(
             id='fake2', replica_state=constants.STATUS_ACTIVE)
         snapshots = [fakes.fake_snapshot(
@@ -1671,7 +1751,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(db, 'share_replicas_get_all_by_share',
                          mock.Mock(return_value=[replica, active_replica]))
         self.mock_object(db, 'share_server_get',
-                         mock.Mock(return_value='fake_share_server'))
+                         mock.Mock(return_value=fakes.fake_share_server_get()))
         mock_db_update_calls = []
         self.mock_object(self.share_manager.db, 'share_replica_get',
                          mock.Mock(return_value=replica))
@@ -4099,8 +4179,15 @@ class ShareManagerTestCase(test.TestCase):
             }
         )
 
-    def test_create_share_group_from_sg_snapshot_with_share_update(self):
+    @ddt.data(constants.STATUS_AVAILABLE,
+              constants.STATUS_CREATING_FROM_SNAPSHOT,
+              None)
+    def test_create_share_group_from_sg_snapshot_with_share_update_status(
+            self, share_status):
         fake_share = {'id': 'fake_share_id'}
+        # if share_status is not None:
+        #     fake_share.update({'status': share_status})
+
         fake_export_locations = ['my_export_location']
         fake_group = {
             'id': 'fake_id',
@@ -4117,18 +4204,28 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.db, 'share_instance_update')
         self.mock_object(self.share_manager.db,
                          'share_export_locations_update')
-        fake_share_update_list = [{'id': fake_share['id'],
-                                   'foo': 'bar',
-                                   'export_locations': fake_export_locations}]
+
+        fake_share_update = {'id': fake_share['id'],
+                             'foo': 'bar',
+                             'export_locations': fake_export_locations}
+        if share_status is not None:
+            fake_share_update.update({'status': share_status})
+
         self.mock_object(self.share_manager.driver,
                          'create_share_group_from_share_group_snapshot',
-                         mock.Mock(
-                             return_value=(None, fake_share_update_list)))
+                         mock.Mock(return_value=(None, [fake_share_update])))
 
         self.share_manager.create_share_group(self.context, "fake_id")
 
+        exp_progress = (
+            '0%' if share_status == constants.STATUS_CREATING_FROM_SNAPSHOT
+            else '100%')
         self.share_manager.db.share_instance_update.assert_any_call(
-            mock.ANY, 'fake_share_id', {'foo': 'bar'})
+            mock.ANY,
+            'fake_share_id',
+            {'foo': 'bar',
+             'status': share_status or constants.STATUS_AVAILABLE,
+             'progress': exp_progress})
         self.share_manager.db.share_export_locations_update.assert_any_call(
             mock.ANY, 'fake_share_id', fake_export_locations)
         self.share_manager.db.share_group_update.assert_any_call(
@@ -4162,6 +4259,47 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(side_effect=exception.Error))
 
         self.assertRaises(exception.Error,
+                          self.share_manager.create_share_group,
+                          self.context, "fake_id")
+
+        self.share_manager.db.share_group_update.assert_called_once_with(
+            mock.ANY, 'fake_id', {
+                'status': constants.STATUS_ERROR,
+                'consistent_snapshot_support': None,
+                'availability_zone_id': fake_group['availability_zone_id'],
+            }
+        )
+
+    def test_create_share_group_from_sg_snapshot_with_invalid_status(self):
+        fake_share = {'id': 'fake_share_id',
+                      'status': constants.STATUS_CREATING}
+        fake_export_locations = ['my_export_location']
+        fake_group = {
+            'id': 'fake_id',
+            'source_share_group_snapshot_id': 'fake_snap_id',
+            'shares': [fake_share],
+            'availability_zone_id': 'fake_az',
+        }
+        fake_snap = {'id': 'fake_snap_id', 'share_group_snapshot_members': []}
+        self.mock_object(self.share_manager.db, 'share_group_get',
+                         mock.Mock(return_value=fake_group))
+        self.mock_object(self.share_manager.db, 'share_group_snapshot_get',
+                         mock.Mock(return_value=fake_snap))
+        self.mock_object(self.share_manager.db,
+                         'share_instances_get_all_by_share_group_id',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.share_manager.db, 'share_group_update',
+                         mock.Mock(return_value=fake_group))
+        fake_share_update_list = [{'id': fake_share['id'],
+                                   'status': fake_share['status'],
+                                   'foo': 'bar',
+                                   'export_locations': fake_export_locations}]
+        self.mock_object(self.share_manager.driver,
+                         'create_share_group_from_share_group_snapshot',
+                         mock.Mock(
+                             return_value=(None, fake_share_update_list)))
+
+        self.assertRaises(exception.InvalidShareInstance,
                           self.share_manager.create_share_group,
                           self.context, "fake_id")
 
@@ -5291,7 +5429,8 @@ class ShareManagerTestCase(test.TestCase):
             (self.share_manager.db.share_instance_update.
                 assert_called_once_with(
                     self.context, instance['id'],
-                    {'status': constants.STATUS_AVAILABLE}))
+                    {'status': constants.STATUS_AVAILABLE,
+                     'progress': '100%'}))
             self.share_manager.db.share_update.assert_called_once_with(
                 self.context, share['id'],
                 {'task_state': constants.TASK_STATE_MIGRATION_CANCELLED})
@@ -5390,7 +5529,8 @@ class ShareManagerTestCase(test.TestCase):
             self.context, src_instance['id'])
         self.share_manager.db.share_instance_update.assert_has_calls([
             mock.call(self.context, dest_instance['id'],
-                      {'status': constants.STATUS_AVAILABLE}),
+                      {'status': constants.STATUS_AVAILABLE,
+                       'progress': '100%'}),
             mock.call(self.context, src_instance['id'],
                       {'status': constants.STATUS_INACTIVE})])
         self.share_manager.db.share_update.assert_called_once_with(
@@ -5452,7 +5592,8 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.db.share_instance_update.assert_has_calls([
             mock.call(self.context, new_instance['id'],
-                      {'status': constants.STATUS_AVAILABLE}),
+                      {'status': constants.STATUS_AVAILABLE,
+                       'progress': '100%'}),
             mock.call(self.context, instance['id'],
                       {'status': constants.STATUS_INACTIVE})
         ])
@@ -7347,6 +7488,92 @@ class ShareManagerTestCase(test.TestCase):
         mock_log_exception = self.mock_object(manager.LOG, 'exception')
         self.share_manager.update_share_usage_size(self.context)
         self.assertTrue(mock_log_exception.called)
+
+    def test_periodic_share_status_update(self):
+        instances = self._setup_init_mocks(setup_access_rules=False)
+        instances_creating_from_snap = [
+            x for x in instances
+            if x['status'] == constants.STATUS_CREATING_FROM_SNAPSHOT
+        ]
+        self.mock_object(self.share_manager, 'driver')
+        self.mock_object(self.share_manager.db,
+                         'share_instances_get_all_by_host',
+                         mock.Mock(return_value=instances_creating_from_snap))
+        mock_update_share_status = self.mock_object(
+            self.share_manager, '_update_share_status')
+        instances_dict = [
+            self.share_manager._get_share_instance_dict(self.context, si)
+            for si in instances_creating_from_snap]
+
+        self.share_manager.periodic_share_status_update(self.context)
+        mock_update_share_status.assert_has_calls([
+            mock.call(self.context, share_instance)
+            for share_instance in instances_dict
+        ])
+
+    def test__update_share_status(self):
+        instances = self._setup_init_mocks(setup_access_rules=False)
+        fake_export_locations = ['fake/path/1', 'fake/path']
+        instance_model_update = {
+            'status': constants.STATUS_AVAILABLE,
+            'export_locations': fake_export_locations
+        }
+        expected_si_update_info = {
+            'status': constants.STATUS_AVAILABLE,
+            'progress': '100%'
+        }
+        driver_get_status = self.mock_object(
+            self.share_manager.driver, 'get_share_status',
+            mock.Mock(return_value=instance_model_update))
+        db_si_update = self.mock_object(self.share_manager.db,
+                                        'share_instance_update')
+        db_el_update = self.mock_object(self.share_manager.db,
+                                        'share_export_locations_update')
+
+        in_progress_instances = [x for x in instances
+                                 if x['status'] ==
+                                 constants.STATUS_CREATING_FROM_SNAPSHOT]
+        instance = self.share_manager.db.share_instance_get(
+            self.context, in_progress_instances[0]['id'], with_share_data=True)
+        self.share_manager._update_share_status(self.context, instance)
+
+        driver_get_status.assert_called_once_with(instance, None)
+        db_si_update.assert_called_once_with(self.context, instance['id'],
+                                             expected_si_update_info)
+        db_el_update.assert_called_once_with(self.context, instance['id'],
+                                             fake_export_locations)
+
+    @ddt.data(mock.Mock(return_value={'status': constants.STATUS_ERROR}),
+              mock.Mock(side_effect=exception.ShareBackendException))
+    def test__update_share_status_share_with_error_or_exception(self,
+                                                                driver_error):
+        instances = self._setup_init_mocks(setup_access_rules=False)
+        expected_si_update_info = {
+            'status': constants.STATUS_ERROR,
+            'progress': None,
+        }
+        driver_get_status = self.mock_object(
+            self.share_manager.driver, 'get_share_status', driver_error)
+        db_si_update = self.mock_object(self.share_manager.db,
+                                        'share_instance_update')
+
+        in_progress_instances = [x for x in instances
+                                 if x['status'] ==
+                                 constants.STATUS_CREATING_FROM_SNAPSHOT]
+        instance = self.share_manager.db.share_instance_get(
+            self.context, in_progress_instances[0]['id'], with_share_data=True)
+
+        self.share_manager._update_share_status(self.context, instance)
+        driver_get_status.assert_called_once_with(instance, None)
+        db_si_update.assert_called_once_with(self.context, instance['id'],
+                                             expected_si_update_info)
+        self.share_manager.message_api.create.assert_called_once_with(
+            self.context,
+            message_field.Action.UPDATE,
+            instance['project_id'],
+            resource_type=message_field.Resource.SHARE,
+            resource_id=instance['share_id'],
+            detail=message_field.Detail.DRIVER_FAILED_CREATING_FROM_SNAP)
 
 
 @ddt.ddt
