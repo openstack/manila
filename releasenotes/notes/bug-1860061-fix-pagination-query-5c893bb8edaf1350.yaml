@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed the issue that caused pagination queries to return erroneous
+    results when the argument `limit` was specified. Also improved the
+    queries performance by moving some filtering operations to the
+    database.

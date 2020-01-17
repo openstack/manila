@@ -1763,6 +1763,17 @@ class API(base.Base):
 
     def get_all(self, context, search_opts=None, sort_key='created_at',
                 sort_dir='desc'):
+        return self._get_all(context, search_opts=search_opts,
+                             sort_key=sort_key, sort_dir=sort_dir)
+
+    def get_all_with_count(self, context, search_opts=None,
+                           sort_key='created_at', sort_dir='desc'):
+        return self._get_all(context, search_opts=search_opts,
+                             sort_key=sort_key, sort_dir=sort_dir,
+                             show_count=True)
+
+    def _get_all(self, context, search_opts=None, sort_key='created_at',
+                 sort_dir='desc', show_count=False):
         policy.check_policy(context, 'share', 'get_all')
 
         if search_opts is None:
@@ -1811,36 +1822,43 @@ class API(base.Base):
         is_public = search_opts.pop('is_public', False)
         is_public = strutils.bool_from_string(is_public, strict=True)
 
+        get_methods = {
+            'get_by_share_server': (
+                self.db.share_get_all_by_share_server_with_count
+                if show_count else self.db.share_get_all_by_share_server),
+            'get_all': (
+                self.db.share_get_all_with_count
+                if show_count else self.db.share_get_all),
+            'get_all_by_project': (
+                self.db.share_get_all_by_project_with_count
+                if show_count else self.db.share_get_all_by_project)}
+
         # Get filtered list of shares
         if 'host' in filters:
             policy.check_policy(context, 'share', 'list_by_host')
         if 'share_server_id' in search_opts:
             # NOTE(vponomaryov): this is project_id independent
             policy.check_policy(context, 'share', 'list_by_share_server_id')
-            shares = self.db.share_get_all_by_share_server(
+            result = get_methods['get_by_share_server'](
                 context, search_opts.pop('share_server_id'), filters=filters,
                 sort_key=sort_key, sort_dir=sort_dir)
-        elif (context.is_admin and utils.is_all_tenants(search_opts)):
-            shares = self.db.share_get_all(
+        elif context.is_admin and utils.is_all_tenants(search_opts):
+            result = get_methods['get_all'](
                 context, filters=filters, sort_key=sort_key, sort_dir=sort_dir)
         else:
-            shares = self.db.share_get_all_by_project(
+            result = get_methods['get_all_by_project'](
                 context, project_id=context.project_id, filters=filters,
                 is_public=is_public, sort_key=sort_key, sort_dir=sort_dir)
 
-        # NOTE(vponomaryov): we do not need 'all_tenants' opt anymore
-        search_opts.pop('all_tenants', None)
+        if show_count:
+            count = result[0]
+            shares = result[1]
+        else:
+            shares = result
 
-        if search_opts:
-            results = []
-            for s in shares:
-                # values in search_opts can be only strings
-                if (all(s.get(k, None) == v or (v in (s.get(k.rstrip('~'))
-                        if k.endswith('~') and s.get(k.rstrip('~')) else ()))
-                        for k, v in search_opts.items())):
-                    results.append(s)
-            shares = results
-        return shares
+        result = (count, shares) if show_count else shares
+
+        return result
 
     def get_snapshot(self, context, snapshot_id):
         policy.check_policy(context, 'share_snapshot', 'get_snapshot')

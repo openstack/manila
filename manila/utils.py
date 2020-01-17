@@ -393,6 +393,16 @@ def is_valid_ip_address(ip_address, ip_version):
     return False
 
 
+def get_bool_param(param_string, params, default=False):
+    param = params.get(param_string, default)
+    if not strutils.is_valid_boolstr(param):
+        msg = _("Value '%(param)s' for '%(param_string)s' is not "
+                "a boolean.") % {'param': param, 'param_string': param_string}
+        raise exception.InvalidParameterValue(err=msg)
+
+    return strutils.bool_from_string(param, strict=True)
+
+
 def is_all_tenants(search_opts):
     """Checks to see if the all_tenants flag is in search_opts
 
