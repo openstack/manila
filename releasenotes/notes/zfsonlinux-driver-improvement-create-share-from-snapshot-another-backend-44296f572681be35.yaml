@@ -1,0 +1,7 @@
+---
+upgrade:
+    In this release, the operation create share from snapshot was improved
+    in the ZFSonLinux driver. Now, the operator using the ZFSonLinux driver
+    can create a share from snapshot in different pools or backends by
+    specifying the Manila API configuration option
+    [DEFAULT]/use_scheduler_creating_share_from_snapshot. 

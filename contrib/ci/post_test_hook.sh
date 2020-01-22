@@ -243,6 +243,7 @@ elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     iniset $TEMPEST_CONFIG share image_with_share_tools 'manila-service-image-master'
     iniset $TEMPEST_CONFIG auth use_dynamic_credentials True
     iniset $TEMPEST_CONFIG share capability_snapshot_support True
+    iniset $TEMPEST_CONFIG share run_create_share_from_snapshot_in_another_pool_or_az_tests True
 elif [[ "$DRIVER" == "dummy" ]]; then
     MANILA_TEMPEST_CONCURRENCY=24
     MANILA_CONFIGURE_DEFAULT_TYPES=False
