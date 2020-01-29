@@ -144,6 +144,20 @@ class LinuxInterfaceDriver(object):
         """Unplug the interface."""
 
 
+class NoopInterfaceDriver(LinuxInterfaceDriver):
+    """Noop driver when manila-share is already connected to admin network"""
+
+    def init_l3(self, device_name, ip_cidrs, namespace=None, clear_cidrs=[]):
+        pass
+
+    def plug(self, device_name, port_id, mac_address,
+             bridge=None, namespace=None, prefix=None):
+        pass
+
+    def unplug(self, device_name, bridge=None, namespace=None, prefix=None):
+        pass
+
+
 class OVSInterfaceDriver(LinuxInterfaceDriver):
     """Driver for creating an internal interface on an OVS bridge."""
 

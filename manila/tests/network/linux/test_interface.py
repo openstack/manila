@@ -141,6 +141,21 @@ class TestABCDriver(TestBase):
         self.assertEqual(set(), result)
 
 
+class TestNoopInterfaceDriver(TestBase):
+
+    def test_init_l3(self):
+        self.ip.assert_not_called()
+        self.ip_dev.assert_not_called()
+
+    def test_plug(self):
+        self.ip.assert_not_called()
+        self.ip_dev.assert_not_called()
+
+    def test_unplug(self):
+        self.ip.assert_not_called()
+        self.ip_dev.assert_not_called()
+
+
 class TestOVSInterfaceDriver(TestBase):
 
     def test_get_device_name(self):
