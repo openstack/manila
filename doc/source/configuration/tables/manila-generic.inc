@@ -49,7 +49,7 @@
    * - ``service_image_name`` = ``manila-service-image``
      - (String) Name of image in Glance, that will be used for service instance creation. Only used if driver_handles_share_servers=True.
    * - ``service_instance_flavor_id`` = ``100``
-     - (Integer) ID of flavor, that will be used for service instance creation. Only used if driver_handles_share_servers=True.
+     - (String) ID of flavor, that will be used for service instance creation. Only used if driver_handles_share_servers=True.
    * - ``service_instance_name_or_id`` = ``None``
      - (String) Name or ID of service instance in Nova to use for share exports. Used only when share servers handling is disabled.
    * - ``service_instance_name_template`` = ``manila_service_instance_%s``

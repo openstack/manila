@@ -67,9 +67,9 @@ share_servers_handling_mode_opts = [
         help="Security group name, that will be used for "
              "service instance creation. "
              "Only used if driver_handles_share_servers=True."),
-    cfg.IntOpt(
+    cfg.StrOpt(
         "service_instance_flavor_id",
-        default=100,
+        default="100",
         help="ID of flavor, that will be used for service instance "
              "creation. Only used if driver_handles_share_servers=True."),
     cfg.StrOpt(

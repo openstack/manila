@@ -48,7 +48,7 @@ def fake_get_config_option(key):
     elif key == 'service_network_name':
         return 'fake_service_network_name'
     elif key == 'service_instance_flavor_id':
-        return 100
+        return '100'
     elif key == 'service_instance_name_template':
         return 'fake_manila_service_instance_%s'
     elif key == 'service_image_name':
@@ -1069,7 +1069,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             allow_ssh_subnet=network_data['service_subnet'])
         self._manager.compute_api.server_create.assert_called_once_with(
             self._manager.admin_context, name=instance_name,
-            image=service_image_id, flavor=100,
+            image=service_image_id, flavor='100',
             key_name=key_data[0], nics=network_data['nics'],
             availability_zone=service_instance.CONF.storage_availability_zone)
         self._manager.compute_api.server_get.assert_called_once_with(
@@ -1151,7 +1151,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             allow_ssh_subnet=network_data['service_subnet'])
         self._manager.compute_api.server_create.assert_called_once_with(
             self._manager.admin_context, name=instance_name,
-            image=service_image_id, flavor=100,
+            image=service_image_id, flavor='100',
             key_name=key_data[0], nics=network_data['nics'],
             availability_zone=service_instance.CONF.storage_availability_zone)
         self._manager.compute_api.server_get.assert_called_once_with(
@@ -1211,7 +1211,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self._manager.admin_context)
         self._manager.compute_api.server_create.assert_called_once_with(
             self._manager.admin_context, name=instance_name,
-            image=service_image_id, flavor=100,
+            image=service_image_id, flavor='100',
             key_name=key_data[0], nics=network_data['nics'],
             availability_zone=service_instance.CONF.storage_availability_zone)
 
@@ -1306,7 +1306,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self._manager.admin_context)
         self._manager.compute_api.server_create.assert_called_once_with(
             self._manager.admin_context, name=instance_name,
-            image=service_image_id, flavor=100,
+            image=service_image_id, flavor='100',
             key_name=key_data[0], nics=network_data['nics'],
             availability_zone=service_instance.CONF.storage_availability_zone)
 
