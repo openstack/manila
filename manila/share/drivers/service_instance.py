@@ -984,17 +984,19 @@ class NeutronNetworkHelper(BaseNetworkhelper):
         LOG.debug("Plug interface into host - interface_name: %s, "
                   "device: %s, port: %s", interface_name, device, port)
         self.vif_driver.plug(interface_name, port['id'], port['mac_address'])
+        cidrs_to_clear = []
         ip_cidrs = []
         for fixed_ip in port['fixed_ips']:
             subnet = self.neutron_api.get_subnet(fixed_ip['subnet_id'])
             if clear_outdated_routes:
-                device.route.clear_outdated_routes(subnet['cidr'])
+                cidrs_to_clear.append(subnet['cidr'])
 
             net = netaddr.IPNetwork(subnet['cidr'])
             ip_cidr = '%s/%s' % (fixed_ip['ip_address'], net.prefixlen)
             ip_cidrs.append(ip_cidr)
 
-        self.vif_driver.init_l3(interface_name, ip_cidrs)
+        self.vif_driver.init_l3(interface_name, ip_cidrs,
+                                clear_cidrs=cidrs_to_clear)
 
     @utils.synchronized("service_instance_get_service_port", external=True)
     def _get_service_port(self, network_id, subnet_id, device_id):

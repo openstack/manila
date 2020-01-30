@@ -2151,8 +2151,10 @@ class NeutronNetworkHelperTestCase(test.TestCase):
             mock.call(fake_subnet_admin['id'])])
         instance.vif_driver.init_l3.assert_has_calls([
             mock.call(interface_name_service,
-                      ['10.254.0.2/%s' % fake_division_mask]),
-            mock.call(interface_name_admin, ['10.0.0.4/24'])])
+                      ['10.254.0.2/%s' % fake_division_mask],
+                      clear_cidrs=[]),
+            mock.call(interface_name_admin, ['10.0.0.4/24'],
+                      clear_cidrs=[fake_subnet_admin['cidr']])])
         service_instance.ip_lib.IPDevice.assert_has_calls([
             mock.call(interface_name_service),
             mock.call(interface_name_admin)])
