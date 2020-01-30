@@ -973,14 +973,13 @@ class NeutronNetworkHelper(BaseNetworkhelper):
                 'manila-admin-share')
             interface_name = self.vif_driver.get_device_name(port)
             device = ip_lib.IPDevice(interface_name)
-            for fixed_ip in port['fixed_ips']:
-                subnet = self.neutron_api.get_subnet(fixed_ip['subnet_id'])
-                device.route.clear_outdated_routes(subnet['cidr'])
-            self._plug_interface_in_host(interface_name, device, port)
+            self._plug_interface_in_host(interface_name, device, port,
+                                         clear_outdated_routes=True)
 
     @utils.synchronized("service_instance_plug_interface_in_host",
                         external=True)
-    def _plug_interface_in_host(self, interface_name, device, port):
+    def _plug_interface_in_host(self, interface_name, device, port,
+                                clear_outdated_routes=False):
 
         LOG.debug("Plug interface into host - interface_name: %s, "
                   "device: %s, port: %s", interface_name, device, port)
@@ -988,6 +987,9 @@ class NeutronNetworkHelper(BaseNetworkhelper):
         ip_cidrs = []
         for fixed_ip in port['fixed_ips']:
             subnet = self.neutron_api.get_subnet(fixed_ip['subnet_id'])
+            if clear_outdated_routes:
+                device.route.clear_outdated_routes(subnet['cidr'])
+
             net = netaddr.IPNetwork(subnet['cidr'])
             ip_cidr = '%s/%s' % (fixed_ip['ip_address'], net.prefixlen)
             ip_cidrs.append(ip_cidr)

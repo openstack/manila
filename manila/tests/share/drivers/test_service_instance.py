@@ -2148,7 +2148,6 @@ class NeutronNetworkHelperTestCase(test.TestCase):
                       fake_admin_port['mac_address'])])
         instance.neutron_api.get_subnet.assert_has_calls([
             mock.call(fake_subnet_service['id']),
-            mock.call(fake_subnet_admin['id']),
             mock.call(fake_subnet_admin['id'])])
         instance.vif_driver.init_l3.assert_has_calls([
             mock.call(interface_name_service,
