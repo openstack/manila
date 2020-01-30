@@ -98,9 +98,11 @@ class TestABCDriver(TestBase):
         self.mock_object(bc, '_remove_outdated_interfaces')
 
         ns = '12345678-1234-5678-90ab-ba0987654321'
-        bc.init_l3('tap0', ['192.168.1.2/24'], namespace=ns)
+        bc.init_l3('tap0', ['192.168.1.2/24'], namespace=ns,
+                   clear_cidrs=['192.168.0.0/16'])
         self.ip_dev.assert_has_calls(
             [mock.call('tap0', namespace=ns),
+             mock.call().route.clear_outdated_routes('192.168.0.0/16'),
              mock.call().addr.list(scope='global', filters=['permanent']),
              mock.call().addr.add(4, '192.168.1.2/24', '192.168.1.255'),
              mock.call().addr.delete(4, '172.16.77.240/24'),

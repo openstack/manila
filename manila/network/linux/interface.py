@@ -65,13 +65,16 @@ class LinuxInterfaceDriver(object):
         self.conf = CONF
 
     @device_name_synchronized
-    def init_l3(self, device_name, ip_cidrs, namespace=None):
+    def init_l3(self, device_name, ip_cidrs, namespace=None, clear_cidrs=[]):
         """Set the L3 settings for the interface using data from the port.
 
         ip_cidrs: list of 'X.X.X.X/YY' strings
         """
         device = ip_lib.IPDevice(device_name,
                                  namespace=namespace)
+
+        for cidr in clear_cidrs:
+            device.route.clear_outdated_routes(cidr)
 
         previous = {}
         for address in device.addr.list(scope='global', filters=['permanent']):
