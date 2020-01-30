@@ -994,39 +994,6 @@ class NeutronNetworkHelper(BaseNetworkhelper):
 
         self.vif_driver.init_l3(interface_name, ip_cidrs)
 
-        # ensure that interface is first in the list
-        device.route.pullup_route(interface_name)
-
-        # here we are checking for garbage devices from removed service port
-        self._remove_outdated_interfaces(device)
-
-    def _remove_outdated_interfaces(self, device):
-        """Finds and removes unused network device."""
-        device_cidr_set = self._get_set_of_device_cidrs(device)
-        for dev in ip_lib.IPWrapper().get_devices():
-            if dev.name != device.name and dev.name[:3] == device.name[:3]:
-                cidr_set = self._get_set_of_device_cidrs(dev)
-                if device_cidr_set & cidr_set:
-                    self.vif_driver.unplug(dev.name)
-
-    def _get_set_of_device_cidrs(self, device):
-        cidrs = set()
-        addr_list = []
-        try:
-            # NOTE(ganso): I could call ip_lib.device_exists here, but since
-            # this is a concurrency problem, it would not fix the problem.
-            addr_list = device.addr.list()
-        except Exception as e:
-            if 'does not exist' in six.text_type(e):
-                LOG.warning(
-                    "Device %s does not exist anymore.", device.name)
-            else:
-                raise
-        for addr in addr_list:
-            if addr['ip_version'] == 4:
-                cidrs.add(six.text_type(netaddr.IPNetwork(addr['cidr']).cidr))
-        return cidrs
-
     @utils.synchronized("service_instance_get_service_port", external=True)
     def _get_service_port(self, network_id, subnet_id, device_id):
         """Find or creates service neutron port.

@@ -20,6 +20,7 @@ from manila.network.linux import interface
 from manila.network.linux import ip_lib
 from manila import test
 from manila.tests import conf_fixture
+from manila.tests import fake_network
 from manila import utils
 
 
@@ -94,13 +95,48 @@ class TestABCDriver(TestBase):
         self.ip_dev().addr.list = mock.Mock(return_value=addresses)
 
         bc = BaseChild()
+        self.mock_object(bc, '_remove_outdated_interfaces')
+
         ns = '12345678-1234-5678-90ab-ba0987654321'
         bc.init_l3('tap0', ['192.168.1.2/24'], namespace=ns)
         self.ip_dev.assert_has_calls(
             [mock.call('tap0', namespace=ns),
              mock.call().addr.list(scope='global', filters=['permanent']),
              mock.call().addr.add(4, '192.168.1.2/24', '192.168.1.255'),
-             mock.call().addr.delete(4, '172.16.77.240/24')])
+             mock.call().addr.delete(4, '172.16.77.240/24'),
+             mock.call().route.pullup_route('tap0')])
+        bc._remove_outdated_interfaces.assert_called_with(self.ip_dev())
+
+    def test__remove_outdated_interfaces(self):
+        device = fake_network.FakeDevice(
+            'foobarquuz', [dict(ip_version=4, cidr='1.0.0.0/27')])
+        devices = [fake_network.FakeDevice('foobar')]
+        self.ip().get_devices = mock.Mock(return_value=devices)
+
+        bc = BaseChild()
+        self.mock_object(bc, 'unplug')
+
+        bc._remove_outdated_interfaces(device)
+        bc.unplug.assert_called_once_with('foobar')
+
+    def test__get_set_of_device_cidrs(self):
+        device = fake_network.FakeDevice('foo')
+        expected = set(('1.0.0.0/27', '2.0.0.0/27'))
+
+        bc = BaseChild()
+        result = bc._get_set_of_device_cidrs(device)
+
+        self.assertEqual(expected, result)
+
+    def test__get_set_of_device_cidrs_exception(self):
+        device = fake_network.FakeDevice('foo')
+        self.mock_object(device.addr, 'list', mock.Mock(
+            side_effect=Exception('foo does not exist')))
+
+        bc = BaseChild()
+        result = bc._get_set_of_device_cidrs(device)
+
+        self.assertEqual(set(), result)
 
 
 class TestOVSInterfaceDriver(TestBase):

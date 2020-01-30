@@ -2128,7 +2128,6 @@ class NeutronNetworkHelperTestCase(test.TestCase):
                          mock.Mock(side_effect=[fake_subnet_service,
                                                 fake_subnet_admin,
                                                 fake_subnet_admin]))
-        self.mock_object(instance, '_remove_outdated_interfaces')
         self.mock_object(instance.vif_driver, 'plug')
         device_mock = mock.Mock()
         self.mock_object(service_instance.ip_lib, 'IPDevice',
@@ -2158,43 +2157,6 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         service_instance.ip_lib.IPDevice.assert_has_calls([
             mock.call(interface_name_service),
             mock.call(interface_name_admin)])
-        device_mock.route.pullup_route.assert_has_calls([
-            mock.call(interface_name_service),
-            mock.call(interface_name_admin)])
-        instance._remove_outdated_interfaces.assert_called_with(device_mock)
-
-    def test__get_set_of_device_cidrs(self):
-        device = fake_network.FakeDevice('foo')
-        expected = set(('1.0.0.0/27', '2.0.0.0/27'))
-        instance = self._init_neutron_network_plugin()
-
-        result = instance._get_set_of_device_cidrs(device)
-
-        self.assertEqual(expected, result)
-
-    def test__get_set_of_device_cidrs_exception(self):
-        device = fake_network.FakeDevice('foo')
-        self.mock_object(device.addr, 'list', mock.Mock(
-            side_effect=Exception('foo does not exist')))
-        instance = self._init_neutron_network_plugin()
-
-        result = instance._get_set_of_device_cidrs(device)
-
-        self.assertEqual(set(), result)
-
-    def test__remove_outdated_interfaces(self):
-        device = fake_network.FakeDevice(
-            'foobarquuz', [dict(ip_version=4, cidr='1.0.0.0/27')])
-        devices = [fake_network.FakeDevice('foobar')]
-        instance = self._init_neutron_network_plugin()
-        self.mock_object(instance.vif_driver, 'unplug')
-        self.mock_object(
-            service_instance.ip_lib.IPWrapper, 'get_devices',
-            mock.Mock(return_value=devices))
-
-        instance._remove_outdated_interfaces(device)
-
-        instance.vif_driver.unplug.assert_called_once_with('foobar')
 
     def test__get_service_port_none_exist(self):
         instance = self._init_neutron_network_plugin()
