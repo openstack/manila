@@ -3398,7 +3398,8 @@ def _security_service_get_query(context, session=None):
 def _network_get_query(context, session=None):
     if session is None:
         session = get_session()
-    return (model_query(context, models.ShareNetwork, session=session).
+    return (model_query(context, models.ShareNetwork, session=session,
+                        project_only=True).
             options(joinedload('share_instances'),
                     joinedload('security_services'),
                     subqueryload('share_network_subnets')))
