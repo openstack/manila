@@ -1,0 +1,7 @@
+---
+security:
+  - |
+    CVE-2020-9543: An issue with share network retrieval has been addressed
+    in the API by scoping unprivileged access to project only. Please see
+    `launchpad bug #1861485 <https://bugs.launchpad
+    .net/manila/+bug/1861485>`_ for more details.
