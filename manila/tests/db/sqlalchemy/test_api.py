@@ -1915,7 +1915,7 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
         share_nw_dict2['project_id'] = 'fake project 2'
         result1 = db_api.share_network_create(self.fake_context,
                                               self.share_nw_dict)
-        result2 = db_api.share_network_create(self.fake_context,
+        result2 = db_api.share_network_create(self.fake_context.elevated(),
                                               share_nw_dict2)
 
         self._check_fields(expected=self.share_nw_dict, actual=result1)
@@ -1947,6 +1947,33 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
         self._check_fields(expected=self.share_nw_dict, actual=result)
         self.assertEqual(0, len(result['share_instances']))
         self.assertEqual(0, len(result['security_services']))
+
+    def _create_share_network_for_project(self, project_id):
+        ctx = context.RequestContext(user_id='fake user',
+                                     project_id=project_id,
+                                     is_admin=False)
+
+        share_data = self.share_nw_dict.copy()
+        share_data['project_id'] = project_id
+
+        db_api.share_network_create(ctx, share_data)
+        return share_data
+
+    def test_get_other_tenant_as_admin(self):
+        expected = self._create_share_network_for_project('fake project 2')
+        result = db_api.share_network_get(self.fake_context.elevated(),
+                                          self.share_nw_dict['id'])
+
+        self._check_fields(expected=expected, actual=result)
+        self.assertEqual(0, len(result['share_instances']))
+        self.assertEqual(0, len(result['security_services']))
+
+    def test_get_other_tenant(self):
+        self._create_share_network_for_project('fake project 2')
+        self.assertRaises(exception.ShareNetworkNotFound,
+                          db_api.share_network_get,
+                          self.fake_context,
+                          self.share_nw_dict['id'])
 
     @ddt.data([{'id': 'fake share id1'}],
               [{'id': 'fake share id1'}, {'id': 'fake share id2'}],)
@@ -2043,25 +2070,30 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
             share_network_dict.update({'id': fake_id,
                                        'neutron_subnet_id': fake_id})
             share_networks.append(share_network_dict)
-            db_api.share_network_create(self.fake_context, share_network_dict)
+            db_api.share_network_create(self.fake_context.elevated(),
+                                        share_network_dict)
             index += 1
 
-        result = db_api.share_network_get_all(self.fake_context)
+        result = db_api.share_network_get_all(self.fake_context.elevated())
 
         self.assertEqual(len(share_networks), len(result))
         for index, net in enumerate(share_networks):
             self._check_fields(expected=net, actual=result[index])
 
     def test_get_all_by_project(self):
+        db_api.share_network_create(self.fake_context, self.share_nw_dict)
+
         share_nw_dict2 = dict(self.share_nw_dict)
         share_nw_dict2['id'] = 'fake share nw id2'
         share_nw_dict2['project_id'] = 'fake project 2'
         share_nw_dict2['neutron_subnet_id'] = 'fake subnet id2'
-        db_api.share_network_create(self.fake_context, self.share_nw_dict)
-        db_api.share_network_create(self.fake_context, share_nw_dict2)
+        new_context = context.RequestContext(user_id='fake user 2',
+                                             project_id='fake project 2',
+                                             is_admin=False)
+        db_api.share_network_create(new_context, share_nw_dict2)
 
         result = db_api.share_network_get_all_by_project(
-            self.fake_context,
+            self.fake_context.elevated(),
             share_nw_dict2['project_id'])
 
         self.assertEqual(1, len(result))
