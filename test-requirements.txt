@@ -17,7 +17,7 @@ oslotest>=3.2.0 # Apache-2.0
 # by oslo_db lib for running MySQL and PostgreSQL DB migration tests.
 # See https://docs.openstack.org/oslo.db/latest/contributor/index.html#how-to-run-unit-tests
 PyMySQL>=0.7.6 # MIT License
-psycopg2>=2.6.2 # LGPL/ZPL
+psycopg2-binary>=2.6.2 # LGPL/ZPL
 
 requests-mock>=1.2.0 # Apache-2.0
 os-api-ref>=1.4.0 # Apache-2.0
