@@ -93,8 +93,18 @@ share_servers_handling_mode_opts = [
     cfg.StrOpt(
         "interface_driver",
         default="manila.network.linux.interface.OVSInterfaceDriver",
-        help="Vif driver. Used only with Neutron and "
-             "if driver_handles_share_servers=True."),
+        help="Module path to the Virtual Interface (VIF) driver class. This "
+             "option is used only by drivers operating in "
+             "`driver_handles_share_servers=True` mode that provision "
+             "OpenStack compute instances as share servers. This option is "
+             "only supported with Neutron networking. "
+             "Drivers provided in tree work with Linux Bridge "
+             "(manila.network.linux.interface.BridgeInterfaceDriver) and OVS "
+             "(manila.network.linux.interface.OVSInterfaceDriver). If the "
+             "manila-share service is running on a host that is connected to "
+             "the administrator network, a no-op driver "
+             "(manila.network.linux.interface.NoopInterfaceDriver) may "
+             "be used."),
     cfg.BoolOpt(
         "connect_share_server_to_tenant_network",
         default=False,

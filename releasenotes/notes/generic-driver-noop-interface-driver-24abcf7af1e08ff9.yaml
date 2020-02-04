@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    A "no-op" interface driver (manila.network.linux.interface.NoopInterfaceDriver)
+    has been introduced to work with drivers that create and manage
+    lifecycle of share servers (``driver_handles_share_servers=True``)
+    through service instance virtual machines using OpenStack Compute. This
+    interface driver can be used when manila-share is running on a machine
+    that has access to the administrator network used by Manila.
