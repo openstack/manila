@@ -29,6 +29,7 @@ import webob
 
 from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import versioned_method
+from manila.common import constants
 from manila import exception
 from manila.i18n import _
 from manila import policy
@@ -66,7 +67,7 @@ def validate_key_names(key_names_list):
 
 
 def get_pagination_params(request):
-    """Return marker, limit tuple from request.
+    """Return marker, limit, offset tuple from request.
 
     :param request: `wsgi.Request` possibly containing 'marker' and 'limit'
                     GET variables. 'marker' is the id of the last element
@@ -82,11 +83,18 @@ def get_pagination_params(request):
         params['limit'] = _get_limit_param(request)
     if 'marker' in request.GET:
         params['marker'] = _get_marker_param(request)
+    if 'offset' in request.GET:
+        params['offset'] = _get_offset_param(request)
     return params
 
 
 def _get_limit_param(request):
-    """Extract integer limit from request or fail."""
+    """Extract integer limit from request or fail.
+
+    Defaults to max_limit if not present and returns max_limit if present
+   'limit' is greater than max_limit.
+    """
+    max_limit = CONF.osapi_max_limit
     try:
         limit = int(request.GET['limit'])
     except ValueError:
@@ -95,12 +103,38 @@ def _get_limit_param(request):
     if limit < 0:
         msg = _('limit param must be positive')
         raise webob.exc.HTTPBadRequest(explanation=msg)
+    limit = min(limit, max_limit)
     return limit
 
 
 def _get_marker_param(request):
     """Extract marker ID from request or fail."""
     return request.GET['marker']
+
+
+def _get_offset_param(request):
+    """Extract offset id from request's dictionary (defaults to 0) or fail."""
+    offset = request.GET['offset']
+    return _validate_integer(offset,
+                             'offset',
+                             0,
+                             constants.DB_MAX_INT)
+
+
+def _validate_integer(value, name, min_value=None, max_value=None):
+    """Make sure that value is a valid integer, potentially within range.
+
+    :param value: the value of the integer
+    :param name: the name of the integer
+    :param min_value: the min_length of the integer
+    :param max_value: the max_length of the integer
+    :return: integer
+    """
+    try:
+        value = strutils.validate_integer(value, name, min_value, max_value)
+        return value
+    except ValueError as e:
+        raise webob.exc.HTTPBadRequest(explanation=e)
 
 
 def _validate_pagination_query(request, max_limit=CONF.osapi_max_limit):
@@ -146,6 +180,25 @@ def limited(items, request, max_limit=CONF.osapi_max_limit):
     limit = min(max_limit, limit or max_limit)
     range_end = offset + limit
     return items[offset:range_end]
+
+
+def get_sort_params(params, default_key='created_at', default_dir='desc'):
+    """Retrieves sort key/direction parameters.
+
+    Processes the parameters to get the 'sort_key' and 'sort_dir' parameter
+    values.
+
+    :param params: webob.multidict of request parameters (from
+                   manila.api.openstack.wsgi.Request.params)
+    :param default_key: default sort key value, will return if no
+                        sort key are supplied
+    :param default_dir: default sort dir value, will return if no
+                        sort dir are supplied
+    :returns: value of sort key, value of sort dir
+    """
+    sort_key = params.pop('sort_key', default_key)
+    sort_dir = params.pop('sort_dir', default_dir)
+    return sort_key, sort_dir
 
 
 def remove_version_from_href(href):

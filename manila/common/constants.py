@@ -13,6 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+# The maximum value a signed INT type may have
+DB_MAX_INT = 0x7FFFFFFF
+
 # SHARE AND GENERAL STATUSES
 STATUS_CREATING = 'creating'
 STATUS_DELETING = 'deleting'

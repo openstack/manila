@@ -10,6 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import datetime
+import iso8601
 import mock
 from oslo_config import cfg
 import webob
@@ -37,8 +39,8 @@ class MessageApiTest(test.TestCase):
         self.mock_object(policy, 'check_policy',
                          mock.Mock(return_value=True))
 
-    def _expected_message_from_controller(self, id):
-        message = stubs.stub_message(id)
+    def _expected_message_from_controller(self, id, **kwargs):
+        message = stubs.stub_message(id, **kwargs)
         links = [
             {'href': 'http://localhost/v2/fake/messages/%s' % id,
              'rel': 'self'},
@@ -170,10 +172,9 @@ class MessageApiTest(test.TestCase):
         self.assertDictMatch(expected, res_dict)
 
     def test_index_with_limit_and_offset(self):
-        msg1 = stubs.stub_message(fakes.get_fake_uuid())
         msg2 = stubs.stub_message(fakes.get_fake_uuid())
         self.mock_object(message_api.API, 'get_all', mock.Mock(
-                         return_value=[msg1, msg2]))
+                         return_value=[msg2]))
         req = fakes.HTTPRequest.blank(
             '/messages?limit=1&offset=1',
             version=messages.MESSAGES_BASE_MICRO_VERSION,
@@ -184,3 +185,34 @@ class MessageApiTest(test.TestCase):
 
         ex2 = self._expected_message_from_controller(msg2['id'])['message']
         self.assertEqual([ex2], res_dict['messages'])
+
+    def test_index_with_created_since_and_created_before(self):
+        msg = stubs.stub_message(
+            fakes.get_fake_uuid(),
+            created_at=datetime.datetime(1900, 2, 1, 1, 1, 1,
+                                         tzinfo=iso8601.UTC))
+        self.mock_object(message_api.API, 'get_all', mock.Mock(
+                         return_value=[msg]))
+        req = fakes.HTTPRequest.blank(
+            '/messages?created_since=1900-01-01T01:01:01&'
+            'created_before=1900-03-01T01:01:01',
+            version=messages.MESSAGES_QUERY_BY_TIMESTAMP,
+            base_url='http://localhost/v2')
+        req.environ['manila.context'] = self.ctxt
+
+        res_dict = self.controller.index(req)
+
+        ex2 = self._expected_message_from_controller(
+            msg['id'],
+            created_at=datetime.datetime(1900, 2, 1, 1, 1, 1,
+                                         tzinfo=iso8601.UTC))['message']
+        self.assertEqual([ex2], res_dict['messages'])
+
+    def test_index_with_invalid_time_format(self):
+        req = fakes.HTTPRequest.blank(
+            '/messages?created_since=invalid_time_str',
+            version=messages.MESSAGES_QUERY_BY_TIMESTAMP,
+            base_url='http://localhost/v2')
+        req.environ['manila.context'] = self.ctxt
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.index, req)

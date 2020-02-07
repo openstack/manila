@@ -50,6 +50,7 @@ from sqlalchemy.sql import func
 
 from manila.common import constants
 from manila.db.sqlalchemy import models
+from manila.db.sqlalchemy import utils
 from manila import exception
 from manila.i18n import _
 from manila import quota
@@ -249,7 +250,8 @@ def model_query(context, model, *args, **kwargs):
         model=model, session=session, args=args, **kwargs)
 
 
-def exact_filter(query, model, filters, legal_keys):
+def exact_filter(query, model, filters, legal_keys,
+                 created_at_key='created_at'):
     """Applies exact match filtering to a query.
 
     Returns the updated query.  Modifies filters argument to remove
@@ -266,7 +268,7 @@ def exact_filter(query, model, filters, legal_keys):
     """
 
     filter_dict = {}
-
+    created_at_attr = getattr(model, created_at_key, None)
     # Walk through all the keys
     for key in legal_keys:
         # Skip ones we're not filtering on
@@ -276,7 +278,17 @@ def exact_filter(query, model, filters, legal_keys):
         # OK, filtering on this key; what value do we search for?
         value = filters.pop(key)
 
-        if isinstance(value, (list, tuple, set, frozenset)):
+        if key == 'created_since' and created_at_attr:
+            # This is a reserved query parameter to indicate resources created
+            # after a particular datetime
+            value = timeutils.normalize_time(value)
+            query = query.filter(created_at_attr.op('>=')(value))
+        elif key == 'created_before' and created_at_attr:
+            # This is a reserved query parameter to indicate resources created
+            # before a particular datetime
+            value = timeutils.normalize_time(value)
+            query = query.filter(created_at_attr.op('<=')(value))
+        elif isinstance(value, (list, tuple, set, frozenset)):
             # Looking for values in a list; apply to query directly
             column_attr = getattr(model, key)
             query = query.filter(column_attr.in_(value))
@@ -5221,28 +5233,49 @@ def message_get(context, message_id):
 
 
 @require_context
-def message_get_all(context, filters=None, sort_key='created_at',
-                    sort_dir='asc'):
+def message_get_all(context, filters=None, limit=None, offset=None,
+                    sort_key='created_at', sort_dir='desc'):
+    """Retrieves all messages.
+
+    If no sort parameters are specified then the returned messages are
+    sorted by the 'created_at' key in descending order.
+
+    :param context: context to query under
+    :param limit: maximum number of items to return
+    :param offset: the number of items to skip from the marker or from the
+                    first element.
+    :param sort_key: attributes by which results should be sorted.
+    :param sort_dir: directions in which results should be sorted.
+    :param filters: dictionary of filters; values that are in lists, tuples,
+                    or sets cause an 'IN' operation, while exact matching
+                    is used for other values, see exact_filter function for
+                    more information
+    :returns: list of matching messages
+    """
     messages = models.Message
-    query = model_query(context,
-                        messages,
-                        read_deleted="no",
-                        project_only="yes")
 
-    legal_filter_keys = ('request_id', 'resource_type', 'resource_id',
-                         'action_id', 'detail_id', 'message_level')
+    session = get_session()
+    with session.begin():
+        query = model_query(context,
+                            messages,
+                            read_deleted="no",
+                            project_only="yes")
 
-    if not filters:
-        filters = {}
+        legal_filter_keys = ('request_id', 'resource_type', 'resource_id',
+                             'action_id', 'detail_id', 'message_level',
+                             'created_since', 'created_before')
 
-    query = exact_filter(query, messages, filters, legal_filter_keys)
-    try:
-        query = apply_sorting(messages, query, sort_key, sort_dir)
-    except AttributeError:
-        msg = _("Wrong sorting key provided - '%s'.") % sort_key
-        raise exception.InvalidInput(reason=msg)
+        if not filters:
+            filters = {}
 
-    return query.all()
+        query = exact_filter(query, messages, filters, legal_filter_keys)
+
+        query = utils.paginate_query(query, messages, limit,
+                                     sort_key=sort_key,
+                                     sort_dir=sort_dir,
+                                     offset=offset)
+
+        return query.all()
 
 
 @require_context

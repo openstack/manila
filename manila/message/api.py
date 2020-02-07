@@ -73,13 +73,17 @@ class API(base.Base):
         """Return message with the specified message id."""
         return self.db.message_get(context, id)
 
-    def get_all(self, context, search_opts={}, sort_key=None, sort_dir=None):
+    def get_all(self, context, search_opts=None, limit=None,
+                offset=None, sort_key=None, sort_dir=None):
         """Return messages for the given context."""
         LOG.debug("Searching for messages by: %s",
                   six.text_type(search_opts))
 
-        messages = self.db.message_get_all(
-            context, filters=search_opts, sort_key=sort_key, sort_dir=sort_dir)
+        search_opts = search_opts or {}
+        messages = self.db.message_get_all(context, filters=search_opts,
+                                           limit=limit, offset=offset,
+                                           sort_key=sort_key,
+                                           sort_dir=sort_dir)
 
         return messages
 
