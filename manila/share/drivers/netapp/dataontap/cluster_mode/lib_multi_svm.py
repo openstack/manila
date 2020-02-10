@@ -20,6 +20,7 @@ variant creates Data ONTAP storage virtual machines (i.e. 'vservers')
 as needed to provision shares.
 """
 
+import copy
 import re
 
 from oslo_log import log
@@ -553,3 +554,52 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
     def _delete_vserver_peer(self, vserver, peer_vserver):
         self._client.delete_vserver_peer(vserver, peer_vserver)
+
+    def create_share_from_snapshot(self, context, share, snapshot,
+                                   share_server=None, parent_share=None):
+        # NOTE(dviroel): If both parent and child shares are in the same host,
+        # they belong to the same cluster, and we can skip all the processing
+        # below.
+        if parent_share['host'] != share['host']:
+            # 1. Retrieve source and destination vservers from source and
+            # destination shares
+            new_share = copy.deepcopy(share.to_dict())
+            new_share['share_server'] = share_server.to_dict()
+
+            dm_session = data_motion.DataMotionSession()
+            src_vserver = dm_session.get_vserver_from_share(parent_share)
+            dest_vserver = dm_session.get_vserver_from_share(new_share)
+
+            # 2. Retrieve the source share host's client and cluster name
+            src_share_host = share_utils.extract_host(
+                parent_share['host'], level='backend_name')
+            src_share_client = data_motion.get_client_for_backend(
+                src_share_host, vserver_name=src_vserver)
+            # Cluster name is needed for setting up the vserver peering
+            src_share_cluster_name = src_share_client.get_cluster_name()
+
+            # 3. Retrieve new share host's client
+            dest_share_host = share_utils.extract_host(
+                new_share['host'], level='backend_name')
+            dest_share_client = data_motion.get_client_for_backend(
+                dest_share_host, vserver_name=dest_vserver)
+            dest_share_cluster_name = dest_share_client.get_cluster_name()
+            # If source and destination shares are placed in a different
+            # clusters, we'll need the both vserver peered.
+            if src_share_cluster_name != dest_share_cluster_name:
+                if not self._get_vserver_peers(dest_vserver, src_vserver):
+                    # 3.1. Request vserver peer creation from new_replica's
+                    # host to active replica's host
+                    dest_share_client.create_vserver_peer(
+                        dest_vserver, src_vserver,
+                        peer_cluster_name=src_share_cluster_name)
+
+                    # 3.2. Accepts the vserver peering using active replica
+                    # host's client
+                    src_share_client.accept_vserver_peer(src_vserver,
+                                                         dest_vserver)
+
+        return (super(NetAppCmodeMultiSVMFileStorageLibrary, self)
+                .create_share_from_snapshot(
+                context, share, snapshot, share_server=share_server,
+                parent_share=parent_share))

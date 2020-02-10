@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    The NetApp driver now supports efficiently creating new shares from
+    snapshots in pools or back ends different than that of the source share. In
+    order to have this functionality working across different back ends,
+    replication must be enabled and configured accordingly.

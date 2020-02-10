@@ -2245,6 +2245,53 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             raise
 
     @na_utils.trace
+    def check_volume_clone_split_completed(self, volume_name):
+        """Check if volume clone split operation already finished"""
+        return self.get_volume_clone_parent_snaphot(volume_name) is None
+
+    @na_utils.trace
+    def get_volume_clone_parent_snaphot(self, volume_name):
+        """Gets volume's clone parent.
+
+        Return the snapshot name of a volume's clone parent, or None if it
+        doesn't exist.
+        """
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name
+                    }
+                }
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-clone-attributes': {
+                        'volume-clone-parent-attributes': {
+                            'snapshot-name': ''
+                        }
+                    }
+                }
+            }
+        }
+        result = self.send_iter_request('volume-get-iter', api_args)
+        if not self._has_records(result):
+            return None
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        volume_attributes = attributes_list.get_child_by_name(
+            'volume-attributes') or netapp_api.NaElement('none')
+        vol_clone_attrs = volume_attributes.get_child_by_name(
+            'volume-clone-attributes') or netapp_api.NaElement('none')
+        vol_clone_parent_atts = vol_clone_attrs.get_child_by_name(
+            'volume-clone-parent-attributes') or netapp_api.NaElement(
+            'none')
+        snapshot_name = vol_clone_parent_atts.get_child_content(
+            'snapshot-name')
+        return snapshot_name
+
+    @na_utils.trace
     def get_clone_children_for_snapshot(self, volume_name, snapshot_name):
         """Returns volumes that are keeping a snapshot locked."""
 
@@ -3964,3 +4011,19 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return {
             'ipv6-enabled': ipv6_enabled,
         }
+
+    @na_utils.trace
+    def rehost_volume(self, volume_name, vserver, destination_vserver):
+        """Rehosts a volume from one Vserver into another Vserver.
+
+        :param volume_name: Name of the FlexVol to be rehosted.
+        :param vserver: Source Vserver name to which target volume belongs.
+        :param destination_vserver: Destination Vserver name where target
+        volume must reside after successful volume rehost operation.
+        """
+        api_args = {
+            'volume': volume_name,
+            'vserver': vserver,
+            'destination-vserver': destination_vserver,
+        }
+        self.send_request('volume-rehost', api_args)

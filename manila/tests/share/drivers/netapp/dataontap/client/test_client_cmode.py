@@ -6698,3 +6698,72 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertEqual(fake.CLUSTER_NAME, result)
         self.client.send_request.assert_called_once_with(
             'cluster-identity-get', api_args, enable_tunneling=False)
+
+    @ddt.data('fake_snapshot_name', None)
+    def test_check_volume_clone_split_completed(self, get_clone_parent):
+        volume_name = fake.SHARE_NAME
+        mock_get_vol_clone_parent = self.mock_object(
+            self.client, 'get_volume_clone_parent_snaphot',
+            mock.Mock(return_value=get_clone_parent))
+
+        result = self.client.check_volume_clone_split_completed(volume_name)
+
+        mock_get_vol_clone_parent.assert_called_once_with(volume_name)
+        expected_result = get_clone_parent is None
+        self.assertEqual(expected_result, result)
+
+    def test_rehost_volume(self):
+        volume_name = fake.SHARE_NAME
+        vserver = fake.VSERVER_NAME
+        dest_vserver = fake.VSERVER_NAME_2
+        api_args = {
+            'volume': volume_name,
+            'vserver': vserver,
+            'destination-vserver': dest_vserver,
+        }
+        self.mock_object(self.client, 'send_request')
+
+        self.client.rehost_volume(volume_name, vserver, dest_vserver)
+
+        self.client.send_request.assert_called_once_with('volume-rehost',
+                                                         api_args)
+
+    @ddt.data(
+        {'fake_api_response': fake.VOLUME_GET_ITER_PARENT_SNAP_EMPTY_RESPONSE,
+         'expected_snapshot_name': None},
+        {'fake_api_response': fake.VOLUME_GET_ITER_PARENT_SNAP_RESPONSE,
+         'expected_snapshot_name': fake.SNAPSHOT_NAME},
+        {'fake_api_response': fake.NO_RECORDS_RESPONSE,
+         'expected_snapshot_name': None})
+    @ddt.unpack
+    def test_get_volume_clone_parent_snaphot(self, fake_api_response,
+                                             expected_snapshot_name):
+
+        api_response = netapp_api.NaElement(fake_api_response)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_volume_clone_parent_snaphot(fake.SHARE_NAME)
+
+        expected_api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': fake.SHARE_NAME
+                    }
+                }
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-clone-attributes': {
+                        'volume-clone-parent-attributes': {
+                            'snapshot-name': ''
+                        }
+                    }
+                }
+            }
+        }
+        self.client.send_iter_request.assert_called_once_with(
+            'volume-get-iter', expected_api_args)
+        self.assertEqual(expected_snapshot_name, result)

@@ -283,3 +283,6 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
 
     def unmanage_server(self, server_details, security_services=None):
         return self.library.unmanage_server(server_details, security_services)
+
+    def get_share_status(self, share_instance, share_server=None):
+        return self.library.get_share_status(share_instance, share_server)

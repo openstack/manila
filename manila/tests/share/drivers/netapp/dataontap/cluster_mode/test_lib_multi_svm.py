@@ -1108,3 +1108,108 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._client.delete_vserver_peer.assert_called_once_with(
             self.fake_vserver, self.fake_new_vserver_name
         )
+
+    def test_create_share_from_snaphot(self):
+        fake_parent_share = copy.deepcopy(fake.SHARE)
+        fake_parent_share['id'] = fake.SHARE_ID2
+        mock_create_from_snap = self.mock_object(
+            lib_base.NetAppCmodeFileStorageLibrary,
+            'create_share_from_snapshot')
+
+        self.library.create_share_from_snapshot(
+            None, fake.SHARE, fake.SNAPSHOT, share_server=fake.SHARE_SERVER,
+            parent_share=fake_parent_share)
+
+        mock_create_from_snap.assert_called_once_with(
+            None, fake.SHARE, fake.SNAPSHOT, share_server=fake.SHARE_SERVER,
+            parent_share=fake_parent_share
+        )
+
+    @ddt.data(
+        {'src_cluster_name': fake.CLUSTER_NAME,
+         'dest_cluster_name': fake.CLUSTER_NAME, 'has_vserver_peers': None},
+        {'src_cluster_name': fake.CLUSTER_NAME,
+         'dest_cluster_name': fake.CLUSTER_NAME_2, 'has_vserver_peers': False},
+        {'src_cluster_name': fake.CLUSTER_NAME,
+         'dest_cluster_name': fake.CLUSTER_NAME_2, 'has_vserver_peers': True}
+    )
+    @ddt.unpack
+    def test_create_share_from_snaphot_different_hosts(self, src_cluster_name,
+                                                       dest_cluster_name,
+                                                       has_vserver_peers):
+        class FakeDBObj(dict):
+            def to_dict(self):
+                return self
+        fake_parent_share = copy.deepcopy(fake.SHARE)
+        fake_parent_share['id'] = fake.SHARE_ID2
+        fake_parent_share['host'] = fake.MANILA_HOST_NAME_2
+        fake_share = FakeDBObj(fake.SHARE)
+        fake_share_server = FakeDBObj(fake.SHARE_SERVER)
+        src_vserver = fake.VSERVER2
+        dest_vserver = fake.VSERVER1
+        src_backend = fake.BACKEND_NAME
+        dest_backend = fake.BACKEND_NAME_2
+        mock_dm_session = mock.Mock()
+
+        mock_dm_constr = self.mock_object(
+            data_motion, "DataMotionSession",
+            mock.Mock(return_value=mock_dm_session))
+        mock_get_vserver = self.mock_object(
+            mock_dm_session, 'get_vserver_from_share',
+            mock.Mock(side_effect=[src_vserver, dest_vserver]))
+        src_vserver_client = mock.Mock()
+        dest_vserver_client = mock.Mock()
+        mock_extract_host = self.mock_object(
+            share_utils, 'extract_host',
+            mock.Mock(side_effect=[src_backend, dest_backend]))
+        mock_dm_get_client = self.mock_object(
+            data_motion, 'get_client_for_backend',
+            mock.Mock(side_effect=[src_vserver_client, dest_vserver_client]))
+        mock_get_src_cluster_name = self.mock_object(
+            src_vserver_client, 'get_cluster_name',
+            mock.Mock(return_value=src_cluster_name))
+        mock_get_dest_cluster_name = self.mock_object(
+            dest_vserver_client, 'get_cluster_name',
+            mock.Mock(return_value=dest_cluster_name))
+        mock_get_vserver_peers = self.mock_object(
+            self.library, '_get_vserver_peers',
+            mock.Mock(return_value=has_vserver_peers))
+        mock_create_vserver_peer = self.mock_object(dest_vserver_client,
+                                                    'create_vserver_peer')
+        mock_accept_peer = self.mock_object(src_vserver_client,
+                                            'accept_vserver_peer')
+        mock_create_from_snap = self.mock_object(
+            lib_base.NetAppCmodeFileStorageLibrary,
+            'create_share_from_snapshot')
+
+        self.library.create_share_from_snapshot(
+            None, fake_share, fake.SNAPSHOT, share_server=fake_share_server,
+            parent_share=fake_parent_share)
+
+        internal_share = copy.deepcopy(fake.SHARE)
+        internal_share['share_server'] = copy.deepcopy(fake.SHARE_SERVER)
+
+        mock_dm_constr.assert_called_once()
+        mock_get_vserver.assert_has_calls([mock.call(fake_parent_share),
+                                           mock.call(internal_share)])
+        mock_extract_host.assert_has_calls([
+            mock.call(fake_parent_share['host'], level='backend_name'),
+            mock.call(internal_share['host'], level='backend_name')])
+        mock_dm_get_client.assert_has_calls([
+            mock.call(src_backend, vserver_name=src_vserver),
+            mock.call(dest_backend, vserver_name=dest_vserver)
+        ])
+        mock_get_src_cluster_name.assert_called_once()
+        mock_get_dest_cluster_name.assert_called_once()
+        if src_cluster_name != dest_cluster_name:
+            mock_get_vserver_peers.assert_called_once_with(dest_vserver,
+                                                           src_vserver)
+            if not has_vserver_peers:
+                mock_create_vserver_peer.assert_called_once_with(
+                    dest_vserver, src_vserver,
+                    peer_cluster_name=src_cluster_name)
+                mock_accept_peer.assert_called_once_with(src_vserver,
+                                                         dest_vserver)
+        mock_create_from_snap.assert_called_once_with(
+            None, fake.SHARE, fake.SNAPSHOT, share_server=fake.SHARE_SERVER,
+            parent_share=fake_parent_share)

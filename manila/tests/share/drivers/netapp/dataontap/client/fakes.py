@@ -2195,6 +2195,46 @@ VOLUME_GET_ITER_CLONE_CHILDREN_RESPONSE = etree.XML("""
     'clone2': CLONE_CHILD_2,
 })
 
+VOLUME_GET_ITER_PARENT_SNAP_EMPTY_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-id-attributes>
+          <name>%(name)s</name>
+          <owning-vserver-name>%(vserver)s</owning-vserver-name>
+        </volume-id-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'vserver': VSERVER_NAME,
+    'name': SHARE_NAME,
+})
+
+VOLUME_GET_ITER_PARENT_SNAP_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-clone-attributes>
+          <volume-clone-parent-attributes>
+            <snapshot-name>%(snapshot_name)s</snapshot-name>
+          </volume-clone-parent-attributes>
+        </volume-clone-attributes>
+        <volume-id-attributes>
+          <name>%(name)s</name>
+          <owning-vserver-name>%(vserver)s</owning-vserver-name>
+        </volume-id-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'snapshot_name': SNAPSHOT_NAME,
+    'vserver': VSERVER_NAME,
+    'name': SHARE_NAME,
+})
+
 SIS_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>

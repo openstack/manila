@@ -62,6 +62,11 @@ class NetAppCmodeFileStorageLibrary(object):
     DEFAULT_FILTER_FUNCTION = 'capabilities.utilization < 70'
     DEFAULT_GOODNESS_FUNCTION = '100 - capabilities.utilization'
 
+    # Internal states when dealing with data motion
+    STATE_SPLITTING_VOLUME_CLONE = 'splitting_volume_clone'
+    STATE_MOVING_VOLUME = 'moving_volume'
+    STATE_SNAPMIRROR_DATA_COPYING = 'snapmirror_data_copying'
+
     # Maps NetApp qualified extra specs keys to corresponding backend API
     # client library argument keywords.  When we expose more backend
     # capabilities here, we will add them to this map.
@@ -487,11 +492,278 @@ class NetAppCmodeFileStorageLibrary(object):
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None, parent_share=None):
         """Creates new share from snapshot."""
-        vserver, vserver_client = self._get_vserver(share_server=share_server)
-        self._allocate_container_from_snapshot(
-            share, snapshot, vserver, vserver_client)
-        return self._create_export(share, share_server, vserver,
-                                   vserver_client)
+        # TODO(dviroel) return progress info in asynchronous answers
+        if parent_share['host'] == share['host']:
+            src_vserver, src_vserver_client = self._get_vserver(
+                share_server=share_server)
+            # Creating a new share from snapshot in the source share's pool
+            self._allocate_container_from_snapshot(
+                share, snapshot, src_vserver, src_vserver_client)
+            return self._create_export(share, share_server, src_vserver,
+                                       src_vserver_client)
+        parent_share_server = {}
+        if parent_share['share_server'] is not None:
+            # Get only the information needed by Data Motion
+            ss_keys = ['id', 'identifier', 'backend_details', 'host']
+            for key in ss_keys:
+                parent_share_server[key] = (
+                    parent_share['share_server'].get(key))
+
+        # Information to be saved in the private_storage that will need to be
+        # retrieved later, in order to continue with the share creation flow
+        src_share_instance = {
+            'id': share['id'],
+            'host': parent_share.get('host'),
+            'share_server': parent_share_server or None
+        }
+        # NOTE(dviroel): Data Motion functions access share's 'share_server'
+        # attribute to get vserser information.
+        dest_share = copy.deepcopy(share.to_dict())
+        dest_share['share_server'] = (share_server.to_dict()
+                                      if share_server else None)
+
+        dm_session = data_motion.DataMotionSession()
+        # Source host info
+        __, src_vserver, src_backend = (
+            dm_session.get_backend_info_for_share(parent_share))
+        src_vserver_client = data_motion.get_client_for_backend(
+            src_backend, vserver_name=src_vserver)
+        src_cluster_name = src_vserver_client.get_cluster_name()
+
+        # Destination host info
+        dest_vserver, dest_vserver_client = self._get_vserver(share_server)
+        dest_cluster_name = dest_vserver_client.get_cluster_name()
+
+        try:
+            if (src_cluster_name != dest_cluster_name or
+                    not self._have_cluster_creds):
+                # 1. Create a clone on source. We don't need to split from
+                # clone in order to replicate data
+                self._allocate_container_from_snapshot(
+                    dest_share, snapshot, src_vserver, src_vserver_client,
+                    split=False)
+                # 2. Create a replica in destination host
+                self._allocate_container(
+                    dest_share, dest_vserver, dest_vserver_client,
+                    replica=True)
+                # 3. Initialize snapmirror relationship with cloned share.
+                src_share_instance['replica_state'] = (
+                    constants.REPLICA_STATE_ACTIVE)
+                dm_session.create_snapmirror(src_share_instance, dest_share)
+                # The snapmirror data copy can take some time to be concluded,
+                # we'll answer this call asynchronously
+                state = self.STATE_SNAPMIRROR_DATA_COPYING
+            else:
+                # NOTE(dviroel): there's a need to split the cloned share from
+                # its parent in order to move it to a different aggregate or
+                # vserver
+                self._allocate_container_from_snapshot(
+                    dest_share, snapshot, src_vserver,
+                    src_vserver_client, split=True)
+                # The split volume clone operation can take some time to be
+                # concluded and we'll answer the call asynchronously
+                state = self.STATE_SPLITTING_VOLUME_CLONE
+        except Exception:
+            # If the share exists on the source vserser, we need to
+            # delete it since it's a temporary share, not managed by the system
+            dm_session.delete_snapmirror(src_share_instance, dest_share)
+            self._delete_share(src_share_instance, src_vserver_client,
+                               remove_export=False)
+            msg = _('Could not create share %(share_id)s from snapshot '
+                    '%(snapshot_id)s in the destination host %(dest_host)s.')
+            msg_args = {'share_id': dest_share['id'],
+                        'snapshot_id': snapshot['id'],
+                        'dest_host': dest_share['host']}
+            raise exception.NetAppException(msg % msg_args)
+
+        # Store source share info on private storage using destination share id
+        src_share_instance['internal_state'] = state
+        src_share_instance['status'] = constants.STATUS_ACTIVE
+        self.private_storage.update(dest_share['id'], {
+            'source_share': json.dumps(src_share_instance)
+        })
+        return {
+            'status': constants.STATUS_CREATING_FROM_SNAPSHOT,
+        }
+
+    def _update_create_from_snapshot_status(self, share, share_server=None):
+        # TODO(dviroel) return progress info in asynchronous answers
+        # If the share is creating from snapshot and copying data in background
+        # we'd verify if the operation has finished and trigger new operations
+        # if necessary.
+        source_share_str = self.private_storage.get(share['id'],
+                                                    'source_share')
+        if source_share_str is None:
+            msg = _('Could not update share %(share_id)s status due to invalid'
+                    ' internal state. Aborting share creation.')
+            msg_args = {'share_id': share['id']}
+            LOG.error(msg, msg_args)
+            return {'status': constants.STATUS_ERROR}
+        try:
+            # Check if current operation had finished and continue to move the
+            # source share towards its destination
+            return self._create_from_snapshot_continue(share, share_server)
+        except Exception:
+            # Delete everything associated to the temporary clone created on
+            # the source host.
+            source_share = json.loads(source_share_str)
+            dm_session = data_motion.DataMotionSession()
+
+            dm_session.delete_snapmirror(source_share, share)
+            __, src_vserver, src_backend = (
+                dm_session.get_backend_info_for_share(source_share))
+            src_vserver_client = data_motion.get_client_for_backend(
+                src_backend, vserver_name=src_vserver)
+
+            self._delete_share(source_share, src_vserver_client,
+                               remove_export=False)
+            # Delete private storage info
+            self.private_storage.delete(share['id'])
+            msg = _('Could not complete share %(share_id)s creation due to an '
+                    'internal error.')
+            msg_args = {'share_id': share['id']}
+            LOG.error(msg, msg_args)
+            return {'status': constants.STATUS_ERROR}
+
+    def _create_from_snapshot_continue(self, share, share_server=None):
+        return_values = {
+            'status': constants.STATUS_CREATING_FROM_SNAPSHOT
+        }
+        apply_qos_on_dest = False
+        # Data motion session used to extract host info and manage snapmirrors
+        dm_session = data_motion.DataMotionSession()
+        # Get info from private storage
+        src_share_str = self.private_storage.get(share['id'], 'source_share')
+        src_share = json.loads(src_share_str)
+        current_state = src_share['internal_state']
+        share['share_server'] = share_server
+
+        # Source host info
+        __, src_vserver, src_backend = (
+            dm_session.get_backend_info_for_share(src_share))
+        src_aggr = share_utils.extract_host(src_share['host'], level='pool')
+        src_vserver_client = data_motion.get_client_for_backend(
+            src_backend, vserver_name=src_vserver)
+        # Destination host info
+        dest_vserver, dest_vserver_client = self._get_vserver(share_server)
+        dest_aggr = share_utils.extract_host(share['host'], level='pool')
+
+        if current_state == self.STATE_SPLITTING_VOLUME_CLONE:
+            if self._check_volume_clone_split_completed(
+                    src_share, src_vserver_client):
+                # Rehost volume if source and destination are hosted in
+                # different vservers
+                if src_vserver != dest_vserver:
+                    # NOTE(dviroel): some volume policies, policy rules and
+                    # configurations are lost from the source volume after
+                    # rehost operation.
+                    qos_policy_for_share = (
+                        self._get_backend_qos_policy_group_name(share['id']))
+                    src_vserver_client.mark_qos_policy_group_for_deletion(
+                        qos_policy_for_share)
+                    # Apply QoS on destination share
+                    apply_qos_on_dest = True
+
+                    self._rehost_and_mount_volume(
+                        share, src_vserver, src_vserver_client,
+                        dest_vserver, dest_vserver_client)
+                # Move the share to the expected aggregate
+                if src_aggr != dest_aggr:
+                    # Move volume and 'defer' the cutover. If it fails, the
+                    # share will be deleted afterwards
+                    self._move_volume_after_splitting(
+                        src_share, share, share_server, cutover_action='defer')
+                    # Move a volume can take longer, we'll answer
+                    # asynchronously
+                    current_state = self.STATE_MOVING_VOLUME
+                else:
+                    return_values['status'] = constants.STATUS_AVAILABLE
+
+        elif current_state == self.STATE_MOVING_VOLUME:
+            if self._check_volume_move_completed(share, share_server):
+                if src_vserver != dest_vserver:
+                    # NOTE(dviroel): at this point we already rehosted the
+                    # share, but we missed applying the qos since it was moving
+                    # the share between aggregates
+                    apply_qos_on_dest = True
+                return_values['status'] = constants.STATUS_AVAILABLE
+
+        elif current_state == self.STATE_SNAPMIRROR_DATA_COPYING:
+            replica_state = self.update_replica_state(
+                None,  # no context is needed
+                [src_share],
+                share,
+                [],  # access_rules
+                [],  # snapshot list
+                share_server)
+            if replica_state in [None, constants.STATUS_ERROR]:
+                msg = _("Destination share has failed on replicating data "
+                        "from source share.")
+                LOG.exception(msg)
+                raise exception.NetAppException(msg)
+            elif replica_state == constants.REPLICA_STATE_IN_SYNC:
+                try:
+                    # 1. Start an update to try to get a last minute
+                    # transfer before we quiesce and break
+                    dm_session.update_snapmirror(src_share, share)
+                except exception.StorageCommunicationException:
+                    # Ignore any errors since the current source replica
+                    # may be unreachable
+                    pass
+                # 2. Break SnapMirror
+                # NOTE(dviroel): if it fails on break/delete a snapmirror
+                # relationship, we won't be able to delete the share.
+                dm_session.break_snapmirror(src_share, share)
+                dm_session.delete_snapmirror(src_share, share)
+                # 3. Delete the source volume
+                self._delete_share(src_share, src_vserver_client,
+                                   remove_export=False)
+                share_name = self._get_backend_share_name(src_share['id'])
+                # 4. Set File system size fixed to false
+                dest_vserver_client.set_volume_filesys_size_fixed(
+                    share_name, filesys_size_fixed=False)
+                apply_qos_on_dest = True
+                return_values['status'] = constants.STATUS_AVAILABLE
+        else:
+            # Delete this share from private storage since we'll abort this
+            # operation.
+            self.private_storage.delete(share['id'])
+            msg_args = {
+                'state': current_state,
+                'id': share['id'],
+            }
+            msg = _("Caught an unexpected internal state '%(state)s' for "
+                    "share %(id)s. Aborting operation.") % msg_args
+            LOG.exception(msg)
+            raise exception.NetAppException(msg)
+
+        if return_values['status'] == constants.STATUS_AVAILABLE:
+            if apply_qos_on_dest:
+                extra_specs = share_types.get_extra_specs_from_share(share)
+                provisioning_options = self._get_provisioning_options(
+                    extra_specs)
+                qos_policy_group_name = (
+                    self._modify_or_create_qos_for_existing_share(
+                        share, extra_specs, dest_vserver, dest_vserver_client))
+                if qos_policy_group_name:
+                    provisioning_options['qos_policy_group'] = (
+                        qos_policy_group_name)
+                share_name = self._get_backend_share_name(share['id'])
+                # Modify volume to match extra specs
+                dest_vserver_client.modify_volume(
+                    dest_aggr, share_name, **provisioning_options)
+
+            self.private_storage.delete(share['id'])
+            return_values['export_locations'] = self._create_export(
+                share, share_server, dest_vserver, dest_vserver_client,
+                clear_current_export_policy=False)
+        else:
+            new_src_share = copy.deepcopy(src_share)
+            new_src_share['internal_state'] = current_state
+            self.private_storage.update(share['id'], {
+                'source_share': json.dumps(new_src_share)
+            })
+        return return_values
 
     @na_utils.trace
     def _allocate_container(self, share, vserver, vserver_client,
@@ -506,7 +778,7 @@ class NetAppCmodeFileStorageLibrary(object):
             raise exception.InvalidHost(reason=msg)
 
         provisioning_options = self._get_provisioning_options_for_share(
-            share, vserver, replica=replica)
+            share, vserver, vserver_client=vserver_client, replica=replica)
 
         if replica:
             # If this volume is intended to be a replication destination,
@@ -694,17 +966,19 @@ class NetAppCmodeFileStorageLibrary(object):
                 int(qos_specs['maxbpspergib']) * int(share_size))
 
     @na_utils.trace
-    def _create_qos_policy_group(self, share, vserver, qos_specs):
+    def _create_qos_policy_group(self, share, vserver, qos_specs,
+                                 vserver_client=None):
         max_throughput = self._get_max_throughput(share['size'], qos_specs)
         qos_policy_group_name = self._get_backend_qos_policy_group_name(
             share['id'])
-        self._client.qos_policy_group_create(qos_policy_group_name, vserver,
-                                             max_throughput=max_throughput)
+        client = vserver_client or self._client
+        client.qos_policy_group_create(qos_policy_group_name, vserver,
+                                       max_throughput=max_throughput)
         return qos_policy_group_name
 
     @na_utils.trace
-    def _get_provisioning_options_for_share(self, share, vserver,
-                                            replica=False):
+    def _get_provisioning_options_for_share(
+            self, share, vserver, vserver_client=None, replica=False):
         """Return provisioning options from a share.
 
         Starting with a share, this method gets the extra specs, rationalizes
@@ -719,7 +993,7 @@ class NetAppCmodeFileStorageLibrary(object):
         qos_specs = self._get_normalized_qos_specs(extra_specs)
         if qos_specs and not replica:
             qos_policy_group = self._create_qos_policy_group(
-                share, vserver, qos_specs)
+                share, vserver, qos_specs, vserver_client)
             provisioning_options['qos_policy_group'] = qos_policy_group
         return provisioning_options
 
@@ -766,7 +1040,7 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def _allocate_container_from_snapshot(
             self, share, snapshot, vserver, vserver_client,
-            snapshot_name_func=_get_backend_snapshot_name):
+            snapshot_name_func=_get_backend_snapshot_name, split=None):
         """Clones existing share."""
         share_name = self._get_backend_share_name(share['id'])
         parent_share_name = self._get_backend_share_name(snapshot['share_id'])
@@ -776,14 +1050,17 @@ class NetAppCmodeFileStorageLibrary(object):
             parent_snapshot_name = snapshot['provider_location']
 
         provisioning_options = self._get_provisioning_options_for_share(
-            share, vserver)
+            share, vserver, vserver_client=vserver_client)
 
         hide_snapdir = provisioning_options.pop('hide_snapdir')
+        if split is not None:
+            provisioning_options['split'] = split
 
         LOG.debug('Creating share from snapshot %s', snapshot['id'])
-        vserver_client.create_volume_clone(share_name, parent_share_name,
-                                           parent_snapshot_name,
-                                           **provisioning_options)
+        vserver_client.create_volume_clone(
+            share_name, parent_share_name, parent_snapshot_name,
+            **provisioning_options)
+
         if share['size'] > snapshot['size']:
             vserver_client.set_volume_size(share_name, share['size'])
 
@@ -794,6 +1071,20 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def _share_exists(self, share_name, vserver_client):
         return vserver_client.volume_exists(share_name)
+
+    @na_utils.trace
+    def _delete_share(self, share, vserver_client, remove_export=True):
+        share_name = self._get_backend_share_name(share['id'])
+        if self._share_exists(share_name, vserver_client):
+            if remove_export:
+                self._remove_export(share, vserver_client)
+            self._deallocate_container(share_name, vserver_client)
+            qos_policy_for_share = self._get_backend_qos_policy_group_name(
+                share['id'])
+            vserver_client.mark_qos_policy_group_for_deletion(
+                qos_policy_for_share)
+        else:
+            LOG.info("Share %s does not exist.", share['id'])
 
     @na_utils.trace
     def delete_share(self, context, share, share_server=None):
@@ -809,17 +1100,7 @@ class NetAppCmodeFileStorageLibrary(object):
                         "will proceed anyway. Error: %(error)s",
                         {'share': share['id'], 'error': error})
             return
-
-        share_name = self._get_backend_share_name(share['id'])
-        if self._share_exists(share_name, vserver_client):
-            self._remove_export(share, vserver_client)
-            self._deallocate_container(share_name, vserver_client)
-            qos_policy_for_share = self._get_backend_qos_policy_group_name(
-                share['id'])
-            self._client.mark_qos_policy_group_for_deletion(
-                qos_policy_for_share)
-        else:
-            LOG.info("Share %s does not exist.", share['id'])
+        self._delete_share(share, vserver_client)
 
     @na_utils.trace
     def _deallocate_container(self, share_name, vserver_client):
@@ -2061,10 +2342,42 @@ class NetAppCmodeFileStorageLibrary(object):
 
         return compatibility
 
-    def migration_start(self, context, source_share, destination_share,
-                        source_snapshots, snapshot_mappings,
-                        share_server=None, destination_share_server=None):
-        """Begins data motion from source_share to destination_share."""
+    def _move_volume_after_splitting(self, source_share, destination_share,
+                                     share_server=None, cutover_action='wait'):
+        retries = (self.configuration.netapp_start_volume_move_timeout / 5
+                   or 1)
+
+        @manila_utils.retry(exception.ShareBusyException, interval=5,
+                            retries=retries, backoff_rate=1)
+        def try_move_volume():
+            try:
+                self._move_volume(source_share, destination_share,
+                                  share_server, cutover_action)
+            except netapp_api.NaApiError as e:
+                undergoing_split = 'undergoing a clone split'
+                msg_args = {'id': source_share['id']}
+                if (e.code == netapp_api.EAPIERROR and
+                        undergoing_split in e.message):
+                    msg = _('The volume %(id)s is undergoing a clone split '
+                            'operation. Will retry the operation.') % msg_args
+                    LOG.warning(msg)
+                    raise exception.ShareBusyException(reason=msg)
+                else:
+                    msg = _("Unable to perform move operation for the volume "
+                            "%(id)s. Caught an unexpected error. Not "
+                            "retrying.") % msg_args
+                    raise exception.NetAppException(message=msg)
+        try:
+            try_move_volume()
+        except exception.ShareBusyException:
+            msg_args = {'id': source_share['id']}
+            msg = _("Unable to perform move operation for the volume %(id)s "
+                    "because a clone split operation is still in progress. "
+                    "Retries exhausted. Not retrying.") % msg_args
+            raise exception.NetAppException(message=msg)
+
+    def _move_volume(self, source_share, destination_share, share_server=None,
+                     cutover_action='wait'):
         # Intra-cluster migration
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_volume = self._get_backend_share_name(source_share['id'])
@@ -2082,6 +2395,7 @@ class NetAppCmodeFileStorageLibrary(object):
             share_volume,
             vserver,
             destination_aggregate,
+            cutover_action=cutover_action,
             encrypt_destination=encrypt_dest)
 
         msg = ("Began volume move operation of share %(shr)s from %(src)s "
@@ -2093,11 +2407,21 @@ class NetAppCmodeFileStorageLibrary(object):
         }
         LOG.info(msg, msg_args)
 
+    def migration_start(self, context, source_share, destination_share,
+                        source_snapshots, snapshot_mappings,
+                        share_server=None, destination_share_server=None):
+        """Begins data motion from source_share to destination_share."""
+        self._move_volume(source_share, destination_share, share_server)
+
     def _get_volume_move_status(self, source_share, share_server):
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_volume = self._get_backend_share_name(source_share['id'])
         status = self._client.get_volume_move_status(share_volume, vserver)
         return status
+
+    def _check_volume_clone_split_completed(self, share, vserver_client):
+        share_volume = self._get_backend_share_name(share['id'])
+        return vserver_client.check_volume_clone_split_completed(share_volume)
 
     def _get_dest_flexvol_encryption_value(self, destination_share):
         dest_share_type_encrypted_val = share_types.get_share_type_extra_specs(
@@ -2108,10 +2432,8 @@ class NetAppCmodeFileStorageLibrary(object):
 
         return encrypt_destination
 
-    def migration_continue(self, context, source_share, destination_share,
-                           source_snapshots, snapshot_mappings,
-                           share_server=None, destination_share_server=None):
-        """Check progress of migration, try to repair data motion errors."""
+    def _check_volume_move_completed(self, source_share, share_server):
+        """Check progress of volume move operation."""
         status = self._get_volume_move_status(source_share, share_server)
         completed_phases = (
             'cutover_hard_deferred', 'cutover_soft_deferred', 'completed')
@@ -2131,11 +2453,13 @@ class NetAppCmodeFileStorageLibrary(object):
 
         return False
 
-    def migration_get_progress(self, context, source_share,
-                               destination_share, source_snapshots,
-                               snapshot_mappings, share_server=None,
-                               destination_share_server=None):
-        """Return detailed progress of the migration in progress."""
+    def migration_continue(self, context, source_share, destination_share,
+                           source_snapshots, snapshot_mappings,
+                           share_server=None, destination_share_server=None):
+        """Check progress of migration, try to repair data motion errors."""
+        return self._check_volume_move_completed(source_share, share_server)
+
+    def _get_volume_move_progress(self, source_share, share_server):
         status = self._get_volume_move_status(source_share, share_server)
 
         # NOTE (gouthamr): If the volume move is waiting for a manual
@@ -2162,6 +2486,13 @@ class NetAppCmodeFileStorageLibrary(object):
             'phase': status['phase'],
             'details': status['details'],
         }
+
+    def migration_get_progress(self, context, source_share,
+                               destination_share, source_snapshots,
+                               snapshot_mappings, share_server=None,
+                               destination_share_server=None):
+        """Return detailed progress of the migration in progress."""
+        return self._get_volume_move_progress(source_share, share_server)
 
     def migration_cancel(self, context, source_share, destination_share,
                          source_snapshots, snapshot_mappings,
@@ -2342,7 +2673,8 @@ class NetAppCmodeFileStorageLibrary(object):
             LOG.debug("No existing QoS policy group found for "
                       "volume. Creating  a new one with name %s.",
                       qos_policy_group_name)
-            self._create_qos_policy_group(share_obj, vserver, qos_specs)
+            self._create_qos_policy_group(share_obj, vserver, qos_specs,
+                                          vserver_client=vserver_client)
         return qos_policy_group_name
 
     def _wait_for_cutover_completion(self, source_share, share_server):
@@ -2389,3 +2721,33 @@ class NetAppCmodeFileStorageLibrary(object):
                 share_name = self._get_backend_share_name(share['id'])
                 self._apply_snapdir_visibility(
                     hide_snapdir, share_name, vserver_client)
+
+    def get_share_status(self, share, share_server=None):
+        if share['status'] == constants.STATUS_CREATING_FROM_SNAPSHOT:
+            return self._update_create_from_snapshot_status(share,
+                                                            share_server)
+        else:
+            LOG.warning("Caught an unexpected share status '%s' during share "
+                        "status update routine. Skipping.", share['status'])
+
+    def volume_rehost(self, share, src_vserver, dest_vserver):
+        volume_name = self._get_backend_share_name(share['id'])
+        msg = ("Rehosting volume of share %(shr)s from vserver %(src)s "
+               "to vserver %(dest)s.")
+        msg_args = {
+            'shr': share['id'],
+            'src': src_vserver,
+            'dest': dest_vserver,
+        }
+        LOG.info(msg, msg_args)
+        self._client.rehost_volume(volume_name, src_vserver, dest_vserver)
+
+    def _rehost_and_mount_volume(self, share, src_vserver, src_vserver_client,
+                                 dest_vserver, dest_vserver_client):
+        volume_name = self._get_backend_share_name(share['id'])
+        # Unmount volume in the source vserver:
+        src_vserver_client.unmount_volume(volume_name)
+        # Rehost the volume
+        self.volume_rehost(share, src_vserver, dest_vserver)
+        # Mount the volume on the destination vserver
+        dest_vserver_client.mount_volume(volume_name)

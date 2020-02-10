@@ -18,12 +18,15 @@ import copy
 from manila.common import constants
 import manila.tests.share.drivers.netapp.fakes as na_fakes
 
-
+CLUSTER_NAME = 'fake_cluster'
+CLUSTER_NAME_2 = 'fake_cluster_2'
 BACKEND_NAME = 'fake_backend_name'
+BACKEND_NAME_2 = 'fake_backend_name_2'
 DRIVER_NAME = 'fake_driver_name'
 APP_VERSION = 'fake_app_vsersion'
 HOST_NAME = 'fake_host'
 POOL_NAME = 'fake_pool'
+POOL_NAME_2 = 'fake_pool_2'
 VSERVER1 = 'fake_vserver_1'
 VSERVER2 = 'fake_vserver_2'
 LICENSES = ('base', 'cifs', 'fcp', 'flexclone', 'iscsi', 'nfs', 'snapmirror',
@@ -73,6 +76,10 @@ MTU = 1234
 DEFAULT_MTU = 1500
 MANILA_HOST_NAME = '%(host)s@%(backend)s#%(pool)s' % {
     'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME}
+MANILA_HOST_NAME_2 = '%(host)s@%(backend)s#%(pool)s' % {
+    'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME_2}
+MANILA_HOST_NAME_3 = '%(host)s@%(backend)s#%(pool)s' % {
+    'host': HOST_NAME, 'backend': BACKEND_NAME_2, 'pool': POOL_NAME_2}
 QOS_EXTRA_SPEC = 'netapp:maxiops'
 QOS_SIZE_DEPENDENT_EXTRA_SPEC = 'netapp:maxbpspergib'
 QOS_NORMALIZED_SPEC = 'maxiops'
@@ -360,6 +367,16 @@ SHARE_SERVER = {
     'share_network_id': 'c5b3a865-56d0-4d88-abe5-879965e099c9',
     'backend_details': {
         'vserver_name': VSERVER1
+    },
+    'network_allocations': (USER_NETWORK_ALLOCATIONS +
+                            ADMIN_NETWORK_ALLOCATIONS),
+}
+
+SHARE_SERVER_2 = {
+    'id': 'fake_id_2',
+    'share_network_id': 'c5b3a865-56d0-4d88-abe5-879965e099c9',
+    'backend_details': {
+        'vserver_name': VSERVER2
     },
     'network_allocations': (USER_NETWORK_ALLOCATIONS +
                             ADMIN_NETWORK_ALLOCATIONS),
