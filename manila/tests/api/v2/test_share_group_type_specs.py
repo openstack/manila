@@ -62,11 +62,14 @@ def get_group_specs_dict(group_specs, include_required=True):
     return {'group_specs': group_specs}
 
 
-def fake_request(url, admin=False, experimental=True, version='2.31',
+def fake_request(url, admin=False, version='2.31', experimental=True,
                  **kwargs):
     return fakes.HTTPRequest.blank(
-        url, use_admin_context=admin, experimental=experimental,
-        version=version, **kwargs)
+        url, use_admin_context=admin, version=version,
+        experimental=experimental, **kwargs)
+
+
+SG_GRADUATION_VERSION = '2.55'
 
 
 @ddt.ddt
@@ -82,11 +85,15 @@ class ShareGroupTypesSpecsTest(test.TestCase):
         self.resource_name = self.controller.resource_name
         self.mock_policy_check = self.mock_object(policy, 'check_policy')
 
-    def test_index(self):
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test_index(self, microversion, experimental):
         self.mock_object(
             manila.db, 'share_group_type_specs_get',
             return_share_group_type_specs)
-        req = fake_request(self.api_path)
+        req = fake_request(self.api_path, version=microversion,
+                           experimental=experimental)
         req_context = req.environ['manila.context']
 
         res_dict = self.controller.index(req, 1)
@@ -107,10 +114,14 @@ class ShareGroupTypesSpecsTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'index')
 
-    def test_show(self):
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test_show(self, microversion, experimental):
         self.mock_object(manila.db, 'share_group_type_specs_get',
                          return_share_group_type_specs)
-        req = fake_request(self.api_path + '/key5')
+        req = fake_request(self.api_path + '/key5', version=microversion,
+                           experimental=experimental)
         req_context = req.environ['manila.context']
 
         res_dict = self.controller.show(req, 1, 'key5')
@@ -131,10 +142,14 @@ class ShareGroupTypesSpecsTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'show')
 
-    def test_delete(self):
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test_delete(self, microversion, experimental):
         self.mock_object(manila.db, 'share_group_type_specs_delete',
                          delete_share_group_type_specs)
-        req = fake_request(self.api_path + '/key5')
+        req = fake_request(self.api_path + '/key5', version=microversion,
+                           experimental=experimental)
         req_context = req.environ['manila.context']
 
         self.controller.delete(req, 1, 'key5')
@@ -162,12 +177,26 @@ class ShareGroupTypesSpecsTest(test.TestCase):
         *[{CONSISTENT_SNAPSHOTS: v}
           for v in strutils.TRUE_STRINGS + strutils.FALSE_STRINGS]
     )
-    def test_create(self, data):
+    def test_create_experimental(self, data):
+        self._validate_create(data)
+
+    @ddt.data(
+        get_group_specs_dict({}),
+        {'foo': 'bar'},
+        {CONSISTENT_SNAPSHOTS + 'foo': True},
+        {'foo' + CONSISTENT_SNAPSHOTS: False}
+    )
+    def test_create_non_experimental(self, data):
+        self._validate_create(data, microversion=SG_GRADUATION_VERSION,
+                              experimental=False)
+
+    def _validate_create(self, data, microversion='2.31', experimental=True):
         body = {'group_specs': data}
         mock_spec_update_or_create = self.mock_object(
             manila.db, 'share_group_type_specs_update_or_create',
             mock.Mock(return_value=return_create_share_group_type_specs))
-        req = fake_request(self.api_path)
+        req = fake_request(self.api_path, version=microversion,
+                           experimental=experimental)
         req_context = req.environ['manila.context']
 
         res_dict = self.controller.create(req, 1, body)
@@ -291,6 +320,21 @@ class ShareGroupTypesSpecsTest(test.TestCase):
             req_context, 1, body['group_specs'])
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'create')
+
+    @ddt.data({'microversion': '2.31', 'experimental': True},
+              {'microversion': SG_GRADUATION_VERSION, 'experimental': False})
+    @ddt.unpack
+    def test__update_call(self, microversion, experimental):
+        req = fake_request(self.api_path + '/key1', version=microversion,
+                           experimental=experimental)
+        sg_id = 'fake_id'
+        key = 'fake_key'
+        body = {"group_specs": {"key1": "fake_value"}}
+        self.mock_object(self.controller, '_update')
+
+        self.controller.update(req, sg_id, key, body)
+
+        self.controller._update.assert_called_once_with(req, sg_id, key, body)
 
     def test_update_item_too_many_keys(self):
         self.mock_object(manila.db, 'share_group_type_specs_update_or_create')

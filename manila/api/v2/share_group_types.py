@@ -25,6 +25,8 @@ from manila import exception
 from manila.i18n import _
 from manila.share_group import share_group_types
 
+SG_GRADUATION_VERSION = '2.55'
+
 
 class ShareGroupTypesController(wsgi.Controller):
     """The share group types API controller for the OpenStack API."""
@@ -41,16 +43,22 @@ class ShareGroupTypesController(wsgi.Controller):
             msg = _("Project value (%s) must be in uuid format.") % project
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
-    @wsgi.Controller.authorize
-    def index(self, req):
+    @wsgi.Controller.authorize('index')
+    def _index(self, req):
         """Returns the list of share group types."""
         limited_types = self._get_share_group_types(req)
         return self._view_builder.index(req, limited_types)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
-    @wsgi.Controller.authorize
-    def show(self, req, id):
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    def index(self, req):
+        return self._index(req)
+
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    def index(self, req):  # pylint: disable=function-redefined
+        return self._index(req)
+
+    @wsgi.Controller.authorize('show')
+    def _show(self, req, id):
         """Return a single share group type item."""
         context = req.environ['manila.context']
         try:
@@ -62,9 +70,16 @@ class ShareGroupTypesController(wsgi.Controller):
         share_group_type['id'] = six.text_type(share_group_type['id'])
         return self._view_builder.show(req, share_group_type)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
-    @wsgi.Controller.authorize
-    def default(self, req):
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    def show(self, req, id):
+        return self._show(req, id)
+
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    def show(self, req, id):  # pylint: disable=function-redefined
+        return self._show(req, id)
+
+    @wsgi.Controller.authorize('default')
+    def _default(self, req):
         """Return default share group type."""
         context = req.environ['manila.context']
         share_group_type = share_group_types.get_default(context)
@@ -74,6 +89,14 @@ class ShareGroupTypesController(wsgi.Controller):
 
         share_group_type['id'] = six.text_type(share_group_type['id'])
         return self._view_builder.show(req, share_group_type)
+
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    def default(self, req):
+        return self._default(req)
+
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    def default(self, req):  # pylint: disable=function-redefined
+        return self._default(req)
 
     def _get_share_group_types(self, req):
         """Helper function that returns a list of share group type dicts."""
@@ -110,8 +133,6 @@ class ShareGroupTypesController(wsgi.Controller):
                 msg = _('Invalid is_public filter [%s]') % is_public
                 raise exc.HTTPBadRequest(explanation=msg)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
-    @wsgi.action("create")
     @wsgi.Controller.authorize('create')
     def _create(self, req, body):
         """Creates a new share group type."""
@@ -153,8 +174,16 @@ class ShareGroupTypesController(wsgi.Controller):
             raise webob.exc.HTTPNotFound()
         return self._view_builder.show(req, share_group_type)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
-    @wsgi.action("delete")
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    @wsgi.action("create")
+    def create(self, req, body):
+        return self._create(req, body)
+
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    @wsgi.action("create")
+    def create(self, req, body):  # pylint: disable=function-redefined
+        return self._create(req, body)
+
     @wsgi.Controller.authorize('delete')
     def _delete(self, req, id):
         """Deletes an existing group type."""
@@ -169,9 +198,18 @@ class ShareGroupTypesController(wsgi.Controller):
             raise webob.exc.HTTPNotFound()
         return webob.Response(status_int=http_client.NO_CONTENT)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    @wsgi.action("delete")
+    def delete(self, req, id):
+        return self._delete(req, id)
+
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    @wsgi.action("delete")
+    def delete(self, req, id):  # pylint: disable=function-redefined
+        return self._delete(req, id)
+
     @wsgi.Controller.authorize('list_project_access')
-    def share_group_type_access(self, req, id):
+    def _share_group_type_access(self, req, id):
         context = req.environ['manila.context']
         try:
             share_group_type = share_group_types.get(
@@ -192,8 +230,15 @@ class ShareGroupTypesController(wsgi.Controller):
             )
         return {'share_group_type_access': projects}
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
-    @wsgi.action('addProjectAccess')
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    def share_group_type_access(self, req, id):
+        return self._share_group_type_access(req, id)
+
+    # pylint: disable=function-redefined
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    def share_group_type_access(self, req, id):
+        return self._share_group_type_access(req, id)
+
     @wsgi.Controller.authorize('add_project_access')
     def _add_project_access(self, req, id, body):
         context = req.environ['manila.context']
@@ -207,8 +252,18 @@ class ShareGroupTypesController(wsgi.Controller):
             raise webob.exc.HTTPConflict(explanation=six.text_type(err))
         return webob.Response(status_int=http_client.ACCEPTED)
 
-    @wsgi.Controller.api_version('2.31', experimental=True)
-    @wsgi.action('removeProjectAccess')
+    # pylint: enable=function-redefined
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    @wsgi.action('addProjectAccess')
+    def add_project_access(self, req, id, body):
+        return self._add_project_access(req, id, body)
+
+    # pylint: disable=function-redefined
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    @wsgi.action('addProjectAccess')
+    def add_project_access(self, req, id, body):
+        return self._add_project_access(req, id, body)
+
     @wsgi.Controller.authorize('remove_project_access')
     def _remove_project_access(self, req, id, body):
         context = req.environ['manila.context']
@@ -221,6 +276,18 @@ class ShareGroupTypesController(wsgi.Controller):
         except exception.ShareGroupTypeAccessNotFound as err:
             raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
         return webob.Response(status_int=http_client.ACCEPTED)
+
+    # pylint: enable=function-redefined
+    @wsgi.Controller.api_version('2.31', '2.54', experimental=True)
+    @wsgi.action('removeProjectAccess')
+    def remove_project_access(self, req, id, body):
+        return self._remove_project_access(req, id, body)
+
+    # pylint: disable=function-redefined
+    @wsgi.Controller.api_version(SG_GRADUATION_VERSION)  # noqa
+    @wsgi.action('removeProjectAccess')
+    def remove_project_access(self, req, id, body):
+        return self._remove_project_access(req, id, body)
 
     def _assert_non_public_share_group_type(self, context, type_id):
         try:
