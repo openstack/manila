@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Some resources will be eagerly loaded from the database to avoid cyclical
+    references and faulty results if their retrieval is deferred.

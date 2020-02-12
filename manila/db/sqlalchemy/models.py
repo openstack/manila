@@ -938,7 +938,9 @@ class ShareNetwork(BASE, ManilaBase):
                     'ShareNetwork.id == ShareInstance.share_network_id,'
                     'ShareInstance.deleted == "False")')
     share_network_subnets = orm.relationship(
-        "ShareNetworkSubnet", backref='share_network', lazy='immediate',
+        "ShareNetworkSubnet",
+        lazy='joined',
+        backref=orm.backref('share_network', lazy='joined'),
         primaryjoin='and_'
                     '(ShareNetwork.id == ShareNetworkSubnet.share_network_id,'
                     'ShareNetworkSubnet.deleted == "False")')
@@ -989,6 +991,10 @@ class ShareNetworkSubnet(BASE, ManilaBase):
     @property
     def is_default(self):
         return self.availability_zone_id is None
+
+    @property
+    def share_network_name(self):
+        return self.share_network['name']
 
 
 class ShareServer(BASE, ManilaBase):
@@ -1216,7 +1222,7 @@ class ShareGroupSnapshot(BASE, ManilaBase):
     status = Column(String(255))
     share_group = orm.relationship(
         ShareGroup,
-        backref="snapshots",
+        backref=orm.backref("snapshots", lazy='joined'),
         foreign_keys=share_group_id,
         primaryjoin=('and_('
                      'ShareGroupSnapshot.share_group_id == ShareGroup.id,'

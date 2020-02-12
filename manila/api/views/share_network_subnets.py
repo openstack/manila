@@ -37,7 +37,7 @@ class ViewBuilder(common.ViewBuilder):
             'id': share_network_subnet.get('id'),
             'availability_zone': share_network_subnet.get('availability_zone'),
             'share_network_id': share_network_subnet.get('share_network_id'),
-            'share_network_name': share_network_subnet.share_network['name'],
+            'share_network_name': share_network_subnet['share_network_name'],
             'created_at': share_network_subnet.get('created_at'),
             'segmentation_id': share_network_subnet.get('segmentation_id'),
             'neutron_subnet_id': share_network_subnet.get('neutron_subnet_id'),

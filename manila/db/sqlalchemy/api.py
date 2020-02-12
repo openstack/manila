@@ -43,6 +43,7 @@ import six
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import subqueryload
 from sqlalchemy.sql.expression import literal
 from sqlalchemy.sql.expression import true
 from sqlalchemy.sql import func
@@ -3400,7 +3401,7 @@ def _network_get_query(context, session=None):
     return (model_query(context, models.ShareNetwork, session=session).
             options(joinedload('share_instances'),
                     joinedload('security_services'),
-                    joinedload('share_network_subnets')))
+                    subqueryload('share_network_subnets')))
 
 
 @require_context
@@ -3543,7 +3544,7 @@ def _network_subnet_get_query(context, session=None):
     if session is None:
         session = get_session()
     return (model_query(context, models.ShareNetworkSubnet, session=session).
-            options(joinedload('share_servers')))
+            options(joinedload('share_servers'), joinedload('share_network')))
 
 
 @require_context
