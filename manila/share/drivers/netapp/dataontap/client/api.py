@@ -33,6 +33,7 @@ from manila.share.drivers.netapp import utils
 LOG = log.getLogger(__name__)
 
 EONTAPI_EINVAL = '22'
+EVOLOPNOTSUPP = '160'
 EAPIERROR = '13001'
 EAPINOTFOUND = '13005'
 ESNAPSHOTNOTALLOWED = '13023'
