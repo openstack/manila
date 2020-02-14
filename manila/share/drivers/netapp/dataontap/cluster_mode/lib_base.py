@@ -1372,9 +1372,21 @@ class NetAppCmodeFileStorageLibrary(object):
                                                      filesys_size_fixed=False)
         LOG.debug('Shrinking share %(name)s to %(size)s GB.',
                   {'name': share_name, 'size': new_size})
-        vserver_client.set_volume_size(share_name, new_size)
-        self._adjust_qos_policy_with_volume_resize(share, new_size,
-                                                   vserver_client)
+
+        try:
+            vserver_client.set_volume_size(share_name, new_size)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EVOLOPNOTSUPP:
+                msg = _('Failed to shrink share %(share_id)s. '
+                        'The current used space is larger than the the size'
+                        ' requested.')
+                msg_args = {'share_id': share['id']}
+                LOG.error(msg, msg_args)
+                raise exception.ShareShrinkingPossibleDataLoss(
+                    share_id=share['id'])
+
+        self._adjust_qos_policy_with_volume_resize(
+            share, new_size, vserver_client)
 
     @na_utils.trace
     def update_access(self, context, share, access_rules, add_rules,

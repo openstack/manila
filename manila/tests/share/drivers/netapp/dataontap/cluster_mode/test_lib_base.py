@@ -97,6 +97,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=self.mock_dm_session))
         self.mock_object(data_motion, 'get_client_for_backend')
 
+    def _mock_api_error(self, code='fake', message='fake'):
+        return mock.Mock(side_effect=netapp_api.NaApiError(code=code,
+                                                           message=message))
+
     def test_init(self):
         self.assertEqual(fake.DRIVER_NAME, self.library.driver_name)
         self.assertEqual(1, na_utils.validate_driver_instantiation.call_count)
@@ -2263,6 +2267,29 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_set_volume_size.assert_called_once_with(fake.SHARE_NAME, new_size)
         mock_adjust_qos_policy.assert_called_once_with(
             fake.SHARE, new_size, vserver_client)
+
+    def test_shrinking_possible_data_loss(self):
+
+        naapi_error = self._mock_api_error(code=netapp_api.EVOLOPNOTSUPP,
+                                           message='Possible data loss')
+
+        vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+
+        mock_set_volume_size = self.mock_object(
+            vserver_client, 'set_volume_size', naapi_error)
+
+        new_size = fake.SHARE['size'] - 1
+
+        self.assertRaises(exception.ShareShrinkingPossibleDataLoss,
+                          self.library.shrink_share,
+                          fake.SHARE, new_size)
+
+        self.library._get_vserver.assert_called_once_with(share_server=None)
+        mock_set_volume_size.assert_called_once_with(fake.SHARE_NAME, new_size)
 
     def test_update_access(self):
 
