@@ -115,6 +115,15 @@ class Manager(base.Base, PeriodicTasks):
             config[key] = CONF.get(key, None)
         return config
 
+    def is_service_ready(self):
+        """Method indicating if service is ready.
+
+        This method should be overridden by subclasses which will return False
+        when the back end is not ready yet.
+
+        """
+        return True
+
 
 class SchedulerDependentManager(Manager):
     """Periodically send capability updates to the Scheduler services.

@@ -174,6 +174,13 @@ class ShareManagerTestCase(test.TestCase):
                 context=self.context,
                 periodic_hook_data=hook_data_mock.return_value)
 
+    def test_is_service_ready(self):
+        self.assertTrue(self.share_manager.is_service_ready())
+
+        # switch it to false and check again
+        self.share_manager.driver.initialized = False
+        self.assertFalse(self.share_manager.is_service_ready())
+
     def test_init_host_with_no_shares(self):
         self.mock_object(self.share_manager.db,
                          'share_instances_get_all_by_host',

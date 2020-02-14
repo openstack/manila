@@ -331,6 +331,16 @@ class ShareManager(manager.SchedulerDependentManager):
                  {"driver": self.driver.__class__.__name__,
                   "host": self.host})
 
+    def is_service_ready(self):
+        """Return if Manager is ready to accept requests.
+
+        This is to inform Service class that in case of manila driver
+        initialization failure the manager is actually down and not ready to
+        accept any requests.
+
+        """
+        return self.driver.initialized
+
     def ensure_driver_resources(self, ctxt):
         old_backend_info = self.db.backend_info_get(ctxt, self.host)
         old_backend_info_hash = (old_backend_info.get('info_hash')

@@ -199,6 +199,17 @@ class ServiceTestCase(test.TestCase):
         service.db.service_update.assert_called_once_with(
             mock.ANY, service_ref['id'], mock.ANY)
 
+    def test_report_state_service_not_ready(self):
+        with mock.patch.object(service, 'db') as mock_db:
+            mock_db.service_get.return_value = service_ref
+            serv = service.Service(host, binary, topic, CONF.fake_manager)
+            serv.manager.is_service_ready = mock.Mock(return_value=False)
+            serv.start()
+            serv.report_state()
+
+            serv.manager.is_service_ready.assert_called_once()
+            mock_db.service_update.assert_not_called()
+
 
 class TestWSGIService(test.TestCase):
 
