@@ -3833,7 +3833,13 @@ class ShareManager(manager.SchedulerDependentManager):
                 share_instance, new_size, share_server=share_server)
         except Exception as e:
             LOG.exception("Extend share failed.", resource=share)
-
+            self.message_api.create(
+                context,
+                message_field.Action.EXTEND,
+                project_id,
+                resource_type=message_field.Resource.SHARE,
+                resource_id=share_id,
+                detail=message_field.Detail.DRIVER_FAILED_EXTEND)
             try:
                 self.db.share_update(
                     context, share['id'],
