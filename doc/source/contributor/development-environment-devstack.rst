@@ -44,7 +44,7 @@ Getting devstack
 
 Start by cloning the devstack repository::
 
-    git clone https://git.openstack.org/openstack-dev/devstack
+    git clone https://opendev.org/openstack/devstack.git
 
 Change to devstack directory::
 
