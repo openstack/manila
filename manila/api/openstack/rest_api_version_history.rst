@@ -292,3 +292,7 @@ user documentation.
 ----
   Added 'created_before' and 'created_since' field to list messages api,
   support querying user messages within the specified time period.
+
+2.53
+----
+  Added quota control for share replicas and replica gigabytes.

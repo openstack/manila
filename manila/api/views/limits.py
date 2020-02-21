@@ -15,15 +15,21 @@
 
 import datetime
 
+from manila.api import common
 from manila import utils
 
 
-class ViewBuilder(object):
+class ViewBuilder(common.ViewBuilder):
     """OpenStack API base limits view builder."""
 
-    def build(self, rate_limits, absolute_limits):
+    _collection_name = "limits"
+    _detail_version_modifiers = [
+        "add_share_replica_quotas",
+    ]
+
+    def build(self, request, rate_limits, absolute_limits):
         rate_limits = self._build_rate_limits(rate_limits)
-        absolute_limits = self._build_absolute_limits(absolute_limits)
+        absolute_limits = self._build_absolute_limits(request, absolute_limits)
 
         output = {
             "limits": {
@@ -34,7 +40,7 @@ class ViewBuilder(object):
 
         return output
 
-    def _build_absolute_limits(self, absolute_limits):
+    def _build_absolute_limits(self, request, absolute_limits):
         """Builder for absolute limits.
 
         absolute_limits should be given as a dict of limits.
@@ -58,6 +64,8 @@ class ViewBuilder(object):
             },
         }
         limits = {}
+        self.update_versioned_resource_dict(request, limit_names,
+                                            absolute_limits)
         for mapping_key in limit_names.keys():
             for k, v in absolute_limits.get(mapping_key, {}).items():
                 if k in limit_names.get(mapping_key, []) and v is not None:
@@ -101,3 +109,12 @@ class ViewBuilder(object):
             "unit": rate_limit["unit"],
             "next-available": utils.isotime(at=next_avail),
         }
+
+    @common.ViewBuilder.versioned_method("2.53")
+    def add_share_replica_quotas(self, request, limit_names, absolute_limits):
+        limit_names["limit"]["share_replicas"] = ["maxTotalShareReplicas"]
+        limit_names["limit"]["replica_gigabytes"] = (
+            ["maxTotalReplicaGigabytes"])
+        limit_names["in_use"]["share_replicas"] = ["totalShareReplicasUsed"]
+        limit_names["in_use"]["replica_gigabytes"] = (
+            ["totalReplicaGigabytesUsed"])

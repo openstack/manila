@@ -76,6 +76,78 @@ class API(base.Base):
                 compatible_azs.append(az['name'])
         return compatible_azs
 
+    def _check_if_share_quotas_exceeded(self, context, quota_exception,
+                                        share_size, operation='create'):
+        overs = quota_exception.kwargs['overs']
+        usages = quota_exception.kwargs['usages']
+        quotas = quota_exception.kwargs['quotas']
+
+        def _consumed(name):
+            return (usages[name]['reserved'] + usages[name]['in_use'])
+
+        if 'gigabytes' in overs:
+            LOG.warning("Quota exceeded for %(s_pid)s, "
+                        "tried to %(operation)s "
+                        "%(s_size)sG share (%(d_consumed)dG of "
+                        "%(d_quota)dG already consumed).", {
+                            's_pid': context.project_id,
+                            's_size': share_size,
+                            'd_consumed': _consumed('gigabytes'),
+                            'd_quota': quotas['gigabytes'],
+                            'operation': operation})
+            raise exception.ShareSizeExceedsAvailableQuota()
+        elif 'shares' in overs:
+            LOG.warning("Quota exceeded for %(s_pid)s, "
+                        "tried to %(operation)s "
+                        "share (%(d_consumed)d shares "
+                        "already consumed).", {
+                            's_pid': context.project_id,
+                            'd_consumed': _consumed('shares'),
+                            'operation': operation})
+            raise exception.ShareLimitExceeded(allowed=quotas['shares'])
+
+    def _check_if_replica_quotas_exceeded(self, context, quota_exception,
+                                          replica_size,
+                                          resource_type='share_replica'):
+        overs = quota_exception.kwargs['overs']
+        usages = quota_exception.kwargs['usages']
+        quotas = quota_exception.kwargs['quotas']
+
+        def _consumed(name):
+            return (usages[name]['reserved'] + usages[name]['in_use'])
+
+        if 'share_replicas' in overs:
+            LOG.warning("Quota exceeded for %(s_pid)s, "
+                        "unable to create share-replica (%(d_consumed)d "
+                        "of %(d_quota)d already consumed).", {
+                            's_pid': context.project_id,
+                            'd_consumed': _consumed('share_replicas'),
+                            'd_quota': quotas['share_replicas']})
+            exception_kwargs = {}
+            if resource_type != 'share_replica':
+                msg = _("Failed while creating a share with replication "
+                        "support. Maximum number of allowed share-replicas "
+                        "is exceeded.")
+                exception_kwargs['message'] = msg
+            raise exception.ShareReplicasLimitExceeded(**exception_kwargs)
+        elif 'replica_gigabytes' in overs:
+            LOG.warning("Quota exceeded for %(s_pid)s, "
+                        "unable to create a share replica size of "
+                        "%(s_size)sG (%(d_consumed)dG of "
+                        "%(d_quota)dG already consumed).", {
+                            's_pid': context.project_id,
+                            's_size': replica_size,
+                            'd_consumed': _consumed('replica_gigabytes'),
+                            'd_quota': quotas['replica_gigabytes']})
+            exception_kwargs = {}
+            if resource_type != 'share_replica':
+                msg = _("Failed while creating a share with replication "
+                        "support. Requested share replica exceeds allowed "
+                        "project/user or share type gigabytes quota.")
+                exception_kwargs['message'] = msg
+            raise exception.ShareReplicaSizeExceedsAvailableQuota(
+                **exception_kwargs)
+
     def create(self, context, share_proto, size, name, description,
                snapshot_id=None, availability_zone=None, metadata=None,
                share_network_id=None, share_type=None, is_public=False,
@@ -146,37 +218,23 @@ class API(base.Base):
                          supported=CONF.enabled_share_protocols))
             raise exception.InvalidInput(reason=msg)
 
+        deltas = {'shares': 1, 'gigabytes': size}
+        share_type_attributes = self.get_share_attributes_from_share_type(
+            share_type)
+        share_type_supports_replication = share_type_attributes.get(
+            'replication_type', None)
+        if share_type_supports_replication:
+            deltas.update(
+                {'share_replicas': 1, 'replica_gigabytes': size})
+
         try:
             reservations = QUOTAS.reserve(
-                context, shares=1, gigabytes=size,
-                share_type_id=share_type_id,
-            )
+                context, share_type_id=share_type_id, **deltas)
         except exception.OverQuota as e:
-            overs = e.kwargs['overs']
-            usages = e.kwargs['usages']
-            quotas = e.kwargs['quotas']
-
-            def _consumed(name):
-                return (usages[name]['reserved'] + usages[name]['in_use'])
-
-            if 'gigabytes' in overs:
-                LOG.warning("Quota exceeded for %(s_pid)s, "
-                            "tried to create "
-                            "%(s_size)sG share (%(d_consumed)dG of "
-                            "%(d_quota)dG already consumed).", {
-                                's_pid': context.project_id,
-                                's_size': size,
-                                'd_consumed': _consumed('gigabytes'),
-                                'd_quota': quotas['gigabytes']})
-                raise exception.ShareSizeExceedsAvailableQuota()
-            elif 'shares' in overs:
-                LOG.warning("Quota exceeded for %(s_pid)s, "
-                            "tried to create "
-                            "share (%(d_consumed)d shares "
-                            "already consumed).", {
-                                's_pid': context.project_id,
-                                'd_consumed': _consumed('shares')})
-                raise exception.ShareLimitExceeded(allowed=quotas['shares'])
+            self._check_if_share_quotas_exceeded(context, e, size)
+            if share_type_supports_replication:
+                self._check_if_replica_quotas_exceeded(context, e, size,
+                                                       resource_type='share')
 
         share_group = None
         if share_group_id:
@@ -231,7 +289,7 @@ class API(base.Base):
             'is_public': is_public,
             'share_group_id': share_group_id,
         }
-        options.update(self.get_share_attributes_from_share_type(share_type))
+        options.update(share_type_attributes)
 
         if share_group_snapshot_member:
             options['source_share_group_snapshot_member_id'] = (
@@ -513,6 +571,14 @@ class API(base.Base):
                        'az': availability_zone}
             raise exception.InvalidShare(message=msg % payload)
 
+        try:
+            reservations = QUOTAS.reserve(
+                context, share_replicas=1, replica_gigabytes=share['size'],
+                share_type_id=share_type['id']
+            )
+        except exception.OverQuota as e:
+            self._check_if_replica_quotas_exceeded(context, e, share['size'])
+
         if share_network_id:
             if availability_zone:
                 try:
@@ -552,14 +618,29 @@ class API(base.Base):
             cast_rules_to_readonly = True
         else:
             cast_rules_to_readonly = False
-        request_spec, share_replica = (
-            self.create_share_instance_and_get_request_spec(
-                context, share, availability_zone=availability_zone,
-                share_network_id=share_network_id,
-                share_type_id=share['instance']['share_type_id'],
-                cast_rules_to_readonly=cast_rules_to_readonly,
-                availability_zones=type_azs)
-        )
+
+        try:
+            request_spec, share_replica = (
+                self.create_share_instance_and_get_request_spec(
+                    context, share, availability_zone=availability_zone,
+                    share_network_id=share_network_id,
+                    share_type_id=share['instance']['share_type_id'],
+                    cast_rules_to_readonly=cast_rules_to_readonly,
+                    availability_zones=type_azs)
+            )
+            QUOTAS.commit(
+                context, reservations, project_id=share['project_id'],
+                share_type_id=share_type['id'],
+            )
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                try:
+                    self.db.share_replica_delete(
+                        context, share_replica['id'],
+                        need_to_update_usages=False)
+                finally:
+                    QUOTAS.rollback(
+                        context, reservations, share_type_id=share_type['id'])
 
         all_replicas = self.db.share_replicas_get_all_by_share(
             context, share['id'])
@@ -1964,34 +2045,64 @@ class API(base.Base):
                                                     'size': share['size']})
             raise exception.InvalidInput(reason=msg)
 
+        replicas = self.db.share_replicas_get_all_by_share(
+            context, share['id'])
+        supports_replication = len(replicas) > 0
+
+        deltas = {
+            'project_id': share['project_id'],
+            'gigabytes': size_increase,
+            'user_id': share['user_id'],
+            'share_type_id': share['instance']['share_type_id']
+        }
+
+        # NOTE(carloss): If the share type supports replication, we must get
+        # all the replicas that pertain to the share and calculate the final
+        # size (size to increase * amount of replicas), since all the replicas
+        # are going to be extended when the driver sync them.
+        if supports_replication:
+            replica_gigs_to_increase = len(replicas) * size_increase
+            deltas.update({'replica_gigabytes': replica_gigs_to_increase})
+
         try:
             # we give the user_id of the share, to update the quota usage
             # for the user, who created the share, because on share delete
             # only this quota will be decreased
-            reservations = QUOTAS.reserve(
-                context,
-                project_id=share['project_id'],
-                gigabytes=size_increase,
-                user_id=share['user_id'],
-                share_type_id=share['instance']['share_type_id'])
+            reservations = QUOTAS.reserve(context, **deltas)
         except exception.OverQuota as exc:
-            usages = exc.kwargs['usages']
-            quotas = exc.kwargs['quotas']
+            # Check if the exceeded quota was 'gigabytes'
+            self._check_if_share_quotas_exceeded(context, exc, share['size'],
+                                                 operation='extend')
+            # NOTE(carloss): Check if the exceeded quota is
+            # 'replica_gigabytes'. If so the failure could be caused due to
+            # lack of quotas to extend the share's replicas, then the
+            # '_check_if_replica_quotas_exceeded' method can't be reused here
+            # since the error message must be different from the default one.
+            if supports_replication:
+                overs = exc.kwargs['overs']
+                usages = exc.kwargs['usages']
+                quotas = exc.kwargs['quotas']
 
-            def _consumed(name):
-                return usages[name]['reserved'] + usages[name]['in_use']
+                def _consumed(name):
+                    return (usages[name]['reserved'] + usages[name]['in_use'])
 
-            msg = ("Quota exceeded for %(s_pid)s, tried to extend share "
-                   "by %(s_size)sG, (%(d_consumed)dG of %(d_quota)dG "
-                   "already consumed).")
-            LOG.error(msg, {'s_pid': context.project_id,
-                            's_size': size_increase,
-                            'd_consumed': _consumed('gigabytes'),
-                            'd_quota': quotas['gigabytes']})
-            raise exception.ShareSizeExceedsAvailableQuota(
-                requested=size_increase,
-                consumed=_consumed('gigabytes'),
-                quota=quotas['gigabytes'])
+                if 'replica_gigabytes' in overs:
+                    LOG.warning("Replica gigabytes quota exceeded "
+                                "for %(s_pid)s, tried to extend "
+                                "%(s_size)sG share (%(d_consumed)dG of "
+                                "%(d_quota)dG already consumed).", {
+                                    's_pid': context.project_id,
+                                    's_size': share['size'],
+                                    'd_consumed': _consumed(
+                                        'replica_gigabytes'),
+                                    'd_quota': quotas['replica_gigabytes']})
+                    msg = _("Failed while extending a share with replication "
+                            "support. There is no available quota to extend "
+                            "the share and its %(count)d replicas. Maximum "
+                            "number of allowed replica_gigabytes is "
+                            "exceeded.") % {'count': len(replicas)}
+                    raise exception.ShareReplicaSizeExceedsAvailableQuota(
+                        message=msg)
 
         self.update(context, share, {'status': constants.STATUS_EXTENDING})
         self.share_rpcapi.extend_share(context, share, new_size, reservations)

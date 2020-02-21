@@ -1305,9 +1305,11 @@ def share_replica_update(context, share_replica_id, values,
                                      with_share_data=with_share_data)
 
 
-def share_replica_delete(context, share_replica_id):
+def share_replica_delete(context, share_replica_id,
+                         need_to_update_usages=True):
     """Deletes a share replica."""
-    return IMPL.share_replica_delete(context, share_replica_id)
+    return IMPL.share_replica_delete(
+        context, share_replica_id, need_to_update_usages=need_to_update_usages)
 
 
 def purge_deleted_records(context, age_in_days):

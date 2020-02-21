@@ -85,13 +85,15 @@ class QuotaSetsMixin(object):
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
     @staticmethod
-    def _ensure_share_group_related_args_are_absent(body):
+    def _ensure_specific_microversion_args_are_absent(body, keys,
+                                                      microversion):
         body = body.get('quota_set', body)
-        for key in ('share_groups', 'share_group_snapshots'):
+        for key in keys:
             if body.get(key):
-                msg = _("'%(key)s' key is not supported by this microversion. "
-                        "Use 2.40 or greater microversion to be able "
-                        "to use '%(key)s' quotas.") % {"key": key}
+                msg = (_("'%(key)s' key is not supported by this "
+                         "microversion. Use %(microversion)s or greater "
+                         "microversion to be able to use '%(key)s' quotas.") %
+                       {"key": key, "microversion": microversion})
                 raise webob.exc.HTTPBadRequest(explanation=msg)
 
     def _get_quotas(self, context, project_id, user_id=None,
@@ -148,8 +150,8 @@ class QuotaSetsMixin(object):
         body = body.get('quota_set', {})
         if share_type and body.get('share_groups',
                                    body.get('share_group_snapshots')):
-            msg = _("Share type quotas handle only 'shares', 'gigabytes', "
-                    "'snapshots' and 'snapshot_gigabytes' quotas.")
+            msg = _("Share type quotas cannot constrain share groups and "
+                    "share group snapshots.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         try:
@@ -282,7 +284,10 @@ class QuotaSetsControllerLegacy(QuotaSetsMixin, wsgi.Controller):
     @wsgi.Controller.api_version('1.0', '2.6')
     def update(self, req, id, body):
         self._ensure_share_type_arg_is_absent(req)
-        self._ensure_share_group_related_args_are_absent(body)
+        self._ensure_specific_microversion_args_are_absent(
+            body, ['share_groups', 'share_group_snapshots'], "2.40")
+        self._ensure_specific_microversion_args_are_absent(
+            body, ['share_replicas', 'replica_gigabytes'], "2.53")
         return self._update(req, id, body)
 
     @wsgi.Controller.api_version('1.0', '2.6')
@@ -319,7 +324,11 @@ class QuotaSetsController(QuotaSetsMixin, wsgi.Controller):
         if req.api_version_request < api_version.APIVersionRequest("2.39"):
             self._ensure_share_type_arg_is_absent(req)
         elif req.api_version_request < api_version.APIVersionRequest("2.40"):
-            self._ensure_share_group_related_args_are_absent(body)
+            self._ensure_specific_microversion_args_are_absent(
+                body, ['share_groups', 'share_group_snapshots'], "2.40")
+        elif req.api_version_request < api_version.APIVersionRequest("2.53"):
+            self._ensure_specific_microversion_args_are_absent(
+                body, ['share_replicas', 'replica_gigabytes'], "2.53")
         return self._update(req, id, body)
 
     @wsgi.Controller.api_version('2.7')

@@ -60,7 +60,7 @@ class LimitsController(wsgi.Controller):
         rate_limits = req.environ.get("manila.limits", [])
 
         builder = self._get_view_builder(req)
-        return builder.build(rate_limits, abs_limits)
+        return builder.build(req, rate_limits, abs_limits)
 
     def _get_view_builder(self, req):
         return limits_views.ViewBuilder()

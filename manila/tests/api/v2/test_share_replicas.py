@@ -657,7 +657,7 @@ class ShareReplicasApiTest(test.TestCase):
     def test_force_delete_missing_replica(self):
         replica, req = self._create_replica_get_req()
         share_replicas.db.share_replica_delete(
-            self.admin_context, replica['id'])
+            self.admin_context, replica['id'], need_to_update_usages=False)
 
         self._force_delete(self.admin_context, req, valid_code=404)
 
@@ -665,10 +665,9 @@ class ShareReplicasApiTest(test.TestCase):
 
         replica, req = self._create_replica_get_req()
         share_replicas.db.share_replica_delete(
-            self.admin_context, replica['id'])
+            self.admin_context, replica['id'], need_to_update_usages=False)
         share_api_call = self.mock_object(self.controller.share_api,
                                           'update_share_replica')
-
         body = {'resync': {}}
         req.body = six.b(jsonutils.dumps(body))
         req.environ['manila.context'] = self.admin_context

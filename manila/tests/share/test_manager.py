@@ -44,6 +44,7 @@ from manila.share import share_types
 from manila import test
 from manila.tests.api import fakes as test_fakes
 from manila.tests import db_utils
+from manila.tests import fake_notifier
 from manila.tests import fake_share as fakes
 from manila.tests import fake_utils
 from manila.tests import utils as test_utils
@@ -2510,6 +2511,9 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(share_types,
                          'get_share_type_extra_specs',
                          mock.Mock(return_value='False'))
+        self.mock_object(
+            self.share_manager, '_get_extra_specs_from_share_type',
+            mock.Mock(return_value={}))
         self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
         share = db_utils.create_share()
         share_id = share['id']
@@ -2526,6 +2530,9 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.share_update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), share_id,
             {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
+        (self.share_manager._get_extra_specs_from_share_type.
+            assert_called_once_with(
+                mock.ANY, share['instance']['share_type_id']))
 
     def test_manage_share_invalid_size(self):
         self.mock_object(self.share_manager, 'driver')
@@ -2537,6 +2544,9 @@ class ShareManagerTestCase(test.TestCase):
                          "manage_existing",
                          mock.Mock(return_value=None))
         self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
+        self.mock_object(
+            self.share_manager, '_get_extra_specs_from_share_type',
+            mock.Mock(return_value={}))
         share = db_utils.create_share()
         share_id = share['id']
         driver_options = {'fake': 'fake'}
@@ -2551,6 +2561,9 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.share_update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), share_id,
             {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
+        (self.share_manager._get_extra_specs_from_share_type.
+            assert_called_once_with(
+                mock.ANY, share['instance']['share_type_id']))
 
     def test_manage_share_quota_error(self):
         self.mock_object(self.share_manager, 'driver')
@@ -2564,6 +2577,9 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(quota.QUOTAS, 'reserve',
                          mock.Mock(side_effect=exception.QuotaError))
         self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
+        self.mock_object(
+            self.share_manager, '_get_extra_specs_from_share_type',
+            mock.Mock(return_value={}))
         share = db_utils.create_share()
         share_id = share['id']
         driver_options = {'fake': 'fake'}
@@ -2578,6 +2594,9 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.share_update.assert_called_once_with(
             mock.ANY, share_id,
             {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
+        (self.share_manager._get_extra_specs_from_share_type.
+            assert_called_once_with(
+                mock.ANY, share['instance']['share_type_id']))
 
     def test_manage_share_incompatible_dhss(self):
         self.mock_object(self.share_manager, 'driver')
@@ -2586,9 +2605,15 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(share_types,
                          'get_share_type_extra_specs',
                          mock.Mock(return_value="True"))
+        self.mock_object(
+            self.share_manager, '_get_extra_specs_from_share_type',
+            mock.Mock(return_value={}))
         self.assertRaises(
             exception.InvalidShare, self.share_manager.manage_share,
             self.context, share['id'], {})
+        (self.share_manager._get_extra_specs_from_share_type.
+            assert_called_once_with(
+                mock.ANY, share['instance']['share_type_id']))
 
     @ddt.data({'dhss': True,
                'driver_data': {'size': 1, 'replication_type': None}},
@@ -2604,6 +2629,9 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager, 'driver')
         self.share_manager.driver.driver_handles_share_servers = dhss
         replication_type = driver_data.pop('replication_type')
+        extra_specs = {}
+        if replication_type is not None:
+            extra_specs.update({'replication_type': replication_type})
         export_locations = driver_data.get('export_locations')
         self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
         self.mock_object(quota.QUOTAS, 'reserve', mock.Mock())
@@ -2615,6 +2643,10 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(share_types,
                          'get_share_type_extra_specs',
                          mock.Mock(return_value=six.text_type(dhss)))
+        self.mock_object(
+            self.share_manager, '_get_extra_specs_from_share_type',
+            mock.Mock(return_value=extra_specs))
+
         if dhss:
             mock_manage = self.mock_object(
                 self.share_manager.driver,
@@ -2628,6 +2660,16 @@ class ShareManagerTestCase(test.TestCase):
         share = db_utils.create_share(replication_type=replication_type)
         share_id = share['id']
         driver_options = {'fake': 'fake'}
+        expected_deltas = {
+            'project_id': share['project_id'],
+            'user_id': self.context.user_id,
+            'shares': 1,
+            'gigabytes': driver_data['size'],
+            'share_type_id': share['instance']['share_type_id'],
+        }
+        if replication_type:
+            expected_deltas.update({'share_replicas': 1,
+                                    'replica_gigabytes': driver_data['size']})
 
         self.share_manager.manage_share(self.context, share_id, driver_options)
 
@@ -2651,6 +2693,11 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.db.share_update.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             share_id, valid_share_data)
+        quota.QUOTAS.reserve.assert_called_once_with(
+            mock.ANY, **expected_deltas)
+        (self.share_manager._get_extra_specs_from_share_type.
+            assert_called_once_with(
+                mock.ANY, share['instance']['share_type_id']))
 
     def test_update_quota_usages_new(self):
         self.mock_object(self.share_manager.db, 'quota_usage_get',
@@ -2688,9 +2735,12 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY, project_id, mock.ANY, resource_name, usage)
 
     def _setup_unmanage_mocks(self, mock_driver=True, mock_unmanage=None,
-                              dhss=False):
+                              dhss=False, supports_replication=False):
         if mock_driver:
             self.mock_object(self.share_manager, 'driver')
+        replicas_list = []
+        if supports_replication:
+            replicas_list.append({'id': 'fake_id'})
 
         if mock_unmanage:
             if dhss:
@@ -2703,6 +2753,9 @@ class ShareManagerTestCase(test.TestCase):
 
         self.mock_object(self.share_manager.db, 'share_update')
         self.mock_object(self.share_manager.db, 'share_instance_delete')
+        self.mock_object(
+            self.share_manager.db, 'share_replicas_get_all_by_share',
+            mock.Mock(return_value=replicas_list))
 
     def test_unmanage_share_invalid_share(self):
         self.mock_object(self.share_manager, 'driver')
@@ -2715,17 +2768,31 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.db.share_update.assert_called_once_with(
             mock.ANY, share['id'], {'status': constants.STATUS_UNMANAGE_ERROR})
+        (self.share_manager.db.share_replicas_get_all_by_share.
+            assert_called_once_with(mock.ANY, share['id']))
 
-    def test_unmanage_share_valid_share(self):
+    @ddt.data(True, False)
+    def test_unmanage_share_valid_share(self, supports_replication):
         self.mock_object(self.share_manager, 'driver')
         self.share_manager.driver.driver_handles_share_servers = False
-        self._setup_unmanage_mocks(mock_driver=False,
-                                   mock_unmanage=mock.Mock())
+        self._setup_unmanage_mocks(
+            mock_driver=False, mock_unmanage=mock.Mock(),
+            supports_replication=supports_replication)
+        self.mock_object(quota.QUOTAS, 'reserve')
         share = db_utils.create_share()
         share_id = share['id']
         share_instance_id = share.instance['id']
         self.mock_object(self.share_manager.db, 'share_instance_get',
                          mock.Mock(return_value=share.instance))
+        reservation_params = {
+            'project_id': share['project_id'],
+            'shares': -1,
+            'gigabytes': -share['size'],
+            'share_type_id': share['instance']['share_type_id'],
+        }
+        if supports_replication:
+            reservation_params.update(
+                {'share_replicas': -1, 'replica_gigabytes': -share['size']})
 
         self.share_manager.unmanage_share(self.context, share_id)
 
@@ -2733,13 +2800,19 @@ class ShareManagerTestCase(test.TestCase):
             assert_called_once_with(share.instance))
         self.share_manager.db.share_instance_delete.assert_called_once_with(
             mock.ANY, share_instance_id)
+        quota.QUOTAS.reserve.assert_called_once_with(
+            mock.ANY, **reservation_params)
+        (self.share_manager.db.share_replicas_get_all_by_share.
+            assert_called_once_with(mock.ANY, share['id']))
 
-    def test_unmanage_share_valid_share_with_share_server(self):
+    @ddt.data(True, False)
+    def test_unmanage_share_valid_share_with_share_server(
+            self, supports_replication):
         self.mock_object(self.share_manager, 'driver')
         self.share_manager.driver.driver_handles_share_servers = True
-        self._setup_unmanage_mocks(mock_driver=False,
-                                   mock_unmanage=mock.Mock(),
-                                   dhss=True)
+        self._setup_unmanage_mocks(
+            mock_driver=False, mock_unmanage=mock.Mock(), dhss=True,
+            supports_replication=supports_replication)
         server = db_utils.create_share_server(id='fake_server_id')
         share = db_utils.create_share(share_server_id='fake_server_id')
         self.mock_object(self.share_manager.db, 'share_server_update')
@@ -2747,6 +2820,16 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(return_value=server))
         self.mock_object(self.share_manager.db, 'share_instance_get',
                          mock.Mock(return_value=share.instance))
+        self.mock_object(quota.QUOTAS, 'reserve')
+        reservation_params = {
+            'project_id': share['project_id'],
+            'shares': -1,
+            'gigabytes': -share['size'],
+            'share_type_id': share['instance']['share_type_id'],
+        }
+        if supports_replication:
+            reservation_params.update(
+                {'share_replicas': -1, 'replica_gigabytes': -share['size']})
 
         share_id = share['id']
         share_instance_id = share.instance['id']
@@ -2759,6 +2842,10 @@ class ShareManagerTestCase(test.TestCase):
             mock.ANY, share_instance_id)
         self.share_manager.db.share_server_update.assert_called_once_with(
             mock.ANY, server['id'], {'is_auto_deletable': False})
+        quota.QUOTAS.reserve.assert_called_once_with(
+            mock.ANY, **reservation_params)
+        (self.share_manager.db.share_replicas_get_all_by_share
+         .assert_called_once_with(mock.ANY, share['id']))
 
     def test_unmanage_share_valid_share_with_quota_error(self):
         self.mock_object(self.share_manager, 'driver')
@@ -2775,6 +2862,8 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.driver.unmanage.assert_called_once_with(mock.ANY)
         self.share_manager.db.share_instance_delete.assert_called_once_with(
             mock.ANY, share_instance_id)
+        (self.share_manager.db.share_replicas_get_all_by_share.
+            assert_called_once_with(mock.ANY, share['id']))
 
     def test_unmanage_share_remove_access_rules_error(self):
         self.mock_object(self.share_manager, 'driver')
@@ -2794,6 +2883,8 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.db.share_update.assert_called_once_with(
             mock.ANY, share['id'], {'status': constants.STATUS_UNMANAGE_ERROR})
+        (self.share_manager.db.share_replicas_get_all_by_share.
+            assert_called_once_with(mock.ANY, share['id']))
 
     def test_unmanage_share_valid_share_remove_access_rules(self):
         self.mock_object(self.share_manager, 'driver')
@@ -2816,6 +2907,8 @@ class ShareManagerTestCase(test.TestCase):
         )
         smanager.db.share_instance_delete.assert_called_once_with(
             mock.ANY, share_instance_id)
+        (self.share_manager.db.share_replicas_get_all_by_share.
+            assert_called_once_with(mock.ANY, share['id']))
 
     def test_delete_share_instance_share_server_not_found(self):
         share_net = db_utils.create_share_network()
@@ -3506,7 +3599,10 @@ class ShareManagerTestCase(test.TestCase):
                                   (['INFO', 'share.extend.start'],
                                    ['INFO', 'share.extend.end']))
 
-    def test_shrink_share_quota_error(self):
+    @ddt.data((True, [{'id': 'fake'}]), (False, []))
+    @ddt.unpack
+    def test_shrink_share_quota_error(self, supports_replication,
+                                      replicas_list):
         size = 5
         new_size = 1
         share = db_utils.create_share(size=size)
@@ -3515,6 +3611,13 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.db, 'share_update')
         self.mock_object(quota.QUOTAS, 'reserve',
                          mock.Mock(side_effect=Exception('fake')))
+        self.mock_object(
+            self.share_manager.db, 'share_replicas_get_all_by_share',
+            mock.Mock(return_value=replicas_list))
+
+        deltas = {}
+        if supports_replication:
+            deltas.update({'replica_gigabytes': new_size - size})
 
         self.assertRaises(
             exception.ShareShrinkingError,
@@ -3525,9 +3628,12 @@ class ShareManagerTestCase(test.TestCase):
             project_id=six.text_type(share['project_id']),
             user_id=six.text_type(share['user_id']),
             share_type_id=None,
-            gigabytes=new_size - size
+            gigabytes=new_size - size,
+            **deltas
         )
         self.assertTrue(self.share_manager.db.share_update.called)
+        (self.share_manager.db.share_replicas_get_all_by_share
+            .assert_called_once_with(mock.ANY, share['id']))
 
     @ddt.data({'exc': exception.InvalidShare('fake'),
                'status': constants.STATUS_SHRINKING_ERROR},
@@ -3570,8 +3676,8 @@ class ShareManagerTestCase(test.TestCase):
         )
         self.assertTrue(self.share_manager.db.share_get.called)
 
-    @mock.patch('manila.tests.fake_notifier.FakeNotifier._notify')
-    def test_shrink_share(self, mock_notify):
+    @ddt.data(True, False)
+    def test_shrink_share(self, supports_replication):
         share = db_utils.create_share()
         share_id = share['id']
         new_size = 123
@@ -3581,6 +3687,11 @@ class ShareManagerTestCase(test.TestCase):
         }
         fake_share_server = 'fake'
         size_decrease = int(share['size']) - new_size
+        mock_notify = self.mock_object(fake_notifier.FakeNotifier, '_notify')
+        replicas_list = []
+        if supports_replication:
+            replicas_list.append(share)
+            replicas_list.append({'name': 'fake_replica'})
 
         mock_notify.assert_not_called()
 
@@ -3595,6 +3706,17 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(manager.driver, 'shrink_share')
         self.mock_object(manager, '_get_share_server',
                          mock.Mock(return_value=fake_share_server))
+        self.mock_object(manager.db, 'share_replicas_get_all_by_share',
+                         mock.Mock(return_value=replicas_list))
+        reservation_params = {
+            'gigabytes': -size_decrease,
+            'project_id': share['project_id'],
+            'share_type_id': None,
+            'user_id': share['user_id'],
+        }
+        if supports_replication:
+            reservation_params.update(
+                {'replica_gigabytes': -size_decrease * 2})
 
         self.share_manager.shrink_share(self.context, share_id, new_size)
 
@@ -3605,8 +3727,7 @@ class ShareManagerTestCase(test.TestCase):
         )
 
         quota.QUOTAS.reserve.assert_called_once_with(
-            mock.ANY, gigabytes=-size_decrease, project_id=share['project_id'],
-            share_type_id=None, user_id=share['user_id'],
+            mock.ANY, **reservation_params,
         )
         quota.QUOTAS.commit.assert_called_once_with(
             mock.ANY, mock.ANY, project_id=share['project_id'],
@@ -3619,6 +3740,8 @@ class ShareManagerTestCase(test.TestCase):
         self.assert_notify_called(mock_notify,
                                   (['INFO', 'share.shrink.start'],
                                    ['INFO', 'share.shrink.end']))
+        (self.share_manager.db.share_replicas_get_all_by_share.
+            assert_called_once_with(mock.ANY, share['id']))
 
     def test_report_driver_status_driver_handles_ss_false(self):
         fake_stats = {'field': 'val'}

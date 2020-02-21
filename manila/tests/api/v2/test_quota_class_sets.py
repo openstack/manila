@@ -26,6 +26,7 @@ from oslo_config import cfg
 import webob.exc
 import webob.response
 
+from manila.api.openstack import api_version_request as api_version
 from manila.api.v2 import quota_class_sets
 from manila import context
 from manila import exception
@@ -60,6 +61,7 @@ class QuotaSetsControllerTest(test.TestCase):
         ('os-', '1.0', quota_class_sets.QuotaClassSetsControllerLegacy),
         ('os-', '2.6', quota_class_sets.QuotaClassSetsControllerLegacy),
         ('', '2.7', quota_class_sets.QuotaClassSetsController),
+        ('', '2.53', quota_class_sets.QuotaClassSetsController),
     )
     @ddt.unpack
     def test_show_quota(self, url, version, controller):
@@ -86,6 +88,13 @@ class QuotaSetsControllerTest(test.TestCase):
         for k, v in quotas.items():
             CONF.set_default('quota_' + k, v)
 
+        if req.api_version_request >= api_version.APIVersionRequest("2.40"):
+            expected['quota_class_set']['share_groups'] = 50
+            expected['quota_class_set']['share_group_snapshots'] = 50
+        if req.api_version_request >= api_version.APIVersionRequest("2.53"):
+            expected['quota_class_set']['share_replicas'] = 100
+            expected['quota_class_set']['replica_gigabytes'] = 1000
+
         result = controller().show(req, self.class_name)
 
         self.assertEqual(expected, result)
@@ -109,6 +118,7 @@ class QuotaSetsControllerTest(test.TestCase):
         ('os-', '1.0', quota_class_sets.QuotaClassSetsControllerLegacy),
         ('os-', '2.6', quota_class_sets.QuotaClassSetsControllerLegacy),
         ('', '2.7', quota_class_sets.QuotaClassSetsController),
+        ('', '2.53', quota_class_sets.QuotaClassSetsController),
     )
     @ddt.unpack
     def test_update_quota(self, url, version, controller):
@@ -131,6 +141,13 @@ class QuotaSetsControllerTest(test.TestCase):
                 'share_networks': 10,
             }
         }
+
+        if req.api_version_request >= api_version.APIVersionRequest("2.40"):
+            expected['quota_class_set']['share_groups'] = 50
+            expected['quota_class_set']['share_group_snapshots'] = 50
+        if req.api_version_request >= api_version.APIVersionRequest("2.53"):
+            expected['quota_class_set']['share_replicas'] = 100
+            expected['quota_class_set']['replica_gigabytes'] = 1000
 
         update_result = controller().update(
             req, self.class_name, body=body)

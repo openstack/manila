@@ -827,6 +827,9 @@ class ShareDatabaseAPITestCase(test.TestCase):
     def test_share_replica_delete(self):
         share = db_utils.create_share()
         share = db_api.share_get(self.ctxt, share['id'])
+        self.mock_object(quota.QUOTAS, 'reserve',
+                         mock.Mock(return_value='reservation'))
+        self.mock_object(quota.QUOTAS, 'commit')
         replica = db_utils.create_share_replica(
             share_id=share['id'], replica_state=constants.REPLICA_STATE_ACTIVE)
 
@@ -837,6 +840,55 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
         self.assertEqual(
             [], db_api.share_replicas_get_all_by_share(self.ctxt, share['id']))
+        share_type_id = share['instances'][0].get('share_type_id', None)
+        quota.QUOTAS.reserve.assert_called_once_with(
+            self.ctxt, project_id=share['project_id'],
+            user_id=share['user_id'], share_type_id=share_type_id,
+            share_replicas=-1, replica_gigabytes=share['size'])
+        quota.QUOTAS.commit.assert_called_once_with(
+            self.ctxt, 'reservation', project_id=share['project_id'],
+            user_id=share['user_id'], share_type_id=share_type_id)
+
+    @ddt.data(
+        (True, {"share_replicas": -1, "replica_gigabytes": 0}, 'active'),
+        (False, {"shares": -1, "gigabytes": 0}, None),
+        (False, {"shares": -1, "gigabytes": 0,
+                 "share_replicas": -1, "replica_gigabytes": 0}, 'active')
+    )
+    @ddt.unpack
+    def test_share_instance_delete_quota_error(self, is_replica, deltas,
+                                               replica_state):
+        share = db_utils.create_share(replica_state=replica_state)
+        share = db_api.share_get(self.ctxt, share['id'])
+        instance_id = share['instances'][0]['id']
+
+        if is_replica:
+            replica = db_utils.create_share_replica(
+                share_id=share['id'],
+                replica_state=constants.REPLICA_STATE_ACTIVE)
+            instance_id = replica['id']
+        reservation = 'fake'
+        share_type_id = share['instances'][0]['share_type_id']
+
+        self.mock_object(quota.QUOTAS, 'reserve',
+                         mock.Mock(return_value=reservation))
+        self.mock_object(quota.QUOTAS, 'commit', mock.Mock(
+            side_effect=exception.QuotaError('fake')))
+        self.mock_object(quota.QUOTAS, 'rollback')
+
+        # NOTE(silvacarlose): not calling with assertRaises since the
+        # _update_share_instance_usages method is not raising an exception
+        db_api.share_instance_delete(
+            self.ctxt, instance_id, session=None, need_to_update_usages=True)
+
+        quota.QUOTAS.reserve.assert_called_once_with(
+            self.ctxt, project_id=share['project_id'],
+            user_id=share['user_id'], share_type_id=share_type_id, **deltas)
+        quota.QUOTAS.commit.assert_called_once_with(
+            self.ctxt, reservation, project_id=share['project_id'],
+            user_id=share['user_id'], share_type_id=share_type_id)
+        quota.QUOTAS.rollback.assert_called_once_with(
+            self.ctxt, reservation, share_type_id=share_type_id)
 
     def test_share_instance_access_copy(self):
         share = db_utils.create_share()
@@ -3487,6 +3539,53 @@ class ShareTypeAPITestCase(test.TestCase):
             self.assertEqual(2, len(q_reservations))
             for q_reservation in q_reservations:
                 self.assertIsNone(q_reservation['share_type_id'])
+
+    @ddt.data(
+        (None, None, 5),
+        ('fake2', None, 2),
+        (None, 'fake', 3),
+    )
+    @ddt.unpack
+    def test_share_replica_data_get_for_project(
+            self, user_id, share_type_id, expected_result):
+        kwargs = {}
+        if share_type_id:
+            kwargs.update({'id': share_type_id})
+        share_type_1 = db_utils.create_share_type(**kwargs)
+        share_type_2 = db_utils.create_share_type()
+
+        share_1 = db_utils.create_share(size=1, user_id='fake',
+                                        share_type_id=share_type_1['id'])
+        share_2 = db_utils.create_share(size=1, user_id='fake2',
+                                        share_type_id=share_type_2['id'])
+        project_id = share_1['project_id']
+        db_utils.create_share_replica(
+            replica_state=constants.REPLICA_STATE_ACTIVE,
+            share_id=share_1['id'], share_type_id=share_type_1['id'])
+        db_utils.create_share_replica(
+            replica_state=constants.REPLICA_STATE_IN_SYNC,
+            share_id=share_1['id'], share_type_id=share_type_1['id'])
+        db_utils.create_share_replica(
+            replica_state=constants.REPLICA_STATE_IN_SYNC,
+            share_id=share_1['id'], share_type_id=share_type_1['id'])
+
+        db_utils.create_share_replica(
+            replica_state=constants.REPLICA_STATE_ACTIVE,
+            share_id=share_2['id'], share_type_id=share_type_2['id'])
+        db_utils.create_share_replica(
+            replica_state=constants.REPLICA_STATE_IN_SYNC,
+            share_id=share_2['id'], share_type_id=share_type_2['id'])
+
+        kwargs = {}
+        if user_id:
+            kwargs.update({'user_id': user_id})
+        if share_type_id:
+            kwargs.update({'share_type_id': share_type_id})
+
+        total_amount, total_size = db_api.share_replica_data_get_for_project(
+            self.ctxt, project_id, **kwargs)
+        self.assertEqual(expected_result, total_amount)
+        self.assertEqual(expected_result, total_size)
 
     def test_share_type_get_by_name_or_id_found_by_id(self):
         share_type = db_utils.create_share_type()

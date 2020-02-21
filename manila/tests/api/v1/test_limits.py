@@ -16,6 +16,7 @@
 """
 Tests dealing with HTTP rate-limiting.
 """
+import ddt
 
 from oslo_serialization import jsonutils
 import six
@@ -23,10 +24,12 @@ from six import moves
 from six.moves import http_client
 import webob
 
+from manila.api.openstack import api_version_request as api_version
 from manila.api.v1 import limits
 from manila.api import views
 import manila.context
 from manila import test
+from manila.tests.api import fakes
 
 
 TEST_LIMITS = [
@@ -36,6 +39,7 @@ TEST_LIMITS = [
     limits.Limit("PUT", "*", "", 10, limits.PER_MINUTE),
     limits.Limit("PUT", "/shares", "^/shares", 5, limits.PER_MINUTE),
 ]
+SHARE_REPLICAS_LIMIT_MICROVERSION = "2.53"
 
 
 class BaseLimitTestSuite(test.TestCase):
@@ -64,24 +68,20 @@ class BaseLimitTestSuite(test.TestCase):
         return self.time
 
 
+@ddt.ddt
 class LimitsControllerTest(BaseLimitTestSuite):
     """Tests for `limits.LimitsController` class."""
 
     def setUp(self):
         """Run before each test."""
         super(LimitsControllerTest, self).setUp()
-        self.controller = limits.create_resource()
+        self.controller = limits.LimitsController()
 
-    def _get_index_request(self, accept_header="application/json"):
+    def _get_index_request(self, accept_header="application/json",
+                           microversion=api_version.DEFAULT_API_VERSION):
         """Helper to set routing arguments."""
-        request = webob.Request.blank("/")
+        request = fakes.HTTPRequest.blank('/limit', version=microversion)
         request.accept = accept_header
-        request.environ["wsgiorg.routing_args"] = (None, {
-            "action": "index",
-            "controller": "",
-        })
-        context = manila.context.RequestContext('testuser', 'testproject')
-        request.environ["manila.context"] = context
         return request
 
     def _populate_limits(self, request):
@@ -98,19 +98,20 @@ class LimitsControllerTest(BaseLimitTestSuite):
     def test_empty_index_json(self):
         """Test getting empty limit details in JSON."""
         request = self._get_index_request()
-        response = request.get_response(self.controller)
+        response = self.controller.index(request)
         expected = {
             "limits": {
                 "rate": [],
                 "absolute": {},
             },
         }
-        body = jsonutils.loads(response.body)
-        self.assertEqual(expected, body)
+        self.assertEqual(expected, response)
 
-    def test_index_json(self):
+    @ddt.data(api_version.DEFAULT_API_VERSION,
+              SHARE_REPLICAS_LIMIT_MICROVERSION)
+    def test_index_json(self, microversion):
         """Test getting limit details in JSON."""
-        request = self._get_index_request()
+        request = self._get_index_request(microversion=microversion)
         request = self._populate_limits(request)
         self.absolute_limits = {
             'limit': {
@@ -128,7 +129,15 @@ class LimitsControllerTest(BaseLimitTestSuite):
                 'share_networks': 7,
             },
         }
-        response = request.get_response(self.controller)
+
+        if microversion == SHARE_REPLICAS_LIMIT_MICROVERSION:
+            self.absolute_limits['limit']['share_replicas'] = 20
+            self.absolute_limits['limit']['replica_gigabytes'] = 20
+            self.absolute_limits['in_use']['share_replicas'] = 3
+            self.absolute_limits['in_use']['replica_gigabytes'] = 3
+
+        response = self.controller.index(request)
+
         expected = {
             "limits": {
                 "rate": [
@@ -181,8 +190,13 @@ class LimitsControllerTest(BaseLimitTestSuite):
                 },
             },
         }
-        body = jsonutils.loads(response.body)
-        self.assertEqual(expected, body)
+        if microversion == SHARE_REPLICAS_LIMIT_MICROVERSION:
+            expected['limits']['absolute']["maxTotalShareReplicas"] = 20
+            expected['limits']['absolute']["totalShareReplicasUsed"] = 3
+            expected['limits']['absolute']["maxTotalReplicaGigabytes"] = 20
+            expected['limits']['absolute']["totalReplicaGigabytesUsed"] = 3
+        # body = jsonutils.loads(response.body)
+        self.assertEqual(expected, response)
 
     def _populate_limits_diff_regex(self, request):
         """Put limit info into a request."""
@@ -197,7 +211,7 @@ class LimitsControllerTest(BaseLimitTestSuite):
         """Test getting limit details in JSON."""
         request = self._get_index_request()
         request = self._populate_limits_diff_regex(request)
-        response = request.get_response(self.controller)
+        response = self.controller.index(request)
         expected = {
             "limits": {
                 "rate": [
@@ -232,14 +246,12 @@ class LimitsControllerTest(BaseLimitTestSuite):
                 "absolute": {},
             },
         }
-        body = jsonutils.loads(response.body)
-        self.assertEqual(expected, body)
+        self.assertEqual(expected, response)
 
     def _test_index_absolute_limits_json(self, expected):
         request = self._get_index_request()
-        response = request.get_response(self.controller)
-        body = jsonutils.loads(response.body)
-        self.assertEqual(expected, body['limits']['absolute'])
+        response = self.controller.index(request)
+        self.assertEqual(expected, response['limits']['absolute'])
 
     def test_index_ignores_extra_absolute_limits_json(self):
         self.absolute_limits = {
@@ -783,6 +795,7 @@ class LimitsViewBuilderTest(test.TestCase):
         }
 
     def test_build_limits(self):
+        request = fakes.HTTPRequest.blank('/')
         tdate = "2011-07-21T18:17:06Z"
         expected_limits = {
             "limits": {
@@ -817,15 +830,17 @@ class LimitsViewBuilderTest(test.TestCase):
             }
         }
 
-        output = self.view_builder.build(self.rate_limits,
+        output = self.view_builder.build(request,
+                                         self.rate_limits,
                                          self.absolute_limits)
         self.assertDictMatch(expected_limits, output)
 
     def test_build_limits_empty_limits(self):
+        request = fakes.HTTPRequest.blank('/')
         expected_limits = {"limits": {"rate": [], "absolute": {}}}
         abs_limits = {}
         rate_limits = []
 
-        output = self.view_builder.build(rate_limits, abs_limits)
+        output = self.view_builder.build(request, rate_limits, abs_limits)
 
         self.assertDictMatch(expected_limits, output)
