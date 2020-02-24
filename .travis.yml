@@ -1,0 +1,12 @@
+dist: focal
+sudo: false
+language: python
+cache:
+  pip: true
+python:
+- "3.6"
+- "3.7"
+- "3.8"
+env: TOXENV=pep8, UPPER_CONSTRAINTS_FILE=https://raw.githubusercontent.com/sapcc/requirements/stable/victoria-m3/upper-constraints.txt
+install: pip install tox-travis
+script: tox
