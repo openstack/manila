@@ -88,3 +88,7 @@ class SystemAPINotSupported(UnityException):
 
 class UnityVLANAlreadyHasInterfaceError(UnityException):
     pass
+
+
+class UnityAclUserNotFoundError(UnityException):
+    pass
