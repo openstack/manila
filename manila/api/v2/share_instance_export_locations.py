@@ -21,6 +21,7 @@ from manila.api.views import export_locations as export_locations_views
 from manila.db import api as db_api
 from manila import exception
 from manila.i18n import _
+from manila import policy
 
 
 class ShareInstanceExportLocationController(wsgi.Controller):
@@ -33,7 +34,12 @@ class ShareInstanceExportLocationController(wsgi.Controller):
 
     def _verify_share_instance(self, context, share_instance_id):
         try:
-            db_api.share_instance_get(context, share_instance_id)
+            share_instance = db_api.share_instance_get(context,
+                                                       share_instance_id,
+                                                       with_share_data=True)
+            if not share_instance['is_public']:
+                policy.check_policy(context, 'share_instance', 'show',
+                                    share_instance)
         except exception.NotFound:
             msg = _("Share instance '%s' not found.") % share_instance_id
             raise exc.HTTPNotFound(explanation=msg)

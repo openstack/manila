@@ -20,6 +20,7 @@ from manila.api.views import export_locations as export_locations_views
 from manila.db import api as db_api
 from manila import exception
 from manila.i18n import _
+from manila import policy
 
 
 class ShareExportLocationController(wsgi.Controller):
@@ -32,7 +33,9 @@ class ShareExportLocationController(wsgi.Controller):
 
     def _verify_share(self, context, share_id):
         try:
-            db_api.share_get(context, share_id)
+            share = db_api.share_get(context, share_id)
+            if not share['is_public']:
+                policy.check_policy(context, 'share', 'get', share)
         except exception.NotFound:
             msg = _("Share '%s' not found.") % share_id
             raise exc.HTTPNotFound(explanation=msg)
