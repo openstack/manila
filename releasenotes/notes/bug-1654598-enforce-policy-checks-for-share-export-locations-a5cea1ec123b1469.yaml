@@ -1,0 +1,6 @@
+---
+security:
+  - |
+    Closes a gap where a user can see the export locations for another user's
+    share if the uuid of the other share is leaked, stolen, or (improbably)
+    guessed.
