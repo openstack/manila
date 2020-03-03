@@ -32,6 +32,7 @@ class Action(object):
     REVERT_TO_SNAPSHOT = ('006', _('revert to snapshot'))
     DELETE = ('007', _('delete'))
     EXTEND = ('008', _('extend'))
+    SHRINK = ('009', _('shrink'))
     ALL = (ALLOCATE_HOST,
            CREATE,
            DELETE_ACCESS_RULES,
@@ -39,7 +40,8 @@ class Action(object):
            UPDATE,
            REVERT_TO_SNAPSHOT,
            DELETE,
-           EXTEND)
+           EXTEND,
+           SHRINK)
 
 
 class Detail(object):
@@ -86,6 +88,12 @@ class Detail(object):
         _("Share Driver has failed to create the share from snapshot. This "
           "operation can be re-attempted by creating a new share. Contact "
           "your administrator to determine the cause of this failure."))
+    DRIVER_REFUSED_SHRINK = (
+        '018',
+        _("Share Driver refused to shrink the share. The size to be shrunk is"
+          " smaller than the current used space. The share status has been"
+          " set to available. Please select a size greater than the current"
+          " used space."))
 
     ALL = (UNKNOWN_ERROR,
            NO_VALID_HOST,
@@ -103,7 +111,8 @@ class Detail(object):
            FILTER_REPLICATION,
            DRIVER_FAILED_EXTEND,
            FILTER_CREATE_FROM_SNAPSHOT,
-           DRIVER_FAILED_CREATING_FROM_SNAP)
+           DRIVER_FAILED_CREATING_FROM_SNAP,
+           DRIVER_REFUSED_SHRINK)
 
     # Exception and detail mappings
     EXCEPTION_DETAIL_MAPPINGS = {
