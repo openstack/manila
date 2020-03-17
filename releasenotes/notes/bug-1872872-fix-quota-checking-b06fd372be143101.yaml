@@ -1,0 +1,7 @@
+---
+fixes:
+ -  |
+    Fixed quota issue that made it impossible to create resources when the project had the quotas
+    set to unlimited, and the user had a limited amount of quotas to use. Now, operations in the
+    mentioned quota scenario are working properly. Please see `Launchpad bug 1872872
+    <https://bugs.launchpad.net/manila/+bug/1872872>`_ for more details.
