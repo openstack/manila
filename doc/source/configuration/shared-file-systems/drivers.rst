@@ -68,4 +68,4 @@ The configuration for all of them follows a common paradigm:
       # ...
 
 The share drivers are included in the `Shared File Systems repository
-<https://git.openstack.org/cgit/openstack/manila/tree/manila/share/drivers>`_.
+<https://opendev.org/openstack/manila/src/branch/master/manila/share/drivers>`_.

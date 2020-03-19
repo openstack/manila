@@ -16,7 +16,7 @@ you can clone and install it yourself.
 
 .. code-block:: console
 
-   $ git clone https://git.openstack.org/openstack/manila-tempest-plugin
+   $ git clone https://opendev.org/openstack/manila-tempest-plugin
    $ pip install -e manila-tempest-plugin
 
 .. _docs: https://docs.openstack.org/tempest/latest/plugin.html#using-plugins

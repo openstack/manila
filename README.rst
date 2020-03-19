@@ -23,7 +23,7 @@ Getting Started
 
 If you'd like to run from the master branch, you can clone the git repo:
 
-    git clone https://git.openstack.org/openstack/manila.git
+    git clone https://opendev.org/openstack/manila
 
 For developer information please see
 `HACKING.rst <https://opendev.org/openstack/manila/src/branch/master/HACKING.rst>`_
@@ -33,7 +33,7 @@ You can raise bugs here https://bugs.launchpad.net/manila
 Python client
 -------------
 
-https://opendev.org/openstack/python-manilaclient.git
+https://opendev.org/openstack/python-manilaclient
 
 * Documentation for the project can be found at:
 

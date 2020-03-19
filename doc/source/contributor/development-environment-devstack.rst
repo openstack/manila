@@ -44,7 +44,7 @@ Getting devstack
 
 Start by cloning the devstack repository::
 
-    git clone https://opendev.org/openstack/devstack.git
+    git clone https://opendev.org/openstack/devstack
 
 Change to devstack directory::
 
@@ -158,20 +158,20 @@ Testing branches and changes submitted for review
 
 To test a patch in review::
 
-    enable_plugin manila https://git.openstack.org/openstack/manila <ref>
+    enable_plugin manila https://opendev.org/openstack/manila <ref>
 
-If the ref is from review.openstack.org, it is structured as::
+If the ref is from review.opendev.org, it is structured as::
 
     refs/changes/<last two digits of review number>/<review number>/<patchset number>
 
-For example, if you want to test patchset 4 of https://review.openstack.org/#/c/614170/,
+For example, if you want to test patchset 4 of https://review.opendev.org/#/c/614170/,
 you can provide this in your ``local.conf``::
 
-    enable_plugin manila https://git.openstack.org/openstack/manila refs/changes/70/614170/4
+    enable_plugin manila https://opendev.org/openstack/manila refs/changes/70/614170/4
 
 ref can also simply be a stable branch name, for example::
 
-    enable_plugin manila https://git.openstack.org/openstack/manila stable/rocky
+    enable_plugin manila https://opendev.org/openstack/manila stable/train
 
 Limiting the services enabled in your stack
 ````````````````````````````````````````````

@@ -4,7 +4,7 @@ Code Reviews with Gerrit
 ========================
 
 Manila uses the `Gerrit`_ tool to review proposed code changes. The review site
-is https://review.openstack.org.
+is https://review.opendev.org.
 
 Gerrit is a complete replacement for Github pull requests. `All Github pull
 requests to the manila repository will be ignored`.

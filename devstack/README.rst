@@ -13,10 +13,10 @@ quickstart reference:
      > cat local.conf
      [[local|localrc]]
      # Enable manila
-     enable_plugin manila https://git.openstack.org/openstack/manila
+     enable_plugin manila https://opendev.org/openstack/manila
 
      # Enable manila ui in the dashboard
-     enable_plugin manila-ui https://git.openstack.org/openstack/manila-ui
+     enable_plugin manila-ui https://opendev.org/openstack/manila-ui
 
 3. run ``stack.sh``
 

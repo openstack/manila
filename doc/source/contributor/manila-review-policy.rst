@@ -8,14 +8,14 @@ Peer code review and the OpenStack Way
 
 Manila adheres to the `OpenStack code review policy and guidelines
 <https://docs.openstack.org/infra/manual/developers.html#peer-review>`_.
-Similar to other projects hosted on `git.openstack.org <http://git.openstack
-.org/cgit>`_, all of manila's code is curated and maintained by a small
+Similar to other projects hosted on `opendev.org <https://opendev.org>`_, all
+of manila's code is curated and maintained by a small
 group of individuals called the "core team". The `primary core team
-<https://review.openstack.org/#/admin/groups/213,members>`_
+<https://review.opendev.org/#/admin/groups/213,members>`_
 consists of members from diverse affiliations. There are special core teams
-such as the `manila release core team <https://review.openstack
+such as the `manila release core team <https://review.opendev
 .org/#/admin/groups/215,members>`_ and the `manila stable maintenance core
-team <https://review.openstack.org/#/admin/groups/1099,members>`_ that
+team <https://review.opendev.org/#/admin/groups/1099,members>`_ that
 have specific roles as the names suggest.
 
 To make a code change in openstack/manila or any of the associated code
@@ -23,9 +23,9 @@ repositories (openstack/manila-image-elements, openstack/manila-specs,
 openstack/manila-tempest-plugin, openstack/manila-test-image,
 openstack/manila-ui and openstack/python-manilaclient), contributors need to
 follow the :ref:`Code Submission Process <code-reviews-with-gerrit>` and
-upload their code on the `OpenStack Gerrit <https://review.openstack.org>`_
+upload their code on the `OpenStack Gerrit <https://review.opendev.org>`_
 website. They can then seek reviews by adding individual members of the
-`manila core team <https://review.openstack.org/#/admin/groups/213,
+`manila core team <https://review.opendev.org/#/admin/groups/213,
 members>`_ or alert the entire core team by inviting the Gerrit group
 "manila-core" to the review. Anyone with a membership to the OpenStack
 Gerrit system may review the code change. However, only the core team can
@@ -104,4 +104,4 @@ References
 .. [#] Getting started with IRC: https://docs.openstack.org/contributors/common/irc.html
 .. [#] IRC guidelines: https://docs.openstack.org/infra/manual/irc.html
 .. [#] TC Report 18-28: https://anticdent.org/tc-report-18-28.html
-.. [#] TC vote to remove team diversity tags: https://review.openstack.org/#/c/579870/
+.. [#] TC vote to remove team diversity tags: https://review.opendev.org/#/c/579870/

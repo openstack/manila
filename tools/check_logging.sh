@@ -18,11 +18,7 @@ if [[ count -eq 0 ]]; then
     exit 0
 fi
 
-echo 'Found files with unused LOG variable (see https://review.openstack.org/#/c/301054):'
+echo 'Found files with unused LOG variable (see https://review.opendev.org/#/c/301054):'
 cat $tmpfile
 rm $tmpfile
 exit 1
-
-
-
-

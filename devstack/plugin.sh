@@ -903,7 +903,7 @@ function stop_manila {
 }
 
 function install_manila_tempest_plugin {
-    MANILA_TEMPEST_PLUGIN_REPO=${MANILA_TEMPEST_PLUGIN_REPO:-${GIT_BASE}/openstack/manila-tempest-plugin.git}
+    MANILA_TEMPEST_PLUGIN_REPO=${MANILA_TEMPEST_PLUGIN_REPO:-${GIT_BASE}/openstack/manila-tempest-plugin}
     MANILA_TEMPEST_PLUGIN_BRANCH=${MANILA_TEMPEST_PLUGIN_BRANCH:-master}
     MANILA_TEMPEST_PLUGIN_DIR=$DEST/manila-tempest-plugin
 
@@ -1228,7 +1228,7 @@ elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
     create_custom_share_types
 
     echo_summary "Manila UI is no longer enabled by default. \
-        Add enable_plugin manila-ui https://git.openstack.org/openstack/manila-ui \
+        Add enable_plugin manila-ui https://opendev.org/openstack/manila-ui \
         to your local.conf file to enable Manila UI"
 
 elif [[ "$1" == "stack" && "$2" == "test-config" ]]; then
