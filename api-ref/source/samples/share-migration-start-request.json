@@ -1,0 +1,14 @@
+{
+    "migration_start":
+        {
+            "share_id": "406ea93b-32e9-4907-a117-148b3945749f",
+            "writable": true,
+            "preserve_snapshots": true,
+            "preserve_metadata": true,
+            "nondisruptive": true,
+            "host": "ubuntu@generic2#GENERIC2",
+            "new_share_type_id": "foo_share_type_id",
+            "new_share_network_id": "bar_share_network_id",
+            "force_host_assisted_migration": false
+        }
+}

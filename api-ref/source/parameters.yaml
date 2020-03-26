@@ -1068,13 +1068,16 @@ force_delete_2:
   in: body
   required: true
   type: string
-force_host_copy:
+force_host_assisted_migration:
   description: |
-    Enables or disables generic host-based forced
-    migrations, which bypasses driver optimizations. Default value is
-    ``false``.
+    Forces the host-assisted mechanism to be used, thus using the
+    Data Service to copy data across back ends. This parameter
+    value defaults to ``False``. When set to ``True``,
+    it skips the driver-assisted approach which would
+    otherwise be attempted first. If this option is set to
+    ``True``, all driver-assisted options must be set to ``False``.
   in: body
-  required: true
+  required: false
   type: boolean
 force_snapshot_request:
   description: |
@@ -1136,6 +1139,14 @@ has_replicas:
   required: true
   type: boolean
   min_version: 2.11
+host:
+  description: |
+    The target pool to which the share should be migrated to,
+    in format ``host@backend#pool``. E.g.
+    ``ubuntu@generic1#GENERIC1``.
+  in: body
+  required: true
+  type: string
 host_1:
   description: |
     The share host name.
@@ -1529,6 +1540,27 @@ neutron_subnet_id_request:
   in: body
   required: false
   type: string
+new_share_network_id:
+  description:  |
+    If willing to change the share’s share-network so it can be
+    allocated in the desired destination pool, the invoker may
+    supply a new share network to be used. This is often suited
+    when the share is to be migrated to a pool which operates
+    in a different availability zone or managed by a driver
+    that handles share servers.
+  in: body
+  required: false
+  type: string
+new_share_type_id:
+  description: |
+     If willing to retype the share so it can be allocated in the
+     desired destination pool, the invoker may supply a new share
+     type to be used. This is often suited when the share is to
+     be migrated to a pool which operates in the opposite
+     driver mode.
+  in: body
+  required: false
+  type: string
 next-available:
   description: |
     The date and time stamp when next issues are available.
@@ -1547,18 +1579,19 @@ next-available:
   in: body
   required: false
   type: string
-notify:
+nondisruptive:
   description: |
-    Enables or disables notification of data copying completed
+    Specifies whether migration should only be performed
+    without disrupting clients during migration. For such,
+    it is also expected that the export location does not change.
+    When set to ``True`` and drivers are not capable of allowing
+    the share to remain accessible through the two phases of the
+    migration, migration will result in an error status.
+    As of Ocata release, host-assisted migration cannot provide
+    this capability.
   in: body
   required: true
-  type: string
-os-migrate_share:
-  description: |
-    The ``migrate_share`` object.
-  in: body
-  required: true
-  type: object
+  type: boolean
 os-share-type-access:is_public:
   description: |
     Indicates whether a share type is publicly
@@ -1582,6 +1615,29 @@ pools:
   in: body
   required: true
   type: string
+preserve_metadata:
+  description: |
+    Specifies whether migration should enforce the preservation
+    of all file system metadata. When set to ``True``
+    and drivers are not capable of ensuring preservation
+    of file system metadata, migration will result in an
+    error status. As of Ocata release, host-assisted
+    migration cannot provide any guarantees of preserving
+    file system metadata.
+  in: body
+  required: true
+  type: boolean
+preserve_snapshots:
+  description: |
+    Specifies whether migration should enforce the preservation
+    of all existing snapshots at the destination. When set to
+    ``True`` and drivers are not capable of migrating the
+    snapshots, migration will result in an error status.
+    As of Ocata release, host-assisted migration cannot
+    provide this capability.
+  in: body
+  required: true
+  type: boolean
 progress:
   description: |
     The progress of the snapshot creation.
@@ -3014,6 +3070,12 @@ timestamp:
   in: body
   required: true
   type: string
+total_progress:
+  description: |
+    Defines a total progress of share migration.
+  in: body
+  required: true
+  type: integer
 totalReplicaGigabytesUsed:
   description: |
     The total number of replica gigabytes used in a
@@ -3209,3 +3271,18 @@ volume_type:
   in: body
   required: false
   type: string
+writable:
+  description: |
+     Specifies whether migration should only be performed
+     if the share can remain writable. When this behavior is set to ``True``
+     and drivers are not capable of allowing the share to remain writable,
+     migration will result in an error status. If drivers are not capable
+     of performing a nondisruptive migration, manila will ensure that the
+     share will remain writable through the data copy phase of migration.
+     However, during the switchover phase the share will be re-exported
+     at the destination, causing the share to be rendered inaccessible for
+     the duration of this phase. As of Ocata release, host-assisted
+     migration cannot provide this capability.
+  in: body
+  required: true
+  type: boolean
