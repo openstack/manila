@@ -1830,21 +1830,24 @@ class NetAppCmodeFileStorageLibrary(object):
         provisioning_options = self._get_provisioning_options_for_share(
             share, vserver, replica=True)
 
-        debug_args = {
-            'share': share_name,
-            'aggr': aggregate_name,
-            'options': provisioning_options
-        }
-        LOG.debug('update share %(share)s on aggregate %(aggr)s with '
-                  'provisioning options %(options)s', debug_args)
-
         qos_policy_group_name = self._modify_or_create_qos_for_existing_share(
             share, extra_specs, vserver, vserver_client)
         if qos_policy_group_name:
             provisioning_options['qos_policy_group'] = qos_policy_group_name
-        vserver_client.modify_volume(aggregate_name, share_name,
-                                     comment=share_comment, replica=True,
-                                     **provisioning_options)
+
+        modify_args = {
+            'share': share_name,
+            'aggr': aggregate_name,
+            'options': provisioning_options
+        }
+
+        try:
+            vserver_client.modify_volume(aggregate_name, share_name,
+                                         comment=share_comment,
+                                         **provisioning_options)
+        except netapp_api.NaApiError:
+            LOG.warning('update share %(share)s on aggregate %(aggr)s with '
+                        'provisioning options %(options)s failed', modify_args)
 
     def setup_server(self, network_info, metadata=None):
         raise NotImplementedError()
