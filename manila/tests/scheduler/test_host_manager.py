@@ -867,7 +867,7 @@ class PoolStateTestCase(test.TestCase):
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'reserved_percentage': 0, 'timestamp': None,
-                 'cap1': 'val1', 'cap2': 'val2'},
+                 'thin_provisioning': True, 'cap1': 'val1', 'cap2': 'val2'},
             'instances':
                 [
                     {
@@ -888,8 +888,37 @@ class PoolStateTestCase(test.TestCase):
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'reserved_percentage': 0, 'timestamp': None,
+                 'thin_provisioning': False, 'cap1': 'val1', 'cap2': 'val2'},
+            'instances':
+                [
+                    {
+                        'id': 1, 'host': 'host1',
+                        'status': 'available',
+                        'share_id': 11, 'size': 1,
+                        'updated_at': timeutils.utcnow()
+                    },
+                    {
+                        'id': 2, 'host': 'host1',
+                        'status': 'available',
+                        'share_id': 12, 'size': None,
+                        'updated_at': timeutils.utcnow()
+                    },
+                ]
+        },
+        {
+            'share_capability':
+                {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
+                 'reserved_percentage': 0, 'timestamp': None,
                  'cap1': 'val1', 'cap2': 'val2', 'ipv4_support': True,
                  'ipv6_support': False},
+            'instances': []
+        },
+        {
+            'share_capability':
+                {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
+                 'reserved_percentage': 0, 'timestamp': None,
+                 'thin_provisioning': True, 'cap1': 'val1', 'cap2': 'val2',
+                 'ipv4_support': True, 'ipv6_support': False},
             'instances': []
         },
         {
@@ -937,9 +966,25 @@ class PoolStateTestCase(test.TestCase):
         {
             'share_capability':
                 {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
+                 'allocated_capacity_gb': 256, 'provisioned_capacity_gb': 1,
+                 'thin_provisioning': True, 'reserved_percentage': 0,
+                 'timestamp': None, 'cap1': 'val1', 'cap2': 'val2'},
+            'instances':
+                [
+                    {
+                        'id': 1, 'host': 'host1',
+                        'status': 'available',
+                        'share_id': 11, 'size': 1,
+                        'updated_at': timeutils.utcnow()
+                    },
+                ]
+        },
+        {
+            'share_capability':
+                {'total_capacity_gb': 1024, 'free_capacity_gb': 512,
                  'allocated_capacity_gb': 256, 'provisioned_capacity_gb': 256,
-                 'reserved_percentage': 0, 'timestamp': None, 'cap1': 'val1',
-                 'cap2': 'val2'},
+                 'thin_provisioning': False, 'reserved_percentage': 0,
+                 'timestamp': None, 'cap1': 'val1', 'cap2': 'val2'},
             'instances':
                 [
                     {
@@ -969,35 +1014,38 @@ class PoolStateTestCase(test.TestCase):
         self.assertEqual(512, fake_pool.free_capacity_gb)
         self.assertDictMatch(share_capability, fake_pool.capabilities)
 
-        if 'provisioned_capacity_gb' not in share_capability:
-            db.share_instances_get_all_by_host.assert_called_once_with(
-                fake_context, fake_pool.host, with_share_data=True)
-
-            if len(instances) > 0:
-                self.assertEqual(4, fake_pool.provisioned_capacity_gb)
+        if 'thin_provisioning' in share_capability and (
+                share_capability['thin_provisioning']):
+            self.assertEqual(share_capability['thin_provisioning'],
+                             fake_pool.thin_provisioning)
+            if 'provisioned_capacity_gb' not in share_capability or (
+                    not share_capability['provisioned_capacity_gb']):
+                db.share_instances_get_all_by_host.assert_called_once_with(
+                    fake_context, fake_pool.host, with_share_data=True)
+                if len(instances) > 0:
+                    self.assertEqual(4, fake_pool.provisioned_capacity_gb)
+                else:
+                    self.assertEqual(0, fake_pool.provisioned_capacity_gb)
             else:
+                self.assertFalse(db.share_instances_get_all_by_host.called)
+                self.assertEqual(share_capability['provisioned_capacity_gb'],
+                                 fake_pool.provisioned_capacity_gb)
+        else:
+            self.assertFalse(fake_pool.thin_provisioning)
+            self.assertFalse(db.share_instances_get_all_by_host.called)
+            if 'provisioned_capacity_gb' not in share_capability or (
+                    not share_capability['provisioned_capacity_gb']):
                 self.assertEqual(0, fake_pool.provisioned_capacity_gb)
+            else:
+                self.assertEqual(share_capability['provisioned_capacity_gb'],
+                                 fake_pool.provisioned_capacity_gb)
 
-            if 'allocated_capacity_gb' in share_capability:
-                self.assertEqual(share_capability['allocated_capacity_gb'],
-                                 fake_pool.allocated_capacity_gb)
-            elif 'allocated_capacity_gb' not in share_capability:
-                self.assertEqual(0, fake_pool.allocated_capacity_gb)
-        elif 'provisioned_capacity_gb' in share_capability and (
-                'allocated_capacity_gb' not in share_capability):
-            self.assertFalse(db.share_instances_get_all_by_host.called)
-
-            self.assertEqual(0, fake_pool.allocated_capacity_gb)
-            self.assertEqual(share_capability['provisioned_capacity_gb'],
-                             fake_pool.provisioned_capacity_gb)
-        elif 'provisioned_capacity_gb' in share_capability and (
-                'allocated_capacity_gb' in share_capability):
-            self.assertFalse(db.share_instances_get_all_by_host.called)
-
+        if 'allocated_capacity_gb' in share_capability:
             self.assertEqual(share_capability['allocated_capacity_gb'],
                              fake_pool.allocated_capacity_gb)
-            self.assertEqual(share_capability['provisioned_capacity_gb'],
-                             fake_pool.provisioned_capacity_gb)
+        else:
+            self.assertEqual(0, fake_pool.allocated_capacity_gb)
+
         if 'ipv4_support' in share_capability:
             self.assertEqual(share_capability['ipv4_support'],
                              fake_pool.ipv4_support)
