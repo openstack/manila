@@ -126,7 +126,7 @@ class GaneshaConfigTests(test.TestCase):
             # split to expressions by the delimiter ";"
             # (braces are forced to be treated as expressions
             # by sandwiching them in ";"-s)
-            conf = re.sub('[{}]', ';\g<0>;', conf).split(';')
+            conf = re.sub(r'[{}]', r';\g<0>;', conf).split(';')
             # whitespace-split expressions to tokens with
             # (equality is forced to be treated as token by
             # sandwiching in space)

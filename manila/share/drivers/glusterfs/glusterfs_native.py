@@ -115,10 +115,10 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
             # xlators/protocol/auth/login/src/login.c#L80
             # until end of gf_auth() function
             old_access_list = re.split('[ ,]', ssl_allow_opt)
-            glusterfs_server_CN_pattern = '\Aglusterfs-server'
-            manila_host_CN_pattern = '\Amanila-host'
+            glusterfs_server_CN_pattern = r'\Aglusterfs-server'
+            manila_host_CN_pattern = r'\Amanila-host'
             regex = re.compile(
-                '%(pattern1)s|%(pattern2)s' % {
+                r'%(pattern1)s|%(pattern2)s' % {
                     'pattern1': glusterfs_server_CN_pattern,
                     'pattern2': manila_host_CN_pattern})
             access_to = ','.join(filter(regex.match, old_access_list))

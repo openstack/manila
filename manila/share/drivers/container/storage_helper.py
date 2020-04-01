@@ -63,7 +63,7 @@ class LVMHelper(driver.ExecuteMixin):
                 msg % {'vg': self.configuration.container_volume_group,
                        'err': err})
 
-        (free_size, total_size) = sorted(re.findall("\d+\.\d+|\d+", out),
+        (free_size, total_size) = sorted(re.findall(r"\d+\.\d+|\d+", out),
                                          reverse=False)
         return [{
             'pool_name': self.configuration.container_volume_group,

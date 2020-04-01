@@ -82,7 +82,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             'root@host2:/manila-share-2-2G'])
 
         CONF.set_default('glusterfs_volume_pattern',
-                         'manila-share-\d+-#{size}G$')
+                         r'manila-share-\d+-#{size}G$')
         CONF.set_default('driver_handles_share_servers', False)
 
         self.fake_conf = config.Configuration(None)

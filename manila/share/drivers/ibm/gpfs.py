@@ -55,7 +55,7 @@ LOG = log.getLogger(__name__)
 # matches multiple comma separated avpairs on a line.  values with an embedded
 # comma must be wrapped in quotation marks
 AVPATTERN = re.compile(r'\s*(?P<attr>\w+)\s*=\s*(?P<val>'
-                       '(["][a-zA-Z0-9_, ]+["])|(\w+))\s*[,]?')
+                       r'(["][a-zA-Z0-9_, ]+["])|(\w+))\s*[,]?')
 
 ERR_FILE_NOT_FOUND = 2
 
@@ -884,7 +884,7 @@ class KNFSHelper(NASHelperBase):
             raise exception.GPFSException(msg)
 
         if access_to:
-            if (re.search(re.escape(local_path) + '[\s\n]*'
+            if (re.search(re.escape(local_path) + r'[\s\n]*'
                           + re.escape(access_to), out)):
                 return True
         else:
@@ -974,7 +974,7 @@ class KNFSHelper(NASHelperBase):
         if error_on_exists:
             # check if present in export
             out = re.search(
-                re.escape(local_path) + '[\s\n]*'
+                re.escape(local_path) + r'[\s\n]*'
                 + re.escape(access['access_to']), self._get_exports())
 
             if out is not None:

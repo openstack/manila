@@ -182,7 +182,7 @@ class GlusterNFSHelper(ganesha.NASHelperBase):
             edl = export_dir.split(',')
             # parsing export_dir into a dict of {dir: [hostpec,..]..}
             # format
-            r = re.compile('\A/(.*)\((.*)\)\Z')
+            r = re.compile(r'\A/(.*)\((.*)\)\Z')
             for ed in edl:
                 d, e = r.match(ed).groups()
                 edh[d] = e.split('|')

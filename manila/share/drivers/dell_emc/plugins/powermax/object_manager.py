@@ -837,9 +837,9 @@ class Mover(StorageObject):
 
         out, err = self._execute_cmd(cmd_sysconfig)
 
-        re_pattern = ('0:\s*(?P<name>\S+)\s*IRQ:\s*(?P<irq>\d+)\n'
-                      '.*\n'
-                      '\s*Link:\s*(?P<link>[A-Za-z]+)')
+        re_pattern = (r'0:\s*(?P<name>\S+)\s*IRQ:\s*(?P<irq>\d+)\n'
+                      r'.*\n'
+                      r'\s*Link:\s*(?P<link>[A-Za-z]+)')
 
         for device in re.finditer(re_pattern, out):
             if 'Up' in device.group('link'):
@@ -995,8 +995,8 @@ class VDM(StorageObject):
             'nfs': [],
         }
 
-        re_pattern = ('Interfaces to services mapping:'
-                      '\s*(?P<interfaces>(\s*interface=.*)*)')
+        re_pattern = (r'Interfaces to services mapping:'
+                      r'\s*(?P<interfaces>(\s*interface=.*)*)')
 
         command_get_interfaces = [
             'env', 'NAS_DB=/nas', '/nas/bin/nas_server',
@@ -1010,8 +1010,8 @@ class VDM(StorageObject):
         if m:
             if_list = m.group('interfaces').split('\n')
             for i in if_list:
-                m_if = re.search('\s*interface=(?P<if>.*)\s*:'
-                                 '\s*(?P<type>.*)\s*', i)
+                m_if = re.search(r'\s*interface=(?P<if>.*)\s*:'
+                                 r'\s*(?P<type>.*)\s*', i)
                 if m_if:
                     if_name = m_if.group('if').strip()
                     if 'cifs' == m_if.group('type') and if_name != '':
@@ -1863,7 +1863,7 @@ class NFSShare(StorageObject):
                 LOG.exception(message)
                 raise exception.EMCPowerMaxXMLAPIError(err=message)
 
-        re_exports = '%s\s*:\s*\nexport\s*(.*)\n' % mover_name
+        re_exports = r'%s\s*:\s*\nexport\s*(.*)\n' % mover_name
         m = re.search(re_exports, out)
         if m is not None:
             nfs_share['path'] = path

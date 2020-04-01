@@ -77,9 +77,9 @@ def volxml_get(xmlout, *paths, **kwargs):
 class GlusterManager(object):
     """Interface with a GlusterFS volume."""
 
-    scheme = re.compile('\A(?:(?P<user>[^:@/]+)@)?'
-                        '(?P<host>[^:@/]+)'
-                        '(?::/(?P<volume>[^/]+)(?P<path>/.*)?)?\Z')
+    scheme = re.compile(r'\A(?:(?P<user>[^:@/]+)@)?'
+                        r'(?P<host>[^:@/]+)'
+                        r'(?::/(?P<volume>[^/]+)(?P<path>/.*)?)?\Z')
 
     # See this about GlusterFS' convention for Boolean interpretation
     # of strings:
@@ -298,7 +298,7 @@ class GlusterManager(object):
 
     def get_vol_option(self, option, boolean=False):
         """Get the value of an option set on a GlusterFS volume."""
-        useropt = re.sub('\Auser\.', '', option)
+        useropt = re.sub(r'\Auser\.', '', option)
         if option == useropt:
             value = self._get_vol_regular_option(option)
         else:

@@ -223,8 +223,8 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
                                  self.configuration.lvm_share_volume_group,
                                  '--rows', '--units', 'g',
                                  run_as_root=True)
-        total_size = re.findall("VSize\s[0-9.]+g", out)[0][6:-1]
-        free_size = re.findall("VFree\s[0-9.]+g", out)[0][6:-1]
+        total_size = re.findall(r"VSize\s[0-9.]+g", out)[0][6:-1]
+        free_size = re.findall(r"VFree\s[0-9.]+g", out)[0][6:-1]
         return [{
             'pool_name': 'lvm-single-pool',
             'total_capacity_gb': float(total_size),
@@ -492,7 +492,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
                 mount_path = self._get_mount_path(share)
                 if os.path.exists(mount_path):
                     used_size = (re.findall(
-                        mount_path + "\s*[0-9.]+G", out)[0].
+                        mount_path + r"\s*[0-9.]+G", out)[0].
                         split(' ')[-1][:-1])
                     updated_shares.append({'id': share['id'],
                                            'used_size': used_size,

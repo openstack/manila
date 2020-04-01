@@ -438,8 +438,8 @@ class HPE3ParDriverTestCase(test.TestCase):
     def test_driver_create_cifs_share(self):
         self.init_driver()
 
-        expected_location = '\\\\%s\%s' % (constants.EXPECTED_IP_10203040,
-                                           constants.EXPECTED_SHARE_NAME)
+        expected_location = '\\\\%s\\%s' % (constants.EXPECTED_IP_10203040,
+                                            constants.EXPECTED_SHARE_NAME)
 
         self.mock_mediator.create_share.return_value = (
             constants.EXPECTED_SHARE_NAME)
@@ -496,8 +496,8 @@ class HPE3ParDriverTestCase(test.TestCase):
     def test_driver_create_cifs_share_from_snapshot(self):
         self.init_driver()
 
-        expected_location = '\\\\%s\%s' % (constants.EXPECTED_IP_10203040,
-                                           constants.EXPECTED_SHARE_NAME)
+        expected_location = '\\\\%s\\%s' % (constants.EXPECTED_IP_10203040,
+                                            constants.EXPECTED_SHARE_NAME)
 
         self.mock_mediator.create_share_from_snapshot.return_value = (
             constants.EXPECTED_SHARE_NAME)
